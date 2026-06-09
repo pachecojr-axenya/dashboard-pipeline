@@ -1,0 +1,15 @@
+# Documentation — not needed in the deploy bundle
+README.md
+AUDIT.md
+STATUS_LOG.md
+_WORKSPACE.md
+docs/
+
+# Local-only files
+.env*.local
+.env.development*
+backup-*
+src_electron_backup/
+
+# Dev tooling
+scripts/dev.js

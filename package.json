@@ -1,0 +1,17 @@
+{
+  "name": "axenya-pipeline-dashboard",
+  "version": "6.0.0",
+  "description": "Axenya Pipeline Dashboard — Web App (Vercel)",
+  "author": "Axenya",
+  "private": true,
+  "scripts": {
+    "start": "node scripts/dev.js",
+    "deploy": "vercel --prod",
+    "generate-credentials": "node scripts/generate-credentials.js"
+  },
+  "dependencies": {},
+  "devDependencies": {},
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

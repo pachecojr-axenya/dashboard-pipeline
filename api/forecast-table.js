@@ -1,0 +1,238 @@
+'use strict';
+/**
+ * GET /api/forecast-table
+ * Retorna todos os deals ativos (Vendas + Bid) com campos normalizados
+ * para o novo dashboard. Mesma lógica do dash-forecast.
+ */
+
+const { setCORSHeaders, requireAuth, getHubspotToken, methodCheck } = require('./_helpers');
+
+const PIPELINE_ID   = '782758156'; // Vendas
+const PIPELINE_2_ID = '894130090'; // Bid
+
+const PIPELINE_LABELS = {
+  [PIPELINE_ID]:   'Vendas',
+  [PIPELINE_2_ID]: 'Bid',
+};
+
+const STAGE_MAP = {
+  // Vendas
+  '1144746905': 'Reunião Agendada',
+  '1144746906': 'Diagnóstico',
+  '1144746908': 'Cotação',
+  '1144746909': 'Consultoria',
+  '1144746910': 'Negociação',
+  '1317543716': 'Stand by',
+  '1288611084': 'Implantação',
+  '1144844314': 'Ganho',
+  '1144746911': 'Perdido',
+  // Bid
+  '1363560722': 'Cotação',
+  '1349620555': 'Proposta Enviada',
+  '1349620556': 'Consultoria',
+  '1353387279': 'Negociação',
+  '1353387280': 'Ganho',
+  '1353457025': 'Implantação',
+  '1373066362': 'Standby',
+};
+
+const ACTIVE_STAGE_IDS = [
+  // Vendas — activos (sem Reunião Agendada, Perdido)
+  '1144746906', '1144746908', '1144746909', '1144746910', '1288611084', '1144844314',
+  // Bid
+  '1363560722', '1349620555', '1349620556', '1353387279', '1353387280', '1353457025', '1373066362',
+];
+
+const STAGE_PROB = {
+  'Cotação': 0.33, 'Proposta Enviada': 0.285, 'Consultoria': 0.611,
+  'Negociação': 0.42, 'Implantação': 0.581, 'Ganho': 1.0,
+  'Standby': 0.12, 'Stand by': 0.12, 'Diagnóstico': 0.06,
+};
+
+const PROPERTIES = [
+  'dealname', 'dealstage', 'pipeline', 'hubspot_owner_id',
+  'produto', 'quantidade_de_colaboradores', 'vidas',
+  'valor_da_fatura_do_plano_de_saude_atual', 'primeira_fatura',
+  'arr_estimado', 'modelo_de_remuneracao',
+  'possui_agenciamento', 'possui_vitalicio',
+  'probabilidade_de_fechamento_', 'hs_deal_stage_probability',
+  'qual_quarter_de_fechamento', 'data_prevista_para_receita',
+  'hs_is_closed_won', 'hs_is_closed_lost', 'hs_object_id',
+  'createdate', 'closedate',
+];
+
+function normalizeProb(val) {
+  const n = parseFloat(val);
+  if (isNaN(n) || n < 0) return null;
+  return n > 1 ? n / 100 : n;
+}
+
+function normalizeBool(val) {
+  const v = (val || '').toString().trim().toLowerCase();
+  if (v === 'true' || v === 'sim' || v === 'yes') return true;
+  if (v === 'false' || v === 'não' || v === 'nao' || v === 'no') return false;
+  return null;
+}
+
+function quarterEmpty(q) {
+  if (!q) return true;
+  const s = String(q).trim().toLowerCase();
+  if (s === 'false' || s === 'true' || s === 'sem informação' || s === 'sem informacao') return true;
+  return !/\d{4}/.test(s);
+}
+
+function getQuarterFromDate(dateStr) {
+  if (!dateStr) return null;
+  const m = dateStr.trim().match(/^(\d{4})-(\d{2})-\d{2}/);
+  if (m) {
+    const q = Math.floor((parseInt(m[2]) - 1) / 3) + 1;
+    return `Q${q} ${m[1]}`;
+  }
+  const d = new Date(dateStr);
+  if (!isNaN(d)) return `Q${Math.floor(d.getMonth() / 3) + 1} ${d.getFullYear()}`;
+  return null;
+}
+
+async function hubspotPost(token, endpoint, body) {
+  const res = await fetch(`https://api.hubapi.com${endpoint}`, {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(30000),
+  });
+  if (res.status === 429) throw new Error('HubSpot rate limit exceeded. Aguarde alguns minutos.');
+  if (res.status === 401 || res.status === 403) throw new Error('HubSpot: autenticação falhou.');
+  if (res.status >= 400) throw new Error(`HubSpot API error (HTTP ${res.status})`);
+  const json = await res.json();
+  if (json.status === 'error') throw new Error(json.message || 'HubSpot API error');
+  return json;
+}
+
+async function hubspotGet(token, url) {
+  const res = await fetch(`https://api.hubapi.com${url}`, {
+    headers: { 'Authorization': `Bearer ${token}` },
+    signal: AbortSignal.timeout(30000),
+  });
+  if (res.status >= 400) throw new Error(`HubSpot API error (HTTP ${res.status})`);
+  return res.json();
+}
+
+async function fetchOwners(token) {
+  const map = {};
+  let after, hasMore = true;
+  while (hasMore) {
+    const url = '/crm/v3/owners?limit=200' + (after ? '&after=' + after : '');
+    const r = await hubspotGet(token, url);
+    (r.results || []).forEach(o => {
+      const name = `${o.firstName || ''} ${o.lastName || ''}`.trim() || o.email || String(o.id);
+      map[o.id] = name;
+    });
+    hasMore = r.paging?.next?.after != null;
+    after = r.paging?.next?.after;
+  }
+  return map;
+}
+
+async function fetchDeals(token) {
+  let all = [], after = 0, hasMore = true;
+  while (hasMore) {
+    const body = {
+      filterGroups: [{ filters: [
+        { propertyName: 'pipeline',  operator: 'IN', values: [PIPELINE_ID, PIPELINE_2_ID] },
+        { propertyName: 'dealstage', operator: 'IN', values: ACTIVE_STAGE_IDS },
+      ]}],
+      properties: PROPERTIES,
+      limit: 200,
+      after,
+    };
+    const resp = await hubspotPost(token, '/crm/v3/objects/deals/search', body);
+    all = all.concat(resp.results || []);
+    hasMore = resp.paging?.next?.after != null;
+    after = resp.paging?.next?.after || 0;
+  }
+  return all;
+}
+
+module.exports = async function handler(req, res) {
+  setCORSHeaders(req, res);
+  if (!methodCheck(req, res, ['GET'])) return;
+
+  const user = requireAuth(req, res);
+  if (!user) return;
+
+  let token;
+  try { token = getHubspotToken(); } catch (e) {
+    return res.status(503).json({ success: false, error: e.message });
+  }
+
+  try {
+    const [rawDeals, ownerMap] = await Promise.all([fetchDeals(token), fetchOwners(token)]);
+
+    const deals = rawDeals
+      .filter(r => r.properties.hs_is_closed_lost !== 'true')
+      .map(r => {
+        const p = r.properties;
+        const stageName = STAGE_MAP[p.dealstage] || p.dealstage || '-';
+
+        const prob = (() => {
+          const custom = normalizeProb(p.probabilidade_de_fechamento_);
+          if (custom !== null) return custom;
+          return normalizeProb(p.hs_deal_stage_probability);
+        })();
+
+        const arr = (() => {
+          const a = parseFloat(p.arr_estimado);
+          if (!isNaN(a) && a > 0) return a;
+          const pf = parseFloat(p.primeira_fatura);
+          if (!isNaN(pf) && pf > 0) return pf * 12;
+          return null;
+        })();
+
+        const dateStr = p.data_prevista_para_receita
+          ? p.data_prevista_para_receita.substring(0, 10) : null;
+
+        let quarter = p.qual_quarter_de_fechamento || null;
+        if (quarterEmpty(quarter)) quarter = getQuarterFromDate(dateStr) || null;
+
+        return {
+          hs_id: p.hs_object_id,
+          dealname: (p.dealname || '')
+            .replace(/ - Novo\(a\) Deal$/i, '')
+            .replace(/ - New Deal$/i, '')
+            .trim(),
+          pipeline: PIPELINE_LABELS[p.pipeline] || p.pipeline || '-',
+          stage: stageName,
+          ae: ownerMap[p.hubspot_owner_id] || '-',
+          produto: p.produto || null,
+          colaboradores: p.quantidade_de_colaboradores ? parseInt(p.quantidade_de_colaboradores) : null,
+          vidas: p.vidas ? parseInt(p.vidas) : null,
+          fatura_atual: p.valor_da_fatura_do_plano_de_saude_atual
+            ? parseFloat(p.valor_da_fatura_do_plano_de_saude_atual) : null,
+          primeira_fatura: p.primeira_fatura ? parseFloat(p.primeira_fatura) : null,
+          arr_estimado: arr,
+          modelo_remuneracao: p.modelo_de_remuneracao || null,
+          possui_agenciamento: normalizeBool(p.possui_agenciamento),
+          possui_vitalicio: normalizeBool(p.possui_vitalicio),
+          probabilidade: prob,
+          quarter,
+          data_prevista_para_receita: dateStr,
+          close_date: p.closedate ? p.closedate.substring(0, 10) : null,
+          createdate: p.createdate ? p.createdate.substring(0, 10) : null,
+          dias_no_pipe: p.createdate
+            ? Math.floor((Date.now() - new Date(p.createdate).getTime()) / 86400000)
+            : null,
+        };
+      });
+
+    return res.status(200).json({
+      success: true,
+      deals,
+      total: deals.length,
+      pipelines: { vendas: deals.filter(d => d.pipeline === 'Vendas').length, bid: deals.filter(d => d.pipeline === 'Bid').length },
+      timestamp: new Date().toISOString(),
+    });
+  } catch (e) {
+    console.error('[forecast-table]', e.message);
+    return res.status(500).json({ success: false, error: e.message });
+  }
+};

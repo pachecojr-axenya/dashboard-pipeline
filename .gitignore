@@ -1,0 +1,24 @@
+node_modules/
+.vercel/
+.env
+.env.local
+.env.production
+PASSWORDS_FIRST_RUN.txt
+
+# Backup do Electron original (manter local, não versionar)
+src_electron_backup/
+
+# Nunca versionar secrets ou credenciais em plaintext
+*.key
+*.pem
+*.p12
+gcp-*.json
+service-account*.json
+.vercel
+
+# Hashes de senha legados (FIXME S01 — remover do tracking com git rm --cached)
+lib/credentials.json
+.env*.local
+.env.local2
+
+.vercel
