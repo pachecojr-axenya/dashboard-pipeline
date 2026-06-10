@@ -235,18 +235,9 @@ body::before {
   <div class="footer">Axenya &copy; 2026 — Pipeline Analytics</div>
 </div>
 
-<!-- Canonical-host redirect: bounce immutable Vercel deploy URLs to the stable alias.
-     Google OAuth only knows the canonical origin — hitting e.g. *-<hash>-*.vercel.app
-     would trigger redirect_uri_mismatch. Runs synchronously before GIS loads. -->
-<script>
-(function canonicalRedirect() {
-  var CANONICAL = 'axenya-pipeline-dashboard-psi.vercel.app';
-  var host = location.hostname;
-  if (host.endsWith('.vercel.app') && host !== CANONICAL) {
-    location.replace('https://' + CANONICAL + location.pathname + location.search);
-  }
-})();
-</script>
+<!-- Canonical-host redirect disabled for now.
+     Was forcing redirect to axenya-pipeline-dashboard-psi.vercel.app -->
+
 
 <!-- Google Identity Services library -->
 <script src="https://accounts.google.com/gsi/client" async defer></script>

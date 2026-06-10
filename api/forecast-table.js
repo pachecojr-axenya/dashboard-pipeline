@@ -37,11 +37,14 @@ const STAGE_MAP = {
 };
 
 const ACTIVE_STAGE_IDS = [
-  // Vendas — activos (sem Reunião Agendada, Perdido)
-  '1144746906', '1144746908', '1144746909', '1144746910', '1288611084', '1144844314',
+  // Vendas - activos + Reunião Agendada (sem Perdido)
+  '1144746905', '1144746906', '1144746908', '1144746909', '1144746910', '1288611084', '1144844314',
   // Bid
   '1363560722', '1349620555', '1349620556', '1353387279', '1353387280', '1353457025', '1373066362',
 ];
+// Etapas de Perdido — incluídas APENAS quando o cliente pede ?includeLost=true (ex.: CRO Dashboard).
+// Os demais painéis chamam sem o parâmetro e continuam recebendo só os ativos.
+const LOST_STAGE_IDS = ['1144746911']; // Vendas Perdido (Bid não tem etapa de perdido mapeada)
 
 const STAGE_PROB = {
   'Cotação': 0.33, 'Proposta Enviada': 0.285, 'Consultoria': 0.611,
@@ -59,6 +62,7 @@ const PROPERTIES = [
   'qual_quarter_de_fechamento', 'data_prevista_para_receita',
   'hs_is_closed_won', 'hs_is_closed_lost', 'hs_object_id',
   'createdate', 'closedate',
+  'motivo_do_declinio_ou_perdido',
 ];
 
 function normalizeProb(val) {
@@ -133,13 +137,14 @@ async function fetchOwners(token) {
   return map;
 }
 
-async function fetchDeals(token) {
+async function fetchDeals(token, includeLost) {
+  const stageIds = includeLost ? ACTIVE_STAGE_IDS.concat(LOST_STAGE_IDS) : ACTIVE_STAGE_IDS;
   let all = [], after = 0, hasMore = true;
   while (hasMore) {
     const body = {
       filterGroups: [{ filters: [
         { propertyName: 'pipeline',  operator: 'IN', values: [PIPELINE_ID, PIPELINE_2_ID] },
-        { propertyName: 'dealstage', operator: 'IN', values: ACTIVE_STAGE_IDS },
+        { propertyName: 'dealstage', operator: 'IN', values: stageIds },
       ]}],
       properties: PROPERTIES,
       limit: 200,
@@ -165,11 +170,13 @@ module.exports = async function handler(req, res) {
     return res.status(503).json({ success: false, error: e.message });
   }
 
+  const includeLost = !!(req.query && String(req.query.includeLost) === 'true');
+
   try {
-    const [rawDeals, ownerMap] = await Promise.all([fetchDeals(token), fetchOwners(token)]);
+    const [rawDeals, ownerMap] = await Promise.all([fetchDeals(token, includeLost), fetchOwners(token)]);
 
     const deals = rawDeals
-      .filter(r => r.properties.hs_is_closed_lost !== 'true')
+      .filter(r => includeLost || r.properties.hs_is_closed_lost !== 'true')
       .map(r => {
         const p = r.properties;
         const stageName = STAGE_MAP[p.dealstage] || p.dealstage || '-';
@@ -217,6 +224,7 @@ module.exports = async function handler(req, res) {
           quarter,
           data_prevista_para_receita: dateStr,
           close_date: p.closedate ? p.closedate.substring(0, 10) : null,
+          lost_reason: p.motivo_do_declinio_ou_perdido || null,
           createdate: p.createdate ? p.createdate.substring(0, 10) : null,
           dias_no_pipe: p.createdate
             ? Math.floor((Date.now() - new Date(p.createdate).getTime()) / 86400000)

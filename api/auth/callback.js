@@ -5,9 +5,9 @@
  * Troca o code por tokens, verifica, e redireciona para /dashboard com JWT no fragment.
  */
 
-const { createToken, buildSessionCookie } = require('../../lib/auth');
+const { createToken, buildSessionCookie, isEmailAuthorized } = require('../../lib/auth');
 
-const ALLOWED_DOMAIN = 'axenya.com';
+const ALLOWED_DOMAIN = 'axenya.com'; // usado apenas para o papel (staff x guest)
 
 module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') { res.status(204).end(); return; }
@@ -68,10 +68,9 @@ module.exports = async function handler(req, res) {
       return res.redirect(302, '/?error=aud_mismatch');
     }
 
-    // Verify domain
+    // Acesso restrito: o e-mail precisa estar na lista de autorizados (lib/auth.js + ALLOWED_EMAILS)
     const email = (payload.email || '').toLowerCase();
-    const hd = payload.hd || '';
-    if (hd !== ALLOWED_DOMAIN && !email.endsWith(`@${ALLOWED_DOMAIN}`)) {
+    if (!isEmailAuthorized(email)) {
       return res.redirect(302, '/?error=domain_not_allowed');
     }
 
@@ -80,7 +79,7 @@ module.exports = async function handler(req, res) {
       name: payload.name || email.split('@')[0],
       email,
       picture: payload.picture || null,
-      role: 'staff'
+      role: email.endsWith(`@${ALLOWED_DOMAIN}`) ? 'staff' : 'guest'
     };
 
     const sessionToken = createToken({

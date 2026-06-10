@@ -12,8 +12,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-:root{--bg:#0d1117;--card:#171f2e;--card2:#1e2a3c;--border:#293a50;--text:#e6edf3;--text2:#8b949e;--muted:#6e7681;--teal:#3ab8b7;--green:#3fb950;--red:#f85149;--orange:#d29922;--yellow:#e3b341;--hover:rgba(255,255,255,0.06);--even-s:#131b28;--hover-s:#1c2b40}
-html[data-theme="light"]{--bg:#f6f8fa;--card:#ffffff;--card2:#eaeef2;--border:#d0d7de;--text:#1f2328;--text2:#57606a;--teal:#0d7377;--green:#1a7f37;--yellow:#9a6700;--red:#cf222e;--hover:rgba(0,0,0,0.05);--even-s:#f1f4f8;--hover-s:#e8eef4}
+:root{--bg:#0d1117;--card:#171f2e;--card2:#1e2a3c;--border:#293a50;--text:#e6edf3;--text2:#8b949e;--muted:#6e7681;--teal:#3ab8b7;--green:#3fb950;--red:#f85149;--orange:#d29922;--yellow:#e3b341;--blue:#58a6ff;--hover:rgba(255,255,255,0.06);--even-s:#131b28;--hover-s:#1c2b40;--hdr-glass:rgba(13,17,23,.78)}
+html[data-theme="light"]{--bg:#f6f8fa;--card:#ffffff;--card2:#eaeef2;--border:#d0d7de;--text:#1f2328;--text2:#57606a;--teal:#0d7377;--green:#1a7f37;--yellow:#9a6700;--red:#cf222e;--blue:#0969da;--hover:rgba(0,0,0,0.05);--even-s:#f1f4f8;--hover-s:#e8eef4;--hdr-glass:rgba(246,248,250,.82)}
 body{background:var(--bg);color:var(--text);font-family:Inter,'Segoe UI',system-ui,sans-serif;font-size:13px;line-height:1.5}
 button,input,select,textarea{font-family:Inter,'Segoe UI',system-ui,sans-serif}
 h1{font-size:1.5rem;font-weight:700;letter-spacing:-.02em;margin-bottom:.15rem}
@@ -51,7 +51,8 @@ html[data-theme="light"] .hdr-actions{background:rgba(0,0,0,0.03)}
 [data-theme="light"] .nav-item:hover{background:rgba(0,0,0,.04)}
 
 /* Header */
-.novo-hdr{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:1.25rem 2rem;background:var(--card);position:sticky;top:0;z-index:100}
+.novo-hdr{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:1.25rem 2rem;background:transparent;position:sticky;top:0;z-index:100;transition:background .25s,backdrop-filter .25s,box-shadow .25s}
+.novo-hdr.scrolled{background:var(--hdr-glass);backdrop-filter:blur(18px) saturate(1.5);-webkit-backdrop-filter:blur(18px) saturate(1.5);box-shadow:0 1px 0 var(--border)}
 .novo-theme-sun{display:block}.novo-theme-moon{display:none}
 [data-theme="light"] .novo-theme-sun{display:none}[data-theme="light"] .novo-theme-moon{display:block}
 .novo-lang-btn{width:auto !important;padding:0 9px;font-size:.71rem;font-weight:700;letter-spacing:.06em}
@@ -64,15 +65,41 @@ html[data-theme="light"] .hdr-actions{background:rgba(0,0,0,0.03)}
 
 /* Info button */
 .novo-info-btn{width:16px;height:16px;border-radius:50%;border:1.5px solid var(--text2);background:none;color:var(--text2);font-size:.62rem;font-style:normal;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;position:relative;flex-shrink:0;padding:0;line-height:1}
-.novo-info-btn[data-tooltip]::after{content:attr(data-tooltip);position:absolute;top:calc(100% + 7px);left:50%;transform:translateX(-50%);background:var(--card2);color:var(--text);font-size:.73rem;font-family:Inter,'Segoe UI',system-ui,sans-serif;font-weight:400;padding:.4rem .7rem;border-radius:6px;white-space:normal;width:270px;text-align:left;line-height:1.5;pointer-events:none;opacity:0;transition:opacity .15s;z-index:300;border:1px solid var(--border)}
-.novo-info-btn[data-tooltip]:hover::after{opacity:1}
+/* Info button tooltip (JS-driven via #novo-tip) */
+#novo-tip{position:fixed;z-index:9999;background:rgba(23,31,46,.78);backdrop-filter:blur(14px) saturate(1.5);-webkit-backdrop-filter:blur(14px) saturate(1.5);border-radius:6px;padding:.45rem .7rem;width:278px;pointer-events:none;display:none;box-shadow:0 6px 20px rgba(0,0,0,.3)}
+html[data-theme="light"] #novo-tip{background:rgba(246,248,250,.82)}
+#novo-tip.nt-show{display:block}
+#novo-tip .nt-text{font-size:.73rem;color:var(--text);font-weight:400;line-height:1.5;font-family:Inter,'Segoe UI',system-ui,sans-serif}
+#novo-tip .nt-code{font-size:.62rem;font-weight:700;color:var(--teal);font-family:ui-monospace,Menlo,Consolas,monospace;margin-top:.3rem;padding-top:.28rem;border-top:1px solid rgba(255,255,255,.12);letter-spacing:.07em;opacity:1}
+html[data-theme="light"] #novo-tip .nt-code{border-top-color:rgba(0,0,0,.1)}
 
 /* Tab sub */
-.tab-sub{display:flex;gap:0;margin-bottom:1rem}
-.tab-sub-btn{background:var(--card2);border:1px solid var(--border);color:var(--text2);padding:.35rem .8rem;cursor:pointer;font-size:.75rem;transition:background-color .12s,border-color .12s,color .12s}
-.tab-sub-btn:first-child{border-radius:6px 0 0 6px}
-.tab-sub-btn:last-child{border-radius:0 6px 6px 0}
-.tab-sub-btn.active{background:var(--teal);color:#fff;border-color:var(--teal)}
+.tab-sub{display:inline-flex;background:var(--card2);border-radius:99px;padding:3px;gap:0;margin-bottom:1rem;position:relative}
+.tab-sub-thumb{position:absolute;top:3px;height:calc(100% - 6px);border-radius:99px;background:rgba(255,255,255,.14);pointer-events:none;z-index:0;transition:left .22s cubic-bezier(.4,0,.2,1),width .22s cubic-bezier(.4,0,.2,1)}
+html[data-theme="light"] .tab-sub-thumb{background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.15)}
+.tab-sub-btn{background:transparent;border:none;border-radius:99px;color:var(--text2);padding:.3rem .9rem;cursor:pointer;font-size:.75rem;font-weight:500;transition:color .18s;position:relative;z-index:1}
+.tab-sub-btn:first-child{border-radius:99px}
+.tab-sub-btn:last-child{border-radius:99px}
+.tab-sub-btn.active{color:var(--text);font-weight:600}
+.novo-card-header .tab-sub{margin-bottom:0}
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem;margin-bottom:.75rem}
+@media(max-width:900px){.kpi-row{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:520px){.kpi-row{grid-template-columns:1fr}}
+.kpi-card{background:var(--card);border-radius:14px;padding:1.6rem 1.8rem;position:relative;transition:box-shadow .18s}
+.kpi-card:hover{box-shadow:0 0 0 2px rgba(58,184,183,.35)}
+.kpi-card--na{opacity:.5}
+.kpi-label{font-size:.66rem;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0;line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kpi-value{font-size:2rem;font-weight:800;line-height:1.1;margin:.35rem 0 .25rem;white-space:nowrap}
+.kpi-sub{font-size:.7rem;color:var(--muted);line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kpi-row-sec{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:.5rem;margin-bottom:1.5rem}
+.kpi-sec{background:var(--card2);border-radius:10px;padding:.9rem 1.1rem;transition:box-shadow .18s}
+.kpi-sec:hover{box-shadow:0 0 0 2px rgba(58,184,183,.25)}
+.kpi-sec--na{opacity:.45}
+.kpi-sec-label{font-size:.62rem;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0;line-height:1}
+.kpi-sec-value{font-size:1.15rem;font-weight:700;line-height:1.15;margin:.22rem 0 .15rem;word-break:break-all}
+.kpi-sec-sub{font-size:.64rem;color:var(--muted);line-height:1.3}
+.kpi-click{cursor:pointer}
+.kpi-click:hover{box-shadow:0 0 0 2px rgba(58,184,183,.5)}
 
 /* Skeleton */
 @keyframes novo-shimmer{0%{background-position:-800px 0}100%{background-position:800px 0}}
@@ -149,9 +176,38 @@ table.lb tfoot td{font-weight:600;border-top:2px solid var(--border)}
     </button>
   </div>
   <ul class="nav-menu">
-    <li class="nav-item active">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    <li class="nav-item active" onclick="window.location.href='/novo'">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
       CRO Dashboard
+    </li>
+    <li class="nav-item" onclick="window.location.href='/novo-board'">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20h20M4 20V10l8-6 8 6v10"/><path d="M10 20v-6h4v6"/></svg>
+      Board View
+    </li>
+    <li class="nav-item" onclick="window.location.href='/novo-ae'">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      AE Performance
+    </li>
+    <li class="nav-item" onclick="window.location.href='/novo-bdr'">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      BDR Performance
+    </li>
+    <li class="nav-item" onclick="window.location.href='/novo-48h'">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      Last 48h
+    </li>
+    <li class="nav-item" onclick="window.location.href='/novo-cs'">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+      CS Dashboard
+    </li>
+    <li class="nav-item" onclick="window.location.href='/novo-cotacao'">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+      Cotação
+    </li>
+    <div style="height:1px;background:var(--border);margin:.4rem .75rem"></div>
+    <li class="nav-item" onclick="window.location.href='/forecast'">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      Forecast
     </li>
   </ul>
 </nav>
@@ -164,9 +220,7 @@ table.lb tfoot td{font-weight:600;border-top:2px solid var(--border)}
       <button class="hdr-btn" onclick="toggleDrawer()" data-tooltip="Menu">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
       </button>
-      <div>
-        <h1>CRO Dashboard</h1>
-      </div>
+      <div class="panel-switcher" id="panel-switcher"><button class="panel-switch-btn" type="button" onclick="togglePanelMenu(event)" aria-haspopup="true" aria-expanded="false"><h1>CRO Dashboard</h1><svg class="panel-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button><div class="panel-dd" id="panel-dd" role="menu"></div></div>
     </div>
     <div class="hdr-actions">
       <button class="hdr-btn" onclick="doLogout()" data-tooltip="Sair">
@@ -201,6 +255,9 @@ table.lb tfoot td{font-weight:600;border-top:2px solid var(--border)}
   </div>
 </div>
 
+<!-- Info-button tooltip -->
+<div id="novo-tip"><div class="nt-text"></div><div class="nt-code"></div></div>
+
 <!-- Settings drawer -->
 <div class="novo-prob-backdrop" id="novo-prob-backdrop" onclick="novoCloseProbEditor()"></div>
 <div class="novo-prob-drawer" id="novo-prob-drawer">
@@ -233,7 +290,7 @@ table.lb tfoot td{font-weight:600;border-top:2px solid var(--border)}
 
 <!-- Help drawer (desliza da direita) -->
 <div class="novo-help-backdrop" id="novo-help-backdrop" onclick="novoCloseHelp()"></div>
-<div class="novo-help-drawer" id="novo-help-drawer" aria-label="Ajuda — campos do HubSpot">
+<div class="novo-help-drawer" id="novo-help-drawer" aria-label="Ajuda | campos do HubSpot">
   <div class="novo-help-hdr">
     <h3 id="novo-help-title">Campos do HubSpot por gráfico</h3>
     <button class="hdr-btn" onclick="novoCloseHelp()" aria-label="Fechar">
@@ -288,7 +345,7 @@ function _setNavOpen(open) {
   document.body.classList.toggle('nav-docked', open);
   var narrow = window.matchMedia('(max-width:820px)').matches;
   document.getElementById('nav-backdrop').classList.toggle('open', open && narrow);
-  try { localStorage.setItem('novo_nav_open', open ? 'true' : 'false'); } catch(e) {}
+  try { localStorage.setItem('nav_open', open ? 'true' : 'false'); localStorage.setItem('novo_nav_open', open ? 'true' : 'false'); } catch(e) {}
 }
 function openDrawer()  { _setNavOpen(true); }
 function closeDrawer() { _setNavOpen(false); setContentBlur(false); }
@@ -446,7 +503,7 @@ var NOVO_I18N = {
     t_stage:'Pipeline Aberto por Etapa',
     tip_stage:'Deals abertos (exclui Ganhos) por etapa do pipeline. Alterne entre nº de deals e soma de vidas. Clique numa barra para ver os deals. Inclui os pipelines Vendas + Bid.',
     t_funnel:'🟡 Funil do Pipeline (alcance cumulativo)',
-    tip_funnel:'Para cada etapa, quantos deals abertos estão nela ou em etapas seguintes — formato de funil. Clique para ver os deals. Inclui os pipelines Vendas + Bid.',
+    tip_funnel:'Para cada etapa, quantos deals abertos estão nela ou em etapas seguintes | formato de funil. Clique para ver os deals. Inclui os pipelines Vendas + Bid.',
     t_conc:'🟡 Risco de Concentração (Top 10)',
     tip_conc:'Os 10 maiores deals abertos por vidas ou por receita anual estimada. Mostra o quanto o pipe depende de poucos negócios. Inclui os pipelines Vendas + Bid.',
     t_sizedist:'🟡 Distribuição por Tamanho (Receita)',
@@ -457,6 +514,71 @@ var NOVO_I18N = {
     tip_stageval:'Soma da receita anual estimada por etapa. "Ponderado" multiplica pela probabilidade da etapa (ajustável em ⚙). Inclui os pipelines Vendas + Bid.',
     t_segment:'🟡 Receita por Segmento (Tamanho)',
     tip_segment:'Receita anual estimada (potencial) somada por segmento de tamanho do cliente (vidas). Inclui os pipelines Vendas + Bid.',
+    // KPIs primários
+    kpi_mtd_label:'Receita Ganha MTD', kpi_mtd_tip:'Receita mensal de deals ganhos (Ganho + Implantação) fechados neste mês (ARR ÷ 12). Meta não configurada.',
+    kpi_won_label:'Receita Ganha', kpi_won_tip:'Soma do ARR estimado (ou 1ª fatura × 12) de negócios ganhos com fechamento no ano atual.',
+    kpi_wpipe_label:'Pipeline Ponderado/ano (histórico)', kpi_wpipe_tip:'Soma de (ARR × probabilidade) de todos os abertos. Se o ARR estiver vazio, usa a 1ª fatura × 12.',
+    kpi_reunioes_label:'Deals em Reunião Agendada', kpi_reunioes_tip:'Número de negócios em Reunião Agendada. Tratados como etapa inicial separada (não contam no pipeline ativo).',
+    kpi_open_vidas_label:'Vidas em Aberto', kpi_open_vidas_tip:'Soma de vidas de todos os deals em estágios abertos (excluindo Ganho).',
+    kpi_won_vidas_label:'Vidas Ganhas', kpi_won_vidas_tip:'Soma de vidas dos deals ganhos (Ganho + Implantação).',
+    kpi_lost_vidas_label:'Vidas Perdidas', kpi_lost_vidas_tip:'Deals perdidos (hs_is_closed_lost=true) excluídos da API atual.',
+    kpi_wvidas_label:'Vidas Ponderadas', kpi_wvidas_tip:'Soma de (vidas × probabilidade) de todos os deals abertos.',
+    kpi_deals_closed_in:'deals fechados em', kpi_deals_open:'deals em aberto',
+    kpi_deals_ganho:'deals em Ganho', kpi_deals_lost:'deals perdidos', kpi_stage_excl:'Etapa excluída da API',
+    kpi_lost_excl:'Deals perdidos excluídos da API', kpi_wvidas_sub:'vidas abertas × probabilidade',
+    kpi_deals_with_vidas:'com vidas',
+    // KPIs secundários
+    kpi2_winrate_label:'🟡 Taxa de Ganho Adj.', kpi2_winrate_tip:'Deals ganhos ÷ (deals ganhos + deals perdidos). Considera todo o histórico de perdidos.',
+    kpi2_bdr_label:'🟡 Conversão BDR', kpi2_bdr_tip:'Deals ganhos originados por BDR ÷ total BDR. Requer campo sdr na API.',
+    kpi2_ae_label:'🟡 Conversão AE', kpi2_ae_tip:'Deals ganhos originados por AE ÷ total AE. Requer rastreio de origem na API.',
+    kpi2_meeting_label:'🟡 Taxa de Reunião', kpi2_meeting_tip:'% de reuniões que avançaram para próxima etapa. Requer campo a_reuniao_ocorreu_ na API.',
+    kpi2_stale_label:'🟡 Deals Estagnados', kpi2_stale_tip:'Deals abertos criados há mais de 60 dias (proxy | idealmente usa ls_days_in_stage).',
+    kpi2_complete_label:'🟡 Completude', kpi2_complete_tip:'% de deals abertos com vidas, ARR e probabilidade preenchidos.',
+    kpi2_pm_label:'🟡 Prêmio Mensal', kpi2_pm_tip:'Soma de ARR ÷ 12 de todos os deals abertos | receita mensal potencial do pipeline.',
+    kpi2_momentum_label:'🟡 Momentum', kpi2_momentum_tip:'Deals abertos criados nos últimos 30 dias vs. 30 dias anteriores.',
+    kpi2_na_sub:'Dados insuficientes', kpi2_days_stale:'+60 dias abertos',
+    kpi2_deals_recent:'deals nos últimos 30d', kpi2_vs_prev:'vs. 30d anteriores',
+    p02_won_deals:'Negócios Ganhos', p02_won_deals_tip:'Contagem de negócios ganhos (Ganho + Implantação) com fechamento no ano atual.',
+    p02_total_vidas:'Total de Vidas', p02_total_vidas_tip:'Soma do campo vidas dos negócios ganhos com fechamento no ano.',
+    p02_monthly_rev:'Receita Mensal', p02_monthly_rev_tip:'Receita Anual ÷ 12 (receita mensal média dos ganhos do ano).',
+    p02_annual_rev:'Receita Anual', p02_annual_rev_tip:'Soma do ARR estimado (ou 1ª fatura × 12) dos negócios ganhos com fechamento no ano atual.',
+    p03_wmo_hist:'Ponderado/mês (histórico)', p03_wmo_hist_tip:'Ponderado/ano (histórico) ÷ 12 (receita recorrente mensal média).',
+    p03_wyr_hist:'Ponderado/ano (histórico)', p03_wyr_hist_tip:'Σ (ARR estimado × prob.) dos abertos. Probabilidade = customizada pelo AE ou o padrão da etapa. Usa 1ª fatura × 12 como fallback.',
+    p03_wyr_impl:'Cenário (+ Implantação 100%)', p03_wyr_impl_tip:'Ponderado/ano (histórico) + Receita integral dos negócios em Implantação (tratados como 100% ganho).',
+    p03_open_deals:'Negócios Abertos', p03_open_deals_tip:'Número de negócios abertos no funil (exclui Ganho e Implantação).',
+    p05_open_deals:'Negócios Abertos', p05_open_deals_tip:'Número de negócios abertos (exclui Ganho, Implantação, Perdido e Reunião Agendada).',
+    p05_open_vidas:'Vidas em Negócios Abertos', p05_open_vidas_tip:'Soma do campo vidas de todos os negócios abertos.',
+    p05_avg_age:'Idade Média', p05_avg_age_tip:'Tempo médio no funil | média de dias_no_pipe dos negócios abertos.',
+    kpi2_open_pipe:'pipeline aberto', kpi2_complete_sub:'campos-chave preenchidos',
+    // Novos gráficos N01–N26
+    t_waterfall:'🟡 Pipeline Funnel Waterfall',tip_waterfall:'Deals abertos por etapa em cascata | mostra onde o pipeline perde volume entre etapas.',
+    t_netflow:'🟡 Fluxo Líquido de Vidas (Mensal)',tip_netflow:'Vidas de deals criados vs vidas de deals ganhos por mês. Saldo = crescimento do pipeline.',
+    t_stageprog:'🟡 Progressão por Etapa (Deals)',tip_stageprog:'Taxa de conversão de uma etapa para a próxima derivada do funil cumulativo atual.',
+    t_openpipe2:'🟡 Pipeline Aberto | Valor e Volume por Etapa',tip_openpipe2:'Deals abertos: quantidade e ARR estimado por etapa, lado a lado.',
+    t_risktable:'🟡 Concentração de Risco | Top 10 (Tabela)',tip_risktable:'Top 10 deals por score de risco: vidas, ARR, tempo em aberto e etapa.',
+    t_cohort:'🟡 Maturidade por Coorte (Tempo de Resolução)',tip_cohort:'Deals ganhos: dias médios da criação ao fechamento por trimestre de criação.',
+    t_freshness:'🟡 Frescor de Engajamento (Deals Abertos)',tip_freshness:'Deals abertos por faixa de dias em aberto | identifica deals estagnados.',
+    t_passthru:'🟡 Taxa de Passagem por Etapa',tip_passthru:'% de deals que passam de cada etapa para a seguinte (baseado no funil cumulativo).',
+    t_winratesize:'🟡 Taxa de Ganho por Tamanho do Deal',tip_winratesize:'Deals ganhos vs abertos por faixa de vidas | mostra onde a conversão é maior.',
+    t_sizewindow:'🟡 Distribuição por Tamanho (Janela de Criação)',tip_sizewindow:'Deals por faixa de receita filtrados por janela de data de criação.',
+    t_vidaswindow:'🟡 Distribuição de Vidas (Janela de Criação)',tip_vidaswindow:'Deals por faixa de vidas filtrados por janela de data de criação.',
+    t_winfactor:'🟡 Análise de Fatores de Ganho',tip_winfactor:'Taxa de ganho estimada por AE: deals ganhos ÷ (ganhos + abertos).',
+    t_coverage:'🟡 Cobertura do Pipeline (Ponderado vs Meta)',tip_coverage:'Ratio entre pipeline ponderado e meta de receita configurável.',
+    t_piperev12:'🟡 Valor do Pipeline por Etapa (Projeção Mensal)',tip_piperev12:'ARR ÷ 12 por mês da data prevista de receita | projeção mensal do pipeline.',
+    t_segdoughnut:'🟡 Receita por Segmento (Donut)',tip_segdoughnut:'ARR estimado total por segmento de tamanho de cliente (baseado em vidas).',
+    t_visibility:'🟡 Visibilidade de Receita | Timeline',tip_visibility:'Quantidade de deals com data prevista de receita por mês.',
+    t_timeinstage:'🟡 Tempo em Etapa (Análise de Gargalo)',tip_timeinstage:'Dias médios em aberto por etapa (proxy via dias_no_pipe). Identifica gargalos.',
+    t_speedqualify:'🟡 Velocidade de Qualificação (Dias até Diagnóstico)',tip_speedqualify:'Dias médios em aberto para deals em Diagnóstico por mês de criação.',
+    t_timetomeeting:'🟡 Tempo até 1ª Reunião por Coorte',tip_timetomeeting:'Requer campo a_reuniao_ocorreu_ | não disponível na API atual.',
+    t_reassign:'🟡 Impacto de Reatribuição de Deals',tip_reassign:'Proxy de performance por AE (taxa de fechamento). Histórico de reatribuição não disponível.',
+    t_financial:'🟡 Resultados Financeiros e Estimativas',tip_financial:'Métricas financeiras: receita ganha MTD/YTD, pipeline bruto, pipeline ponderado.',
+    t_wonmonthly:'🟡 Deals Ganhos | Receita Axenya (Mensal)',tip_wonmonthly:'ARR ÷ 12 de deals ganhos por mês de fechamento. Histórico de receita realizada.',
+    t_piperevstage:'🟡 Estimativa de Receita do Pipeline por Etapa',tip_piperevstage:'ARR estimado bruto (sem ponderação) por etapa | potencial máximo.',
+    t_weightedrevstage:'🟡 Receita Axenya Ponderada por Etapa',tip_weightedrevstage:'ARR × probabilidade por etapa | estimativa realista de receita futura.',
+    t_receivables:'🟡 Timeline de Recebíveis Estimados',tip_receivables:'ARR ÷ 12 dos deals abertos por mês da data prevista de receita.',
+    t_risktriage:'🟡 Triagem de Risco | Top 20 Deals',tip_risktriage:'Top 20 deals mais arriscados: vidas, ARR, tempo em aberto, etapa inicial.',
+    lbl_all_time:'Todo período',lbl_last90:'Últ. 90d',lbl_last30:'Últ. 30d',
+    lbl_set_target:'Definir Meta',lbl_days:'Dias',lbl_risk_score:'Score de Risco',lbl_no_funnel:'Carregue o funil histórico primeiro.',
   },
   en: {
     active_deals:'active deals', vendas:'Sales', bid:'Bid', updated_at:'Updated at',
@@ -468,7 +590,7 @@ var NOVO_I18N = {
     t_stage:'Open Pipeline by Stage',
     tip_stage:'Open deals (excludes Won) by pipeline stage. Toggle deal count vs sum of lives. Click a bar to see the deals. Includes the Vendas + Bid pipelines.',
     t_funnel:'🟡 Pipeline Funnel (cumulative reach)',
-    tip_funnel:'For each stage, how many open deals are at that stage or beyond — funnel shape. Click to see the deals. Includes the Vendas + Bid pipelines.',
+    tip_funnel:'For each stage, how many open deals are at that stage or beyond | funnel shape. Click to see the deals. Includes the Vendas + Bid pipelines.',
     t_conc:'🟡 Concentration Risk (Top 10)',
     tip_conc:'The 10 largest open deals by lives or by estimated annual revenue. Shows how dependent the pipe is on a few deals. Includes the Vendas + Bid pipelines.',
     t_sizedist:'🟡 Deal Size Distribution (Revenue)',
@@ -479,6 +601,71 @@ var NOVO_I18N = {
     tip_stageval:'Sum of estimated annual revenue per stage. "Weighted" multiplies by the stage probability (editable in ⚙). Includes the Vendas + Bid pipelines.',
     t_segment:'🟡 Revenue by Segment (Size)',
     tip_segment:'Estimated annual revenue (potential) summed by customer-size segment (lives). Includes the Vendas + Bid pipelines.',
+    // Primary KPIs
+    kpi_mtd_label:'Won Revenue MTD', kpi_mtd_tip:'Monthly revenue from won deals (Ganho + Implantação) closed this month (ARR ÷ 12). Target not configured.',
+    kpi_won_label:'Won Revenue', kpi_won_tip:'Sum of estimated ARR (or 1st invoice × 12) from won deals closed in the current year.',
+    kpi_wpipe_label:'Weighted Pipeline/yr (historic)', kpi_wpipe_tip:'Sum of (ARR × prob) for open deals. If ARR is empty, uses 1st invoice × 12.',
+    kpi_reunioes_label:'Deals in Reunião Agendada', kpi_reunioes_tip:'Number of deals in Reunião Agendada. Treated as a separate early stage (not counted in open pipeline).',
+    kpi_open_vidas_label:'Open Lives', kpi_open_vidas_tip:'Sum of lives across all open-stage deals (excluding Won).',
+    kpi_won_vidas_label:'Won Lives', kpi_won_vidas_tip:'Sum of lives from won deals (Ganho + Implantação).',
+    kpi_lost_vidas_label:'Lost Lives', kpi_lost_vidas_tip:'Lost deals (hs_is_closed_lost=true) are excluded from the current API.',
+    kpi_wvidas_label:'Weighted Lives', kpi_wvidas_tip:'Sum of (lives × probability) for all open deals.',
+    kpi_deals_closed_in:'deals closed in', kpi_deals_open:'open deals',
+    kpi_deals_ganho:'deals won', kpi_deals_lost:'lost deals', kpi_stage_excl:'Stage excluded from API',
+    kpi_lost_excl:'Lost deals excluded from API', kpi_wvidas_sub:'open lives × probability',
+    kpi_deals_with_vidas:'with lives',
+    // Secondary KPIs
+    kpi2_winrate_label:'🟡 Adj. Win Rate', kpi2_winrate_tip:'Won deals ÷ (won + lost deals). Considers the full lost-deal history.',
+    kpi2_bdr_label:'🟡 BDR Conversion', kpi2_bdr_tip:'Won deals from BDR source ÷ total BDR deals. Requires sdr field in API.',
+    kpi2_ae_label:'🟡 AE Conversion', kpi2_ae_tip:'Won deals from AE source ÷ total AE deals. Requires source tracking in API.',
+    kpi2_meeting_label:'🟡 Meeting Rate', kpi2_meeting_tip:'% of meetings that progressed to next stage. Requires a_reuniao_ocorreu_ field in API.',
+    kpi2_stale_label:'🟡 Stale Deals', kpi2_stale_tip:'Open deals created more than 60 days ago (proxy | ideally uses ls_days_in_stage).',
+    kpi2_complete_label:'🟡 Data Completeness', kpi2_complete_tip:'% of open deals with lives, ARR and probability filled.',
+    kpi2_pm_label:'🟡 Monthly Premium', kpi2_pm_tip:'Sum of ARR ÷ 12 for all open deals | potential monthly pipeline revenue.',
+    kpi2_momentum_label:'🟡 Momentum', kpi2_momentum_tip:'Open deals created in the last 30 days vs. the previous 30 days.',
+    kpi2_na_sub:'Insufficient data', kpi2_days_stale:'+60 days open',
+    kpi2_deals_recent:'deals in last 30d', kpi2_vs_prev:'vs. prev 30d',
+    p02_won_deals:'Won Deals', p02_won_deals_tip:'Count of won deals (Won + Implementation) closed in the current year.',
+    p02_total_vidas:'Total Lives', p02_total_vidas_tip:'Sum of lives from won deals closed in the current year.',
+    p02_monthly_rev:'Monthly Revenue', p02_monthly_rev_tip:'Annual Revenue ÷ 12 (average monthly revenue from won deals).',
+    p02_annual_rev:'Annual Revenue', p02_annual_rev_tip:'Sum of estimated ARR (or 1st invoice × 12) from won deals closed in the current year.',
+    p03_wmo_hist:'Weighted/mo (historic)', p03_wmo_hist_tip:'Weighted/yr (historic) ÷ 12 (average monthly weighted revenue).',
+    p03_wyr_hist:'Weighted/yr (historic)', p03_wyr_hist_tip:'Σ (Estimated ARR × prob.) for open deals. Probability = custom from AE, else stage default. Uses 1st invoice × 12 as fallback.',
+    p03_wyr_impl:'Scenario (+ Impl. 100%)', p03_wyr_impl_tip:'Weighted/yr (historic) + full Revenue of deals in Implementation (treated as 100% won).',
+    p03_open_deals:'Open Deals', p03_open_deals_tip:'Number of open deals in the pipeline (excludes Won and Implementation).',
+    p05_open_deals:'Open Deals', p05_open_deals_tip:'Number of open deals (excludes Won, Implementation, Lost and Scheduled Meeting).',
+    p05_open_vidas:'Lives in Open Deals', p05_open_vidas_tip:'Sum of the lives field across all open deals.',
+    p05_avg_age:'Average Age', p05_avg_age_tip:'Average time in funnel | mean of dias_no_pipe across open deals.',
+    kpi2_open_pipe:'open pipeline', kpi2_complete_sub:'key fields filled',
+    // New charts N01–N26
+    t_waterfall:'🟡 Pipeline Funnel Waterfall',tip_waterfall:'Open deals per stage as a waterfall | shows drop-offs between consecutive stages.',
+    t_netflow:'🟡 Net Pipeline Flow (Lives)',tip_netflow:'Lives from newly created deals vs lives from won deals per month. Net = pipeline growth.',
+    t_stageprog:'🟡 Stage Progression (Deals)',tip_stageprog:'Stage-to-stage conversion rates derived from the current open-deal funnel.',
+    t_openpipe2:'🟡 Open Pipeline | Value & Volume by Stage',tip_openpipe2:'Open deals: count and estimated ARR by stage, side by side.',
+    t_risktable:'🟡 Pipeline Concentration Risk (Top 10 | Table)',tip_risktable:'Top 10 deals ranked by risk score: lives, ARR, days open, and stage.',
+    t_cohort:'🟡 Cohort Maturity (Time to Resolution)',tip_cohort:'Won deals: avg days from creation to close, grouped by creation quarter.',
+    t_freshness:'🟡 Engagement Freshness (Open Deals)',tip_freshness:'Distribution of open deals by days since creation | identifies stale deals.',
+    t_passthru:'🟡 Stage Pass-Through Rate',tip_passthru:'% of deals passing from each stage to the next (cumulative funnel ratios).',
+    t_winratesize:'🟡 Win Rate by Deal Size',tip_winratesize:'Won vs open deals by lives bucket | shows where conversion is strongest.',
+    t_sizewindow:'🟡 Deal Size Distribution (Open · Created in Window)',tip_sizewindow:'Open deals by revenue band, filtered by creation date window.',
+    t_vidaswindow:'🟡 Vidas Distribution by Bucket (Open · Window)',tip_vidaswindow:'Open deals by lives band, filtered by creation date window.',
+    t_winfactor:'🟡 Win/Loss Factor Analysis',tip_winfactor:'Estimated win rate per AE: won deals ÷ (won + open) per owner.',
+    t_coverage:'🟡 Pipeline Coverage Ratio (Weighted vs Target)',tip_coverage:'Weighted pipeline vs a configurable revenue target.',
+    t_piperev12:'🟡 Pipeline Value by Stage (12-Month Projection)',tip_piperev12:'ARR ÷ 12 summed by expected revenue month | monthly pipeline outlook.',
+    t_segdoughnut:'🟡 Revenue by Segment (Deal Size)',tip_segdoughnut:'Total estimated ARR by customer-size segment (based on lives).',
+    t_visibility:'🟡 Revenue Visibility Timeline',tip_visibility:'Count of deals with expected revenue date by month.',
+    t_timeinstage:'🟡 Time in Stage (Bottleneck Analysis)',tip_timeinstage:'Avg days open per stage (proxy via dias_no_pipe total). Identifies bottlenecks.',
+    t_speedqualify:'🟡 Speed to Qualify (Days to Diagnóstico)',tip_speedqualify:'Avg days open for deals in Diagnóstico by creation month.',
+    t_timetomeeting:'🟡 Time to First Meeting by Cohort',tip_timetomeeting:'Requires field a_reuniao_ocorreu_ | not available in the current API.',
+    t_reassign:'🟡 Deal Reassignment Impact',tip_reassign:'AE performance proxy (close rate). True reassignment history not available.',
+    t_financial:'🟡 Financial Results & Revenue Estimates',tip_financial:'Key financial metrics: won revenue MTD/YTD, raw pipeline, weighted pipeline.',
+    t_wonmonthly:'🟡 Won Deals | Axenya Revenue (Monthly)',tip_wonmonthly:'ARR ÷ 12 from won deals by close month. Realized revenue history.',
+    t_piperevstage:'🟡 Pipeline Revenue Estimate by Stage',tip_piperevstage:'Raw (unweighted) ARR per stage | maximum pipeline potential.',
+    t_weightedrevstage:'🟡 Weighted Axenya Revenue by Stage',tip_weightedrevstage:'ARR × stage probability per stage | realistic revenue estimate.',
+    t_receivables:'🟡 Estimated Receivables Timeline',tip_receivables:'ARR ÷ 12 of open deals grouped by expected revenue month.',
+    t_risktriage:'🟡 Deal Risk Triage (Top 20)',tip_risktriage:'Top 20 riskiest deals by computed score: lives, ARR, time open, early stage.',
+    lbl_all_time:'All time',lbl_last90:'Last 90d',lbl_last30:'Last 30d',
+    lbl_set_target:'Set Target',lbl_days:'Days',lbl_risk_score:'Risk Score',lbl_no_funnel:'Load the historical funnel first.',
   }
 };
 function t(key) { return (NOVO_I18N[NOVO_LANG] || NOVO_I18N.pt)[key] || key; }
@@ -486,7 +673,7 @@ function novoToggleLang() {
   NOVO_LANG = NOVO_LANG === 'pt' ? 'en' : 'pt';
   try { localStorage.setItem('novo_lang', NOVO_LANG); } catch(e) {}
   var lbl = document.getElementById('novo-lang-label');
-  if (lbl) lbl.textContent = NOVO_LANG.toUpperCase();
+  if (lbl) lbl.textContent = NOVO_LANG === 'pt' ? 'EN' : 'PT';
   if (_novoDeals) novoRender();
 }
 // Mapa "para nosso controle": cada gráfico do painel e os nomes INTERNOS dos
@@ -509,7 +696,7 @@ var NOVO_HELP_CHARTS = [
     title: 'Pipeline Aberto por Etapa',
     desc: 'Nº de deals abertos (exclui Ganhos) ou soma de vidas, por etapa do pipeline.',
     fields: [
-      ['dealstage', 'Agrupa os deals por etapa (exclui "Ganho").'],
+      ['dealstage', 'Agrupa os deals por etapa (exclui Ganho e Implantação).'],
       ['pipeline', 'Restringe a Vendas e Bid.'],
       ['vidas', 'Somado por etapa no modo "Vidas".'],
     ],
@@ -572,6 +759,267 @@ var NOVO_HELP_CHARTS = [
       ['primeira_fatura', 'Fallback de receita.'],
     ],
   },
+  {
+    key: 'funnel-conv',
+    title: 'Funil de Conversão Histórico',
+    desc: 'Conta deals únicos que entraram em cada etapa dos pipelines Vendas e Bid desde a data selecionada. Cada deal é contado em todas as etapas que visitou no período. Fonte: GET /api/funnel-stages.',
+    fields: [
+      ['dealstage (propertiesWithHistory)', 'Histórico completo de transições de etapa | diz quando o deal entrou em cada etapa.'],
+      ['pipeline', 'Filtra deals dos pipelines Vendas (782758156) e Bid (894130090).'],
+      ['hs_object_id', 'Identificador do deal | garante contagem única por etapa.'],
+      ['dealname', 'Nome do deal exibido no drill-down ao clicar em uma barra do funil.'],
+    ],
+  },
+  {
+    key: 'kpi-revenue-mtd',
+    formula: 'Receita MTD = Σ (arr_estimado ÷ 12) dos deals ganhos (Ganho + Implantação) com closedate no mês atual',
+    title: 'Receita Ganha (MTD)',
+    desc: 'Receita mensal de deals ganhos (Ganho + Implantação) fechados no mês atual. Calculada como ARR estimado ÷ 12 de cada deal. Meta mensal não configurada nesta versão do dashboard.',
+    fields: [
+      ['arr_estimado', 'ARR anual | base do cálculo (÷ 12 = mensal). Se vazio, usa primeira_fatura × 12.'],
+      ['primeira_fatura', 'Fallback para arr_estimado quando não preenchido.'],
+      ['closedate', 'Filtra deals cujo fechamento ocorreu no mês atual (YYYY-MM).'],
+      ['dealstage', 'Filtra estágios ganhos: Ganho (1144844314 Vendas | 1353387280 Bid) e Implantação (1288611084 Vendas | 1353457025 Bid).'],
+    ],
+  },
+  {
+    key: 'kpi-won-annual',
+    formula: 'Receita Anual = Σ arr_estimado dos deals ganhos (Ganho + Implantação) com closedate no ano atual',
+    title: 'Receita Ganha | Ano Atual',
+    desc: 'Soma de ARR estimado de todos os deals ganhos (Ganho + Implantação) com closedate no ano corrente.',
+    fields: [
+      ['arr_estimado', 'ARR anual do deal (= primeira_fatura × 12 como fallback).'],
+      ['primeira_fatura', 'Fallback para arr_estimado.'],
+      ['closedate', 'Filtra deals fechados no ano atual.'],
+      ['dealstage', 'Estágios ganhos: Ganho e Implantação (IDs acima).'],
+    ],
+  },
+  {
+    key: 'kpi-weighted-pipe',
+    formula: 'Pipeline Ponderado = Σ (arr_estimado × probabilidade) dos deals abertos | probabilidade = custom do AE, senão padrão da etapa',
+    title: 'Pipeline Ponderado',
+    desc: 'Soma de (ARR estimado × probabilidade) de todos os deals abertos. Probabilidade: custom do AE se preenchida, senão valor padrão da etapa.',
+    fields: [
+      ['arr_estimado', 'ARR anual multiplicado pela probabilidade.'],
+      ['probabilidade_de_fechamento_', 'Probabilidade custom definida pelo AE (0–100 ou 0–1).'],
+      ['hs_deal_stage_probability', 'Fallback se custom não preenchida.'],
+      ['dealstage', 'Determina probabilidade padrão da etapa quando nenhum custom existe.'],
+    ],
+  },
+  {
+    key: 'kpi-reunioes',
+    formula: 'Reuniões = COUNT(deals na etapa Reunião Agendada). Etapa inicial separada | não entra no pipeline aberto nem no ponderado.',
+    title: 'Reuniões Agendadas',
+    desc: 'Quantidade de deals no estágio Reunião Agendada (pipeline Vendas). Tratada como etapa inicial separada | não conta no pipeline aberto nem no ponderado. O subtítulo mostra a soma de vidas potenciais dessas reuniões.',
+    fields: [
+      ['dealstage', 'Etapa Reunião Agendada | ID 1144746905 (Vendas). Incluída na API (ACTIVE_STAGE_IDS).'],
+      ['createdate', 'Data criação | equivale à data de entrada em Reunião Agendada.'],
+      ['hubspot_owner_id', 'AE responsável.'],
+    ],
+  },
+  {
+    key: 'kpi-open-vidas',
+    formula: 'Vidas em Aberto = Σ vidas dos deals abertos (exclui Ganho, Implantação e Perdido)',
+    title: 'Vidas em Aberto',
+    desc: 'Soma do campo vidas de todos os deals em estágios abertos (excluindo Ganho e Perdido).',
+    fields: [
+      ['vidas', 'Número de vidas do deal | somado para todos os deals abertos.'],
+      ['dealstage', 'Exclui Ganho e Perdido; inclui todos os outros estágios ativos.'],
+    ],
+  },
+  {
+    key: 'kpi-won-vidas',
+    formula: 'Vidas Ganhas = Σ vidas dos deals ganhos (Ganho + Implantação)',
+    title: 'Vidas Ganhas',
+    desc: 'Soma do campo vidas dos deals ganhos (Ganho + Implantação).',
+    fields: [
+      ['vidas', 'Número de vidas | somado para deals em Ganho.'],
+      ['dealstage', 'Estágios ganhos: Ganho (1144844314 Vendas | 1353387280 Bid) e Implantação (1288611084 Vendas | 1353457025 Bid).'],
+    ],
+  },
+  {
+    key: 'kpi-lost-vidas',
+    formula: 'Vidas Perdidas = Σ vidas dos deals no estágio Perdido (Vendas).',
+    title: 'Vidas Perdidas',
+    desc: 'Soma do campo vidas dos deals no estágio Perdido (Vendas). Inclui todo o histórico — o CRO chama a API com ?includeLost=true. Perdidos não entram no pipeline aberto nem no ganho.',
+    fields: [
+      ['vidas', 'Número de vidas | somado para deals perdidos.'],
+      ['hs_is_closed_lost', 'Flag true para deals perdidos | atualmente excluídos da API.'],
+      ['motivo_do_declinio_ou_perdido', 'Razão da perda | disponível quando deals perdidos forem incluídos.'],
+    ],
+  },
+  {
+    key: 'kpi-weighted-vidas',
+    formula: 'Vidas Ponderadas = Σ (vidas × probabilidade) dos deals abertos',
+    title: 'Vidas Ponderadas',
+    desc: 'Soma de (vidas × probabilidade da etapa) para todos os deals abertos. Indica o volume esperado de vidas considerando a probabilidade de fechamento de cada deal.',
+    fields: [
+      ['vidas', 'Número de vidas do deal.'],
+      ['probabilidade_de_fechamento_', 'Probabilidade custom do AE.'],
+      ['hs_deal_stage_probability', 'Fallback se custom não preenchida.'],
+      ['dealstage', 'Define probabilidade padrão quando nenhum custom existe.'],
+    ],
+  },
+  {
+    key: 'kpi2-winrate',
+    formula: 'Adj. Win Rate = deals ganhos ÷ (deals ganhos + deals perdidos). Ganhos = Ganho + Implantação.',
+    title: '🟡 Taxa de Ganho Ajustada / Adj. Win Rate',
+    desc: 'Deals ganhos ÷ (deals ganhos + deals perdidos). Considera todo o histórico de perdidos (API com includeLost). Ganhos = Ganho + Implantação.',
+    fields: [
+      ['dealstage', 'Define ganho (Ganho/Implantação) vs perdido (Perdido) | contagem de deals no numerador e denominador.'],
+      ['hs_is_closed_lost', 'Flag de deal perdido | incluído quando a API é chamada com includeLost=true.'],
+      ['hs_is_closed_won', 'Flag de deal ganho | identificado via stage Ganho.'],
+    ],
+  },
+  {
+    key: 'kpi2-bdr',
+    formula: 'BDR Conversion = deals BDR ganhos ÷ total de deals BDR | indisponível: campo sdr ausente',
+    title: '🟡 Conversão BDR / BDR Conversion',
+    desc: 'Deals originados por BDR (SDR) que foram ganhos ÷ total de deals BDR. Não disponível: campo sdr ausente da API atual.',
+    fields: [
+      ['sdr', 'ID do SDR/BDR responsável pela prospecção | ausente da API atual.'],
+      ['hs_is_closed_won', 'Identificação de deals ganhos.'],
+    ],
+  },
+  {
+    key: 'kpi2-ae',
+    formula: 'AE Conversion = deals AE ganhos ÷ total de deals AE | indisponível: origem ausente',
+    title: '🟡 Conversão AE / AE Conversion',
+    desc: 'Deals originados diretamente pelo AE que foram ganhos ÷ total de deals AE. Não disponível: rastreio de origem ausente da API atual.',
+    fields: [
+      ['sdr', 'Ausência deste campo indica origem AE.'],
+      ['hubspot_owner_id', 'AE responsável pelo deal.'],
+    ],
+  },
+  {
+    key: 'kpi2-meeting',
+    formula: 'Meeting Rate = reuniões ocorridas ÷ reuniões agendadas | indisponível: campo a_reuniao_ocorreu_ ausente',
+    title: '🟡 Taxa de Reunião / Meeting Rate',
+    desc: '% de reuniões agendadas onde a reunião efetivamente ocorreu. Não disponível: campo a_reuniao_ocorreu_ ausente da API atual.',
+    fields: [
+      ['a_reuniao_ocorreu_', 'Campo booleano "A reunião ocorreu?" | ausente da API atual.'],
+      ['dealstage', 'Stage Reunião Agendada (ID 1144746905) | já incluído na API; o que falta é o campo a_reuniao_ocorreu_.'],
+    ],
+  },
+  {
+    key: 'kpi2-stale',
+    formula: 'Stale Deals = COUNT(deals abertos com dias_no_pipe > 60)',
+    title: '🟡 Deals Estagnados / Stale Deals',
+    desc: 'Deals abertos criados há mais de 60 dias. Proxy | idealmente usaria ls_days_in_stage (tempo no stage atual).',
+    fields: [
+      ['createdate', 'Data de criação do deal | base para calcular dias abertos.'],
+      ['ls_days_in_stage', 'Dias no stage atual (campo customizado) | ausente da API atual.'],
+    ],
+  },
+  {
+    key: 'kpi2-complete',
+    formula: 'Data Completeness = deals abertos com vidas E arr_estimado E probabilidade preenchidos ÷ total de deals abertos × 100',
+    title: '🟡 Completude dos Dados / Data Completeness',
+    desc: '% de deals abertos que têm os três campos-chave preenchidos: vidas, arr_estimado e probabilidade.',
+    fields: [
+      ['vidas', 'Número de vidas | campo obrigatório para o cálculo.'],
+      ['arr_estimado', 'ARR estimado (ou primeira_fatura × 12) | campo obrigatório.'],
+      ['probabilidade_de_fechamento_', 'Probabilidade custom | campo obrigatório.'],
+    ],
+  },
+  {
+    key: 'kpi2-pm',
+    formula: 'Prêmio Mensal = Σ (arr_estimado ÷ 12) dos deals abertos',
+    title: '🟡 Prêmio Mensal / Monthly Premium',
+    desc: 'Soma de ARR ÷ 12 de todos os deals abertos | representa a receita mensal potencial do pipeline.',
+    fields: [
+      ['arr_estimado', 'ARR anual ÷ 12 = receita mensal estimada do deal.'],
+      ['primeira_fatura', 'Fallback: usada quando arr_estimado não está preenchido (× 12 = ARR).'],
+    ],
+  },
+  {
+    key: 'kpi2-momentum',
+    formula: 'Momentum = deals criados nos últimos 30d − deals criados nos 30d anteriores',
+    title: '🟡 Momentum',
+    desc: 'Deals abertos criados nos últimos 30 dias vs. os 30 dias anteriores. Indica se o pipeline está crescendo.',
+    fields: [
+      ['createdate', 'Data de criação do deal | base para os dois janelas de 30 dias.'],
+    ],
+  },
+  // ── N-series: new charts ──────────────────────────────────────────────────────
+  { key:'waterfall', title:'🟡 Pipeline Funnel Waterfall (N01)',
+    desc:'Deals abertos por etapa como cascata | mostra a queda entre etapas consecutivas.',
+    fields:[['dealstage','Etapa do deal.'],['vidas','Contagem alternativa.'],['pipeline','Restringe a Vendas e Bid.']] },
+  { key:'netflow', title:'🟡 Fluxo Líquido de Vidas | Mensal (N02)',
+    desc:'Vidas de deals criados (entradas) vs vidas de deals ganhos (saídas) por mês.',
+    fields:[['vidas','Somado nas duas direções.'],['createdate','Agrupa entradas por mês.'],['closedate','Agrupa saídas (ganhos) por mês.']] },
+  { key:'stageprog', title:'🟡 Progressão por Etapa | Deals (N03)',
+    desc:'% de deals que avançam de cada etapa para a próxima, calculado no funil cumulativo atual.',
+    fields:[['dealstage','Determina posição no funil.'],['pipeline','Restringe a Vendas e Bid.']] },
+  { key:'openpipe2', title:'🟡 Pipeline Aberto | Valor e Volume por Etapa (N04)',
+    desc:'Deals abertos: quantidade de deals e ARR estimado por etapa lado a lado.',
+    fields:[['dealstage','Agrupa por etapa.'],['arr_estimado','ARR somado por etapa.'],['vidas','Alternativa de volume.']] },
+  { key:'risktable', title:'🟡 Concentração de Risco | Top 10 Tabela (N05)',
+    desc:'Top 10 deals ranqueados por score de risco: vidas + ARR + tempo em aberto + penalidade de etapa inicial.',
+    fields:[['vidas','Peso no score de risco.'],['arr_estimado','Peso no score de risco.'],['createdate','Dias abertos (peso).'],['dealstage','Penalidade para etapas iniciais.']] },
+  { key:'cohort', title:'🟡 Maturidade por Coorte | Tempo de Resolução (N06)',
+    desc:'Para deals ganhos: média de dias entre createdate e close_date, agrupado por trimestre de criação.',
+    fields:[['createdate','Início do cálculo de dias.'],['closedate','Fim do cálculo (data de ganho).'],['dealstage','Filtra estágio Ganho.']] },
+  { key:'freshness', title:'🟡 Frescor de Engajamento | Deals Abertos (N07)',
+    desc:'Deals abertos distribuídos por faixa de tempo em aberto (dias_no_pipe). Identifica pipeline estagnado.',
+    fields:[['createdate','Base para calcular dias_no_pipe.'],['dealstage','Filtra deals abertos (exclui Ganho).']] },
+  { key:'passthru', title:'🟡 Taxa de Passagem por Etapa (N08)',
+    desc:'% de deals da etapa N−1 que chegam à etapa N, calculado sobre o funil cumulativo de deals abertos.',
+    fields:[['dealstage','Determina posição no funil.'],['pipeline','Restringe a Vendas e Bid.']] },
+  { key:'winratesize', title:'🟡 Taxa de Ganho por Tamanho do Deal (N09)',
+    desc:'Para cada faixa de vidas, % de deals que estão em Ganho vs abertos. Indica onde a conversão é maior.',
+    fields:[['vidas','Define a faixa de tamanho.'],['dealstage','Separa Ganho vs abertos.']] },
+  { key:'sizewindow', title:'🟡 Distribuição por Tamanho | Janela de Criação (N10)',
+    desc:'Deals abertos por faixa de receita ARR, filtrados pela janela de data de criação selecionada.',
+    fields:[['arr_estimado','Base da faixa de receita.'],['primeira_fatura','Fallback.'],['createdate','Filtra por janela temporal.']] },
+  { key:'vidaswindow', title:'🟡 Distribuição de Vidas | Janela de Criação (N11)',
+    desc:'Deals abertos por faixa de vidas, filtrados pela janela de data de criação selecionada.',
+    fields:[['vidas','Define a faixa.'],['createdate','Filtra por janela temporal.']] },
+  { key:'winfactor', title:'🟡 Análise de Fatores de Ganho / AE (N12)',
+    desc:'Taxa de fechamento estimada por AE: deals em Ganho ÷ (Ganho + abertos) por owner.',
+    fields:[['hubspot_owner_id','Dono do deal (AE).'],['dealstage','Separa Ganho vs abertos.']] },
+  { key:'coverage', title:'🟡 Cobertura do Pipeline | Ponderado vs Meta (N13)',
+    desc:'Razão entre pipeline ponderado e meta de receita configurável (padrão R$ 5 M). Meta salva em localStorage.',
+    fields:[['arr_estimado','ARR × probabilidade = pipeline ponderado.'],['hs_deal_stage_probability','Probabilidade da etapa.']] },
+  { key:'piperev12', title:'🟡 Valor do Pipeline | Projeção Mensal (N14)',
+    desc:'ARR ÷ 12 dos deals abertos, agrupado por mês da data prevista de receita | outlook mensal do pipeline.',
+    fields:[['data_prevista_para_receita','Mês de alocação do deal.'],['arr_estimado','ARR ÷ 12 somado por mês.']] },
+  { key:'segdoughnut', title:'🟡 Receita por Segmento | Donut (N15)',
+    desc:'ARR estimado total distribuído por segmento de tamanho (Pequeno/Médio/Grande/Enterprise) baseado em vidas.',
+    fields:[['vidas','Define o segmento.'],['arr_estimado','ARR somado por segmento.']] },
+  { key:'visibility', title:'🟡 Visibilidade de Receita | Timeline (N16)',
+    desc:'Quantidade de deals com data prevista de receita por mês | concentração de fechamentos esperados.',
+    fields:[['data_prevista_para_receita','Agrupa deals por mês de expectativa.']] },
+  { key:'timeinstage', title:'🟡 Tempo em Etapa | Análise de Gargalo (N17)',
+    desc:'Dias médios em aberto por etapa (proxy: usa dias_no_pipe total). Identifica onde os deals ficam presos.',
+    fields:[['createdate','Base do dias_no_pipe.'],['dealstage','Agrupa por etapa.']] },
+  { key:'speedqualify', title:'🟡 Velocidade de Qualificação | Dias até Diagnóstico (N18)',
+    desc:'Para deals em Diagnóstico: dias_no_pipe médio por mês de criação | proxy de velocidade de qualificação.',
+    fields:[['createdate','Base do dias_no_pipe e agrupamento por mês.'],['dealstage','Filtra etapa Diagnóstico.']] },
+  { key:'timetomeeting', title:'🟡 Tempo até 1ª Reunião por Coorte (N19)',
+    desc:'⚠ Requer campo a_reuniao_ocorreu_ na API | não disponível na versão atual.',
+    fields:[['a_reuniao_ocorreu_','Campo booleano de reunião | ausente da API atual (forecast-table.js).'],['createdate','Agrupamento por mês de criação.']] },
+  { key:'reassign', title:'🟡 Impacto de Reatribuição de Deals (N20)',
+    desc:'Proxy de performance por AE. Histórico de reatribuições não disponível na API atual.',
+    fields:[['hubspot_owner_id','AE atual do deal.'],['dealstage','Etapa atual.']] },
+  { key:'financial', title:'🟡 Resultados Financeiros e Estimativas (N21)',
+    desc:'Painel financeiro consolidado: receita ganha, pipeline bruto, ponderado, projeções mensais e cobertura.',
+    fields:[['arr_estimado','Base de todos os cálculos financeiros.'],['closedate','Fecha deals MTD/YTD.'],['data_prevista_para_receita','Projeção de recebíveis.']] },
+  { key:'wonmonthly', title:'🟡 Deals Ganhos | Receita Mensal (N22)',
+    desc:'ARR ÷ 12 de deals ganhos por mês de fechamento (close_date). Histórico de receita realizada.',
+    fields:[['close_date','Mês de ganho.'],['arr_estimado','ARR ÷ 12 somado por mês.'],['dealstage','Filtra estágio Ganho.']] },
+  { key:'piperevstage', title:'🟡 Estimativa de Receita por Etapa (N23)',
+    desc:'ARR estimado bruto (sem ponderação) por etapa | potencial máximo do pipeline.',
+    fields:[['dealstage','Agrupa por etapa.'],['arr_estimado','ARR somado por etapa.']] },
+  { key:'weightedrevstage', title:'🟡 Receita Ponderada por Etapa (N24)',
+    desc:'ARR × probabilidade por etapa | estimativa realista de receita futura.',
+    fields:[['dealstage','Agrupa por etapa.'],['arr_estimado','ARR × prob por etapa.'],['hs_deal_stage_probability','Probabilidade da etapa.']] },
+  { key:'receivables', title:'🟡 Timeline de Recebíveis Estimados (N25)',
+    desc:'ARR ÷ 12 dos deals abertos por mês de data prevista de receita | expectativa de geração de caixa.',
+    fields:[['data_prevista_para_receita','Agrupa por mês de expectativa.'],['arr_estimado','ARR ÷ 12 somado por mês.']] },
+  { key:'risktriage', title:'🟡 Triagem de Risco | Top 20 Deals (N26)',
+    desc:'Top 20 deals mais arriscados por score composto: vidas altas, ARR alto, muito tempo aberto, etapa inicial.',
+    fields:[['vidas','Fator de risco.'],['arr_estimado','Fator de risco.'],['createdate','Dias abertos (fator).'],['dealstage','Penalidade para etapas iniciais.']] },
 ];
 
 // Tabela de detalhe é a mesma para todos os gráficos (abre ao clicar numa barra).
@@ -594,6 +1042,29 @@ var NOVO_HELP_DETAIL = [
   ['data_prevista_para_receita', 'Coluna "Dt. Receita".'],
 ];
 
+// ── Card reference codes ──────────────────────────────────────────────────────
+// P = KPI primário · S = KPI secundário · C = gráfico/chart
+var NOVO_CARD_CODES = {
+  'ae':'C01','stage':'C02','funnel':'C03','conc':'C04',
+  'sizedist':'C05','vidasdist':'C06','stageval':'C07',
+  'segment':'C08','funnel-conv':'C09',
+  'kpi-revenue-mtd':'P01','kpi-won-annual':'P02',
+  'kpi-weighted-pipe':'P03','kpi-reunioes':'P04',
+  'kpi-open-vidas':'P05','kpi-won-vidas':'P06',
+  'kpi-lost-vidas':'P07','kpi-weighted-vidas':'P08',
+  'kpi2-winrate':'S01','kpi2-bdr':'S02','kpi2-ae':'S03',
+  'kpi2-meeting':'S04','kpi2-stale':'S05','kpi2-complete':'S06',
+  'kpi2-pm':'S07','kpi2-momentum':'S08',
+  // New N-series
+  'waterfall':'N01','netflow':'N02','stageprog':'N03','openpipe2':'N04',
+  'risktable':'N05','cohort':'N06','freshness':'N07','passthru':'N08',
+  'winratesize':'N09','sizewindow':'N10','vidaswindow':'N11','winfactor':'N12',
+  'coverage':'N13','piperev12':'N14','segdoughnut':'N15','visibility':'N16',
+  'timeinstage':'N17','speedqualify':'N18','timetomeeting':'N19','reassign':'N20',
+  'financial':'N21','wonmonthly':'N22','piperevstage':'N23','weightedrevstage':'N24',
+  'receivables':'N25','risktriage':'N26',
+};
+
 function _novoHelpRow(name, desc) {
   return '<tr>'+
     '<td style="text-align:left;font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--teal);white-space:nowrap;font-weight:600">'+name+'</td>'+
@@ -601,10 +1072,14 @@ function _novoHelpRow(name, desc) {
   '</tr>';
 }
 function _novoHelpSection(c) {
+  var code = NOVO_CARD_CODES[c.key] || '';
+  var codeTag = code ? '<span style="font-size:.66rem;background:var(--card2);color:var(--teal);padding:.05rem .28rem;border-radius:3px;font-weight:700;letter-spacing:.05em;font-family:ui-monospace,Menlo,monospace;margin-left:.4rem;vertical-align:middle">' + code + '</span>' : '';
   var driving = c.fields.map(function(f){ return _novoHelpRow(f[0], f[1]); }).join('');
+  var formulaHtml = c.formula ? '<div style="margin:0 0 .65rem;padding:.5rem .65rem;background:var(--card2);border-radius:6px;border-left:3px solid var(--teal)"><div style="font-size:.61rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);font-weight:700;margin-bottom:.22rem">Fórmula</div><code style="font-size:.75rem;color:var(--text);font-family:ui-monospace,Menlo,Consolas,monospace;line-height:1.5">'+c.formula+'</code></div>' : '';
   return '<div style="margin-bottom:1.5rem">'+
-    '<h3 style="font-size:.92rem;color:var(--text);margin:0 0 .25rem">'+c.title+'</h3>'+
+    '<h3 style="font-size:.92rem;color:var(--text);margin:0 0 .25rem">'+c.title+codeTag+'</h3>'+
     '<p style="font-size:.8rem;line-height:1.6;color:var(--text2);margin:0 0 .5rem">'+c.desc+'</p>'+
+    formulaHtml+
     '<table class="lb" style="width:100%;font-size:.78rem"><thead><tr>'+
       '<th style="text-align:left">Campo HubSpot (interno)</th>'+
       '<th style="text-align:left">Como é usado</th>'+
@@ -635,7 +1110,7 @@ function novoHelp() { _openHelpDrawer('Campos do HubSpot por gráfico', NOVO_HEL
 function novoHelpChart(key) {
   var c = NOVO_HELP_CHARTS.filter(function(x){ return x.key === key; });
   if (!c.length) { novoHelp(); return; }
-  _openHelpDrawer('Campos do HubSpot — ' + c[0].title.replace('🟡 ',''), c);
+  _openHelpDrawer('Campos do HubSpot | ' + c[0].title.replace('🟡 ',''), c);
 }
 function novoCloseHelp() {
   document.getElementById('novo-help-backdrop').classList.remove('open');
@@ -686,6 +1161,7 @@ function _novoDealsRows(deals) {
       '<td style="text-align:left;white-space:nowrap">'+_ne(d.ae)+'</td>'+
       '<td style="white-space:nowrap">'+_ne(d.pipeline)+'</td>'+
       '<td style="white-space:nowrap">'+_ne(d.stage)+'</td>'+
+      '<td style="white-space:nowrap">'+_nd((d.close_date||'').slice(0,10))+'</td>'+
       '<td>'+_ni(d.dias_no_pipe)+'</td>'+
       '<td>'+_ni(d.colaboradores)+'</td>'+
       '<td>'+_ni(d.vidas)+'</td>'+
@@ -709,19 +1185,20 @@ function _novoSortVal(d, col) {
     case 1:  return (d.ae||'').toLowerCase();
     case 2:  return (d.pipeline||'').toLowerCase();
     case 3:  return (d.stage||'').toLowerCase();
-    case 4:  return d.dias_no_pipe;
-    case 5:  return d.colaboradores;
-    case 6:  return d.vidas;
-    case 7:  return d.primeira_fatura;
-    case 8:  return d.arr_estimado;
-    case 9:  return (d.modelo_remuneracao||'').toLowerCase();
-    case 10: return d.possui_agenciamento === true ? 1 : d.possui_agenciamento === false ? 0 : null;
-    case 11: return d.possui_vitalicio   === true ? 1 : d.possui_vitalicio   === false ? 0 : null;
-    case 12: return d.probabilidade;
-    case 13: return _calcProbInfo(d).sp;
-    case 14: return _calcProbInfo(d).final;
-    case 15: return (d.quarter||'').toLowerCase();
-    case 16: return d.data_prevista_para_receita||'';
+    case 4:  return (d.close_date||'').slice(0,10);
+    case 5:  return d.dias_no_pipe;
+    case 6:  return d.colaboradores;
+    case 7:  return d.vidas;
+    case 8:  return d.primeira_fatura;
+    case 9:  return d.arr_estimado;
+    case 10: return (d.modelo_remuneracao||'').toLowerCase();
+    case 11: return d.possui_agenciamento === true ? 1 : d.possui_agenciamento === false ? 0 : null;
+    case 12: return d.possui_vitalicio   === true ? 1 : d.possui_vitalicio   === false ? 0 : null;
+    case 13: return d.probabilidade;
+    case 14: return _calcProbInfo(d).sp;
+    case 15: return _calcProbInfo(d).final;
+    case 16: return (d.quarter||'').toLowerCase();
+    case 17: return d.data_prevista_para_receita||'';
     default: return null;
   }
 }
@@ -785,7 +1262,7 @@ function novoLoadData() {
   var btn = document.getElementById('btn-refresh');
   if (btn) { btn.classList.add('spinning'); btn.disabled = true; }
   novoShowSkeleton();
-  fetch('/api/forecast-table')
+  fetch('/api/forecast-table?includeLost=true')
     .then(function(r) {
       if (!r.ok) return r.json().then(function(e) { throw new Error(e.error || 'Erro ' + r.status); });
       return r.json();
@@ -811,6 +1288,7 @@ function novoSwitchAeMode(mode) {
   document.querySelectorAll('#novo-ae-tabs .tab-sub-btn').forEach(function(b) {
     b.classList.toggle('active', b.getAttribute('data-mode') === mode);
   });
+  _moveTabSubThumb(document.getElementById('novo-ae-tabs'), true);
   buildNovoVidasAE();
 }
 
@@ -872,6 +1350,7 @@ function buildNovoVidasAE() {
     options: {
       indexAxis: 'y',
       responsive: true,
+      layout: { padding: { right: 120 } },
       plugins: {
         legend: { display: false },
         datalabels: {
@@ -916,14 +1395,14 @@ function buildNovoVidasAE() {
 }
 
 // ── Drill modal compartilhado (usado por todos os gráficos) ─────────────────────
-function novoOpenDealsModal(title, deals) {
+function _novoDealsTableHtml(deals) {
   _novoModalDeals = (deals || []).slice().sort(function(a,b){ return (b.vidas||0)-(a.vidas||0); });
   _novoModalSort  = { col: -1, dir: 1 };
   var totalVidas  = _novoModalDeals.reduce(function(s,d){ return s+(d.vidas||0); }, 0);
   var totalArr    = _novoModalDeals.reduce(function(s,d){ return s+(d.arr_estimado||0); }, 0);
   var sub = _novoModalDeals.length + ' deal' + (_novoModalDeals.length !== 1 ? 's' : '');
   var tfoot = _novoModalDeals.length > 0
-    ? '<tfoot><tr><td style="text-align:left;font-weight:600" colspan="6">Total</td>'+
+    ? '<tfoot><tr><td style="text-align:left;font-weight:600" colspan="7">Total</td>'+
       '<td style="font-weight:600">'+_ni(totalVidas)+'</td>'+
       '<td></td>'+
       '<td style="font-weight:600">'+_nr(totalArr)+'</td>'+
@@ -934,17 +1413,94 @@ function novoOpenDealsModal(title, deals) {
     return '<th style="'+ts+(left?';text-align:left':'')+'" onclick="novoSortDeals('+col+')">'+
       label+'<span id="ndsi-'+col+'" style="color:var(--teal);font-size:.6rem"></span></th>';
   };
-  var body =
-    '<p style="font-size:.78rem;color:var(--text2);margin-bottom:.6rem">'+sub+'</p>'+
-    '<div style="overflow-x:auto">'+
+  return '<p style="font-size:.78rem;color:var(--text2);margin-bottom:.6rem">'+sub+'</p>'+
+    '<div style="overflow-x:auto;overflow-y:auto;max-height:55vh">'+
     '<table class="lb" style="width:100%;font-size:.75rem"><thead><tr>'+
-      th('Deal',0,true)+th('AE',1,true)+th('Pipe',2)+th('Etapa',3)+
-      th('Dias',4)+th('Colab.',5)+th('Vidas',6)+th('1\xaa Fatura (R$)',7)+th('ARR Est. (R$)',8)+
-      th('Modelo',9)+th('Agenc.',10)+th('Vit.',11)+
-      th('Prob AE',12)+th('P. Etapa',13)+th('P. Ajust.',14)+
-      th('Quarter',15)+th('Dt. Receita',16)+
+      th('Deal',0,true)+th('AE',1,true)+th('Pipe',2)+th('Etapa',3)+th('Fechamento',4)+
+      th('Dias',5)+th('Colab.',6)+th('Vidas',7)+th('1\xaa Fatura (R$)',8)+th('ARR Est. (R$)',9)+
+      th('Modelo',10)+th('Agenc.',11)+th('Vit.',12)+
+      th('Prob AE',13)+th('P. Etapa',14)+th('P. Ajust.',15)+
+      th('Quarter',16)+th('Dt. Receita',17)+
     '</tr></thead><tbody id="novo-deals-tbody">'+_novoDealsRows(_novoModalDeals)+'</tbody>'+tfoot+'</table></div>';
-  openModal(title, body);
+}
+function novoOpenDealsModal(title, deals) {
+  openModal(title, _novoDealsTableHtml(deals));
+}
+// Drill dos big-number cards: cada KPI abre a lista de deals que o compõe.
+// P02 (Receita Ganha | Ano Atual) ganha 4 mini big-numbers no topo.
+var _novoKpiDrill = {};
+function _novoKpiStatsHtml(deals) {
+  var count   = deals.length;
+  var vidas   = deals.reduce(function(s,d){ return s+(d.vidas||0); }, 0);
+  var annual  = deals.reduce(function(s,d){ return s+(d.arr_estimado||0); }, 0);
+  var monthly = annual / 12;
+  function c(label, val, tip){ return '<div class="kpi-sec"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.3rem"><span class="kpi-sec-label">'+label+'</span>'+_infoBtn(tip)+'</div><div class="kpi-sec-value">'+val+'</div></div>'; }
+  return '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.6rem;margin-bottom:1.1rem">'+
+    c(t('p02_won_deals'), count.toLocaleString('pt-BR'), t('p02_won_deals_tip'))+
+    c(t('p02_total_vidas'), vidas.toLocaleString('pt-BR'), t('p02_total_vidas_tip'))+
+    c(t('p02_monthly_rev'), _fmtBig(monthly), t('p02_monthly_rev_tip'))+
+    c(t('p02_annual_rev'), _fmtBig(annual), t('p02_annual_rev_tip'))+
+  '</div>';
+}
+// P03 (Pipeline Ponderado): ponderado mensal/anual + cenário Implantação=Ganho + nº de abertos.
+function _novoP03StatsHtml() {
+  var deals = _novoDeals || [];
+  function prob(d){ return d.probabilidade != null ? d.probabilidade : (NOVO_STAGE_PROB[d.stage] || 0); }
+  var openDeals = deals.filter(function(d){ return _novoIsOpen(d); });
+  var implDeals = deals.filter(function(d){ return d.stage === 'Implantação'; });
+  var wYr   = openDeals.reduce(function(s,d){ return s + _annualRev(d)*prob(d); }, 0);
+  var implFull = implDeals.reduce(function(s,d){ return s + _annualRev(d); }, 0);
+  function c(label, val, tip){ return '<div class="kpi-sec"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.3rem"><span class="kpi-sec-label">'+label+'</span>'+_infoBtn(tip)+'</div><div class="kpi-sec-value">'+val+'</div></div>'; }
+  return '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.6rem;margin-bottom:1.1rem">'+
+    c(t('p03_wmo_hist'), _fmtBig(wYr/12), t('p03_wmo_hist_tip'))+
+    c(t('p03_wyr_hist'), _fmtBig(wYr), t('p03_wyr_hist_tip'))+
+    c(t('p03_wyr_impl'), _fmtBig(wYr + implFull), t('p03_wyr_impl_tip'))+
+    c(t('p03_open_deals'), openDeals.length.toLocaleString('pt-BR'), t('p03_open_deals_tip'))+
+  '</div>';
+}
+// P05 (Vidas em Aberto): nº de abertos, vidas em aberto e idade média no funil.
+function _novoP05StatsHtml(deals) {
+  var count = deals.length;
+  var vidas = deals.reduce(function(s,d){ return s + (d.vidas||0); }, 0);
+  var aged  = deals.filter(function(d){ return d.dias_no_pipe != null && !isNaN(d.dias_no_pipe); });
+  var avgAge = aged.length ? Math.round(aged.reduce(function(s,d){ return s + d.dias_no_pipe; }, 0) / aged.length) : null;
+  function c(label, val, tip){ return '<div class="kpi-sec"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.3rem"><span class="kpi-sec-label">'+label+'</span>'+_infoBtn(tip)+'</div><div class="kpi-sec-value">'+val+'</div></div>'; }
+  return '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.6rem;margin-bottom:1.1rem">'+
+    c(t('p05_open_deals'), count.toLocaleString('pt-BR'), t('p05_open_deals_tip'))+
+    c(t('p05_open_vidas'), vidas.toLocaleString('pt-BR'), t('p05_open_vidas_tip'))+
+    c(t('p05_avg_age'), (avgAge != null ? avgAge + ' dias' : '—'), t('p05_avg_age_tip'))+
+  '</div>';
+}
+// P07 (Vidas Perdidas): modal com filtro por Motivo de Perdido + lista de deals.
+var _novoLostAll = [];
+function _novoOpenLostModal(d) {
+  _novoLostAll = d.deals || [];
+  var counts = {};
+  _novoLostAll.forEach(function(x){ var r = x.lost_reason || '(sem motivo)'; counts[r] = (counts[r] || 0) + 1; });
+  var keys = Object.keys(counts).sort(function(a, b){ return counts[b] - counts[a]; });
+  var opts = '<option value="__all">Todos os motivos (' + _novoLostAll.length + ')</option>';
+  keys.forEach(function(r){ opts += '<option value="' + _ne(r) + '">' + _ne(r) + ' (' + counts[r] + ')</option>'; });
+  var sel = '<div style="margin-bottom:.85rem;display:flex;align-items:center;gap:.6rem;flex-wrap:wrap">' +
+    '<label style="font-size:.8rem;color:var(--text2);font-weight:600">Motivo de Perdido:</label>' +
+    '<select id="novo-lost-reason" onchange="novoFilterLostReason(this.value)" style="background:var(--card2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:.4rem .7rem;font-size:.8rem;font-family:inherit;max-width:100%;cursor:pointer">' + opts + '</select></div>';
+  openModal((d.label || '').replace('🟡 ', ''), sel + '<div id="novo-lost-table">' + _novoDealsTableHtml(_novoLostAll) + '</div>');
+}
+function novoFilterLostReason(val) {
+  var list = val === '__all' ? _novoLostAll : _novoLostAll.filter(function(x){ return (x.lost_reason || '(sem motivo)') === val; });
+  var cont = document.getElementById('novo-lost-table');
+  if (cont) cont.innerHTML = _novoDealsTableHtml(list);
+}
+function novoKpiDrill(key) {
+  var d = _novoKpiDrill[key];
+  if (!d || !d.deals || !d.deals.length) return;
+  if (key === 'kpi-lost-vidas') { _novoOpenLostModal(d); return; }
+  var title = (d.label || '').replace('🟡 ', '');
+  var stats = '';
+  if (key === 'kpi-won-annual') stats = _novoKpiStatsHtml(d.deals);
+  else if (key === 'kpi-won-vidas') stats = _novoKpiStatsHtml(d.deals);
+  else if (key === 'kpi-weighted-pipe') stats = _novoP03StatsHtml();
+  else if (key === 'kpi-open-vidas') stats = _novoP05StatsHtml(d.deals);
+  openModal(title, stats + _novoDealsTableHtml(d.deals));
 }
 
 // ── Helpers de gráfico ──────────────────────────────────────────────────────────
@@ -972,11 +1528,33 @@ function _setActive(containerId, mode) {
   var c = document.getElementById(containerId);
   if (!c) return;
   c.querySelectorAll('.tab-sub-btn').forEach(function(b){ b.classList.toggle('active', b.getAttribute('data-mode') === mode); });
+  _moveTabSubThumb(c, true);
+}
+function _moveTabSubThumb(sub, animate) {
+  var thumb = sub && sub.querySelector('.tab-sub-thumb');
+  var active = sub && sub.querySelector('.tab-sub-btn.active');
+  if (!thumb || !active) return;
+  if (!animate) thumb.style.transition = 'none';
+  thumb.style.left = active.offsetLeft + 'px';
+  thumb.style.width = active.offsetWidth + 'px';
+  if (!animate) { void thumb.offsetWidth; thumb.style.transition = ''; }
+}
+function _initTabSubs() {
+  document.querySelectorAll('.tab-sub').forEach(function(sub) {
+    if (!sub.querySelector('.tab-sub-thumb')) {
+      var th = document.createElement('div');
+      th.className = 'tab-sub-thumb';
+      sub.insertBefore(th, sub.firstChild);
+    }
+    _moveTabSubThumb(sub, false);
+  });
 }
 var NOVO_WON_STAGE = 'Ganho';
-var NOVO_STAGE_ORDER = ['Diagnóstico','Cotação','Proposta Enviada','Consultoria','Negociação','Standby','Implantação'];
+var NOVO_STAGE_ORDER = ['Diagnóstico','Cotação','Proposta Enviada','Consultoria','Negociação','Standby'];
 function _stageNorm(s) { return s === 'Stand by' ? 'Standby' : s; }
-function _novoOpen() { return (_novoDeals || []).filter(function(d){ return d.stage !== NOVO_WON_STAGE; }); }
+function _novoIsWon(d) { var s = d.stage; return s === 'Ganho' || s === 'Implantação'; }
+function _novoIsOpen(d) { return !_novoIsWon(d) && d.stage !== 'Reunião Agendada' && d.stage !== 'Perdido'; }
+function _novoOpen() { return (_novoDeals || []).filter(function(d){ return _novoIsOpen(d); }); }
 function _annualRev(d) {
   if (d.arr_estimado != null && d.arr_estimado > 0) return d.arr_estimado;
   if (d.primeira_fatura != null && d.primeira_fatura > 0) return d.primeira_fatura * 12;
@@ -986,7 +1564,12 @@ function _revShort(v) { return v >= 1000000 ? ('R$'+(v/1000000).toFixed(1)+'M') 
 
 // ── Cards (HTML) ────────────────────────────────────────────────────────────────
 function _infoBtn(tip, helpKey) {
-  return '<button class="novo-info-btn" data-tooltip="'+tip+'"'+(helpKey?' onclick="novoHelpChart(\''+helpKey+'\')"':'')+' aria-label="Campos do HubSpot">i</button>';
+  var code = helpKey && NOVO_CARD_CODES[helpKey] ? NOVO_CARD_CODES[helpKey] : '';
+  return '<button class="novo-info-btn"' +
+    (tip  ? ' data-tip="'  + _ne(tip)  + '"' : '') +
+    (code ? ' data-code="' + code       + '"' : '') +
+    (helpKey ? ' onclick="event.stopPropagation();novoHelpChart(\'' + helpKey + '\')"' : '') +
+    ' aria-label="Campos do HubSpot">i</button>';
 }
 function _subTabs(id, current, opts) {
   return '<div id="'+id+'" class="tab-sub">'+opts.map(function(o){
@@ -1010,7 +1593,7 @@ function buildNovoStage() {
   var unit = _novoStageMode==='lives' ? t('tab_vidas').toLowerCase() : t('tab_deals').toLowerCase();
   _novoMkChart('chart-novo-stage', { type:'bar', plugins:[ChartDataLabels],
     data:{ labels:labels, datasets:[{ data:data, backgroundColor:'rgba(88,166,255,.75)', hoverBackgroundColor:'rgba(88,166,255,1)', borderRadius:4 }] },
-    options:{ responsive:true, plugins:{ legend:{display:false},
+    options:{ responsive:true, layout:{padding:{top:24}}, plugins:{ legend:{display:false},
       datalabels:{ anchor:'end', align:'end', color:th.cText, font:{family:NOVO_FONT,size:11,weight:'bold'}, formatter:function(v){return v.toLocaleString('pt-BR');} },
       tooltip:{ callbacks:{ label:function(c){return c.parsed.y.toLocaleString('pt-BR')+' '+unit;}, footer:function(){return 'Clique para ver os deals';} } } },
       scales:{ x:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}}, y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0}} },
@@ -1024,7 +1607,7 @@ function buildNovoFunnel() {
   open.forEach(function(d){ var i=idx[_stageNorm(d.stage)]; if(i==null)return; for(var j=0;j<=i;j++) counts[j]++; });
   _novoMkChart('chart-novo-funnel', { type:'bar', plugins:[ChartDataLabels],
     data:{ labels:NOVO_STAGE_ORDER.slice(), datasets:[{ data:counts, backgroundColor:'rgba(58,184,183,.75)', hoverBackgroundColor:'rgba(58,184,183,1)', borderRadius:4 }] },
-    options:{ indexAxis:'y', responsive:true, plugins:{ legend:{display:false},
+    options:{ indexAxis:'y', responsive:true, layout:{padding:{right:45}}, plugins:{ legend:{display:false},
       datalabels:{ anchor:'end', align:'right', color:th.cText, font:{family:NOVO_FONT,size:11,weight:'bold'}, formatter:function(v){return v.toLocaleString('pt-BR');} },
       tooltip:{ callbacks:{ label:function(c){return c.parsed.x.toLocaleString('pt-BR')+' deals nesta etapa ou adiante';}, footer:function(){return 'Clique para ver os deals';} } } },
       scales:{ x:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0}}, y:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}} },
@@ -1038,7 +1621,7 @@ function buildNovoConc() {
   var isRev = _novoConcMode==='revenue';
   _novoMkChart('chart-novo-conc', { type:'bar', plugins:[ChartDataLabels],
     data:{ labels:ranked.map(function(d){ return (d.dealname||'—').slice(0,32); }), datasets:[{ data:ranked.map(metric), backgroundColor:'rgba(210,153,34,.8)', hoverBackgroundColor:'rgba(210,153,34,1)', borderRadius:4 }] },
-    options:{ indexAxis:'y', responsive:true, plugins:{ legend:{display:false},
+    options:{ indexAxis:'y', responsive:true, layout:{padding:{right:100}}, plugins:{ legend:{display:false},
       datalabels:{ anchor:'end', align:'right', color:th.cText, font:{family:NOVO_FONT,size:10,weight:'bold'}, formatter:function(v){ return isRev ? ('R$ '+Math.round(v).toLocaleString('pt-BR')) : v.toLocaleString('pt-BR'); } },
       tooltip:{ callbacks:{ label:function(c){ return isRev ? ('R$ '+Math.round(c.parsed.x).toLocaleString('pt-BR')+' /ano') : (c.parsed.x.toLocaleString('pt-BR')+' vidas'); }, footer:function(){return 'Clique para ver o deal';} } } },
       scales:{ x:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT}}}, y:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT,size:10}}} },
@@ -1052,7 +1635,7 @@ function buildNovoSizeDist() {
   open.forEach(function(d){ var v=_annualRev(d); if(v<=0)return; for(var i=0;i<defs.length;i++){ if(v>=defs[i][1]&&v<defs[i][2]){ counts[i]++; by[i].push(d); break; } } });
   _novoMkChart('chart-novo-sizedist', { type:'bar', plugins:[ChartDataLabels],
     data:{ labels:defs.map(function(d){return d[0];}), datasets:[{ data:counts, backgroundColor:'rgba(88,166,255,.75)', borderRadius:3 }] },
-    options:{ responsive:true, plugins:{ legend:{display:false},
+    options:{ responsive:true, layout:{padding:{top:24}}, plugins:{ legend:{display:false},
       datalabels:{ anchor:'end', align:'end', color:th.cText, font:{family:NOVO_FONT,size:11,weight:'bold'}, formatter:function(v){return v||'';} },
       tooltip:{ callbacks:{ label:function(c){return c.parsed.y+' deals';}, footer:function(){return 'Clique para ver os deals';} } } },
       scales:{ x:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}}, y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0}} },
@@ -1066,7 +1649,7 @@ function buildNovoVidasDist() {
   open.forEach(function(d){ var v=d.vidas||0; for(var i=0;i<defs.length;i++){ if(defs[i][1](v)){ counts[i]++; by[i].push(d); break; } } });
   _novoMkChart('chart-novo-vidasdist', { type:'bar', plugins:[ChartDataLabels],
     data:{ labels:defs.map(function(d){return d[0];}), datasets:[{ data:counts, backgroundColor:'rgba(63,185,80,.75)', borderRadius:3 }] },
-    options:{ responsive:true, plugins:{ legend:{display:false},
+    options:{ responsive:true, layout:{padding:{top:24}}, plugins:{ legend:{display:false},
       datalabels:{ anchor:'end', align:'end', color:th.cText, font:{family:NOVO_FONT,size:11,weight:'bold'}, formatter:function(v){return v||'';} },
       tooltip:{ callbacks:{ label:function(c){return c.parsed.y+' deals';}, footer:function(){return 'Clique para ver os deals';} } } },
       scales:{ x:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}}, y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0}} },
@@ -1084,7 +1667,7 @@ function buildNovoStageVal() {
   var data = labels.map(function(s){ return Math.round(agg[s]); });
   _novoMkChart('chart-novo-stageval', { type:'bar', plugins:[ChartDataLabels],
     data:{ labels:labels, datasets:[{ data:data, backgroundColor:'rgba(58,184,183,.75)', borderRadius:4 }] },
-    options:{ responsive:true, plugins:{ legend:{display:false},
+    options:{ responsive:true, layout:{padding:{top:24}}, plugins:{ legend:{display:false},
       datalabels:{ anchor:'end', align:'end', color:th.cText, font:{family:NOVO_FONT,size:10,weight:'bold'}, formatter:_revShort },
       tooltip:{ callbacks:{ label:function(c){return 'R$ '+Math.round(c.parsed.y).toLocaleString('pt-BR')+' /ano';}, footer:function(){return 'Clique para ver os deals';} } } },
       scales:{ x:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}}, y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},callback:function(v){return 'R$'+(v/1000)+'k';}}} },
@@ -1098,7 +1681,7 @@ function buildNovoSegment() {
   open.forEach(function(d){ var vidas=d.vidas||0, rev=_annualRev(d); for(var i=0;i<defs.length;i++){ if(defs[i][1](vidas)){ sums[i]+=rev; by[i].push(d); break; } } });
   _novoMkChart('chart-novo-segment', { type:'bar', plugins:[ChartDataLabels],
     data:{ labels:defs.map(function(d){return d[0];}), datasets:[{ data:sums.map(function(v){return Math.round(v);}), backgroundColor:'rgba(147,112,219,.75)', borderRadius:4 }] },
-    options:{ responsive:true, plugins:{ legend:{display:false},
+    options:{ responsive:true, layout:{padding:{top:24}}, plugins:{ legend:{display:false},
       datalabels:{ anchor:'end', align:'end', color:th.cText, font:{family:NOVO_FONT,size:10,weight:'bold'}, formatter:_revShort },
       tooltip:{ callbacks:{ label:function(c){return 'R$ '+Math.round(c.parsed.y).toLocaleString('pt-BR')+' /ano';}, footer:function(){return 'Clique para ver os deals';} } } },
       scales:{ x:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}}, y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},callback:function(v){return 'R$'+(v/1000)+'k';}}} },
@@ -1110,13 +1693,882 @@ function novoSwitchStageMode(m){ _novoStageMode=m; _setActive('novo-stage-tabs',
 function novoSwitchConcMode(m){ _novoConcMode=m; _setActive('novo-conc-tabs',m); buildNovoConc(); }
 function novoSwitchValMode(m){ _novoValMode=m; _setActive('novo-val-tabs',m); buildNovoStageVal(); }
 
+// ── State for new charts ────────────────────────────────────────────────────────
+var _novoSizeWindowMode  = 'all';
+var _novoVidasWindowMode = 'all';
+var _novoCoverageTarget  = (function(){ try { return parseFloat(localStorage.getItem('novo_cov_target')) || 5000000; } catch(e){ return 5000000; } })();
+var _novoOpenpipe2Mode   = 'deals';
+
+function novoSwitchSizeWindow(m){ _novoSizeWindowMode=m; _setActive('novo-sizewin-tabs',m); buildNovoSizeWindow(); }
+function novoSwitchVidasWindow(m){ _novoVidasWindowMode=m; _setActive('novo-vidaswin-tabs',m); buildNovoVidasWindow(); }
+function novoSwitchOpenpipe2(m){ _novoOpenpipe2Mode=m; _setActive('novo-openpipe2-tabs',m); buildNovoOpenPipe2(); }
+
+// helper: 'YYYY-MM' → 'Mar/25'
+function _mlbl(ym) {
+  var p = ym.split('-');
+  return ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][parseInt(p[1])-1] + '/' + p[0].slice(2);
+}
+// helper: date filter by window mode
+function _windowFilter(d, mode) {
+  if (!d.createdate) return false;
+  var age = (new Date().getTime() - new Date(d.createdate).getTime()) / 86400000;
+  if (mode === 'last30') return age <= 30;
+  if (mode === 'last90') return age <= 90;
+  return true;
+}
+// helper: risk score for a deal
+function _riskScore(d) {
+  var score = 0;
+  score += (d.vidas || 0) / 500;
+  score += (d.arr_estimado || 0) / 500000;
+  score += (d.dias_no_pipe || 0) / 30;
+  var earlyStages = ['Diagnóstico','Cotação'];
+  if (earlyStages.indexOf(d.stage) >= 0) score += 2;
+  if (!d.arr_estimado) score += 1;
+  if (!d.vidas) score += 0.5;
+  return Math.round(score * 10) / 10;
+}
+// helper: custom full-width card HTML
+function _wideCard(title, tip, helpKey, tabsHtml, innerHtml) {
+  return '<div class="novo-card" style="grid-column:1/-1">'+
+    '<div class="novo-card-header">'+'<h3>'+title+'</h3>'+_infoBtn(tip, helpKey)+(tabsHtml||'')+'</div>'+
+    innerHtml+'</div>';
+}
+function _halfCard(title, tip, helpKey, innerHtml) {
+  return '<div class="novo-card">'+'<div class="novo-card-header">'+'<h3>'+title+'</h3>'+_infoBtn(tip, helpKey)+'</div>'+innerHtml+'</div>';
+}
+function _sectionHdr(label) {
+  return '<div style="grid-column:1/-1;margin:1.5rem 0 .25rem;border-top:1px solid var(--border);padding-top:1.25rem">'+
+    '<h2 style="font-size:.78rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.1em;margin:0">'+label+'</h2></div>';
+}
+
+// ── N01: Pipeline Funnel Waterfall ─────────────────────────────────────────────
+function buildNovoWaterfall() {
+  var th = _novoTheme(), open = _novoOpen();
+  var stages = NOVO_STAGE_ORDER.filter(function(s){ return open.some(function(d){ return _stageNorm(d.stage)===s; }); });
+  var counts = stages.map(function(s){ return open.filter(function(d){ return _stageNorm(d.stage)===s; }).length; });
+  var byStage = {};
+  stages.forEach(function(s){ byStage[s] = open.filter(function(d){ return _stageNorm(d.stage)===s; }); });
+  var maxC = Math.max.apply(null, counts) || 1;
+  var drops = counts.map(function(c, i){ return i===0 ? 0 : Math.max(0, counts[i-1]-c); });
+  _novoMkChart('chart-novo-waterfall', { type:'bar', plugins:[ChartDataLabels],
+    data:{ labels:stages, datasets:[
+      { label:'Deals', data:counts, backgroundColor:'rgba(58,184,183,.75)', borderRadius:4 },
+      { label:'Queda', data:drops, backgroundColor:'rgba(248,81,73,.22)', borderRadius:4, stack:'s' },
+    ]},
+    options:{ responsive:true, layout:{padding:{top:24}}, plugins:{ legend:{display:false},
+      datalabels:{ anchor:'end', align:'end', color:th.cText, font:{family:NOVO_FONT,size:11,weight:'bold'}, formatter:function(v,ctx){ return ctx.datasetIndex===0?v:''; } },
+      tooltip:{ callbacks:{ label:function(c){ return c.datasetIndex===0?(c.parsed.y+' deals na etapa'):('−'+c.parsed.y+' vs etapa anterior'); }, footer:function(){ return 'Clique para ver os deals'; } } } },
+      scales:{ x:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}}, y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0}} },
+      onClick:function(e,el){ if(!el.length)return; var s=stages[el[0].index]; novoOpenDealsModal('Funil Waterfall | '+s, byStage[s]||[]); } } });
+}
+
+// ── N02: Net Pipeline Flow (Vidas, Monthly) ─────────────────────────────────────
+function buildNovoNetFlow() {
+  var deals = _novoDeals || [];
+  var now = new Date(), months = [];
+  for (var i=11; i>=0; i--) { var d=new Date(now.getFullYear(), now.getMonth()-i, 1); months.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')); }
+  var entries = {}, exits = {};
+  months.forEach(function(m){ entries[m]=0; exits[m]=0; });
+  deals.forEach(function(d){
+    var em = d.createdate ? d.createdate.substring(0,7) : null;
+    if (em && entries[em] != null) entries[em] += (d.vidas||0);
+    if (_novoIsWon(d)) { var xm = d.close_date ? d.close_date.substring(0,7) : null; if (xm && exits[xm] != null) exits[xm] += (d.vidas||0); }
+  });
+  var th = _novoTheme();
+  _novoMkChart('chart-novo-netflow', { type:'bar', plugins:[ChartDataLabels],
+    data:{ labels:months.map(_mlbl), datasets:[
+      { label:'Entradas (vidas)', data:months.map(function(m){ return entries[m]; }), backgroundColor:'rgba(63,185,80,.7)', borderRadius:3 },
+      { label:'Saídas (ganhas)', data:months.map(function(m){ return -exits[m]; }), backgroundColor:'rgba(248,81,73,.6)', borderRadius:3 },
+    ]},
+    options:{ responsive:true, layout:{padding:{top:24}}, plugins:{ legend:{display:true, labels:{color:th.cText2,font:{family:NOVO_FONT,size:11}}},
+      datalabels:{ display:false },
+      tooltip:{ callbacks:{ label:function(c){ return c.dataset.label+': '+Math.abs(c.parsed.y).toLocaleString('pt-BR')+' vidas'; } } } },
+      scales:{ x:{grid:{display:false},ticks:{color:th.cText2,font:{family:NOVO_FONT}}}, y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0}} } } });
+}
+
+// ── N03: Stage Progression Rate ────────────────────────────────────────────────
+function buildNovoStageProgression() {
+  var open = _novoOpen();
+  var idx={};
+  NOVO_STAGE_ORDER.forEach(function(s,i){ idx[s]=i; });
+  var counts = NOVO_STAGE_ORDER.map(function(){ return 0; });
+  open.forEach(function(d){ var i=idx[_stageNorm(d.stage)]; if(i==null)return; for(var j=0;j<=i;j++) counts[j]++; });
+  var labels=[], rates=[], byPair={};
+  for (var i=1; i<NOVO_STAGE_ORDER.length; i++) {
+    if (counts[i-1]===0) continue;
+    var lbl = NOVO_STAGE_ORDER[i-1].slice(0,6)+'→'+NOVO_STAGE_ORDER[i].slice(0,6);
+    labels.push(lbl);
+    rates.push(Math.round(counts[i]/counts[i-1]*1000)/10);
+    byPair[lbl] = open.filter(function(d){ var j=idx[_stageNorm(d.stage)]; return j!=null && j>=i; });
+  }
+  var th = _novoTheme();
+  var colors = rates.map(function(r){ return r>=50?'rgba(63,185,80,.75)':r>=25?'rgba(210,153,34,.8)':'rgba(248,81,73,.75)'; });
+  _novoMkChart('chart-novo-stageprog', { type:'bar', plugins:[ChartDataLabels],
+    data:{ labels:labels, datasets:[{ data:rates, backgroundColor:colors, borderRadius:4 }] },
+    options:{ indexAxis:'y', responsive:true, layout:{padding:{right:55}}, plugins:{ legend:{display:false},
+      datalabels:{ anchor:'end', align:'right', color:th.cText, font:{family:NOVO_FONT,size:11,weight:'bold'}, formatter:function(v){ return v+'%'; } },
+      tooltip:{ callbacks:{ label:function(c){ return c.parsed.x.toFixed(1)+'% de passagem'; } } } },
+      scales:{ x:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT}},max:100}, y:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}} },
+      onClick:function(e,el){ if(!el.length)return; var lbl=labels[el[0].index]; novoOpenDealsModal('Progressão | '+lbl, byPair[lbl]||[]); } } });
+}
+
+// ── N04: Open Pipeline | Value & Volume by Stage ────────────────────────────────
+function buildNovoOpenPipe2() {
+  var th = _novoTheme(), open = _novoOpen();
+  var stages = NOVO_STAGE_ORDER.filter(function(s){ return open.some(function(d){ return _stageNorm(d.stage)===s; }); });
+  var byStage = {};
+  stages.forEach(function(s){ byStage[s] = open.filter(function(d){ return _stageNorm(d.stage)===s; }); });
+  var isVidas = _novoOpenpipe2Mode === 'vidas';
+  var data = stages.map(function(s){ return isVidas ? byStage[s].reduce(function(a,d){ return a+(d.vidas||0); },0) : byStage[s].length; });
+  var arrData = stages.map(function(s){ return byStage[s].reduce(function(a,d){ return a+(d.arr_estimado||0); },0); });
+  _novoMkChart('chart-novo-openpipe2', { type:'bar', plugins:[ChartDataLabels],
+    data:{ labels:stages, datasets:[
+      { label:isVidas?'Vidas':'Deals', data:data, backgroundColor:'rgba(88,166,255,.75)', borderRadius:4, yAxisID:'y' },
+      { label:'ARR (R$)', data:arrData, backgroundColor:'rgba(58,184,183,.4)', borderRadius:4, yAxisID:'y2' },
+    ]},
+    options:{ responsive:true, layout:{padding:{top:28}}, plugins:{ legend:{display:true,labels:{color:th.cText2,font:{family:NOVO_FONT,size:11}}},
+      datalabels:{ display:false },
+      tooltip:{ callbacks:{ label:function(c){ return c.datasetIndex===0?(c.parsed.y.toLocaleString('pt-BR')+' '+(isVidas?'vidas':'deals')):'R$ '+Math.round(c.parsed.y).toLocaleString('pt-BR'); } } } },
+      scales:{ x:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}},
+        y:{grid:{color:th.cGrid},ticks:{color:'rgba(88,166,255,.9)',font:{family:NOVO_FONT},precision:0},position:'left'},
+        y2:{grid:{display:false},ticks:{color:'rgba(58,184,183,.9)',font:{family:NOVO_FONT},callback:function(v){ return 'R$'+(v>=1e6?(v/1e6).toFixed(1)+'M':v>=1e3?(v/1e3).toFixed(0)+'K':v); }},position:'right'} },
+      onClick:function(e,el){ if(!el.length)return; var s=stages[el[0].index]; novoOpenDealsModal('Pipeline Aberto | '+s, byStage[s]||[]); } } });
+}
+
+// ── N05: Risk Table (Top 10) ───────────────────────────────────────────────────
+function buildNovoRiskTable() {
+  var open = (_novoDeals||[]).filter(function(d){ return _novoIsOpen(d); });
+  var ranked = open.slice().sort(function(a,b){ return _riskScore(b)-_riskScore(a); }).slice(0,10);
+  var html = '<div style="overflow-x:auto"><table class="lb" style="width:100%;font-size:.75rem">'+
+    '<thead><tr>'+
+      '<th style="text-align:left">Deal</th>'+
+      '<th style="text-align:left">AE</th>'+
+      '<th>Etapa</th>'+
+      '<th>Vidas</th>'+
+      '<th>ARR</th>'+
+      '<th>Dias</th>'+
+      '<th style="color:var(--red)">'+t('lbl_risk_score')+'</th>'+
+    '</tr></thead><tbody>';
+  ranked.forEach(function(d, i) {
+    var sc = _riskScore(d);
+    var col = sc>10?'var(--red)':sc>5?'var(--yellow)':'var(--text)';
+    var hsUrl = d.hs_id ? 'https://app.hubspot.com/contacts/44444289/deal/'+d.hs_id : '#';
+    html += '<tr>'+
+      '<td style="text-align:left;max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><a href="'+hsUrl+'" target="_blank" rel="noopener" style="color:var(--teal);text-decoration:none">'+_ne(d.dealname)+'</a></td>'+
+      '<td style="text-align:left;white-space:nowrap">'+_ne(d.ae)+'</td>'+
+      '<td style="white-space:nowrap">'+_ne(d.stage)+'</td>'+
+      '<td>'+_ni(d.vidas)+'</td>'+
+      '<td>'+_revShort(d.arr_estimado||0)+'</td>'+
+      '<td>'+(d.dias_no_pipe!=null?d.dias_no_pipe:'—')+'</td>'+
+      '<td style="color:'+col+';font-weight:700">'+sc+'</td>'+
+    '</tr>';
+  });
+  html += '</tbody></table></div>';
+  document.getElementById('novo-risktable-body').innerHTML = html;
+}
+
+// ── N06: Cohort Maturity ───────────────────────────────────────────────────────
+function buildNovoCohortMaturity() {
+  var won = (_novoDeals||[]).filter(function(d){ return _novoIsWon(d) && d.createdate && d.close_date; });
+  var byQ = {};
+  won.forEach(function(d){
+    var m = parseInt(d.createdate.substring(5,7));
+    var q = 'Q'+Math.ceil(m/3)+'/'+d.createdate.substring(2,4);
+    if (!byQ[q]) byQ[q] = [];
+    var days = Math.round((new Date(d.close_date)-new Date(d.createdate))/86400000);
+    if (days >= 0) byQ[q].push({ days:days, deal:d });
+  });
+  var quarters = Object.keys(byQ).sort();
+  var avgs = quarters.map(function(q){ var ds=byQ[q]; return ds.length?Math.round(ds.reduce(function(s,x){return s+x.days;},0)/ds.length):0; });
+  var th = _novoTheme();
+  _novoMkChart('chart-novo-cohort', { type:'bar', plugins:[ChartDataLabels],
+    data:{ labels:quarters, datasets:[{ data:avgs, backgroundColor:'rgba(147,112,219,.75)', borderRadius:4 }] },
+    options:{ responsive:true, layout:{padding:{top:28}}, plugins:{ legend:{display:false},
+      datalabels:{ anchor:'end', align:'end', color:th.cText, font:{family:NOVO_FONT,size:11,weight:'bold'}, formatter:function(v){ return v+' d'; } },
+      tooltip:{ callbacks:{ label:function(c){ return c.parsed.y+' dias em média'; }, afterLabel:function(c){ return byQ[quarters[c.dataIndex]].length+' deals ganhos'; } } } },
+      scales:{ x:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}}, y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT}}} },
+      onClick:function(e,el){ if(!el.length)return; var q=quarters[el[0].index]; novoOpenDealsModal('Maturidade | '+q, (byQ[q]||[]).map(function(x){return x.deal;})); } } });
+}
+
+// ── N07: Engagement Freshness ─────────────────────────────────────────────────
+function buildNovoFreshness() {
+  var open = _novoOpen();
+  var buckets = [['≤7d',0,7],['8–14d',8,14],['15–30d',15,30],['31–60d',31,60],['61–90d',61,90],['91–180d',91,180],['180d+',181,Infinity]];
+  var counts = buckets.map(function(){return 0;}), byB = buckets.map(function(){return [];});
+  open.forEach(function(d){ var age=d.dias_no_pipe; if(age==null)return; for(var i=0;i<buckets.length;i++){ if(age>=buckets[i][1]&&age<=buckets[i][2]){ counts[i]++; byB[i].push(d); break; } } });
+  var th = _novoTheme();
+  var colors = ['rgba(63,185,80,.75)','rgba(63,185,80,.6)','rgba(210,153,34,.7)','rgba(210,153,34,.85)','rgba(248,81,73,.65)','rgba(248,81,73,.8)','rgba(248,81,73,.95)'];
+  _novoMkChart('chart-novo-freshness', { type:'bar', plugins:[ChartDataLabels],
+    data:{ labels:buckets.map(function(b){return b[0];}), datasets:[{ data:counts, backgroundColor:colors, borderRadius:4 }] },
+    options:{ responsive:true, layout:{padding:{top:24}}, plugins:{ legend:{display:false},
+      datalabels:{ anchor:'end', align:'end', color:th.cText, font:{family:NOVO_FONT,size:11,weight:'bold'}, formatter:function(v){return v||'';} },
+      tooltip:{ callbacks:{ label:function(c){return c.parsed.y+' deals'; }, footer:function(){return 'Clique para ver os deals';} } } },
+      scales:{ x:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}}, y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0}} },
+      onClick:function(e,el){ if(!el.length)return; novoOpenDealsModal('Frescor | '+buckets[el[0].index][0], byB[el[0].index]); } } });
+}
+
+// ── N08: Stage Pass-Through Rate ───────────────────────────────────────────────
+function buildNovoPassThrough() {
+  var open = _novoOpen();
+  var idx={};
+  NOVO_STAGE_ORDER.forEach(function(s,i){ idx[s]=i; });
+  var counts = NOVO_STAGE_ORDER.map(function(){return 0;});
+  open.forEach(function(d){ var i=idx[_stageNorm(d.stage)]; if(i==null)return; for(var j=0;j<=i;j++) counts[j]++; });
+  var labels=[], rates=[], byPair={};
+  for(var i=1;i<NOVO_STAGE_ORDER.length;i++){
+    if(!counts[i-1])continue;
+    var lbl=NOVO_STAGE_ORDER[i-1]+' → '+NOVO_STAGE_ORDER[i];
+    labels.push(lbl); rates.push(Math.round(counts[i]/counts[i-1]*1000)/10);
+    byPair[lbl]=open.filter(function(d){ var j=idx[_stageNorm(d.stage)]; return j!=null&&j>=i; });
+  }
+  var th=_novoTheme();
+  var colors=rates.map(function(r){ return r>=50?'rgba(63,185,80,.75)':r>=25?'rgba(210,153,34,.8)':'rgba(248,81,73,.75)'; });
+  _novoMkChart('chart-novo-passthru', { type:'bar', plugins:[ChartDataLabels],
+    data:{ labels:labels, datasets:[{ data:rates, backgroundColor:colors, borderRadius:4 }] },
+    options:{ indexAxis:'y', responsive:true, layout:{padding:{right:55}}, plugins:{ legend:{display:false},
+      datalabels:{ anchor:'end', align:'right', color:th.cText, font:{family:NOVO_FONT,size:11,weight:'bold'}, formatter:function(v){return v+'%';} },
+      tooltip:{ callbacks:{ label:function(c){return c.parsed.x.toFixed(1)+'% de passagem';} } } },
+      scales:{ x:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT}},max:100}, y:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT},font:{size:10}}} },
+      onClick:function(e,el){ if(!el.length)return; var lbl=labels[el[0].index]; novoOpenDealsModal('Passagem | '+lbl, byPair[lbl]||[]); } } });
+}
+
+// ── N09: Win Rate by Deal Size ─────────────────────────────────────────────────
+function buildNovoWinRateSize() {
+  var all = _novoDeals||[];
+  var buckets = [['0 vidas',function(v){return v<=0;}],['1–50',function(v){return v>=1&&v<=50;}],['51–200',function(v){return v>50&&v<=200;}],['201–500',function(v){return v>200&&v<=500;}],['501–1K',function(v){return v>500&&v<=1000;}],['1K+',function(v){return v>1000;}]];
+  var wonC=buckets.map(function(){return 0;}), openC=buckets.map(function(){return 0;}), wonDeals=buckets.map(function(){return [];});
+  all.forEach(function(d){ var v=d.vidas||0; for(var i=0;i<buckets.length;i++){ if(buckets[i][1](v)){ if(_novoIsWon(d)){wonC[i]++;wonDeals[i].push(d);}else if(_novoIsOpen(d)){openC[i]++;} break; } } });
+  var rates=wonC.map(function(w,i){ var tot=w+openC[i]; return tot>0?Math.round(w/tot*1000)/10:0; });
+  var th=_novoTheme();
+  _novoMkChart('chart-novo-winratesize', { type:'bar', plugins:[ChartDataLabels],
+    data:{ labels:buckets.map(function(b){return b[0];}), datasets:[
+      { label:'Taxa de Ganho %', data:rates, backgroundColor:rates.map(function(r){return r>=50?'rgba(63,185,80,.75)':r>=25?'rgba(210,153,34,.8)':'rgba(248,81,73,.65)';}), borderRadius:4 }
+    ]},
+    options:{ responsive:true, layout:{padding:{top:28}}, plugins:{ legend:{display:false},
+      datalabels:{ anchor:'end', align:'end', color:th.cText, font:{family:NOVO_FONT,size:11,weight:'bold'}, formatter:function(v){return v?v+'%':'';} },
+      tooltip:{ callbacks:{ label:function(c){ var i=c.dataIndex; return [c.parsed.y+'% taxa de ganho', wonC[i]+' ganhos / '+(wonC[i]+openC[i])+' total']; } } } },
+      scales:{ x:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}}, y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT}},max:100} },
+      onClick:function(e,el){ if(!el.length)return; novoOpenDealsModal('Ganho | '+buckets[el[0].index][0], wonDeals[el[0].index]); } } });
+}
+
+// ── N10: Deal Size Distribution (Window) ──────────────────────────────────────
+function buildNovoSizeWindow() {
+  var deals = (_novoDeals||[]).filter(function(d){ return _novoIsOpen(d) && _windowFilter(d, _novoSizeWindowMode); });
+  var defs=[['< 50k',0,50000],['50–100k',50000,100000],['100–250k',100000,250000],['250–500k',250000,500000],['500k–1M',500000,1000000],['1M+',1000000,Infinity]];
+  var counts=defs.map(function(){return 0;}), by=defs.map(function(){return [];});
+  deals.forEach(function(d){ var v=_annualRev(d); if(v<=0)return; for(var i=0;i<defs.length;i++){ if(v>=defs[i][1]&&v<defs[i][2]){ counts[i]++; by[i].push(d); break; } } });
+  var th=_novoTheme();
+  _novoMkChart('chart-novo-sizewindow', { type:'bar', plugins:[ChartDataLabels],
+    data:{ labels:defs.map(function(d){return d[0];}), datasets:[{ data:counts, backgroundColor:'rgba(88,166,255,.75)', borderRadius:3 }] },
+    options:{ responsive:true, layout:{padding:{top:24}}, plugins:{ legend:{display:false},
+      datalabels:{ anchor:'end', align:'end', color:th.cText, font:{family:NOVO_FONT,size:11,weight:'bold'}, formatter:function(v){return v||'';} },
+      tooltip:{ callbacks:{ label:function(c){return c.parsed.y+' deals';}, footer:function(){return 'Clique para ver';} } } },
+      scales:{ x:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}}, y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0}} },
+      onClick:function(e,el){ if(!el.length)return; novoOpenDealsModal('Tamanho | '+defs[el[0].index][0], by[el[0].index]); } } });
+}
+
+// ── N11: Vidas Distribution (Window) ─────────────────────────────────────────
+function buildNovoVidasWindow() {
+  var deals = (_novoDeals||[]).filter(function(d){ return _novoIsOpen(d) && _windowFilter(d, _novoVidasWindowMode); });
+  var defs=[['0',function(v){return v<=0;}],['1–50',function(v){return v>=1&&v<=50;}],['51–200',function(v){return v>50&&v<=200;}],['201–500',function(v){return v>200&&v<=500;}],['501–1K',function(v){return v>500&&v<=1000;}],['1K–5K',function(v){return v>1000&&v<=5000;}],['5K+',function(v){return v>5000;}]];
+  var counts=defs.map(function(){return 0;}), by=defs.map(function(){return [];});
+  deals.forEach(function(d){ var v=d.vidas||0; for(var i=0;i<defs.length;i++){ if(defs[i][1](v)){ counts[i]++; by[i].push(d); break; } } });
+  var th=_novoTheme();
+  _novoMkChart('chart-novo-vidaswindow', { type:'bar', plugins:[ChartDataLabels],
+    data:{ labels:defs.map(function(d){return d[0];}), datasets:[{ data:counts, backgroundColor:'rgba(63,185,80,.75)', borderRadius:3 }] },
+    options:{ responsive:true, layout:{padding:{top:24}}, plugins:{ legend:{display:false},
+      datalabels:{ anchor:'end', align:'end', color:th.cText, font:{family:NOVO_FONT,size:11,weight:'bold'}, formatter:function(v){return v||'';} },
+      tooltip:{ callbacks:{ label:function(c){return c.parsed.y+' deals';}, footer:function(){return 'Clique para ver';} } } },
+      scales:{ x:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}}, y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0}} },
+      onClick:function(e,el){ if(!el.length)return; novoOpenDealsModal('Vidas | '+defs[el[0].index][0], by[el[0].index]); } } });
+}
+
+// ── N12: Win Factor Analysis (by AE) ─────────────────────────────────────────
+function buildNovoWinFactor() {
+  var all = _novoDeals||[];
+  var aeMap = {};
+  all.forEach(function(d){ if(!d.ae||d.ae==='-')return; if(!aeMap[d.ae])aeMap[d.ae]={won:0,open:0,wonDeals:[]}; if(_novoIsWon(d)){aeMap[d.ae].won++;aeMap[d.ae].wonDeals.push(d);}else if(_novoIsOpen(d)){aeMap[d.ae].open++;} });
+  var aes = Object.keys(aeMap).filter(function(ae){ return aeMap[ae].won+aeMap[ae].open>=2; }).sort(function(a,b){ var ra=aeMap[a].won/(aeMap[a].won+aeMap[a].open), rb=aeMap[b].won/(aeMap[b].won+aeMap[b].open); return rb-ra; });
+  var rates=aes.map(function(ae){ var m=aeMap[ae]; return Math.round(m.won/(m.won+m.open)*1000)/10; });
+  var th=_novoTheme();
+  _novoMkChart('chart-novo-winfactor', { type:'bar', plugins:[ChartDataLabels],
+    data:{ labels:aes, datasets:[{ data:rates, backgroundColor:rates.map(function(r){return r>=50?'rgba(63,185,80,.75)':r>=25?'rgba(210,153,34,.8)':'rgba(248,81,73,.65)';}), borderRadius:4 }] },
+    options:{ indexAxis:'y', responsive:true, layout:{padding:{right:55}}, plugins:{ legend:{display:false},
+      datalabels:{ anchor:'end', align:'right', color:th.cText, font:{family:NOVO_FONT,size:10,weight:'bold'}, formatter:function(v){return v+'%';} },
+      tooltip:{ callbacks:{ label:function(c){ var ae=aes[c.dataIndex]; var m=aeMap[ae]; return [c.parsed.x+'% win rate', m.won+' ganhos / '+(m.won+m.open)+' total']; } } } },
+      scales:{ x:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT}},max:100}, y:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}} },
+      onClick:function(e,el){ if(!el.length)return; var ae=aes[el[0].index]; novoOpenDealsModal('Ganhos | '+ae, aeMap[ae].wonDeals||[]); } } });
+}
+
+// ── N13: Pipeline Coverage Ratio ──────────────────────────────────────────────
+function buildNovoCoverage() {
+  var open = _novoOpen();
+  var weighted = open.reduce(function(s,d){ var p=d.probabilidade!=null?d.probabilidade:(NOVO_STAGE_PROB[d.stage]||0); return s+(d.arr_estimado||0)*p; },0);
+  var raw = open.reduce(function(s,d){ return s+(d.arr_estimado||0); },0);
+  var target = _novoCoverageTarget;
+  var ratio = target>0 ? Math.round(weighted/target*100)/100 : null;
+  var el = document.getElementById('novo-coverage-body');
+  if (!el) return;
+  var ratioColor = ratio!=null?(ratio>=1.5?'var(--green)':ratio>=1?'var(--yellow)':'var(--red)'):'var(--text2)';
+  var pct = ratio!=null?(ratio*100).toFixed(0)+'%':'—';
+  var barW = ratio!=null?Math.min(100,ratio*100/2):0;
+  el.innerHTML =
+    '<div style="margin-bottom:1rem;display:flex;align-items:center;gap:.75rem">'+
+      '<label style="font-size:.8rem;color:var(--text2);white-space:nowrap">'+t('lbl_set_target')+' (R$)</label>'+
+      '<input id="novo-cov-input" type="text" value="'+_ni(target)+'" style="background:var(--card2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:.28rem .55rem;font-size:.82rem;font-family:inherit;width:120px">'+
+      '<button onclick="novoSaveCovTarget()" style="background:var(--teal);color:#fff;border:none;border-radius:7px;padding:.28rem .7rem;font-size:.78rem;cursor:pointer">OK</button>'+
+    '</div>'+
+    '<div style="margin-bottom:1.25rem">'+
+      '<div style="display:flex;justify-content:space-between;margin-bottom:.4rem">'+
+        '<span style="font-size:.8rem;color:var(--text2)">Pipeline Ponderado</span>'+
+        '<span style="font-size:.8rem;color:var(--text2)">Meta: R$ '+_ni(target)+'</span>'+
+      '</div>'+
+      '<div style="height:20px;background:var(--card2);border-radius:10px;overflow:hidden">'+
+        '<div style="height:100%;width:'+barW+'%;background:'+ratioColor+';border-radius:10px;transition:width .4s;min-width:4px"></div>'+
+      '</div>'+
+      '<div style="margin-top:.5rem;display:flex;justify-content:space-between">'+
+        '<span style="font-size:.82rem;font-weight:700;color:'+ratioColor+'">'+pct+' de cobertura</span>'+
+        '<span style="font-size:.78rem;color:var(--text2)">R$ '+_ni(Math.round(weighted))+' / R$ '+_ni(target)+'</span>'+
+      '</div>'+
+    '</div>'+
+    '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.6rem">'+
+      _covKpi('Pipeline Bruto','R$ '+_revShort(raw),'','var(--text)') +
+      _covKpi('Pipeline Ponderado','R$ '+_revShort(weighted),'× prob','var(--teal)') +
+      _covKpi('Ratio',ratio!=null?(ratio+'×'):'—',ratio!=null?(ratio>=1.5?'excelente':ratio>=1?'adequado':'insuficiente'):'',ratioColor) +
+    '</div>';
+}
+function _covKpi(lbl,val,sub,col) {
+  return '<div style="background:var(--card2);border-radius:8px;padding:.7rem .85rem">'+
+    '<div style="font-size:.62rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em">'+lbl+'</div>'+
+    '<div style="font-size:1.15rem;font-weight:800;color:'+col+';margin:.15rem 0">'+val+'</div>'+
+    '<div style="font-size:.65rem;color:var(--muted)">'+sub+'</div></div>';
+}
+function novoSaveCovTarget() {
+  var inp = document.getElementById('novo-cov-input');
+  if (!inp) return;
+  var raw = inp.value.replace(/\./g,'').replace(',','.').replace(/[^\d.]/g,'');
+  var v = parseFloat(raw);
+  if (!isNaN(v) && v>0) { _novoCoverageTarget = v; try{localStorage.setItem('novo_cov_target', v);}catch(e){} }
+  buildNovoCoverage();
+}
+
+// ── N14: Pipeline Value by Stage (12-Month Projection) ────────────────────────
+function buildNovoPipeRev12() {
+  var open = _novoOpen();
+  var now=new Date(), months=[];
+  for(var i=0;i<12;i++){ var d=new Date(now.getFullYear(),now.getMonth()+i,1); months.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')); }
+  var totals = {};
+  months.forEach(function(m){totals[m]=0;});
+  open.forEach(function(d){
+    var dm = d.data_prevista_para_receita ? d.data_prevista_para_receita.substring(0,7) : null;
+    if (dm && totals[dm]!=null) totals[dm] += (d.arr_estimado||0)/12;
+  });
+  var noDate = open.filter(function(d){return !d.data_prevista_para_receita;});
+  var th=_novoTheme();
+  _novoMkChart('chart-novo-piperev12', { type:'bar', plugins:[ChartDataLabels],
+    data:{ labels:months.map(_mlbl), datasets:[{ data:months.map(function(m){return Math.round(totals[m]);}), backgroundColor:'rgba(58,184,183,.75)', borderRadius:4 }] },
+    options:{ responsive:true, layout:{padding:{top:28}}, plugins:{ legend:{display:false},
+      datalabels:{ anchor:'end', align:'end', color:th.cText, font:{family:NOVO_FONT,size:9,weight:'bold'}, formatter:function(v){ return v>0?_revShort(v):''; } },
+      tooltip:{ callbacks:{ label:function(c){return 'R$ '+Math.round(c.parsed.y).toLocaleString('pt-BR')+' /mês';} } } },
+      scales:{ x:{grid:{display:false},ticks:{color:th.cText2,font:{family:NOVO_FONT}}}, y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},callback:function(v){return _revShort(v);}}} },
+      onClick:function(e,el){ if(!el.length)return; var m=months[el[0].index]; var ds=open.filter(function(d){return d.data_prevista_para_receita&&d.data_prevista_para_receita.substring(0,7)===m;}); novoOpenDealsModal('Projeção | '+_mlbl(m), ds); } } });
+}
+
+// ── N15: Revenue by Segment (Doughnut) ───────────────────────────────────────
+function buildNovoSegDoughnut() {
+  var open = _novoOpen();
+  var defs=[['Pequeno (<50)',function(v){return v<50;}],['Médio (50–200)',function(v){return v>=50&&v<200;}],['Grande (200–1K)',function(v){return v>=200&&v<1000;}],['Enterprise (1K+)',function(v){return v>=1000;}]];
+  var sums=defs.map(function(){return 0;}), by=defs.map(function(){return [];});
+  open.forEach(function(d){ var vidas=d.vidas||0, rev=_annualRev(d); for(var i=0;i<defs.length;i++){ if(defs[i][1](vidas)){ sums[i]+=rev; by[i].push(d); break; } } });
+  var total=sums.reduce(function(s,v){return s+v;},0)||1;
+  var th=_novoTheme();
+  var bgColors=['rgba(88,166,255,.8)','rgba(58,184,183,.8)','rgba(147,112,219,.8)','rgba(210,153,34,.85)'];
+  _novoMkChart('chart-novo-segdoughnut', { type:'doughnut',
+    data:{ labels:defs.map(function(d){return d[0];}), datasets:[{ data:sums.map(Math.round), backgroundColor:bgColors, borderColor:'var(--card)', borderWidth:2 }] },
+    options:{ responsive:true, plugins:{ legend:{display:true,position:'bottom',labels:{color:th.cText2,font:{family:NOVO_FONT,size:11},padding:12}},
+      datalabels:{ color:'#fff', font:{family:NOVO_FONT,size:10,weight:'bold'}, formatter:function(v){ return v>0?(v/total*100).toFixed(0)+'%':''; } },
+      tooltip:{ callbacks:{ label:function(c){return c.label+': R$ '+Math.round(c.raw).toLocaleString('pt-BR'); } } } },
+      onClick:function(e,el){ if(!el.length)return; novoOpenDealsModal('Segmento | '+defs[el[0].index][0], by[el[0].index]); } } });
+}
+
+// ── N16: Revenue Visibility Timeline ─────────────────────────────────────────
+function buildNovoVisibility() {
+  var open = _novoOpen();
+  var dateMap={};
+  open.forEach(function(d){ if(!d.data_prevista_para_receita)return; var m=d.data_prevista_para_receita.substring(0,7); dateMap[m]=(dateMap[m]||0)+1; });
+  var months=Object.keys(dateMap).sort();
+  var th=_novoTheme();
+  _novoMkChart('chart-novo-visibility', { type:'bar', plugins:[ChartDataLabels],
+    data:{ labels:months.map(_mlbl), datasets:[{ data:months.map(function(m){return dateMap[m];}), backgroundColor:'rgba(210,153,34,.78)', borderRadius:4 }] },
+    options:{ responsive:true, layout:{padding:{top:24}}, plugins:{ legend:{display:false},
+      datalabels:{ anchor:'end', align:'end', color:th.cText, font:{family:NOVO_FONT,size:11,weight:'bold'}, formatter:function(v){return v;} },
+      tooltip:{ callbacks:{ label:function(c){return c.parsed.y+' deals esperados';}, footer:function(){return 'Clique para ver';} } } },
+      scales:{ x:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}}, y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0}} },
+      onClick:function(e,el){ if(!el.length)return; var m=months[el[0].index]; var ds=open.filter(function(d){return d.data_prevista_para_receita&&d.data_prevista_para_receita.substring(0,7)===m;}); novoOpenDealsModal('Visibilidade | '+_mlbl(m), ds); } } });
+}
+
+// ── N17: Time in Stage (Bottleneck Analysis) ──────────────────────────────────
+function buildNovoTimeInStage() {
+  var open = _novoOpen();
+  var agg={}, cnt={};
+  open.forEach(function(d){ var s=_stageNorm(d.stage); if(d.dias_no_pipe==null)return; agg[s]=(agg[s]||0)+d.dias_no_pipe; cnt[s]=(cnt[s]||0)+1; });
+  var stages=NOVO_STAGE_ORDER.filter(function(s){return cnt[s]>0;});
+  var avgs=stages.map(function(s){return cnt[s]?Math.round(agg[s]/cnt[s]):0;});
+  var th=_novoTheme();
+  var colors=avgs.map(function(v){return v<=14?'rgba(63,185,80,.75)':v<=45?'rgba(210,153,34,.8)':'rgba(248,81,73,.75)';});
+  _novoMkChart('chart-novo-timeinstage', { type:'bar', plugins:[ChartDataLabels],
+    data:{ labels:stages, datasets:[{ data:avgs, backgroundColor:colors, borderRadius:4 }] },
+    options:{ indexAxis:'y', responsive:true, layout:{padding:{right:55}}, plugins:{ legend:{display:false},
+      datalabels:{ anchor:'end', align:'right', color:th.cText, font:{family:NOVO_FONT,size:11,weight:'bold'}, formatter:function(v){return v+'d';} },
+      tooltip:{ callbacks:{ label:function(c){return c.parsed.x+' dias em média ('+cnt[stages[c.dataIndex]]+' deals)';} } } },
+      scales:{ x:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT}}}, y:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}} },
+      onClick:function(e,el){ if(!el.length)return; var s=stages[el[0].index]; novoOpenDealsModal('Tempo em Etapa | '+s, open.filter(function(d){return _stageNorm(d.stage)===s;})); } } });
+}
+
+// ── N18: Speed to Qualify (Days to Diagnóstico) ───────────────────────────────
+function buildNovoSpeedQualify() {
+  var diaDeals = (_novoDeals||[]).filter(function(d){ return d.stage==='Diagnóstico' && d.createdate && d.dias_no_pipe!=null; });
+  var byMonth={};
+  diaDeals.forEach(function(d){ var m=d.createdate.substring(0,7); if(!byMonth[m])byMonth[m]=[]; byMonth[m].push(d.dias_no_pipe); });
+  var months=Object.keys(byMonth).sort();
+  var avgs=months.map(function(m){ var arr=byMonth[m]; return Math.round(arr.reduce(function(s,v){return s+v;},0)/arr.length); });
+  var th=_novoTheme();
+  _novoMkChart('chart-novo-speedqualify', { type:'bar', plugins:[ChartDataLabels],
+    data:{ labels:months.map(_mlbl), datasets:[{ data:avgs, backgroundColor:'rgba(99,102,241,.75)', borderRadius:4 }] },
+    options:{ responsive:true, layout:{padding:{top:28}}, plugins:{ legend:{display:false},
+      datalabels:{ anchor:'end', align:'end', color:th.cText, font:{family:NOVO_FONT,size:10,weight:'bold'}, formatter:function(v){return v+'d';} },
+      tooltip:{ callbacks:{ label:function(c){return c.parsed.y+' dias em média ('+byMonth[months[c.dataIndex]].length+' deals)';} } } },
+      scales:{ x:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}}, y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT}}} },
+      onClick:function(e,el){ if(!el.length)return; var m=months[el[0].index]; novoOpenDealsModal('Speed to Qualify | '+_mlbl(m), diaDeals.filter(function(d){return d.createdate.substring(0,7)===m;})); } } });
+}
+
+// ── N22: Won Deals | Monthly Revenue ─────────────────────────────────────────
+function buildNovoWonMonthly() {
+  var won = (_novoDeals||[]).filter(function(d){ return _novoIsWon(d) && d.close_date; });
+  var now=new Date(), months=[];
+  for(var i=11;i>=0;i--){ var d=new Date(now.getFullYear(),now.getMonth()-i,1); months.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')); }
+  var totals={};
+  months.forEach(function(m){totals[m]=0;});
+  won.forEach(function(d){ var m=d.close_date.substring(0,7); if(totals[m]!=null) totals[m]+=(d.arr_estimado||0)/12; });
+  var th=_novoTheme();
+  var data=months.map(function(m){return Math.round(totals[m]);});
+  _novoMkChart('chart-novo-wonmonthly', { type:'bar', plugins:[ChartDataLabels],
+    data:{ labels:months.map(_mlbl), datasets:[{ data:data, backgroundColor:data.map(function(v){return v>0?'rgba(63,185,80,.75)':'rgba(63,185,80,.2)';}), borderRadius:4 }] },
+    options:{ responsive:true, layout:{padding:{top:28}}, plugins:{ legend:{display:false},
+      datalabels:{ anchor:'end', align:'end', color:th.cText, font:{family:NOVO_FONT,size:9,weight:'bold'}, formatter:function(v){return v>0?_revShort(v):'';} },
+      tooltip:{ callbacks:{ label:function(c){return 'R$ '+Math.round(c.parsed.y).toLocaleString('pt-BR')+' /mês';} } } },
+      scales:{ x:{grid:{display:false},ticks:{color:th.cText2,font:{family:NOVO_FONT}}}, y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},callback:function(v){return _revShort(v);}}} },
+      onClick:function(e,el){ if(!el.length)return; var m=months[el[0].index]; novoOpenDealsModal('Receita Ganha | '+_mlbl(m), won.filter(function(d){return d.close_date.substring(0,7)===m;})); } } });
+}
+
+// ── N23: Pipeline Revenue Estimate by Stage (raw) ─────────────────────────────
+function buildNovoPipeRevStage() {
+  var open=_novoOpen();
+  var agg={},by={};
+  NOVO_STAGE_ORDER.forEach(function(s){agg[s]=0;by[s]=[];});
+  open.forEach(function(d){ var s=_stageNorm(d.stage); if(!(s in agg)){agg[s]=0;by[s]=[];} agg[s]+=_annualRev(d)||0; by[s].push(d); });
+  var labels=NOVO_STAGE_ORDER.filter(function(s){return agg[s]>0;});
+  var data=labels.map(function(s){return Math.round(agg[s]);});
+  var th=_novoTheme();
+  _novoMkChart('chart-novo-piperevstage', { type:'bar', plugins:[ChartDataLabels],
+    data:{ labels:labels, datasets:[{ data:data, backgroundColor:'rgba(58,184,183,.75)', borderRadius:4 }] },
+    options:{ responsive:true, layout:{padding:{top:28}}, plugins:{ legend:{display:false},
+      datalabels:{ anchor:'end', align:'end', color:th.cText, font:{family:NOVO_FONT,size:10,weight:'bold'}, formatter:_revShort },
+      tooltip:{ callbacks:{ label:function(c){return 'R$ '+Math.round(c.parsed.y).toLocaleString('pt-BR')+' ARR bruto';}, footer:function(){return 'Clique para ver os deals';} } } },
+      scales:{ x:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}}, y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},callback:function(v){return _revShort(v);}}} },
+      onClick:function(e,el){ if(!el.length)return; var s=labels[el[0].index]; novoOpenDealsModal('ARR Bruto | '+s, by[s]); } } });
+}
+
+// ── N24: Weighted Revenue by Stage ────────────────────────────────────────────
+function buildNovoWeightedRevStage() {
+  var open=_novoOpen();
+  var agg={},by={};
+  NOVO_STAGE_ORDER.forEach(function(s){agg[s]=0;by[s]=[];});
+  open.forEach(function(d){ var s=_stageNorm(d.stage); if(!(s in agg)){agg[s]=0;by[s]=[];} var p=d.probabilidade!=null?d.probabilidade:(NOVO_STAGE_PROB[s]||0); agg[s]+=(_annualRev(d)||0)*p; by[s].push(d); });
+  var labels=NOVO_STAGE_ORDER.filter(function(s){return agg[s]>0;});
+  var data=labels.map(function(s){return Math.round(agg[s]);});
+  var th=_novoTheme();
+  _novoMkChart('chart-novo-weightedrevstage', { type:'bar', plugins:[ChartDataLabels],
+    data:{ labels:labels, datasets:[{ data:data, backgroundColor:'rgba(88,166,255,.75)', borderRadius:4 }] },
+    options:{ responsive:true, layout:{padding:{top:28}}, plugins:{ legend:{display:false},
+      datalabels:{ anchor:'end', align:'end', color:th.cText, font:{family:NOVO_FONT,size:10,weight:'bold'}, formatter:_revShort },
+      tooltip:{ callbacks:{ label:function(c){return 'R$ '+Math.round(c.parsed.y).toLocaleString('pt-BR')+' ponderado';}, footer:function(){return 'Clique para ver os deals';} } } },
+      scales:{ x:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}}, y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},callback:function(v){return _revShort(v);}}} },
+      onClick:function(e,el){ if(!el.length)return; var s=labels[el[0].index]; novoOpenDealsModal('ARR Ponderado | '+s, by[s]); } } });
+}
+
+// ── N25: Estimated Receivables Timeline ───────────────────────────────────────
+function buildNovoReceivables() {
+  var open=_novoOpen();
+  var dateMap={}, dealMap={};
+  open.forEach(function(d){ if(!d.data_prevista_para_receita||!d.arr_estimado)return; var m=d.data_prevista_para_receita.substring(0,7); dateMap[m]=(dateMap[m]||0)+d.arr_estimado/12; if(!dealMap[m])dealMap[m]=[]; dealMap[m].push(d); });
+  var months=Object.keys(dateMap).sort();
+  var th=_novoTheme();
+  _novoMkChart('chart-novo-receivables', { type:'bar', plugins:[ChartDataLabels],
+    data:{ labels:months.map(_mlbl), datasets:[{ data:months.map(function(m){return Math.round(dateMap[m]);}), backgroundColor:'rgba(147,112,219,.75)', borderRadius:4 }] },
+    options:{ responsive:true, layout:{padding:{top:28}}, plugins:{ legend:{display:false},
+      datalabels:{ anchor:'end', align:'end', color:th.cText, font:{family:NOVO_FONT,size:9,weight:'bold'}, formatter:function(v){return v>0?_revShort(v):'';} },
+      tooltip:{ callbacks:{ label:function(c){return 'R$ '+Math.round(c.parsed.y).toLocaleString('pt-BR')+' /mês esperados';}, footer:function(){return 'Clique para ver';} } } },
+      scales:{ x:{grid:{display:false},ticks:{color:th.cText2,font:{family:NOVO_FONT}}}, y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},callback:function(v){return _revShort(v);}}} },
+      onClick:function(e,el){ if(!el.length)return; var m=months[el[0].index]; novoOpenDealsModal('Recebíveis | '+_mlbl(m), dealMap[m]||[]); } } });
+}
+
+// ── N26: Deal Risk Triage (Top 20) ────────────────────────────────────────────
+function buildNovoRiskTriage() {
+  var open=(_novoDeals||[]).filter(function(d){return _novoIsOpen(d);});
+  var ranked=open.slice().sort(function(a,b){return _riskScore(b)-_riskScore(a);}).slice(0,20);
+  var html='<div style="overflow-x:auto"><table class="lb" style="width:100%;font-size:.74rem"><thead><tr>'+
+    '<th style="text-align:left">#</th><th style="text-align:left">Deal</th><th style="text-align:left">AE</th>'+
+    '<th>Etapa</th><th>Vidas</th><th>ARR</th><th>'+t('lbl_days')+'</th>'+
+    '<th style="color:var(--red)">'+t('lbl_risk_score')+'</th>'+
+    '</tr></thead><tbody>';
+  ranked.forEach(function(d,i){
+    var sc=_riskScore(d);
+    var col=sc>10?'var(--red)':sc>5?'var(--yellow)':'var(--text)';
+    var hsUrl=d.hs_id?'https://app.hubspot.com/contacts/44444289/deal/'+d.hs_id:'#';
+    html+='<tr>'+
+      '<td style="color:var(--muted)">'+(i+1)+'</td>'+
+      '<td style="text-align:left;max-width:170px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><a href="'+hsUrl+'" target="_blank" rel="noopener" style="color:var(--teal);text-decoration:none">'+_ne(d.dealname)+'</a></td>'+
+      '<td style="text-align:left;white-space:nowrap">'+_ne(d.ae)+'</td>'+
+      '<td style="white-space:nowrap">'+_ne(d.stage)+'</td>'+
+      '<td>'+_ni(d.vidas)+'</td>'+
+      '<td>'+_revShort(d.arr_estimado||0)+'</td>'+
+      '<td>'+(d.dias_no_pipe!=null?d.dias_no_pipe:'—')+'</td>'+
+      '<td style="color:'+col+';font-weight:700">'+sc+'</td></tr>';
+  });
+  html+='</tbody></table></div>';
+  var el=document.getElementById('novo-risktriage-body');
+  if(el) el.innerHTML=html;
+}
+
+// ── N21: Financial Results & Revenue Estimates ─────────────────────────────────
+function buildNovoFinancial() {
+  var deals=_novoDeals||[];
+  var now=new Date();
+  var yyyymm=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+  var yyyy=String(now.getFullYear());
+  var won=deals.filter(function(d){return _novoIsWon(d);});
+  var open=deals.filter(function(d){return _novoIsOpen(d);});
+  var wonMtd=won.filter(function(d){return d.close_date&&d.close_date.substring(0,7)===yyyymm;});
+  var wonYtd=won.filter(function(d){return d.close_date&&d.close_date.substring(0,4)===yyyy;});
+  var rawPipe=open.reduce(function(s,d){return s+_annualRev(d);},0);
+  var wPipe=open.reduce(function(s,d){var p=d.probabilidade!=null?d.probabilidade:(NOVO_STAGE_PROB[d.stage]||0);return s+_annualRev(d)*p;},0);
+  var mtdRev=wonMtd.reduce(function(s,d){return s+_annualRev(d)/12;},0);
+  var ytdArr=wonYtd.reduce(function(s,d){return s+_annualRev(d);},0);
+  var monthlyPot=open.reduce(function(s,d){return s+_annualRev(d)/12;},0);
+  var openVidas=open.reduce(function(s,d){return s+(d.vidas||0);},0);
+  var wonVidas=won.reduce(function(s,d){return s+(d.vidas||0);},0);
+  var el=document.getElementById('novo-financial-body');
+  if(!el)return;
+  function row(lbl,val,sub,col){
+    return '<tr><td style="text-align:left;color:var(--text2)">'+lbl+'</td>'+
+      '<td style="font-weight:700;color:'+(col||'var(--text)')+'">'+val+'</td>'+
+      '<td style="color:var(--muted);font-size:.72rem">'+sub+'</td></tr>';
+  }
+  el.innerHTML='<table class="lb" style="width:100%;font-size:.82rem"><tbody>'+
+    row('Receita Ganha MTD', _fmtBig(mtdRev), wonMtd.length+' deals', 'var(--green)')+
+    row('Receita Ganha YTD (ARR)', _fmtBig(ytdArr), wonYtd.length+' deals em '+yyyy, 'var(--green)')+
+    row('Vidas Ganhas', _ni(wonVidas), won.length+' deals', 'var(--green)')+
+    row('Pipeline Bruto (ARR)', _fmtBig(rawPipe), open.length+' deals abertos', 'var(--teal)')+
+    row('Pipeline Ponderado', _fmtBig(wPipe), 'ARR × probabilidade', 'var(--teal)')+
+    row('Potencial Mensal (ARR÷12)', _fmtBig(monthlyPot), 'pipeline aberto', 'var(--text)')+
+    row('Vidas em Aberto', _ni(openVidas), 'deals em andamento', 'var(--text)')+
+    row('Cobertura (pond÷meta)', _novoCoverageTarget>0?Math.round(wPipe/_novoCoverageTarget*100)/100+'×':'—', 'meta: R$ '+_ni(_novoCoverageTarget), wPipe>=_novoCoverageTarget?'var(--green)':'var(--yellow)')+
+  '</tbody></table>';
+}
+
+// ── N19/N20: Placeholder charts (data not available) ─────────────────────────
+function buildNovoTimeToMeeting() {
+  var el=document.getElementById('novo-timetomeeting-body');
+  if(el) el.innerHTML='<div style="text-align:center;padding:2.5rem 1rem;color:var(--text2);font-size:.85rem">'+
+    '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom:.5rem;opacity:.45"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>'+
+    '<br><strong style="color:var(--text)">Dados não disponíveis</strong>'+
+    '<br><span style="font-size:.78rem">Requer o campo <code style="color:var(--teal)">a_reuniao_ocorreu_</code> na API.<br>'+
+    'Adicionar a <code>PROPERTIES</code> em <code>api/forecast-table.js</code>.</span></div>';
+}
+function buildNovoReassign() {
+  var all=_novoDeals||[];
+  var aeMap={};
+  all.forEach(function(d){ if(!d.ae||d.ae==='-')return; if(!aeMap[d.ae])aeMap[d.ae]={won:0,open:0,vidas:0,arr:0}; if(_novoIsWon(d)){aeMap[d.ae].won++;aeMap[d.ae].vidas+=(d.vidas||0);aeMap[d.ae].arr+=(d.arr_estimado||0);}else if(_novoIsOpen(d)) aeMap[d.ae].open++; });
+  var aes=Object.keys(aeMap).sort(function(a,b){return (aeMap[b].won)-(aeMap[a].won);});
+  var html='<p style="font-size:.76rem;color:var(--text2);margin:0 0 .75rem">🟡 Dados de reatribuição não disponíveis | exibindo performance geral por AE como proxy.</p>'+
+    '<div style="overflow-x:auto"><table class="lb" style="width:100%;font-size:.75rem"><thead><tr>'+
+    '<th style="text-align:left">AE</th><th>Abertos</th><th>Ganhos</th><th>Taxa</th><th>Vidas Ganhas</th><th>ARR Ganho</th></tr></thead><tbody>';
+  aes.forEach(function(ae){
+    var m=aeMap[ae]; var tot=m.won+m.open; var rate=tot>0?Math.round(m.won/tot*1000)/10:0;
+    var col=rate>=30?'var(--green)':rate>=15?'var(--yellow)':'var(--text)';
+    html+='<tr><td style="text-align:left;font-weight:600">'+_ne(ae)+'</td><td>'+m.open+'</td><td>'+m.won+'</td>'+
+      '<td style="color:'+col+';font-weight:700">'+rate+'%</td><td>'+_ni(m.vidas)+'</td><td>'+_revShort(m.arr)+'</td></tr>';
+  });
+  html+='</tbody></table></div>';
+  var el=document.getElementById('novo-reassign-body');
+  if(el) el.innerHTML=html;
+}
+
+function _fmtBig(v) {
+  if (v == null || isNaN(v)) return '—';
+  if (v >= 1e6) return 'R$ ' + (v / 1e6).toLocaleString('pt-BR', {minimumFractionDigits: 1, maximumFractionDigits: 1}) + 'M';
+  if (v >= 1e3) return 'R$ ' + (v / 1e3).toLocaleString('pt-BR', {minimumFractionDigits: 0, maximumFractionDigits: 1}) + 'K';
+  return 'R$ ' + _nr(v);
+}
+
+function _buildKpiRow() {
+  var deals = _novoDeals || [];
+  var now = new Date();
+  var yyyymm = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+  var yyyy   = String(now.getFullYear());
+
+  var wonDeals  = deals.filter(function(d) { return _novoIsWon(d); });
+  var openDeals = deals.filter(function(d) { return _novoIsOpen(d); });
+
+  var wonMtdDeals = wonDeals.filter(function(d) { return d.close_date && d.close_date.substring(0, 7) === yyyymm; });
+  var wonMtd = wonMtdDeals.reduce(function(s, d) { return s + (_annualRev(d) / 12); }, 0);
+  var monthLabel = yyyymm.split('-').reverse().join('/');
+
+  var wonYtdDeals = wonDeals.filter(function(d) { return d.close_date && d.close_date.substring(0, 4) === yyyy; });
+  var wonAnnual = wonYtdDeals.reduce(function(s, d) { return s + _annualRev(d); }, 0);
+
+  var weightedPipe = openDeals.reduce(function(s, d) {
+    var prob = d.probabilidade != null ? d.probabilidade : (NOVO_STAGE_PROB[d.stage] || 0);
+    return s + _annualRev(d) * prob;
+  }, 0);
+
+  var reunioesDeals = deals.filter(function(d) { return d.stage === 'Reunião Agendada'; });
+  var reunioesCount = reunioesDeals.length;
+  var reunioesVidas = reunioesDeals.reduce(function(s, d) { return s + (d.vidas || 0); }, 0);
+
+  var lostDeals = deals.filter(function(d) { return d.stage === 'Perdido'; });
+  var lostVidas = lostDeals.reduce(function(s, d) { return s + (d.vidas || 0); }, 0);
+
+  var openVidas = openDeals.reduce(function(s, d) { return s + (d.vidas || 0); }, 0);
+  var openVidasDeals = openDeals.filter(function(d) { return d.vidas; }).length;
+  var wonVidas = wonDeals.reduce(function(s, d) { return s + (d.vidas || 0); }, 0);
+  var weightedVidas = openDeals.reduce(function(s, d) {
+    var prob = d.probabilidade != null ? d.probabilidade : (NOVO_STAGE_PROB[d.stage] || 0);
+    return s + (d.vidas || 0) * prob;
+  }, 0);
+
+  function fmtN(v) { return v != null && !isNaN(v) ? Math.round(v).toLocaleString('pt-BR') : '—'; }
+
+  var kpis = [
+    {
+      key: 'kpi-revenue-mtd', na: false,
+      label: t('kpi_mtd_label'),
+      value: wonMtd > 0 ? _fmtBig(wonMtd) : '—',
+      sub: wonMtdDeals.length + ' deals ' + t('kpi_deals_closed_in') + ' ' + monthLabel,
+      color: wonMtd > 0 ? 'var(--green)' : 'var(--text2)',
+      tip: t('kpi_mtd_tip'),
+    },
+    {
+      key: 'kpi-won-annual', na: false,
+      label: t('kpi_won_label') + ' ' + yyyy,
+      value: _fmtBig(wonAnnual),
+      sub: wonYtdDeals.length + ' deals ' + t('kpi_deals_closed_in') + ' ' + yyyy,
+      color: 'var(--green)',
+      tip: t('kpi_won_tip'),
+    },
+    {
+      key: 'kpi-weighted-pipe', na: false,
+      label: t('kpi_wpipe_label'),
+      value: _fmtBig(weightedPipe),
+      sub: openDeals.length + ' ' + t('kpi_deals_open'),
+      color: 'var(--teal)',
+      tip: t('kpi_wpipe_tip'),
+    },
+    {
+      key: 'kpi-reunioes', na: false,
+      label: t('kpi_reunioes_label'),
+      value: reunioesCount.toLocaleString('pt-BR'),
+      sub: reunioesVidas.toLocaleString('pt-BR') + ' vidas potenciais',
+      color: 'var(--blue)',
+      tip: t('kpi_reunioes_tip'),
+    },
+    {
+      key: 'kpi-open-vidas', na: false,
+      label: t('kpi_open_vidas_label'),
+      value: fmtN(openVidas),
+      sub: openDeals.length + ' deals | ' + openVidasDeals + ' ' + t('kpi_deals_with_vidas'),
+      color: 'var(--teal)',
+      tip: t('kpi_open_vidas_tip'),
+    },
+    {
+      key: 'kpi-won-vidas', na: false,
+      label: t('kpi_won_vidas_label'),
+      value: fmtN(wonVidas),
+      sub: wonDeals.length + ' ' + t('kpi_deals_ganho'),
+      color: 'var(--green)',
+      tip: t('kpi_won_vidas_tip'),
+    },
+    {
+      key: 'kpi-lost-vidas', na: false,
+      label: t('kpi_lost_vidas_label'),
+      value: fmtN(lostVidas),
+      sub: lostDeals.length + ' ' + t('kpi_deals_lost'),
+      color: 'var(--red)',
+      tip: t('kpi_lost_vidas_tip'),
+    },
+    {
+      key: 'kpi-weighted-vidas', na: false,
+      label: t('kpi_wvidas_label'),
+      value: fmtN(weightedVidas),
+      sub: t('kpi_wvidas_sub'),
+      color: 'var(--teal)',
+      tip: t('kpi_wvidas_tip'),
+    },
+  ];
+
+  _novoKpiDrill['kpi-reunioes']       = { deals: reunioesDeals, label: t('kpi_reunioes_label') };
+  _novoKpiDrill['kpi-revenue-mtd']    = { deals: wonMtdDeals, label: t('kpi_mtd_label') };
+  _novoKpiDrill['kpi-won-annual']     = { deals: wonYtdDeals, label: t('kpi_won_label') + ' ' + yyyy, stats: true };
+  _novoKpiDrill['kpi-weighted-pipe']  = { deals: openDeals,   label: t('kpi_wpipe_label') };
+  _novoKpiDrill['kpi-open-vidas']     = { deals: openDeals,   label: t('kpi_open_vidas_label') };
+  _novoKpiDrill['kpi-won-vidas']      = { deals: wonDeals,    label: t('kpi_won_vidas_label') };
+  _novoKpiDrill['kpi-lost-vidas']     = { deals: lostDeals,   label: t('kpi_lost_vidas_label') };
+  _novoKpiDrill['kpi-weighted-vidas'] = { deals: openDeals,   label: t('kpi_wvidas_label') };
+
+  var html = '<div class="kpi-row">';
+  kpis.forEach(function(k) {
+    var dr = _novoKpiDrill[k.key]; var clickable = dr && dr.deals && dr.deals.length;
+    html +=
+      '<div class="kpi-card' + (k.na ? ' kpi-card--na' : '') + (clickable ? ' kpi-click' : '') + '"' +
+        (clickable ? ' onclick="novoKpiDrill(\'' + k.key + '\')"' : '') + '>' +
+        '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.3rem">' +
+          '<span class="kpi-label">' + (k.key === 'kpi-won-annual' || k.key === 'kpi-weighted-pipe' || k.key === 'kpi-reunioes' || k.key === 'kpi-open-vidas' || k.key === 'kpi-won-vidas' || k.key === 'kpi-lost-vidas' ? '' : '🟡 ') + k.label + '</span>' +
+          _infoBtn(k.tip, k.key) +
+        '</div>' +
+        '<div class="kpi-value" style="color:' + k.color + '">' + k.value + '</div>' +
+        '<div class="kpi-sub">' + k.sub + '</div>' +
+      '</div>';
+  });
+  html += '</div>';
+  return html;
+}
+
+function _buildKpiSecRow() {
+  var deals = _novoDeals || [];
+  var now = new Date();
+  var openDeals = deals.filter(function(d) { return _novoIsOpen(d); });
+
+  // Win rate por contagem de deals: deals ganhos / (ganhos + perdidos)
+  var wrWon  = deals.filter(function(d) { return _novoIsWon(d); }).length;
+  var wrLost = deals.filter(function(d) { return d.stage === 'Perdido'; }).length;
+  var winRate = (wrWon + wrLost) > 0 ? Math.round(wrWon / (wrWon + wrLost) * 100) : null;
+
+  // Stale deals: open deals created more than 60 days ago
+  var staleDeals = openDeals.filter(function(d) { return d.dias_no_pipe != null && d.dias_no_pipe > 60; });
+
+  // Data completeness: key fields vidas, arr_estimado, probabilidade
+  var completeDeals = openDeals.filter(function(d) { return d.vidas && d.arr_estimado && d.probabilidade != null; });
+  var completePct = openDeals.length > 0 ? Math.round(completeDeals.length / openDeals.length * 100) : null;
+
+  // PM | potential monthly revenue from open pipeline
+  var pmTotal = openDeals.reduce(function(s, d) { return s + (d.arr_estimado != null ? d.arr_estimado / 12 : 0); }, 0);
+
+  // Momentum: open deals created in last 30 days vs prior 30 days
+  var ms30 = 30 * 24 * 60 * 60 * 1000;
+  var nowMs = now.getTime();
+  var recentDeals = openDeals.filter(function(d) { return d.createdate && (nowMs - new Date(d.createdate).getTime()) <= ms30; });
+  var recent = recentDeals.length;
+  var prev   = openDeals.filter(function(d) {
+    if (!d.createdate) return false;
+    var age = nowMs - new Date(d.createdate).getTime();
+    return age > ms30 && age <= ms30 * 2;
+  }).length;
+  var momDelta = recent - prev;
+  var momArrow = momDelta > 0 ? ' ↑' : momDelta < 0 ? ' ↓' : '';
+  var momColor = momDelta > 0 ? 'var(--green)' : momDelta < 0 ? 'var(--red)' : 'var(--text)';
+
+  function fmtPct(v) { return v != null ? v + '%' : '—'; }
+
+  var kpis = [
+    {
+      key: 'kpi2-winrate', na: false,
+      label: t('kpi2_winrate_label'), value: fmtPct(winRate),
+      sub: wrWon + ' / ' + (wrWon + wrLost) + ' deals',
+      color: winRate != null ? (winRate >= 50 ? 'var(--green)' : winRate >= 30 ? 'var(--yellow)' : 'var(--red)') : 'var(--muted)',
+      tip: t('kpi2_winrate_tip'),
+    },
+    {
+      key: 'kpi2-bdr', na: true,
+      label: t('kpi2_bdr_label'), value: '—',
+      sub: t('kpi2_na_sub'), color: 'var(--muted)', tip: t('kpi2_bdr_tip'),
+    },
+    {
+      key: 'kpi2-ae', na: true,
+      label: t('kpi2_ae_label'), value: '—',
+      sub: t('kpi2_na_sub'), color: 'var(--muted)', tip: t('kpi2_ae_tip'),
+    },
+    {
+      key: 'kpi2-meeting', na: true,
+      label: t('kpi2_meeting_label'), value: '—',
+      sub: t('kpi2_na_sub'), color: 'var(--muted)', tip: t('kpi2_meeting_tip'),
+    },
+    {
+      key: 'kpi2-stale', na: false,
+      label: t('kpi2_stale_label'),
+      value: staleDeals.length.toLocaleString('pt-BR'),
+      sub: t('kpi2_days_stale'),
+      color: staleDeals.length > 10 ? 'var(--yellow)' : 'var(--text)',
+      tip: t('kpi2_stale_tip'),
+    },
+    {
+      key: 'kpi2-complete', na: false,
+      label: t('kpi2_complete_label'),
+      value: fmtPct(completePct),
+      sub: completeDeals.length + '/' + openDeals.length + ' ' + t('kpi2_complete_sub'),
+      color: completePct != null && completePct >= 80 ? 'var(--green)' : completePct != null && completePct >= 50 ? 'var(--yellow)' : 'var(--red)',
+      tip: t('kpi2_complete_tip'),
+    },
+    {
+      key: 'kpi2-pm', na: false,
+      label: t('kpi2_pm_label'),
+      value: _fmtBig(pmTotal),
+      sub: t('kpi2_open_pipe'),
+      color: 'var(--teal)',
+      tip: t('kpi2_pm_tip'),
+    },
+    {
+      key: 'kpi2-momentum', na: false,
+      label: t('kpi2_momentum_label'),
+      value: recent + momArrow,
+      sub: t('kpi2_deals_recent') + ' | ' + prev + ' ' + t('kpi2_vs_prev'),
+      color: momColor,
+      tip: t('kpi2_momentum_tip'),
+    },
+  ];
+
+  _novoKpiDrill['kpi2-stale']    = { deals: staleDeals,  label: t('kpi2_stale_label') };
+  _novoKpiDrill['kpi2-complete'] = { deals: openDeals,   label: t('kpi2_complete_label') };
+  _novoKpiDrill['kpi2-pm']       = { deals: openDeals,   label: t('kpi2_pm_label') };
+  _novoKpiDrill['kpi2-momentum'] = { deals: recentDeals, label: t('kpi2_momentum_label') };
+
+  var html = '<div class="kpi-row-sec">';
+  kpis.forEach(function(k) {
+    var dr = _novoKpiDrill[k.key]; var clickable = dr && dr.deals && dr.deals.length;
+    html +=
+      '<div class="kpi-sec' + (k.na ? ' kpi-sec--na' : '') + (clickable ? ' kpi-click' : '') + '"' +
+        (clickable ? ' onclick="novoKpiDrill(\'' + k.key + '\')"' : '') + '>' +
+        '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.2rem">' +
+          '<span class="kpi-sec-label">' + k.label + '</span>' +
+          _infoBtn(k.tip, k.key) +
+        '</div>' +
+        '<div class="kpi-sec-value" style="color:' + k.color + '">' + k.value + '</div>' +
+        '<div class="kpi-sec-sub">' + k.sub + '</div>' +
+      '</div>';
+  });
+  html += '</div>';
+  return html;
+}
+
 function novoRender() {
   var deals = _novoDeals || [];
   var content = document.getElementById('novo-content');
   if (!content) return;
-  var total  = deals.length;
-  var vendas = deals.filter(function(d) { return d.pipeline === 'Vendas'; }).length;
-  var bid    = deals.filter(function(d) { return d.pipeline === 'Bid'; }).length;
+  var _activeDeals = deals.filter(function(d) { return d.stage !== 'Perdido'; });
+  var total  = _activeDeals.length;
+  var vendas = _activeDeals.filter(function(d) { return d.pipeline === 'Vendas'; }).length;
+  var bid    = _activeDeals.filter(function(d) { return d.pipeline === 'Bid'; }).length;
   var ts = new Date().toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
 
   content.innerHTML =
@@ -1125,6 +2577,8 @@ function novoRender() {
       '&ensp;<span style="color:var(--text2)">' + t('vendas') + ': ' + vendas + ' &middot; Bid: ' + bid + '</span>' +
       '&ensp;<span style="color:var(--text2);opacity:.6">' + t('updated_at') + ' ' + ts + '</span>' +
     '</div>' +
+    _buildKpiRow() +
+    _buildKpiSecRow() +
     '<div class="novo-cards">' +
       _card(t('title_vidas_ae'), t('tooltip_vidas_ae'),
         _subTabs('novo-ae-tabs', _novoAeMode, [{mode:'lives',label:t('tab_vidas'),fn:'novoSwitchAeMode'},{mode:'deals',label:t('tab_deals'),fn:'novoSwitchAeMode'}]),
@@ -1142,6 +2596,110 @@ function novoRender() {
         _subTabs('novo-val-tabs', _novoValMode, [{mode:'raw',label:t('lbl_raw'),fn:'novoSwitchValMode'},{mode:'weighted',label:t('lbl_weighted'),fn:'novoSwitchValMode'}]),
         'chart-novo-stageval', 340, 'stageval') +
       _card(t('t_segment'), t('tip_segment'), '', 'chart-novo-segment', 320, 'segment') +
+      _novoFunnelHorizCard() +
+
+      // ── Seção: Análise de Funil e Pipeline ────────────────────────────────
+      _sectionHdr('Análise de Funil e Pipeline') +
+
+      // N01 | Pipeline Funnel Waterfall (wide)
+      '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header"><h3>' + t('t_waterfall') + '</h3>' + _infoBtn(t('tip_waterfall'),'waterfall') + '</div><canvas id="chart-novo-waterfall" style="max-height:320px"></canvas></div>' +
+
+      // N02 | Net Pipeline Flow
+      _card(t('t_netflow'), t('tip_netflow'), '', 'chart-novo-netflow', 320, 'netflow') +
+
+      // N03 | Stage Progression
+      _card(t('t_stageprog'), t('tip_stageprog'), '', 'chart-novo-stageprog', 340, 'stageprog') +
+
+      // N04 | Open Pipeline (wide, dual-axis)
+      '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header"><h3>' + t('t_openpipe2') + '</h3>' + _infoBtn(t('tip_openpipe2'),'openpipe2') +
+        _subTabs('novo-openpipe2-tabs', _novoOpenpipe2Mode, [{mode:'deals',label:'Deals',fn:'novoSwitchOpenpipe2'},{mode:'vidas',label:t('tab_vidas'),fn:'novoSwitchOpenpipe2'}]) +
+      '</div><canvas id="chart-novo-openpipe2" style="max-height:300px"></canvas></div>' +
+
+      // ── Seção: Risco e Concentração ───────────────────────────────────────
+      _sectionHdr('Risco e Concentração') +
+
+      // N05 | Risk Table (wide)
+      '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header"><h3>' + t('t_risktable') + '</h3>' + _infoBtn(t('tip_risktable'),'risktable') + '</div><div id="novo-risktable-body"></div></div>' +
+
+      // N06 | Cohort Maturity
+      _card(t('t_cohort'), t('tip_cohort'), '', 'chart-novo-cohort', 320, 'cohort') +
+
+      // N07 | Engagement Freshness
+      _card(t('t_freshness'), t('tip_freshness'), '', 'chart-novo-freshness', 320, 'freshness') +
+
+      // ── Seção: Análise de Conversão ──────────────────────────────────────
+      _sectionHdr('Análise de Conversão') +
+
+      // N08 | Pass-Through Rate (wide)
+      '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header"><h3>' + t('t_passthru') + '</h3>' + _infoBtn(t('tip_passthru'),'passthru') + '</div><canvas id="chart-novo-passthru" style="max-height:280px"></canvas></div>' +
+
+      // N09 | Win Rate by Size
+      _card(t('t_winratesize'), t('tip_winratesize'), '', 'chart-novo-winratesize', 320, 'winratesize') +
+
+      // N10 | Size Distribution (window)
+      '<div class="novo-card"><div class="novo-card-header"><h3>' + t('t_sizewindow') + '</h3>' + _infoBtn(t('tip_sizewindow'),'sizewindow') +
+        _subTabs('novo-sizewin-tabs', _novoSizeWindowMode, [{mode:'all',label:t('lbl_all_time'),fn:'novoSwitchSizeWindow'},{mode:'last90',label:t('lbl_last90'),fn:'novoSwitchSizeWindow'},{mode:'last30',label:t('lbl_last30'),fn:'novoSwitchSizeWindow'}]) +
+      '</div><canvas id="chart-novo-sizewindow" style="max-height:300px"></canvas></div>' +
+
+      // N11 | Vidas Distribution (window)
+      '<div class="novo-card"><div class="novo-card-header"><h3>' + t('t_vidaswindow') + '</h3>' + _infoBtn(t('tip_vidaswindow'),'vidaswindow') +
+        _subTabs('novo-vidaswin-tabs', _novoVidasWindowMode, [{mode:'all',label:t('lbl_all_time'),fn:'novoSwitchVidasWindow'},{mode:'last90',label:t('lbl_last90'),fn:'novoSwitchVidasWindow'},{mode:'last30',label:t('lbl_last30'),fn:'novoSwitchVidasWindow'}]) +
+      '</div><canvas id="chart-novo-vidaswindow" style="max-height:300px"></canvas></div>' +
+
+      // N12 | Win Factor by AE (wide)
+      '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header"><h3>' + t('t_winfactor') + '</h3>' + _infoBtn(t('tip_winfactor'),'winfactor') + '</div><canvas id="chart-novo-winfactor" style="max-height:300px"></canvas></div>' +
+
+      // ── Seção: Receita e Cobertura ────────────────────────────────────────
+      _sectionHdr('Receita e Cobertura') +
+
+      // N13 | Coverage Ratio (wide custom)
+      '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header"><h3>' + t('t_coverage') + '</h3>' + _infoBtn(t('tip_coverage'),'coverage') + '</div><div id="novo-coverage-body" style="padding:.25rem 0"></div></div>' +
+
+      // N14 | Pipeline 12-Month (wide)
+      '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header"><h3>' + t('t_piperev12') + '</h3>' + _infoBtn(t('tip_piperev12'),'piperev12') + '</div><canvas id="chart-novo-piperev12" style="max-height:300px"></canvas></div>' +
+
+      // N15 | Segment Doughnut
+      _card(t('t_segdoughnut'), t('tip_segdoughnut'), '', 'chart-novo-segdoughnut', 300, 'segdoughnut') +
+
+      // N16 | Revenue Visibility Timeline
+      _card(t('t_visibility'), t('tip_visibility'), '', 'chart-novo-visibility', 300, 'visibility') +
+
+      // ── Seção: Análise de Tempo ───────────────────────────────────────────
+      _sectionHdr('Análise de Tempo') +
+
+      // N17 | Time in Stage (wide)
+      '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header"><h3>' + t('t_timeinstage') + '</h3>' + _infoBtn(t('tip_timeinstage'),'timeinstage') + '</div><canvas id="chart-novo-timeinstage" style="max-height:280px"></canvas></div>' +
+
+      // N18 | Speed to Qualify
+      _card(t('t_speedqualify'), t('tip_speedqualify'), '', 'chart-novo-speedqualify', 300, 'speedqualify') +
+
+      // N19 | Time to First Meeting (placeholder)
+      '<div class="novo-card"><div class="novo-card-header"><h3>' + t('t_timetomeeting') + '</h3>' + _infoBtn(t('tip_timetomeeting'),'timetomeeting') + '</div><div id="novo-timetomeeting-body"></div></div>' +
+
+      // N20 | Deal Reassignment (wide table proxy)
+      '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header"><h3>' + t('t_reassign') + '</h3>' + _infoBtn(t('tip_reassign'),'reassign') + '</div><div id="novo-reassign-body" style="padding:.25rem 0"></div></div>' +
+
+      // ── Seção: Resultados Financeiros ─────────────────────────────────────
+      _sectionHdr('Resultados Financeiros') +
+
+      // N21 | Financial Summary (wide table)
+      '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header"><h3>' + t('t_financial') + '</h3>' + _infoBtn(t('tip_financial'),'financial') + '</div><div id="novo-financial-body" style="padding:.25rem 0"></div></div>' +
+
+      // N22 | Won Monthly
+      _card(t('t_wonmonthly'), t('tip_wonmonthly'), '', 'chart-novo-wonmonthly', 300, 'wonmonthly') +
+
+      // N23 | Pipeline Rev by Stage
+      _card(t('t_piperevstage'), t('tip_piperevstage'), '', 'chart-novo-piperevstage', 300, 'piperevstage') +
+
+      // N24 | Weighted Rev by Stage
+      _card(t('t_weightedrevstage'), t('tip_weightedrevstage'), '', 'chart-novo-weightedrevstage', 300, 'weightedrevstage') +
+
+      // N25 | Receivables Timeline (wide)
+      '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header"><h3>' + t('t_receivables') + '</h3>' + _infoBtn(t('tip_receivables'),'receivables') + '</div><canvas id="chart-novo-receivables" style="max-height:300px"></canvas></div>' +
+
+      // N26 | Risk Triage (wide table)
+      '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header"><h3>' + t('t_risktriage') + '</h3>' + _infoBtn(t('tip_risktriage'),'risktriage') + '</div><div id="novo-risktriage-body" style="padding:.25rem 0"></div></div>' +
+
     '</div>';
 
   buildNovoVidasAE();
@@ -1152,7 +2710,357 @@ function novoRender() {
   buildNovoVidasDist();
   buildNovoStageVal();
   buildNovoSegment();
+  if (_novoFunnelData) {
+    buildNovoFunnelHorizChart();
+  } else if (!_novoFunnelLoading) {
+    novoLoadFunnel();
+  }
+
+  // N01–N26 builders
+  buildNovoWaterfall();
+  buildNovoNetFlow();
+  buildNovoStageProgression();
+  buildNovoOpenPipe2();
+  buildNovoRiskTable();
+  buildNovoCohortMaturity();
+  buildNovoFreshness();
+  buildNovoPassThrough();
+  buildNovoWinRateSize();
+  buildNovoSizeWindow();
+  buildNovoVidasWindow();
+  buildNovoWinFactor();
+  buildNovoCoverage();
+  buildNovoPipeRev12();
+  buildNovoSegDoughnut();
+  buildNovoVisibility();
+  buildNovoTimeInStage();
+  buildNovoSpeedQualify();
+  buildNovoTimeToMeeting();
+  buildNovoReassign();
+  buildNovoFinancial();
+  buildNovoWonMonthly();
+  buildNovoPipeRevStage();
+  buildNovoWeightedRevStage();
+  buildNovoReceivables();
+  buildNovoRiskTriage();
+
+  _initTabSubs();
 }
+
+// ── Funil de Conversão Histórico ──────────────────────────────────────────────
+var _novoFunnelData     = null;
+var _novoFunnelChart    = null;
+var _novoFunnelLoading  = false;
+var _novoFunnelPipeline  = 'vendas';
+var _novoFunnelStagesData = {};
+var _FUNNEL_STAGES = {
+  vendas:   ['Reunião Agendada','Diagnóstico','Cotação','Consultoria','Negociação','Implantação','Ganho'],
+  bid:      ['Cotação','Proposta Enviada','Consultoria','Negociação','Implantação','Ganho'],
+  combined: ['Reunião Agendada','Diagnóstico','Cotação','Proposta Enviada','Consultoria','Negociação','Implantação','Ganho'],
+};
+
+function _novoFunnelHorizCard() {
+  var tip = 'Quantos deals únicos entraram em cada etapa dos pipelines Vendas e Bid desde a data selecionada | taxas de conversão entre etapas adjacentes.';
+  return '<div class="novo-card" style="grid-column:1/-1">' +
+    '<div class="novo-card-header" style="flex-wrap:wrap;gap:.5rem">' +
+      '<h3>Funil de Conversão Histórico</h3>' +
+      _infoBtn(tip, 'funnel-conv') +
+      '<div id="funnel-pipe-tabs" class="tab-sub">' +
+        '<button class="tab-sub-btn' + (_novoFunnelPipeline==='combined'?' active':'') + '" data-mode="combined" onclick="novoSwitchFunnelPipeline(\'combined\')">Ambos</button>' +
+        '<button class="tab-sub-btn' + (_novoFunnelPipeline==='vendas'?' active':'') + '" data-mode="vendas" onclick="novoSwitchFunnelPipeline(\'vendas\')">Vendas</button>' +
+        '<button class="tab-sub-btn' + (_novoFunnelPipeline==='bid'?' active':'') + '" data-mode="bid" onclick="novoSwitchFunnelPipeline(\'bid\')">Bid</button>' +
+      '</div>' +
+      '<div style="display:flex;align-items:center;gap:.5rem;margin-left:auto">' +
+        '<label style="font-size:.75rem;color:var(--text2)">Desde</label>' +
+        '<input type="date" id="funnel-since" value="2025-08-01" style="background:var(--card2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:.25rem .5rem;font-size:.78rem;font-family:inherit">' +
+        '<button id="btn-load-funnel" onclick="novoLoadFunnel()" style="background:var(--teal);color:#fff;border:none;border-radius:8px;padding:.3rem .75rem;font-size:.78rem;cursor:pointer;display:flex;align-items:center;gap:.35rem">' +
+          '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>' +
+          'Carregar' +
+        '</button>' +
+      '</div>' +
+    '</div>' +
+    '<div id="funnel-horiz-chart-area" style="padding:.25rem 0">' +
+      '<div style="text-align:center;padding:2.5rem 0;color:var(--text2);font-size:.85rem">' +
+        '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="animation:hdr-spin .8s linear infinite;display:inline-block;margin-bottom:.5rem"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>' +
+        '<br>Carregando histórico de etapas…' +
+        '<br><span style="font-size:.73rem;opacity:.55">Pode levar 15–30s para pipelines com 1.000+ deals</span>' +
+      '</div>' +
+    '</div>' +
+  '</div>';
+}
+
+function novoSwitchFunnelPipeline(pipe) {
+  _novoFunnelPipeline = pipe;
+  document.querySelectorAll('#funnel-pipe-tabs .tab-sub-btn').forEach(function(b) {
+    b.classList.toggle('active', b.getAttribute('data-mode') === pipe);
+  });
+  _moveTabSubThumb(document.getElementById('funnel-pipe-tabs'), true);
+  if (_novoFunnelData) buildNovoFunnelHorizChart();
+}
+
+function novoOpenFunnelStage(stage) {
+  var deals = _novoFunnelStagesData[stage] || [];
+  var since = _novoFunnelData ? _novoFunnelData.since : '';
+  _novoOpenFunnelDealsModal(stage + ' | desde ' + since, deals);
+}
+
+function novoLoadFunnel() {
+  if (_novoFunnelLoading) return;
+  var sinceEl = document.getElementById('funnel-since');
+  var since = sinceEl ? sinceEl.value : '2025-08-01';
+  _novoFunnelLoading = true;
+  var btn = document.getElementById('btn-load-funnel');
+  var area = document.getElementById('funnel-horiz-chart-area');
+  if (btn) { btn.disabled = true; }
+  if (area) area.innerHTML =
+    '<div style="text-align:center;padding:2.5rem 0;color:var(--text2);font-size:.85rem">' +
+      '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="animation:hdr-spin .8s linear infinite;display:inline-block;margin-bottom:.5rem"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>' +
+      '<br>Carregando histórico de etapas…' +
+      '<br><span style="font-size:.73rem;opacity:.55">Pode levar 15–30s para pipelines com 1.000+ deals</span>' +
+    '</div>';
+
+  fetch('/api/funnel-stages?since=' + encodeURIComponent(since))
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      _novoFunnelLoading = false;
+      if (btn) { btn.disabled = false; }
+      if (!data.success) throw new Error(data.error || 'Erro desconhecido');
+      _novoFunnelData = data;
+      buildNovoFunnelHorizChart();
+    })
+    .catch(function(err) {
+      _novoFunnelLoading = false;
+      if (btn) { btn.disabled = false; }
+      var el = document.getElementById('funnel-horiz-chart-area');
+      if (el) el.innerHTML = '<p style="color:var(--red);padding:1rem;font-size:.85rem">Erro: ' + _ne(err.message) + '</p>';
+    });
+}
+
+function buildNovoFunnelHorizChart() {
+  function fx(v) { return v.toFixed(1); }
+  var data = _novoFunnelData;
+  var area = document.getElementById('funnel-horiz-chart-area');
+  if (!area) return;
+  if (!data) {
+    area.innerHTML = '<p style="text-align:center;padding:2rem 0;color:var(--text2);font-size:.85rem">Carregue os dados via o card do funil acima.</p>';
+    return;
+  }
+
+  var funnelStages = _FUNNEL_STAGES[_novoFunnelPipeline];
+  var stagesMap = {};
+  _novoFunnelStagesData = {};
+  var convMap = {};
+
+  if (_novoFunnelPipeline === 'combined') {
+    // Merge Vendas + Bid: sum counts and pool deals for matching stage names
+    var _vMap = {}, _bMap = {};
+    ((data.vendas || {}).stages || []).forEach(function(s) { _vMap[s.stage] = s; });
+    ((data.bid   || {}).stages || []).forEach(function(s) { _bMap[s.stage] = s; });
+    funnelStages.forEach(function(stage) {
+      var v = _vMap[stage] || { count: 0, deals: [] };
+      var b = _bMap[stage] || { count: 0, deals: [] };
+      var combined = { stage: stage, count: v.count + b.count, deals: (v.deals || []).concat(b.deals || []) };
+      stagesMap[stage] = combined;
+      _novoFunnelStagesData[stage] = combined.deals;
+    });
+    // Recompute conversion rates from combined counts
+    for (var _i = 1; _i < funnelStages.length; _i++) {
+      var _from = stagesMap[funnelStages[_i - 1]];
+      var _to   = stagesMap[funnelStages[_i]];
+      if (_from && _to && _from.count > 0) {
+        convMap[funnelStages[_i]] = {
+          from: funnelStages[_i - 1], to: funnelStages[_i],
+          from_count: _from.count, to_count: _to.count,
+          rate_pct: Math.round((_to.count / _from.count) * 1000) / 10,
+        };
+      }
+    }
+  } else {
+    var pipeData = data[_novoFunnelPipeline] || {};
+    (pipeData.stages || []).forEach(function(s) {
+      stagesMap[s.stage] = s;
+      _novoFunnelStagesData[s.stage] = s.deals || [];
+    });
+    (pipeData.conversions || []).forEach(function(c) { convMap[c.to] = c; });
+  }
+
+  var counts = funnelStages.map(function(s) { return stagesMap[s] ? stagesMap[s].count : 0; });
+  var maxCount = Math.max.apply(null, counts) || 1;
+
+  var n = funnelStages.length;
+  var VW = 1000, VH = 160;
+  var MIN_H = VH * 0.09;
+  var heights = counts.map(function(c) {
+    return Math.max(MIN_H, (c / maxCount) * VH * 0.94);
+  });
+
+  // Proportional layout: stage zones get flex=1, conv zones get flex=0.35
+  // This keeps label row cells perfectly aligned with SVG stage/transition zones
+  var FS = 1, FC = 0.35;
+  var totalFlex = n * FS + (n - 1) * FC;
+  var sVW = VW * FS / totalFlex;  // stage zone width in SVG units
+  var cVW = VW * FC / totalFlex;  // conv zone width in SVG units
+
+  function xSS(i) { return i * (sVW + cVW); }        // x: start of stage i
+  function xSE(i) { return xSS(i) + sVW; }           // x: end of stage i
+  function xCC(i) { return xSE(i) + cVW / 2; }       // x: center of conv zone i→i+1
+
+  // SVG path: flat across each stage zone, S-curve across each conv zone
+  var p = ['M 0,' + fx(VH - heights[0])];
+  for (var i = 0; i < n; i++) {
+    var yC = VH - heights[i];
+    if (i < n - 1) {
+      var yN = VH - heights[i + 1];
+      p.push('L ' + fx(xSE(i)) + ',' + fx(yC));
+      // S-curve across conv zone: CP1 and CP2 both at xCC | creates horizontal tangents
+      var xc = fx(xCC(i));
+      p.push('C ' + xc + ',' + fx(yC) + ' ' + xc + ',' + fx(yN) + ' ' + fx(xSS(i + 1)) + ',' + fx(yN));
+    } else {
+      p.push('L ' + VW + ',' + fx(VH - heights[n - 1]));
+    }
+  }
+  p.push('L ' + VW + ',' + VH);
+  p.push('L 0,' + VH);
+  p.push('Z');
+
+  // Dashed vertical dividers at conv zone centers (aligns with label conv cells)
+  var isLight = document.documentElement.getAttribute('data-theme') === 'light';
+  var divColor = isLight ? 'rgba(0,0,0,0.14)' : 'rgba(255,255,255,0.18)';
+  var divLines = '';
+  for (var j = 0; j < n - 1; j++) {
+    var xd = fx(xCC(j));
+    divLines += '<line x1="' + xd + '" y1="0" x2="' + xd + '" y2="' + VH +
+      '" stroke="' + divColor + '" stroke-width="1.5" stroke-dasharray="4,4"/>';
+  }
+
+  var gradId = 'fhg-' + _novoFunnelPipeline;
+  var svg =
+    '<svg viewBox="0 0 ' + VW + ' ' + VH + '" xmlns="http://www.w3.org/2000/svg" ' +
+      'style="width:100%;display:block;border-radius:6px 6px 0 0" preserveAspectRatio="none">' +
+      '<defs>' +
+        '<linearGradient id="' + gradId + '" x1="0" y1="0" x2="' + VW + '" y2="0" gradientUnits="userSpaceOnUse">' +
+          '<stop offset="0%"   stop-color="#3ab8b7" stop-opacity="0.88"/>' +
+          '<stop offset="72%"  stop-color="#3ab8b7" stop-opacity="0.32"/>' +
+          '<stop offset="100%" stop-color="#3fb950" stop-opacity="0.82"/>' +
+        '</linearGradient>' +
+      '</defs>' +
+      '<path d="' + p.join(' ') + '" fill="url(#' + gradId + ')"/>' +
+      divLines +
+    '</svg>';
+
+  // Label row: Stage | Conv | Stage | Conv | … | Stage
+  // flex proportions mirror SVG zones → columns stay aligned with the SVG above
+  var labelsHtml = '<div style="display:flex;border-top:1px solid var(--border)">';
+  funnelStages.forEach(function(stage, idx) {
+    var s = stagesMap[stage] || { count: 0 };
+    var isGanho = stage === 'Ganho';
+    var numCol = isGanho ? 'var(--green)' : 'var(--teal)';
+
+    // Stage cell
+    labelsHtml +=
+      '<div style="flex:' + FS + ';min-width:0;text-align:center;padding:.55rem .1rem .45rem;cursor:pointer;' +
+        (idx > 0 ? 'border-left:1px solid var(--border);' : '') + '"' +
+        ' onclick="novoOpenFunnelStage(\'' + stage.replace(/'/g, "\\'") + '\')"' +
+        ' onmouseover="this.style.background=\'var(--card2)\'"' +
+        ' onmouseout="this.style.background=\'\'">' +
+        '<div style="font-size:1.05rem;font-weight:800;color:' + numCol + ';line-height:1">' +
+          s.count.toLocaleString('pt-BR') +
+        '</div>' +
+        '<div style="font-size:.64rem;color:var(--text2);margin-top:.18rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 .15rem">' +
+          stage +
+        '</div>' +
+      '</div>';
+
+    // Conv cell (between stages)
+    if (idx < n - 1) {
+      var conv = convMap[funnelStages[idx + 1]];
+      var rate = conv ? conv.rate_pct : null;
+      var rCol = rate == null ? 'var(--muted)' : rate >= 50 ? 'var(--green)' : rate >= 30 ? 'var(--yellow)' : 'var(--red)';
+      var rStr = rate != null ? rate + '%' : '—';
+      // Cumulative from first stage to stage[idx+1]
+      var firstCount = (stagesMap[funnelStages[0]] || { count: 0 }).count;
+      var nextCount  = (stagesMap[funnelStages[idx + 1]] || { count: 0 }).count;
+      var cumRate    = (idx > 0 && firstCount > 0) ? Math.round(nextCount / firstCount * 1000) / 10 : null;
+      var cumCol     = cumRate == null ? '' : cumRate >= 30 ? 'var(--green)' : cumRate >= 10 ? 'var(--yellow)' : 'var(--red)';
+      labelsHtml +=
+        '<div style="flex:' + FC + ';min-width:0;text-align:center;padding:.35rem .05rem;' +
+          'border-left:1px solid var(--border);' +
+          'display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.08rem">' +
+          '<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="' + rCol + '"' +
+            ' stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">' +
+            '<polyline points="9 18 15 12 9 6"/>' +
+          '</svg>' +
+          '<div style="font-size:.7rem;font-weight:700;color:' + rCol + ';line-height:1">' + rStr + '</div>' +
+          (cumRate != null
+            ? '<div style="font-size:.58rem;color:' + cumCol + ';line-height:1;opacity:.75" title="' + cumRate + '% chegam até aqui desde a 1ª etapa">' +
+                cumRate + '%↓' +
+              '</div>'
+            : '') +
+        '</div>';
+    }
+  });
+  labelsHtml += '</div>';
+
+  var pipeName  = _novoFunnelPipeline === 'combined' ? 'Vendas + Bid' : (_novoFunnelPipeline === 'bid' ? 'Bid' : 'Vendas');
+  var totalPipe = _novoFunnelPipeline === 'combined' ? (data.total_vendas || 0) + (data.total_bid || 0) : (_novoFunnelPipeline === 'bid' ? data.total_bid : data.total_vendas);
+  var footer =
+    '<p style="font-size:.71rem;color:var(--muted);margin-top:.5rem;text-align:center">' +
+      'Pipeline ' + pipeName + ' | desde ' + data.since + ' | ' +
+      (totalPipe || 0).toLocaleString('pt-BR') + ' deals | ' +
+      data.total_with_history.toLocaleString('pt-BR') + ' com histórico' +
+    '</p>';
+
+  area.innerHTML = svg + labelsHtml + footer;
+}
+
+function _novoOpenFunnelDealsModal(title, deals) {
+  var rows = (deals || []).map(function(d) {
+    var url = 'https://app.hubspot.com/contacts/44444289/deal/' + d.hs_id;
+    return '<tr><td style="text-align:left"><a href="' + url + '" target="_blank" rel="noopener" ' +
+      'style="color:var(--teal);text-decoration:none" onmouseover="this.style.textDecoration=\'underline\'" onmouseout="this.style.textDecoration=\'none\'">' +
+      _ne(d.name || d.hs_id) + '</a></td></tr>';
+  }).join('');
+  openModal(title,
+    '<p style="font-size:.78rem;color:var(--text2);margin-bottom:.6rem">' + deals.length + ' deal' + (deals.length !== 1 ? 's' : '') + '</p>' +
+    '<div style="overflow-y:auto"><table class="lb" style="width:100%;font-size:.82rem">' +
+      '<thead><tr><th style="text-align:left">Deal</th></tr></thead>' +
+      '<tbody>' + rows + '</tbody>' +
+    '</table></div>'
+  );
+}
+
+// ── Info-button tooltip (JS-driven) ──────────────────────────────────────────
+(function() {
+  var tip = null;
+  function _getTip() { return tip || (tip = document.getElementById('novo-tip')); }
+  function _showTip(btn) {
+    var el = _getTip(); if (!el) return;
+    var text = btn.getAttribute('data-tip') || '';
+    var code = btn.getAttribute('data-code') || '';
+    el.querySelector('.nt-text').textContent = text;
+    var codeEl = el.querySelector('.nt-code');
+    codeEl.textContent = code;
+    codeEl.style.display = code ? '' : 'none';
+    el.classList.add('nt-show');
+    var r = btn.getBoundingClientRect();
+    var tw = el.offsetWidth, th = el.offsetHeight;
+    var x = r.left + r.width / 2 - tw / 2;
+    var y = r.bottom + 7;
+    x = Math.max(8, Math.min(x, window.innerWidth - tw - 8));
+    if (y + th > window.innerHeight - 8) y = r.top - th - 7;
+    el.style.left = x + 'px';
+    el.style.top  = y + 'px';
+  }
+  function _hideTip() { var el = _getTip(); if (el) el.classList.remove('nt-show'); }
+  document.addEventListener('mouseover', function(e) {
+    var btn = e.target && e.target.closest && e.target.closest('.novo-info-btn');
+    if (btn) _showTip(btn);
+  });
+  document.addEventListener('mouseout', function(e) {
+    if (e.target && e.target.closest && e.target.closest('.novo-info-btn')) _hideTip();
+  });
+  document.addEventListener('scroll', _hideTip, true);
+})();
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 // Fecha modal/drawers com a tecla Esc (fecha o overlay mais ao topo)
@@ -1169,12 +3077,108 @@ document.addEventListener('keydown', function(e) {
 document.addEventListener('DOMContentLoaded', function() {
   setContentBlur(false);
   var navOpen = true;
-  try { navOpen = localStorage.getItem('novo_nav_open') !== 'false'; } catch(e) {}
+  try { var _k = localStorage.getItem('nav_open') ?? localStorage.getItem('novo_nav_open'); navOpen = _k !== 'false'; } catch(e) {}
   _setNavOpen(navOpen);
   var lbl = document.getElementById('novo-lang-label');
-  if (lbl) lbl.textContent = NOVO_LANG.toUpperCase();
+  if (lbl) lbl.textContent = NOVO_LANG === 'pt' ? 'EN' : 'PT';
   novoLoadData();
+
+  // Sticky header glass effect on scroll
+  var _hdr = document.querySelector('.novo-hdr');
+  window.addEventListener('scroll', function() {
+    if (_hdr) _hdr.classList.toggle('scrolled', window.scrollY > 8);
+  }, { passive: true });
 });
+</script>
+<!-- Panel switcher + menu lateral compartilhado (fonte unica: PANELS) -->
+<style>
+.panel-switcher{position:relative;display:inline-block}
+.panel-switch-btn{display:inline-flex;align-items:center;gap:.5rem;background:none;border:none;padding:0;margin:0;cursor:pointer;color:inherit;font:inherit;text-align:left}
+.panel-switch-btn h1{margin:0}
+.panel-chevron{transition:transform .22s ease,color .15s ease;color:var(--text2);flex-shrink:0}
+.panel-switcher.open .panel-chevron{transform:rotate(180deg)}
+.panel-switch-btn:hover .panel-chevron{color:var(--teal)}
+.panel-dd{position:absolute;top:calc(100% + 10px);left:0;min-width:236px;background:rgba(23,31,46,.62);backdrop-filter:blur(20px) saturate(1.7);-webkit-backdrop-filter:blur(20px) saturate(1.7);border:none;border-radius:12px;box-shadow:0 16px 40px rgba(0,0,0,.4);padding:.4rem;z-index:1500;opacity:0;transform:translateY(-6px);pointer-events:none;transition:opacity .18s ease,transform .18s ease}
+[data-theme="light"] .panel-dd{background:rgba(246,248,250,.7)}
+.panel-switcher.open .panel-dd{opacity:1;transform:translateY(0);pointer-events:auto}
+.panel-dd-item{display:flex;align-items:center;gap:.65rem;padding:.55rem .7rem;border-radius:8px;cursor:pointer;font-size:.85rem;color:var(--text2);transition:background .14s,color .14s;white-space:nowrap}
+.panel-dd-item:hover{background:rgba(255,255,255,.1);color:var(--text)}
+.panel-dd-item.active{color:var(--teal);font-weight:600;background:rgba(58,184,183,.16)}
+.panel-dd-item.active svg{stroke:var(--teal)}
+.panel-dd-item svg{flex-shrink:0;opacity:.9}
+[data-theme="light"] .panel-dd-item:hover{background:rgba(0,0,0,.06)}
+.health-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;display:inline-block;animation:health-glow 1.8s ease-in-out infinite}
+.panel-switch-btn .health-dot{margin:0 .15rem}
+.nav-item .health-dot,.panel-dd-item .health-dot{margin-left:auto}
+@keyframes health-glow{0%,100%{box-shadow:0 0 3px 0 var(--hg)}50%{box-shadow:0 0 9px 2px var(--hg)}}
+.health-dot.g{background:#2ecc71;--hg:rgba(46,204,113,.95)}
+.health-dot.y{background:#f1c40f;--hg:rgba(241,196,15,.95)}
+.health-dot.r{background:#e74c3c;--hg:rgba(231,76,60,.95)}
+
+.modal-body,.novo-help-body,.novo-prob-body,[style*="overflow-x:auto"]{scrollbar-width:thin;scrollbar-color:var(--text2) transparent}
+.modal-body::-webkit-scrollbar,.novo-help-body::-webkit-scrollbar,.novo-prob-body::-webkit-scrollbar,[style*="overflow-x:auto"]::-webkit-scrollbar{height:11px;width:11px}
+.modal-body::-webkit-scrollbar-track,.novo-help-body::-webkit-scrollbar-track,.novo-prob-body::-webkit-scrollbar-track,[style*="overflow-x:auto"]::-webkit-scrollbar-track{background:transparent}
+.modal-body::-webkit-scrollbar-thumb,.novo-help-body::-webkit-scrollbar-thumb,.novo-prob-body::-webkit-scrollbar-thumb,[style*="overflow-x:auto"]::-webkit-scrollbar-thumb{background:var(--text2);border-radius:8px;border:2px solid transparent;background-clip:padding-box}
+.modal-body::-webkit-scrollbar-thumb:hover,.novo-help-body::-webkit-scrollbar-thumb:hover,.novo-prob-body::-webkit-scrollbar-thumb:hover,[style*="overflow-x:auto"]::-webkit-scrollbar-thumb:hover{background:var(--teal)}
+</style>
+<script>
+(function(){
+  var PANELS=[
+    {label:'CRO Dashboard',url:'/novo',file:'novo-dashboard.html',health:'y',icon:'<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>'},
+    {label:'Board View',url:'/novo-board',file:'novo-board.html',health:'r',icon:'<path d="M2 20h20M4 20V10l8-6 8 6v10"/><path d="M10 20v-6h4v6"/>'},
+    {label:'AE Performance',url:'/novo-ae',file:'novo-ae.html',health:'r',icon:'<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>'},
+    {label:'BDR Performance',url:'/novo-bdr',file:'novo-bdr.html',health:'r',icon:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'},
+    {label:'Last 48h',url:'/novo-48h',file:'novo-48h.html',health:'r',icon:'<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>'},
+    {label:'CS Dashboard',url:'/novo-cs',file:'novo-cs.html',health:'r',icon:'<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>'},
+    {label:'Cotação',url:'/novo-cotacao',file:'novo-cotacao.html',health:'r',icon:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>'},
+    {label:'Forecast',url:'/forecast',file:'forecast.html',health:'g',icon:'<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>'}
+  ];
+  function findByUrl(u){ for(var i=0;i<PANELS.length;i++){ if(PANELS[i].url===u) return PANELS[i]; } return null; }
+  var p2=location.pathname; if(p2.length>1&&p2.charAt(p2.length-1)==='/') p2=p2.slice(0,-1);
+  var current=null;
+  for(var i=0;i<PANELS.length;i++){ if(p2===PANELS[i].url||p2.indexOf(PANELS[i].file)!==-1){ current=PANELS[i].url; break; } }
+  function dot(h){ var tt={g:'live',y:'wip',r:'not working'}; var t=tt[h]||''; return '<span class="health-dot '+h+'" title="'+t+'" aria-label="'+t+'"></span>'; }
+  function svgFor(p){ return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+p.icon+'</svg>'; }
+  function buildNav(){
+    var nav=document.getElementById('nav-drawer'); if(!nav) return;
+    var h='<div class="nav-drawer-header"><span class="nav-drawer-brand">Dashboard Axenya</span>'+
+      '<button class="hdr-btn" onclick="closeDrawer()" aria-label="Fechar menu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>'+
+      '<ul class="nav-menu">';
+    for(var i=0;i<PANELS.length;i++){
+      var p=PANELS[i];
+      if(p.url==='/forecast') h+='<div style="height:1px;background:var(--border);margin:.4rem .75rem"></div>';
+      h+='<li class="nav-item'+(p.url===current?' active':'')+'" data-url="'+p.url+'">'+svgFor(p)+'<span>'+p.label+'</span>'+dot(p.health)+'</li>';
+    }
+    h+='</ul>';
+    nav.innerHTML=h;
+    var nit=nav.getElementsByClassName('nav-item');
+    for(var j=0;j<nit.length;j++){ nit[j].addEventListener('click',function(){ window.location.href=this.getAttribute('data-url'); }); }
+  }
+  function buildDropdown(){
+    var dd=document.getElementById('panel-dd'); if(!dd) return;
+    var html='';
+    for(var i=0;i<PANELS.length;i++){
+      var p=PANELS[i], act=(p.url===current?' active':'');
+      html+='<div class="panel-dd-item'+act+'" role="menuitem" data-url="'+p.url+'">'+svgFor(p)+'<span>'+p.label+'</span>'+dot(p.health)+'</div>';
+    }
+    dd.innerHTML=html;
+    var items=dd.getElementsByClassName('panel-dd-item');
+    for(var j=0;j<items.length;j++){ items[j].addEventListener('click',function(){ window.location.href=this.getAttribute('data-url'); }); }
+  }
+  function buildTitleDot(){
+    var btn=document.querySelector('.panel-switch-btn');
+    if(btn && current && !btn.querySelector('.health-dot')){
+      var cp=findByUrl(current);
+      if(cp){ var s=document.createElement('span'); s.className='health-dot '+cp.health; var _tt={g:'live',y:'wip',r:'not working'}; s.title=_tt[cp.health]||''; s.setAttribute('aria-label',s.title); var ch=btn.querySelector('.panel-chevron'); if(ch) btn.insertBefore(s,ch); else btn.appendChild(s); }
+    }
+  }
+  function build(){ buildNav(); buildDropdown(); buildTitleDot(); }
+  window.togglePanelMenu=function(e){ if(e){e.stopPropagation();} var sw=document.getElementById('panel-switcher'); if(!sw) return; var open=!sw.classList.contains('open'); sw.classList.toggle('open',open); var btn=sw.querySelector('.panel-switch-btn'); if(btn) btn.setAttribute('aria-expanded',open?'true':'false'); };
+  window.closePanelMenu=function(){ var sw=document.getElementById('panel-switcher'); if(sw){ sw.classList.remove('open'); var btn=sw.querySelector('.panel-switch-btn'); if(btn) btn.setAttribute('aria-expanded','false'); } };
+  document.addEventListener('click',function(e){ var sw=document.getElementById('panel-switcher'); if(sw&&sw.classList.contains('open')&&!sw.contains(e.target)) window.closePanelMenu(); });
+  document.addEventListener('keydown',function(e){ if(e.key==='Escape'||e.keyCode===27){ var sw=document.getElementById('panel-switcher'); if(sw&&sw.classList.contains('open')) window.closePanelMenu(); } });
+  if(document.readyState!=='loading') build(); else document.addEventListener('DOMContentLoaded',build);
+})();
 </script>
 </body>
 </html>

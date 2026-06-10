@@ -1,0 +1,3926 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Forecast | Axenya</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" rel="stylesheet">
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+  <style>
+    /* ── TOKENS ──────────────────────────────────────────────────────────────── */
+    :root {
+      --bg: #0d1117;
+      --card: #171f2e;
+      --card2: #1e2a3c;
+      --border: #293a50;
+      --text: #e6edf3;
+      --text2: #8b949e;
+      --teal: #3ab8b7;
+      --green: #3fb950;
+      --yellow: #d29922;
+      --red: #f85149;
+      --font: 'Inter', 'Segoe UI', system-ui, sans-serif;
+      --warn-s: #1f0e0d;
+      --warn-sh: #2c1211;
+      --even-s: #131b28;
+      --hover-s: #1c2b40;
+      --accent: var(--teal);
+      --hover: rgba(255,255,255,0.06);
+    }
+
+    html[data-theme="light"] {
+      --bg: #f6f8fa;
+      --card: #ffffff;
+      --card2: #eaeef2;
+      --border: #d0d7de;
+      --text: #1f2328;
+      --text2: #57606a;
+      --teal: #0d7377;
+      --green: #1a7f37;
+      --yellow: #9a6700;
+      --red: #cf222e;
+      --warn-s: #fde8e7;
+      --warn-sh: #f9d0cf;
+      --even-s: #f1f4f8;
+      --hover-s: #e8eef4;
+      --hover: rgba(0,0,0,0.05);
+    }
+
+    /* ── RESET & BASE ─────────────────────────────────────────────────────────── */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html,
+    body {
+      height: 100%;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 13px;
+      transition: padding-left .25s cubic-bezier(0.4,0,0.2,1);
+    }
+    body.nav-docked { padding-left: 280px; }
+    @media(max-width:820px){body.nav-docked{padding-left:0}}
+
+    /* ── HEADER ────────────────────────────────────────────────────────────────── */
+    .header {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 1.25rem 2rem;
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      position: relative;
+      z-index: 100;
+    }
+
+    .header h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    /* ── Apple segmented control ──────────────────────────────── */
+    .seg-ctrl {
+      display: inline-flex;
+      align-items: center;
+      background: rgba(255,255,255,0.14);
+      border-radius: 99px;
+      padding: 3px;
+      position: relative;
+    }
+    .seg-ctrl::before {
+      content: '';
+      position: absolute;
+      top: 3px; left: 3px;
+      width: calc(50% - 3px);
+      height: calc(100% - 6px);
+      background: rgba(255,255,255,0.26);
+      border-radius: 99px;
+      transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+      will-change: transform;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .seg-ctrl.on-historico::before { transform: translateX(100%); }
+    .seg-btn {
+      border: none;
+      background: none;
+      color: var(--text2);
+      border-radius: 99px;
+      padding: 0.27rem 0.9rem;
+      font-size: 0.8rem;
+      font-weight: 500;
+      font-family: var(--font);
+      cursor: pointer;
+      transition: color 0.2s ease;
+      white-space: nowrap;
+      letter-spacing: -0.01em;
+      flex: 1;
+      text-align: center;
+      position: relative;
+      z-index: 1;
+    }
+    .seg-btn.active { color: var(--text); }
+    html[data-theme="light"] .seg-ctrl { background: rgba(0,0,0,0.06); }
+    html[data-theme="light"] .seg-ctrl::before { background: #fff; }
+    html[data-theme="light"] .seg-btn.active { color: #111; }
+
+    .header .sub {
+      color: var(--text2);
+      font-size: 0.72rem;
+      cursor: default;
+      position: relative;
+      align-self: center;
+      letter-spacing: 0.01em;
+    }
+    .header .sub::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      top: calc(100% + 7px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--card2);
+      color: var(--text);
+      font-size: 0.74rem;
+      font-weight: 400;
+      padding: 0.28rem 0.65rem;
+      border-radius: 6px;
+      white-space: nowrap;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.15s;
+      z-index: 200;
+    }
+    .header .sub[data-tooltip]:not([data-tooltip=""]):hover::after { opacity: 1; }
+
+    .btn-refresh,
+    .btn-theme {
+      border: none;
+      border-radius: 6px;
+      padding: .42rem 1rem;
+      font-size: .84rem;
+      font-weight: 600;
+      font-family: var(--font);
+      cursor: pointer;
+      transition: opacity .15s, background .15s, border-color .15s;
+      white-space: nowrap;
+    }
+
+    .btn-refresh {
+      background: var(--teal);
+      color: #0d1117;
+      margin-left: 0;
+    }
+
+    html[data-theme="light"] .btn-refresh {
+      color: #fff;
+    }
+
+    .btn-refresh:hover { opacity: .85; }
+    .btn-refresh:disabled { opacity: .45; cursor: default; }
+
+    .btn-theme {
+      display: inline-flex; align-items: center; justify-content: center;
+      background: var(--card);
+      color: var(--text2);
+      margin-left: auto;
+      margin-right: .4rem;
+      padding: .42rem .7rem;
+      line-height: 1;
+    }
+
+    .btn-theme:hover { border-color: var(--text2); color: var(--text); }
+
+    /* ── FILTERS ──────────────────────────────────────────────────────────────── */
+    .filter-bar {
+      flex-shrink: 0;
+      padding: .6rem 2rem 0;
+      background: var(--card);
+    }
+
+    .filter-row {
+      display: flex;
+      align-items: center;
+      gap: .55rem;
+      min-height: 36px;
+    }
+
+    .filter-row .lbl {
+      color: var(--text2);
+      font-size: .8rem;
+      font-weight: 600;
+      letter-spacing: .02em;
+      min-width: 76px;
+    }
+
+    .fbtn {
+      background: var(--card);
+      border: none;
+      color: var(--text2);
+      border-radius: 99px;
+      padding: .3rem 1rem;
+      font-size: 0.7rem;
+      font-weight: 600;
+      font-family: var(--font);
+      cursor: pointer;
+      height: 27px;
+      transition: background .12s, color .12s;
+    }
+    .fbtn:hover { background: var(--card2); color: var(--text); }
+
+    .fbtn.a-todos.active { background: rgba(58,184,183,.15); color: var(--teal); }
+    .fbtn.a-dia.active   { background: rgba(139,92,246,.15); color: #8b5cf6; }
+    .fbtn.a-cot.active   { background: rgba(63,185,80,.15);  color: var(--green); }
+    .fbtn.a-con.active   { background: rgba(210,153,34,.15); color: var(--yellow); }
+    .fbtn.a-neg.active   { background: rgba(248,81,73,.15);  color: var(--red); }
+    .fbtn.a-imp.active   { background: rgba(88,166,255,.15); color: #58a6ff; }
+    .fbtn.a-gan.active   { background: rgba(35,134,54,.15);  color: #2ea043; }
+
+    /* ── View tabs ──────────────────────────────────────────── */
+    .view-tabs {
+      display: flex;
+      gap: 0.25rem;
+      padding: 0.5rem 1rem 0;
+      background: var(--bg);
+    }
+    .view-tab {
+      padding: 0.4rem 1.1rem;
+      border-radius: 6px 6px 0 0;
+      border: none;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-family: inherit;
+      color: var(--text2);
+      background: transparent;
+      transition: color .15s;
+    }
+    .view-tab.active {
+      background: var(--card);
+      color: var(--text);
+    }
+    /* ── Comparativo histórico ──────────────────────────────── */
+    #historico-panel {
+      flex: 1;
+      min-height: 0;
+      overflow: auto;
+      padding: 0 1rem 2rem;
+    }
+    .hist-header {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin: 1rem 0;
+      flex-wrap: wrap;
+    }
+    .hist-table-wrap { margin-bottom: 2rem; }
+    .hist-table-wrap table { border-collapse: collapse; font-size: 0.85rem; white-space: nowrap; }
+    .hist-table-wrap th {
+      text-align: left;
+      padding: 0.45rem 0.6rem;
+      background: var(--card);
+      color: var(--text2);
+      font-weight: 600;
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+    .hist-table-wrap td {
+      padding: 0.4rem 0.6rem;
+      background: var(--bg);
+    }
+    .hist-table-wrap tr:hover td { background: rgba(255,255,255,.06); }
+    html[data-theme="light"] .hist-table-wrap tr:hover td { background: rgba(0,0,0,.035); }
+    .hist-table-wrap a { color: var(--teal); text-decoration: none; }
+    .hist-table-wrap a:hover { text-decoration: underline; }
+    /* Primeira coluna sticky (esquerda) */
+    .hist-table-wrap thead th:first-child,
+    .hist-table-wrap tbody td:first-child {
+      position: sticky;
+      left: 0;
+      z-index: 3;
+      min-width: 200px;
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      box-shadow: 4px 0 10px rgba(0,0,0,.4);
+    }
+    .hist-table-wrap thead th:first-child {
+      background: var(--card);
+      z-index: 5;
+    }
+    .hist-table-wrap tbody td:first-child { background: var(--bg); }
+    .hist-table-wrap tbody tr:hover td:first-child { background: rgba(255,255,255,.06); }
+    html[data-theme="light"] .hist-table-wrap tbody td:first-child { background: var(--bg); }
+    html[data-theme="light"] .hist-table-wrap tbody tr:hover td:first-child { background: rgba(0,0,0,.035); }
+    .st-avancou  { color: #3fb950; font-weight: 600; }
+    .st-regrediu { color: #58a6ff; font-weight: 600; }
+    .st-igual    { color: var(--text2); }
+    .st-saiu     { color: var(--red); font-weight: 600; }
+    .st-mudou    { color: var(--yellow); font-weight: 600; }
+    .st-novo     { color: #a371f7; font-weight: 600; }
+    .hist-section-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text);
+      margin: 1.5rem 0 0.75rem;
+      padding-bottom: 0.4rem;
+    }
+
+    .fbtn.a-pro.active { background: rgba(163,113,247,.15); color: #a371f7; }
+    .fbtn.a-stb.active { background: rgba(139,148,158,.18); color: #8b949e; }
+
+    /* ── Shared dropdown trigger / arr / panel (fdd = filter-dropdown) ── */
+    .fdd-wrapper { position: relative; display: inline-block; }
+    .fdd-trigger {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      cursor: pointer; justify-content: space-between;
+      background: var(--card2); border: none; color: var(--text);
+      border-radius: 10px; padding: 4px 4px 4px 0.9rem; font-size: .84rem;
+      font-weight: 500; font-family: var(--font); outline: none;
+      height: 36px; min-width: 120px; transition: background .12s;
+    }
+    .fdd-trigger:hover { background: rgba(255,255,255,0.07); }
+    html[data-theme="light"] .fdd-trigger { background: var(--card); }
+    html[data-theme="light"] .fdd-trigger:hover { background: var(--card2); }
+    .fdd-arr {
+      width: 28px; height: 28px; display: inline-flex; align-items: center;
+      justify-content: center; background: rgba(255,255,255,0.03);
+      border-radius: 7px; flex-shrink: 0; pointer-events: none;
+      transition: transform 0.18s cubic-bezier(0.4,0,0.2,1);
+      will-change: transform;
+    }
+    html[data-theme="light"] .fdd-arr { background: rgba(0,0,0,0.07); }
+    .fdd-wrapper.open .fdd-arr { transform: rotate(180deg); }
+    .fdd-panel {
+      display: none;
+      position: absolute; top: calc(100% + 6px); left: 0;
+      background: rgba(232, 236, 240, 0.20);
+      backdrop-filter: blur(16px) saturate(160%);
+      -webkit-backdrop-filter: blur(16px) saturate(160%);
+      border-radius: 12px; padding: 0.5rem; z-index: 300;
+      min-width: 160px;
+      flex-direction: column; gap: 0.4rem;
+    }
+    @keyframes fddIn {
+      from { opacity: 0; transform: translateY(-6px) scale(0.97); }
+      to   { opacity: 1; transform: none; }
+    }
+    .fdd-wrapper.open .fdd-panel {
+      display: flex;
+      animation: fddIn 0.14s cubic-bezier(0.4, 0, 0.2, 1) both;
+      will-change: transform, opacity;
+    }
+    html[data-theme="light"] .header { background: var(--card); }
+    html[data-theme="light"] .filter-bar { background: var(--card); }
+    html[data-theme="light"] .kpis { background: #f6f8fa; }
+    .fdd-trigger.filter-active { color: var(--accent); }
+
+    .stage-dd-item {
+      display: flex; align-items: center; gap: 0.45rem;
+      padding: 0.32rem 0.55rem; border-radius: 8px;
+      cursor: pointer; font-size: 0.85rem; color: var(--text); user-select: none;
+      white-space: nowrap;
+    }
+    .stage-dd-item:hover { background: var(--hover); }
+    .stage-dd-item input[type=checkbox] { accent-color: var(--accent); cursor: pointer; flex-shrink: 0; }
+    .stage-dd-footer {
+      display: flex; gap: 0.4rem; padding-bottom: 0.3rem;
+    }
+
+    /* ── Filter active state ─────────────────────────────────── */
+    .completeness-opt.completeness-active { color: var(--accent); font-weight: 600; }
+
+    /* ── Filter pills bar ───────────────────────────────────── */
+    .filter-pills-bar {
+      display: none; align-items: center; flex-wrap: wrap; gap: 0.35rem;
+      padding: 1.2rem 0 0 0;
+      flex-basis: 100%; flex-shrink: 0;
+    }
+    .filter-pill {
+      display: inline-flex; align-items: center; gap: 0.28rem;
+      padding: 0.15rem 0.5rem; border-radius: 99px; font-size: 0.76rem;
+      background: rgba(58,184,183,0.15);
+      color: var(--teal); font-family: var(--font);
+    }
+    html[data-theme="light"] .filter-pill { background: #c7f1f1; color: #0d7377; }
+    .filter-pill-x {
+      background: none; border: none; cursor: pointer; color: var(--teal);
+      font-size: 0.88rem; padding: 0; line-height: 1; transition: opacity 0.15s; opacity: 0.55;
+    }
+    .filter-pill-x:hover { opacity: 1; }
+    html[data-theme="light"] .filter-pill-x { color: #0d7377; }
+    .filter-pills-clear {
+      font-size: 0.73rem; color: var(--text2); background: none; border: none;
+      cursor: pointer; padding: 0.15rem 0.4rem; border-radius: 4px;
+      font-family: var(--font); transition: color 0.15s;
+    }
+    .filter-pills-clear:hover { color: var(--red); }
+
+    /* ── Result count ───────────────────────────────────────── */
+    .result-count {
+      font-size: 0.74rem; color: var(--text2); margin-left: auto;
+      white-space: nowrap; user-select: none;
+    }
+
+    .fbtn.warn-active     { background: rgba(248,81,73,.2); color: var(--red); }
+    .fbtn.complete-active { background: rgba(63,185,80,.15); color: var(--green); }
+    html[data-theme="light"] .fbtn.complete-active { background: rgba(26,127,55,.12); }
+
+    .cell-warn {
+      box-shadow: inset 0 0 0 1px var(--red), inset 0 0 8px rgba(248, 81, 73, 0.4);
+      background: rgba(248, 81, 73, 0.08) !important;
+    }
+
+    html[data-theme="light"] .fbtn.warn-active {
+      background: rgba(207, 34, 46, .15);
+      box-shadow: 0 0 0 2px rgba(207, 34, 46, .2);
+    }
+
+    /* AE dropdown | Apple style */
+    .ae-select {
+      background: var(--card);
+      border: none;
+      color: var(--text);
+      border-radius: 10px;
+      padding: .42rem 2.2rem .42rem .9rem;
+      font-size: .84rem;
+      font-weight: 500;
+      font-family: var(--font);
+      cursor: pointer;
+      outline: none;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238b949e' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right .7rem center;
+      min-width: 120px;
+      height: 36px;
+      transition: background .12s;
+    }
+    .ae-select:hover { background-color: var(--card2); }
+    html[data-theme="light"] .ae-select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2357606a' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    }
+
+    /* Search bar (full-width, below KPIs) */
+    .search-bar {
+      flex-shrink: 0;
+      padding: .8rem 2rem 1.3rem;
+      background: var(--card);
+    }
+    html[data-theme="light"] .search-bar { background: #edf0f2; }
+    html[data-theme="light"] .search-input-full { background: var(--card); }
+
+    .search-wrap {
+      position: relative;
+    }
+
+    .search-input-full {
+      display: block;
+      width: 100%;
+      background: var(--card2);
+      border: none;
+      color: var(--text);
+      border-radius: 8px;
+      padding: .65rem 2.4rem .65rem 2.6rem;
+      font-size: .95rem;
+      font-family: var(--font);
+      outline: none;
+      transition: box-shadow .15s;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238b949e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: left .75rem center;
+    }
+
+    .search-input-full::placeholder {
+      color: var(--text2);
+      opacity: .65;
+    }
+
+    .search-input-full:focus {
+      box-shadow: 0 0 0 3px rgba(58, 184, 183, .12);
+    }
+
+    .search-clear {
+      position: absolute;
+      right: .65rem;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: var(--text2);
+      cursor: pointer;
+      padding: .2rem;
+      line-height: 1;
+      font-size: 1rem;
+      display: none;
+      border-radius: 50%;
+      transition: color .12s, background .12s;
+    }
+
+    .search-clear:hover {
+      color: var(--text);
+      background: rgba(139,148,158,.15);
+    }
+
+    .search-clear.visible { display: flex; align-items: center; justify-content: center; }
+
+    /* Custom Checkbox */
+    .custom-cb {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      cursor: pointer;
+      font-size: 0.85rem;
+      color: var(--text);
+      padding: 0.35rem 0.5rem;
+      border-radius: 4px;
+      transition: background 0.12s;
+      white-space: nowrap;
+    }
+
+    .custom-cb:hover {
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    html[data-theme="light"] .custom-cb:hover {
+      background: rgba(0, 0, 0, 0.05);
+    }
+
+    .custom-cb input {
+      display: none;
+    }
+
+    .custom-cb .cb-box {
+      width: 14px;
+      height: 14px;
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      background: var(--card2);
+      transition: background-color 0.12s, border-color 0.12s;
+      flex-shrink: 0;
+    }
+
+    .custom-cb input:checked+.cb-box {
+      background-color: var(--teal);
+      border-color: var(--teal);
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'%3E%3C/polyline%3E%3C/svg%3E");
+      background-size: 10px;
+      background-repeat: no-repeat;
+      background-position: center;
+    }
+
+    /* ── KPIs ──────────────────────────────────────────────────────────────────── */
+    .kpis {
+      flex-shrink: 0;
+      display: flex;
+      gap: .8rem;
+      padding: 1.7rem 2rem;
+      flex-wrap: wrap;
+      background: var(--bg);
+    }
+
+    .kpi {
+      background: var(--card);
+      border-radius: 8px;
+      padding: 1.5rem 2rem;
+      min-width: 150px;
+    }
+
+    .kpi .lbl {
+      color: var(--text2);
+      font-size: .7rem;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+
+    .kpi .val {
+      font-size: 1.6rem;
+      font-weight: 700;
+      margin-top: 0.5rem;
+    }
+
+    .kpi .sub {
+      font-size: 0.66rem;
+      color: var(--text2);
+      margin-top: 0.12rem;
+    }
+
+    /* ── TABLE WRAP ────────────────────────────────────────────────────────────── */
+    .table-wrap {
+      flex: 1;
+      min-height: 0;
+      overflow: auto;
+    }
+
+    table {
+      border-collapse: collapse;
+      white-space: nowrap;
+      font-size: 14px;
+      font-family: var(--font);
+      border-top: 0;
+    }
+
+    th,
+    td {
+      border: 1px solid var(--border);
+      padding: calc(.38rem + 0.4px) calc(.65rem + 0.4px);
+      vertical-align: middle;
+    }
+
+    th {
+      background: var(--card);
+      color: var(--teal);
+      font-size: .72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      border-bottom: 2px solid var(--teal);
+      border-top: 0;
+    }
+
+    /* All cells: opaque base → prevents sticky column bleed-through */
+    td {
+      background: var(--bg);
+    }
+
+    /* ── ROW HOVER ─────────────────────────────────────────────────────────────── */
+    tbody tr:hover td {
+      background: rgba(255, 255, 255, .08);
+    }
+
+    html[data-theme="light"] tbody tr:hover td {
+      background: rgba(0, 0, 0, .035);
+    }
+
+    tbody tr:hover td.s {
+      background: var(--hover-s);
+    }
+
+    /* ── COLUMN HOVER ──────────────────────────────────────────────────────────── */
+    th.col-hl {
+      background: #1e3535 !important;
+      color: var(--teal);
+    }
+
+    td.col-hl {
+      background: rgba(58, 184, 183, .09) !important;
+    }
+
+    td.s.col-hl {
+      background: #1d3840 !important;
+    }
+
+    /* Cross Intersection (Dark) */
+    tbody tr:hover td.col-hl {
+      background: rgba(58, 184, 183, .17) !important;
+    }
+
+    tbody tr:hover td.s.col-hl {
+      background: #23464f !important;
+    }
+
+    /* Light Theme Column Hover */
+    html[data-theme="light"] th.col-hl {
+      background: #c4e8e8 !important;
+      color: var(--teal);
+    }
+
+    html[data-theme="light"] td.col-hl {
+      background: rgba(13, 115, 119, .06) !important;
+    }
+
+    html[data-theme="light"] td.s.col-hl {
+      background: #d4edef !important;
+    }
+
+    /* Cross Intersection (Light) */
+    html[data-theme="light"] tbody tr:hover td.col-hl {
+      background: rgba(13, 115, 119, .12) !important;
+    }
+
+    html[data-theme="light"] tbody tr:hover td.s.col-hl {
+      background: #c2e5e7 !important;
+    }
+
+    /* ── WARNING ROW ───────────────────────────────────────────────────────────── */
+    tbody tr.row-warn td,
+    tbody tr.row-warn td.s,
+    tbody tr.row-warn td.col-hl,
+    tbody tr.row-warn td.s.col-hl,
+    tbody tr.row-warn:hover td,
+    tbody tr.row-warn:hover td.s,
+    tbody tr.row-warn:hover td.col-hl,
+    tbody tr.row-warn:hover td.s.col-hl {
+      background: #6c0909 !important;
+    }
+
+    html[data-theme="light"] tbody tr.row-warn td,
+    html[data-theme="light"] tbody tr.row-warn td.s,
+    html[data-theme="light"] tbody tr.row-warn td.col-hl,
+    html[data-theme="light"] tbody tr.row-warn td.s.col-hl,
+    html[data-theme="light"] tbody tr.row-warn:hover td,
+    html[data-theme="light"] tbody tr.row-warn:hover td.s,
+    html[data-theme="light"] tbody tr.row-warn:hover td.col-hl,
+    html[data-theme="light"] tbody tr.row-warn:hover td.s.col-hl {
+      background: #ffb6b6 !important;
+    }
+
+    /* ── STICKY FIRST COLUMN ───────────────────────────────────────────────────── */
+    td.s,
+    th.s {
+      position: sticky;
+      left: 0;
+      z-index: 3;
+      min-width: 210px;
+      max-width: 210px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      box-shadow: 4px 0 12px rgba(0, 0, 0, .5);
+    }
+
+    th.s {
+      background: var(--card);
+      z-index: 5;
+    }
+
+    td.s {
+      background: var(--bg);
+      font-weight: 700;
+      color: #3ab8b7;
+    }
+
+    /* ── STICKY TOTAL ROW (tfoot) ──────────────────────────────────────────────── */
+    tfoot {
+      position: sticky;
+      bottom: 0;
+      z-index: 4;
+    }
+
+    tfoot td {
+      background: #0e2424;
+      font-weight: 700;
+      font-size: 14px;
+      color: var(--text);
+      border-top: 2px solid var(--teal);
+      border-bottom: 2px solid var(--teal);
+    }
+
+    tfoot td.s {
+      background: #0e2424;
+      z-index: 6;
+      position: sticky;
+      left: 0;
+    }
+
+    tfoot tr.total td,
+    tfoot tr.total td.now {
+      background-color: #257b7b;
+    }
+
+
+    html[data-theme="light"] tfoot td {
+      background: #d4efef;
+    }
+
+    html[data-theme="light"] tfoot td.s {
+      background: #d4efef;
+    }
+
+    html[data-theme="light"] tfoot tr.total td,
+    html[data-theme="light"] tfoot tr.total td.now {
+      background-color: #d4efef;
+    }
+
+    /* ── GROUP HEADER ROW (Receita Probabilizada) ──────────────────────────────── */
+    thead tr.group-row th {
+      top: -1px;
+      padding: .22rem .65rem;
+      font-size: .72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: transparent;
+      cursor: default;
+      height: 50px;
+      background: var(--card);
+      z-index: 10;
+    }
+
+    thead tr.group-row th.s {
+      z-index: 12;
+    }
+
+    thead tr.group-row th.group-real {
+      color: #0fefa1;
+      background: #172c24;
+      text-align: left;
+      border-bottom: 2px solid #0fefa1 !important;
+      cursor: default;
+      overflow: visible;
+    }
+
+    html[data-theme="light"] thead tr.group-row th.group-real {
+      color: #0aad74;
+      background: #edf9f3;
+      border-bottom-color: #0aad74 !important;
+    }
+
+    thead tr.group-row th.group-months {
+      color: var(--teal);
+      background: #172429;
+      text-align: left;
+      border-bottom: 2px solid var(--teal) !important;
+      cursor: default;
+      overflow: visible;
+    }
+
+    th.m.real {
+      color: #0fefa1;
+      border-bottom-color: #0fefa1;
+    }
+
+    html[data-theme="light"] th.m.real {
+      color: #0aad74;
+      border-bottom-color: #0aad74;
+    }
+
+    th.m.real.col-hl {
+      background: rgba(15, 239, 161, .12) !important;
+      color: #0fefa1;
+    }
+
+    td.m.real.col-hl {
+      background: rgba(15, 239, 161, .08) !important;
+    }
+
+    tbody tr:hover td.m.real.col-hl {
+      background: rgba(15, 239, 161, .16) !important;
+    }
+
+    .sticky-label {
+      position: sticky;
+      left: 215px;
+      display: inline-block;
+      white-space: nowrap;
+    }
+
+    html[data-theme="light"] thead tr.group-row th.group-months {
+      background: rgba(13, 115, 119, .05);
+    }
+
+    thead tr.col-row th {
+      top: 48px;
+      background: var(--card);
+      height: 40px;
+      z-index: 10;
+    }
+
+    thead tr.col-row th.s {
+      z-index: 12;
+    }
+
+    /* ── SEPARATOR ─────────────────────────────────────────────────────────────── */
+    td.m-sep, th.m-sep,
+    td.y-sep, th.y-sep {
+      border-left: 3px solid var(--teal) !important;
+    }
+
+    /* ── MONTHLY ───────────────────────────────────────────────────────────────── */
+    td.m {
+      text-align: right;
+      color: var(--text2);
+      min-width: 92px;
+    }
+
+    td.m.v {
+      color: var(--text);
+    }
+
+    td.m.now {
+      background: rgba(58, 184, 183, .06);
+    }
+
+    th.m {
+      min-width: 92px;
+      text-align: right;
+    }
+
+    th.m.now {
+      background: rgba(58, 184, 183, .08);
+    }
+
+    /* ── PRODUCT CHIPS ─────────────────────────────────────────────────────────── */
+    .chip {
+      display: inline-block;
+      padding: .06rem .42rem;
+      border-radius: 4px;
+      font-size: .7rem;
+      background: rgba(139, 148, 158, .16);
+      color: var(--text);
+      margin: 0 .04rem;
+      font-weight: 400;
+      white-space: nowrap;
+    }
+
+    /* ── QUARTER BADGE ─────────────────────────────────────────────────────────── */
+    .qbadge {
+      display: inline-block;
+      padding: .1rem .45rem;
+      border-radius: 4px;
+      font-size: .72rem;
+      background: rgba(58, 184, 183, .15);
+      color: var(--teal);
+      font-weight: 600;
+    }
+
+    /* Probability */
+    .ph {
+      color: var(--green);
+    }
+
+    .pm {
+      color: var(--yellow);
+    }
+
+    .pl {
+      color: var(--red);
+    }
+
+    /* Bool */
+    .byes {
+      color: var(--green);
+    }
+
+    .bno {
+      color: var(--text2);
+    }
+
+    /* Sortable */
+    th.sortable {
+      cursor: pointer;
+      user-select: none;
+    }
+
+    th.sortable:hover {
+      color: var(--text);
+    }
+
+    .sarr {
+      color: var(--teal);
+      font-size: .7rem;
+      margin-left: .2rem;
+    }
+
+    /* Loading / error */
+    .state {
+      text-align: center;
+      padding: 4rem;
+      color: var(--text2);
+      font-size: .95rem;
+    }
+
+    .state.err {
+      color: var(--red);
+    }
+
+    /* Deal link */
+    a.deal-link {
+      color: var(--teal);
+      text-decoration: none;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: .3rem;
+      overflow: hidden;
+    }
+
+    a.deal-link:hover {
+      text-decoration: underline;
+    }
+
+    a.deal-link .dl-txt {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    a.deal-link .ext-icon {
+      flex-shrink: 0;
+      font-size: .75rem;
+      opacity: 0;
+      transition: opacity .12s;
+      color: var(--teal);
+    }
+
+    a.deal-link:hover .ext-icon {
+      opacity: 1;
+    }
+
+    /* ── CUSTOM TOOLTIP ──────────────────────────────────────────────────────── */
+    .calc-tooltip {
+      position: fixed;
+      background: var(--card);
+      border-radius: 8px;
+      padding: 1rem;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, .3);
+      z-index: 9999;
+      pointer-events: none;
+      font-size: .85rem;
+      color: var(--text);
+      display: none;
+      min-width: 280px;
+      font-family: var(--font);
+    }
+
+    .calc-tooltip.show {
+      display: block;
+    }
+
+    .calc-tooltip .tt-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 1.5rem;
+      margin-bottom: .4rem;
+    }
+
+    .calc-tooltip .tt-row.sep {
+      margin-top: .6rem;
+      padding-top: .6rem;
+    }
+
+    .calc-tooltip .tt-row.total {
+      margin-top: .6rem;
+      padding-top: .6rem;
+      font-weight: 700;
+      color: var(--teal);
+    }
+
+    .calc-tooltip .tt-lbl {
+      color: var(--text2);
+    }
+
+    .calc-tooltip .tt-val {
+      text-align: right;
+      font-weight: 500;
+    }
+
+    /* ── PROB EDITOR MODAL ───────────────────────────────────────────────────── */
+    .prob-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      background: rgba(0, 0, 0, 0.45);
+      backdrop-filter: blur(5px);
+      -webkit-backdrop-filter: blur(5px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s;
+    }
+
+    .prob-overlay.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .prob-modal {
+      position: fixed;
+      top: 0; right: 0; bottom: 0;
+      width: 360px;
+      background: var(--card);
+      border-radius: 12px 0 0 12px;
+      padding: 1.5rem 2rem;
+      overflow-y: auto;
+      box-shadow: -6px 0 32px rgba(0, 0, 0, .35);
+      transform: translateX(100%);
+      transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+      will-change: transform;
+    }
+
+    .prob-overlay.open .prob-modal {
+      transform: translateX(0);
+    }
+
+    .prob-modal h3 {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .prob-field {
+      display: grid;
+      grid-template-columns: 1fr 80px 44px;
+      align-items: center;
+      gap: .6rem;
+      margin-bottom: .9rem;
+      padding: 0.3rem 0.5rem;
+      border-radius: 8px;
+      transition: background 0.12s;
+    }
+
+    .prob-field:hover { background: rgba(255,255,255,0.04); }
+    html[data-theme="light"] .prob-field:hover { background: rgba(0,0,0,0.04); }
+
+    .prob-field label {
+      font-size: .85rem;
+      font-weight: 600;
+      color: var(--text2);
+    }
+
+    .prob-field input {
+      background: var(--bg);
+      border: none;
+      color: var(--text);
+      border-radius: 6px;
+      padding: .35rem .6rem;
+      font-size: .85rem;
+      font-family: var(--font);
+      width: 100%;
+      text-align: right;
+      outline: none;
+    }
+
+    .prob-field input:focus {
+      box-shadow: 0 0 0 2px var(--teal);
+    }
+
+    .prob-field .pct {
+      font-size: .8rem;
+      color: var(--text2);
+      text-align: right;
+    }
+
+    .prob-actions {
+      display: flex;
+      justify-content: center;
+      gap: 1.2rem;
+      margin-top: 1.5rem;
+    }
+
+    .prob-actions button {
+      width: 44px; height: 44px;
+      border-radius: 50%;
+      display: inline-flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      transition: opacity .12s, transform .12s;
+      border: none;
+    }
+
+    .prob-actions button:hover { opacity: .82; transform: scale(1.08); }
+
+    .prob-actions .prob-cancel {
+      background: var(--card2);
+      color: var(--text2);
+    }
+
+    .prob-actions .prob-save {
+      background: var(--teal);
+      color: #0d1117;
+    }
+
+    html[data-theme="light"] .prob-actions .prob-save { color: #fff; }
+
+    /* ── HELP MODAL ──────────────────────────────────────────────────────────── */
+    .help-section { margin-bottom: 1.4rem; }
+    .help-h3 {
+      font-size: 0.82rem; font-weight: 700; text-transform: uppercase;
+      color: var(--teal);
+      margin: 0 0 .55rem; padding-bottom: .35rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .help-p { font-size: 0.84rem; color: var(--text2); margin: 0 0 .35rem; line-height: 1.55; }
+    .help-p strong { color: var(--text); font-weight: 600; }
+    .help-table {
+      width: 100%; border-collapse: collapse; font-size: 0.82rem;
+      margin-top: .35rem;
+    }
+    .help-table th {
+      background: var(--card2); color: var(--text2);
+      font-weight: 600; font-size: 0.75rem; text-transform: uppercase;
+      letter-spacing: .04em; padding: .35rem .6rem; text-align: left;
+      border: 1px solid var(--border);
+    }
+    .help-table td {
+      padding: .35rem .6rem; border: 1px solid var(--border);
+      color: var(--text); vertical-align: top;
+    }
+    .help-table tbody tr:nth-child(even) td { background: var(--even-s); }
+
+    .btn-prob-edit {
+      display: inline-flex; align-items: center; gap: 0.35rem;
+      background: var(--card);
+      border: none;
+      color: var(--text2);
+      border-radius: 20px;
+      padding: .32rem .75rem;
+      font-size: .84rem;
+      font-weight: 600;
+      font-family: var(--font);
+      cursor: pointer;
+      transition: color .12s, background .12s;
+    }
+
+    .btn-prob-edit:hover {
+      color: var(--text);
+    }
+
+    /* ── Header action bar (Apple-style) ─────────────────────────── */
+    .hdr-actions {
+      display: flex;
+      align-items: center;
+      background: rgba(255,255,255,0.09);
+      border-radius: 99px;
+      padding: 7px;
+      gap: 12px;
+    }
+    html[data-theme="light"] .hdr-actions {
+      background: rgba(0,0,0,0.03);
+    }
+    .hdr-btn {
+      width: 32px;
+      height: 32px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: none;
+      border: none;
+      color: var(--text2);
+      border-radius: 99px;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+      position: relative;
+      flex-shrink: 0;
+    }
+    .hdr-btn:hover {
+      background: rgba(255,255,255,0.13);
+      color: var(--text);
+    }
+    html[data-theme="light"] .hdr-btn:hover {
+      background: rgba(0,0,0,0.07);
+    }
+    .hdr-btn:disabled { opacity: 0.4; cursor: default; }
+    .hdr-btn.highlighted {
+      background: var(--teal) !important;
+      color: #fff !important;
+      box-shadow: 0 0 0 2px rgba(58,184,183,.3);
+    }
+    .hdr-btn.highlighted:hover { filter: brightness(.88); }
+    html[data-theme="light"] .hdr-btn.highlighted { color: #fff !important; }
+    @keyframes hdr-spin { to { transform: rotate(360deg); } }
+    .hdr-btn.spinning svg { animation: hdr-spin 0.7s linear infinite; }
+    .hdr-btn::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      top: calc(100% + 7px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--card2);
+      color: var(--text);
+      font-size: 0.73rem;
+      font-family: var(--font);
+      font-weight: 400;
+      padding: 0.26rem 0.62rem;
+      border-radius: 6px;
+      white-space: nowrap;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.15s;
+      z-index: 300;
+    }
+    .hdr-btn[data-tooltip]:hover::after { opacity: 1; }
+    .hdr-sep {
+      width: 1px;
+      height: 16px;
+      background: rgba(255,255,255,0.12);
+      margin: 0 2px;
+      flex-shrink: 0;
+    }
+    html[data-theme="light"] .hdr-sep { background: rgba(0,0,0,0.12); }
+
+    /* ── LOGIN SCREEN ───────────────────────────────────────────────────────── */
+    #login-screen {
+      position: fixed;
+      inset: 0;
+      background: var(--bg);
+      z-index: 10000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .login-card {
+      background: var(--card);
+      border-radius: 12px;
+      padding: 2.5rem 2rem;
+      text-align: center;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+      width: 380px;
+    }
+
+    .login-card h2 {
+      font-size: 1.4rem;
+      margin-bottom: 0.5rem;
+      color: var(--text);
+    }
+
+    .login-card p {
+      font-size: 0.85rem;
+      color: var(--text2);
+      margin-bottom: 2rem;
+    }
+
+    .btn-google {
+      width: 100%;
+      padding: .85rem 1rem;
+      background: #fff;
+      color: #3c4043;
+      border: 1px solid #dadce0;
+      border-radius: 8px;
+      font-size: .95rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background .2s, box-shadow .2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: .75rem;
+      font-family: 'Google Sans', sans-serif;
+    }
+
+    .btn-google:hover {
+      background: #f8f9fa;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, .2);
+    }
+
+    .btn-google:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .btn-google svg {
+      width: 20px;
+      height: 20px;
+      flex-shrink: 0;
+    }
+
+    .domain-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: .4rem;
+      padding: .3rem .7rem;
+      background: rgba(58, 184, 183, .1);
+      border: 1px solid rgba(58, 184, 183, .2);
+      border-radius: 20px;
+      font-size: .75rem;
+      color: var(--teal);
+      margin-top: 1.5rem;
+    }
+
+    .error-msg {
+      color: #f85149;
+      font-size: .8rem;
+      margin-top: 1rem;
+      min-height: 1.2rem;
+    }
+
+    /* ── MOBILE-ONLY ELEMENTS: HIDDEN ON DESKTOP ──────────────────────────────── */
+    .mob-filter-fab,
+    .mob-sheet-overlay { display: none; }
+
+    /* ── MOBILE APP LAYOUT ────────────────────────────────────────────────────── */
+    @media (max-width: 768px) {
+
+      body { font-size: 12px; }
+
+      /* App bar */
+      .header {
+        padding: .65rem 1rem;
+        box-shadow: 0 1px 0 var(--border), 0 2px 10px rgba(0,0,0,.25);
+      }
+      .header h1 { font-size: .9rem; }
+      .header .sub { font-size: .67rem; }
+      #btn-settings { display: none !important; }
+      #btn-export-wrap { display: none !important; }
+
+      /* Filter bar: single horizontal chip strip */
+      #ae-filter-row { display: none !important; }
+
+      /* KPIs: 2-column grid */
+      .kpis {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: .45rem;
+        padding: .6rem .75rem;
+      }
+      .kpi { min-width: 0; padding: .55rem .75rem; border-radius: 10px; }
+      .kpi .val { font-size: 1.05rem; }
+      .kpi .lbl { font-size: .6rem; }
+
+      /* Search */
+      .search-bar { padding: .4rem .75rem; }
+      .search-input-full { font-size: .88rem; padding: .5rem 1rem .5rem 2.3rem; }
+
+      /* Table */
+      .m-hide { display: none !important; }
+      th, td { padding: .3rem .45rem; font-size: 11.5px; }
+      td.s, th.s { min-width: 150px; max-width: 150px; }
+      thead tr.group-row { display: none; }
+      thead tr.col-row th { top: -1px; height: 34px; }
+      thead tr.col-row th.s { top: -1px; }
+      .table-wrap { padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)); }
+
+      /* Mobile Filter FAB */
+      .mob-filter-fab {
+        display: flex;
+        position: fixed;
+        bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+        right: 16px;
+        width: 52px;
+        height: 52px;
+        border-radius: 26px;
+        background: var(--teal);
+        color: #0d1117;
+        border: none;
+        font-size: 1.25rem;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 16px rgba(58,184,183,.45), 0 2px 6px rgba(0,0,0,.35);
+        cursor: pointer;
+        z-index: 500;
+        transition: transform .12s, box-shadow .12s;
+      }
+      .mob-filter-fab:active { transform: scale(.91); }
+      .mob-fab-badge {
+        position: absolute;
+        top: -4px;
+        right: -4px;
+        background: var(--red);
+        color: #fff;
+        border-radius: 10px;
+        font-size: .58rem;
+        font-weight: 700;
+        min-width: 16px;
+        height: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 3px;
+        border: 2px solid var(--bg);
+        display: none;
+      }
+      .mob-fab-badge.visible { display: flex; }
+
+      /* Mobile Sheet Overlay */
+      .mob-sheet-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,.55);
+        z-index: 600;
+        backdrop-filter: blur(3px);
+        -webkit-backdrop-filter: blur(3px);
+        animation: mobFadeIn .2s ease;
+      }
+      .mob-sheet-overlay.open { display: block !important; }
+      @keyframes mobFadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+      /* app-filters becomes bottom sheet on mobile */
+      #app-filters {
+        position: fixed !important;
+        left: 0 !important; right: 0 !important; bottom: 0 !important;
+        flex-direction: column !important;
+        background: var(--card) !important;
+        border-radius: 18px 18px 0 0 !important;
+        padding: 0 1.25rem calc(1.5rem + env(safe-area-inset-bottom, 0px)) !important;
+        z-index: 700 !important;
+        max-height: 80vh !important;
+        overflow-y: auto !important;
+        transform: translateY(110%) !important;
+        transition: transform .28s cubic-bezier(.32,.72,0,1) !important;
+      }
+      #app-filters::before {
+        content: '';
+        display: block;
+        width: 38px; height: 4px;
+        background: var(--border);
+        border-radius: 2px;
+        margin: .8rem auto .5rem;
+        flex-shrink: 0;
+      }
+      #app-filters.mob-open { transform: translateY(0) !important; }
+
+      /* Filter row: 2-column grid inside sheet */
+      #app-filters .filter-row {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        overflow: visible !important;
+        gap: .5rem !important;
+        min-height: 0 !important;
+        padding: .25rem 0 .5rem !important;
+      }
+      #app-filters .fdd-trigger {
+        width: 100% !important;
+        min-width: 0 !important;
+      }
+      #app-filters #completeness-dd {
+        grid-column: 1 !important;
+      }
+      #app-filters .fdd-panel {
+        left: 0 !important; right: 0 !important;
+        min-width: 0 !important; width: 100% !important;
+      }
+      #app-filters .filter-pills-bar {
+        display: flex !important;
+        padding: .25rem 0 .5rem !important;
+      }
+    }
+    /* ── Nav Drawer (shared with CRO Dashboard) ──────────────────────────────── */
+    .nav-drawer{position:fixed;top:0;left:-280px;width:280px;height:100vh;background:var(--card);border-right:1px solid rgba(255,255,255,.08);z-index:1000;transition:left .25s cubic-bezier(0.4,0,0.2,1);display:flex;flex-direction:column}
+    .nav-drawer.open{left:0}
+    .nav-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:999;opacity:0;pointer-events:none;transition:opacity .25s ease}
+    .nav-backdrop.open{opacity:1;pointer-events:auto}
+    .nav-drawer-header{display:flex;align-items:center;gap:.75rem;padding:1.1rem 1.25rem;border-bottom:1px solid rgba(255,255,255,.08)}
+    .nav-drawer-brand{font-weight:600;font-size:1rem;color:var(--text);flex:1}
+    .nav-menu{list-style:none;padding:.5rem 0;margin:0}
+    .nav-item{display:flex;align-items:center;gap:.75rem;padding:.7rem 1.25rem;cursor:pointer;font-size:.9rem;color:var(--text2);transition:background .15s,color .15s;user-select:none}
+    .nav-item:hover{background:rgba(255,255,255,.06);color:var(--text)}
+    .nav-item.active{color:var(--teal);font-weight:500}
+    .nav-item.active svg{stroke:var(--teal)}
+    html[data-theme="light"] .nav-drawer{background:var(--card);border-right-color:rgba(0,0,0,.1)}
+    html[data-theme="light"] .nav-backdrop{background:rgba(0,0,0,.3)}
+    html[data-theme="light"] .nav-item:hover{background:rgba(0,0,0,.04)}
+  </style>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+
+<body>
+
+  <!-- Nav Drawer -->
+  <nav class="nav-drawer" id="nav-drawer" aria-label="Menu principal">
+    <div class="nav-drawer-header">
+      <span class="nav-drawer-brand">Dashboard Axenya</span>
+      <button class="hdr-btn" onclick="closeDrawer()" aria-label="Fechar menu">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <ul class="nav-menu">
+      <li class="nav-item" onclick="window.location.href='/novo'">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        CRO Dashboard
+      </li>
+      <li class="nav-item active">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        Forecast
+      </li>
+    </ul>
+  </nav>
+  <div class="nav-backdrop" id="nav-backdrop" onclick="closeDrawer()"></div>
+
+  <div id="login-screen" style="display:none;">
+    <div class="login-card">
+      <h2>Axenya Forecast</h2>
+      <p>Faça login com sua conta corporativa</p>
+
+      <div id="google-btn-wrapper"
+        style="width:100%; min-height:40px; margin-bottom: 1.5rem; display:flex; justify-content:center;">
+        <span style="color:var(--text2); font-size:0.85rem;">Carregando...</span>
+      </div>
+
+      <div class="domain-badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+        </svg>
+        Restrito a @axenya.com
+      </div>
+
+      <div class="error-msg" id="login-error-msg"></div>
+    </div>
+  </div>
+
+  <div id="calc-tooltip" class="calc-tooltip"></div>
+
+  <div class="header" id="app-header" style="display:none;">
+    <div style="display:flex; align-items:center; gap:1.25rem;">
+      <button class="hdr-btn" onclick="toggleDrawer()" data-tooltip="Menu">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <div class="panel-switcher" id="panel-switcher"><button class="panel-switch-btn" type="button" onclick="togglePanelMenu(event)" aria-haspopup="true" aria-expanded="false"><h1>Forecast</h1><svg class="panel-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button><div class="panel-dd" id="panel-dd" role="menu"></div></div>
+      <div class="seg-ctrl">
+        <button class="seg-btn active" data-view="pipeline" onclick="switchView('pipeline')">Pipeline</button>
+        <button class="seg-btn" data-view="historico" onclick="switchView('historico')">Histórico</button>
+      </div>
+      <span class="sub" id="sub"></span>
+    </div>
+    <div class="hdr-actions">
+      <!-- Usuário logado / Sair -->
+      <button class="hdr-btn" id="btn-person" onclick="logout()" aria-label="Sair">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      </button>
+      <div class="hdr-sep"></div>
+      <!-- Tema -->
+      <button class="hdr-btn" id="btn-theme" onclick="toggleTheme()" aria-label="Alternar tema" data-tooltip="Alternar tema">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+      </button>
+      <!-- Ajuda -->
+      <button class="hdr-btn" id="btn-help" onclick="openHelpModal()" aria-label="Como funciona" data-tooltip="Como funciona">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      </button>
+      <!-- Configurações -->
+      <button class="hdr-btn" id="btn-settings" onclick="openProbEditor()" aria-label="Configurações" data-tooltip="Configurações">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+      <!-- Exportar -->
+      <div id="btn-export-wrap" style="position:relative;">
+        <button class="hdr-btn" id="btn-export" onclick="toggleExportMenu()" aria-label="Exportar" data-tooltip="Exportar dados">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        </button>
+        <div id="export-menu"
+          style="display:none; position:absolute; top:calc(100% + 6px); right:0; background:rgba(22,27,34,0.88); backdrop-filter:blur(20px) saturate(160%); -webkit-backdrop-filter:blur(20px) saturate(160%); border-radius:12px; padding:0.4rem; z-index:300; flex-direction:column; gap:0.3rem; min-width:130px;">
+          <button class="fbtn" style="width:100%; justify-content:center;"
+            onclick="exportData('csv'); toggleExportMenu()">CSV (.csv)</button>
+          <button class="fbtn" style="width:100%; justify-content:center;"
+            onclick="exportData('xlsx'); toggleExportMenu()">Excel (.xlsx)</button>
+        </div>
+      </div>
+      <!-- Atualizar (destacado) -->
+      <button class="hdr-btn highlighted" id="btn-r" onclick="load()" aria-label="Atualizar dados" data-tooltip="Atualizar dados">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+      </button>
+    </div>
+    <span id="user-greeting" style="display:none;"></span>
+  </div>
+
+  <div class="filter-bar" id="app-filters" style="display:none;">
+    <div class="filter-row">
+      <div class="fdd-wrapper">
+        <button class="fdd-trigger" id="btn-pipeline" onclick="togglePipelineMenu()">
+          <span id="btn-pipeline-lbl">Pipeline</span>
+          <span class="fdd-arr"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+        </button>
+        <div id="pipeline-menu" class="fdd-panel">
+          <!-- dynamically populated -->
+        </div>
+      </div>
+      <div class="fdd-wrapper" id="stage-dd">
+        <button class="fdd-trigger" id="stage-dd-trigger" type="button" onclick="toggleStageDd(event)">
+          <span id="stage-dd-label">Etapa</span>
+          <span class="fdd-arr"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+        </button>
+        <div class="fdd-panel" id="stage-dd-panel">
+          <div class="stage-dd-footer">
+            <button type="button" class="fbtn" style="flex:1; justify-content:center; padding:0.2rem" onclick="selectAllStages()">Todas</button>
+            <button type="button" class="fbtn" style="flex:1; justify-content:center; padding:0.2rem" onclick="selectNoStages()">Nenhuma</button>
+          </div>
+          <label class="stage-dd-item"><input type="checkbox" data-stage="Diagnóstico" onchange="onStageCheckbox(this)">Diagnóstico</label>
+          <label class="stage-dd-item"><input type="checkbox" data-stage="Cotação" onchange="onStageCheckbox(this)">Cotação</label>
+          <label class="stage-dd-item"><input type="checkbox" data-stage="Proposta Enviada" onchange="onStageCheckbox(this)">Proposta Enviada</label>
+          <label class="stage-dd-item"><input type="checkbox" data-stage="Consultoria" onchange="onStageCheckbox(this)">Consultoria</label>
+          <label class="stage-dd-item"><input type="checkbox" data-stage="Negociação" onchange="onStageCheckbox(this)">Negociação</label>
+          <label class="stage-dd-item"><input type="checkbox" data-stage="Implantação" onchange="onStageCheckbox(this)">Implantação</label>
+          <label class="stage-dd-item"><input type="checkbox" data-stage="Ganho" onchange="onStageCheckbox(this)">Ganho</label>
+          <label class="stage-dd-item"><input type="checkbox" data-stage="Standby" onchange="onStageCheckbox(this)">Standby</label>
+        </div>
+      </div>
+      <div class="fdd-wrapper">
+        <button class="fdd-trigger" id="btn-ae" onclick="toggleAeMenu()">
+          <span id="btn-ae-lbl">Executivo</span>
+          <span class="fdd-arr"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+        </button>
+        <div id="ae-menu" class="fdd-panel">
+          <!-- dynamically populated -->
+        </div>
+      </div>
+      <div class="fdd-wrapper">
+        <button class="fdd-trigger" id="btn-quarter" onclick="toggleQuarterMenu()">
+          <span id="btn-quarter-lbl">Quarter</span>
+          <span class="fdd-arr"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+        </button>
+        <div id="quarter-menu" class="fdd-panel">
+          <!-- dynamically populated -->
+        </div>
+      </div>
+      <div class="fdd-wrapper">
+        <button class="fdd-trigger" id="btn-modelo" onclick="toggleModeloMenu()">
+          <span id="btn-modelo-lbl">Modelo</span>
+          <span class="fdd-arr"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+        </button>
+        <div id="modelo-menu" class="fdd-panel">
+          <!-- dynamically populated -->
+        </div>
+      </div>
+      <div class="fdd-wrapper">
+        <button class="fdd-trigger" id="btn-tier" onclick="toggleTierMenu()">
+          <span id="btn-tier-lbl">Tier</span>
+          <span class="fdd-arr"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+        </button>
+        <div id="tier-menu" class="fdd-panel">
+          <!-- dynamically populated -->
+        </div>
+      </div>
+      <div class="fdd-wrapper" id="completeness-dd">
+        <button class="fdd-trigger" id="btn-completeness" onclick="toggleCompletenessMenu()" title="Qualidade dos dados" style="min-width:0; width:36px; padding:4px; justify-content:center;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7"/><path d="m21 21-4.3-4.3"/><path d="m7 10 2 2 4-4"/></svg>
+        </button>
+        <div id="completeness-menu" class="fdd-panel" style="right:0; left:auto; min-width:140px;">
+          <div class="stage-dd-item completeness-opt" data-val="all" onclick="setCompletenessFilter('all')"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>Todos</div>
+          <div class="stage-dd-item completeness-opt" data-val="complete" onclick="setCompletenessFilter('complete')"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#3fb950" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Completos</div>
+          <div class="stage-dd-item completeness-opt" data-val="incomplete" onclick="setCompletenessFilter('incomplete')"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#f85149" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Incompletos</div>
+        </div>
+      </div>
+    </div>
+    <div class="filter-pills-bar" id="filter-pills"></div>
+    <div id="ae-filter-row" style="display:none;"></div>
+  </div>
+
+  <!-- Settings Modal -->
+  <div class="prob-overlay" id="prob-overlay" onclick="if(event.target===this)closeProbEditor()">
+    <div class="prob-modal">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:2rem;">
+        <h3 style="margin-bottom:0;">Configurações de Forecast</h3>
+        <button onclick="closeProbEditor()" style="background:none; border:none; cursor:pointer; color:var(--text2); padding:4px; border-radius:6px; display:flex; align-items:center; transition:color .12s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text2)'">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="prob-field">
+        <label>Cotação</label>
+        <input type="text" id="prob-cot">
+        <span class="pct">%</span>
+      </div>
+      <div class="prob-field">
+        <label>Proposta Enviada <span style="opacity:0.5;font-size:0.8em">(BID)</span></label>
+        <input type="text" id="prob-pro">
+        <span class="pct">%</span>
+      </div>
+      <div class="prob-field">
+        <label>Consultoria</label>
+        <input type="text" id="prob-con">
+        <span class="pct">%</span>
+      </div>
+      <div class="prob-field">
+        <label>Negociação</label>
+        <input type="text" id="prob-neg">
+        <span class="pct">%</span>
+      </div>
+      <div class="prob-field">
+        <label>Implantação</label>
+        <input type="text" id="prob-imp">
+        <span class="pct">%</span>
+      </div>
+      <div class="prob-field">
+        <label>Ganho</label>
+        <input type="text" id="prob-gan">
+        <span class="pct">%</span>
+      </div>
+      <div class="prob-field">
+        <label>Standby</label>
+        <input type="text" id="prob-stb">
+        <span class="pct">%</span>
+      </div>
+      <div style="height:1px;background:var(--card2);margin:0.6rem 0;"></div>
+      <div class="prob-field">
+        <label>Diagnóstico <span style="opacity:0.5;font-size:0.8em">(conversão)</span></label>
+        <input type="text" id="prob-dia">
+        <span class="pct">%</span>
+      </div>
+      <div class="prob-actions">
+        <button class="prob-cancel" onclick="closeProbEditor()" title="Cancelar">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+        <button class="prob-save" onclick="saveProbEditor()" title="Salvar e Recalcular">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── HELP MODAL ─────────────────────────────────────────────────────────── -->
+  <div id="help-overlay" onclick="if(event.target===this)closeHelpModal();" class="prob-overlay">
+    <div id="help-modal" class="prob-modal" style="width:min(600px,95vw);">
+      <div class="prob-actions" style="margin-bottom:1.2rem;">
+        <button class="prob-cancel" onclick="closeHelpModal()" title="Fechar">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <h3>Como funciona o cálculo</h3>
+
+      <!-- Probabilidade por etapa -->
+      <section class="help-section">
+        <h3 class="help-h3">Probabilidade por etapa</h3>
+        <p class="help-p">Cada etapa tem uma <strong>probabilidade de conversão padrão</strong>, configurável em Configurações. Ela representa a chance histórica de um deal nessa fase chegar ao fechamento.</p>
+        <table class="help-table">
+          <thead><tr><th>Etapa</th><th>Padrão</th></tr></thead>
+          <tbody id="help-stage-rows"></tbody>
+        </table>
+      </section>
+
+      <!-- Ajuste pelo AE -->
+      <section class="help-section">
+        <h3 class="help-h3">Ajuste pela probabilidade informada pelo AE</h3>
+        <p class="help-p">O AE pode informar sua própria probabilidade de fechamento para cada deal. Ela é comparada com a probabilidade da etapa (P.Etapa):</p>
+        <table class="help-table">
+          <thead><tr><th>Situação</th><th>Probabilidade final</th></tr></thead>
+          <tbody>
+            <tr><td>AE não informou</td><td>P.Etapa (sem ajuste)</td></tr>
+            <tr><td>Prob. AE dentro de ±30 pp da P.Etapa</td><td>P.Etapa (sem ajuste)</td></tr>
+            <tr><td>Prob. AE ≥ P.Etapa + 30 pp</td><td>P.Etapa × 1,10 (+10%)</td></tr>
+            <tr><td>Prob. AE ≤ P.Etapa − 30 pp</td><td>P.Etapa × 0,90 (−10%)</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Receita | Diagnóstico -->
+      <section class="help-section">
+        <h3 class="help-h3">Receita | Diagnóstico</h3>
+        <p class="help-p">Deals em Diagnóstico usam uma lógica própria baseada no número de vidas, pois ainda não há fatura definida.</p>
+        <p class="help-p"><strong>Receita recorrente</strong> = vidas × R$/vida (por faixa)</p>
+        <table class="help-table">
+          <thead><tr><th>Faixa</th><th>R$/vida</th><th>Delay até receita</th></tr></thead>
+          <tbody>
+            <tr><td>Até 200 vidas</td><td>R$ 36</td><td>+ 9 meses do cadastro</td></tr>
+            <tr><td>201 – 4.999 vidas</td><td>R$ 24</td><td>+ 14 meses do cadastro</td></tr>
+            <tr><td>5.000+ vidas</td><td>R$ 12</td><td>+ 18 meses do cadastro</td></tr>
+          </tbody>
+        </table>
+        <p class="help-p" style="margin-top:.6rem;"><strong>Receita probabilizada</strong> = Receita recorrente × Probabilidade ajustada</p>
+        <p class="help-p">Se a data projetada (cadastro + delay) já ficou no passado, a receita é projetada a partir do mês atual.</p>
+      </section>
+
+      <!-- Receita | demais etapas -->
+      <section class="help-section">
+        <h3 class="help-h3">Receita | demais etapas</h3>
+        <p class="help-p">Para todas as outras etapas, a receita mensal é calculada a partir da <strong>primeira fatura</strong> e do <strong>modelo de remuneração</strong>.</p>
+
+        <p class="help-p" style="margin-top:.7rem;"><strong>Fee por vida</strong></p>
+        <p class="help-p">Receita mensal = primeira fatura (valor fixo, todos os meses).</p>
+
+        <p class="help-p" style="margin-top:.7rem;"><strong>Corretagem | sem agenciamento</strong></p>
+        <table class="help-table">
+          <thead><tr><th>Vidas</th><th>Receita mensal</th></tr></thead>
+          <tbody>
+            <tr><td>Menos de 200</td><td>2% da primeira fatura</td></tr>
+            <tr><td>200 ou mais</td><td>5% da primeira fatura</td></tr>
+          </tbody>
+        </table>
+
+        <p class="help-p" style="margin-top:.7rem;"><strong>Corretagem | com agenciamento</strong></p>
+        <table class="help-table">
+          <thead><tr><th>Vidas</th><th>Mês</th><th>Receita</th></tr></thead>
+          <tbody>
+            <tr><td>Menos de 200</td><td>1º ao 3º</td><td>100% da primeira fatura</td></tr>
+            <tr><td>Menos de 200</td><td>4º em diante</td><td>2% da primeira fatura</td></tr>
+            <tr><td>200 ou mais</td><td>1º</td><td>95% da primeira fatura</td></tr>
+            <tr><td>200 ou mais</td><td>2º em diante</td><td>5% da primeira fatura</td></tr>
+          </tbody>
+        </table>
+
+        <p class="help-p" style="margin-top:.7rem;"><strong>Receita probabilizada</strong> = Receita mensal × Probabilidade ajustada</p>
+        <p class="help-p">A receita é projetada a partir da <em>data prevista para receita</em> cadastrada no deal, por até 24 meses.</p>
+      </section>
+
+      <div style="height:1px;background:var(--border);margin:1.2rem 0 1rem;"></div>
+      <p style="font-size:0.75rem;color:var(--text2);margin:0;text-align:center;">Os valores de probabilidade por etapa são configuráveis em <strong>Configurações</strong>. Os R$/vida são fixos.</p>
+    </div>
+  </div>
+
+  <div class="search-bar" id="app-search" style="display:none;">
+    <div class="search-wrap">
+      <input type="text" class="search-input-full" id="search-input" placeholder="Filtrar por nome do negócio..."
+        oninput="setSearchQuery(this.value)">
+      <button class="search-clear" id="search-clear" onclick="clearSearch()" title="Limpar busca">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="kpis">
+    <div class="kpi">
+      <div class="lbl">Deals abertos</div>
+      <div class="val" id="k-deals">—</div>
+      <div class="sub" id="k-deals-sub" style="display:none;"></div>
+    </div>
+    <div class="kpi"
+      data-tip="Soma do ARR Estimado de todos os negócios listados na tabela, ignorando probabilidades de fechamento.">
+      <div class="lbl">ARR total em pipeline</div>
+      <div class="val" id="k-arr">—</div>
+    </div>
+    <div class="kpi"
+      data-tip="ARR Total ponderado (multiplicado) pela Probabilidade Ajustada de cada negócio. Representa a expectativa real de fechamento.">
+      <div class="lbl">ARR ponderado</div>
+      <div class="val" id="k-arrw">—</div>
+    </div>
+    <div class="kpi"
+      data-tip="ARR ponderado dividido por 12 meses. Representa a expectativa real de adição mensal de receita.">
+      <div class="lbl">MRR ponderado</div>
+      <div class="val" id="k-mrrw">—</div>
+    </div>
+  </div>
+
+  <div class="mob-sheet-overlay" id="mob-sheet-overlay" onclick="closeMobileSheet()"></div>
+
+  <div class="table-wrap" id="tw">
+    <div class="state">Buscando dados do HubSpot...</div>
+  </div>
+
+  <!-- ── Painel Histórico ─────────────────────────────────────────────── -->
+  <div id="historico-panel" style="display:none;">
+    <div class="hist-header">
+      <span style="font-size:0.9rem; color:var(--text2)">Mês de referência:</span>
+      <select class="ae-select" id="hist-month-select"
+        onchange="if(this.value) loadHistoricoSnapshot(this.value)">
+        <option value="">Selecione um mês...</option>
+      </select>
+      <span id="hist-loading" style="font-size:0.8rem; color:var(--text2); display:none;">Carregando...</span>
+    </div>
+    <div class="kpis" id="hist-kpis" style="display:none;">
+      <div class="kpi">
+        <div class="lbl">Deals no snapshot</div>
+        <div class="val" id="hk-deals">—</div>
+      </div>
+      <div class="kpi"
+        data-tip="Soma do ARR Estimado de todos os negócios registrados naquele mês de referência.">
+        <div class="lbl">ARR total em pipeline</div>
+        <div class="val" id="hk-arr">—</div>
+      </div>
+      <div class="kpi"
+        data-tip="ARR Total multiplicado pela Probabilidade de cada negócio no mês de referência.">
+        <div class="lbl">ARR ponderado</div>
+        <div class="val" id="hk-arrw">—</div>
+      </div>
+      <div class="kpi"
+        data-tip="ARR ponderado dividido por 12 meses, referente ao mês selecionado.">
+        <div class="lbl">MRR ponderado</div>
+        <div class="val" id="hk-mrrw">—</div>
+      </div>
+    </div>
+    <div id="hist-comparison"></div>
+  </div>
+
+  <button class="mob-filter-fab" id="mob-filter-fab" onclick="openMobileSheet()" title="Filtros avançados">
+    ≡
+    <span class="mob-fab-badge" id="mob-fab-badge"></span>
+  </button>
+
+  <script>
+    // ── CONSTANTS ─────────────────────────────────────────────────────────────
+    const HUB_ID = '44715285';
+    const MONTH_LABELS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+
+    const MONTHS = [];
+    for (let y = 2026; y <= 2027; y++) {
+      for (let mo = 0; mo < 12; mo++) {
+        MONTHS.push({ y, mo, label: MONTH_LABELS[mo] + ' ' + y, key: y * 100 + mo });
+      }
+    }
+
+    const _today = new Date();
+    const NOW_KEY = _today.getFullYear() * 100 + _today.getMonth();
+
+    const STAGE_PROB_DEFAULT = { 'Cotação': 0.185790008, 'Proposta Enviada': 0.285, 'Consultoria': 0.284954, 'Negociação': 0.493, 'Implantação': 0.8, 'Ganho': 1.0, 'Standby': 0.12, 'Diagnóstico': 0.06 };
+    let STAGE_PROB = (() => {
+      try {
+        const saved = localStorage.getItem('forecast_stage_prob');
+        if (saved) return { ...STAGE_PROB_DEFAULT, ...JSON.parse(saved) };
+      } catch { }
+      return { ...STAGE_PROB_DEFAULT };
+    })();
+    const VPV_DEFAULT = { s: 36, m: 24, l: 12 };
+    let VALOR_POR_VIDA = (() => {
+      try {
+        const saved = localStorage.getItem('forecast_vpv_tiers');
+        if (saved) return { ...VPV_DEFAULT, ...JSON.parse(saved) };
+      } catch { }
+      return { ...VPV_DEFAULT };
+    })();
+    function getVpv(vidas) {
+      if (!vidas || vidas <= 200) return VALOR_POR_VIDA.s;
+      if (vidas <= 4999) return VALOR_POR_VIDA.m;
+      return VALOR_POR_VIDA.l;
+    }
+
+    // ── STATE ─────────────────────────────────────────────────────────────────
+    let allDeals = [];
+    let stageFilter = new Set();
+    let quarterFilter = new Set();
+    let tierFilter = new Set();
+    let modeloFilter = new Set();
+    let aeFilter = new Set();
+    let pipelineFilter = new Set();
+    let searchQuery = '';
+    let completenessFilter = 'all'; // 'all' | 'complete' | 'incomplete'
+    let sortKey = 'stage';
+    let sortDir = 1;
+
+    // ── HELPERS ───────────────────────────────────────────────────────────────
+    function esc(s) {
+      return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+    function fmtBRL(v) {
+      if (v == null || isNaN(v)) return '-';
+      return Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    }
+    function fmtNum(v) { return v == null ? '-' : Number(v).toLocaleString('pt-BR'); }
+    function fmtPct(v) { return v == null ? '-' : (v * 100).toFixed(1).replace('.', ',') + '%'; }
+    function fmtDate(v) {
+      if (!v) return '-';
+      const [y, m, d] = String(v).substring(0, 10).split('-');
+      return `${d}/${m}/${y}`;
+    }
+    function probCls(v) {
+      if (v == null) return '';
+      return v >= 0.7 ? 'ph' : v >= 0.4 ? 'pm' : 'pl';
+    }
+
+    // Quarter is "empty" if no 4-digit year, or if value is "false"/"true" (bare HubSpot values)
+    function quarterEmpty(q) {
+      if (!q) return true;
+      const s = String(q).trim().toLowerCase();
+      if (s === 'false' || s === 'true') return true;
+      return !/\d{4}/.test(s);
+    }
+
+    function parseQuarter(q) {
+      if (!q) return null;
+      const s = String(q).replace(/\s+/g, '').toUpperCase();
+      const m = s.match(/Q([1-4])[^0-9]*(\d{4})/);
+      if (m) return { y: parseInt(m[2]), mo: (parseInt(m[1]) - 1) * 3 };
+      const d = new Date(q);
+      if (!isNaN(d) && String(q).length >= 8) return { y: d.getFullYear(), mo: d.getMonth() };
+      return null;
+    }
+
+    // Parse "YYYY-MM-DD" → { y, mo } (month index 0-11)
+    function parseRevenueDate(dateStr) {
+      if (!dateStr) return null;
+      const m = String(dateStr).match(/^(\d{4})-(\d{2})/);
+      if (m) return { y: parseInt(m[1]), mo: parseInt(m[2]) - 1 };
+      return null;
+    }
+
+    // Returns true if the deal has any field considered incomplete
+    function hasAnyEmpty(d) {
+      if (!d.produto) return true;
+      if (d.vidas == null) return true;
+      if (d.colaboradores == null) return true;
+      if (d.primeira_fatura == null) return true;
+      if (!d.modelo_remuneracao) return true;
+      if (d.possui_agenciamento == null) return true;
+      if (d.possui_vitalicio == null) return true;
+      if (d.probabilidade == null) return true;
+      if (quarterEmpty(d.quarter)) return true;
+      if (!d.data_prevista_para_receita) return true;
+      return false;
+    }
+
+    // ── REVENUE CALC ──────────────────────────────────────────────────────────
+    function calcReceita(n, deal) {
+      const pf = deal.primeira_fatura;
+      const vidas = deal.vidas || 0;
+      const mod = deal.modelo_remuneracao;
+      const agenc = deal.possui_agenciamento;
+      if (!pf || !mod) return null;
+      if (mod === 'Fee por vida') return pf;
+      if (mod === 'Corretagem') {
+        if (agenc === true) {
+          return vidas < 200 ? (n <= 3 ? pf : pf * 0.02) : (n === 1 ? pf * 0.95 : pf * 0.05);
+        }
+        return vidas < 200 ? pf * 0.02 : pf * 0.05;
+      }
+      return null;
+    }
+
+    function calcProbInfo(deal) {
+      const sp = STAGE_PROB[deal.stage];
+      if (sp == null) return { sp: null, cp: null, final: null, modStr: '' };
+      const cp = deal.probabilidade;
+      if (cp == null) return { sp, cp, final: sp, modStr: 'AE não informou (usando P. Etapa)' };
+      if (cp <= sp - 0.3) return { sp, cp, final: sp * 0.9, modStr: 'Penalidade (-10% sobre P. Etapa)' };
+      if (cp >= sp + 0.3) return { sp, cp, final: sp * 1.1, modStr: 'Bônus (+10% sobre P. Etapa)' };
+      return { sp, cp, final: sp, modStr: 'Dentro da margem (sem ajuste)' };
+    }
+
+    // ── THEME ─────────────────────────────────────────────────────────────────
+    const SVG_SUN     = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>`;
+    const SVG_MOON    = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`;
+    const SVG_REFRESH = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>`;
+
+    function toggleTheme() {
+      const isLight = document.documentElement.dataset.theme === 'light';
+      document.documentElement.dataset.theme = isLight ? 'dark' : 'light';
+      document.getElementById('btn-theme').innerHTML = isLight ? SVG_SUN : SVG_MOON;
+    }
+
+    // ── COMPLETENESS FILTER ───────────────────────────────────────────────────
+    function updateCompletenessPanel() {
+      document.querySelectorAll('#completeness-menu .completeness-opt').forEach(opt => {
+        opt.classList.toggle('completeness-active', opt.dataset.val === completenessFilter);
+      });
+      const btn = document.getElementById('btn-completeness');
+      if (btn) btn.classList.toggle('filter-active', completenessFilter !== 'all');
+    }
+
+    function toggleCompletenessMenu() {
+      document.getElementById('completeness-dd')?.classList.toggle('open');
+    }
+
+    function setCompletenessFilter(mode) {
+      completenessFilter = completenessFilter === mode ? 'all' : mode;
+      document.getElementById('completeness-dd')?.classList.remove('open');
+      updateCompletenessPanel();
+      applyAndRender();
+    }
+
+    // ── HELP MODAL ────────────────────────────────────────────────────────────
+    function openHelpModal() {
+      const rows = ['Diagnóstico','Cotação','Proposta Enviada','Consultoria','Negociação','Implantação','Ganho','Standby'];
+      const tbody = document.getElementById('help-stage-rows');
+      if (tbody) {
+        tbody.innerHTML = rows.map(s => {
+          const v = STAGE_PROB[s];
+          return `<tr><td>${s}</td><td>${v != null ? (v * 100).toFixed(1).replace('.', ',') + '%' : '—'}</td></tr>`;
+        }).join('');
+      }
+      document.getElementById('help-overlay').classList.add('open');
+    }
+    function closeHelpModal() {
+      document.getElementById('help-overlay').classList.remove('open');
+    }
+
+    // ── PROB EDITOR ───────────────────────────────────────────────────────────
+    function openProbEditor() {
+      document.getElementById('prob-cot').value = (STAGE_PROB['Cotação'] * 100).toFixed(1).replace('.', ',');
+      document.getElementById('prob-pro').value = (STAGE_PROB['Proposta Enviada'] * 100).toFixed(1).replace('.', ',');
+      document.getElementById('prob-con').value = (STAGE_PROB['Consultoria'] * 100).toFixed(1).replace('.', ',');
+      document.getElementById('prob-neg').value = (STAGE_PROB['Negociação'] * 100).toFixed(1).replace('.', ',');
+      document.getElementById('prob-imp').value = (STAGE_PROB['Implantação'] * 100).toFixed(1).replace('.', ',');
+      document.getElementById('prob-gan').value = (STAGE_PROB['Ganho'] * 100).toFixed(1).replace('.', ',');
+      document.getElementById('prob-stb').value = (STAGE_PROB['Standby'] * 100).toFixed(1).replace('.', ',');
+      document.getElementById('prob-dia').value = (STAGE_PROB['Diagnóstico'] * 100).toFixed(1).replace('.', ',');
+      document.getElementById('prob-overlay').classList.add('open');
+    }
+
+    function closeProbEditor() {
+      document.getElementById('prob-overlay').classList.remove('open');
+    }
+
+    function saveProbEditor() {
+      const cot = parseFloat(document.getElementById('prob-cot').value.replace(',', '.'));
+      const pro = parseFloat(document.getElementById('prob-pro').value.replace(',', '.'));
+      const con = parseFloat(document.getElementById('prob-con').value.replace(',', '.'));
+      const neg = parseFloat(document.getElementById('prob-neg').value.replace(',', '.'));
+      const imp = parseFloat(document.getElementById('prob-imp').value.replace(',', '.'));
+      const gan = parseFloat(document.getElementById('prob-gan').value.replace(',', '.'));
+      const stb = parseFloat(document.getElementById('prob-stb').value.replace(',', '.'));
+      const dia = parseFloat(document.getElementById('prob-dia').value.replace(',', '.'));
+      if ([cot,pro,con,neg,imp,gan,stb,dia].some(isNaN)) return alert('Preencha todos os campos com valores numéricos.');
+      if ([cot,pro,con,neg,imp,gan,stb,dia].some(v => v < 0 || v > 100)) return alert('Probabilidades devem estar entre 0 e 100.');
+      STAGE_PROB['Cotação'] = cot / 100;
+      STAGE_PROB['Proposta Enviada'] = pro / 100;
+      STAGE_PROB['Consultoria'] = con / 100;
+      STAGE_PROB['Negociação'] = neg / 100;
+      STAGE_PROB['Implantação'] = imp / 100;
+      STAGE_PROB['Ganho'] = gan / 100;
+      STAGE_PROB['Standby'] = stb / 100;
+      STAGE_PROB['Diagnóstico'] = dia / 100;
+      try {
+        localStorage.setItem('forecast_stage_prob', JSON.stringify(STAGE_PROB));
+      } catch { }
+      closeProbEditor();
+      applyAndRender();
+    }
+
+    function buildPipelineFilter() {
+      const pMenu = document.getElementById('pipeline-menu');
+      if (!pMenu) return;
+      const pipelines = ['Vendas', 'Bid'];
+      let h = `
+        <div style="display:flex; gap:0.4rem; margin-bottom:0; padding-bottom:0.3rem;">
+          <button class="fbtn" style="flex:1; justify-content:center; padding:0.2rem" onclick="selectAllPipelines()">Todos</button>
+          <button class="fbtn" style="flex:1; justify-content:center; padding:0.2rem" onclick="clearAllPipelines()">Nenhum</button>
+        </div>
+      `;
+      pipelines.forEach(p => {
+        const isChecked = pipelineFilter.size === 0 ? true : pipelineFilter.has(p);
+        h += `
+          <label class="custom-cb">
+            <input type="checkbox" value="${esc(p)}" onchange="togglePipeline()" ${isChecked ? 'checked' : ''}>
+            <span class="cb-box"></span>
+            ${esc(p)}
+          </label>
+        `;
+      });
+      pMenu.innerHTML = h;
+      updatePipelineBtnLabel();
+    }
+
+    function togglePipelineMenu() {
+      document.getElementById('btn-pipeline')?.closest('.fdd-wrapper')?.classList.toggle('open');
+    }
+
+    function selectAllPipelines() {
+      pipelineFilter.clear();
+      document.querySelectorAll('#pipeline-menu input[type="checkbox"]').forEach(cb => cb.checked = true);
+      updatePipelineBtnLabel();
+      applyAndRender();
+    }
+
+    function clearAllPipelines() {
+      pipelineFilter.clear();
+      pipelineFilter.add('__NONE__');
+      document.querySelectorAll('#pipeline-menu input[type="checkbox"]').forEach(cb => cb.checked = false);
+      updatePipelineBtnLabel();
+      applyAndRender();
+    }
+
+    function togglePipeline() {
+      pipelineFilter.clear();
+      const cbs = document.querySelectorAll('#pipeline-menu input[type="checkbox"]');
+      let n = 0;
+      cbs.forEach(cb => { if (cb.checked) { pipelineFilter.add(cb.value); n++; } });
+      if (n === 0) pipelineFilter.add('__NONE__');
+      else if (n === cbs.length) pipelineFilter.clear();
+      updatePipelineBtnLabel();
+      applyAndRender();
+    }
+
+    function updatePipelineBtnLabel() {
+      const lbl = document.getElementById('btn-pipeline-lbl');
+      const btn = document.getElementById('btn-pipeline');
+      if (!lbl) return;
+      if (pipelineFilter.size === 0) {
+        lbl.textContent = 'Pipeline'; btn && btn.classList.remove('filter-active');
+      } else if (pipelineFilter.has('__NONE__')) {
+        lbl.textContent = 'Nenhum'; btn && btn.classList.add('filter-active');
+      } else {
+        lbl.textContent = pipelineFilter.size + ' selecionado' + (pipelineFilter.size > 1 ? 's' : '');
+        btn && btn.classList.add('filter-active');
+      }
+    }
+
+    // ── AE FILTER ─────────────────────────────────────────────────────────────
+    function buildAeFilter(deals) {
+      const aMenu = document.getElementById('ae-menu');
+      if (!aMenu) return;
+      const aes = [...new Set(deals.map(d => d.ae).filter(a => a && a !== '-'))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+      let h = `
+        <div style="display:flex; gap:0.4rem; margin-bottom:0; padding-bottom:0.3rem;">
+          <button class="fbtn" style="flex:1; justify-content:center; padding:0.2rem" onclick="selectAllAes()">Todos</button>
+          <button class="fbtn" style="flex:1; justify-content:center; padding:0.2rem" onclick="clearAllAes()">Nenhum</button>
+        </div>
+      `;
+      aes.forEach(ae => {
+        const isChecked = aeFilter.size === 0 ? true : aeFilter.has(ae);
+        h += `
+          <label class="custom-cb">
+            <input type="checkbox" value="${esc(ae)}" onchange="toggleAe()" ${isChecked ? 'checked' : ''}>
+            <span class="cb-box"></span>
+            ${esc(ae)}
+          </label>
+        `;
+      });
+      aMenu.innerHTML = h;
+      updateAeBtnLabel();
+    }
+
+    function toggleAeMenu() {
+      document.getElementById('btn-ae')?.closest('.fdd-wrapper')?.classList.toggle('open');
+    }
+
+    function selectAllAes() {
+      aeFilter.clear();
+      document.querySelectorAll('#ae-menu input[type="checkbox"]').forEach(cb => cb.checked = true);
+      updateAeBtnLabel();
+      applyAndRender();
+    }
+
+    function clearAllAes() {
+      aeFilter.clear();
+      aeFilter.add('__NONE__');
+      document.querySelectorAll('#ae-menu input[type="checkbox"]').forEach(cb => cb.checked = false);
+      updateAeBtnLabel();
+      applyAndRender();
+    }
+
+    function toggleAe() {
+      aeFilter.clear();
+      const cbs = document.querySelectorAll('#ae-menu input[type="checkbox"]');
+      let n = 0;
+      cbs.forEach(cb => { if (cb.checked) { aeFilter.add(cb.value); n++; } });
+      if (n === 0) aeFilter.add('__NONE__');
+      else if (n === cbs.length) aeFilter.clear();
+      updateAeBtnLabel();
+      applyAndRender();
+    }
+
+    function updateAeBtnLabel() {
+      const lbl = document.getElementById('btn-ae-lbl');
+      const btn = document.getElementById('btn-ae');
+      if (!lbl) return;
+      if (aeFilter.size === 0) {
+        lbl.textContent = 'Executivo'; btn && btn.classList.remove('filter-active');
+      } else if (aeFilter.has('__NONE__')) {
+        lbl.textContent = 'Nenhum'; btn && btn.classList.add('filter-active');
+      } else {
+        lbl.textContent = aeFilter.size + ' selecionado' + (aeFilter.size > 1 ? 's' : '');
+        btn && btn.classList.add('filter-active');
+      }
+    }
+
+    function setSearchQuery(value) {
+      searchQuery = value.trim();
+      const btn = document.getElementById('search-clear');
+      if (btn) btn.classList.toggle('visible', searchQuery.length > 0);
+      applyAndRender();
+    }
+
+    function clearSearch() {
+      const input = document.getElementById('search-input');
+      if (input) input.value = '';
+      setSearchQuery('');
+      input && input.focus();
+    }
+
+    // ── MOBILE SHEET ──────────────────────────────────────────────────────────
+    function openMobileSheet() {
+      const f = document.getElementById('app-filters');
+      if (f) { f.style.display = 'flex'; f.classList.add('mob-open'); }
+      document.getElementById('mob-sheet-overlay').classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeMobileSheet() {
+      const f = document.getElementById('app-filters');
+      if (f) {
+        f.classList.remove('mob-open');
+        setTimeout(() => { if (!f.classList.contains('mob-open')) f.style.display = 'none'; }, 280);
+      }
+      document.getElementById('mob-sheet-overlay').classList.remove('open');
+      document.body.style.overflow = '';
+    }
+
+    function updateMobFabBadge() {
+      const badge = document.getElementById('mob-fab-badge');
+      if (!badge) return;
+      let count = 0;
+      if (pipelineFilter.size > 0) count++;
+      if (aeFilter.size > 0) count++;
+      if (quarterFilter.size > 0) count++;
+      if (tierFilter.size > 0) count++;
+      if (modeloFilter.size > 0) count++;
+      badge.textContent = count;
+      badge.classList.toggle('visible', count > 0);
+    }
+
+    // ── QUARTER FILTER ────────────────────────────────────────────────────────
+    function buildQuarterFilter(deals) {
+      const qMenu = document.getElementById('quarter-menu');
+      if (!qMenu) return;
+      const quarters = [...new Set(deals.map(d => d.quarter).filter(q => q && String(q) !== 'false'))]
+        .sort((a, b) => {
+          const [qa, ya] = String(a).split(' ');
+          const [qb, yb] = String(b).split(' ');
+          if (ya !== yb) return parseInt(ya) - parseInt(yb);
+          return qa.localeCompare(qb);
+        });
+
+      let h = `
+        <div style="display:flex; gap:0.4rem; margin-bottom:0; padding-bottom:0.3rem;">
+          <button class="fbtn" style="flex:1; justify-content:center; padding:0.2rem" onclick="selectAllQuarters()">Todos</button>
+          <button class="fbtn" style="flex:1; justify-content:center; padding:0.2rem" onclick="clearAllQuarters()">Nenhum</button>
+        </div>
+      `;
+      quarters.forEach(q => {
+        const isChecked = quarterFilter.size === 0 ? true : quarterFilter.has(q);
+        h += `
+          <label class="custom-cb">
+            <input type="checkbox" value="${esc(q)}" onchange="toggleQuarter()" ${isChecked ? 'checked' : ''}>
+            <span class="cb-box"></span>
+            ${esc(q)}
+          </label>
+        `;
+      });
+      qMenu.innerHTML = h;
+      updateQuarterBtnLabel();
+    }
+
+    function toggleQuarterMenu() {
+      document.getElementById('btn-quarter')?.closest('.fdd-wrapper')?.classList.toggle('open');
+    }
+
+    function selectAllQuarters() {
+      quarterFilter.clear();
+      const cbs = document.querySelectorAll('#quarter-menu input[type="checkbox"]');
+      cbs.forEach(cb => cb.checked = true);
+      updateQuarterBtnLabel();
+      applyAndRender();
+    }
+
+    function clearAllQuarters() {
+      quarterFilter.clear();
+      quarterFilter.add('__NONE__');
+      const cbs = document.querySelectorAll('#quarter-menu input[type="checkbox"]');
+      cbs.forEach(cb => cb.checked = false);
+      updateQuarterBtnLabel();
+      applyAndRender();
+    }
+
+    function toggleQuarter() {
+      quarterFilter.clear();
+      const cbs = document.querySelectorAll('#quarter-menu input[type="checkbox"]');
+      let checkedCount = 0;
+      cbs.forEach(cb => {
+        if (cb.checked) {
+          quarterFilter.add(cb.value);
+          checkedCount++;
+        }
+      });
+      if (checkedCount === 0) quarterFilter.add('__NONE__');
+      else if (checkedCount === cbs.length) quarterFilter.clear();
+
+      updateQuarterBtnLabel();
+      applyAndRender();
+    }
+
+    function updateQuarterBtnLabel() {
+      const lbl = document.getElementById('btn-quarter-lbl');
+      const btn = document.getElementById('btn-quarter');
+      if (!lbl) return;
+      if (quarterFilter.size === 0) {
+        lbl.textContent = 'Quarter'; btn && btn.classList.remove('filter-active');
+      } else if (quarterFilter.has('__NONE__')) {
+        lbl.textContent = 'Nenhum'; btn && btn.classList.add('filter-active');
+      } else {
+        lbl.textContent = quarterFilter.size + ' selecionado' + (quarterFilter.size > 1 ? 's' : '');
+        btn && btn.classList.add('filter-active');
+      }
+    }
+
+    // ── TIER FILTER ───────────────────────────────────────────────────────────
+    const TIERS = [
+      { id: 'PME', label: 'PME (0 a 199)' },
+      { id: 'Tier 3', label: 'Tier 3 (200 a 499)' },
+      { id: 'Tier 2', label: 'Tier 2 (500 a 4.999)' },
+      { id: 'Tier 1', label: 'Tier 1 (> 5.000)' }
+    ];
+    function getTier(vidas) {
+      if (vidas == null) return null;
+      if (vidas <= 199) return 'PME';
+      if (vidas <= 499) return 'Tier 3';
+      if (vidas <= 4999) return 'Tier 2';
+      return 'Tier 1';
+    }
+
+    function buildTierFilter() {
+      const tMenu = document.getElementById('tier-menu');
+      if (!tMenu) return;
+      let h = `
+        <div style="display:flex; gap:0.4rem; margin-bottom:0; padding-bottom:0.3rem;">
+          <button class="fbtn" style="flex:1; justify-content:center; padding:0.2rem" onclick="selectAllTiers()">Todos</button>
+          <button class="fbtn" style="flex:1; justify-content:center; padding:0.2rem" onclick="clearAllTiers()">Nenhum</button>
+        </div>
+      `;
+      TIERS.forEach(t => {
+        const isChecked = tierFilter.size === 0 ? true : tierFilter.has(t.id);
+        h += `
+          <label class="custom-cb">
+            <input type="checkbox" value="${t.id}" onchange="toggleTier()" ${isChecked ? 'checked' : ''}>
+            <span class="cb-box"></span>
+            ${t.label}
+          </label>
+        `;
+      });
+      tMenu.innerHTML = h;
+      updateTierBtnLabel();
+    }
+
+    function toggleTierMenu() {
+      document.getElementById('btn-tier')?.closest('.fdd-wrapper')?.classList.toggle('open');
+    }
+
+    function selectAllTiers() {
+      tierFilter.clear();
+      const cbs = document.querySelectorAll('#tier-menu input[type="checkbox"]');
+      cbs.forEach(cb => cb.checked = true);
+      updateTierBtnLabel();
+      applyAndRender();
+    }
+
+    function clearAllTiers() {
+      tierFilter.clear();
+      tierFilter.add('__NONE__');
+      const cbs = document.querySelectorAll('#tier-menu input[type="checkbox"]');
+      cbs.forEach(cb => cb.checked = false);
+      updateTierBtnLabel();
+      applyAndRender();
+    }
+
+    function toggleTier() {
+      tierFilter.clear();
+      const cbs = document.querySelectorAll('#tier-menu input[type="checkbox"]');
+      let checkedCount = 0;
+      cbs.forEach(cb => {
+        if (cb.checked) {
+          tierFilter.add(cb.value);
+          checkedCount++;
+        }
+      });
+      if (checkedCount === 0) tierFilter.add('__NONE__');
+      else if (checkedCount === cbs.length) tierFilter.clear();
+
+      updateTierBtnLabel();
+      applyAndRender();
+    }
+
+    function updateTierBtnLabel() {
+      const lbl = document.getElementById('btn-tier-lbl');
+      const btn = document.getElementById('btn-tier');
+      if (!lbl) return;
+      if (tierFilter.size === 0) {
+        lbl.textContent = 'Tier'; btn && btn.classList.remove('filter-active');
+      } else if (tierFilter.has('__NONE__')) {
+        lbl.textContent = 'Nenhum'; btn && btn.classList.add('filter-active');
+      } else {
+        lbl.textContent = tierFilter.size + ' selecionado' + (tierFilter.size > 1 ? 's' : '');
+        btn && btn.classList.add('filter-active');
+      }
+    }
+
+    // ── MODELO FILTER ─────────────────────────────────────────────────────────
+    function buildModeloFilter() {
+      const mMenu = document.getElementById('modelo-menu');
+      if (!mMenu) return;
+      const modelos = [...new Set(allDeals.map(d => d.modelo_remuneracao || '__NULL__'))].sort((a, b) => {
+        if (a === '__NULL__') return 1;
+        if (b === '__NULL__') return -1;
+        return a.localeCompare(b, 'pt-BR');
+      });
+      let h = `
+        <div style="display:flex; gap:0.4rem; margin-bottom:0; padding-bottom:0.3rem;">
+          <button class="fbtn" style="flex:1; justify-content:center; padding:0.2rem" onclick="selectAllModelos()">Todos</button>
+          <button class="fbtn" style="flex:1; justify-content:center; padding:0.2rem" onclick="clearAllModelos()">Nenhum</button>
+        </div>
+      `;
+      modelos.forEach(m => {
+        const isChecked = modeloFilter.size === 0 ? true : modeloFilter.has(m);
+        const lbl = m === '__NULL__' ? '(sem modelo)' : m;
+        h += `
+          <label class="custom-cb">
+            <input type="checkbox" value="${m}" onchange="toggleModelo()" ${isChecked ? 'checked' : ''}>
+            <span class="cb-box"></span>
+            ${lbl}
+          </label>
+        `;
+      });
+      mMenu.innerHTML = h;
+      updateModeloBtnLabel();
+    }
+
+    function toggleModeloMenu() {
+      document.getElementById('btn-modelo')?.closest('.fdd-wrapper')?.classList.toggle('open');
+    }
+
+    function selectAllModelos() {
+      modeloFilter.clear();
+      const cbs = document.querySelectorAll('#modelo-menu input[type="checkbox"]');
+      cbs.forEach(cb => cb.checked = true);
+      updateModeloBtnLabel();
+      applyAndRender();
+    }
+
+    function clearAllModelos() {
+      modeloFilter.clear();
+      modeloFilter.add('__NONE__');
+      const cbs = document.querySelectorAll('#modelo-menu input[type="checkbox"]');
+      cbs.forEach(cb => cb.checked = false);
+      updateModeloBtnLabel();
+      applyAndRender();
+    }
+
+    function toggleModelo() {
+      modeloFilter.clear();
+      const cbs = document.querySelectorAll('#modelo-menu input[type="checkbox"]');
+      let checkedCount = 0;
+      cbs.forEach(cb => {
+        if (cb.checked) {
+          modeloFilter.add(cb.value);
+          checkedCount++;
+        }
+      });
+      if (checkedCount === 0) modeloFilter.add('__NONE__');
+      else if (checkedCount === cbs.length) modeloFilter.clear();
+      updateModeloBtnLabel();
+      applyAndRender();
+    }
+
+    function updateModeloBtnLabel() {
+      const lbl = document.getElementById('btn-modelo-lbl');
+      const btn = document.getElementById('btn-modelo');
+      if (!lbl) return;
+      if (modeloFilter.size === 0) {
+        lbl.textContent = 'Modelo'; btn && btn.classList.remove('filter-active');
+      } else if (modeloFilter.has('__NONE__')) {
+        lbl.textContent = 'Nenhum'; btn && btn.classList.add('filter-active');
+      } else {
+        lbl.textContent = modeloFilter.size + ' selecionado' + (modeloFilter.size > 1 ? 's' : '');
+        btn && btn.classList.add('filter-active');
+      }
+    }
+
+    // ── FILTER PILLS ─────────────────────────────────────────────────────────
+    function syncFilterPills() {
+      const bar = document.getElementById('filter-pills');
+      if (!bar) return;
+      const pills = [];
+
+      if (pipelineFilter.size > 0) {
+        const label = pipelineFilter.has('__NONE__') ? 'Pipeline: Nenhum'
+          : pipelineFilter.size === 1 ? `Pipeline: ${[...pipelineFilter][0]}` : `Pipeline (${pipelineFilter.size})`;
+        pills.push({ label, clear: 'selectAllPipelines()' });
+      }
+      if (stageFilter.size > 0) {
+        const label = stageFilter.has('__NONE__') ? 'Etapa: Nenhuma'
+          : stageFilter.size === 1 ? `Etapa: ${[...stageFilter][0]}` : `Etapa (${stageFilter.size})`;
+        pills.push({ label, clear: 'selectAllStages()' });
+      }
+      if (aeFilter.size > 0) {
+        const label = aeFilter.has('__NONE__') ? 'Executivo: Nenhum'
+          : aeFilter.size === 1 ? `Executivo: ${[...aeFilter][0]}` : `Executivo (${aeFilter.size})`;
+        pills.push({ label, clear: 'selectAllAes()' });
+      }
+      if (quarterFilter.size > 0) {
+        const label = quarterFilter.has('__NONE__') ? 'Quarter: Nenhum'
+          : quarterFilter.size === 1 ? `Quarter: ${[...quarterFilter][0]}` : `Quarter (${quarterFilter.size})`;
+        pills.push({ label, clear: 'selectAllQuarters()' });
+      }
+      if (tierFilter.size > 0) {
+        const label = tierFilter.has('__NONE__') ? 'Tier: Nenhum'
+          : tierFilter.size === 1 ? `Tier: ${[...tierFilter][0]}` : `Tier (${tierFilter.size})`;
+        pills.push({ label, clear: 'selectAllTiers()' });
+      }
+      if (modeloFilter.size > 0) {
+        const raw = modeloFilter.has('__NONE__') ? null : (modeloFilter.size === 1 ? [...modeloFilter][0] : null);
+        const label = modeloFilter.has('__NONE__') ? 'Modelo: Nenhum'
+          : modeloFilter.size === 1 ? `Modelo: ${raw === '__NULL__' ? '(sem modelo)' : raw}` : `Modelo (${modeloFilter.size})`;
+        pills.push({ label, clear: 'selectAllModelos()' });
+      }
+      if (completenessFilter !== 'all')
+        pills.push({ label: completenessFilter === 'complete' ? 'Completos' : 'Incompletos', clear: `setCompletenessFilter('${completenessFilter}')` });
+      if (searchQuery)
+        pills.push({ label: `"${searchQuery}"`, clear: 'clearSearch()' });
+
+      if (pills.length === 0) { bar.style.display = 'none'; return; }
+      bar.style.display = 'flex';
+      bar.innerHTML = pills.map(p =>
+        `<span class="filter-pill">${esc(p.label)}<button class="filter-pill-x" onclick="${p.clear}" title="Remover">×</button></span>`
+      ).join('') + `<button class="filter-pills-clear" onclick="clearAllFilters()">Limpar tudo</button>`;
+    }
+
+    function clearAllFilters() {
+      pipelineFilter.clear(); stageFilter.clear(); aeFilter.clear();
+      quarterFilter.clear(); tierFilter.clear(); modeloFilter.clear();
+      completenessFilter = 'all'; searchQuery = '';
+
+      const sInput = document.getElementById('search-input'); if (sInput) sInput.value = '';
+      const sBtn = document.getElementById('search-clear'); if (sBtn) sBtn.classList.remove('visible');
+      updateCompletenessPanel();
+      document.querySelectorAll('#pipeline-menu input[type="checkbox"]').forEach(cb => cb.checked = true);
+      document.querySelectorAll('#ae-menu input[type="checkbox"]').forEach(cb => cb.checked = true);
+      document.querySelectorAll('#quarter-menu input[type="checkbox"]').forEach(cb => cb.checked = true);
+      document.querySelectorAll('#tier-menu input[type="checkbox"]').forEach(cb => cb.checked = true);
+      document.querySelectorAll('#modelo-menu input[type="checkbox"]').forEach(cb => cb.checked = true);
+      syncStageButtons(); updatePipelineBtnLabel(); updateAeBtnLabel(); updateQuarterBtnLabel(); updateTierBtnLabel(); updateModeloBtnLabel();
+      applyAndRender();
+    }
+
+    // ── STAGE FILTER ──────────────────────────────────────────────────────────
+    const STAGE_DD_LIST = ['Diagnóstico','Cotação','Proposta Enviada','Consultoria','Negociação','Implantação','Ganho','Standby'];
+
+    function toggleStageDd(e) {
+      document.getElementById('stage-dd').classList.toggle('open');
+    }
+
+    function syncStageButtons() {
+      const label = document.getElementById('stage-dd-label');
+      const trigger = document.getElementById('stage-dd-trigger');
+      const checkboxes = document.querySelectorAll('.stage-dd-item input[type=checkbox]');
+      if (!label) return;
+      if (stageFilter.size === 0) {
+        checkboxes.forEach(cb => { cb.checked = true; cb.indeterminate = false; });
+        label.textContent = 'Etapa';
+        trigger && trigger.classList.remove('filter-active');
+      } else if (stageFilter.has('__NONE__')) {
+        checkboxes.forEach(cb => { cb.checked = false; cb.indeterminate = false; });
+        label.textContent = 'Nenhuma';
+        trigger && trigger.classList.add('filter-active');
+      } else {
+        checkboxes.forEach(cb => { cb.checked = stageFilter.has(cb.dataset.stage); });
+        const n = stageFilter.size;
+        label.textContent = n === 1 ? [...stageFilter][0] : `Etapa (${n})`;
+        trigger && trigger.classList.add('filter-active');
+      }
+    }
+
+    function onStageCheckbox(input) {
+      const stage = input.dataset.stage;
+      if (stageFilter.has('__NONE__')) stageFilter.clear();
+      if (input.checked) {
+        if (stageFilter.size === 0) {
+          stageFilter.add(stage);
+        } else {
+          stageFilter.add(stage);
+          if (stageFilter.size === STAGE_DD_LIST.length) stageFilter.clear();
+        }
+      } else {
+        if (stageFilter.size === 0) {
+          STAGE_DD_LIST.forEach(s => { if (s !== stage) stageFilter.add(s); });
+        } else {
+          stageFilter.delete(stage);
+          if (stageFilter.size === 0) stageFilter.add('__NONE__');
+        }
+      }
+      syncStageButtons();
+      applyAndRender();
+    }
+
+    function selectAllStages() {
+      stageFilter.clear();
+      document.getElementById('stage-dd').classList.remove('open');
+      syncStageButtons();
+      applyAndRender();
+    }
+
+    function selectNoStages() {
+      stageFilter.clear();
+      stageFilter.add('__NONE__');
+      document.getElementById('stage-dd').classList.remove('open');
+      syncStageButtons();
+      applyAndRender();
+    }
+
+    // ── SORT ─────────────────────────────────────────────────────────────────
+    function sortBy(key) {
+      if (sortKey === key) sortDir *= -1;
+      else { sortKey = key; sortDir = 1; }
+      applyAndRender();
+    }
+
+    // ── APPLY & RENDER ────────────────────────────────────────────────────────
+    function applyAndRender() {
+      updateMobFabBadge();
+      let deals = allDeals;
+
+      if (pipelineFilter.has('__NONE__') || stageFilter.has('__NONE__') || quarterFilter.has('__NONE__') || tierFilter.has('__NONE__') || modeloFilter.has('__NONE__') || aeFilter.has('__NONE__')) {
+        deals = [];
+      } else {
+        if (pipelineFilter.size > 0) deals = deals.filter(d => pipelineFilter.has(d.pipeline));
+        if (stageFilter.size > 0) deals = deals.filter(d => stageFilter.has(d.stage));
+        if (quarterFilter.size > 0) deals = deals.filter(d => quarterFilter.has(d.quarter));
+        if (tierFilter.size > 0) deals = deals.filter(d => tierFilter.has(getTier(d.vidas)));
+        if (modeloFilter.size > 0) deals = deals.filter(d => modeloFilter.has(d.modelo_remuneracao || '__NULL__'));
+        if (aeFilter.size > 0) deals = deals.filter(d => aeFilter.has(d.ae));
+        if (completenessFilter === 'complete') deals = deals.filter(d => !hasAnyEmpty(d));
+        if (completenessFilter === 'incomplete') deals = deals.filter(d => hasAnyEmpty(d));
+        if (searchQuery) deals = deals.filter(d => (d.dealname || '').toLowerCase().includes(searchQuery.toLowerCase()));
+      }
+
+      deals = deals.map(d => {
+        const pInfo = calcProbInfo(d);
+        return {
+          ...d,
+          prob_etapa: STAGE_PROB[d.stage] ?? null,
+          prob_ajustada: pInfo.final,
+          prob_info: pInfo
+        };
+      });
+
+      if (sortKey) {
+        deals = [...deals].sort((a, b) => {
+          const va = a[sortKey], vb = b[sortKey];
+          if (va == null && vb == null) return 0;
+          if (va == null) return 1;
+          if (vb == null) return -1;
+
+          if (sortKey === 'stage') {
+            const order = { 'Diagnóstico': 0, 'Cotação': 1, 'Proposta Enviada': 2, 'Consultoria': 3, 'Negociação': 4, 'Implantação': 5, 'Ganho': 6, 'Standby': 7, 'Stand by': 7 };
+            const oA = order[va] || 99;
+            const oB = order[vb] || 99;
+            if (oA !== oB) return sortDir * (oA - oB);
+            return (a.dealname || '').localeCompare(b.dealname || '', 'pt-BR');
+          }
+
+          if (sortKey === 'quarter') {
+            const strA = String(va);
+            const strB = String(vb);
+            const emptyA = strA === 'false' || strA === '' || strA === 'undefined' || strA === 'null';
+            const emptyB = strB === 'false' || strB === '' || strB === 'undefined' || strB === 'null';
+            if (emptyA && emptyB) return 0;
+            if (emptyA) return 1;
+            if (emptyB) return -1;
+
+            const [qa, ya] = strA.split(' ');
+            const [qb, yb] = strB.split(' ');
+            const dy = parseInt(ya || 0) - parseInt(yb || 0);
+            if (dy !== 0) return sortDir * dy;
+            return sortDir * qa.localeCompare(qb);
+          }
+
+          if (typeof va === 'string') return sortDir * va.localeCompare(vb, 'pt-BR');
+          return sortDir * (va - vb);
+        });
+      }
+
+      render(deals);
+      syncFilterPills();
+
+      // Re-renderiza comparativo se a aba Histórico estiver ativa
+      if (document.getElementById('historico-panel')?.style.display !== 'none') {
+        renderComparativo();
+      }
+    }
+
+    // ── LOAD ─────────────────────────────────────────────────────────────────
+    async function load() {
+      const btn = document.getElementById('btn-r');
+      btn.disabled = true;
+      btn.classList.add('spinning');
+      document.getElementById('tw').innerHTML = '<div class="state">Buscando dados do HubSpot...</div>';
+
+      try {
+        const resp = await fetch('/api/forecast-table', { credentials: 'same-origin' });
+        const data = await resp.json();
+        if (!resp.ok || !data.success) {
+          document.getElementById('tw').innerHTML = `<div class="state err">Erro: ${esc(data.error || String(resp.status))}</div>`;
+          return;
+        }
+        allDeals = data.deals;
+        aeFilter = new Set();
+        pipelineFilter = new Set();
+        const subEl = document.getElementById('sub');
+        subEl.textContent = 'Atualizado';
+        subEl.dataset.tooltip = new Date(data.timestamp)
+          .toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' });
+        buildPipelineFilter();
+        buildAeFilter(allDeals);
+        buildQuarterFilter(allDeals);
+        buildTierFilter();
+        buildModeloFilter();
+        syncStageButtons();
+        applyAndRender();
+      } catch (e) {
+        document.getElementById('tw').innerHTML = `<div class="state err">Erro de conexão: ${esc(e.message)}</div>`;
+      } finally {
+        btn.disabled = false;
+        btn.classList.remove('spinning');
+        btn.innerHTML = SVG_REFRESH;
+      }
+    }
+
+    // ── COLUMN HOVER & TOOLTIP ───────────────────────────────────────────────
+    function setupColumnHover() {
+      const table = document.querySelector('#tw table');
+      const tooltip = document.getElementById('calc-tooltip');
+      if (!table) return;
+      let prevCells = [];
+
+      table.addEventListener('mouseover', e => {
+        const cell = e.target.closest('td, th');
+        if (!cell || cell.dataset.col == null) return;
+
+        // Highlight logic
+        const col = cell.dataset.col;
+        if (!prevCells.length || prevCells[0].dataset.col !== col) {
+          prevCells.forEach(c => c.classList.remove('col-hl'));
+          prevCells = Array.from(table.querySelectorAll(`[data-col="${col}"]`));
+          prevCells.forEach(c => c.classList.add('col-hl'));
+        }
+
+        // Tooltip logic
+        if (cell.dataset.calc) {
+          try {
+            const data = JSON.parse(cell.dataset.calc);
+
+            if (data.isReal) {
+              // ── Receita Real tooltip ──────────────────────────────────────
+              const ag = data.ag === true ? 'Sim' : (data.ag === false ? 'Não' : '—');
+              const vit = data.vit === true ? 'Sim' : (data.vit === false ? 'Não' : '—');
+              const vidas = data.vidas || 0;
+              const n = data.n;
+              let formulaStr = '—';
+              if (data.mod === 'Fee por vida') {
+                formulaStr = 'Fee por vida (valor fixo)';
+              } else if (data.mod === 'Corretagem') {
+                if (data.ag === true) {
+                  if (vidas < 200) {
+                    formulaStr = n <= 3
+                      ? `Corretagem + Agenc. · Mês ${n} (1–3) · 100% da 1ª Fatura`
+                      : `Corretagem + Agenc. · Mês ${n} (4+) · 2% da 1ª Fatura`;
+                  } else {
+                    formulaStr = n === 1
+                      ? `Corretagem + Agenc. · Mês 1 · 95% da 1ª Fatura`
+                      : `Corretagem + Agenc. · Mês ${n} (2+) · 5% da 1ª Fatura`;
+                  }
+                } else {
+                  formulaStr = vidas < 200
+                    ? `Corretagem · 2% da 1ª Fatura`
+                    : `Corretagem · 5% da 1ª Fatura`;
+                }
+              }
+              const h = `
+                <div style="font-weight:700; color:var(--teal); margin-bottom:.8rem; padding-bottom:.5rem; font-size:.9rem">${esc(data.dealname)}</div>
+                <div class="tt-row"><span class="tt-lbl">Modelo</span><span class="tt-val">${esc(data.mod)}</span></div>
+                <div class="tt-row"><span class="tt-lbl">Agenciamento</span><span class="tt-val">${ag}</span></div>
+                <div class="tt-row"><span class="tt-lbl">Vitalício</span><span class="tt-val">${vit}</span></div>
+                <div class="tt-row"><span class="tt-lbl">1ª Fatura</span><span class="tt-val">${fmtBRL(data.pf)}</span></div>
+                <div class="tt-row"><span class="tt-lbl">Vidas</span><span class="tt-val">${vidas || '—'}</span></div>
+                <div class="tt-row sep"><span class="tt-lbl">Mês de receita</span><span class="tt-val">${n}</span></div>
+                <div class="tt-row"><span class="tt-lbl">Fórmula</span><span class="tt-val">${formulaStr}</span></div>
+                <div class="tt-row total"><span class="tt-lbl">Receita Real</span><span class="tt-val">${fmtBRL(data.rec)}</span></div>
+              `;
+              tooltip.innerHTML = h;
+              tooltip.classList.add('show');
+
+            } else {
+              // ── Receita Probabilizada tooltip ─────────────────────────────
+              let h = `
+                <div style="font-weight:700; color:var(--teal); margin-bottom:.8rem; padding-bottom:.5rem; font-size:.9rem">${esc(data.dealname)}</div>
+                <div class="tt-row"><span class="tt-lbl">Modelo</span><span class="tt-val">${esc(data.mod)}</span></div>
+                <div class="tt-row"><span class="tt-lbl">Agenciamento</span><span class="tt-val">${data.ag === true ? 'Sim' : (data.ag === false ? 'Não' : '—')}</span></div>
+                <div class="tt-row"><span class="tt-lbl">Vitalício</span><span class="tt-val">${data.vit === true ? 'Sim' : (data.vit === false ? 'Não' : '—')}</span></div>
+                <div class="tt-row"><span class="tt-lbl">1ª Fatura</span><span class="tt-val">${fmtBRL(data.pf)}</span></div>
+                <div class="tt-row"><span class="tt-lbl">Receita Bruta Mensal</span><span class="tt-val">${fmtBRL(data.rec)}</span></div>
+                <div class="tt-row sep"><span class="tt-lbl">Prob. da Etapa</span><span class="tt-val">${fmtPct(data.sp)}</span></div>
+              `;
+              if (data.cp != null) {
+                h += `<div class="tt-row"><span class="tt-lbl">Prob. AE</span><span class="tt-val">${fmtPct(data.cp)}</span></div>`;
+              }
+              if (data.modStr) {
+                h += `<div class="tt-row"><span class="tt-lbl">Ajuste Aplicado</span><span class="tt-val">${data.modStr}</span></div>`;
+              }
+              h += `
+                <div class="tt-row"><span class="tt-lbl">Prob. Final Ajustada</span><span class="tt-val">${fmtPct(data.probAdj)}</span></div>
+                <div class="tt-row total"><span class="tt-lbl">Receita Probabilizada</span><span class="tt-val">${fmtBRL(data.val)}</span></div>
+              `;
+              tooltip.innerHTML = h;
+              tooltip.classList.add('show');
+            }
+          } catch (e) { }
+        } else if (cell.dataset.tip) {
+          tooltip.innerHTML = `<div style="line-height:1.4">${esc(cell.dataset.tip)}</div>`;
+          tooltip.classList.add('show');
+        }
+      });
+
+      table.addEventListener('mousemove', e => {
+        if (tooltip.classList.contains('show')) {
+          tooltip.style.left = (e.clientX + 15) + 'px';
+          tooltip.style.top = (e.clientY + 15) + 'px';
+        }
+      });
+
+      table.addEventListener('mouseleave', () => {
+        prevCells.forEach(c => c.classList.remove('col-hl'));
+        prevCells = [];
+      });
+
+      table.addEventListener('mouseout', e => {
+        const cell = e.target.closest('td, th');
+        if (cell && (cell.dataset.calc || cell.dataset.tip)) {
+          tooltip.classList.remove('show');
+        }
+      });
+    }
+
+    // ── RENDER ────────────────────────────────────────────────────────────────
+    function render(deals) {
+      const totalArr = deals.reduce((s, d) => s + (d.arr_estimado || 0), 0);
+      const totalVidas = deals.reduce((s, d) => s + (d.vidas || 0), 0);
+      const totalFatAtu = deals.reduce((s, d) => s + (d.fatura_atual || 0), 0);
+      const totalPrimFat = deals.reduce((s, d) => s + (d.primeira_fatura || 0), 0);
+      const wArr = deals.reduce((s, d) => s + (d.arr_estimado || 0) * (d.prob_ajustada ?? 0), 0);
+      document.getElementById('k-deals').textContent = deals.length;
+      const dealsSub = document.getElementById('k-deals-sub');
+      if (dealsSub) {
+        if (allDeals.length && deals.length < allDeals.length) {
+          dealsSub.textContent = `de ${allDeals.length} no total`;
+          dealsSub.style.display = '';
+        } else {
+          dealsSub.style.display = 'none';
+        }
+      }
+      document.getElementById('k-arr').textContent = fmtBRL(totalArr);
+      document.getElementById('k-arrw').textContent = fmtBRL(wArr);
+      document.getElementById('k-mrrw').textContent = fmtBRL(wArr / 12);
+
+      const mTotals = new Array(MONTHS.length).fill(0);
+      const mRealTotals = new Array(MONTHS.length).fill(0);
+
+      const dealMonths = deals.map(d => {
+        // ── Diagnóstico: receita recorrente baseada em createdate + delay ────────
+        if (d.stage === 'Diagnóstico') {
+          if (!d.vidas || d.vidas === 0) return MONTHS.map(() => null);
+          const vidas = d.vidas;
+          const delay = vidas < 200 ? 9 : vidas <= 4999 ? 14 : 18;
+          let revStart = null;
+          if (d.createdate) {
+            const cd = new Date(d.createdate + 'T00:00:00');
+            const totalMo = cd.getMonth() + delay;
+            revStart = { y: cd.getFullYear() + Math.floor(totalMo / 12), mo: totalMo % 12 };
+          }
+          // Se a data projetada ficou no passado, usa o mês atual
+          const now = new Date();
+          const nowRef = { y: now.getFullYear(), mo: now.getMonth() };
+          if (!revStart || revStart.y < nowRef.y || (revStart.y === nowRef.y && revStart.mo < nowRef.mo)) {
+            revStart = nowRef;
+          }
+          const probAdj = d.prob_ajustada;
+          const rec = vidas * getVpv(vidas);
+          return MONTHS.map((m, i) => {
+            if (probAdj == null) return null;
+            const diff = (m.y - revStart.y) * 12 + (m.mo - revStart.mo);
+            if (diff < 0) return null;
+            const val = rec * probAdj;
+            mTotals[i] += val;
+            mRealTotals[i] += rec;
+            return { val, rec, probAdj, n: diff + 1 };
+          });
+        }
+
+        // ── Demais etapas ─────────────────────────────────────────────────────────
+        const revStart = parseRevenueDate(d.data_prevista_para_receita);
+        const probAdj = d.prob_ajustada;
+        return MONTHS.map((m, i) => {
+          if (!revStart || probAdj == null) return null;
+          const diff = (m.y - revStart.y) * 12 + (m.mo - revStart.mo);
+          if (diff < 0 || diff > 23) return null;
+          const n = diff + 1;
+          const rec = calcReceita(n, d);
+          if (rec == null) return null;
+          const val = rec * probAdj;
+          mTotals[i] += val;
+          mRealTotals[i] += rec;
+          return { val, rec, probAdj, n };
+        });
+      });
+
+      const INFO = [
+        {
+          k: 'dealname', lbl: 'Deal', w: 210, sticky: true,
+          tip: 'Nome do negócio no HubSpot'
+        },
+        {
+          k: 'stage', lbl: 'Etapa', w: 115,
+          tip: 'Etapa atual no pipeline de vendas'
+        },
+        {
+          k: 'ae', lbl: 'Executivo', w: 125,
+          tip: 'Executivo de Contas responsável'
+        },
+        {
+          k: 'pipeline', lbl: 'Pipeline', w: 80,
+          tip: 'Pipeline de origem do negócio'
+        },
+        {
+          k: 'dias_no_pipe', lbl: 'Dias', w: 60, align: 'right', fmt: fmtNum,
+          tip: 'Dias desde a criação do negócio no pipeline'
+        },
+        {
+          k: 'produto', lbl: 'Solução', w: 145,
+          tip: 'Solução(ões) oferecida(s) ao cliente'
+        },
+        {
+          k: 'colaboradores', lbl: 'Colab.', w: 65, align: 'right', fmt: fmtNum, hideMobile: true,
+          tip: 'Quantidade total de colaboradores da empresa'
+        },
+        {
+          k: 'vidas', lbl: 'Vidas', w: 60, align: 'right', fmt: fmtNum,
+          tip: 'Número de vidas cobertas pelo plano'
+        },
+        {
+          k: 'fatura_atual', lbl: 'Fat. Atual (R$)', w: 105, align: 'right', fmt: fmtBRL, hideMobile: true,
+          tip: 'Valor mensal da fatura do plano de saúde atual (R$)'
+        },
+        {
+          k: 'primeira_fatura', lbl: '1ª Fatura (R$)', w: 105, align: 'right', fmt: fmtBRL,
+          tip: 'Valor estimado da 1ª fatura do novo contrato (R$)'
+        },
+        {
+          k: 'arr_estimado', lbl: 'ARR Est. (R$)', w: 110, align: 'right', fmt: fmtBRL,
+          tip: 'Receita Anual Recorrente estimada (R$). Se não informado, calculado como 1ª Fatura × 12'
+        },
+        {
+          k: 'modelo_remuneracao', lbl: 'Modelo', w: 85, hideMobile: true,
+          tip: 'Modelo de remuneração: Fee por vida, Corretagem ou Ambos'
+        },
+        {
+          k: 'possui_agenciamento', lbl: 'Agenc.', w: 60, bool: true, hideMobile: true,
+          tip: 'Possui agenciamento? Influencia o cálculo da receita mensal'
+        },
+        {
+          k: 'possui_vitalicio', lbl: 'Vitalício', w: 65, bool: true, hideMobile: true,
+          tip: 'Possui comissão vitalícia?'
+        },
+        {
+          k: 'probabilidade', lbl: 'Prob. AE', w: 65, align: 'right', prob: true,
+          tip: 'Probabilidade de fechamento informada pelo executivo de contas (0–100%)'
+        },
+        {
+          k: 'prob_etapa', lbl: 'P. Etapa', w: 65, align: 'right', prob: true, hideMobile: true,
+          tip: 'Taxa histórica de ganho para a etapa (Cotação 18,6% · Consultoria 28,5% · Negociação 49,3% · Implantação 80,0% · Ganho 100%)'
+        },
+        {
+          k: 'prob_ajustada', lbl: 'P. Ajust.', w: 65, align: 'right', prob: true, hideMobile: true,
+          tip: 'Prob. ajustada: se Prob. AE desvia ±30 pp da P. Etapa → aplica ±10% multiplicador sobre a P. Etapa'
+        },
+        {
+          k: 'quarter', lbl: 'Quarter', w: 82,
+          tip: 'Quarter de fechamento do negócio (ex: Q3 2026). Ausente ou "false" → linha em vermelho no modo Incompletos'
+        },
+        {
+          k: 'data_prevista_para_receita', lbl: 'Dt. Receita', w: 95, align: 'center', fmt: fmtDate, hideMobile: true,
+          tip: 'Data prevista para início da receita. Ausente → linha em vermelho no modo Incompletos'
+        },
+      ];
+
+      // ── Build HTML ──────────────────────────────────────────────────────────
+      let h = '<table><thead>';
+
+      // Row 1: group headers
+      h += '<tr class="group-row">';
+      h += `<th class="s" style="min-width:210px;max-width:210px"></th>`;
+      h += `<th colspan="${INFO.length - 1}"></th>`;
+      h += `<th class="group-real m-sep" colspan="${MONTHS.length}"><span class="sticky-label">Receita Real</span></th>`;
+      h += `<th class="group-months m-sep" colspan="${MONTHS.length}"><span class="sticky-label">Receita Probabilizada</span></th>`;
+      h += '</tr>';
+
+      // Row 2: individual column headers
+      h += '<tr class="col-row">';
+      INFO.forEach((c, ci) => {
+        const sc = c.sticky ? ' s' : '';
+        const mh = c.hideMobile ? ' m-hide' : '';
+        const align = c.align === 'right' ? 'right' : (c.align === 'center' ? 'center' : 'left');
+        const arr = sortKey === c.k ? `<span class="sarr">${sortDir > 0 ? '▲' : '▼'}</span>` : '';
+        const tip = c.tip ? ` data-tip="${esc(c.tip)}"` : '';
+        h += `<th class="${sc} sortable${mh}" style="min-width:${c.w}px;max-width:${c.w}px;text-align:${align}" onclick="sortBy('${c.k}')"${tip} data-col="${ci}">${c.lbl}${arr}</th>`;
+      });
+      // Receita Real months (hidden on mobile)
+      MONTHS.forEach((m, i) => {
+        const ci = INFO.length + i;
+        let sep = i === 0 ? ' m-sep' : (m.mo === 0 ? ' y-sep' : '');
+        const now = m.key === NOW_KEY ? ' now' : '';
+        h += `<th class="m real m-hide${sep}${now}" data-col="${ci}" data-tip="${esc(m.label)}">${m.label}</th>`;
+      });
+      // Receita Probabilizada months (hidden on mobile)
+      MONTHS.forEach((m, i) => {
+        const ci = INFO.length + MONTHS.length + i;
+        let sep = i === 0 ? ' m-sep' : (m.mo === 0 ? ' y-sep' : '');
+        const now = m.key === NOW_KEY ? ' now' : '';
+        h += `<th class="m m-hide${sep}${now}" data-col="${ci}" data-tip="${esc(m.label)}">${m.label}</th>`;
+      });
+      h += '</tr></thead><tbody>';
+
+      // Deal rows
+      deals.forEach((d, di) => {
+        const isWarn = completenessFilter === 'incomplete' && hasAnyEmpty(d);
+        h += `<tr${isWarn ? ' class="row-warn"' : ''}>`;
+
+        INFO.forEach((c, ci) => {
+          let sc = c.sticky ? 's' : '';
+          if (c.hideMobile) sc += (sc ? ' ' : '') + 'm-hide';
+          const align = c.align === 'right' ? ' style="text-align:right"' : '';
+          const v = d[c.k];
+
+          if (isWarn) {
+            let empty = false;
+            if (c.k === 'produto' && !v) empty = true;
+            else if (c.k === 'vidas' && v == null) empty = true;
+            else if (c.k === 'colaboradores' && v == null) empty = true;
+            else if (c.k === 'primeira_fatura' && v == null) empty = true;
+            else if (c.k === 'modelo_remuneracao' && !v) empty = true;
+            else if (c.k === 'possui_agenciamento' && v == null) empty = true;
+            else if (c.k === 'possui_vitalicio' && v == null) empty = true;
+            else if (c.k === 'probabilidade' && v == null) empty = true;
+            else if (c.k === 'quarter' && quarterEmpty(v)) empty = true;
+            else if (c.k === 'data_prevista_para_receita' && !v) empty = true;
+            if (empty) sc += (sc ? ' ' : '') + 'cell-warn';
+          }
+
+          if (c.sticky) {
+            const url = `https://app.hubspot.com/contacts/${HUB_ID}/deal/${esc(d.hs_id)}`;
+            h += `<td class="${sc}" data-col="${ci}"><a class="deal-link" href="${url}" target="_blank" title="${esc(v ?? '')}"><span class="dl-txt">${esc(v || '-')}</span><span class="ext-icon">↗</span></a></td>`;
+            return;
+          }
+
+          // Produto: chips, sem quebra de linha (white-space herdado da tabela = nowrap)
+          if (c.k === 'produto') {
+            const chips = v
+              ? String(v).split(';').filter(Boolean).map(s => `<span class="chip">${esc(s.trim())}</span>`).join('')
+              : `<span style="color:var(--text2)">—</span>`;
+            h += `<td class="${sc}" data-col="${ci}">${chips}</td>`;
+            return;
+          }
+
+          if (c.bool) {
+            const cls = v === true ? 'byes' : 'bno';
+            const txt = v === true ? 'Sim' : (v === false ? 'Não' : '—');
+            h += `<td class="${sc}" style="text-align:center" data-col="${ci}"><span class="${cls}">${txt}</span></td>`;
+            return;
+          }
+
+          if (c.prob) {
+            h += `<td class="${sc} ${probCls(v)}"${align} data-col="${ci}">${fmtPct(v)}</td>`;
+            return;
+          }
+
+          if (c.k === 'quarter') {
+            const empty = quarterEmpty(v);
+            h += `<td class="${sc}" data-col="${ci}">` + (!empty ? `<span class="qbadge">${esc(v)}</span>` : '—') + '</td>';
+            return;
+          }
+
+          const display = c.fmt ? c.fmt(v) : esc(v ?? '—');
+          h += `<td class="${sc}"${align} data-col="${ci}">${display}</td>`;
+        });
+
+        // Receita Real cells (hidden on mobile)
+        dealMonths[di].forEach((mObj, i) => {
+          const m = MONTHS[i];
+          const ci = INFO.length + i;
+          const sep = i === 0 ? ' m-sep' : (m.mo === 0 ? ' y-sep' : '');
+          const now = m.key === NOW_KEY ? ' now' : '';
+          if (mObj != null) {
+            const realCalcData = {
+              isReal: true,
+              dealname: d.dealname,
+              mod: d.modelo_remuneracao,
+              ag: d.possui_agenciamento,
+              vit: d.possui_vitalicio,
+              pf: d.primeira_fatura,
+              vidas: d.vidas,
+              n: mObj.n,
+              rec: mObj.rec,
+            };
+            h += `<td class="m real m-hide v${sep}${now}" data-col="${ci}" data-calc="${esc(JSON.stringify(realCalcData))}">${fmtBRL(mObj.rec)}</td>`;
+          } else {
+            h += `<td class="m real m-hide${sep}${now}" data-col="${ci}"></td>`;
+          }
+        });
+
+        // Receita Probabilizada cells (hidden on mobile)
+        dealMonths[di].forEach((mObj, i) => {
+          const m = MONTHS[i];
+          const ci = INFO.length + MONTHS.length + i;
+          const sep = i === 0 ? ' m-sep' : (m.mo === 0 ? ' y-sep' : '');
+          const now = m.key === NOW_KEY ? ' now' : '';
+          if (mObj != null) {
+            const pi = d.prob_info;
+            const calcData = {
+              dealname: d.dealname,
+              mod: d.modelo_remuneracao,
+              ag: d.possui_agenciamento,
+              vit: d.possui_vitalicio,
+              pf: d.primeira_fatura,
+              rec: mObj.rec,
+              sp: pi.sp,
+              cp: pi.cp,
+              modStr: pi.modStr,
+              probAdj: mObj.probAdj,
+              val: mObj.val
+            };
+            h += `<td class="m m-hide v${sep}${now}" data-col="${ci}" data-calc="${esc(JSON.stringify(calcData))}">${fmtBRL(mObj.val)}</td>`;
+          } else {
+            h += `<td class="m m-hide${sep}${now}" data-col="${ci}"></td>`;
+          }
+        });
+
+        h += '</tr>';
+      });
+      h += '</tbody>';
+
+      // Total row inside tfoot (sticky bottom)
+      h += '<tfoot><tr class="total">';
+      INFO.forEach((c, i) => {
+        const sc = c.sticky ? ' s' : '';
+        const mh = c.hideMobile ? ' m-hide' : '';
+        if (i === 0) h += `<td class="${sc}">TOTAL</td>`;
+        else if (c.k === 'vidas') h += `<td class="${mh}" style="text-align:right">${totalVidas > 0 ? fmtNum(totalVidas) : ''}</td>`;
+        else if (c.k === 'fatura_atual') h += `<td class="${mh}" style="text-align:right">${totalFatAtu > 0 ? fmtBRL(totalFatAtu) : ''}</td>`;
+        else if (c.k === 'primeira_fatura') h += `<td class="${mh}" style="text-align:right">${totalPrimFat > 0 ? fmtBRL(totalPrimFat) : ''}</td>`;
+        else if (c.k === 'arr_estimado') h += `<td class="${mh}" style="text-align:right">${fmtBRL(totalArr)}</td>`;
+        else h += `<td class="${mh}"></td>`;
+      });
+      mRealTotals.forEach((tot, i) => {
+        const m = MONTHS[i];
+        const sep = i === 0 ? ' m-sep' : (m.mo === 0 ? ' y-sep' : '');
+        const now = m.key === NOW_KEY ? ' now' : '';
+        h += `<td class="m real m-hide${tot > 0 ? ' v' : ''}${sep}${now}">${tot > 0 ? fmtBRL(tot) : ''}</td>`;
+      });
+      mTotals.forEach((tot, i) => {
+        const m = MONTHS[i];
+        const sep = i === 0 ? ' m-sep' : (m.mo === 0 ? ' y-sep' : '');
+        const now = m.key === NOW_KEY ? ' now' : '';
+        h += `<td class="m m-hide${tot > 0 ? ' v' : ''}${sep}${now}">${tot > 0 ? fmtBRL(tot) : ''}</td>`;
+      });
+      h += '</tr></tfoot></table>';
+
+      document.getElementById('tw').innerHTML = h;
+      setupColumnHover();
+    }
+
+    // ── EXPORT ────────────────────────────────────────────────────────────────
+    function toggleExportMenu() {
+      const m = document.getElementById('export-menu');
+      if (m) m.style.display = m.style.display === 'none' ? 'flex' : 'none';
+    }
+
+    function exportData(format) {
+      const table = document.querySelector('#tw table');
+      if (!table) return alert('Nenhum dado para exportar.');
+
+      const rows = [];
+      const colRow = table.querySelector('thead tr.col-row') || table.querySelector('thead tr:last-child');
+      const headerRow = [];
+      colRow.querySelectorAll('th').forEach(th => headerRow.push(th.innerText.replace('▲', '').replace('▼', '').trim()));
+      rows.push(headerRow);
+
+      table.querySelectorAll('tbody tr').forEach(tr => {
+        const row = [];
+        tr.querySelectorAll('td').forEach(td => {
+          row.push(td.innerText.replace('↗', '').trim());
+        });
+        rows.push(row);
+      });
+
+      const tfoots = table.querySelectorAll('tfoot tr.total td');
+      if (tfoots.length > 0) {
+        const row = [];
+        tfoots.forEach(td => row.push(td.innerText.trim()));
+        rows.push(row);
+      }
+
+      const dateStr = new Date().toISOString().substring(0, 10);
+      const filename = `Forecast_Axenya_${dateStr}`;
+
+      if (format === 'csv') {
+        let csvContent = "";
+        rows.forEach(r => {
+          let rowStr = r.map(c => `"${c.replace(/"/g, '""')}"`).join(",");
+          csvContent += rowStr + "\r\n";
+        });
+        const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.setAttribute("download", filename + ".csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } else if (format === 'xlsx') {
+        if (typeof XLSX === 'undefined') return alert('Biblioteca XLSX não carregada ainda. Aguarde ou recarregue a página.');
+        const ws = XLSX.utils.aoa_to_sheet(rows);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Forecast");
+        XLSX.writeFile(wb, filename + ".xlsx");
+      }
+    }
+
+    // ── GLOBAL TOOLTIPS ───────────────────────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', () => {
+      const calcTooltip = document.getElementById('calc-tooltip');
+      const kpisEl = document.querySelector('.kpis');
+      if (!kpisEl || !calcTooltip) return;
+
+      kpisEl.addEventListener('mouseover', e => {
+        const kpi = e.target.closest('[data-tip]');
+        if (kpi) {
+          calcTooltip.innerHTML = `<div style="line-height:1.4">${esc(kpi.dataset.tip)}</div>`;
+          calcTooltip.classList.add('show');
+        }
+      });
+      kpisEl.addEventListener('mousemove', e => {
+        if (calcTooltip.classList.contains('show')) {
+          calcTooltip.style.left = (e.clientX + 15) + 'px';
+          calcTooltip.style.top = (e.clientY + 15) + 'px';
+        }
+      });
+      kpisEl.addEventListener('mouseout', e => {
+        const kpi = e.target.closest('[data-tip]');
+        if (kpi) calcTooltip.classList.remove('show');
+      });
+
+      // Fechar menus dropdown ao clicar fora
+      document.addEventListener('click', e => {
+        const btnExp = document.getElementById('btn-export');
+        const menuExp = document.getElementById('export-menu');
+        if (menuExp && menuExp.style.display !== 'none' && (!btnExp || !btnExp.contains(e.target)) && !menuExp.contains(e.target)) {
+          menuExp.style.display = 'none';
+        }
+
+        document.querySelectorAll('.fdd-wrapper.open').forEach(w => {
+          if (!w.contains(e.target)) w.classList.remove('open');
+        });
+      });
+    });
+
+    // ── HISTÓRICO ─────────────────────────────────────────────────────────────
+    let historicoDeals    = null;
+    let historicoTabName  = null;
+    let historicoTabsLoaded = false;
+
+    const HIST_STAGE_ORDER = {
+      'Diagnóstico': 0, 'Cotação': 1, 'Proposta Enviada': 2, 'Consultoria': 3,
+      'Negociação': 4, 'Implantação': 5, 'Ganho': 6,
+      'Standby': 0, 'Stand by': 0,
+    };
+
+    function extractDealId(url) {
+      if (!url) return null;
+      const m = String(url).match(/\/deal\/(\d+)/);
+      return m ? m[1] : null;
+    }
+
+    function histStatus(histStage, currDeal) {
+      if (!currDeal) return 'saiu';
+      if (currDeal.stage === histStage) return 'igual';
+      const ho = HIST_STAGE_ORDER[histStage] ?? 99;
+      const co = HIST_STAGE_ORDER[currDeal.stage] ?? 99;
+      if (ho === 0 || co === 0) return 'mudou';
+      if (co > ho) return 'avancou';
+      if (co < ho) return 'regrediu';
+      return 'igual';
+    }
+
+    function histStatusLabel(s) {
+      return {
+        avancou:  '<span class="st-avancou">🟢 Avançou</span>',
+        regrediu: '<span class="st-regrediu">🔵 Regrediu</span>',
+        igual:    '<span class="st-igual">⚪ Sem mudança</span>',
+        saiu:     '<span class="st-saiu">🔴 Saiu do pipe</span>',
+        mudou:    '<span class="st-mudou">🟡 Mudou de etapa</span>',
+      }[s] || s;
+    }
+
+    function switchView(view) {
+      document.querySelectorAll('.seg-btn').forEach(t =>
+        t.classList.toggle('active', t.dataset.view === view)
+      );
+      document.querySelector('.seg-ctrl')?.classList.toggle('on-historico', view === 'historico');
+      const isPipeline = view === 'pipeline';
+      ['app-filters', 'app-search', 'tw', 'mob-filter-fab'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = isPipeline ? (id === 'mob-filter-fab' ? '' : 'block') : 'none';
+      });
+      const kpis = document.querySelector('.kpis');
+      if (kpis) kpis.style.display = isPipeline ? 'flex' : 'none';
+      document.getElementById('historico-panel').style.display = isPipeline ? 'none' : 'block';
+
+      if (!isPipeline && !historicoTabsLoaded) {
+        historicoTabsLoaded = true;
+        loadHistoricoTabs();
+      }
+      if (!isPipeline && historicoDeals) renderComparativo();
+    }
+
+    async function loadHistoricoTabs() {
+      const sel = document.getElementById('hist-month-select');
+      try {
+        const res  = await fetch('/api/history?action=tabs', { credentials: 'same-origin' });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error);
+        sel.innerHTML = '<option value="">Selecione um mês...</option>';
+        [...(data.tabs || [])].reverse().forEach(tab => {
+          const opt = document.createElement('option');
+          opt.value = tab; opt.textContent = tab;
+          sel.appendChild(opt);
+        });
+      } catch (e) {
+        sel.innerHTML = `<option value="">Erro: ${esc(e.message)}</option>`;
+      }
+    }
+
+    function updateHistKPIs(deals) {
+      const kpisEl = document.getElementById('hist-kpis');
+      if (!deals || !deals.length) { kpisEl.style.display = 'none'; return; }
+      const totalArr = deals.reduce((s, d) => {
+        const v = parseFloat((d['ARR Estimado (R$)'] || '').toString().replace(',', '.'));
+        return s + (isNaN(v) ? 0 : v);
+      }, 0);
+      const wArr = deals.reduce((s, d) => {
+        const arr  = parseFloat((d['ARR Estimado (R$)'] || '').toString().replace(',', '.'));
+        const prob = parseFloat((d['Probabilidade (%)']  || '').toString().replace(',', '.'));
+        if (isNaN(arr) || isNaN(prob)) return s;
+        return s + arr * (prob > 1 ? prob / 100 : prob);
+      }, 0);
+      document.getElementById('hk-deals').textContent = deals.length;
+      document.getElementById('hk-arr').textContent   = fmtBRL(totalArr);
+      document.getElementById('hk-arrw').textContent  = fmtBRL(wArr);
+      document.getElementById('hk-mrrw').textContent  = fmtBRL(wArr / 12);
+      kpisEl.style.display = '';
+    }
+
+    async function loadHistoricoSnapshot(tab) {
+      const panel   = document.getElementById('hist-comparison');
+      const loading = document.getElementById('hist-loading');
+      panel.innerHTML = '';
+      loading.style.display = 'inline';
+      try {
+        const res  = await fetch(`/api/history?action=snapshot&tab=${encodeURIComponent(tab)}`, { credentials: 'same-origin' });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error);
+        historicoDeals   = data.deals;
+        historicoTabName = tab;
+        updateHistKPIs(historicoDeals);
+        renderComparativo();
+      } catch (e) {
+        panel.innerHTML = `<div class="state err">Erro: ${esc(e.message)}</div>`;
+        document.getElementById('hist-kpis').style.display = 'none';
+      } finally {
+        loading.style.display = 'none';
+      }
+    }
+
+    function renderComparativo() {
+      if (!historicoDeals || !allDeals) return;
+      const panel = document.getElementById('hist-comparison');
+      if (!panel) return;
+
+      // Lookup atual por ID
+      const currById = {};
+      allDeals.forEach(d => { if (d.hs_id) currById[d.hs_id] = d; });
+
+      // IDs presentes no snapshot histórico
+      const histIds = new Set(historicoDeals.map(hd => extractDealId(hd['URL HubSpot'])).filter(Boolean));
+
+      // Filtra deals históricos com os filtros ativos
+      const histFiltered = historicoDeals.filter(hd => {
+        if (pipelineFilter.size > 0 && !pipelineFilter.has(hd['Pipeline'])) return false;
+        if (aeFilter.size > 0 && !aeFilter.has(hd['Executivo'])) return false;
+        if (stageFilter.size > 0 && !stageFilter.has('__NONE__') && !stageFilter.has(hd['Etapa'])) return false;
+        if (searchQuery && !(hd['Deal'] || '').toLowerCase().includes(searchQuery.toLowerCase())) return false;
+        return true;
+      });
+
+      // Deals novos (no pipe atual mas não no histórico)
+      let newDeals = allDeals.filter(d => d.hs_id && !histIds.has(d.hs_id));
+      if (pipelineFilter.size > 0) newDeals = newDeals.filter(d => pipelineFilter.has(d.pipeline));
+      if (aeFilter.size > 0) newDeals = newDeals.filter(d => aeFilter.has(d.ae));
+      if (stageFilter.size > 0 && !stageFilter.has('__NONE__')) newDeals = newDeals.filter(d => stageFilter.has(d.stage));
+      if (searchQuery) newDeals = newDeals.filter(d => (d.dealname || '').toLowerCase().includes(searchQuery.toLowerCase()));
+
+      // Extrai meses disponíveis no snapshot a partir das chaves do primeiro deal
+      const monthKeys = historicoDeals.length > 0
+        ? Object.keys(historicoDeals[0]).filter(k => k.endsWith(' Real (R$)')).map(k => k.replace(' Real (R$)', ''))
+        : [];
+      const hasMonths = monthKeys.length > 0;
+
+      let h = '';
+
+      // ── Tabela comparativa ─────────────────────────────────────────────────
+      h += `<div class="hist-section-title">Comparativo: ${esc(historicoTabName)} → Hoje (${histFiltered.length} deals)</div>`;
+      h += `<div class="hist-table-wrap"><table>`;
+      h += `<thead>`;
+
+      // Linha 1: grupos (só aparece quando há colunas de mês)
+      if (hasMonths) {
+        h += `<tr class="group-row">`;
+        h += `<th colspan="18"></th>`;
+        h += `<th class="group-real m-sep" colspan="${monthKeys.length}"><span class="sticky-label">Receita Real</span></th>`;
+        h += `<th class="group-months m-sep" colspan="${monthKeys.length}"><span class="sticky-label">Receita Probabilizada</span></th>`;
+        h += `</tr>`;
+      }
+
+      // Linha 2: colunas individuais
+      h += `<tr>`;
+      h += `<th style="min-width:200px">Deal</th>`;
+      h += `<th>Pipeline</th>`;
+      h += `<th>Etapa em ${esc(historicoTabName)}</th>`;
+      h += `<th>Etapa hoje</th>`;
+      h += `<th>Executivo</th>`;
+      h += `<th>Produto</th>`;
+      h += `<th style="text-align:right">Vidas</th>`;
+      h += `<th style="text-align:right">Colab.</th>`;
+      h += `<th style="text-align:right">1ª Fatura (R$)</th>`;
+      h += `<th style="text-align:right">ARR (R$)</th>`;
+      h += `<th>Modelo</th>`;
+      h += `<th>Agenc.</th>`;
+      h += `<th>Vitalício</th>`;
+      h += `<th style="text-align:right">Prob. (%)</th>`;
+      h += `<th>Quarter</th>`;
+      h += `<th>Data Prevista</th>`;
+      h += `<th style="text-align:right">Dias no Pipe</th>`;
+      h += `<th>Status</th>`;
+      monthKeys.forEach((mk, i) => {
+        const isJan = mk.startsWith('Jan/');
+        const sep = i === 0 ? ' m-sep' : (isJan ? ' y-sep' : '');
+        h += `<th class="m real m-hide${sep}" style="text-align:right;min-width:80px">${esc(mk)}</th>`;
+      });
+      monthKeys.forEach((mk, i) => {
+        const isJan = mk.startsWith('Jan/');
+        const sep = i === 0 ? ' m-sep' : (isJan ? ' y-sep' : '');
+        h += `<th class="m m-hide${sep}" style="text-align:right;min-width:80px">${esc(mk)}</th>`;
+      });
+      h += `</tr></thead><tbody>`;
+
+      histFiltered.forEach(hd => {
+        const id        = extractDealId(hd['URL HubSpot']);
+        const curr      = id ? currById[id] : null;
+        const status    = histStatus(hd['Etapa'], curr);
+        const currStage = curr ? curr.stage : '—';
+        const arr       = hd['ARR Estimado (R$)'] ? parseInt(hd['ARR Estimado (R$)']) : null;
+        const pf        = hd['1ª Fatura (R$)']    ? parseInt(hd['1ª Fatura (R$)'])    : null;
+        h += `<tr>`;
+        h += `<td><a href="${esc(hd['URL HubSpot'])}" target="_blank" rel="noopener">${esc(hd['Deal'] || '—')}</a></td>`;
+        h += `<td>${esc(hd['Pipeline']   || '—')}</td>`;
+        h += `<td>${esc(hd['Etapa']      || '—')}</td>`;
+        h += `<td>${esc(currStage)}</td>`;
+        h += `<td>${esc(hd['Executivo']  || '—')}</td>`;
+        h += `<td>${esc(hd['Produto']    || '—')}</td>`;
+        h += `<td style="text-align:right">${hd['Vidas']         || '—'}</td>`;
+        h += `<td style="text-align:right">${hd['Colaboradores'] || '—'}</td>`;
+        h += `<td style="text-align:right">${pf  != null ? fmtBRL(pf)  : '—'}</td>`;
+        h += `<td style="text-align:right">${arr != null ? fmtBRL(arr) : '—'}</td>`;
+        h += `<td>${esc(hd['Modelo']                || '—')}</td>`;
+        h += `<td>${esc(hd['Agenciamento']          || '—')}</td>`;
+        h += `<td>${esc(hd['Vitalício']             || '—')}</td>`;
+        h += `<td style="text-align:right">${hd['Probabilidade (%)'] || '—'}</td>`;
+        h += `<td>${esc(hd['Quarter']               || '—')}</td>`;
+        h += `<td>${esc(hd['Data Prevista']         || '—')}</td>`;
+        h += `<td style="text-align:right">${hd['Dias no Pipe']   || '—'}</td>`;
+        h += `<td>${histStatusLabel(status)}</td>`;
+        monthKeys.forEach((mk, i) => {
+          const val = parseFloat(hd[`${mk} Real (R$)`]);
+          const isJan = mk.startsWith('Jan/');
+          const sep = i === 0 ? ' m-sep' : (isJan ? ' y-sep' : '');
+          h += `<td class="m real m-hide${sep}" style="text-align:right">${!isNaN(val) && val > 0 ? fmtBRL(val) : '—'}</td>`;
+        });
+        monthKeys.forEach((mk, i) => {
+          const val = parseFloat(hd[`${mk} Prob (R$)`]);
+          const isJan = mk.startsWith('Jan/');
+          const sep = i === 0 ? ' m-sep' : (isJan ? ' y-sep' : '');
+          h += `<td class="m m-hide${sep}" style="text-align:right">${!isNaN(val) && val > 0 ? fmtBRL(val) : '—'}</td>`;
+        });
+        h += `</tr>`;
+      });
+
+      h += `</tbody></table></div>`;
+
+      // ── Deals novos ────────────────────────────────────────────────────────
+      if (newDeals.length > 0) {
+        h += `<div class="hist-section-title">🆕 Novos desde ${esc(historicoTabName)} (${newDeals.length} deals)</div>`;
+        h += `<div class="hist-table-wrap"><table>`;
+        h += `<thead><tr><th style="min-width:200px">Deal</th><th>Pipeline</th><th>Etapa</th><th style="text-align:right">ARR (R$)</th></tr></thead><tbody>`;
+        newDeals.forEach(d => {
+          h += `<tr>`;
+          h += `<td><a href="https://app.hubspot.com/contacts/44715285/deal/${esc(d.hs_id)}" target="_blank" rel="noopener">${esc(d.dealname || '—')}</a></td>`;
+          h += `<td>${esc(d.pipeline || '—')}</td>`;
+          h += `<td>${esc(d.stage || '—')}</td>`;
+          h += `<td style="text-align:right">${d.arr_estimado ? fmtBRL(d.arr_estimado) : '—'}</td>`;
+          h += `</tr>`;
+        });
+        h += `</tbody></table></div>`;
+      }
+
+      panel.innerHTML = h;
+    }
+
+    // ── AUTHENTICATION ────────────────────────────────────────────────────────
+    let currentUser = null;
+
+    async function checkSession() {
+      // Dev local: bypass auth automatically on localhost
+      const isLocalhost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+      if (isLocalhost) {
+        currentUser = { name: 'Dev Local', email: 'dev@localhost', role: 'staff', picture: null };
+        document.getElementById('login-screen').style.display = 'none';
+        document.getElementById('app-header').style.display = 'flex';
+        document.getElementById('app-filters').style.display = 'block';
+        document.getElementById('app-search').style.display = 'block';
+        document.getElementById('tw').style.display = 'block';
+        const kpis = document.querySelector('.kpis');
+        if (kpis) kpis.style.display = 'flex';
+        const personBtn = document.getElementById('btn-person');
+        if (personBtn) personBtn.dataset.tooltip = 'Dev Local | Clique para sair';
+        load();
+        return;
+      }
+      try {
+        const res = await fetch('/api/auth/me', { credentials: 'include' });
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.success) {
+            currentUser = data.user;
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('app-header').style.display = 'flex';
+            document.getElementById('app-filters').style.display = 'block';
+            document.getElementById('app-search').style.display = 'block';
+            document.getElementById('tw').style.display = 'block';
+            const kpis = document.querySelector('.kpis');
+            if (kpis) kpis.style.display = 'flex';
+
+            const personBtn = document.getElementById('btn-person');
+            if (personBtn) personBtn.dataset.tooltip = (currentUser.name || '') + ' | Clique para sair';
+            load();
+            return;
+          }
+        }
+      } catch (e) { console.error('Session check failed', e); }
+
+      // Not logged in
+      document.getElementById('login-screen').style.display = 'flex';
+
+      // Fetch Client ID
+      try {
+        const res = await fetch('/api/auth/config?t=' + Date.now());
+        const data = await res.json();
+        if (data.clientId) {
+          window.__GOOGLE_CLIENT_ID__ = data.clientId;
+          const wrapper = document.getElementById("google-btn-wrapper");
+          wrapper.innerHTML = '';
+
+          if (typeof google !== 'undefined' && google.accounts) {
+            google.accounts.id.initialize({
+              client_id: window.__GOOGLE_CLIENT_ID__,
+              callback: handleCredentialResponse
+            });
+
+            google.accounts.id.renderButton(wrapper, {
+              theme: "outline",
+              size: "large",
+              type: "standard",
+              text: "signin_with",
+              width: 316
+            });
+          } else {
+            wrapper.innerHTML = '<span style="color:var(--text2); font-size:0.85rem;">Carregando Google Sign-In...</span>';
+            // retry after 1s if GIS loads slow
+            setTimeout(checkSession, 1000);
+          }
+        } else {
+          document.getElementById('login-error-msg').textContent = 'Erro de configuração do servidor.';
+        }
+      } catch (e) {
+        document.getElementById('login-error-msg').textContent = 'Erro ao contatar o servidor.';
+      }
+    }
+
+    async function handleCredentialResponse(response) {
+      const errorMsg = document.getElementById('login-error-msg');
+      errorMsg.textContent = 'Verificando autenticação...';
+
+      try {
+        const res = await fetch('/api/auth/google', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ credential: response.credential })
+        });
+
+        const data = await res.json();
+        if (data.success) {
+          window.location.reload();
+        } else {
+          errorMsg.textContent = data.error || 'Erro ao autenticar';
+        }
+      } catch (e) {
+        errorMsg.textContent = 'Erro de comunicação com o servidor';
+      }
+    }
+
+    async function logout() {
+      try {
+        await fetch('/api/auth/logout', { credentials: 'include' });
+      } catch (e) { }
+      window.location.reload();
+    }
+
+    function _setNavOpen(open) {
+      document.getElementById('nav-drawer').classList.toggle('open', open);
+      document.body.classList.toggle('nav-docked', open);
+      var narrow = window.matchMedia('(max-width:820px)').matches;
+      document.getElementById('nav-backdrop').classList.toggle('open', open && narrow);
+      try { localStorage.setItem('nav_open', open ? 'true' : 'false'); } catch(e) {}
+    }
+    function closeDrawer() { _setNavOpen(false); }
+    function toggleDrawer() {
+      _setNavOpen(!document.getElementById('nav-drawer').classList.contains('open'));
+    }
+    // Restore nav state from localStorage
+    (function() {
+      try {
+        var saved = localStorage.getItem('nav_open');
+        if (saved === null) saved = localStorage.getItem('novo_nav_open');
+        if (saved !== 'false') _setNavOpen(true);
+      } catch(e) {}
+    })();
+
+    checkSession();
+  </script>
+<!-- Panel switcher + menu lateral compartilhado (fonte unica: PANELS) -->
+<style>
+.panel-switcher{position:relative;display:inline-block}
+.panel-switch-btn{display:inline-flex;align-items:center;gap:.5rem;background:none;border:none;padding:0;margin:0;cursor:pointer;color:inherit;font:inherit;text-align:left}
+.panel-switch-btn h1{margin:0}
+.panel-chevron{transition:transform .22s ease,color .15s ease;color:var(--text2);flex-shrink:0}
+.panel-switcher.open .panel-chevron{transform:rotate(180deg)}
+.panel-switch-btn:hover .panel-chevron{color:var(--teal)}
+.panel-dd{position:absolute;top:calc(100% + 10px);left:0;min-width:236px;background:rgba(23,31,46,.62);backdrop-filter:blur(20px) saturate(1.7);-webkit-backdrop-filter:blur(20px) saturate(1.7);border:none;border-radius:12px;box-shadow:0 16px 40px rgba(0,0,0,.4);padding:.4rem;z-index:1500;opacity:0;transform:translateY(-6px);pointer-events:none;transition:opacity .18s ease,transform .18s ease}
+[data-theme="light"] .panel-dd{background:rgba(246,248,250,.7)}
+.panel-switcher.open .panel-dd{opacity:1;transform:translateY(0);pointer-events:auto}
+.panel-dd-item{display:flex;align-items:center;gap:.65rem;padding:.55rem .7rem;border-radius:8px;cursor:pointer;font-size:.85rem;color:var(--text2);transition:background .14s,color .14s;white-space:nowrap}
+.panel-dd-item:hover{background:rgba(255,255,255,.1);color:var(--text)}
+.panel-dd-item.active{color:var(--teal);font-weight:600;background:rgba(58,184,183,.16)}
+.panel-dd-item.active svg{stroke:var(--teal)}
+.panel-dd-item svg{flex-shrink:0;opacity:.9}
+[data-theme="light"] .panel-dd-item:hover{background:rgba(0,0,0,.06)}
+.health-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;display:inline-block;animation:health-glow 1.8s ease-in-out infinite}
+.panel-switch-btn .health-dot{margin:0 .15rem}
+.nav-item .health-dot,.panel-dd-item .health-dot{margin-left:auto}
+@keyframes health-glow{0%,100%{box-shadow:0 0 3px 0 var(--hg)}50%{box-shadow:0 0 9px 2px var(--hg)}}
+.health-dot.g{background:#2ecc71;--hg:rgba(46,204,113,.95)}
+.health-dot.y{background:#f1c40f;--hg:rgba(241,196,15,.95)}
+.health-dot.r{background:#e74c3c;--hg:rgba(231,76,60,.95)}
+
+.modal-body,.novo-help-body,.novo-prob-body,[style*="overflow-x:auto"]{scrollbar-width:thin;scrollbar-color:var(--text2) transparent}
+.modal-body::-webkit-scrollbar,.novo-help-body::-webkit-scrollbar,.novo-prob-body::-webkit-scrollbar,[style*="overflow-x:auto"]::-webkit-scrollbar{height:11px;width:11px}
+.modal-body::-webkit-scrollbar-track,.novo-help-body::-webkit-scrollbar-track,.novo-prob-body::-webkit-scrollbar-track,[style*="overflow-x:auto"]::-webkit-scrollbar-track{background:transparent}
+.modal-body::-webkit-scrollbar-thumb,.novo-help-body::-webkit-scrollbar-thumb,.novo-prob-body::-webkit-scrollbar-thumb,[style*="overflow-x:auto"]::-webkit-scrollbar-thumb{background:var(--text2);border-radius:8px;border:2px solid transparent;background-clip:padding-box}
+.modal-body::-webkit-scrollbar-thumb:hover,.novo-help-body::-webkit-scrollbar-thumb:hover,.novo-prob-body::-webkit-scrollbar-thumb:hover,[style*="overflow-x:auto"]::-webkit-scrollbar-thumb:hover{background:var(--teal)}
+</style>
+<script>
+(function(){
+  var PANELS=[
+    {label:'CRO Dashboard',url:'/novo',file:'novo-dashboard.html',health:'y',icon:'<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>'},
+    {label:'Board View',url:'/novo-board',file:'novo-board.html',health:'r',icon:'<path d="M2 20h20M4 20V10l8-6 8 6v10"/><path d="M10 20v-6h4v6"/>'},
+    {label:'AE Performance',url:'/novo-ae',file:'novo-ae.html',health:'r',icon:'<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>'},
+    {label:'BDR Performance',url:'/novo-bdr',file:'novo-bdr.html',health:'r',icon:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'},
+    {label:'Last 48h',url:'/novo-48h',file:'novo-48h.html',health:'r',icon:'<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>'},
+    {label:'CS Dashboard',url:'/novo-cs',file:'novo-cs.html',health:'r',icon:'<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>'},
+    {label:'Cotação',url:'/novo-cotacao',file:'novo-cotacao.html',health:'r',icon:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>'},
+    {label:'Forecast',url:'/forecast',file:'forecast.html',health:'g',icon:'<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>'}
+  ];
+  function findByUrl(u){ for(var i=0;i<PANELS.length;i++){ if(PANELS[i].url===u) return PANELS[i]; } return null; }
+  var p2=location.pathname; if(p2.length>1&&p2.charAt(p2.length-1)==='/') p2=p2.slice(0,-1);
+  var current=null;
+  for(var i=0;i<PANELS.length;i++){ if(p2===PANELS[i].url||p2.indexOf(PANELS[i].file)!==-1){ current=PANELS[i].url; break; } }
+  function dot(h){ var tt={g:'live',y:'wip',r:'not working'}; var t=tt[h]||''; return '<span class="health-dot '+h+'" title="'+t+'" aria-label="'+t+'"></span>'; }
+  function svgFor(p){ return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+p.icon+'</svg>'; }
+  function buildNav(){
+    var nav=document.getElementById('nav-drawer'); if(!nav) return;
+    var h='<div class="nav-drawer-header"><span class="nav-drawer-brand">Dashboard Axenya</span>'+
+      '<button class="hdr-btn" onclick="closeDrawer()" aria-label="Fechar menu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>'+
+      '<ul class="nav-menu">';
+    for(var i=0;i<PANELS.length;i++){
+      var p=PANELS[i];
+      if(p.url==='/forecast') h+='<div style="height:1px;background:var(--border);margin:.4rem .75rem"></div>';
+      h+='<li class="nav-item'+(p.url===current?' active':'')+'" data-url="'+p.url+'">'+svgFor(p)+'<span>'+p.label+'</span>'+dot(p.health)+'</li>';
+    }
+    h+='</ul>';
+    nav.innerHTML=h;
+    var nit=nav.getElementsByClassName('nav-item');
+    for(var j=0;j<nit.length;j++){ nit[j].addEventListener('click',function(){ window.location.href=this.getAttribute('data-url'); }); }
+  }
+  function buildDropdown(){
+    var dd=document.getElementById('panel-dd'); if(!dd) return;
+    var html='';
+    for(var i=0;i<PANELS.length;i++){
+      var p=PANELS[i], act=(p.url===current?' active':'');
+      html+='<div class="panel-dd-item'+act+'" role="menuitem" data-url="'+p.url+'">'+svgFor(p)+'<span>'+p.label+'</span>'+dot(p.health)+'</div>';
+    }
+    dd.innerHTML=html;
+    var items=dd.getElementsByClassName('panel-dd-item');
+    for(var j=0;j<items.length;j++){ items[j].addEventListener('click',function(){ window.location.href=this.getAttribute('data-url'); }); }
+  }
+  function buildTitleDot(){
+    var btn=document.querySelector('.panel-switch-btn');
+    if(btn && current && !btn.querySelector('.health-dot')){
+      var cp=findByUrl(current);
+      if(cp){ var s=document.createElement('span'); s.className='health-dot '+cp.health; var _tt={g:'live',y:'wip',r:'not working'}; s.title=_tt[cp.health]||''; s.setAttribute('aria-label',s.title); var ch=btn.querySelector('.panel-chevron'); if(ch) btn.insertBefore(s,ch); else btn.appendChild(s); }
+    }
+  }
+  function build(){ buildNav(); buildDropdown(); buildTitleDot(); }
+  window.togglePanelMenu=function(e){ if(e){e.stopPropagation();} var sw=document.getElementById('panel-switcher'); if(!sw) return; var open=!sw.classList.contains('open'); sw.classList.toggle('open',open); var btn=sw.querySelector('.panel-switch-btn'); if(btn) btn.setAttribute('aria-expanded',open?'true':'false'); };
+  window.closePanelMenu=function(){ var sw=document.getElementById('panel-switcher'); if(sw){ sw.classList.remove('open'); var btn=sw.querySelector('.panel-switch-btn'); if(btn) btn.setAttribute('aria-expanded','false'); } };
+  document.addEventListener('click',function(e){ var sw=document.getElementById('panel-switcher'); if(sw&&sw.classList.contains('open')&&!sw.contains(e.target)) window.closePanelMenu(); });
+  document.addEventListener('keydown',function(e){ if(e.key==='Escape'||e.keyCode===27){ var sw=document.getElementById('panel-switcher'); if(sw&&sw.classList.contains('open')) window.closePanelMenu(); } });
+  if(document.readyState!=='loading') build(); else document.addEventListener('DOMContentLoaded',build);
+})();
+</script>
+</body>
+
+</html>

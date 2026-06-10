@@ -4,6 +4,113 @@ Recurring every 20min (job `55d3b136`). Purpose: identify and close gaps so the 
 
 ---
 
+## Diretrizes do Projeto — leia antes de começar qualquer trabalho
+
+> Esta seção existe para que qualquer IA (ou humano) possa pegar o projeto do zero sem perder contexto. Atualize sempre que houver mudanças estruturais.
+
+### ⭐ Regras primárias (inegociáveis)
+
+1. **Separador de texto é SEMPRE a barra vertical `|`.** Nunca usar travessão `—`, en-dash `–`, hífen `-` nem middot `·` como separador, em nenhum texto exibido ao usuário (títulos, tooltips, labels, subtítulos, ajuda, fórmulas). Ao criar ou editar qualquer string, já escrever com `|`. O travessão só é permitido como placeholder de "sem dado" (`'—'`), nunca como separador.
+2. **Menu lateral e dropdown de painéis têm fonte única.** Ambos são gerados pelo bloco JS compartilhado (`PANELS`) injetado antes de `</body>` em cada `novo-*.html` — idênticos em todas as páginas. Para mudar item/ordem/ícone/saúde do menu, editar apenas `PANELS` no bloco e propagar para os 7 arquivos; nunca editar a `<ul class="nav-menu">` estática de um arquivo só.
+
+### O que é este projeto
+
+Dashboard de pipeline de vendas da **Axenya**, construído para uso interno do CRO e da diretoria (BoD). É uma **cópia visual** do dashboard Electron original, reformulada para rodar como web app hospedado no Vercel. O arquivo principal do CRO Dashboard é `public/novo-dashboard.html`. Não há framework de UI — vanilla HTML/JS, sem bundler.
+
+### Stack técnica
+
+| Camada | Tecnologia |
+|---|---|
+| Frontend | Vanilla HTML + JS (ES5 compatível), Chart.js 4.4.1, chartjs-plugin-datalabels |
+| Backend | Vercel serverless functions (Node 18+, `maxDuration: 60s`) |
+| Dados | HubSpot CRM API v3 (`/crm/v3/objects/deals/search`, `batch/read`) |
+| Auth | Google OAuth via `lib/auth.js` (bypassado localmente, ver abaixo) |
+| Hosting | Vercel (Hobby plan — limite de 12 funções serverless) |
+| Repositório | https://github.com/pachecojr-axenya/dashboard-pipeline (branch `main`) |
+
+### Setup local
+
+```powershell
+# 1. Copie as variáveis de ambiente (já estão no .env.local — nunca commitar)
+# 2. Inicie o servidor local (porta 3002)
+$env:LOCAL_DEV_BYPASS = 'true'
+$env:SESSION_SECRET   = 'f71c591e01d11258d94806ef70f86fa2b54e50f60d8d2b2bba19ca7ed16d59a7'
+$env:HUBSPOT_TOKEN    = 'pat-na1-...' # (Pegar no portal HubSpot ou Vercel Secrets)
+$env:ALLOWED_ORIGIN   = 'http://localhost:3002'
+node scripts/local-server.js
+# Acesse: http://localhost:3002/novo-dashboard
+```
+
+`scripts/local-server.js` é um servidor Node zero-dependências que emula o runtime Vercel (rewrites + roteamento `/api/*`). Alternativa: `vercel dev` com as mesmas env vars.
+
+### Arquivos principais
+
+```
+public/
+  novo-dashboard.html   ← CRO Dashboard completo (UI + lógica toda inline)
+  login.html            ← Tela de login Google OAuth
+api/
+  forecast-table.js     ← Deals ativos (busca simples, sem histórico)
+  funnel-stages.js      ← Histórico de etapas via propertiesWithHistory
+  _helpers.js           ← setCORSHeaders, requireAuth, getHubspotToken, methodCheck
+  auth/                 ← google.js, callback.js, me.js, config.js, logout.js
+lib/
+  hubspot.js            ← hubspotPost(), pullHubSpotData() (cliente HubSpot completo)
+  auth.js               ← verifyJwt(), createSession(), requireAuth()
+scripts/
+  local-server.js       ← Servidor dev local (emula Vercel)
+vercel.json             ← Rewrites: /dashboard→novo-dashboard.html, /api/*→api/*.js
+```
+
+### HubSpot — IDs críticos
+
+- **Portal ID**: `44444289` (usado em links: `https://app.hubspot.com/contacts/44444289/deal/{id}`)
+- **Pipeline Vendas**: `782758156`
+- **Pipeline Bid**: `894130090`
+
+**Etapas Vendas**: Reunião Agendada=`1144746905`, Diagnóstico=`1144746906`, Cotação=`1144746908`, Consultoria=`1144746909`, Negociação=`1144746910`, Stand by=`1317543716`, Implantação=`1288611084`, Ganho=`1144844314`, Perdido=`1144746911`
+
+**Etapas Bid**: Cotação=`1363560722`, Proposta Enviada=`1349620555`, Consultoria=`1349620556`, Negociação=`1353387279`, Implantação=`1353457025`, Ganho=`1353387280`, Standby=`1373066362`
+
+### Convenções de código
+
+- **Sem TypeScript, sem bundler** — ES5 puro no front-end (use `var`, `function`, não `const`/`let` em closures críticas)
+- **Sem comentários** exceto quando o POR QUÊ é não-óbvio (não descreva o QUÊ o código faz)
+- **Separadores de texto**: sempre `|` (ver Regra primária 1). Nunca `-`, `—`, `–` ou `·` (middot). O travessão só vale como placeholder de "sem dado" (`'—'`).
+- **Toggles** (qualquer seletor de modo): Apple-style segmented control via `.tab-sub` + `.tab-sub-btn` + `.tab-sub-thumb` (chip deslizante CSS)
+- **Ajuda por gráfico**: cada gráfico tem `key` em `NOVO_HELP_CHARTS`; `_infoBtn(tooltip, key)` abre o drawer filtrado
+- **Drill de deals**: `_novoOpenFunnelDealsModal(title, deals)` ou `novoOpenDealsModal(title, deals)`
+- **Variáveis CSS disponíveis**: `--card`, `--card2`, `--border`, `--teal`, `--text`, `--text2`, `--muted`, `--green`, `--yellow`, `--red`
+- **STATUS_LOG.md**: atualizar com uma linha por mudança, a cada iteração, sem exceção
+
+### Regras de segurança — NUNCA violar
+
+| O quê | Por quê |
+|---|---|
+| `.env.local` — nunca commitar | Contém `HUBSPOT_TOKEN`, `CLAUDE_API_KEY`, `SESSION_SECRET` |
+| `lib/credentials.json` — nunca commitar | Hashes de senha legados |
+| `.vercel/` — nunca commitar | Tokens de deploy |
+| `LOCAL_DEV_BYPASS=true` — remover antes de qualquer deploy | Bypassa toda autenticação |
+| Secrets nunca no chat/log | Rotacionar se vazar |
+
+### Estado atual do CRO Dashboard (`novo-dashboard.html`)
+
+Gráficos ativos (todos com drill de deals ao clicar):
+1. **Vidas e Deals por AE** (toggle Vidas/Deals)
+2. **Pipeline Aberto por Etapa** (toggle Vidas/Deals)
+3. **Funil do Pipeline** (alcance cumulativo, deals ativos)
+4. **Risco de Concentração Top 10** (toggle Vidas/Receita)
+5. **Distribuição por Tamanho (Receita)**
+6. **Distribuição por Vidas**
+7. **Valor do Pipeline por Etapa** (toggle Raw/Ponderado)
+8. **Receita por Segmento**
+9. **Funil de Conversão Histórico** (toggle Vendas/Bid + seletor de data — usa `/api/funnel-stages`)
+10. **Funil de Conversão — Fluxo Horizontal** (card complementar, SVG com curvas bezier, compartilha os dados do card 9)
+
+Drawer de ajuda: botão `?` (todos os gráficos) ou `i` por gráfico → lista campos HubSpot consultados. Drawer de configurações: probabilidades por etapa, plano de receita.
+
+---
+
 ## Iteration 1 — 2026-04-12
 
 ### Audit findings
@@ -505,3 +612,47 @@ Registro curto, uma linha por interação (a cada alteração).
 - `novo-dashboard.html`: prefixo 🟡 (não revisado) nos títulos dos 6 gráficos ainda não revisados pelo Ivan — i18n PT/EN + ajuda. Sem emoji em "Vidas e Deals por AE | Ativos" e "Pipeline Aberto por Etapa" (revisados).
 - `novo-dashboard.html`: tecla Esc agora fecha o overlay aberto (drawer de ajuda → drawer de Configurações → modal de drill, nessa prioridade) via listener global de keydown.
 - `novo-dashboard.html`: botão "i" de cada gráfico mantém o tooltip no hover e, ao clicar, abre o drawer lateral filtrado só naquele gráfico (`novoHelpChart(key)` + `_openHelpDrawer` refatorado; cada entrada de `NOVO_HELP_CHARTS` ganhou `key`; título do drawer dinâmico). O botão "?" do topo continua mostrando todos os gráficos.
+- `api/funnel-stages.js` criado — busca histórico de etapas (`propertiesWithHistory: ['dealstage']`) de todos os deals Vendas + Bid e retorna contagens únicas por etapa + taxas de conversão entre etapas adjacentes.
+- `novo-dashboard.html`: card "Funil de Conversão Histórico" adicionado ao CRO Dashboard com toggle Vendas/Bid, seletor de data e botão Carregar.
+- `novo-dashboard.html`: toggles `.tab-sub` redesenhados no estilo Apple iOS — pílula escura de fundo, chip interno mais claro para o item selecionado, texto esmaecido para o não selecionado (dark + light mode).
+- `novo-dashboard.html`: funil centralizado — Chart.js substituído por HTML/CSS; cada barra centrada e com largura proporcional ao volume, contagem no centro, taxa de conversão entre etapas com ícone de seta e cor por limiar (verde ≥ 50% | amarelo ≥ 30% | vermelho < 30%).
+- `novo-dashboard.html`: botão "i" do funil abre o drawer com campos HubSpot consultados pela API (entrada `funnel-conv` em `NOVO_HELP_CHARTS`); separadores `&middot;` trocados por ` | ` no rodapé do funil.
+- `STATUS_LOG.md`: seção "Diretrizes do Projeto" adicionada ao topo — stack, setup local, HubSpot IDs, convenções, segurança e estado atual do CRO Dashboard, para onboarding de qualquer IA ou colaborador.
+- `novo-dashboard.html`: micro-animação deslizante nos toggles Apple-style — `.tab-sub-thumb` injeta-se em cada `.tab-sub` via `_initTabSubs()` (chamado ao fim de `novoRender()`); desliza ao trocar opção via `_moveTabSubThumb(sub, animate)`; `_setActive()`, `novoSwitchAeMode()` e `novoSwitchFunnelPipeline()` atualizados para disparar a animação.
+- `novo-dashboard.html`: card "Funil de Conversão — Fluxo Horizontal" adicionado — SVG puro com `path` único, curvas S (cubic bezier `C`) nos limites entre etapas, gradiente linear teal→verde (Ganho), labels abaixo com contagem, nome e taxa de conversão; compartilha `_novoFunnelData` e `_novoFunnelPipeline` com o card vertical; `buildNovoFunnelHorizChart()` chamado ao carregar dados, ao trocar pipeline e em `novoRender()`.
+- `novo-dashboard.html`: card de funil vertical (`_novoFunnelCard` + `buildNovoFunnelChart`) removido a pedido do usuário — as barras de mesma altura visual para valores muito diferentes tornavam o gráfico enganoso; o card horizontal (`_novoFunnelHorizCard`) absorveu o toggle Vendas/Bid, o seletor de data e o botão Carregar; `_novoFunnelStagesData` (drill-down) agora é populado em `buildNovoFunnelHorizChart`.
+- `novo-dashboard.html`: (1) `.kpi-card` sem borda, padding aumentado para `1.35rem 1.6rem`, hover via box-shadow teal; (2) 8 KPIs secundários adicionados via `_buildKpiSecRow()` — Adj. Win Rate, BDR Conversion, AE Conversion, Meeting Rate (4 com `—` por falta de dados), + Stale Deals (>60d), Data Completeness (%), Prêmio Mensal (ARR/12 pipeline), Momentum (últimos 30d vs 30d ant.); CSS `.kpi-row-sec/.kpi-sec` com fundo `--card2` e tipografia menor; (3) todos os labels/tips/subs de KPIs primários e secundários traduzidos PT/EN via `NOVO_I18N` + 8 novas entradas em `NOVO_HELP_CHARTS` para os secundários.
+- `novo-dashboard.html`: emoji 🟡 adicionado antes do label de cada KPI card (sinaliza dado pendente de validação).
+- `novo-dashboard.html`: 8 big-number KPI cards adicionados acima dos gráficos via `_buildKpiRow()` + CSS `.kpi-row/.kpi-card/.kpi-value/.kpi-sub` — Receita MTD, Receita Anual YTD, Pipeline Ponderado, Reuniões Agendadas (—, etapa excluída da API), Vidas em Aberto, Vidas Ganhas, Vidas Perdidas (—, deals perdidos excluídos), Vidas Ponderadas; cada card tem botão `i` (tooltip + drawer com campos HubSpot via 8 novas entradas em NOVO_HELP_CHARTS); cards N/A ficam com opacity .55; helper `_fmtBig()` para formatação compacta em R$/M/K.
+- `novo-dashboard.html`: header sticky ganhou efeito glassmorphism ao rolar — classe `.scrolled` adicionada via `scroll` listener (`window.scrollY > 8`); CSS: `backdrop-filter:blur(18px) saturate(1.5)` + `background:var(--hdr-glass)` (rgba semi-transparente); variável `--hdr-glass` adicionada ao `:root` (dark: `rgba(13,17,23,.78)`) e `[data-theme="light"]` (light: `rgba(246,248,250,.82)`); transição suave via `transition:background .25s`.
+- `novo-dashboard.html`: funil agora carrega automaticamente ao abrir o dashboard — `novoRender()` dispara `novoLoadFunnel()` se `_novoFunnelData === null && !_novoFunnelLoading`; spinner já visível no placeholder inicial do card; corrigido bug onde o spinner era injetado em `#funnel-chart-area` (removido) em vez de `#funnel-horiz-chart-area`; `_novoFunnelPipeline` padrão alterado de `'combined'` para `'vendas'`.
+- `novo-dashboard.html`: toggle do funil ganhou terceira opção "Ambos" (padrão) — combina Vendas + Bid somando contagens por etapa onde o nome coincide e mantendo etapas exclusivas de cada pipeline na sequência correta (`combined` adicionado a `_FUNNEL_STAGES`); taxas de conversão recalculadas sobre os totais combinados; rodapé exibe "Pipeline Vendas + Bid" e soma os totais de ambos; `_novoFunnelPipeline` agora inicia como `'combined'`.
+- `novo-dashboard.html`: (1) `.novo-card-header .tab-sub { margin-bottom:0 }` — corrige desalinhamento vertical do botão "i" em relação ao toggle Apple-style nos cabeçalhos de card (`.tab-sub` tinha `margin-bottom:1rem` que, em flex + `align-items:center`, deslocava o chip para cima); (2) `buildNovoFunnelHorizChart()` reescrito com layout proporcional: zonas de estágio (`flex=1`) e zonas de conversão (`flex=0.35`) têm a mesma proporção tanto no SVG quanto na linha de labels, garantindo alinhamento pixel-a-pixel — SVG inclui linhas tracejadas verticais em `xCC(j)` (centro de cada zona de conversão); label row alterna entre células de estágio (contagem + nome, clicáveis) e células de conversão (seta + percentual colorido por limiar).
+- `novo-dashboard.html`: experimentado converter o menu lateral em barra horizontal no topo, mas **revertido a pedido do usuário** — mantido o drawer lateral esquerdo docado de 280px original (`.nav-drawer` fixed, `body.nav-docked`, `.nav-backdrop`, `_setNavOpen` com backdrop/docked, padrão aberto).
+- **Filtro de Motivo de Perdido no modal do P07:** API passa a buscar/mapear `motivo_do_declinio_ou_perdido` → `lost_reason` (833/884 preenchidos). Modal do P07 agora abre via `_novoOpenLostModal` com um `<select>` de motivos (ordenado por frequência, com contagem por motivo + "Todos"); `novoFilterLostReason(val)` re-renderiza a tabela filtrada (sentinela `(sem motivo)` para nulos). Top motivos: Outros (219), Não tivemos retorno (174), No Show (133).
+- **Deals perdidos habilitados (P07 + Win Rate):** `api/forecast-table.js` retorna perdidos só com `?includeLost=true` (novo `LOST_STAGE_IDS=['1144746911']`, filtro `hs_is_closed_lost` condicional) — board e demais painéis chamam sem o param e seguem sem perdidos (isolados). CRO passa a chamar `?includeLost=true`. P07 (Vidas Ganhas→Perdidas) habilitado (`na:false`, cor red, clicável, drill com `lostDeals`). Contador "deals ativos" do topo passou a excluir Perdido. S01 (Adj. Win Rate) habilitado **por contagem de deals** (decisão do usuário): ganhos ÷ (ganhos + perdidos) = ~3% (24/908); perdidos = histórico completo (884 deals). Textos/fórmulas/i18n atualizados (vidas→deals; removido "indisponível"). Nota: win-rate por vidas seria ~0% por causa de outliers gigantes nos perdidos (Bradesco 1M vidas etc.), por isso a escolha por contagem. P06 segue com 🟡 removido.
+- **P06 (Vidas Ganhas) — modal com 4 big-numbers:** reaproveita `_novoKpiStatsHtml(d.deals)` (mesmo do P02) com os deals do P06 (`wonDeals` = Ganho+Implantação, todos): Won Deals, Total de Vidas, Monthly Revenue, Annual Revenue. Dispatch adicionado no `novoKpiDrill`. Confere com o card: Total de Vidas = 3.787.
+- **P05 de-flag + scrollbar horizontal visível:** removido 🟡 do P05 (`kpi-open-vidas`). Tabela de deals dos modais (`_novoDealsTableHtml`) agora com `overflow:auto;max-height:55vh` — a barra de rolagem horizontal fica fixa no rodapé de uma caixa visível (não precisa rolar o modal inteiro até o fim); cabeçalho `thead` já era sticky, então rolagem vertical mantém os títulos. Mantido o substring `overflow-x:auto` no style para a scrollbar temática continuar casando. Tabelas em cards da página (risktable/triage/reassign) não alteradas.
+- **P04 e P05 (sessão local):** P04 (`kpi-reunioes`) — título → "Deals em Reunião Agendada" (i18n PT/EN), card agora clicável (drill registrado com `reunioesDeals`) abrindo a lista desses deals, e flag 🟡 removida. P05 (`kpi-open-vidas`) — modal ganhou 3 big-numbers via `_novoP05StatsHtml(deals)`: Negócios Abertos (count), Vidas em Negócios Abertos (Σ vidas), Idade Média (média de `dias_no_pipe`); chaves i18n `p05_*` (PT/EN); dispatch no `novoKpiDrill`. Números conferidos vs API: 134 abertos, 710.555 vidas, 74 dias médios.
+- **Avaliação completa pós-mudanças do usuário** (Reunião Agendada habilitada na API → 323 deals). OK: sintaxe limpa em todo o deploy-path, menu compartilhado idêntico nos 8, regra won intacta, auth por lista. Usuário tratou bem a Reunião Agendada: `_novoIsOpen(d)` (exclui Reunião + Perdido) aplicado em `_novoOpen()` e nos 3 `openDeals`; P04 habilitado com `reunioesDeals/Count/Vidas`. Correções desta avaliação: (1) `--blue` adicionado ao tema (`:root` + light) — P04 usava `var(--blue)` inexistente; (2) textos de ajuda do P04 + campo dealstage de kpi2-meeting atualizados (não dizem mais "excluída da API"). Sinalizados (não alterados): `public/novo-dashboard.broken.html` e `novo-dashboard.backup.*.html` em `public/` ficam acessíveis no deploy; scripts soltos na raiz; `dashboard.html` legado com erro de sintaxe mas fora do deploy-path (`/dashboard`→`novo-dashboard.html`).
+- **Acesso restrito por lista explícita de e-mails** (antes: qualquer `@axenya.com` entrava). `lib/auth.js`: nova lista `AUTHORIZED_EMAILS` (no arquivo) + env var `ALLOWED_EMAILS`, unidas por `getAllowedEmails()`; novo helper `isEmailAuthorized(email)` é o único ponto de decisão. `verifyGoogleToken` (One Tap) e `api/auth/callback.js` (fallback OAuth) agora liberam SOMENTE quem está na lista; o domínio `axenya.com` só define o papel (staff x guest), não o acesso. Para liberar pessoas: editar `AUTHORIZED_EMAILS` em `lib/auth.js` ou setar `ALLOWED_EMAILS` (Vercel → Settings → Environment Variables). Seed inicial: `jpacheco@axenya.com`.
+- **Tooltips de cálculo nos mini big-numbers dos modais** (P02 e P03): cada stat card (`_novoKpiStatsHtml` e `_novoP03StatsHtml`) ganhou um botão `i` com `data-tip` explicando a fórmula, reaproveitando o tooltip custom (`_infoBtn` → `#novo-tip`, z-index acima do modal). Ex.: "Weighted/yr (histórico) = Σ (ARR × probabilidade) dos abertos; prob = custom do AE, senão a da etapa (Configurações)".
+- **Tooltips nos pontos de status** (`title` + `aria-label`): verde = "live", amarelo = "wip", vermelho = "not working". Aplicado em `dot()` (menu lateral + dropdown) e `buildTitleDot()` (ao lado do título) no bloco compartilhado dos 8 arquivos.
+- **Probabilidade por etapa unificada na fonte de configurações.** Auditoria: `novo-dashboard.html` já lia tudo de `NOVO_STAGE_PROB` (configurável via modal, persistido em `localStorage 'novo_stage_prob'`); demais painéis/forecast não usam prob por etapa — **exceto `novo-board.html`**, que tinha um `NOVO_STAGE_PROB` hardcoded próprio. Corrigido: board agora carrega do mesmo `localStorage 'novo_stage_prob'` (+ defaults idênticos ao CRO) e alinhou o cálculo de prob custom (deal.probabilidade já é 0–1; removido `/100`, fallback `||0`).
+- **Bug pré-existente corrigido no `novo-board.html`:** o script principal tinha uma chave `}` faltando no `_novoMkChart` de `buildBdArrBridge` (SyntaxError que quebrava todo o JS do painel Board → charts não renderizavam). Adicionada a chave; script agora parseia limpo. (Descoberto ao auditar a probabilidade.)
+- **P03 (Pipeline Ponderado) — modal ganha 4 big-numbers** (como o P02), via `_novoP03StatsHtml()`: Weighted/mo (histórico) = ponderado anual ÷ 12; Weighted/yr (histórico) = Σ(arr × prob) dos deals abertos (= valor do card); Weighted/yr (impl. = ganho) = ponderado dos abertos + ARR cheio dos deals em Implantação (cenário tratando implantação como ganho 100%); Open Deals = nº de abertos. `novoKpiDrill` agora ramifica por key (P02 → `_novoKpiStatsHtml`, P03 → `_novoP03StatsHtml`). Números conferidos vs API: 132 abertos, R$ 44,5M hist/yr, R$ 3,7M hist/mo, R$ 49,1M impl=ganho.
+- **KPI primários responsivos no mobile** — `.kpi-row` (os 8 big numbers) mantém `repeat(4,1fr)` no desktop mas passa a `repeat(2,1fr)` em ≤900px e `1fr` em ≤520px (media queries), em vez de 4 colunas fixas que vazavam à direita no celular.
+- **P02 validado (limpeza visual):** removido o emoji 🟡 só do título do card P02 (`kpi-won-annual`) — sinaliza que foi revisado; demais KPIs mantêm o 🟡. Removido o prefixo de código (ex. "P02 | ") do título do modal de drill de todos os big numbers (`novoKpiDrill`); o código continua só no tooltip do `i`.
+- **Scrollbars temáticas** nas tabelas com rolagem horizontal (`[style*="overflow-x:auto"]`) e nos corpos de modal/drawers (`.modal-body`, `.novo-help-body`, `.novo-prob-body`): `scrollbar-width:thin` + `scrollbar-color` (Firefox) e `::-webkit-scrollbar` (Chromium) com thumb `var(--text2)` arredondado (borda transparente + `background-clip:padding-box`), hover `var(--teal)`, track transparente. CSS adicionado ao bloco compartilhado → aplica em todos os 7 painéis + Forecast.
+- **P02 (e KPIs won P01/P06) — textos alinhados ao novo "won":** tooltips PT/EN (`kpi_mtd_tip`, `kpi_won_tip`, `kpi_won_vidas_tip`), descrições e campo `dealstage` do drawer de ajuda atualizados para "Ganho + Implantação" (com IDs de etapa de ambos). Modal do P02 confere: card, 4 mini big-numbers (Negócios Ganhos/Vidas/Monthly/Annual) e lista de deals (com coluna Fechamento) derivam todos de `wonYtdDeals` = `_novoIsWon` filtrado por ano; código P02 no tooltip do `i`.
+- **Definição de "won" passa a incluir Ganho + Implantação** (pedido do usuário). Novo helper `_novoIsWon(d)` (`stage==='Ganho' || stage==='Implantação'`); `_novoOpen()` central agora retorna `!_novoIsWon(d)` (Implantação sai do pipeline aberto, evitando dupla contagem); todos os literais `d.stage===/!=='Ganho'` sobre `_novoDeals` trocados pelo helper (15 sites: big numbers, win-rate por tamanho, leaderboards de AE, cycle time, net flow, etc.). `Implantação` removido de `NOVO_STAGE_ORDER` (não é mais etapa de pipeline aberto). Fórmulas/descrições de P01/P02/P06 (won) e P05 (aberto) atualizadas. **Não** alterado o funil histórico de conversão (`/api/funnel-stages`, `isGanho` em `buildNovoFunnelHorizChart`) — é progressão de etapas. Impacto (dados atuais): P02 5→22 deals (R$ 498K→R$ 5,07M); Vidas Ganhas 584→3.787; pipeline aberto 150→133.
+- **Coluna "Fechamento" (close_date) na lista de deals** — adicionada entre "Etapa" e "Dias" em `_novoDealsTableHtml` (tabela compartilhada por todos os drills, inclusive P02). Renumerados os índices das colunas (agora 0–17, 18 no total) em três pontos: cabeçalho `th()`, células `_novoDealsRows` (`_nd(d.close_date.slice(0,10))`) e ordenação `_novoSortVal` (col 4 = close_date); `tfoot` "Total" colspan 6→7. Verificação na API: P02 (Receita Ganha Ano Atual) hoje conta só `stage==='Ganho'` (5 deals em 2026, todos com close_date em 2026); nenhum em Implantação no dado atual.
+- **Big numbers — refinamento (CRO Dashboard):** (1) código de referência (P/S) removido do badge visível e mantido **só no tooltip** do botão `i` (`data-code` → `.nt-code`); (2) cada big-number card virou **clicável** (classe `.kpi-click` + `onclick="novoKpiDrill(key)"`) abrindo modal com a **lista de deals** que compõe o KPI (mesmas colunas dos gráficos, via `_novoDealsTableHtml` extraído de `novoOpenDealsModal`); `_novoKpiDrill[key]` registra o subconjunto de deals + label por KPI nos builders; (3) **P02 (Receita Ganha | Ano Atual)** abre, além da lista, 4 mini big-numbers no topo (Negócios Ganhos, Total de Vidas, Monthly Revenue, Annual Revenue) via `_novoKpiStatsHtml`; (4) `letter-spacing:0` em `.kpi-label` e `.kpi-sec-label`. Botão `i` agora faz `event.stopPropagation()` para não disparar o drill do card. Cards N/A (sem deals) não são clicáveis.
+- **Forecast com menu correto (tarefa pendente resolvida):** `forecast.html` recebeu o mesmo tratamento dos painéis — `<h1>Forecast</h1>` envolto no `.panel-switcher` (chevron + dropdown) e o bloco JS compartilhado injetado antes de `</body>` (cópia byte-a-byte de `novo-board.html`). O `buildNav()` regenera o menu lateral idêntico (8 itens + pontos de saúde, Forecast=verde ativo). Separadores travessão de `forecast.html` também trocados por `|` (9).
+- **Regras primárias formalizadas** no topo das Diretrizes: (1) separador de texto é sempre `|` (travessão só como placeholder `'—'`); (2) menu lateral e dropdown têm fonte única (`PANELS` no bloco JS compartilhado). Aplicado: **122 separadores ` — ` trocados por ` | `** nos 7 `novo-*.html` (preservados os 50 placeholders `'—'` de "sem dado").
+- **Menu lateral unificado** — a `<ul class="nav-menu">` agora é gerada pelo bloco JS compartilhado a partir de `PANELS` (`buildNav()`), idêntica em todos os 7 painéis: mesmo header/itens/ícones/pontos de saúde, item atual marcado por `location.pathname`, navegação via `data-url`. O HTML estático do nav permanece como fallback mas é sobrescrito no load. Rótulo "Cotação" corrigido (acento).
+- **Pontos de saúde (verde/amarelo/vermelho) brilhando** adicionados ao menu lateral, ao lado do título e nos itens do dropdown de painéis (todos os 7 `novo-*`): Forecast=verde, CRO Dashboard=amarelo, demais=vermelho. `.health-dot` com glow pulsante (`@keyframes health-glow`, var `--hg` por cor); injetados via o bloco JS (campo `health` em `PANELS`; `build()` decora título via `.panel-switch-btn`, itens do dropdown e `.nav-item` casando a URL do onclick). Dropdown de painéis (`.panel-dd`) agora **sem borda e fundo transparente com blur** (`background:rgba(...,.62)` + `backdrop-filter:blur(20px) saturate(1.7)`, variante light).
+- `novo-dashboard.html`: **códigos de referência (P01–P08, S01–S08) visíveis em cada big-number card** — helper `_codeTag(key)` + classe `.kpi-code` (badge monospace teal) inserido ao lado do botão `i` nos KPIs primários e secundários. **Fórmulas adicionadas a todos os 16 big numbers** — campo `formula` em cada entrada KPI de `NOVO_HELP_CHARTS`, renderizado no drawer de ajuda (`_novoHelpSection`) como bloco "Fórmula" (monospace, borda teal à esquerda) entre a descrição e a tabela de campos HubSpot.
+- **Seletor de painel (chevron + dropdown)** adicionado ao título de todos os 7 painéis `novo-*` (`novo-dashboard`, `-board`, `-ae`, `-bdr`, `-48h`, `-cs`, `-cotacao`): `<h1>` agora vive dentro de `<button class="panel-switch-btn">` com um chevron `▾` à direita; ao clicar abre `.panel-dd` (dropdown estilizado, ícone + nome de cada painel, item atual marcado `.active`, inclui Forecast). Bloco `<style>`+`<script>` autocontido idêntico injetado antes de `</body>` em cada arquivo; painel atual detectado por `location.pathname`; fecha com clique-fora e Esc; chevron rotaciona 180° quando aberto. Subtítulo do `novo-48h` preservado dentro do switcher.
+- **Integração Forecast** — `api/history.js`, `api/snapshot.js`, `lib/sheets.js` copiados de `dash-forecast`; `public/forecast.html` adicionado (cópia de `dash-forecast/public/index.html`); portal ID corrigido em `snapshot.js` (`44715285` → `44444289`); `vercel.json`: rewrite `/forecast → /forecast.html` + cron `59 2 * * *` + `X-Frame-Options: SAMEORIGIN`; `local-server.js`: rota `/forecast` + log; `novo-dashboard.html`: nav drawer ganha item "Forecast" (ícone waveform) com `switchView('forecast')` que exibe `#view-forecast` (div full-screen com mini-header + `<iframe src="/forecast">` lazy-loaded via `data-loaded`); CRO e Forecast têm nav items com classe `.active` alternada.
+- **Ajustes de KPIs e l�gica do Funil (2026-06-10)**: (1) Tradu��o padronizada dos modais PT/EN p/ P02 e P03; (2) Implementa��o de fallback p/ arr_estimado ausente (usa 1� fatura * 12) nos modais e kpis; (3) T�tulo do P03 no CRO Dash e modal unificados ('Pipeline Ponderado/ano (hist�rico)'); (4) P03 tooltip 'Cen�rio (+ Implanta��o 100%)' no lugar de impl. = ganho; (5) Nova etapa 'Reuni�o Agendada' mapeada na API e ativada no P04, isolada do restante do funil ativo via _novoIsOpen; (6) Removido emoji ?? do card P03.

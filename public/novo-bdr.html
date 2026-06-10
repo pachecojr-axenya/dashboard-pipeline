@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BDR Performance | Axenya</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0d1117;--card:#171f2e;--card2:#1e2a3c;--border:#293a50;--text:#e6edf3;--text2:#8b949e;--muted:#6e7681;--teal:#3ab8b7;--green:#3fb950;--red:#f85149;--orange:#d29922;--yellow:#e3b341;--hover:rgba(255,255,255,0.06);--even-s:#131b28;--hover-s:#1c2b40;--hdr-glass:rgba(13,17,23,.78)}
+html[data-theme="light"]{--bg:#f6f8fa;--card:#ffffff;--card2:#eaeef2;--border:#d0d7de;--text:#1f2328;--text2:#57606a;--teal:#0d7377;--green:#1a7f37;--yellow:#9a6700;--red:#cf222e;--hover:rgba(0,0,0,0.05);--even-s:#f1f4f8;--hover-s:#e8eef4;--hdr-glass:rgba(246,248,250,.82)}
+body{background:var(--bg);color:var(--text);font-family:Inter,'Segoe UI',system-ui,sans-serif;font-size:13px;line-height:1.5}
+button,input,select,textarea{font-family:inherit}
+h1{font-size:1.5rem;font-weight:700;letter-spacing:-.02em;margin-bottom:.15rem}
+.hdr-btn{width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;background:none;border:none;color:var(--text2);border-radius:99px;cursor:pointer;transition:background .15s,color .15s;position:relative;flex-shrink:0}
+.hdr-btn:hover{background:rgba(255,255,255,0.13);color:var(--text)}
+html[data-theme="light"] .hdr-btn:hover{background:rgba(0,0,0,0.07)}
+.hdr-btn.highlighted{background:var(--teal)!important;color:#fff!important;box-shadow:0 0 0 2px rgba(58,184,183,.3)}
+.hdr-btn[data-tooltip]::after{content:attr(data-tooltip);position:absolute;top:calc(100% + 7px);left:50%;transform:translateX(-50%);background:var(--card2);color:var(--text);font-size:.73rem;padding:.26rem .62rem;border-radius:6px;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .15s;z-index:300}
+.hdr-btn[data-tooltip]:hover::after{opacity:1}
+.hdr-sep{width:1px;height:16px;background:rgba(255,255,255,0.12);margin:0 2px;flex-shrink:0}
+html[data-theme="light"] .hdr-sep{background:rgba(0,0,0,0.12)}
+.hdr-actions{display:flex;align-items:center;background:rgba(255,255,255,0.09);border-radius:99px;padding:7px;gap:12px}
+html[data-theme="light"] .hdr-actions{background:rgba(0,0,0,0.03)}
+@keyframes hdr-spin{to{transform:rotate(360deg)}}
+.hdr-btn.spinning svg{animation:hdr-spin .7s linear infinite}
+.nav-drawer{position:fixed;top:0;left:-280px;width:280px;height:100vh;background:var(--card);border-right:1px solid rgba(255,255,255,.08);z-index:1000;transition:left .25s cubic-bezier(0.4,0,0.2,1);display:flex;flex-direction:column}
+.nav-drawer.open{left:0}
+.nav-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:999;opacity:0;pointer-events:none;transition:opacity .25s ease}
+.nav-backdrop.open{opacity:1;pointer-events:auto}
+.nav-drawer-header{display:flex;align-items:center;gap:.75rem;padding:1.1rem 1.25rem;border-bottom:1px solid rgba(255,255,255,.08)}
+.nav-drawer-brand{font-weight:600;font-size:1rem;color:var(--text);flex:1}
+.nav-menu{list-style:none;padding:.5rem 0;margin:0}
+.nav-item{display:flex;align-items:center;gap:.75rem;padding:.7rem 1.25rem;cursor:pointer;font-size:.9rem;color:var(--text2);transition:background .15s,color .15s}
+.nav-item:hover{background:rgba(255,255,255,.06);color:var(--text)}
+.nav-item.active{color:var(--teal);font-weight:500}
+.nav-item.active svg{stroke:var(--teal)}
+.novo-hdr{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:1.25rem 2rem;background:transparent;position:sticky;top:0;z-index:100;transition:background .25s,backdrop-filter .25s,box-shadow .25s}
+.novo-hdr.scrolled{background:var(--hdr-glass);backdrop-filter:blur(18px) saturate(1.5);-webkit-backdrop-filter:blur(18px) saturate(1.5);box-shadow:0 1px 0 var(--border)}
+.novo-theme-sun{display:block}.novo-theme-moon{display:none}
+[data-theme="light"] .novo-theme-sun{display:none}[data-theme="light"] .novo-theme-moon{display:block}
+.novo-lang-btn{width:auto !important;padding:0 9px;font-size:.71rem;font-weight:700;letter-spacing:.06em}
+.novo-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(480px,1fr));gap:1rem;padding-bottom:2rem}
+.novo-card{background:var(--card);border-radius:10px;padding:1.25rem 1.5rem}
+.novo-card-header{display:flex;align-items:center;gap:.6rem;margin-bottom:1rem;flex-wrap:wrap}
+.novo-card-header h3{font-size:.88rem;font-weight:600;color:var(--text);margin:0;flex:1}
+.novo-info-btn{width:16px;height:16px;border-radius:50%;border:1.5px solid var(--text2);background:none;color:var(--text2);font-size:.62rem;font-style:normal;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;position:relative;flex-shrink:0;padding:0;line-height:1}
+#novo-tip{position:fixed;z-index:9999;background:rgba(23,31,46,.78);backdrop-filter:blur(14px) saturate(1.5);border-radius:6px;padding:.45rem .7rem;width:278px;pointer-events:none;display:none;box-shadow:0 6px 20px rgba(0,0,0,.3)}
+html[data-theme="light"] #novo-tip{background:rgba(246,248,250,.82)}
+#novo-tip.nt-show{display:block}
+#novo-tip .nt-text{font-size:.73rem;color:var(--text);font-weight:400;line-height:1.5}
+#novo-tip .nt-code{font-size:.62rem;font-weight:700;color:var(--teal);font-family:ui-monospace,Menlo,Consolas,monospace;margin-top:.3rem;padding-top:.28rem;border-top:1px solid rgba(255,255,255,.12);letter-spacing:.07em}
+html[data-theme="light"] #novo-tip .nt-code{border-top-color:rgba(0,0,0,.1)}
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem;margin-bottom:.75rem}
+.kpi-card{background:var(--card);border-radius:14px;padding:1.6rem 1.8rem}
+.kpi-label{font-size:.66rem;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;line-height:1}
+.kpi-value{font-size:2rem;font-weight:800;line-height:1.1;margin:.35rem 0 .25rem}
+.kpi-sub{font-size:.7rem;color:var(--muted);line-height:1.35}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:2000;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s linear;backdrop-filter:blur(5px)}
+.modal-overlay.open{opacity:1;pointer-events:auto}
+.modal{background:var(--card);border:1px solid var(--border);border-radius:14px;width:90vw;max-width:960px;max-height:85vh;display:flex;flex-direction:column;transform:translateY(20px);transition:transform .28s cubic-bezier(0.4,0,0.2,1)}
+.modal-overlay.open .modal{transform:translateY(0)}
+.modal-header{display:flex;justify-content:space-between;align-items:center;padding:1.2rem 1.5rem;border-bottom:1px solid var(--border)}
+.modal-header h2{font-size:1rem;font-weight:600;color:var(--text)}
+.modal-close{background:none;border:none;color:var(--text2);font-size:1.4rem;cursor:pointer;padding:.2rem .5rem;border-radius:4px}
+.modal-close:hover{color:var(--red)}
+.modal-body{padding:1.2rem 1.5rem;overflow-y:auto;flex:1}
+.btn-export{background:transparent;border:1px solid var(--border);color:var(--text2);border-radius:8px;padding:.3rem .7rem;font-size:.7rem;cursor:pointer;margin-left:auto}
+.btn-export:hover{border-color:var(--teal);color:var(--teal)}
+table.lb{width:100%;border-collapse:separate;border-spacing:0;font-size:14px}
+table.lb th{text-align:right;color:var(--teal);font-size:.72rem;font-weight:700;text-transform:uppercase;padding:.6rem 1rem;border-bottom:2px solid var(--teal);white-space:nowrap;position:sticky;top:0;background:var(--card)}
+table.lb th:first-child{text-align:left}
+table.lb td{padding:.38rem 1rem;border-bottom:1px solid var(--border);color:var(--text);text-align:right}
+table.lb td:first-child{text-align:left;font-weight:600}
+table.lb tbody tr:nth-child(even) td{background:var(--even-s)}
+table.lb tbody tr:hover td{background:var(--hover-s)}
+#view-novo{transition:filter .25s ease,margin-left .25s cubic-bezier(0.4,0,0.2,1)}
+body.nav-docked #view-novo{margin-left:280px}
+@media(max-width:820px){body.nav-docked #view-novo{margin-left:0}}
+.content-blur{filter:blur(4px);pointer-events:none;user-select:none}
+.novo-help-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:3000;opacity:0;pointer-events:none;transition:opacity .25s ease}
+.novo-help-backdrop.open{opacity:1;pointer-events:auto}
+.novo-help-drawer{position:fixed;top:0;right:-580px;width:540px;max-width:100vw;height:100vh;background:var(--card);border-left:1px solid var(--border);z-index:3001;display:flex;flex-direction:column;transition:right .28s cubic-bezier(0.4,0,0.2,1);box-shadow:-8px 0 32px rgba(0,0,0,.25)}
+.novo-help-drawer.open{right:0}
+.novo-help-hdr{display:flex;align-items:center;justify-content:space-between;padding:1.25rem 1.5rem;border-bottom:1px solid var(--border);flex-shrink:0}
+.novo-help-hdr h3{margin:0;font-size:1.15rem;font-weight:600;color:var(--text)}
+.novo-help-body{flex:1;overflow-y:auto;padding:1.25rem 1.5rem}
+.section-hdr{grid-column:1/-1;margin:1.5rem 0 .25rem;border-top:1px solid var(--border);padding-top:1.25rem}
+.section-hdr h2{font-size:.78rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.1em;margin:0}
+.banner-warn{grid-column:1/-1;background:rgba(210,153,34,.12);border:1px solid rgba(210,153,34,.3);border-radius:10px;padding:1rem 1.25rem;margin-bottom:.25rem;font-size:.82rem;color:var(--orange)}
+</style>
+</head>
+<body>
+
+<nav class="nav-drawer" id="nav-drawer">
+  <div class="nav-drawer-header"><span class="nav-drawer-brand">Dashboard Axenya</span><button class="hdr-btn" onclick="closeDrawer()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+  <ul class="nav-menu">
+    <li class="nav-item" onclick="location.href='/novo'"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>CRO Dashboard</li>
+    <li class="nav-item" onclick="location.href='/novo-board'"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20h20M4 20V10l8-6 8 6v10"/><path d="M10 20v-6h4v6"/></svg>Board View</li>
+    <li class="nav-item" onclick="location.href='/novo-ae'"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>AE Performance</li>
+    <li class="nav-item active" onclick="location.href='/novo-bdr'"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>BDR Performance</li>
+    <li class="nav-item" onclick="location.href='/novo-48h'"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Last 48h</li>
+    <li class="nav-item" onclick="location.href='/novo-cs'"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>CS Dashboard</li>
+    <li class="nav-item" onclick="location.href='/novo-cotacao'"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Cotação</li>
+    <div style="height:1px;background:var(--border);margin:.4rem .75rem"></div>
+    <li class="nav-item" onclick="location.href='/forecast'"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Forecast</li>
+  </ul>
+</nav>
+<div class="nav-backdrop" id="nav-backdrop" onclick="closeDrawer()"></div>
+
+<div id="view-novo">
+  <div class="novo-hdr" id="novo-hdr">
+    <div style="display:flex;align-items:center;gap:.75rem">
+      <button class="hdr-btn" onclick="toggleDrawer()" data-tooltip="Menu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
+      <div class="panel-switcher" id="panel-switcher"><button class="panel-switch-btn" type="button" onclick="togglePanelMenu(event)" aria-haspopup="true" aria-expanded="false"><h1>🎯 BDR Performance</h1><svg class="panel-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button><div class="panel-dd" id="panel-dd" role="menu"></div></div>
+    </div>
+    <div class="hdr-actions">
+      <button class="hdr-btn" onclick="doLogout()" data-tooltip="Sair"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></button>
+      <div class="hdr-sep"></div>
+      <button class="hdr-btn novo-lang-btn" onclick="novoToggleLang()" data-tooltip="Idioma"><span id="novo-lang-label">PT</span></button>
+      <button class="hdr-btn" onclick="toggleTheme()" data-tooltip="Tema"><svg class="novo-theme-sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg><svg class="novo-theme-moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></button>
+      <button class="hdr-btn" onclick="novoHelp()" data-tooltip="Campos HubSpot"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></button>
+      <button class="hdr-btn highlighted" id="btn-refresh" onclick="_novoDeals=null;novoLoadData();" data-tooltip="Atualizar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></button>
+    </div>
+  </div>
+  <div id="novo-content" style="max-width:1400px;margin:0 auto;padding:2rem">
+    <div style="text-align:center;padding:3rem 0;color:var(--text2)">Aguardando dados…</div>
+  </div>
+</div>
+
+<div id="novo-tip"><div class="nt-text"></div><div class="nt-code"></div></div>
+
+<div class="modal-overlay" id="modal-overlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-header"><h2 id="modal-title"></h2><button class="btn-export" onclick="exportModalCSV()">&#11015; CSV</button><button class="modal-close" onclick="closeModal()">&times;</button></div>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
+<div class="novo-help-backdrop" id="novo-help-backdrop" onclick="novoCloseHelp()"></div>
+<div class="novo-help-drawer" id="novo-help-drawer">
+  <div class="novo-help-hdr"><h3>Campos do HubSpot</h3><button class="hdr-btn" onclick="novoCloseHelp()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+  <div class="novo-help-body" id="novo-help-body"></div>
+</div>
+
+<script>
+(function(){ var s=localStorage.getItem('axenya_theme')||'dark'; if(s==='light') document.documentElement.setAttribute('data-theme','light'); })();
+function toggleTheme(){ var n=document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark'; document.documentElement.setAttribute('data-theme',n); localStorage.setItem('axenya_theme',n); if(_novoDeals) novoRender(); }
+function doLogout(){ window.location.href='/login.html'; }
+function setContentBlur(on){ var el=document.getElementById('view-novo'); if(el) el.classList.toggle('content-blur',on); }
+function _setNavOpen(open){ document.getElementById('nav-drawer').classList.toggle('open',open); document.body.classList.toggle('nav-docked',open); var narrow=window.matchMedia('(max-width:820px)').matches; document.getElementById('nav-backdrop').classList.toggle('open',open&&narrow); try{localStorage.setItem('novo_nav_open',open?'true':'false');}catch(e){} }
+function openDrawer(){ _setNavOpen(true); }
+function closeDrawer(){ _setNavOpen(false); setContentBlur(false); }
+function toggleDrawer(){ _setNavOpen(!document.getElementById('nav-drawer').classList.contains('open')); }
+function openModal(title,bodyHtml){ setContentBlur(true); document.getElementById('modal-title').textContent=title; document.getElementById('modal-body').innerHTML=bodyHtml; document.getElementById('modal-overlay').classList.add('open'); }
+function closeModal(){ document.getElementById('modal-overlay').classList.remove('open'); setContentBlur(false); }
+function exportModalCSV(){ var title=document.getElementById('modal-title').textContent; var table=document.getElementById('modal-body').querySelector('table'); if(!table)return; var rows=[]; table.querySelectorAll('tr').forEach(function(tr){ var cells=[]; tr.querySelectorAll('th,td').forEach(function(c){ cells.push('"'+(c.textContent.trim().replace(/"/g,'""'))+'"'); }); rows.push(cells.join(',')); }); var a=document.createElement('a'); a.href='data:text/csv;charset=utf-8,﻿'+encodeURIComponent(rows.join('\n')); a.download=(title||'export').slice(0,40).replace(/[^a-z0-9]/gi,'-')+'-'+new Date().toISOString().slice(0,10)+'.csv'; a.click(); }
+
+var NOVO_LANG=(function(){ try{return localStorage.getItem('novo_lang')||'pt';}catch(e){return 'pt';} })();
+var NOVO_I18N={
+  pt:{loading:'Buscando dados…',error_prefix:'Erro: ',retry:'Tentar novamente',updated_at:'Atualizado às',
+    bdr_note:'🟡 A API não possui campo source (BDR/AE). Proxy: deals com colaboradores > 0 são tratados como originados pelo BDR. Para segmentação precisa, adicione o campo <code>source_bdr</code> (booleano) ao pipeline do HubSpot.',
+    bdr_new_deals:'🟡 Novos Deals por Mês',bdr_new_deals_tip:'Deals criados por mês (todos), segmentados por colaboradores>0 (proxy BDR). Fonte: createdate, colaboradores.',
+    bdr_new_vidas:'🟡 Novas Vidas por Mês',bdr_new_vidas_tip:'Soma de vidas de deals criados por mês. Fonte: createdate, vidas, colaboradores.',
+    bdr_net_flow:'🟡 Net Flow de Deals (Entrada vs Saída)',bdr_net_flow_tip:'Deals criados (entrada) vs deals ganhos (saída por mês). Fonte: createdate, close_date, stage.',
+    bdr_net_vidas:'🟡 Net Flow de Vidas',bdr_net_vidas_tip:'Vidas de deals criados vs vidas de deals ganhos por mês. Fonte: createdate, close_date, stage, vidas.',
+    bdr_avg_vidas:'🟡 Vidas Médias por Deal ao Longo do Tempo',bdr_avg_vidas_tip:'Média de vidas por deal criado por mês. Tendência de qualidade do pipeline. Fonte: createdate, vidas.',
+    bdr_colabs:'🟡 Deals com vs sem Colaboradores',bdr_colabs_tip:'% dos deals com colaboradores > 0 (proxy BDR). Fonte: colaboradores.',
+    bdr_stage_entry:'🟡 Etapa de Entrada dos Deals',bdr_stage_entry_tip:'Distribuição da primeira etapa dos deals ao entrar no pipeline. Fonte: stage, createdate.',
+    bdr_size_dist:'🟡 Distribuição de Porte (Vidas)',bdr_size_dist_tip:'Deals por faixa de vidas (pequeno/médio/grande). Fonte: vidas.',
+  },
+  en:{loading:'Fetching data…',error_prefix:'Error: ',retry:'Try again',updated_at:'Updated at',
+    bdr_note:'🟡 The API has no source field (BDR/AE). Proxy: deals with colaboradores > 0 are treated as BDR-sourced. For accurate segmentation, add a <code>source_bdr</code> (boolean) field to the HubSpot pipeline.',
+    bdr_new_deals:'🟡 New Deals by Month',bdr_new_deals_tip:'Deals created per month (all), split by colaboradores>0 (BDR proxy). Source: createdate, colaboradores.',
+    bdr_new_vidas:'🟡 New Lives by Month',bdr_new_vidas_tip:'Sum of lives from deals created per month. Source: createdate, vidas, colaboradores.',
+    bdr_net_flow:'🟡 Deal Net Flow (Inflow vs Outflow)',bdr_net_flow_tip:'Deals created (inflow) vs deals won (outflow) by month. Source: createdate, close_date, stage.',
+    bdr_net_vidas:'🟡 Lives Net Flow',bdr_net_vidas_tip:'Lives from created deals vs lives from won deals by month. Source: createdate, close_date, stage, vidas.',
+    bdr_avg_vidas:'🟡 Avg Lives per Deal Over Time',bdr_avg_vidas_tip:'Avg lives per deal created by month. Pipeline quality trend. Source: createdate, vidas.',
+    bdr_colabs:'🟡 Deals with vs without Colaboradores',bdr_colabs_tip:'% of deals with colaboradores > 0 (BDR proxy). Source: colaboradores.',
+    bdr_stage_entry:'🟡 Deal Entry Stage Distribution',bdr_stage_entry_tip:'Distribution of the first stage of deals entering pipeline. Source: stage, createdate.',
+    bdr_size_dist:'🟡 Deal Size Distribution (Lives)',bdr_size_dist_tip:'Deals by lives range (small/medium/large). Source: vidas.',
+  }
+};
+function t(k){ return (NOVO_I18N[NOVO_LANG]||NOVO_I18N.pt)[k]||(NOVO_I18N.pt[k])||k; }
+function novoToggleLang(){ NOVO_LANG=NOVO_LANG==='pt'?'en':'pt'; try{localStorage.setItem('novo_lang',NOVO_LANG);}catch(e){} document.getElementById('novo-lang-label').textContent=NOVO_LANG.toUpperCase(); if(_novoDeals) novoRender(); }
+
+var BDR_HELP_CHARTS=[
+  {key:'bdr-new-deals',title:'Novos Deals por Mês',fields:[['createdate','Data de criação do deal.'],['colaboradores','Proxy BDR: >0 indica geração BDR.']]},
+  {key:'bdr-new-vidas',title:'Novas Vidas por Mês',fields:[['createdate','Data de criação.'],['vidas','Qtde de vidas.'],['colaboradores','Segmento BDR.']]},
+  {key:'bdr-net-flow',title:'Net Flow de Deals',fields:[['createdate','Entrada no pipeline.'],['close_date','Saída (won).'],['stage','stage=Ganho.']]},
+  {key:'bdr-net-vidas',title:'Net Flow de Vidas',fields:[['createdate','Entrada.'],['vidas','Vidas do deal.'],['stage','Won = saída.']]},
+  {key:'bdr-avg-vidas',title:'Vidas Médias por Mês',fields:[['createdate','Data de criação.'],['vidas','Média mensal.']]},
+  {key:'bdr-colabs',title:'Com vs Sem Colaboradores',fields:[['colaboradores','Número de colaboradores no deal.']]},
+  {key:'bdr-stage-entry',title:'Etapa de Entrada',fields:[['stage','Etapa atual.'],['createdate','Proxy de entrada.']]},
+  {key:'bdr-size-dist',title:'Distribuição de Porte',fields:[['vidas','Faixas: <50, 50-200, 200-500, 500+.']]},
+];
+function novoHelp(){ var html='<table class="lb" style="font-size:.78rem"><thead><tr><th style="text-align:left">Gráfico</th><th style="text-align:left">Campo</th><th style="text-align:left">Descrição</th></tr></thead><tbody>'; BDR_HELP_CHARTS.forEach(function(c){ c.fields.forEach(function(f,i){ html+='<tr><td style="text-align:left;white-space:nowrap">'+(i===0?'<strong>'+c.title+'</strong>':'')+'</td><td style="text-align:left;font-family:monospace;color:var(--teal);white-space:nowrap">'+f[0]+'</td><td style="text-align:left;color:var(--text2)">'+f[1]+'</td></tr>'; }); }); html+='</tbody></table>'; document.getElementById('novo-help-body').innerHTML=html; document.getElementById('novo-help-backdrop').classList.add('open'); document.getElementById('novo-help-drawer').classList.add('open'); }
+function novoCloseHelp(){ document.getElementById('novo-help-backdrop').classList.remove('open'); document.getElementById('novo-help-drawer').classList.remove('open'); }
+document.addEventListener('mouseover',function(e){ var btn=e.target.closest('.novo-info-btn'); if(!btn)return; var tip=document.getElementById('novo-tip'); tip.querySelector('.nt-text').textContent=btn.getAttribute('data-tip')||''; tip.querySelector('.nt-code').textContent=btn.getAttribute('data-code')||''; tip.classList.add('nt-show'); });
+document.addEventListener('mouseout',function(e){ if(!e.target.closest('.novo-info-btn')) document.getElementById('novo-tip').classList.remove('nt-show'); });
+document.addEventListener('mousemove',function(e){ var tip=document.getElementById('novo-tip'); if(!tip.classList.contains('nt-show'))return; var r=tip.getBoundingClientRect(); var x=e.clientX+14; var y=e.clientY+14; if(x+r.width>window.innerWidth-8) x=e.clientX-r.width-10; if(y+r.height>window.innerHeight-8) y=e.clientY-r.height-10; tip.style.left=x+'px'; tip.style.top=y+'px'; });
+function _infoBtn(tip,code){ return '<button class="novo-info-btn" data-tip="'+_ne(tip)+'" data-code="'+(code||'')+'" aria-label="info">i</button>'; }
+window.addEventListener('scroll',function(){ document.getElementById('novo-hdr').classList.toggle('scrolled',window.scrollY>10); },{passive:true});
+
+var _ne=function(s){ return (s==null?'—':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); };
+var _ni=function(v){ return v!=null?Number(v).toLocaleString('pt-BR'):'—'; };
+function _revShort(v){ if(!v||v<=0)return 'R$0'; return v>=1000000?('R$'+(v/1000000).toFixed(1)+'M'):('R$'+Math.round(v/1000)+'k'); }
+function _fmtBig(v){ if(v==null||isNaN(v))return '—'; if(Math.abs(v)>=1e6)return 'R$ '+(v/1e6).toFixed(2).replace('.',',')+'M'; if(Math.abs(v)>=1e3)return 'R$ '+(v/1e3).toFixed(1).replace('.',',')+'k'; return 'R$ '+Math.round(v).toLocaleString('pt-BR'); }
+function _mlbl(ym){ var p=ym.split('-'); return ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][parseInt(p[1])-1]+'/'+p[0].slice(2); }
+function _annualRev(d){ if(d.arr_estimado!=null&&d.arr_estimado>0)return d.arr_estimado; if(d.primeira_fatura!=null&&d.primeira_fatura>0)return d.primeira_fatura*12; return 0; }
+
+var NOVO_FONT='Inter,\'Segoe UI\',system-ui,sans-serif';
+var NOVO_WON_STAGE='Ganho';
+var NOVO_STAGE_ORDER=['Diagnóstico','Cotação','Proposta Enviada','Consultoria','Negociação','Standby','Implantação'];
+function _novoOpen(){ return (_novoDeals||[]).filter(function(d){ return d.stage!==NOVO_WON_STAGE; }); }
+function _novoTheme(){ var isLight=document.documentElement.getAttribute('data-theme')==='light'; return { cText:isLight?'#1f2328':'#e6edf3', cText2:isLight?'#57606a':'#8b949e', cGrid:isLight?'rgba(0,0,0,.08)':'rgba(255,255,255,.06)', isLight:isLight }; }
+var _novoCharts={};
+function _novoMkChart(id,cfg){ var ctx=document.getElementById(id); if(!ctx)return; if(_novoCharts[id]) _novoCharts[id].destroy(); _novoCharts[id]=new Chart(ctx,cfg); }
+function _novoDealsRows(deals){ return deals.map(function(d){ var hsUrl=d.hs_id?'https://app.hubspot.com/contacts/44444289/deal/'+d.hs_id:'#'; var nameCell=d.hs_id?'<a href="'+hsUrl+'" target="_blank" rel="noopener" style="color:var(--teal);text-decoration:none">'+_ne(d.dealname)+'</a>':_ne(d.dealname); return '<tr><td style="text-align:left;min-width:140px;max-width:190px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+nameCell+'</td><td style="text-align:left;white-space:nowrap">'+_ne(d.ae)+'</td><td style="white-space:nowrap">'+_ne(d.stage)+'</td><td>'+_ni(d.vidas)+'</td><td>'+_revShort(_annualRev(d))+'</td><td>'+(d.dias_no_pipe!=null?d.dias_no_pipe+'d':'—')+'</td></tr>'; }).join(''); }
+function novoOpenDealsModal(title,deals){ if(!deals||!deals.length){ openModal(title,'<p style="color:var(--text2);padding:1rem 0">Nenhum deal.</p>'); return; } var html='<table class="lb"><thead><tr><th style="text-align:left">Deal</th><th style="text-align:left">AE</th><th>Etapa</th><th>Vidas</th><th>ARR</th><th>Dias</th></tr></thead><tbody>'+_novoDealsRows(deals)+'</tbody></table>'; openModal(title+' ('+deals.length+')',html); }
+
+function _getMonths(n){ var now=new Date(), months=[]; for(var i=n-1;i>=0;i--){ var dd=new Date(now.getFullYear(),now.getMonth()-i,1); months.push(dd.getFullYear()+'-'+String(dd.getMonth()+1).padStart(2,'0')); } return months; }
+
+var _novoDeals=null;
+function novoLoadData(){
+  var btn=document.getElementById('btn-refresh'); if(btn) btn.classList.add('spinning');
+  document.getElementById('novo-content').innerHTML='<div style="text-align:center;padding:3rem 0;color:var(--text2)">'+t('loading')+'</div>';
+  fetch('/api/forecast-table').then(function(r){return r.json();}).then(function(data){
+    _novoDeals=Array.isArray(data)?data:(data.deals||[]);
+    if(btn) btn.classList.remove('spinning');
+    novoRender();
+  }).catch(function(err){
+    if(btn) btn.classList.remove('spinning');
+    document.getElementById('novo-content').innerHTML='<div style="text-align:center;padding:3rem 0;color:var(--red)">'+t('error_prefix')+_ne(String(err))+'<br><br><button onclick="novoLoadData()" style="background:var(--teal);color:#fff;border:none;border-radius:8px;padding:.5rem 1.2rem;cursor:pointer">'+t('retry')+'</button></div>';
+  });
+}
+
+function novoRender(){
+  var deals=_novoDeals||[];
+  var won=deals.filter(function(d){return d.stage===NOVO_WON_STAGE;});
+  var open=_novoOpen();
+  var bdrDeals=deals.filter(function(d){return d.colaboradores&&d.colaboradores>0;});
+  var bdrOpen=bdrDeals.filter(function(d){return d.stage!==NOVO_WON_STAGE;});
+  var ts=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  var months=_getMonths(12);
+  var newTotal=deals.filter(function(d){return d.createdate&&d.createdate.substring(0,7)===months[months.length-1];}).length;
+  var newBdr=bdrDeals.filter(function(d){return d.createdate&&d.createdate.substring(0,7)===months[months.length-1];}).length;
+  var bdrPct=deals.length>0?Math.round(bdrDeals.length/deals.length*100):0;
+  var avgVidas=deals.length?Math.round(deals.reduce(function(s,d){return s+(d.vidas||0);},0)/deals.length):0;
+
+  var kpi=function(lbl,val,sub,col){ return '<div class="kpi-card"><div class="kpi-label">'+lbl+'</div><div class="kpi-value" style="color:'+(col||'var(--text)')+'">'+val+'</div><div class="kpi-sub">'+sub+'</div></div>'; };
+  var c=function(title,tip,id,h){ return '<div class="novo-card"><div class="novo-card-header"><h3>'+title+'</h3>'+_infoBtn(tip,id)+'</div><canvas id="chart-bdr-'+id+'" style="max-height:'+(h||340)+'px"></canvas></div>'; };
+  var cWide=function(title,tip,id,h){ return '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header"><h3>'+title+'</h3>'+_infoBtn(tip,id)+'</div><canvas id="chart-bdr-'+id+'" style="max-height:'+(h||320)+'px"></canvas></div>'; };
+
+  document.getElementById('novo-content').innerHTML=
+    '<div style="font-size:.78rem;color:var(--text2);margin-bottom:.75rem">'+t('updated_at')+' '+ts+' · '+deals.length+' deals totais · '+bdrDeals.length+' com colaboradores (proxy BDR)</div>'+
+    '<div class="novo-cards" style="margin-bottom:.5rem"><div class="banner-warn">'+t('bdr_note')+'</div></div>'+
+    '<div class="kpi-row">'+
+      kpi('🟡 Total BDR (proxy)',_ni(bdrDeals.length),bdrPct+'% do pipeline total','var(--teal)')+
+      kpi('🟡 Pipeline BDR Aberto',_ni(bdrOpen.length),'deals com colaboradores abertos','var(--text)')+
+      kpi('🟡 Novos Deals (mês atual)',_ni(newTotal),newBdr+' com colaboradores (BDR)','var(--text)')+
+      kpi('🟡 Vidas Médias/Deal',_ni(avgVidas),'média de todos os deals','var(--text)')+
+    '</div>'+
+    '<div class="novo-cards">'+
+      '<div class="section-hdr"><h2>Origination Volume</h2></div>'+
+      cWide(t('bdr_new_deals'),t('bdr_new_deals_tip'),'new-deals',300)+
+      cWide(t('bdr_new_vidas'),t('bdr_new_vidas_tip'),'new-vidas',300)+
+      '<div class="section-hdr"><h2>Fluxo de Pipeline</h2></div>'+
+      cWide(t('bdr_net_flow'),t('bdr_net_flow_tip'),'net-flow',300)+
+      cWide(t('bdr_net_vidas'),t('bdr_net_vidas_tip'),'net-vidas',300)+
+      '<div class="section-hdr"><h2>Qualidade</h2></div>'+
+      cWide(t('bdr_avg_vidas'),t('bdr_avg_vidas_tip'),'avg-vidas',280)+
+      c(t('bdr_colabs'),t('bdr_colabs_tip'),'colabs',300)+
+      c(t('bdr_size_dist'),t('bdr_size_dist_tip'),'size-dist',300)+
+    '</div>';
+
+  buildBdrNewDeals();
+  buildBdrNewVidas();
+  buildBdrNetFlow();
+  buildBdrNetVidas();
+  buildBdrAvgVidas();
+  buildBdrColabs();
+  buildBdrSizeDist();
+}
+
+function buildBdrNewDeals(){
+  var th=_novoTheme(), months=_getMonths(12), all=_novoDeals||[];
+  var total=months.map(function(m){return all.filter(function(d){return d.createdate&&d.createdate.substring(0,7)===m;}).length;});
+  var bdr=months.map(function(m){return all.filter(function(d){return d.createdate&&d.createdate.substring(0,7)===m&&d.colaboradores&&d.colaboradores>0;}).length;});
+  _novoMkChart('chart-bdr-new-deals',{type:'bar',plugins:[ChartDataLabels],
+    data:{labels:months.map(_mlbl),datasets:[
+      {label:'Total',data:total,backgroundColor:'rgba(88,166,255,.5)',borderRadius:2,stack:'s'},
+      {label:'Com Colaboradores (BDR)',data:bdr,backgroundColor:'rgba(58,184,183,.8)',borderRadius:2,stack:'s2'}
+    ]},
+    options:{responsive:true,layout:{padding:{top:24}},plugins:{legend:{display:true,labels:{color:th.cText2,font:{family:NOVO_FONT,size:10},padding:8}},datalabels:{display:false},tooltip:{callbacks:{label:function(c){return c.dataset.label+': '+c.parsed.y+' deals';}}}},
+      scales:{x:{grid:{display:false},ticks:{color:th.cText2,font:{family:NOVO_FONT}}},y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0}}}}});
+}
+
+function buildBdrNewVidas(){
+  var th=_novoTheme(), months=_getMonths(12), all=_novoDeals||[];
+  var total=months.map(function(m){return all.filter(function(d){return d.createdate&&d.createdate.substring(0,7)===m;}).reduce(function(s,d){return s+(d.vidas||0);},0);});
+  var bdr=months.map(function(m){return all.filter(function(d){return d.createdate&&d.createdate.substring(0,7)===m&&d.colaboradores&&d.colaboradores>0;}).reduce(function(s,d){return s+(d.vidas||0);},0);});
+  _novoMkChart('chart-bdr-new-vidas',{type:'bar',plugins:[ChartDataLabels],
+    data:{labels:months.map(_mlbl),datasets:[
+      {label:'Total',data:total,backgroundColor:'rgba(88,166,255,.5)',borderRadius:2,stack:'s'},
+      {label:'Com Colaboradores',data:bdr,backgroundColor:'rgba(63,185,80,.8)',borderRadius:2,stack:'s2'}
+    ]},
+    options:{responsive:true,layout:{padding:{top:24}},plugins:{legend:{display:true,labels:{color:th.cText2,font:{family:NOVO_FONT,size:10},padding:8}},datalabels:{display:false},tooltip:{callbacks:{label:function(c){return c.dataset.label+': '+_ni(c.parsed.y)+' vidas';}}}},
+      scales:{x:{grid:{display:false},ticks:{color:th.cText2,font:{family:NOVO_FONT}}},y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT}}}}}});
+}
+
+function buildBdrNetFlow(){
+  var th=_novoTheme(), months=_getMonths(12), all=_novoDeals||[];
+  var inflow=months.map(function(m){return all.filter(function(d){return d.createdate&&d.createdate.substring(0,7)===m;}).length;});
+  var outflow=months.map(function(m){return all.filter(function(d){return d.stage===NOVO_WON_STAGE&&d.close_date&&d.close_date.substring(0,7)===m;}).length;});
+  var net=inflow.map(function(v,i){return v-outflow[i];});
+  _novoMkChart('chart-bdr-net-flow',{type:'bar',plugins:[ChartDataLabels],
+    data:{labels:months.map(_mlbl),datasets:[
+      {label:'Entrada (criados)',data:inflow,backgroundColor:'rgba(58,184,183,.75)',borderRadius:2,stack:'s'},
+      {label:'Saída (ganhos)',data:outflow.map(function(v){return -v;}),backgroundColor:'rgba(248,81,73,.65)',borderRadius:2,stack:'s'},
+      {type:'line',label:'Net',data:net,borderColor:'rgba(227,179,65,.9)',backgroundColor:'rgba(227,179,65,.15)',pointRadius:3,borderWidth:2,tension:0.3,fill:false,stack:undefined,datalabels:{display:false}}
+    ]},
+    options:{responsive:true,layout:{padding:{top:24}},plugins:{legend:{display:true,labels:{color:th.cText2,font:{family:NOVO_FONT,size:10},padding:8}},datalabels:{display:false},tooltip:{mode:'index',intersect:false}},
+      scales:{x:{grid:{display:false},ticks:{color:th.cText2,font:{family:NOVO_FONT}},stacked:true},y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0},stacked:true}}}});
+}
+
+function buildBdrNetVidas(){
+  var th=_novoTheme(), months=_getMonths(12), all=_novoDeals||[];
+  var inflow=months.map(function(m){return all.filter(function(d){return d.createdate&&d.createdate.substring(0,7)===m;}).reduce(function(s,d){return s+(d.vidas||0);},0);});
+  var outflow=months.map(function(m){return all.filter(function(d){return d.stage===NOVO_WON_STAGE&&d.close_date&&d.close_date.substring(0,7)===m;}).reduce(function(s,d){return s+(d.vidas||0);},0);});
+  var net=inflow.map(function(v,i){return v-outflow[i];});
+  _novoMkChart('chart-bdr-net-vidas',{type:'bar',plugins:[ChartDataLabels],
+    data:{labels:months.map(_mlbl),datasets:[
+      {label:'Entrada (vidas criadas)',data:inflow,backgroundColor:'rgba(58,184,183,.75)',borderRadius:2,stack:'s'},
+      {label:'Saída (vidas ganhas)',data:outflow.map(function(v){return -v;}),backgroundColor:'rgba(248,81,73,.65)',borderRadius:2,stack:'s'},
+      {type:'line',label:'Net Vidas',data:net,borderColor:'rgba(227,179,65,.9)',backgroundColor:'rgba(227,179,65,.15)',pointRadius:3,borderWidth:2,tension:0.3,fill:false,stack:undefined,datalabels:{display:false}}
+    ]},
+    options:{responsive:true,layout:{padding:{top:24}},plugins:{legend:{display:true,labels:{color:th.cText2,font:{family:NOVO_FONT,size:10},padding:8}},datalabels:{display:false},tooltip:{mode:'index',intersect:false}},
+      scales:{x:{grid:{display:false},ticks:{color:th.cText2,font:{family:NOVO_FONT}},stacked:true},y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT}},stacked:true}}}});
+}
+
+function buildBdrAvgVidas(){
+  var th=_novoTheme(), months=_getMonths(12), all=_novoDeals||[];
+  var avgs=months.map(function(m){ var ds=all.filter(function(d){return d.createdate&&d.createdate.substring(0,7)===m&&d.vidas!=null;}); return ds.length?Math.round(ds.reduce(function(s,d){return s+(d.vidas||0);},0)/ds.length):null; });
+  _novoMkChart('chart-bdr-avg-vidas',{type:'line',plugins:[ChartDataLabels],
+    data:{labels:months.map(_mlbl),datasets:[{label:'Vidas Médias/Deal',data:avgs,borderColor:'rgba(147,112,219,.9)',backgroundColor:'rgba(147,112,219,.15)',pointRadius:4,borderWidth:2,tension:0.35,fill:true,spanGaps:true}]},
+    options:{responsive:true,layout:{padding:{top:28}},plugins:{legend:{display:false},
+      datalabels:{anchor:'end',align:'top',color:th.cText,font:{family:NOVO_FONT,size:10,weight:'bold'},formatter:function(v){return v!=null?v:'';},display:function(ctx){return ctx.dataset.data[ctx.dataIndex]!=null;}},
+      tooltip:{callbacks:{label:function(c){return c.parsed.y!=null?(c.parsed.y+' vidas/deal'):'sem dados';}}}},
+      scales:{x:{grid:{display:false},ticks:{color:th.cText2,font:{family:NOVO_FONT}}},y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT}},beginAtZero:true}}}});
+}
+
+function buildBdrColabs(){
+  var th=_novoTheme(), all=_novoDeals||[];
+  var withC=all.filter(function(d){return d.colaboradores&&d.colaboradores>0;}).length;
+  var without=all.length-withC;
+  _novoMkChart('chart-bdr-colabs',{type:'doughnut',plugins:[ChartDataLabels],
+    data:{labels:['Com Colaboradores (BDR proxy)','Sem Colaboradores'],datasets:[{data:[withC,without],backgroundColor:['rgba(58,184,183,.8)','rgba(139,148,158,.4)'],borderWidth:0,hoverOffset:4}]},
+    options:{responsive:true,plugins:{legend:{display:true,position:'bottom',labels:{color:th.cText2,font:{family:NOVO_FONT,size:10},padding:12}},
+      datalabels:{color:'#fff',font:{family:NOVO_FONT,weight:'bold',size:12},formatter:function(v,ctx){var total=ctx.dataset.data.reduce(function(a,b){return a+b;},0); return total?Math.round(v/total*100)+'%':''; }},
+      tooltip:{callbacks:{label:function(c){return c.label+': '+c.parsed+' deals ('+Math.round(c.parsed/all.length*100)+'%)';}}}}}});
+}
+
+function buildBdrSizeDist(){
+  var th=_novoTheme(), all=_novoDeals||[];
+  var bands=['< 50','50–200','200–500','500+'];
+  var counts=[
+    all.filter(function(d){return (d.vidas||0)<50;}).length,
+    all.filter(function(d){return (d.vidas||0)>=50&&(d.vidas||0)<200;}).length,
+    all.filter(function(d){return (d.vidas||0)>=200&&(d.vidas||0)<500;}).length,
+    all.filter(function(d){return (d.vidas||0)>=500;}).length
+  ];
+  _novoMkChart('chart-bdr-size-dist',{type:'bar',plugins:[ChartDataLabels],
+    data:{labels:bands,datasets:[{data:counts,backgroundColor:['rgba(139,148,158,.5)','rgba(88,166,255,.7)','rgba(63,185,80,.75)','rgba(210,153,34,.8)'],borderRadius:6}]},
+    options:{responsive:true,layout:{padding:{top:28}},plugins:{legend:{display:false},
+      datalabels:{anchor:'end',align:'end',color:th.cText,font:{family:NOVO_FONT,size:12,weight:'bold'}},
+      tooltip:{callbacks:{label:function(c){return c.parsed.y+' deals';}}}},
+      scales:{x:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}},y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0}}},
+      onClick:function(e,el){ if(!el.length)return; var idx=el[0].index; var bounds=[[0,49],[50,199],[200,499],[500,999999]]; var b=bounds[idx]; novoOpenDealsModal('Porte '+bands[idx], (_novoDeals||[]).filter(function(d){return (d.vidas||0)>=b[0]&&(d.vidas||0)<=b[1];})); }}});
+}
+
+(function(){
+  try{ if(localStorage.getItem('novo_nav_open')==='true') _setNavOpen(true); }catch(e){}
+  document.getElementById('novo-lang-label').textContent=NOVO_LANG.toUpperCase();
+  novoLoadData();
+})();
+</script>
+<!-- Panel switcher + menu lateral compartilhado (fonte unica: PANELS) -->
+<style>
+.panel-switcher{position:relative;display:inline-block}
+.panel-switch-btn{display:inline-flex;align-items:center;gap:.5rem;background:none;border:none;padding:0;margin:0;cursor:pointer;color:inherit;font:inherit;text-align:left}
+.panel-switch-btn h1{margin:0}
+.panel-chevron{transition:transform .22s ease,color .15s ease;color:var(--text2);flex-shrink:0}
+.panel-switcher.open .panel-chevron{transform:rotate(180deg)}
+.panel-switch-btn:hover .panel-chevron{color:var(--teal)}
+.panel-dd{position:absolute;top:calc(100% + 10px);left:0;min-width:236px;background:rgba(23,31,46,.62);backdrop-filter:blur(20px) saturate(1.7);-webkit-backdrop-filter:blur(20px) saturate(1.7);border:none;border-radius:12px;box-shadow:0 16px 40px rgba(0,0,0,.4);padding:.4rem;z-index:1500;opacity:0;transform:translateY(-6px);pointer-events:none;transition:opacity .18s ease,transform .18s ease}
+[data-theme="light"] .panel-dd{background:rgba(246,248,250,.7)}
+.panel-switcher.open .panel-dd{opacity:1;transform:translateY(0);pointer-events:auto}
+.panel-dd-item{display:flex;align-items:center;gap:.65rem;padding:.55rem .7rem;border-radius:8px;cursor:pointer;font-size:.85rem;color:var(--text2);transition:background .14s,color .14s;white-space:nowrap}
+.panel-dd-item:hover{background:rgba(255,255,255,.1);color:var(--text)}
+.panel-dd-item.active{color:var(--teal);font-weight:600;background:rgba(58,184,183,.16)}
+.panel-dd-item.active svg{stroke:var(--teal)}
+.panel-dd-item svg{flex-shrink:0;opacity:.9}
+[data-theme="light"] .panel-dd-item:hover{background:rgba(0,0,0,.06)}
+.health-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;display:inline-block;animation:health-glow 1.8s ease-in-out infinite}
+.panel-switch-btn .health-dot{margin:0 .15rem}
+.nav-item .health-dot,.panel-dd-item .health-dot{margin-left:auto}
+@keyframes health-glow{0%,100%{box-shadow:0 0 3px 0 var(--hg)}50%{box-shadow:0 0 9px 2px var(--hg)}}
+.health-dot.g{background:#2ecc71;--hg:rgba(46,204,113,.95)}
+.health-dot.y{background:#f1c40f;--hg:rgba(241,196,15,.95)}
+.health-dot.r{background:#e74c3c;--hg:rgba(231,76,60,.95)}
+
+.modal-body,.novo-help-body,.novo-prob-body,[style*="overflow-x:auto"]{scrollbar-width:thin;scrollbar-color:var(--text2) transparent}
+.modal-body::-webkit-scrollbar,.novo-help-body::-webkit-scrollbar,.novo-prob-body::-webkit-scrollbar,[style*="overflow-x:auto"]::-webkit-scrollbar{height:11px;width:11px}
+.modal-body::-webkit-scrollbar-track,.novo-help-body::-webkit-scrollbar-track,.novo-prob-body::-webkit-scrollbar-track,[style*="overflow-x:auto"]::-webkit-scrollbar-track{background:transparent}
+.modal-body::-webkit-scrollbar-thumb,.novo-help-body::-webkit-scrollbar-thumb,.novo-prob-body::-webkit-scrollbar-thumb,[style*="overflow-x:auto"]::-webkit-scrollbar-thumb{background:var(--text2);border-radius:8px;border:2px solid transparent;background-clip:padding-box}
+.modal-body::-webkit-scrollbar-thumb:hover,.novo-help-body::-webkit-scrollbar-thumb:hover,.novo-prob-body::-webkit-scrollbar-thumb:hover,[style*="overflow-x:auto"]::-webkit-scrollbar-thumb:hover{background:var(--teal)}
+</style>
+<script>
+(function(){
+  var PANELS=[
+    {label:'CRO Dashboard',url:'/novo',file:'novo-dashboard.html',health:'y',icon:'<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>'},
+    {label:'Board View',url:'/novo-board',file:'novo-board.html',health:'r',icon:'<path d="M2 20h20M4 20V10l8-6 8 6v10"/><path d="M10 20v-6h4v6"/>'},
+    {label:'AE Performance',url:'/novo-ae',file:'novo-ae.html',health:'r',icon:'<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>'},
+    {label:'BDR Performance',url:'/novo-bdr',file:'novo-bdr.html',health:'r',icon:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'},
+    {label:'Last 48h',url:'/novo-48h',file:'novo-48h.html',health:'r',icon:'<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>'},
+    {label:'CS Dashboard',url:'/novo-cs',file:'novo-cs.html',health:'r',icon:'<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>'},
+    {label:'Cotação',url:'/novo-cotacao',file:'novo-cotacao.html',health:'r',icon:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>'},
+    {label:'Forecast',url:'/forecast',file:'forecast.html',health:'g',icon:'<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>'}
+  ];
+  function findByUrl(u){ for(var i=0;i<PANELS.length;i++){ if(PANELS[i].url===u) return PANELS[i]; } return null; }
+  var p2=location.pathname; if(p2.length>1&&p2.charAt(p2.length-1)==='/') p2=p2.slice(0,-1);
+  var current=null;
+  for(var i=0;i<PANELS.length;i++){ if(p2===PANELS[i].url||p2.indexOf(PANELS[i].file)!==-1){ current=PANELS[i].url; break; } }
+  function dot(h){ var tt={g:'live',y:'wip',r:'not working'}; var t=tt[h]||''; return '<span class="health-dot '+h+'" title="'+t+'" aria-label="'+t+'"></span>'; }
+  function svgFor(p){ return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+p.icon+'</svg>'; }
+  function buildNav(){
+    var nav=document.getElementById('nav-drawer'); if(!nav) return;
+    var h='<div class="nav-drawer-header"><span class="nav-drawer-brand">Dashboard Axenya</span>'+
+      '<button class="hdr-btn" onclick="closeDrawer()" aria-label="Fechar menu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>'+
+      '<ul class="nav-menu">';
+    for(var i=0;i<PANELS.length;i++){
+      var p=PANELS[i];
+      if(p.url==='/forecast') h+='<div style="height:1px;background:var(--border);margin:.4rem .75rem"></div>';
+      h+='<li class="nav-item'+(p.url===current?' active':'')+'" data-url="'+p.url+'">'+svgFor(p)+'<span>'+p.label+'</span>'+dot(p.health)+'</li>';
+    }
+    h+='</ul>';
+    nav.innerHTML=h;
+    var nit=nav.getElementsByClassName('nav-item');
+    for(var j=0;j<nit.length;j++){ nit[j].addEventListener('click',function(){ window.location.href=this.getAttribute('data-url'); }); }
+  }
+  function buildDropdown(){
+    var dd=document.getElementById('panel-dd'); if(!dd) return;
+    var html='';
+    for(var i=0;i<PANELS.length;i++){
+      var p=PANELS[i], act=(p.url===current?' active':'');
+      html+='<div class="panel-dd-item'+act+'" role="menuitem" data-url="'+p.url+'">'+svgFor(p)+'<span>'+p.label+'</span>'+dot(p.health)+'</div>';
+    }
+    dd.innerHTML=html;
+    var items=dd.getElementsByClassName('panel-dd-item');
+    for(var j=0;j<items.length;j++){ items[j].addEventListener('click',function(){ window.location.href=this.getAttribute('data-url'); }); }
+  }
+  function buildTitleDot(){
+    var btn=document.querySelector('.panel-switch-btn');
+    if(btn && current && !btn.querySelector('.health-dot')){
+      var cp=findByUrl(current);
+      if(cp){ var s=document.createElement('span'); s.className='health-dot '+cp.health; var _tt={g:'live',y:'wip',r:'not working'}; s.title=_tt[cp.health]||''; s.setAttribute('aria-label',s.title); var ch=btn.querySelector('.panel-chevron'); if(ch) btn.insertBefore(s,ch); else btn.appendChild(s); }
+    }
+  }
+  function build(){ buildNav(); buildDropdown(); buildTitleDot(); }
+  window.togglePanelMenu=function(e){ if(e){e.stopPropagation();} var sw=document.getElementById('panel-switcher'); if(!sw) return; var open=!sw.classList.contains('open'); sw.classList.toggle('open',open); var btn=sw.querySelector('.panel-switch-btn'); if(btn) btn.setAttribute('aria-expanded',open?'true':'false'); };
+  window.closePanelMenu=function(){ var sw=document.getElementById('panel-switcher'); if(sw){ sw.classList.remove('open'); var btn=sw.querySelector('.panel-switch-btn'); if(btn) btn.setAttribute('aria-expanded','false'); } };
+  document.addEventListener('click',function(e){ var sw=document.getElementById('panel-switcher'); if(sw&&sw.classList.contains('open')&&!sw.contains(e.target)) window.closePanelMenu(); });
+  document.addEventListener('keydown',function(e){ if(e.key==='Escape'||e.keyCode===27){ var sw=document.getElementById('panel-switcher'); if(sw&&sw.classList.contains('open')) window.closePanelMenu(); } });
+  if(document.readyState!=='loading') build(); else document.addEventListener('DOMContentLoaded',build);
+})();
+</script>
+</body>
+</html>

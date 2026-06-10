@@ -22,3 +22,6 @@ lib/credentials.json
 .env.local2
 
 .vercel
+
+.vercel
+_local_trash/

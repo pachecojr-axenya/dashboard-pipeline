@@ -4,6 +4,7 @@
 
 **Acesso:** Restrito a `@axenya.com` (Google OAuth)
 
+> **🚀 ATENÇÃO IAs e Desenvolvedores:** Para regras estritas de infraestrutura, Vercel Pro, e resolução de redirecionamentos do Google OAuth, leia obrigatoriamente o **[DEPLOY_GUIDE.md](file:///D:/0 PACHECO/Pacheco Remoto/Pacheco Remoto/10 PROJETOS/01 AXENYA/01 Projetos/Dashboard Ivan/dashboard-ivan-visual/DEPLOY_GUIDE.md)** antes de realizar qualquer modificação de deploy.
 ---
 
 ## Arquitetura

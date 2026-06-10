@@ -54,6 +54,13 @@ const REWRITES = {
   '/dashboard': '/dashboard.html',
   '/watcher': '/hubspot-watcher.html',
   '/novo': '/novo-dashboard.html',
+  '/novo-ae': '/novo-ae.html',
+  '/novo-bdr': '/novo-bdr.html',
+  '/novo-board': '/novo-board.html',
+  '/novo-48h': '/novo-48h.html',
+  '/novo-cs': '/novo-cs.html',
+  '/novo-cotacao': '/novo-cotacao.html',
+  '/forecast': '/forecast.html',
 };
 
 const MIME = {
@@ -197,6 +204,7 @@ server.listen(PORT, () => {
   console.log(`   Login/Home   →  http://localhost:${PORT}/`);
   console.log(`   Dashboard    →  http://localhost:${PORT}/dashboard`);
   console.log(`   NOVO (visual)→  http://localhost:${PORT}/novo`);
+  console.log(`   Forecast     →  http://localhost:${PORT}/forecast`);
   console.log(`   Watcher      →  http://localhost:${PORT}/watcher`);
   console.log('');
   console.log(`   Auth bypass  →  ATIVO (LOCAL_DEV_BYPASS=true)`);
