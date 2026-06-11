@@ -1,0 +1,670 @@
+/* ============================================================================
+   AXENYA PREMIUM VISUAL LAYER — premium.css
+   Carregado DEPOIS do <style> inline de cada view: sobrescreve tokens e
+   eleva todos os componentes para um acabamento de nível agência.
+   Conceito: "Mission Control" — cinematográfico, denso em dados, irresistível.
+   ============================================================================ */
+
+/* Inter self-hosted com cv01 CONGELADO no arquivo (o "1" sem serifa é o glifo
+   padrão, inclusive nos numerais tabulares das tabelas). Declarada por último
+   na cascata, vence as @font-face do Google Fonts linkadas nas views. */
+@font-face {
+  font-family: 'Inter';
+  src: url('/fonts/InterVariable.woff2?v=3') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ── 1. TOKENS ─────────────────────────────────────────────────────────── */
+:root {
+  /* Paleta núcleo (dark — apresentação) */
+  --bg: #070b15;
+  --card: #0f1727;
+  --card2: #192334;
+  --border: #243349;
+  --text: #eef3fb;
+  --text2: #9aa9bf;
+  --muted: #64748b;
+  --teal: #2dd4bf;
+  --green: #34d399;
+  --red: #fb7185;
+  --orange: #f59e0b;
+  --yellow: #fbbf24;
+  --blue: #60a5fa;
+  --accent: #2dd4bf;
+  --accent-glow: rgba(45, 212, 191, .15);
+  --hover: rgba(148, 163, 184, .09);
+  --even-s: #0c1422;
+  --hover-s: #17243a;
+  --warn-s: #2a1216;
+  --warn-sh: #3b1a1f;
+  --hdr-glass: rgba(7, 11, 21, .72);
+
+  /* Harmonia com hubspot-watcher (token names próprios) */
+  --surface: #0f1727;
+  --surface2: #16202f;
+  --surface3: #1b2738;
+  --border-accent: #2a3a55;
+  --text-secondary: #9aa9bf;
+  --text-muted: #64748b;
+
+  /* Tokens premium */
+  --pm-display: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  --pm-ui: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  --font: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  --pm-card-bg: linear-gradient(180deg, rgba(255, 255, 255, .025), rgba(255, 255, 255, 0) 42%), #0f1727;
+  --pm-card-border: rgba(125, 152, 190, .11);
+  --pm-card-border-hover: rgba(45, 212, 191, .34);
+  --pm-card-shadow:
+    0 1px 2px rgba(2, 6, 16, .55),
+    0 18px 44px -20px rgba(2, 6, 16, .7);
+  --pm-card-shadow-hover:
+    0 2px 6px rgba(2, 6, 16, .55),
+    0 26px 56px -22px rgba(2, 6, 16, .8),
+    0 0 30px -8px rgba(45, 212, 191, .25);
+  --pm-glass: rgba(13, 20, 35, .82);
+  --pm-grid: rgba(148, 163, 184, .08);
+  --pm-ring: rgba(45, 212, 191, .55);
+}
+
+html[data-theme="light"] {
+  --bg: #f2f5f9;
+  --card: #ffffff;
+  --card2: #edf1f6;
+  --border: #dce3ec;
+  --text: #15202e;
+  --text2: #536179;
+  --muted: #8493a8;
+  --teal: #0f766e;
+  --green: #15803d;
+  --red: #e11d48;
+  --orange: #d97706;
+  --yellow: #a16207;
+  --blue: #2563eb;
+  --accent: #0f766e;
+  --accent-glow: rgba(15, 118, 110, .12);
+  --hover: rgba(15, 23, 42, .05);
+  --even-s: #f6f8fb;
+  --hover-s: #e9eff7;
+  --warn-s: #fdebea;
+  --warn-sh: #f8d7d5;
+  --hdr-glass: rgba(244, 247, 251, .78);
+
+  --pm-card-bg: #ffffff;
+  --pm-card-border: rgba(16, 24, 40, .085);
+  --pm-card-border-hover: rgba(15, 118, 110, .4);
+  --pm-card-shadow:
+    0 1px 2px rgba(16, 24, 40, .05),
+    0 10px 28px -16px rgba(16, 24, 40, .14);
+  --pm-card-shadow-hover:
+    0 2px 4px rgba(16, 24, 40, .06),
+    0 18px 44px -18px rgba(16, 24, 40, .2),
+    0 0 24px -10px rgba(15, 118, 110, .25);
+  --pm-glass: rgba(255, 255, 255, .85);
+  --pm-grid: rgba(15, 23, 42, .07);
+  --pm-ring: rgba(15, 118, 110, .5);
+}
+
+/* ── 2. BASE / ATMOSFERA ───────────────────────────────────────────────── */
+html { background: var(--bg); }
+
+body {
+  background: transparent !important;
+  font-family: var(--pm-ui);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  /* cv01: algarismo "1" sem o pé serifado (inclusive em numerais tabulares) */
+  font-feature-settings: 'cv01' 1;
+}
+
+/* Aurora: campo de profundidade fixo atrás de todo o conteúdo */
+body::before {
+  content: '';
+  position: fixed;
+  inset: -12%;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(42% 50% at 12% -2%, rgba(45, 212, 191, .11), transparent 62%),
+    radial-gradient(38% 44% at 88% -6%, rgba(96, 165, 250, .10), transparent 64%),
+    radial-gradient(60% 72% at 50% 118%, rgba(129, 140, 248, .08), transparent 62%);
+}
+
+html[data-theme="light"] body::before {
+  background:
+    radial-gradient(42% 50% at 10% -2%, rgba(13, 148, 136, .07), transparent 62%),
+    radial-gradient(40% 46% at 90% -6%, rgba(37, 99, 235, .06), transparent 64%),
+    radial-gradient(60% 70% at 50% 118%, rgba(99, 102, 241, .05), transparent 60%);
+}
+
+::selection { background: rgba(45, 212, 191, .32); color: inherit; }
+html[data-theme="light"] ::selection { background: rgba(15, 118, 110, .22); }
+
+:focus-visible { outline: 2px solid var(--pm-ring); outline-offset: 2px; border-radius: 6px; }
+
+/* Scrollbars finas e discretas */
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, .22);
+  border-radius: 99px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover { background: rgba(148, 163, 184, .4); border: 3px solid transparent; background-clip: content-box; }
+
+/* ── 3. TIPOGRAFIA ─────────────────────────────────────────────────────── */
+h1 {
+  font-family: var(--pm-display);
+  font-weight: 700;
+  letter-spacing: -.025em;
+  font-size: 1.45rem;
+}
+
+/* ── 4. HEADER ─────────────────────────────────────────────────────────── */
+.novo-hdr { padding: 1.15rem 2rem; }
+.novo-hdr.scrolled {
+  background: var(--hdr-glass);
+  backdrop-filter: blur(22px) saturate(1.6);
+  -webkit-backdrop-filter: blur(22px) saturate(1.6);
+  box-shadow: 0 1px 0 rgba(125, 152, 190, .14), 0 12px 32px -18px rgba(2, 6, 16, .7);
+}
+html[data-theme="light"] .novo-hdr.scrolled {
+  box-shadow: 0 1px 0 rgba(16, 24, 40, .07), 0 10px 28px -18px rgba(16, 24, 40, .18);
+}
+
+.hdr-actions {
+  background: rgba(148, 163, 184, .09);
+  border: 1px solid rgba(148, 163, 184, .12);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+html[data-theme="light"] .hdr-actions {
+  background: rgba(15, 23, 42, .04);
+  border-color: rgba(16, 24, 40, .08);
+}
+
+.hdr-btn { transition: background .16s, color .16s, transform .16s; }
+.hdr-btn:hover { transform: translateY(-1px); }
+.hdr-btn:active { transform: translateY(0) scale(.94); }
+
+.hdr-btn.highlighted {
+  background: linear-gradient(135deg, #2dd4bf, #38a8e8) !important;
+  box-shadow: 0 0 0 2px rgba(45, 212, 191, .25), 0 4px 14px -4px rgba(45, 212, 191, .55);
+}
+html[data-theme="light"] .hdr-btn.highlighted {
+  background: linear-gradient(135deg, #0f766e, #1d6fd1) !important;
+  box-shadow: 0 0 0 2px rgba(15, 118, 110, .2), 0 4px 14px -4px rgba(15, 118, 110, .45);
+}
+
+/* ── 5. CARDS DE GRÁFICO ───────────────────────────────────────────────── */
+.novo-cards { gap: 1.1rem; }
+
+.novo-card {
+  background: var(--pm-card-bg);
+  border: none;
+  border-radius: 16px;
+  padding: 1.35rem 1.55rem;
+  box-shadow: var(--pm-card-shadow);
+  transition: transform .22s cubic-bezier(.22, 1, .36, 1), box-shadow .22s;
+}
+.novo-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--pm-card-shadow-hover);
+}
+
+.novo-card-header h3 {
+  font-size: .9rem;
+  font-weight: 600;
+  letter-spacing: -.01em;
+  display: flex;
+  align-items: center;
+}
+.novo-card-header h3::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  margin-right: .6rem;
+  background: linear-gradient(135deg, var(--teal), var(--blue));
+  box-shadow: 0 0 8px var(--accent-glow);
+}
+
+/* ── 6. KPI CARDS ──────────────────────────────────────────────────────── */
+.kpi-row { gap: .9rem; margin-bottom: .9rem; }
+
+.kpi-card {
+  background: var(--pm-card-bg);
+  border: none;
+  border-radius: 18px;
+  padding: 1.45rem 1.7rem;
+  box-shadow: var(--pm-card-shadow);
+  position: relative;
+  overflow: hidden;
+  transition: transform .22s cubic-bezier(.22, 1, .36, 1), box-shadow .22s;
+}
+.kpi-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(130% 100% at 0% 0%, var(--accent-glow), transparent 58%);
+  opacity: 0;
+  transition: opacity .3s;
+}
+.kpi-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--pm-card-shadow-hover);
+}
+.kpi-card:hover::after { opacity: 1; }
+.kpi-click:hover { box-shadow: var(--pm-card-shadow-hover); }
+
+.kpi-label {
+  font-size: .63rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  color: var(--text2);
+}
+
+.kpi-value {
+  font-family: var(--pm-display);
+  font-size: 2.15rem;
+  font-weight: 700;
+  letter-spacing: -.03em;
+  font-variant-numeric: normal;
+  margin: .42rem 0 .3rem;
+}
+
+.kpi-sub { font-size: .71rem; color: var(--muted); }
+
+/* KPIs secundários */
+.kpi-row-sec { gap: .6rem; margin-bottom: 1.6rem; }
+.kpi-sec {
+  background: var(--pm-card-bg);
+  border: none;
+  border-radius: 13px;
+  padding: .95rem 1.15rem;
+  box-shadow: var(--pm-card-shadow);
+  transition: transform .2s cubic-bezier(.22, 1, .36, 1), box-shadow .2s;
+}
+.kpi-sec:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--pm-card-shadow-hover);
+}
+.kpi-sec-label { font-size: .58rem; font-weight: 700; letter-spacing: 0; color: var(--text2); }
+.kpi-sec-value {
+  font-family: var(--pm-display);
+  font-size: 1.22rem;
+  font-weight: 700;
+  letter-spacing: -.02em;
+  font-variant-numeric: normal;
+}
+
+/* ── 7. TABELAS EXECUTIVAS ─────────────────────────────────────────────── */
+table.lb { font-size: 13.5px; }
+table.lb th {
+  font-size: .655rem;
+  font-weight: 700;
+  letter-spacing: .1em;
+  color: var(--teal);
+  border-bottom: 1px solid color-mix(in srgb, var(--teal) 45%, transparent);
+  padding: .65rem 1rem;
+}
+table.lb td {
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+  font-variant-numeric: tabular-nums lining-nums;
+}
+table.lb tbody tr:hover td { background: var(--hover-s); }
+table.lb tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--teal); }
+
+/* ── 8. CONTROLES (tabs, botões, inputs) ───────────────────────────────── */
+.tab-sub {
+  background: rgba(148, 163, 184, .1);
+  border: 1px solid rgba(148, 163, 184, .1);
+}
+html[data-theme="light"] .tab-sub {
+  background: rgba(15, 23, 42, .05);
+  border-color: rgba(16, 24, 40, .07);
+}
+.tab-sub-thumb {
+  background: linear-gradient(135deg, rgba(45, 212, 191, .26), rgba(96, 165, 250, .2));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .12);
+}
+html[data-theme="light"] .tab-sub-thumb {
+  background: #fff;
+  box-shadow: 0 1px 5px rgba(16, 24, 40, .18);
+}
+
+.btn-export { border-radius: 9px; }
+.btn-export:hover {
+  border-color: var(--teal);
+  color: var(--teal);
+  box-shadow: 0 0 14px -4px var(--accent-glow);
+}
+
+.novo-prob-field input, input[type="text"], select {
+  transition: border-color .15s, box-shadow .15s;
+}
+.novo-prob-field input:focus {
+  border-color: var(--teal);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+/* ── 9. DRAWERS / MODAL / TOOLTIP ──────────────────────────────────────── */
+.nav-drawer, .novo-prob-drawer, .novo-help-drawer {
+  background: var(--pm-glass);
+  backdrop-filter: blur(24px) saturate(1.5);
+  -webkit-backdrop-filter: blur(24px) saturate(1.5);
+  border-color: var(--pm-card-border);
+}
+
+/* Nav drawer — normalização total: cada view traz uma cópia inline própria
+   destas classes; aqui TODAS as propriedades visuais são pregadas para que o
+   menu renderize idêntico em qualquer página. */
+.nav-drawer {
+  width: 280px;
+  border-right: 1px solid var(--pm-card-border);
+  /* Métricas próprias: o drawer NÃO herda font/line-height do body de cada
+     view (o forecast não define line-height; o CRO define 1.5 — sem isto os
+     espaçamentos divergem entre painéis). */
+  font-family: var(--pm-ui);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.nav-drawer-header {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  padding: 1.1rem 1.25rem;
+  min-height: 61px;
+  border-bottom: 1px solid var(--pm-card-border);
+}
+.nav-drawer-brand {
+  font-size: .95rem;
+  font-weight: 600;
+  letter-spacing: -.01em;
+  color: var(--text);
+  flex: 1;
+}
+.nav-menu { list-style: none; padding: .5rem 0; margin: 0; }
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  padding: 0 1.25rem;
+  min-height: 38px;
+  cursor: pointer;
+  font-size: .88rem;
+  font-weight: 500;
+  line-height: 1.45;
+  color: var(--text2);
+  user-select: none;
+  border-radius: 0 99px 99px 0;
+  margin-right: .75rem;
+  transition: background .16s, color .16s, padding-left .16s;
+}
+.nav-item svg { flex-shrink: 0; }
+.nav-item:hover { padding-left: 1.45rem; background: var(--hover); color: var(--text); }
+.nav-item.active {
+  color: var(--teal);
+  font-weight: 600;
+  background: linear-gradient(90deg, var(--accent-glow), transparent 80%);
+  box-shadow: inset 3px 0 0 var(--teal);
+}
+.nav-item.active svg { stroke: var(--teal); }
+.nav-divider { height: 1px; background: var(--border); margin: .4rem .75rem; list-style: none; }
+.nav-backdrop { background: rgba(2, 6, 16, .5); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); }
+html[data-theme="light"] .nav-backdrop { background: rgba(16, 24, 40, .28); }
+/* Vence as regras light inline de cada view (especificidade 0,2,1) */
+html[data-theme="light"] .nav-drawer {
+  background: var(--pm-glass);
+  border-right-color: var(--pm-card-border);
+}
+html[data-theme="light"] .nav-item:hover { background: var(--hover); }
+
+.modal {
+  border-radius: 20px;
+  border: 1px solid var(--pm-card-border);
+  background: var(--pm-card-bg);
+  box-shadow: 0 40px 90px -30px rgba(2, 6, 16, .85), var(--pm-card-shadow);
+}
+html[data-theme="light"] .modal {
+  box-shadow: 0 40px 90px -30px rgba(16, 24, 40, .35), var(--pm-card-shadow);
+}
+.modal-overlay { backdrop-filter: blur(9px); background: rgba(2, 6, 16, .55); }
+html[data-theme="light"] .modal-overlay { background: rgba(16, 24, 40, .3); }
+
+#novo-tip {
+  background: var(--pm-glass);
+  border: 1px solid var(--pm-card-border);
+  border-radius: 10px;
+  box-shadow: 0 14px 38px -12px rgba(2, 6, 16, .7);
+}
+html[data-theme="light"] #novo-tip { box-shadow: 0 14px 38px -12px rgba(16, 24, 40, .3); }
+
+/* ── 10. SKELETON / STATUS ─────────────────────────────────────────────── */
+.novo-skel {
+  background: linear-gradient(90deg, var(--card2) 25%, color-mix(in srgb, var(--teal) 9%, var(--card2)) 50%, var(--card2) 75%);
+  background-size: 1600px 100%;
+  border-radius: 10px;
+}
+#novo-status { letter-spacing: .02em; }
+
+/* ── 11. MOTION (entrance, respeita reduced-motion) ────────────────────── */
+@media (prefers-reduced-motion: no-preference) {
+  .pm-in {
+    animation: pmRise .55s cubic-bezier(.22, 1, .36, 1) both;
+    animation-delay: calc(var(--pm-i, 0) * 45ms);
+  }
+  @keyframes pmRise {
+    from { opacity: 0; transform: translateY(14px) scale(.985); filter: blur(5px); }
+    to   { opacity: 1; transform: none; filter: none; }
+  }
+}
+
+/* ── 12. LOGIN — primeira impressão cinematográfica ────────────────────── */
+.login-container { width: 420px; }
+
+.logo-text {
+  font-family: var(--pm-display);
+  font-size: 2.3rem;
+  font-weight: 700;
+  letter-spacing: -.03em;
+  background: linear-gradient(115deg, #eef3fb 25%, #2dd4bf 75%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.logo-sub { font-size: .82rem; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); margin-top: .45rem; }
+
+.login-card {
+  background: var(--pm-glass);
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  border: none;
+  border-radius: 20px;
+  padding: 2.4rem 2.2rem;
+  box-shadow: var(--pm-card-shadow), 0 40px 100px -40px rgba(45, 212, 191, .25);
+}
+.login-card h2 { font-family: var(--pm-display); font-size: 1.25rem; letter-spacing: -.01em; }
+
+.btn-google { border-radius: 12px; }
+.btn-google:hover { box-shadow: 0 6px 22px -6px rgba(255, 255, 255, .35); }
+
+.domain-badge {
+  background: var(--accent-glow);
+  border-color: color-mix(in srgb, var(--teal) 35%, transparent);
+  color: var(--teal);
+  box-shadow: 0 0 18px -6px var(--accent-glow);
+}
+
+/* ── 13. REFINOS GERAIS ────────────────────────────────────────────────── */
+canvas { border-radius: 6px; }
+
+/* Banner/avisos com acento âmbar mais sofisticado */
+[style*="background:var(--warn-s)"] { border-radius: 12px; }
+
+/* ============================================================================
+   14. INTEGRAÇÃO FORECAST — traduz os componentes próprios do forecast.html
+   para a mesma linguagem visual das demais views (layout e formato das
+   informações intocados). Escopo: html.pm-forecast (classe via premium.js).
+   ============================================================================ */
+
+/* Header → glass, como o .novo-hdr das outras views */
+html.pm-forecast .header {
+  background: var(--hdr-glass);
+  backdrop-filter: blur(22px) saturate(1.6);
+  -webkit-backdrop-filter: blur(22px) saturate(1.6);
+  border-bottom: 1px solid var(--pm-card-border);
+  box-shadow: 0 12px 32px -18px rgba(2, 6, 16, .55);
+}
+html[data-theme="light"].pm-forecast .header {
+  box-shadow: 0 10px 28px -18px rgba(16, 24, 40, .14);
+}
+
+/* Segmented control → mesmo tratamento do .tab-sub */
+html.pm-forecast .seg-ctrl {
+  background: rgba(148, 163, 184, .1);
+  border: 1px solid rgba(148, 163, 184, .1);
+}
+html.pm-forecast .seg-ctrl::before {
+  background: linear-gradient(135deg, rgba(45, 212, 191, .26), rgba(96, 165, 250, .2));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .12);
+}
+html[data-theme="light"].pm-forecast .seg-ctrl {
+  background: rgba(15, 23, 42, .05);
+  border-color: rgba(16, 24, 40, .07);
+}
+html[data-theme="light"].pm-forecast .seg-ctrl::before {
+  background: #fff;
+  box-shadow: 0 1px 5px rgba(16, 24, 40, .18);
+}
+
+/* Botões do header → mesma família do .hdr-btn.highlighted */
+html.pm-forecast .btn-refresh {
+  background: linear-gradient(135deg, #2dd4bf, #38a8e8);
+  color: #071018;
+  font-weight: 700;
+  border-radius: 10px;
+  box-shadow: 0 0 0 2px rgba(45, 212, 191, .22), 0 4px 14px -4px rgba(45, 212, 191, .5);
+}
+html[data-theme="light"].pm-forecast .btn-refresh {
+  background: linear-gradient(135deg, #0f766e, #1d6fd1);
+  color: #fff;
+  box-shadow: 0 0 0 2px rgba(15, 118, 110, .18), 0 4px 14px -4px rgba(15, 118, 110, .4);
+}
+html.pm-forecast .btn-theme {
+  background: transparent;
+  border-radius: 10px;
+}
+html.pm-forecast .btn-theme:hover { background: var(--hover); color: var(--text); }
+
+/* Barras de filtro → fundo transparente (atmosfera aparece), pills refinadas */
+html.pm-forecast .filter-bar { background: transparent; }
+html.pm-forecast .fbtn { background: rgba(148, 163, 184, .08); }
+html.pm-forecast .fbtn:hover { background: rgba(148, 163, 184, .16); color: var(--text); }
+html[data-theme="light"].pm-forecast .fbtn { background: rgba(15, 23, 42, .05); }
+html[data-theme="light"].pm-forecast .fbtn:hover { background: rgba(15, 23, 42, .1); }
+html.pm-forecast .fbtn.a-todos.active { background: rgba(45, 212, 191, .14); color: var(--teal); }
+html.pm-forecast .fbtn.a-dia.active   { background: rgba(167, 139, 250, .14); color: #a78bfa; }
+html.pm-forecast .fbtn.a-cot.active   { background: rgba(52, 211, 153, .14);  color: var(--green); }
+html.pm-forecast .fbtn.a-con.active   { background: rgba(251, 191, 36, .14);  color: var(--yellow); }
+html.pm-forecast .fbtn.a-neg.active   { background: rgba(251, 113, 133, .14); color: var(--red); }
+html.pm-forecast .fbtn.a-imp.active   { background: rgba(96, 165, 250, .14);  color: var(--blue); }
+html.pm-forecast .fbtn.a-gan.active   { background: rgba(52, 211, 153, .18);  color: var(--green); }
+html[data-theme="light"].pm-forecast .fbtn.a-dia.active { background: rgba(124, 58, 237, .1); color: #7c3aed; }
+html[data-theme="light"].pm-forecast .fbtn.a-imp.active { background: rgba(37, 99, 235, .1); color: var(--blue); }
+
+/* View tabs → pills consistentes com o resto do sistema */
+html.pm-forecast .view-tabs { gap: .35rem; padding: .6rem 1rem 0; background: transparent; }
+html.pm-forecast .view-tab { border-radius: 99px; padding: .36rem 1.05rem; font-size: .8rem; font-weight: 500; }
+html.pm-forecast .view-tab.active {
+  background: linear-gradient(135deg, rgba(45, 212, 191, .18), rgba(96, 165, 250, .14));
+  color: var(--text);
+  font-weight: 600;
+  box-shadow: inset 0 0 0 1px rgba(45, 212, 191, .22);
+}
+html[data-theme="light"].pm-forecast .view-tab.active {
+  background: #fff;
+  box-shadow: 0 1px 5px rgba(16, 24, 40, .16);
+}
+
+/* KPIs → mesmo card premium das outras views (sem borda, sombra, hover lift) */
+html.pm-forecast .kpis { gap: .9rem; background: transparent; }
+html.pm-forecast .kpi {
+  background: var(--pm-card-bg);
+  border: none;
+  border-radius: 18px;
+  padding: 1.45rem 1.9rem;
+  min-width: 170px;
+  box-shadow: var(--pm-card-shadow);
+  transition: transform .22s cubic-bezier(.22, 1, .36, 1), box-shadow .22s;
+}
+html.pm-forecast .kpi:hover { transform: translateY(-3px); box-shadow: var(--pm-card-shadow-hover); }
+html.pm-forecast .kpi .lbl { font-size: .63rem; font-weight: 700; letter-spacing: 0; color: var(--text2); }
+html.pm-forecast .kpi .val {
+  font-size: 1.9rem;
+  font-weight: 700;
+  letter-spacing: -.03em;
+  font-variant-numeric: normal;
+  margin-top: .42rem;
+}
+html.pm-forecast .kpi .sub { font-size: .7rem; color: var(--muted); }
+
+/* Tabela-matriz → grade mais sutil, teal premium, sticky refinado
+   (formato e densidade preservados — só a pele muda) */
+html.pm-forecast .table-wrap th,
+html.pm-forecast .table-wrap td,
+html.pm-forecast .hist-table-wrap th,
+html.pm-forecast .hist-table-wrap td {
+  border-color: color-mix(in srgb, var(--border) 55%, transparent);
+}
+html.pm-forecast .table-wrap th,
+html.pm-forecast .hist-table-wrap th {
+  font-size: .655rem;
+  letter-spacing: .1em;
+  border-bottom: 1px solid color-mix(in srgb, var(--teal) 45%, transparent);
+}
+html.pm-forecast .table-wrap td { font-variant-numeric: tabular-nums lining-nums; }
+html.pm-forecast .table-wrap td.s { color: var(--teal); }
+html.pm-forecast .table-wrap td.s,
+html.pm-forecast .table-wrap th.s { box-shadow: 4px 0 16px rgba(2, 6, 16, .4); }
+html[data-theme="light"].pm-forecast .table-wrap td.s,
+html[data-theme="light"].pm-forecast .table-wrap th.s { box-shadow: 4px 0 14px rgba(16, 24, 40, .1); }
+
+html.pm-forecast .table-wrap tfoot td {
+  background: color-mix(in srgb, var(--teal) 12%, var(--card));
+  border-top: 1px solid color-mix(in srgb, var(--teal) 45%, transparent);
+  border-bottom: none;
+}
+
+/* Column/cross highlight na paleta premium */
+html.pm-forecast .table-wrap th.col-hl { background: color-mix(in srgb, var(--teal) 22%, var(--card)) !important; }
+html.pm-forecast .table-wrap td.col-hl { background: color-mix(in srgb, var(--teal) 8%, var(--bg)) !important; }
+html.pm-forecast .table-wrap td.s.col-hl { background: color-mix(in srgb, var(--teal) 16%, var(--bg)) !important; }
+html.pm-forecast .table-wrap tbody tr:hover td.col-hl { background: color-mix(in srgb, var(--teal) 17%, var(--bg)) !important; }
+html.pm-forecast .table-wrap tbody tr:hover td.s.col-hl { background: color-mix(in srgb, var(--teal) 24%, var(--bg)) !important; }
+
+/* Linha de alerta → vermelho premium, ainda inconfundível */
+html.pm-forecast .table-wrap tr.row-warn td { background: #531523 !important; }
+html[data-theme="light"].pm-forecast .table-wrap tr.row-warn td { background: #ffd2d6 !important; }
+
+/* Inputs e modal de probabilidades → mesmo acabamento do resto */
+html.pm-forecast .search-input-full:focus,
+html.pm-forecast .ae-select:focus {
+  border-color: var(--teal);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+  outline: none;
+}
+html.pm-forecast .prob-modal {
+  border-radius: 20px;
+  background: var(--pm-card-bg);
+  border: 1px solid var(--pm-card-border);
+  box-shadow: 0 40px 90px -30px rgba(2, 6, 16, .85);
+}
+html[data-theme="light"].pm-forecast .prob-modal { box-shadow: 0 40px 90px -30px rgba(16, 24, 40, .35); }
+html.pm-forecast .prob-overlay { backdrop-filter: blur(9px); }
+html.pm-forecast .chip, html.pm-forecast .qbadge { border-radius: 99px; }

@@ -164,6 +164,8 @@ table.lb tfoot td{font-weight:600;border-top:2px solid var(--border)}
 .novo-help-hdr h3{margin:0;font-size:1.15rem;font-weight:600;color:var(--text)}
 .novo-help-body{flex:1;overflow-y:auto;padding:1.25rem 1.5rem}
 </style>
+<link rel="stylesheet" href="/premium.css?v=4">
+<script src="/premium.js?v=4"></script>
 </head>
 <body>
 
@@ -549,6 +551,12 @@ var NOVO_I18N = {
     p05_open_deals:'Negócios Abertos', p05_open_deals_tip:'Número de negócios abertos (exclui Ganho, Implantação, Perdido e Reunião Agendada).',
     p05_open_vidas:'Vidas em Negócios Abertos', p05_open_vidas_tip:'Soma do campo vidas de todos os negócios abertos.',
     p05_avg_age:'Idade Média', p05_avg_age_tip:'Tempo médio no funil | média de dias_no_pipe dos negócios abertos.',
+    unit_days:'dias', vidas_potenciais:'vidas potenciais',
+    lost_reason_label:'Motivo de Perdido:', lost_reason_all:'Todos os motivos', lost_reason_none:'(sem motivo)',
+    tbl_deal:'Deal', tbl_ae:'AE', tbl_pipe:'Pipe', tbl_stage:'Etapa', tbl_close:'Fechamento', tbl_days:'Dias',
+    tbl_collab:'Colab.', tbl_lives:'Vidas', tbl_first_inv:'1\xaa Fatura (R$)', tbl_arr:'ARR Est. (R$)', tbl_model:'Modelo',
+    tbl_agency:'Agenc.', tbl_lifetime:'Vit.', tbl_prob_ae:'Prob AE', tbl_prob_stage:'P. Etapa', tbl_prob_adj:'P. Ajust.',
+    tbl_quarter:'Quarter', tbl_rev_date:'Dt. Receita', tbl_total:'Total', tbl_deals_count:'negócios',
     kpi2_open_pipe:'pipeline aberto', kpi2_complete_sub:'campos-chave preenchidos',
     // Novos gráficos N01–N26
     t_waterfall:'🟡 Pipeline Funnel Waterfall',tip_waterfall:'Deals abertos por etapa em cascata | mostra onde o pipeline perde volume entre etapas.',
@@ -636,6 +644,12 @@ var NOVO_I18N = {
     p05_open_deals:'Open Deals', p05_open_deals_tip:'Number of open deals (excludes Won, Implementation, Lost and Scheduled Meeting).',
     p05_open_vidas:'Lives in Open Deals', p05_open_vidas_tip:'Sum of the lives field across all open deals.',
     p05_avg_age:'Average Age', p05_avg_age_tip:'Average time in funnel | mean of dias_no_pipe across open deals.',
+    unit_days:'days', vidas_potenciais:'potential lives',
+    lost_reason_label:'Lost Reason:', lost_reason_all:'All reasons', lost_reason_none:'(no reason)',
+    tbl_deal:'Deal', tbl_ae:'AE', tbl_pipe:'Pipe', tbl_stage:'Stage', tbl_close:'Close Date', tbl_days:'Days',
+    tbl_collab:'Empl.', tbl_lives:'Lives', tbl_first_inv:'1st Invoice (R$)', tbl_arr:'Est. ARR (R$)', tbl_model:'Model',
+    tbl_agency:'Agency', tbl_lifetime:'Lifet.', tbl_prob_ae:'AE Prob', tbl_prob_stage:'Stage Prob', tbl_prob_adj:'Adj. Prob',
+    tbl_quarter:'Quarter', tbl_rev_date:'Rev. Date', tbl_total:'Total', tbl_deals_count:'deals',
     kpi2_open_pipe:'open pipeline', kpi2_complete_sub:'key fields filled',
     // New charts N01–N26
     t_waterfall:'🟡 Pipeline Funnel Waterfall',tip_waterfall:'Open deals per stage as a waterfall | shows drop-offs between consecutive stages.',
@@ -1400,9 +1414,9 @@ function _novoDealsTableHtml(deals) {
   _novoModalSort  = { col: -1, dir: 1 };
   var totalVidas  = _novoModalDeals.reduce(function(s,d){ return s+(d.vidas||0); }, 0);
   var totalArr    = _novoModalDeals.reduce(function(s,d){ return s+(d.arr_estimado||0); }, 0);
-  var sub = _novoModalDeals.length + ' deal' + (_novoModalDeals.length !== 1 ? 's' : '');
+  var sub = _novoModalDeals.length + ' ' + t('tbl_deals_count');
   var tfoot = _novoModalDeals.length > 0
-    ? '<tfoot><tr><td style="text-align:left;font-weight:600" colspan="7">Total</td>'+
+    ? '<tfoot><tr><td style="text-align:left;font-weight:600" colspan="7">'+t('tbl_total')+'</td>'+
       '<td style="font-weight:600">'+_ni(totalVidas)+'</td>'+
       '<td></td>'+
       '<td style="font-weight:600">'+_nr(totalArr)+'</td>'+
@@ -1416,11 +1430,11 @@ function _novoDealsTableHtml(deals) {
   return '<p style="font-size:.78rem;color:var(--text2);margin-bottom:.6rem">'+sub+'</p>'+
     '<div style="overflow-x:auto;overflow-y:auto;max-height:55vh">'+
     '<table class="lb" style="width:100%;font-size:.75rem"><thead><tr>'+
-      th('Deal',0,true)+th('AE',1,true)+th('Pipe',2)+th('Etapa',3)+th('Fechamento',4)+
-      th('Dias',5)+th('Colab.',6)+th('Vidas',7)+th('1\xaa Fatura (R$)',8)+th('ARR Est. (R$)',9)+
-      th('Modelo',10)+th('Agenc.',11)+th('Vit.',12)+
-      th('Prob AE',13)+th('P. Etapa',14)+th('P. Ajust.',15)+
-      th('Quarter',16)+th('Dt. Receita',17)+
+      th(t('tbl_deal'),0,true)+th(t('tbl_ae'),1,true)+th(t('tbl_pipe'),2)+th(t('tbl_stage'),3)+th(t('tbl_close'),4)+
+      th(t('tbl_days'),5)+th(t('tbl_collab'),6)+th(t('tbl_lives'),7)+th(t('tbl_first_inv'),8)+th(t('tbl_arr'),9)+
+      th(t('tbl_model'),10)+th(t('tbl_agency'),11)+th(t('tbl_lifetime'),12)+
+      th(t('tbl_prob_ae'),13)+th(t('tbl_prob_stage'),14)+th(t('tbl_prob_adj'),15)+
+      th(t('tbl_quarter'),16)+th(t('tbl_rev_date'),17)+
     '</tr></thead><tbody id="novo-deals-tbody">'+_novoDealsRows(_novoModalDeals)+'</tbody>'+tfoot+'</table></div>';
 }
 function novoOpenDealsModal(title, deals) {
@@ -1468,7 +1482,7 @@ function _novoP05StatsHtml(deals) {
   return '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.6rem;margin-bottom:1.1rem">'+
     c(t('p05_open_deals'), count.toLocaleString('pt-BR'), t('p05_open_deals_tip'))+
     c(t('p05_open_vidas'), vidas.toLocaleString('pt-BR'), t('p05_open_vidas_tip'))+
-    c(t('p05_avg_age'), (avgAge != null ? avgAge + ' dias' : '—'), t('p05_avg_age_tip'))+
+    c(t('p05_avg_age'), (avgAge != null ? avgAge + ' ' + t('unit_days') : '—'), t('p05_avg_age_tip'))+
   '</div>';
 }
 // P07 (Vidas Perdidas): modal com filtro por Motivo de Perdido + lista de deals.
@@ -1478,10 +1492,10 @@ function _novoOpenLostModal(d) {
   var counts = {};
   _novoLostAll.forEach(function(x){ var r = x.lost_reason || '(sem motivo)'; counts[r] = (counts[r] || 0) + 1; });
   var keys = Object.keys(counts).sort(function(a, b){ return counts[b] - counts[a]; });
-  var opts = '<option value="__all">Todos os motivos (' + _novoLostAll.length + ')</option>';
-  keys.forEach(function(r){ opts += '<option value="' + _ne(r) + '">' + _ne(r) + ' (' + counts[r] + ')</option>'; });
+  var opts = '<option value="__all">' + t('lost_reason_all') + ' (' + _novoLostAll.length + ')</option>';
+  keys.forEach(function(r){ var lbl = (r === '(sem motivo)') ? t('lost_reason_none') : r; opts += '<option value="' + _ne(r) + '">' + _ne(lbl) + ' (' + counts[r] + ')</option>'; });
   var sel = '<div style="margin-bottom:.85rem;display:flex;align-items:center;gap:.6rem;flex-wrap:wrap">' +
-    '<label style="font-size:.8rem;color:var(--text2);font-weight:600">Motivo de Perdido:</label>' +
+    '<label style="font-size:.8rem;color:var(--text2);font-weight:600">' + t('lost_reason_label') + '</label>' +
     '<select id="novo-lost-reason" onchange="novoFilterLostReason(this.value)" style="background:var(--card2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:.4rem .7rem;font-size:.8rem;font-family:inherit;max-width:100%;cursor:pointer">' + opts + '</select></div>';
   openModal((d.label || '').replace('🟡 ', ''), sel + '<div id="novo-lost-table">' + _novoDealsTableHtml(_novoLostAll) + '</div>');
 }
@@ -2380,7 +2394,7 @@ function _buildKpiRow() {
       key: 'kpi-reunioes', na: false,
       label: t('kpi_reunioes_label'),
       value: reunioesCount.toLocaleString('pt-BR'),
-      sub: reunioesVidas.toLocaleString('pt-BR') + ' vidas potenciais',
+      sub: reunioesVidas.toLocaleString('pt-BR') + ' ' + t('vidas_potenciais'),
       color: 'var(--blue)',
       tip: t('kpi_reunioes_tip'),
     },
