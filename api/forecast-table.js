@@ -78,6 +78,7 @@ const S06_FIELDS = [
   ['possui_vitalicio',            'Possui Vitalício'],
   ['probabilidade_de_fechamento_','Probabilidade'],
   ['qual_quarter_de_fechamento',  'Quarter'],
+  ['data_prevista_para_receita',  'Data Prevista Receita'],
 ];
 
 function isFilled(v) {
@@ -93,10 +94,8 @@ function s06Missing(p) {
     let filled;
     if (key === 'possui_agenciamento' || key === 'possui_vitalicio') {
       filled = normalizeBool(p[key]) !== null;          // só Sim/Não explícito conta como preenchido
-    } else if (key === 'qual_quarter_de_fechamento') {
-      filled = !quarterEmpty(p[key]);                   // quarter cru válido (com ano)
     } else {
-      filled = isFilled(p[key]);
+      filled = isFilled(p[key]);                        // demais campos: basta não estar vazio
     }
     if (!filled) miss.push(label);
   }
