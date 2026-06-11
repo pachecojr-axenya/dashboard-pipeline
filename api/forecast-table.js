@@ -53,7 +53,7 @@ const STAGE_PROB = {
 };
 
 const PROPERTIES = [
-  'dealname', 'dealstage', 'pipeline', 'hubspot_owner_id',
+  'dealname', 'dealstage', 'pipeline', 'hubspot_owner_id', 'sdr',
   'produto', 'quantidade_de_colaboradores', 'vidas',
   'valor_da_fatura_do_plano_de_saude_atual', 'primeira_fatura',
   'arr_estimado', 'modelo_de_remuneracao',
@@ -63,7 +63,46 @@ const PROPERTIES = [
   'hs_is_closed_won', 'hs_is_closed_lost', 'hs_object_id',
   'createdate', 'closedate',
   'motivo_do_declinio_ou_perdido',
+  'a_reuniao_ocorreu_',
 ];
+
+// S06 (Completude): campos do HubSpot avaliados, com rótulo amigável. Avalia os valores
+// CRUS (sem fallback) — por isso a completude é calculada no servidor, não derivada de arr/prob/quarter já mesclados.
+const S06_FIELDS = [
+  ['quantidade_de_colaboradores', 'Colaboradores'],
+  ['vidas',                       'Vidas'],
+  ['primeira_fatura',             '1ª Fatura'],
+  ['arr_estimado',                'ARR Estimado'],
+  ['modelo_de_remuneracao',       'Modelo de Remuneração'],
+  ['possui_agenciamento',         'Possui Agenciamento'],
+  ['possui_vitalicio',            'Possui Vitalício'],
+  ['probabilidade_de_fechamento_','Probabilidade'],
+  ['qual_quarter_de_fechamento',  'Quarter'],
+  ['data_prevista_para_receita',  'Data Prevista Receita'],
+];
+
+function isFilled(v) {
+  if (v === undefined || v === null) return false;
+  const s = String(v).trim().toLowerCase();
+  return s !== '' && s !== 'null' && s !== 'undefined';
+}
+
+// Retorna os rótulos dos campos S06 ausentes neste deal (campos crus).
+function s06Missing(p) {
+  const miss = [];
+  for (const [key, label] of S06_FIELDS) {
+    let filled;
+    if (key === 'possui_agenciamento' || key === 'possui_vitalicio') {
+      filled = normalizeBool(p[key]) !== null;          // só Sim/Não explícito conta como preenchido
+    } else if (key === 'qual_quarter_de_fechamento') {
+      filled = !quarterEmpty(p[key]);                   // quarter cru válido (com ano)
+    } else {
+      filled = isFilled(p[key]);
+    }
+    if (!filled) miss.push(label);
+  }
+  return miss;
+}
 
 function normalizeProb(val) {
   const n = parseFloat(val);
@@ -201,6 +240,8 @@ module.exports = async function handler(req, res) {
         let quarter = p.qual_quarter_de_fechamento || null;
         if (quarterEmpty(quarter)) quarter = getQuarterFromDate(dateStr) || null;
 
+        const camposFaltantes = s06Missing(p);
+
         return {
           hs_id: p.hs_object_id,
           dealname: (p.dealname || '')
@@ -210,6 +251,7 @@ module.exports = async function handler(req, res) {
           pipeline: PIPELINE_LABELS[p.pipeline] || p.pipeline || '-',
           stage: stageName,
           ae: ownerMap[p.hubspot_owner_id] || '-',
+          sdr: (function(){ var s = p.sdr || null; return s ? (ownerMap[s] || s) : null; })(),
           produto: p.produto || null,
           colaboradores: p.quantidade_de_colaboradores ? parseInt(p.quantidade_de_colaboradores) : null,
           vidas: p.vidas ? parseInt(p.vidas) : null,
@@ -224,6 +266,9 @@ module.exports = async function handler(req, res) {
           quarter,
           data_prevista_para_receita: dateStr,
           close_date: p.closedate ? p.closedate.substring(0, 10) : null,
+          reuniao_ocorreu: p.a_reuniao_ocorreu_ || null,
+          campos_faltantes: camposFaltantes,
+          dados_completos: camposFaltantes.length === 0,
           lost_reason: p.motivo_do_declinio_ou_perdido || null,
           createdate: p.createdate ? p.createdate.substring(0, 10) : null,
           dias_no_pipe: p.createdate

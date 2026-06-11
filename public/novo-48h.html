@@ -249,7 +249,7 @@ var _novoCharts={};
 function _novoMkChart(id,cfg){ var ctx=document.getElementById(id); if(!ctx)return; if(_novoCharts[id]) _novoCharts[id].destroy(); _novoCharts[id]=new Chart(ctx,cfg); }
 
 // ── Deals modal ───────────────────────────────────────────────────────────────
-function _novoDealsRows(deals){ return deals.map(function(d){ var hsUrl=d.hs_id?'https://app.hubspot.com/contacts/44444289/deal/'+d.hs_id:'#'; var nameCell=d.hs_id?'<a href="'+hsUrl+'" target="_blank" rel="noopener" style="color:var(--teal);text-decoration:none">'+_ne(d.dealname)+'</a>':_ne(d.dealname); return '<tr><td style="text-align:left;min-width:150px;max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+nameCell+'</td><td style="text-align:left;white-space:nowrap">'+_ne(d.ae)+'</td><td style="white-space:nowrap">'+_ne(d.stage)+'</td><td>'+_ni(d.vidas)+'</td><td>'+_revShort(_annualRev(d))+'</td><td>'+(d.createdate||'—')+'</td></tr>'; }).join(''); }
+function _novoDealsRows(deals){ return deals.map(function(d){ var hsUrl=d.hs_id?'https://app.hubspot.com/contacts/44715285/deal/'+d.hs_id:'#'; var nameCell=d.hs_id?'<a href="'+hsUrl+'" target="_blank" rel="noopener" style="color:var(--teal);text-decoration:none">'+_ne(d.dealname)+'</a>':_ne(d.dealname); return '<tr><td style="text-align:left;min-width:150px;max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+nameCell+'</td><td style="text-align:left;white-space:nowrap">'+_ne(d.ae)+'</td><td style="white-space:nowrap">'+_ne(d.stage)+'</td><td>'+_ni(d.vidas)+'</td><td>'+_revShort(_annualRev(d))+'</td><td>'+(d.createdate||'—')+'</td></tr>'; }).join(''); }
 function novoOpenDealsModal(title,deals){ if(!deals||!deals.length){ openModal(title,'<p style="color:var(--text2);padding:1rem 0">Nenhum deal.</p>'); return; } var html='<table class="lb"><thead><tr><th style="text-align:left">Deal</th><th style="text-align:left">AE</th><th>Etapa</th><th>Vidas</th><th>ARR</th><th>Criado</th></tr></thead><tbody>'+_novoDealsRows(deals)+'</tbody></table>'; openModal(title+' ('+deals.length+')',html); }
 
 // ── Data loading ──────────────────────────────────────────────────────────────
@@ -379,7 +379,7 @@ function buildH48WonTable(wonDeals){
   if(!wonDeals.length){ el.innerHTML='<p style="color:var(--text2);font-size:.82rem;padding:.5rem 0">Nenhum deal ganho nas últimas 48h.</p>'; return; }
   var html='<div style="overflow-x:auto"><table class="lb" style="font-size:.78rem"><thead><tr><th style="text-align:left">Deal</th><th style="text-align:left">AE</th><th>Vidas</th><th>ARR</th><th>Fechado</th></tr></thead><tbody>';
   wonDeals.forEach(function(d){
-    var hsUrl=d.hs_id?'https://app.hubspot.com/contacts/44444289/deal/'+d.hs_id:'#';
+    var hsUrl=d.hs_id?'https://app.hubspot.com/contacts/44715285/deal/'+d.hs_id:'#';
     html+='<tr><td style="text-align:left;max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><a href="'+hsUrl+'" target="_blank" rel="noopener" style="color:var(--teal);text-decoration:none">'+_ne(d.dealname)+'</a></td><td style="text-align:left">'+_ne(d.ae)+'</td><td>'+_ni(d.vidas)+'</td><td>'+_revShort(_annualRev(d))+'</td><td>'+_nd(d.close_date)+'</td></tr>';
   });
   html+='</tbody></table></div>';
@@ -392,7 +392,7 @@ function buildH48NewTable(newDeals){
   if(!newDeals.length){ el.innerHTML='<p style="color:var(--text2);font-size:.82rem;padding:.5rem 0">Nenhum deal criado nas últimas 48h.</p>'; return; }
   var html='<div style="overflow-x:auto"><table class="lb" style="font-size:.78rem"><thead><tr><th style="text-align:left">Deal</th><th style="text-align:left">AE</th><th>Pipeline</th><th>Etapa</th><th>Vidas</th><th>ARR</th><th>Criado</th></tr></thead><tbody>';
   newDeals.slice().sort(function(a,b){ return (b.createdate||'').localeCompare(a.createdate||''); }).forEach(function(d){
-    var hsUrl=d.hs_id?'https://app.hubspot.com/contacts/44444289/deal/'+d.hs_id:'#';
+    var hsUrl=d.hs_id?'https://app.hubspot.com/contacts/44715285/deal/'+d.hs_id:'#';
     html+='<tr><td style="text-align:left;max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><a href="'+hsUrl+'" target="_blank" rel="noopener" style="color:var(--teal);text-decoration:none">'+_ne(d.dealname)+'</a></td><td style="text-align:left;white-space:nowrap">'+_ne(d.ae)+'</td><td style="white-space:nowrap">'+_ne(d.pipeline)+'</td><td style="white-space:nowrap">'+_ne(d.stage)+'</td><td>'+_ni(d.vidas)+'</td><td>'+_revShort(_annualRev(d))+'</td><td style="white-space:nowrap">'+_nd(d.createdate)+'</td></tr>';
   });
   html+='</tbody></table></div>';

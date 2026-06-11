@@ -1173,7 +1173,7 @@ function hwShowDeals(name,stage,prop,deals){
     html+='<table class="lb"><thead><tr><th style="text-align:left">Negócio</th><th style="text-align:left">Valor atual</th></tr></thead><tbody>';
     missing.forEach(function(d){
       var val=d.fields[prop]&&d.fields[prop].value?d.fields[prop].value:'—';
-      html+='<tr><td style="text-align:left"><a href="https://app.hubspot.com/contacts/44444289/deal/'+d.hs_id+'" target="_blank" style="color:var(--teal);text-decoration:none">'+d.name+'</a></td><td style="text-align:left;color:var(--red)">'+val+'</td></tr>';
+      html+='<tr><td style="text-align:left"><a href="https://app.hubspot.com/contacts/44715285/deal/'+d.hs_id+'" target="_blank" style="color:var(--teal);text-decoration:none">'+d.name+'</a></td><td style="text-align:left;color:var(--red)">'+val+'</td></tr>';
     });
     html+='</tbody></table>';
   }
@@ -1182,7 +1182,7 @@ function hwShowDeals(name,stage,prop,deals){
     html+='<table class="lb"><thead><tr><th style="text-align:left">Negócio</th><th style="text-align:left">Valor</th></tr></thead><tbody>';
     filled.forEach(function(d){
       var val=d.fields[prop]&&d.fields[prop].value?d.fields[prop].value:'—';
-      html+='<tr><td style="text-align:left"><a href="https://app.hubspot.com/contacts/44444289/deal/'+d.hs_id+'" target="_blank" style="color:var(--teal);text-decoration:none">'+d.name+'</a></td><td style="text-align:left;color:var(--green)">'+val+'</td></tr>';
+      html+='<tr><td style="text-align:left"><a href="https://app.hubspot.com/contacts/44715285/deal/'+d.hs_id+'" target="_blank" style="color:var(--teal);text-decoration:none">'+d.name+'</a></td><td style="text-align:left;color:var(--green)">'+val+'</td></tr>';
     });
     html+='</tbody></table>';
   }
@@ -17554,7 +17554,7 @@ function _calcProbInfo(d) {
 
 function _novoDealsRows(deals) {
   return deals.map(function(d) {
-    var hsUrl = 'https://app.hubspot.com/contacts/44444289/deal/' + d.hs_id;
+    var hsUrl = 'https://app.hubspot.com/contacts/44715285/deal/' + d.hs_id;
     var nameCell = d.hs_id
       ? '<a href="'+hsUrl+'" target="_blank" rel="noopener" style="color:var(--teal);text-decoration:none" onmouseover="this.style.textDecoration=\'underline\'" onmouseout="this.style.textDecoration=\'none\'">'+_ne(d.dealname)+'</a>'
       : _ne(d.dealname);

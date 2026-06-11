@@ -266,7 +266,7 @@ module.exports = async function handler(req, res) {
 
         const baseRow = [
           (p.dealname || '').replace(/\s*-\s*Novo\(a\)\s*Deal\s*$/gi, '').trim(),
-          `https://app.hubspot.com/contacts/44444289/deal/${d.id}`,
+          `https://app.hubspot.com/contacts/44715285/deal/${d.id}`,
           PIPELINE_LABELS[p.pipeline] || p.pipeline || '-',
           STAGE_MAP[p.dealstage] || p.dealstage || '-',
           ownerMap[p.hubspot_owner_id] || '-',
