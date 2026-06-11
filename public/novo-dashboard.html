@@ -556,8 +556,8 @@ var NOVO_I18N = {
     meet_occurred_tip:'Dos rastreados, os que também entraram em Diagnóstico (reunião ocorreu / avançou).',
     meet_noshow_tip:'Rastreados que não chegaram a Diagnóstico (reunião não ocorreu / no-show).',
     meet_rate_tip:'Occurred ÷ Tracked.',
-    kpi2_stale_label:'🟡 Deals Estagnados', kpi2_stale_tip:'Deals abertos criados há mais de 60 dias (proxy | idealmente usa ls_days_in_stage).',
-    kpi2_complete_label:'🟡 Completude', kpi2_complete_tip:'% dos deals em Proposta Enviada, Consultoria ou Negociação com os 10 campos preenchidos: colaboradores, vidas, 1ª fatura, ARR, modelo de remuneração, agenciamento, vitalício, probabilidade, quarter e data prevista de receita.',
+    kpi2_stale_label:'Deals Estagnados', kpi2_stale_tip:'Deals abertos criados há mais de 60 dias (proxy | idealmente usa ls_days_in_stage).',
+    kpi2_complete_label:'Completude', kpi2_complete_tip:'% dos deals em Proposta Enviada, Consultoria ou Negociação com os 10 campos preenchidos: colaboradores, vidas, 1ª fatura, ARR, modelo de remuneração, agenciamento, vitalício, probabilidade, quarter e data prevista de receita.',
     stale_deals:'Negócios Estagnados', stale_deals_tip:'Negócios abertos parados há mais de 60 dias no funil.',
     stale_vidas:'Vidas Estagnadas', stale_vidas_tip:'Soma do campo vidas dos negócios estagnados.',
     stale_avg:'Média de Vidas por Deal', stale_avg_tip:'Vidas estagnadas ÷ número de negócios estagnados.',
@@ -660,8 +660,8 @@ var NOVO_I18N = {
     meet_occurred_tip:'Of those tracked, the ones that also entered Diagnosis (meeting occurred / advanced).',
     meet_noshow_tip:'Tracked deals that never reached Diagnosis (meeting did not occur / no-show).',
     meet_rate_tip:'Occurred ÷ Tracked.',
-    kpi2_stale_label:'🟡 Stale Deals', kpi2_stale_tip:'Open deals created more than 60 days ago (proxy | ideally uses ls_days_in_stage).',
-    kpi2_complete_label:'🟡 Data Completeness', kpi2_complete_tip:'% of deals in Proposta Enviada, Consultoria or Negociação with all 10 fields filled: collaborators, lives, first invoice, ARR, comp model, agency, lifetime, probability, quarter and expected revenue date.',
+    kpi2_stale_label:'Stale Deals', kpi2_stale_tip:'Open deals created more than 60 days ago (proxy | ideally uses ls_days_in_stage).',
+    kpi2_complete_label:'Data Completeness', kpi2_complete_tip:'% of deals in Proposta Enviada, Consultoria or Negociação with all 10 fields filled: collaborators, lives, first invoice, ARR, comp model, agency, lifetime, probability, quarter and expected revenue date.',
     stale_deals:'Stale Deals', stale_deals_tip:'Open deals stuck in the funnel for more than 60 days.',
     stale_vidas:'Stale Lives', stale_vidas_tip:'Sum of the lives field across stale deals.',
     stale_avg:'Avg Lives per Deal', stale_avg_tip:'Stale lives ÷ number of stale deals.',
@@ -956,7 +956,7 @@ var NOVO_HELP_CHARTS = [
   {
     key: 'kpi2-stale',
     formula: 'Stale Deals = COUNT(deals abertos com dias_no_pipe > 60)',
-    title: '🟡 Deals Estagnados / Stale Deals',
+    title: 'Deals Estagnados / Stale Deals',
     desc: 'Deals abertos criados há mais de 60 dias. Proxy | idealmente usaria ls_days_in_stage (tempo no stage atual).',
     fields: [
       ['createdate', 'Data de criação do deal | base para calcular dias abertos.'],
@@ -966,7 +966,7 @@ var NOVO_HELP_CHARTS = [
   {
     key: 'kpi2-complete',
     formula: 'Completude = deals (Proposta Enviada, Consultoria ou Negociação) com os 10 campos preenchidos ÷ total de deals nessas etapas × 100',
-    title: '🟡 Completude dos Dados / Data Completeness',
+    title: 'Completude dos Dados / Data Completeness',
     desc: '% dos deals nas etapas Proposta Enviada, Consultoria e Negociação que têm os 10 campos preenchidos. A completude é avaliada sobre os valores crus do HubSpot (sem fallback) no servidor — campo dados_completos de /api/forecast-table.',
     fields: [
       ['dealstage', 'Filtra as etapas avaliadas: apenas Proposta Enviada, Consultoria e Negociação.'],
@@ -980,16 +980,6 @@ var NOVO_HELP_CHARTS = [
       ['probabilidade_de_fechamento_', 'Campo obrigatório | valor cru (sem fallback de etapa).'],
       ['qual_quarter_de_fechamento', 'Campo obrigatório | basta não estar vazio.'],
       ['data_prevista_para_receita', 'Campo obrigatório | basta não estar vazio.'],
-    ],
-  },
-  {
-    key: 'kpi2-pm',
-    formula: 'Prêmio Mensal = Σ (arr_estimado ÷ 12) dos deals abertos',
-    title: '🟡 Prêmio Mensal / Monthly Premium',
-    desc: 'Soma de ARR ÷ 12 de todos os deals abertos | representa a receita mensal potencial do pipeline.',
-    fields: [
-      ['arr_estimado', 'ARR anual ÷ 12 = receita mensal estimada do deal.'],
-      ['primeira_fatura', 'Fallback: usada quando arr_estimado não está preenchido (× 12 = ARR).'],
     ],
   },
   {
@@ -1114,7 +1104,7 @@ var NOVO_CARD_CODES = {
   'kpi-lost-vidas':'P07','kpi-weighted-vidas':'P08',
   'kpi2-winrate':'S01','kpi2-bdr':'S02','kpi2-ae':'S03',
   'kpi2-meeting':'S04','kpi2-stale':'S05','kpi2-complete':'S06',
-  'kpi2-pm':'S07','kpi2-momentum':'S08',
+  'kpi2-momentum':'S08',
   // New N-series
   'waterfall':'N01','netflow':'N02','stageprog':'N03','openpipe2':'N04',
   'risktable':'N05','cohort':'N06','freshness':'N07','passthru':'N08',
@@ -2679,9 +2669,6 @@ function _buildKpiSecRow() {
   var s06Complete = s06Deals.filter(function(d) { return d.dados_completos; });
   var completePct = s06Deals.length > 0 ? Math.round(s06Complete.length / s06Deals.length * 100) : null;
 
-  // PM | potential monthly revenue from open pipeline
-  var pmTotal = openDeals.reduce(function(s, d) { return s + (d.arr_estimado != null ? d.arr_estimado / 12 : 0); }, 0);
-
   // Momentum: open deals created in last 30 days vs prior 30 days
   var ms30 = 30 * 24 * 60 * 60 * 1000;
   var nowMs = now.getTime();
@@ -2747,14 +2734,6 @@ function _buildKpiSecRow() {
       tip: t('kpi2_complete_tip'),
     },
     {
-      key: 'kpi2-pm', na: false,
-      label: t('kpi2_pm_label'),
-      value: _fmtBig(pmTotal),
-      sub: t('kpi2_open_pipe'),
-      color: 'var(--teal)',
-      tip: t('kpi2_pm_tip'),
-    },
-    {
       key: 'kpi2-momentum', na: false,
       label: t('kpi2_momentum_label'),
       value: recent + momArrow,
@@ -2770,7 +2749,6 @@ function _buildKpiSecRow() {
   _novoKpiDrill['kpi2-meeting']  = { deals: meetStats ? meetStats.trackedDeals : [], label: t('kpi2_meeting_label') };
   _novoKpiDrill['kpi2-stale']    = { deals: staleDeals,  label: t('kpi2_stale_label') };
   _novoKpiDrill['kpi2-complete'] = { deals: s06Deals,    label: t('kpi2_complete_label') };
-  _novoKpiDrill['kpi2-pm']       = { deals: openDeals,   label: t('kpi2_pm_label') };
   _novoKpiDrill['kpi2-momentum'] = { deals: recentDeals, label: t('kpi2_momentum_label') };
 
   var html = '<div class="kpi-row-sec">';
