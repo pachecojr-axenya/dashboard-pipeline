@@ -3395,15 +3395,18 @@ function buildNovoFunnelHorizChart() {
       var nextCount  = (stagesMap[funnelStages[idx + 1]] || { count: 0 }).count;
       var cumRate    = (idx > 0 && firstCount > 0) ? Math.round(nextCount / firstCount * 1000) / 10 : null;
       var cumCol     = cumRate == null ? '' : cumRate >= 30 ? 'var(--green)' : cumRate >= 10 ? 'var(--yellow)' : 'var(--red)';
-      var fromName = funnelStages[idx] === 'Implantação' ? 'Implantação/Ganho' : funnelStages[idx];
-      var toName   = funnelStages[idx + 1] === 'Implantação' ? 'Implantação/Ganho' : funnelStages[idx + 1];
-      var stepTitle = 'Conversão entre etapas | ' + rStr + ' dos deals que entraram em ' + fromName + ' avançaram para ' + toName;
-      var cumTitle  = 'Em relação ao topo do funil | ' + (cumRate != null ? cumRate + '%' : '—') + ' dos deals da 1ª etapa (' + funnelStages[0] + ') chegaram até ' + toName;
+      var fromName  = funnelStages[idx] === 'Implantação' ? 'Implantação/Ganho' : funnelStages[idx];
+      var toName    = funnelStages[idx + 1] === 'Implantação' ? 'Implantação/Ganho' : funnelStages[idx + 1];
+      var fromCount = (stagesMap[funnelStages[idx]] || { count: 0 }).count;
+      var stepText  = 'Conversão entre etapas consecutivas | quantos dos deals que entraram em ' + fromName + ' avançaram para ' + toName + '.';
+      var stepCode  = nextCount.toLocaleString('pt-BR') + ' ÷ ' + fromCount.toLocaleString('pt-BR') + ' = ' + rStr;
+      var cumText   = 'Conversão em relação ao topo do funil | quantos dos deals da 1ª etapa (' + funnelStages[0] + ') chegaram até ' + toName + '.';
+      var cumCode   = nextCount.toLocaleString('pt-BR') + ' ÷ ' + firstCount.toLocaleString('pt-BR') + ' = ' + (cumRate != null ? cumRate + '%' : '—');
       overlayHtml +=
-        '<div style="flex:' + FC + ';min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:auto;cursor:help">' +
-          '<div style="font-size:1.15rem;font-weight:800;color:' + rCol + ';line-height:1" title="' + _ne(stepTitle) + '">' + rStr + '</div>' +
+        '<div style="flex:' + FC + ';min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:auto">' +
+          '<div style="font-size:1.15rem;font-weight:800;color:' + rCol + ';line-height:1;cursor:help" data-tip="' + _ne(stepText) + '" data-code="' + _ne(stepCode) + '">' + rStr + '</div>' +
           (cumRate != null
-            ? '<div style="font-size:.72rem;color:' + cumCol + ';line-height:1;opacity:.9;margin-top:.38rem" title="' + _ne(cumTitle) + '">' + cumRate + '%↓</div>'
+            ? '<div style="font-size:.9rem;font-weight:700;color:' + cumCol + ';line-height:1;opacity:.92;margin-top:.42rem;cursor:help" data-tip="' + _ne(cumText) + '" data-code="' + _ne(cumCode) + '">' + cumRate + '%↓</div>'
             : '') +
         '</div>';
     }
@@ -3495,11 +3498,11 @@ function _novoOpenFunnelDealsModal(title, deals) {
   }
   function _hideTip() { var el = _getTip(); if (el) el.classList.remove('nt-show'); }
   document.addEventListener('mouseover', function(e) {
-    var btn = e.target && e.target.closest && e.target.closest('.novo-info-btn');
+    var btn = e.target && e.target.closest && e.target.closest('.novo-info-btn,[data-tip]');
     if (btn) _showTip(btn);
   });
   document.addEventListener('mouseout', function(e) {
-    if (e.target && e.target.closest && e.target.closest('.novo-info-btn')) _hideTip();
+    if (e.target && e.target.closest && e.target.closest('.novo-info-btn,[data-tip]')) _hideTip();
   });
   document.addEventListener('scroll', _hideTip, true);
 })();
