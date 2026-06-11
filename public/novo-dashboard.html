@@ -543,10 +543,10 @@ var NOVO_I18N = {
     tip_stage:'Deals abertos (exclui Ganhos) por etapa do pipeline. Alterne entre nº de deals e soma de vidas. Clique numa barra para ver os deals. Inclui os pipelines Vendas + Bid.',
     t_funnel:'🟡 Funil do Pipeline (alcance cumulativo)',
     tip_funnel:'Para cada etapa, quantos deals abertos estão nela ou em etapas seguintes | formato de funil. Clique para ver os deals. Inclui os pipelines Vendas + Bid.',
-    t_conc:'🟡 Risco de Concentração (Top 10)',
+    t_conc:'🟡 Risco de Concentração Ativo (Top 10)',
     tip_conc:'Os 10 maiores deals abertos por vidas ou por receita anual estimada. Mostra o quanto o pipe depende de poucos negócios. Inclui os pipelines Vendas + Bid.',
     t_sizedist:'🟡 Distribuição por Tamanho (Receita)',
-    tip_sizedist:'Deals abertos agrupados por faixa de receita anual estimada (ARR, ou 1ª fatura × 12). Inclui os pipelines Vendas + Bid.',
+    tip_sizedist:'Deals abertos (ARR > 0) agrupados por faixa de receita anual estimada (ARR, ou 1ª fatura × 12). Etapas contadas: Diagnóstico, Cotação, Proposta Enviada, Consultoria, Negociação e Stand by — Implantação entra quando o toggle "Implantação = Ganho" está desligado. Exclui Reunião Agendada, Perdido e Ganho. Pipelines Vendas + Bid.',
     t_vidasdist:'🟡 Distribuição por Vidas',
     tip_vidasdist:'Deals abertos agrupados por faixa de quantidade de vidas. Inclui os pipelines Vendas + Bid.',
     t_stageval:'🟡 Valor do Pipeline por Etapa',
@@ -648,10 +648,10 @@ var NOVO_I18N = {
     tip_stage:'Open deals (excludes Won) by pipeline stage. Toggle deal count vs sum of lives. Click a bar to see the deals. Includes the Vendas + Bid pipelines.',
     t_funnel:'🟡 Pipeline Funnel (cumulative reach)',
     tip_funnel:'For each stage, how many open deals are at that stage or beyond | funnel shape. Click to see the deals. Includes the Vendas + Bid pipelines.',
-    t_conc:'🟡 Concentration Risk (Top 10)',
+    t_conc:'🟡 Active Concentration Risk (Top 10)',
     tip_conc:'The 10 largest open deals by lives or by estimated annual revenue. Shows how dependent the pipe is on a few deals. Includes the Vendas + Bid pipelines.',
     t_sizedist:'🟡 Deal Size Distribution (Revenue)',
-    tip_sizedist:'Open deals grouped by estimated annual revenue band (ARR, or first invoice × 12). Includes the Vendas + Bid pipelines.',
+    tip_sizedist:'Open deals (ARR > 0) grouped by estimated annual revenue band (ARR, or first invoice × 12). Stages counted: Diagnóstico, Cotação, Proposta Enviada, Consultoria, Negociação and Stand by — Implantação is included when the "Implantação = Ganho" toggle is off. Excludes Reunião Agendada, Perdido and Ganho. Vendas + Bid pipelines.',
     t_vidasdist:'🟡 Lives Distribution',
     tip_vidasdist:'Open deals grouped by number-of-lives band. Includes the Vendas + Bid pipelines.',
     t_stageval:'🟡 Pipeline Value by Stage',
@@ -1492,6 +1492,47 @@ function _novoDealsTableHtml(deals) {
 function novoOpenDealsModal(title, deals) {
   openModal(title, _novoDealsTableHtml(deals));
 }
+
+// Modal de deals com filtro por faixa de vidas (chips). Usado pelo C05 (Distribuição por Tamanho).
+var NOVO_VIDAS_BUCKETS = [
+  ['0 (sem vidas)', function(v){ return v <= 0; }],
+  ['1–50',          function(v){ return v >= 1 && v <= 50; }],
+  ['51–200',        function(v){ return v > 50 && v <= 200; }],
+  ['201–500',       function(v){ return v > 200 && v <= 500; }],
+  ['501–1K',        function(v){ return v > 500 && v <= 1000; }],
+  ['1K–5K',         function(v){ return v > 1000 && v <= 5000; }],
+  ['5K+',           function(v){ return v > 5000; }],
+];
+var _novoVfAll = [];
+var _novoVfSel = null; // índice da faixa selecionada; null => todas
+function _novoVfChipsHtml() {
+  var counts = NOVO_VIDAS_BUCKETS.map(function(b){ return _novoVfAll.filter(function(d){ return b[1](d.vidas || 0); }).length; });
+  var allActive = _novoVfSel == null;
+  var html = '<div style="margin-bottom:1.1rem;display:flex;flex-wrap:wrap;gap:.45rem;align-items:center">' +
+    '<button class="stage-chip' + (allActive ? ' active' : '') + '" onclick="novoVfPick(-1)">' + t('p08_all_stages') + ' <span class="chip-count">' + _novoVfAll.length + '</span></button>';
+  NOVO_VIDAS_BUCKETS.forEach(function(b, i){
+    if (!counts[i]) return; // esconde faixas sem deals
+    var on = _novoVfSel === i;
+    html += '<button class="stage-chip' + (on ? ' active' : '') + '" onclick="novoVfPick(' + i + ')">' + _ne(b[0]) + ' <span class="chip-count">' + counts[i] + '</span></button>';
+  });
+  return html + '</div>';
+}
+function _novoVfRender() {
+  var list = _novoVfSel == null ? _novoVfAll
+    : _novoVfAll.filter(function(d){ return NOVO_VIDAS_BUCKETS[_novoVfSel][1](d.vidas || 0); });
+  var ch = document.getElementById('novo-vf-chips'); if (ch) ch.innerHTML = _novoVfChipsHtml();
+  var tb = document.getElementById('novo-vf-table'); if (tb) tb.innerHTML = _novoDealsTableHtml(list);
+}
+function novoVfPick(i) {
+  _novoVfSel = (i === -1) ? null : i;
+  _novoVfRender();
+}
+function novoOpenDealsVidasFilterModal(title, deals) {
+  _novoVfAll = deals || [];
+  _novoVfSel = null;
+  openModal(title, '<div id="novo-vf-chips"></div><div id="novo-vf-table"></div>');
+  _novoVfRender();
+}
 // Drill dos big-number cards: cada KPI abre a lista de deals que o compõe.
 // P02 (Receita Ganha | Ano Atual) ganha 4 mini big-numbers no topo.
 var _novoKpiDrill = {};
@@ -1810,8 +1851,8 @@ function buildNovoConc() {
   _novoMkChart('chart-novo-conc', { type:'bar', plugins:[ChartDataLabels],
     data:{ labels:ranked.map(function(d){ return (d.dealname||'—').slice(0,32); }), datasets:[{ data:ranked.map(metric), backgroundColor:'rgba(210,153,34,.8)', hoverBackgroundColor:'rgba(210,153,34,1)', borderRadius:4 }] },
     options:{ indexAxis:'y', responsive:true, layout:{padding:{right:100}}, plugins:{ legend:{display:false},
-      datalabels:{ anchor:'end', align:'right', color:th.cText, font:{family:NOVO_FONT,size:10,weight:'bold'}, formatter:function(v){ return isRev ? ('R$ '+Math.round(v).toLocaleString('pt-BR')) : v.toLocaleString('pt-BR'); } },
-      tooltip:{ callbacks:{ label:function(c){ return isRev ? ('R$ '+Math.round(c.parsed.x).toLocaleString('pt-BR')+' /ano') : (c.parsed.x.toLocaleString('pt-BR')+' vidas'); }, footer:function(){return 'Clique para ver o Top '+ranked.length+' completo';} } } },
+      datalabels:{ anchor:'end', align:'right', color:th.cText, font:{family:NOVO_FONT,size:10,weight:'bold'}, formatter:function(v){ return isRev ? _fmtBig(v) : _novoCompactNum(v); } },
+      tooltip:{ callbacks:{ label:function(c){ return isRev ? (_fmtBig(c.parsed.x)+' /ano') : (_novoCompactNum(c.parsed.x)+' vidas'); }, footer:function(){return 'Clique para ver o Top '+ranked.length+' completo';} } } },
       scales:{ x:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT}}}, y:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT,size:10}}} },
       onClick:function(e,el){ if(!el.length)return; novoOpenDealsModal(t('t_conc')+' | Top '+ranked.length, ranked); } } });
 }
@@ -1827,7 +1868,7 @@ function buildNovoSizeDist() {
       datalabels:{ anchor:'end', align:'end', color:th.cText, font:{family:NOVO_FONT,size:11,weight:'bold'}, formatter:function(v){return v||'';} },
       tooltip:{ callbacks:{ label:function(c){return c.parsed.y+' deals';}, footer:function(){return 'Clique para ver os deals';} } } },
       scales:{ x:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}}, y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0}} },
-      onClick:function(e,el){ if(!el.length)return; novoOpenDealsModal(t('t_sizedist')+' | '+defs[el[0].index][0], by[el[0].index]); } } });
+      onClick:function(e,el){ if(!el.length)return; var all=[]; by.forEach(function(arr){ all=all.concat(arr); }); novoOpenDealsVidasFilterModal(t('t_sizedist'), all); } } });
 }
 
 function buildNovoVidasDist() {
@@ -2494,6 +2535,13 @@ function buildNovoReassign() {
   if(el) el.innerHTML=html;
 }
 
+// Número compacto sem moeda (K para milhar, M para milhão) — usado em rótulos de gráfico.
+function _novoCompactNum(v) {
+  if (v == null || isNaN(v)) return '-';
+  if (v >= 1e6) return (v / 1e6).toLocaleString('pt-BR', {minimumFractionDigits: 1, maximumFractionDigits: 1}) + 'M';
+  if (v >= 1e3) return (v / 1e3).toLocaleString('pt-BR', {minimumFractionDigits: 0, maximumFractionDigits: 1}) + 'K';
+  return Math.round(v).toLocaleString('pt-BR');
+}
 function _fmtBig(v) {
   if (v == null || isNaN(v)) return '—';
   if (v >= 1e6) return 'R$ ' + (v / 1e6).toLocaleString('pt-BR', {minimumFractionDigits: 1, maximumFractionDigits: 1}) + 'M';
