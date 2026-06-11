@@ -78,7 +78,6 @@ const S06_FIELDS = [
   ['possui_vitalicio',            'Possui Vitalício'],
   ['probabilidade_de_fechamento_','Probabilidade'],
   ['qual_quarter_de_fechamento',  'Quarter'],
-  ['data_prevista_para_receita',  'Data Prevista Receita'],
 ];
 
 function isFilled(v) {
