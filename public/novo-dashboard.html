@@ -777,15 +777,6 @@ var NOVO_HELP_CHARTS = [
     ],
   },
   {
-    key: 'funnel',
-    title: '🟡 Funil do Pipeline (alcance cumulativo)',
-    desc: 'Para cada etapa, quantos deals abertos estão nela ou em etapas seguintes.',
-    fields: [
-      ['dealstage', 'Posição do deal na ordem das etapas (alcance cumulativo).'],
-      ['pipeline', 'Restringe a Vendas e Bid.'],
-    ],
-  },
-  {
     key: 'conc',
     title: '🟡 Risco de Concentração (Top 10)',
     desc: 'Os 10 maiores deals abertos por vidas ou por receita anual estimada.',
@@ -1118,7 +1109,7 @@ var NOVO_HELP_DETAIL = [
 // ── Card reference codes ──────────────────────────────────────────────────────
 // P = KPI primário · S = KPI secundário · C = gráfico/chart
 var NOVO_CARD_CODES = {
-  'ae':'C01','stage':'C02','funnel':'C03','conc':'C04',
+  'ae':'C01','stage':'C02','conc':'C04',
   'sizedist':'C05','vidasdist':'C06','stageval':'C07',
   'segment':'C08','funnel-conv':'C09',
   'kpi-revenue-mtd':'P01','kpi-won-annual':'P02',
@@ -1811,20 +1802,6 @@ function buildNovoStage() {
       onClick:function(e,el){ if(!el.length)return; var s=labels[el[0].index]; novoOpenDealsModal(t('t_stage')+' | '+s, by[s]); } } });
 }
 
-function buildNovoFunnel() {
-  var th = _novoTheme(), open = _novoOpen();
-  var idx = {}; NOVO_STAGE_ORDER.forEach(function(s,i){ idx[s]=i; });
-  var counts = NOVO_STAGE_ORDER.map(function(){ return 0; });
-  open.forEach(function(d){ var i=idx[_stageNorm(d.stage)]; if(i==null)return; for(var j=0;j<=i;j++) counts[j]++; });
-  _novoMkChart('chart-novo-funnel', { type:'bar', plugins:[ChartDataLabels],
-    data:{ labels:NOVO_STAGE_ORDER.slice(), datasets:[{ data:counts, backgroundColor:'rgba(58,184,183,.75)', hoverBackgroundColor:'rgba(58,184,183,1)', borderRadius:4 }] },
-    options:{ indexAxis:'y', responsive:true, layout:{padding:{right:45}}, plugins:{ legend:{display:false},
-      datalabels:{ anchor:'end', align:'right', color:th.cText, font:{family:NOVO_FONT,size:11,weight:'bold'}, formatter:function(v){return v.toLocaleString('pt-BR');} },
-      tooltip:{ callbacks:{ label:function(c){return c.parsed.x.toLocaleString('pt-BR')+' deals nesta etapa ou adiante';}, footer:function(){return 'Clique para ver os deals';} } } },
-      scales:{ x:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0}}, y:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}} },
-      onClick:function(e,el){ if(!el.length)return; var i=el[0].index; var deals=open.filter(function(d){ var j=idx[_stageNorm(d.stage)]; return j!=null && j>=i; }); novoOpenDealsModal(t('t_funnel')+' | ≥ '+NOVO_STAGE_ORDER[i], deals); } } });
-}
-
 function buildNovoConc() {
   var th = _novoTheme(), open = _novoOpen();
   var metric = function(d){ return _novoConcMode==='revenue' ? _annualRev(d) : (d.vidas||0); };
@@ -1834,9 +1811,9 @@ function buildNovoConc() {
     data:{ labels:ranked.map(function(d){ return (d.dealname||'—').slice(0,32); }), datasets:[{ data:ranked.map(metric), backgroundColor:'rgba(210,153,34,.8)', hoverBackgroundColor:'rgba(210,153,34,1)', borderRadius:4 }] },
     options:{ indexAxis:'y', responsive:true, layout:{padding:{right:100}}, plugins:{ legend:{display:false},
       datalabels:{ anchor:'end', align:'right', color:th.cText, font:{family:NOVO_FONT,size:10,weight:'bold'}, formatter:function(v){ return isRev ? ('R$ '+Math.round(v).toLocaleString('pt-BR')) : v.toLocaleString('pt-BR'); } },
-      tooltip:{ callbacks:{ label:function(c){ return isRev ? ('R$ '+Math.round(c.parsed.x).toLocaleString('pt-BR')+' /ano') : (c.parsed.x.toLocaleString('pt-BR')+' vidas'); }, footer:function(){return 'Clique para ver o deal';} } } },
+      tooltip:{ callbacks:{ label:function(c){ return isRev ? ('R$ '+Math.round(c.parsed.x).toLocaleString('pt-BR')+' /ano') : (c.parsed.x.toLocaleString('pt-BR')+' vidas'); }, footer:function(){return 'Clique para ver o Top '+ranked.length+' completo';} } } },
       scales:{ x:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT}}}, y:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT,size:10}}} },
-      onClick:function(e,el){ if(!el.length)return; var d=ranked[el[0].index]; novoOpenDealsModal(t('t_conc')+' | '+(d.dealname||''), [d]); } } });
+      onClick:function(e,el){ if(!el.length)return; novoOpenDealsModal(t('t_conc')+' | Top '+ranked.length, ranked); } } });
 }
 
 function buildNovoSizeDist() {
@@ -2838,7 +2815,6 @@ function novoRender() {
       _card(t('t_stage'), t('tip_stage'),
         _subTabs('novo-stage-tabs', _novoStageMode, [{mode:'lives',label:t('tab_vidas'),fn:'novoSwitchStageMode'},{mode:'deals',label:t('tab_deals'),fn:'novoSwitchStageMode'}]),
         'chart-novo-stage', 340, 'stage') +
-      _card(t('t_funnel'), t('tip_funnel'), '', 'chart-novo-funnel', 340, 'funnel') +
       _card(t('t_conc'), t('tip_conc'),
         _subTabs('novo-conc-tabs', _novoConcMode, [{mode:'vidas',label:t('tab_vidas'),fn:'novoSwitchConcMode'},{mode:'revenue',label:t('lbl_revenue'),fn:'novoSwitchConcMode'}]),
         'chart-novo-conc', 360, 'conc') +
@@ -2956,7 +2932,6 @@ function novoRender() {
 
   buildNovoVidasAE();
   buildNovoStage();
-  buildNovoFunnel();
   buildNovoConc();
   buildNovoSizeDist();
   buildNovoVidasDist();
