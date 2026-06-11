@@ -145,7 +145,7 @@ body.nav-docked #view-novo{margin-left:280px}
 table.lb{width:100%;border-collapse:separate;border-spacing:0;font-size:14px}
 table.lb th{text-align:right;color:var(--teal);font-size:.72rem;font-weight:700;text-transform:uppercase;padding:.6rem 1rem;border-bottom:2px solid var(--teal);white-space:nowrap;position:sticky;top:0;background:var(--card)}
 table.lb th:first-child{text-align:left}
-table.lb td{padding:calc(.38rem + 0.4px) calc(.65rem + 0.4px) calc(.38rem + 0.4px) 1rem;border-bottom:1px solid var(--border);color:var(--text);text-align:right;font-variant-numeric:lining-nums}
+table.lb td{padding:calc(.38rem + 0.4px) calc(.65rem + 0.4px) calc(.38rem + 0.4px) 1rem;border-bottom:1px solid var(--border);color:var(--text);text-align:right;font-variant-numeric:normal}
 table.lb td:first-child{text-align:left;font-weight:600}
 table.lb tbody tr{transition:background-color .12s}
 table.lb tbody tr:nth-child(even) td{background:var(--even-s)}
@@ -558,10 +558,10 @@ var NOVO_I18N = {
     t_sizedonut:'Distribuição por Tamanho',
     tip_sizedonut:'Donut dos deals abertos por faixa, com toggle entre Receita e Vidas. O centro mostra o total de deals abertos no pipeline (atualiza ao ocultar fatias na legenda). A fatia cinza "Sem receita"/"Sem vidas" conta os deals sem aquela informação. Etapas contadas: Diagnóstico, Cotação, Proposta Enviada, Consultoria, Negociação e Stand by (Implantação entra quando o toggle "Implantação = Ganho" está desligado). Clique numa fatia para ver os deals. Pipelines Vendas + Bid.',
     donut_open_deals:'deals abertos', donut_no_revenue:'Sem receita', donut_no_lives:'Sem vidas', donut_stages_label:'Etapas',
-    vf_by_revenue:'Receita', vf_by_lives:'Vidas',
+    vf_by_revenue:'Receita', vf_by_lives:'Vidas', vf_by_stage:'Etapa', vf_by_segment:'Segmento',
     t_stageval:'Valor do Pipeline por Etapa',
     tip_stageval:'Soma da receita anual estimada por etapa. "Ponderado" multiplica pela probabilidade da etapa (ajustável em ⚙). Inclui os pipelines Vendas + Bid.',
-    t_segment:'🟡 Receita por Segmento (Tamanho)',
+    t_segment:'Receita por Segmento',
     tip_segment:'Receita anual estimada (potencial) somada por segmento de tamanho do cliente (vidas). Inclui os pipelines Vendas + Bid.',
     // KPIs primários
     kpi_mtd_label:'Receita Ganha MTD', kpi_mtd_tip:'Receita mensal de deals ganhos (Ganho + Implantação) fechados neste mês (ARR ÷ 12). Meta definida em Configurações (⚙).',
@@ -667,10 +667,10 @@ var NOVO_I18N = {
     t_sizedonut:'Size Distribution',
     tip_sizedonut:'Donut of open deals by band, with a toggle between Revenue and Lives. The center shows the total open deals in the pipeline (updates when slices are hidden via the legend). The grey "No revenue"/"No lives" slice counts deals missing that info. Stages counted: Diagnóstico, Cotação, Proposta Enviada, Consultoria, Negociação and Stand by (Implantação is included when the "Implantação = Ganho" toggle is off). Click a slice to see the deals. Vendas + Bid pipelines.',
     donut_open_deals:'open deals', donut_no_revenue:'No revenue', donut_no_lives:'No lives', donut_stages_label:'Stages',
-    vf_by_revenue:'Revenue', vf_by_lives:'Lives',
+    vf_by_revenue:'Revenue', vf_by_lives:'Lives', vf_by_stage:'Stage', vf_by_segment:'Segment',
     t_stageval:'Pipeline Value by Stage',
     tip_stageval:'Sum of estimated annual revenue per stage. "Weighted" multiplies by the stage probability (editable in ⚙). Includes the Vendas + Bid pipelines.',
-    t_segment:'🟡 Revenue by Segment (Size)',
+    t_segment:'Revenue by Segment',
     tip_segment:'Estimated annual revenue (potential) summed by customer-size segment (lives). Includes the Vendas + Bid pipelines.',
     // Primary KPIs
     kpi_mtd_label:'Won Revenue MTD', kpi_mtd_tip:'Monthly revenue from won deals (Ganho + Implantação) closed this month (ARR ÷ 12). Target set in Settings (⚙).',
@@ -825,7 +825,7 @@ var NOVO_HELP_CHARTS = [
   },
   {
     key: 'segment',
-    title: '🟡 Receita por Segmento (Tamanho)',
+    title: 'Receita por Segmento',
     desc: 'Receita anual estimada (potencial) somada por segmento de tamanho do cliente.',
     fields: [
       ['vidas', 'Define o segmento (Pequeno/Médio/Grande/Enterprise).'],
@@ -1569,6 +1569,67 @@ function novoOpenDealsFilterModal(title, deals) {
   openModal(title, '<div id="novo-vf-chips"></div><div id="novo-vf-table"></div>');
   _novoVfRender();
 }
+
+// Modal de deals com filtro por ETAPA (seleção única). Usado pelos C07 e C08.
+var _novoSfAll = [];
+var _novoSfStages = [];   // etapas distintas (ordenadas por contagem desc)
+var _novoSfSel = null;    // etapa selecionada (string); null => todas
+function _novoSfRender() {
+  var counts = {}; _novoSfAll.forEach(function(d){ var s=d.stage||'—'; counts[s]=(counts[s]||0)+1; });
+  var html = '<div style="margin-bottom:1.1rem;display:flex;flex-wrap:wrap;gap:.45rem;align-items:center">' +
+    '<span style="font-size:.72rem;color:var(--text2);font-weight:600;min-width:54px">' + t('vf_by_stage') + '</span>' +
+    '<button class="stage-chip' + (_novoSfSel==null?' active':'') + '" onclick="novoSfPick(\'__all\')">' + t('p08_all_stages') + ' <span class="chip-count">' + _novoSfAll.length + '</span></button>';
+  _novoSfStages.forEach(function(s, i){
+    html += '<button class="stage-chip' + (_novoSfSel===s?' active':'') + '" onclick="novoSfPick(' + i + ')">' + _ne(s) + ' <span class="chip-count">' + (counts[s]||0) + '</span></button>';
+  });
+  var ch = document.getElementById('novo-sf-chips'); if (ch) ch.innerHTML = html + '</div>';
+  var list = _novoSfSel==null ? _novoSfAll : _novoSfAll.filter(function(d){ return (d.stage||'—')===_novoSfSel; });
+  var tb = document.getElementById('novo-sf-table'); if (tb) tb.innerHTML = _novoDealsTableHtml(list);
+}
+function novoSfPick(i) {
+  _novoSfSel = (i === '__all') ? null : _novoSfStages[i];
+  _novoSfRender();
+}
+function novoOpenDealsStageFilterModal(title, deals) {
+  _novoSfAll = deals || [];
+  var counts = {}; _novoSfAll.forEach(function(d){ var s=d.stage||'—'; counts[s]=(counts[s]||0)+1; });
+  _novoSfStages = Object.keys(counts).sort(function(a,b){ return counts[b]-counts[a]; });
+  _novoSfSel = null;
+  openModal(title, '<div id="novo-sf-chips"></div><div id="novo-sf-table"></div>');
+  _novoSfRender();
+}
+
+// Modal de deals com filtro de UM grupo de buckets genérico (seleção única). Usado pelo C08 (segmento).
+var _novoBfAll = [];
+var _novoBfBuckets = [];   // [label, predicado(deal)]
+var _novoBfLabel = '';
+var _novoBfSel = null;     // índice; null => todos
+function _novoBfRender() {
+  var counts = _novoBfBuckets.map(function(b){ return _novoBfAll.filter(function(d){ return b[1](d); }).length; });
+  var html = '<div style="margin-bottom:1.1rem;display:flex;flex-wrap:wrap;gap:.45rem;align-items:center">' +
+    '<span style="font-size:.72rem;color:var(--text2);font-weight:600;margin-right:.15rem">' + _novoBfLabel + '</span>' +
+    '<button class="stage-chip' + (_novoBfSel==null?' active':'') + '" onclick="novoBfPick(-1)">' + t('p08_all_stages') + ' <span class="chip-count">' + _novoBfAll.length + '</span></button>';
+  _novoBfBuckets.forEach(function(b, i){
+    var c = counts[i];
+    if (!c && _novoBfSel !== i) return;
+    html += '<button class="stage-chip' + (_novoBfSel===i?' active':'') + '" onclick="novoBfPick(' + i + ')">' + _ne(b[0]) + ' <span class="chip-count">' + c + '</span></button>';
+  });
+  var ch = document.getElementById('novo-bf-chips'); if (ch) ch.innerHTML = html + '</div>';
+  var list = _novoBfSel==null ? _novoBfAll : _novoBfAll.filter(function(d){ return _novoBfBuckets[_novoBfSel][1](d); });
+  var tb = document.getElementById('novo-bf-table'); if (tb) tb.innerHTML = _novoDealsTableHtml(list);
+}
+function novoBfPick(i) {
+  _novoBfSel = (i === -1) ? null : i;
+  _novoBfRender();
+}
+function novoOpenDealsBucketFilterModal(title, deals, label, buckets) {
+  _novoBfAll = deals || [];
+  _novoBfBuckets = buckets || [];
+  _novoBfLabel = label || '';
+  _novoBfSel = null;
+  openModal(title, '<div id="novo-bf-chips"></div><div id="novo-bf-table"></div>');
+  _novoBfRender();
+}
 // Drill dos big-number cards: cada KPI abre a lista de deals que o compõe.
 // P02 (Receita Ganha | Ano Atual) ganha 4 mini big-numbers no topo.
 var _novoKpiDrill = {};
@@ -1933,8 +1994,22 @@ function buildNovoSizeDonut() {
     by = [semVidas].concat(vby);
   }
   var counts = by.map(function(a){ return a.length; });
-  var palette = ['rgba(88,166,255,.85)','rgba(58,184,183,.85)','rgba(63,185,80,.85)','rgba(210,153,34,.85)','rgba(147,112,219,.85)','rgba(248,81,73,.8)'];
-  var bg = counts.map(function(_,i){ return i===0 ? 'rgba(139,148,158,.5)' : palette[(i-1) % palette.length]; });
+  // Paleta moderna; índice 0 = cinza (fatia "sem informação").
+  var DONUT_PALETTE = [[96,165,250],[45,212,191],[52,211,153],[251,191,36],[167,139,250],[251,113,133]];
+  var bgBase = counts.map(function(_,i){ return i===0 ? [140,150,168] : DONUT_PALETTE[(i-1) % DONUT_PALETTE.length]; });
+  // Gradiente radial sutil por fatia (interior levemente mais claro → base). Scriptable: premium.js não mexe em funções.
+  function _donutBg(ctx){
+    var rgb = bgBase[ctx.dataIndex] || [136,136,136];
+    var solid = 'rgba('+rgb[0]+','+rgb[1]+','+rgb[2]+',.92)';
+    var area = ctx.chart.chartArea; if(!area) return solid;
+    var cx=(area.left+area.right)/2, cy=(area.top+area.bottom)/2;
+    var r=Math.min(area.right-area.left, area.bottom-area.top)/2; if(!(r>0)) return solid;
+    var g=ctx.chart.ctx.createRadialGradient(cx,cy,r*0.6,cx,cy,r);
+    function tint(t){ return 'rgba('+Math.round(rgb[0]+(255-rgb[0])*t)+','+Math.round(rgb[1]+(255-rgb[1])*t)+','+Math.round(rgb[2]+(255-rgb[2])*t)+',.96)'; }
+    g.addColorStop(0, tint(0.22));
+    g.addColorStop(1, solid);
+    return g;
+  }
   var centerLabel = t('donut_open_deals');
   var allDeals = by.reduce(function(acc, arr){ return acc.concat(arr); }, []);
   // Total das fatias VISÍVEIS (respeita fatias ocultadas via legenda).
@@ -1948,7 +2023,7 @@ function buildNovoSizeDonut() {
     ctx.restore();
   } };
   _novoMkChart('chart-novo-sizedonut', { type:'doughnut', plugins:[ChartDataLabels, centerPlugin],
-    data:{ labels:labels, datasets:[{ data:counts, backgroundColor:bg, borderColor:'var(--card)', borderWidth:3, borderRadius:6, spacing:2, hoverOffset:10 }] },
+    data:{ labels:labels, datasets:[{ data:counts, backgroundColor:_donutBg, borderColor:'var(--card)', borderWidth:3, borderRadius:6, spacing:2, hoverOffset:10 }] },
     options:{ responsive:true, cutout:'68%', layout:{padding:6}, plugins:{ legend:{display:true,position:'right',labels:{color:th.cText2,font:{family:NOVO_FONT,size:11},padding:10,usePointStyle:true,boxWidth:8,boxHeight:8}},
       datalabels:{ color:'#fff', font:{family:NOVO_FONT,size:10,weight:'bold'}, formatter:function(v, ctx){ var tot=_visTotal(ctx.chart); return v>0 && tot>0 ? Math.round(v/tot*100)+'%' : ''; } },
       tooltip:{ enabled:false, external:_novoChartExtTip, callbacks:{
@@ -1969,11 +2044,11 @@ function buildNovoStageVal() {
   var data = labels.map(function(s){ return Math.round(agg[s]); });
   _novoMkChart('chart-novo-stageval', { type:'bar', plugins:[ChartDataLabels],
     data:{ labels:labels, datasets:[{ data:data, backgroundColor:'rgba(58,184,183,.75)', borderRadius:4 }] },
-    options:{ responsive:true, layout:{padding:{top:24}}, plugins:{ legend:{display:false},
-      datalabels:{ anchor:'end', align:'end', color:th.cText, font:{family:NOVO_FONT,size:10,weight:'bold'}, formatter:_revShort },
-      tooltip:{ callbacks:{ label:function(c){return 'R$ '+Math.round(c.parsed.y).toLocaleString('pt-BR')+' /ano';}, footer:function(){return 'Clique para ver os deals';} } } },
-      scales:{ x:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}}, y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},callback:function(v){return _revShort(v);}}} },
-      onClick:function(e,el){ if(!el.length)return; var s=labels[el[0].index]; novoOpenDealsModal(t('t_stageval')+' | '+s, by[s]); } } });
+    options:{ indexAxis:'y', responsive:true, layout:{padding:{right:62}}, plugins:{ legend:{display:false},
+      datalabels:{ anchor:'end', align:'right', color:th.cText, font:{family:NOVO_FONT,size:10,weight:'bold'}, formatter:_revShort },
+      tooltip:{ callbacks:{ label:function(c){return 'R$ '+Math.round(c.parsed.x).toLocaleString('pt-BR')+' /ano';}, footer:function(){return 'Clique para ver os deals';} } } },
+      scales:{ x:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},callback:function(v){return _revShort(v);}}}, y:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}} },
+      onClick:function(e,el){ if(!el.length)return; novoOpenDealsStageFilterModal(t('t_stageval'), open); } } });
 }
 
 function buildNovoSegment() {
@@ -1984,13 +2059,15 @@ function buildNovoSegment() {
   open.forEach(function(d){ var vidas=d.vidas||0, rev=_annualRev(d);
     if(isW){ var p=d.probabilidade!=null?d.probabilidade:(NOVO_STAGE_PROB[d.stage]||0); rev=rev*p; }
     for(var i=0;i<defs.length;i++){ if(defs[i][1](vidas)){ sums[i]+=rev; by[i].push(d); break; } } });
+  // Buckets de segmento (predicado por deal) para o filtro do modal.
+  var segBuckets = defs.map(function(x){ var fn=x[1]; return [x[0], function(d){ return fn(d.vidas||0); }]; });
   _novoMkChart('chart-novo-segment', { type:'bar', plugins:[ChartDataLabels],
     data:{ labels:defs.map(function(d){return d[0];}), datasets:[{ data:sums.map(function(v){return Math.round(v);}), backgroundColor:'rgba(147,112,219,.75)', borderRadius:4 }] },
-    options:{ responsive:true, layout:{padding:{top:24}}, plugins:{ legend:{display:false},
-      datalabels:{ anchor:'end', align:'end', color:th.cText, font:{family:NOVO_FONT,size:10,weight:'bold'}, formatter:_revShort },
-      tooltip:{ callbacks:{ label:function(c){return 'R$ '+Math.round(c.parsed.y).toLocaleString('pt-BR')+' /ano';}, footer:function(){return 'Clique para ver os deals';} } } },
-      scales:{ x:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}}, y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},callback:function(v){return _revShort(v);}}} },
-      onClick:function(e,el){ if(!el.length)return; novoOpenDealsModal(t('t_segment')+' | '+defs[el[0].index][0], by[el[0].index]); } } });
+    options:{ indexAxis:'y', responsive:true, layout:{padding:{right:62}}, plugins:{ legend:{display:false},
+      datalabels:{ anchor:'end', align:'right', color:th.cText, font:{family:NOVO_FONT,size:10,weight:'bold'}, formatter:_revShort },
+      tooltip:{ callbacks:{ label:function(c){return 'R$ '+Math.round(c.parsed.x).toLocaleString('pt-BR')+' /ano';}, footer:function(){return 'Clique para ver os deals';} } } },
+      scales:{ x:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},callback:function(v){return _revShort(v);}}}, y:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}} },
+      onClick:function(e,el){ if(!el.length)return; novoOpenDealsBucketFilterModal(t('t_segment'), open, t('vf_by_segment'), segBuckets); } } });
 }
 
 // Switchers dos toggles
@@ -3108,9 +3185,9 @@ var _novoFunnelLoading  = false;
 var _novoFunnelPipeline  = 'vendas';
 var _novoFunnelStagesData = {};
 var _FUNNEL_STAGES = {
-  vendas:   ['Reunião Agendada','Diagnóstico','Cotação','Consultoria','Negociação','Implantação','Ganho'],
-  bid:      ['Cotação','Proposta Enviada','Consultoria','Negociação','Implantação','Ganho'],
-  combined: ['Reunião Agendada','Diagnóstico','Cotação','Proposta Enviada','Consultoria','Negociação','Implantação','Ganho'],
+  vendas:   ['Reunião Agendada','Diagnóstico','Cotação','Consultoria','Negociação','Implantação'],
+  bid:      ['Cotação','Proposta Enviada','Consultoria','Negociação','Implantação'],
+  combined: ['Reunião Agendada','Diagnóstico','Cotação','Proposta Enviada','Consultoria','Negociação','Implantação'],
 };
 
 function _novoFunnelHorizCard() {
@@ -3293,7 +3370,7 @@ function buildNovoFunnelHorizChart() {
   var gradId = 'fhg-' + _novoFunnelPipeline;
   var svg =
     '<svg viewBox="0 0 ' + VW + ' ' + VH + '" xmlns="http://www.w3.org/2000/svg" ' +
-      'style="width:100%;display:block;border-radius:6px 6px 0 0" preserveAspectRatio="none">' +
+      'style="width:100%;height:100%;display:block;border-radius:6px 6px 0 0" preserveAspectRatio="none">' +
       '<defs>' +
         '<linearGradient id="' + gradId + '" x1="0" y1="0" x2="' + VW + '" y2="0" gradientUnits="userSpaceOnUse">' +
           '<stop offset="0%"   stop-color="#3ab8b7" stop-opacity="0.88"/>' +
@@ -3305,17 +3382,44 @@ function buildNovoFunnelHorizChart() {
       divLines +
     '</svg>';
 
-  // Label row: Stage | Conv | Stage | Conv | … | Stage
-  // flex proportions mirror SVG zones → columns stay aligned with the SVG above
+  // Conversões sobre o gráfico (nas zonas de conversão), centralizadas verticalmente.
+  var overlayHtml = '<div style="position:absolute;inset:0;display:flex;align-items:center;pointer-events:none">';
+  funnelStages.forEach(function(stage, idx) {
+    overlayHtml += '<div style="flex:' + FS + ';min-width:0"></div>'; // zona da etapa (vazia)
+    if (idx < n - 1) {
+      var conv = convMap[funnelStages[idx + 1]];
+      var rate = conv ? conv.rate_pct : null;
+      var rCol = rate == null ? 'var(--muted)' : rate >= 50 ? 'var(--green)' : rate >= 30 ? 'var(--yellow)' : 'var(--red)';
+      var rStr = rate != null ? rate + '%' : '—';
+      var firstCount = (stagesMap[funnelStages[0]] || { count: 0 }).count;
+      var nextCount  = (stagesMap[funnelStages[idx + 1]] || { count: 0 }).count;
+      var cumRate    = (idx > 0 && firstCount > 0) ? Math.round(nextCount / firstCount * 1000) / 10 : null;
+      var cumCol     = cumRate == null ? '' : cumRate >= 30 ? 'var(--green)' : cumRate >= 10 ? 'var(--yellow)' : 'var(--red)';
+      overlayHtml +=
+        '<div style="flex:' + FC + ';min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center">' +
+          '<div style="font-size:1.15rem;font-weight:800;color:' + rCol + ';line-height:1;text-shadow:0 1px 3px rgba(0,0,0,.45)">' + rStr + '</div>' +
+          (cumRate != null
+            ? '<div style="font-size:.58rem;color:' + cumCol + ';line-height:1;opacity:.85;margin-top:.35rem;text-shadow:0 1px 2px rgba(0,0,0,.4)" title="' + cumRate + '% chegam até aqui desde a 1ª etapa">' + cumRate + '%↓</div>'
+            : '') +
+        '</div>';
+    }
+  });
+  overlayHtml += '</div>';
+
+  var CHART_H = 190;
+  var chartBox = '<div style="position:relative;height:' + CHART_H + 'px">' + svg + overlayHtml + '</div>';
+
+  // Barra inferior (dobro da altura): rótulo de cada etapa + conversões.
+  // flex proporcional às zonas do SVG → colunas alinhadas com o gráfico acima.
   var labelsHtml = '<div style="display:flex;border-top:1px solid var(--border)">';
   funnelStages.forEach(function(stage, idx) {
     var s = stagesMap[stage] || { count: 0 };
-    var isGanho = stage === 'Ganho';
-    var numCol = isGanho ? 'var(--green)' : 'var(--teal)';
+    var dispName = stage === 'Implantação' ? 'Implantação/Ganho' : stage;
+    var numCol = stage === 'Implantação' ? 'var(--green)' : 'var(--teal)';
 
-    // Stage cell
+    // Stage cell: número absoluto + rótulo (em até 2 linhas)
     labelsHtml +=
-      '<div style="flex:' + FS + ';min-width:0;text-align:center;padding:.55rem .1rem .45rem;cursor:pointer;' +
+      '<div style="flex:' + FS + ';min-width:0;min-height:74px;text-align:center;padding:.5rem .1rem;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.2rem;cursor:pointer;' +
         (idx > 0 ? 'border-left:1px solid var(--border);' : '') + '"' +
         ' onclick="novoOpenFunnelStage(\'' + stage.replace(/'/g, "\\'") + '\')"' +
         ' onmouseover="this.style.background=\'var(--card2)\'"' +
@@ -3323,37 +3427,14 @@ function buildNovoFunnelHorizChart() {
         '<div style="font-size:1.05rem;font-weight:800;color:' + numCol + ';line-height:1">' +
           s.count.toLocaleString('pt-BR') +
         '</div>' +
-        '<div style="font-size:.64rem;color:var(--text2);margin-top:.18rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 .15rem">' +
-          stage +
+        '<div style="font-size:.66rem;font-weight:600;color:var(--text2);line-height:1.2;padding:0 .1rem">' +
+          dispName +
         '</div>' +
       '</div>';
 
-    // Conv cell (between stages)
+    // Conv cell vazia (a conversão agora vive sobre o gráfico)
     if (idx < n - 1) {
-      var conv = convMap[funnelStages[idx + 1]];
-      var rate = conv ? conv.rate_pct : null;
-      var rCol = rate == null ? 'var(--muted)' : rate >= 50 ? 'var(--green)' : rate >= 30 ? 'var(--yellow)' : 'var(--red)';
-      var rStr = rate != null ? rate + '%' : '—';
-      // Cumulative from first stage to stage[idx+1]
-      var firstCount = (stagesMap[funnelStages[0]] || { count: 0 }).count;
-      var nextCount  = (stagesMap[funnelStages[idx + 1]] || { count: 0 }).count;
-      var cumRate    = (idx > 0 && firstCount > 0) ? Math.round(nextCount / firstCount * 1000) / 10 : null;
-      var cumCol     = cumRate == null ? '' : cumRate >= 30 ? 'var(--green)' : cumRate >= 10 ? 'var(--yellow)' : 'var(--red)';
-      labelsHtml +=
-        '<div style="flex:' + FC + ';min-width:0;text-align:center;padding:.35rem .05rem;' +
-          'border-left:1px solid var(--border);' +
-          'display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.08rem">' +
-          '<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="' + rCol + '"' +
-            ' stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">' +
-            '<polyline points="9 18 15 12 9 6"/>' +
-          '</svg>' +
-          '<div style="font-size:.7rem;font-weight:700;color:' + rCol + ';line-height:1">' + rStr + '</div>' +
-          (cumRate != null
-            ? '<div style="font-size:.58rem;color:' + cumCol + ';line-height:1;opacity:.75" title="' + cumRate + '% chegam até aqui desde a 1ª etapa">' +
-                cumRate + '%↓' +
-              '</div>'
-            : '') +
-        '</div>';
+      labelsHtml += '<div style="flex:' + FC + ';min-width:0;min-height:74px;border-left:1px solid var(--border)"></div>';
     }
   });
   labelsHtml += '</div>';
@@ -3367,7 +3448,7 @@ function buildNovoFunnelHorizChart() {
       data.total_with_history.toLocaleString('pt-BR') + ' com histórico' +
     '</p>';
 
-  area.innerHTML = svg + labelsHtml + footer;
+  area.innerHTML = chartBox + labelsHtml + footer;
 }
 
 function _novoOpenFunnelDealsModal(title, deals) {

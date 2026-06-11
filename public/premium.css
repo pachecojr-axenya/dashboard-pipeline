@@ -306,7 +306,7 @@ table.lb th {
 }
 table.lb td {
   border-bottom: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
-  font-variant-numeric: tabular-nums lining-nums;
+  font-variant-numeric: normal;
 }
 table.lb tbody tr:hover td { background: var(--hover-s); }
 table.lb tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--teal); }
@@ -619,7 +619,7 @@ html.pm-forecast .hist-table-wrap th {
   letter-spacing: .1em;
   border-bottom: 1px solid color-mix(in srgb, var(--teal) 45%, transparent);
 }
-html.pm-forecast .table-wrap td { font-variant-numeric: tabular-nums lining-nums; }
+html.pm-forecast .table-wrap td { font-variant-numeric: normal; }
 html.pm-forecast .table-wrap td.s { color: var(--teal); }
 html.pm-forecast .table-wrap td.s,
 html.pm-forecast .table-wrap th.s { box-shadow: 4px 0 16px rgba(2, 6, 16, .4); }
