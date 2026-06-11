@@ -221,16 +221,7 @@ html[data-theme="light"] .hdr-btn.highlighted {
   display: flex;
   align-items: center;
 }
-.novo-card-header h3::before {
-  content: '';
-  width: 7px;
-  height: 7px;
-  border-radius: 3px;
-  flex-shrink: 0;
-  margin-right: .6rem;
-  background: linear-gradient(135deg, var(--teal), var(--blue));
-  box-shadow: 0 0 8px var(--accent-glow);
-}
+/* (marcador decorativo antes do título do card removido a pedido) */
 
 /* ── 6. KPI CARDS ──────────────────────────────────────────────────────── */
 .kpi-row { gap: .9rem; margin-bottom: .9rem; }
