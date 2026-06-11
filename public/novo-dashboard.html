@@ -3395,11 +3395,15 @@ function buildNovoFunnelHorizChart() {
       var nextCount  = (stagesMap[funnelStages[idx + 1]] || { count: 0 }).count;
       var cumRate    = (idx > 0 && firstCount > 0) ? Math.round(nextCount / firstCount * 1000) / 10 : null;
       var cumCol     = cumRate == null ? '' : cumRate >= 30 ? 'var(--green)' : cumRate >= 10 ? 'var(--yellow)' : 'var(--red)';
+      var fromName = funnelStages[idx] === 'Implantação' ? 'Implantação/Ganho' : funnelStages[idx];
+      var toName   = funnelStages[idx + 1] === 'Implantação' ? 'Implantação/Ganho' : funnelStages[idx + 1];
+      var stepTitle = 'Conversão entre etapas | ' + rStr + ' dos deals que entraram em ' + fromName + ' avançaram para ' + toName;
+      var cumTitle  = 'Em relação ao topo do funil | ' + (cumRate != null ? cumRate + '%' : '—') + ' dos deals da 1ª etapa (' + funnelStages[0] + ') chegaram até ' + toName;
       overlayHtml +=
-        '<div style="flex:' + FC + ';min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center">' +
-          '<div style="font-size:1.15rem;font-weight:800;color:' + rCol + ';line-height:1;text-shadow:0 1px 3px rgba(0,0,0,.45)">' + rStr + '</div>' +
+        '<div style="flex:' + FC + ';min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:auto;cursor:help">' +
+          '<div style="font-size:1.15rem;font-weight:800;color:' + rCol + ';line-height:1" title="' + _ne(stepTitle) + '">' + rStr + '</div>' +
           (cumRate != null
-            ? '<div style="font-size:.58rem;color:' + cumCol + ';line-height:1;opacity:.85;margin-top:.35rem;text-shadow:0 1px 2px rgba(0,0,0,.4)" title="' + cumRate + '% chegam até aqui desde a 1ª etapa">' + cumRate + '%↓</div>'
+            ? '<div style="font-size:.72rem;color:' + cumCol + ';line-height:1;opacity:.9;margin-top:.38rem" title="' + _ne(cumTitle) + '">' + cumRate + '%↓</div>'
             : '') +
         '</div>';
     }
