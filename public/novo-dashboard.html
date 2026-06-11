@@ -281,6 +281,8 @@ table.lb tfoot td{font-weight:600;border-top:2px solid var(--border)}
     </button>
   </div>
   <div class="novo-prob-body">
+    <div class="novo-prob-field" style="border-bottom:none"><label>Meta Receita Ganha (MTD)</label><input type="text" id="np-meta" placeholder="ex: 500.000"><span class="novo-prob-pct">R$</span></div>
+    <div style="height:1px;background:var(--border);margin:.25rem 0 .55rem"></div>
     <div class="novo-prob-field"><label>Cotação</label><input type="text" id="np-cot"><span class="novo-prob-pct">%</span></div>
     <div class="novo-prob-field"><label>Proposta Enviada <span style="opacity:.5;font-size:.8em">(BID)</span></label><input type="text" id="np-pro"><span class="novo-prob-pct">%</span></div>
     <div class="novo-prob-field"><label>Consultoria</label><input type="text" id="np-con"><span class="novo-prob-pct">%</span></div>
@@ -470,8 +472,14 @@ var NOVO_STAGE_PROB = (function() {
   return copy;
 })();
 
+// Meta de Receita Ganha (MTD) para o P01 — definida no modal de Configurações.
+var NOVO_META_MTD = (function() {
+  try { var v = parseFloat(localStorage.getItem('novo_meta_mtd')); return isNaN(v) ? 0 : v; } catch(e) { return 0; }
+})();
+
 function novoOpenProbEditor() {
   setContentBlur(true);
+  document.getElementById('np-meta').value = NOVO_META_MTD ? NOVO_META_MTD.toLocaleString('pt-BR') : '';
   document.getElementById('np-cot').value = (NOVO_STAGE_PROB['Cotação']         * 100).toFixed(1).replace('.', ',');
   document.getElementById('np-pro').value = (NOVO_STAGE_PROB['Proposta Enviada'] * 100).toFixed(1).replace('.', ',');
   document.getElementById('np-con').value = (NOVO_STAGE_PROB['Consultoria']      * 100).toFixed(1).replace('.', ',');
@@ -505,7 +513,20 @@ function novoSaveProbEditor() {
   NOVO_STAGE_PROB['Stand by']         = v.stb / 100;
   NOVO_STAGE_PROB['Diagnóstico']      = v.dia / 100;
   try { localStorage.setItem('novo_stage_prob', JSON.stringify(NOVO_STAGE_PROB)); } catch(e) {}
+
+  // Meta de Receita (MTD) — aceita vazio (= sem meta). Formato pt-BR: '.' milhar, ',' decimal.
+  var metaRaw = document.getElementById('np-meta').value.replace(/[^\d.,]/g, '').replace(/\./g, '').replace(',', '.');
+  if (metaRaw === '') {
+    NOVO_META_MTD = 0;
+  } else {
+    var metaVal = parseFloat(metaRaw);
+    if (isNaN(metaVal) || metaVal < 0) { alert('Meta inválida. Use um valor numérico (ex: 500.000).'); return; }
+    NOVO_META_MTD = metaVal;
+  }
+  try { localStorage.setItem('novo_meta_mtd', String(NOVO_META_MTD)); } catch(e) {}
+
   novoCloseProbEditor();
+  novoRender();
 }
 
 // ── i18n ──────────────────────────────────────────────────────────────────────
@@ -533,7 +554,8 @@ var NOVO_I18N = {
     t_segment:'🟡 Receita por Segmento (Tamanho)',
     tip_segment:'Receita anual estimada (potencial) somada por segmento de tamanho do cliente (vidas). Inclui os pipelines Vendas + Bid.',
     // KPIs primários
-    kpi_mtd_label:'Receita Ganha MTD', kpi_mtd_tip:'Receita mensal de deals ganhos (Ganho + Implantação) fechados neste mês (ARR ÷ 12). Meta não configurada.',
+    kpi_mtd_label:'Receita Ganha MTD', kpi_mtd_tip:'Receita mensal de deals ganhos (Ganho + Implantação) fechados neste mês (ARR ÷ 12). Meta definida em Configurações (⚙).',
+    kpi_mtd_of_goal:'da meta', kpi_mtd_goal:'Meta:',
     kpi_won_label:'Receita Ganha', kpi_won_tip:'Soma do ARR estimado (ou 1ª fatura × 12) de negócios ganhos com fechamento no ano atual.',
     kpi_wpipe_label:'Pipeline Ponderado/ano (histórico)', kpi_wpipe_tip:'Soma de (ARR × probabilidade) de todos os abertos. Se o ARR estiver vazio, usa a 1ª fatura × 12.',
     kpi_reunioes_label:'Deals em Reunião Agendada', kpi_reunioes_tip:'Número de negócios em Reunião Agendada. Tratados como etapa inicial separada (não contam no pipeline ativo).',
@@ -637,7 +659,8 @@ var NOVO_I18N = {
     t_segment:'🟡 Revenue by Segment (Size)',
     tip_segment:'Estimated annual revenue (potential) summed by customer-size segment (lives). Includes the Vendas + Bid pipelines.',
     // Primary KPIs
-    kpi_mtd_label:'Won Revenue MTD', kpi_mtd_tip:'Monthly revenue from won deals (Ganho + Implantação) closed this month (ARR ÷ 12). Target not configured.',
+    kpi_mtd_label:'Won Revenue MTD', kpi_mtd_tip:'Monthly revenue from won deals (Ganho + Implantação) closed this month (ARR ÷ 12). Target set in Settings (⚙).',
+    kpi_mtd_of_goal:'of goal', kpi_mtd_goal:'Goal:',
     kpi_won_label:'Won Revenue', kpi_won_tip:'Sum of estimated ARR (or 1st invoice × 12) from won deals closed in the current year.',
     kpi_wpipe_label:'Weighted Pipeline/yr (historic)', kpi_wpipe_tip:'Sum of (ARR × prob) for open deals. If ARR is empty, uses 1st invoice × 12.',
     kpi_reunioes_label:'Deals in Reunião Agendada', kpi_reunioes_tip:'Number of deals in Reunião Agendada. Treated as a separate early stage (not counted in open pipeline).',
@@ -2513,6 +2536,8 @@ function _buildKpiRow() {
   var wonMtdDeals = wonDeals.filter(function(d) { return d.close_date && d.close_date.substring(0, 7) === yyyymm; });
   var wonMtd = wonMtdDeals.reduce(function(s, d) { return s + (_annualRev(d) / 12); }, 0);
   var monthLabel = yyyymm.split('-').reverse().join('/');
+  var metaMtd = NOVO_META_MTD || 0;
+  var metaPct = metaMtd > 0 ? Math.round(wonMtd / metaMtd * 100) : null;
 
   var wonYtdDeals = wonDeals.filter(function(d) { return d.close_date && d.close_date.substring(0, 4) === yyyy; });
   var wonAnnual = wonYtdDeals.reduce(function(s, d) { return s + _annualRev(d); }, 0);
@@ -2545,7 +2570,10 @@ function _buildKpiRow() {
       label: t('kpi_mtd_label'),
       value: wonMtd > 0 ? _fmtBig(wonMtd) : '—',
       sub: wonMtdDeals.length + ' deals ' + t('kpi_deals_closed_in') + ' ' + monthLabel,
-      color: wonMtd > 0 ? 'var(--green)' : 'var(--text2)',
+      color: metaPct != null
+        ? (metaPct >= 100 ? 'var(--green)' : metaPct >= 70 ? 'var(--yellow)' : (wonMtd > 0 ? 'var(--teal)' : 'var(--text2)'))
+        : (wonMtd > 0 ? 'var(--green)' : 'var(--text2)'),
+      extra: metaMtd > 0 ? _novoMetaBarHtml(wonMtd, metaMtd, metaPct) : '',
       tip: t('kpi_mtd_tip'),
     },
     {
@@ -2627,10 +2655,25 @@ function _buildKpiRow() {
         '</div>' +
         '<div class="kpi-value" style="color:' + k.color + '">' + k.value + '</div>' +
         '<div class="kpi-sub">' + k.sub + '</div>' +
+        (k.extra || '') +
       '</div>';
   });
   html += '</div>';
   return html;
+}
+
+// Barra de progresso da meta (P01). pct pode passar de 100; a barra trava em 100%.
+function _novoMetaBarHtml(val, meta, pct) {
+  var clamped = Math.max(0, Math.min(100, pct));
+  var col = pct >= 100 ? 'var(--green)' : pct >= 70 ? 'var(--yellow)' : 'var(--teal)';
+  return '<div style="margin-top:.5rem">' +
+    '<div style="height:5px;border-radius:99px;background:var(--card2);overflow:hidden">' +
+      '<div style="height:100%;width:' + clamped + '%;background:' + col + ';border-radius:99px;transition:width .35s"></div>' +
+    '</div>' +
+    '<div style="font-size:.64rem;color:var(--text2);margin-top:.3rem">' +
+      pct + '% ' + t('kpi_mtd_of_goal') + ' · ' + t('kpi_mtd_goal') + ' ' + _fmtBig(meta) +
+    '</div>' +
+  '</div>';
 }
 
 function _buildKpiSecRow() {
