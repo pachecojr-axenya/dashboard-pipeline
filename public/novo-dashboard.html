@@ -93,6 +93,11 @@ html[data-theme="light"] .tab-sub-thumb{background:#fff;box-shadow:0 1px 4px rgb
 .impl-toggle.on .sw{background:var(--teal)}
 .impl-toggle .sw::after{content:'';position:absolute;top:2px;left:2px;width:15px;height:15px;border-radius:50%;background:#fff;transition:transform .18s}
 .impl-toggle.on .sw::after{transform:translateX(15px)}
+/* Tooltip externo de gráfico (donut C05) — fica acima de tudo com fundo em blur */
+#novo-charttip{position:absolute;z-index:3000;pointer-events:none;transform:translate(-50%,calc(-100% - 12px));background:rgba(13,19,33,.66);backdrop-filter:blur(13px) saturate(1.5);-webkit-backdrop-filter:blur(13px) saturate(1.5);border:1px solid var(--border);border-radius:11px;padding:.5rem .75rem;font-size:.76rem;font-family:inherit;color:var(--text);opacity:0;transition:opacity .12s;box-shadow:0 12px 34px rgba(0,0,0,.45);max-width:260px;line-height:1.45}
+#novo-charttip .ct-line{color:var(--text);font-weight:600;white-space:nowrap}
+#novo-charttip .ct-foot{color:var(--text2);font-size:.66rem;margin-top:.25rem;white-space:normal}
+html[data-theme="light"] #novo-charttip{background:rgba(255,255,255,.72);color:#0f172a;box-shadow:0 12px 34px rgba(15,23,42,.18)}
 .kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem;margin-bottom:.75rem}
 @media(max-width:900px){.kpi-row{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:520px){.kpi-row{grid-template-columns:1fr}}
@@ -372,6 +377,7 @@ function toggleDrawer() {
 var modalStack = [];
 function openModal(title, bodyHtml) {
   setContentBlur(true);
+  var _ct = document.getElementById('novo-charttip'); if (_ct) _ct.style.opacity = '0';
   var overlay = document.getElementById('modal-overlay');
   if (overlay.classList.contains('open')) {
     modalStack.push({ title: document.getElementById('modal-title').textContent, body: document.getElementById('modal-body').innerHTML });
@@ -543,13 +549,17 @@ var NOVO_I18N = {
     tip_stage:'Deals abertos (exclui Ganhos) por etapa do pipeline. Alterne entre nº de deals e soma de vidas. Clique numa barra para ver os deals. Inclui os pipelines Vendas + Bid.',
     t_funnel:'🟡 Funil do Pipeline (alcance cumulativo)',
     tip_funnel:'Para cada etapa, quantos deals abertos estão nela ou em etapas seguintes | formato de funil. Clique para ver os deals. Inclui os pipelines Vendas + Bid.',
-    t_conc:'🟡 Risco de Concentração Ativo (Top 10)',
+    t_conc:'Risco de Concentração Ativo (Top 10)',
     tip_conc:'Os 10 maiores deals abertos por vidas ou por receita anual estimada. Mostra o quanto o pipe depende de poucos negócios. Inclui os pipelines Vendas + Bid.',
     t_sizedist:'🟡 Distribuição por Tamanho (Receita)',
     tip_sizedist:'Deals abertos (ARR > 0) agrupados por faixa de receita anual estimada (ARR, ou 1ª fatura × 12). Etapas contadas: Diagnóstico, Cotação, Proposta Enviada, Consultoria, Negociação e Stand by — Implantação entra quando o toggle "Implantação = Ganho" está desligado. Exclui Reunião Agendada, Perdido e Ganho. Pipelines Vendas + Bid.',
     t_vidasdist:'🟡 Distribuição por Vidas',
     tip_vidasdist:'Deals abertos agrupados por faixa de quantidade de vidas. Inclui os pipelines Vendas + Bid.',
-    t_stageval:'🟡 Valor do Pipeline por Etapa',
+    t_sizedonut:'Distribuição por Tamanho',
+    tip_sizedonut:'Donut dos deals abertos por faixa, com toggle entre Receita e Vidas. O centro mostra o total de deals abertos no pipeline (atualiza ao ocultar fatias na legenda). A fatia cinza "Sem receita"/"Sem vidas" conta os deals sem aquela informação. Etapas contadas: Diagnóstico, Cotação, Proposta Enviada, Consultoria, Negociação e Stand by (Implantação entra quando o toggle "Implantação = Ganho" está desligado). Clique numa fatia para ver os deals. Pipelines Vendas + Bid.',
+    donut_open_deals:'deals abertos', donut_no_revenue:'Sem receita', donut_no_lives:'Sem vidas', donut_stages_label:'Etapas',
+    vf_by_revenue:'Receita', vf_by_lives:'Vidas',
+    t_stageval:'Valor do Pipeline por Etapa',
     tip_stageval:'Soma da receita anual estimada por etapa. "Ponderado" multiplica pela probabilidade da etapa (ajustável em ⚙). Inclui os pipelines Vendas + Bid.',
     t_segment:'🟡 Receita por Segmento (Tamanho)',
     tip_segment:'Receita anual estimada (potencial) somada por segmento de tamanho do cliente (vidas). Inclui os pipelines Vendas + Bid.',
@@ -648,13 +658,17 @@ var NOVO_I18N = {
     tip_stage:'Open deals (excludes Won) by pipeline stage. Toggle deal count vs sum of lives. Click a bar to see the deals. Includes the Vendas + Bid pipelines.',
     t_funnel:'🟡 Pipeline Funnel (cumulative reach)',
     tip_funnel:'For each stage, how many open deals are at that stage or beyond | funnel shape. Click to see the deals. Includes the Vendas + Bid pipelines.',
-    t_conc:'🟡 Active Concentration Risk (Top 10)',
+    t_conc:'Active Concentration Risk (Top 10)',
     tip_conc:'The 10 largest open deals by lives or by estimated annual revenue. Shows how dependent the pipe is on a few deals. Includes the Vendas + Bid pipelines.',
     t_sizedist:'🟡 Deal Size Distribution (Revenue)',
     tip_sizedist:'Open deals (ARR > 0) grouped by estimated annual revenue band (ARR, or first invoice × 12). Stages counted: Diagnóstico, Cotação, Proposta Enviada, Consultoria, Negociação and Stand by — Implantação is included when the "Implantação = Ganho" toggle is off. Excludes Reunião Agendada, Perdido and Ganho. Vendas + Bid pipelines.',
     t_vidasdist:'🟡 Lives Distribution',
     tip_vidasdist:'Open deals grouped by number-of-lives band. Includes the Vendas + Bid pipelines.',
-    t_stageval:'🟡 Pipeline Value by Stage',
+    t_sizedonut:'Size Distribution',
+    tip_sizedonut:'Donut of open deals by band, with a toggle between Revenue and Lives. The center shows the total open deals in the pipeline (updates when slices are hidden via the legend). The grey "No revenue"/"No lives" slice counts deals missing that info. Stages counted: Diagnóstico, Cotação, Proposta Enviada, Consultoria, Negociação and Stand by (Implantação is included when the "Implantação = Ganho" toggle is off). Click a slice to see the deals. Vendas + Bid pipelines.',
+    donut_open_deals:'open deals', donut_no_revenue:'No revenue', donut_no_lives:'No lives', donut_stages_label:'Stages',
+    vf_by_revenue:'Revenue', vf_by_lives:'Lives',
+    t_stageval:'Pipeline Value by Stage',
     tip_stageval:'Sum of estimated annual revenue per stage. "Weighted" multiplies by the stage probability (editable in ⚙). Includes the Vendas + Bid pipelines.',
     t_segment:'🟡 Revenue by Segment (Size)',
     tip_segment:'Estimated annual revenue (potential) summed by customer-size segment (lives). Includes the Vendas + Bid pipelines.',
@@ -778,7 +792,7 @@ var NOVO_HELP_CHARTS = [
   },
   {
     key: 'conc',
-    title: '🟡 Risco de Concentração (Top 10)',
+    title: 'Risco de Concentração Ativo (Top 10)',
     desc: 'Os 10 maiores deals abertos por vidas ou por receita anual estimada.',
     fields: [
       ['vidas', 'Métrica de ranqueamento no modo "Vidas".'],
@@ -788,25 +802,19 @@ var NOVO_HELP_CHARTS = [
     ],
   },
   {
-    key: 'sizedist',
-    title: '🟡 Distribuição por Tamanho (Receita)',
-    desc: 'Deals abertos agrupados por faixa de receita anual estimada.',
+    key: 'sizedonut',
+    title: 'Distribuição por Tamanho (Donut)',
+    desc: 'Donut da distribuição dos deals abertos por faixa, com toggle Receita | Vidas. O centro mostra o total de deals abertos no pipeline; a fatia cinza é a contagem de deals sem aquela informação (sem receita ou sem vidas). Clique numa fatia para ver os deals.',
     fields: [
-      ['arr_estimado', 'Valor base da faixa de receita.'],
-      ['primeira_fatura', 'Fallback (× 12) quando não há ARR.'],
-    ],
-  },
-  {
-    key: 'vidasdist',
-    title: '🟡 Distribuição por Vidas',
-    desc: 'Deals abertos agrupados por faixa de quantidade de vidas.',
-    fields: [
-      ['vidas', 'Valor usado para classificar o deal em cada faixa.'],
+      ['dealstage', 'Considera apenas deals abertos (via _novoIsOpen).'],
+      ['arr_estimado', 'Faixa no modo Receita (com fallback 1ª fatura × 12).'],
+      ['primeira_fatura', 'Fallback da receita quando não há ARR.'],
+      ['vidas', 'Faixa no modo Vidas.'],
     ],
   },
   {
     key: 'stageval',
-    title: '🟡 Valor do Pipeline por Etapa',
+    title: 'Valor do Pipeline por Etapa',
     desc: 'Soma da receita anual estimada por etapa; "Ponderado" multiplica pela probabilidade da etapa.',
     fields: [
       ['dealstage', 'Agrupa o valor por etapa.'],
@@ -1110,7 +1118,7 @@ var NOVO_HELP_DETAIL = [
 // P = KPI primário · S = KPI secundário · C = gráfico/chart
 var NOVO_CARD_CODES = {
   'ae':'C01','stage':'C02','conc':'C04',
-  'sizedist':'C05','vidasdist':'C06','stageval':'C07',
+  'sizedonut':'C05','stageval':'C07',
   'segment':'C08','funnel-conv':'C09',
   'kpi-revenue-mtd':'P01','kpi-won-annual':'P02',
   'kpi-weighted-pipe':'P03','kpi-reunioes':'P04',
@@ -1190,6 +1198,7 @@ var _novoAeMode    = 'lives';
 var _novoStageMode = 'deals';
 var _novoConcMode  = 'vidas';
 var _novoValMode   = 'raw';
+var _novoSegMode   = 'raw';
 var COTACAO_PLUS = ['Cotação','Consultoria','Negociação','Stand by','Implantação','Proposta Enviada','Standby'];
 var _novoModalDeals = [];
 var _novoModalSort  = { col: -1, dir: 1 };
@@ -1493,43 +1502,70 @@ function novoOpenDealsModal(title, deals) {
   openModal(title, _novoDealsTableHtml(deals));
 }
 
-// Modal de deals com filtro por faixa de vidas (chips). Usado pelo C05 (Distribuição por Tamanho).
-var NOVO_VIDAS_BUCKETS = [
-  ['0 (sem vidas)', function(v){ return v <= 0; }],
-  ['1–50',          function(v){ return v >= 1 && v <= 50; }],
-  ['51–200',        function(v){ return v > 50 && v <= 200; }],
-  ['201–500',       function(v){ return v > 200 && v <= 500; }],
-  ['501–1K',        function(v){ return v > 500 && v <= 1000; }],
-  ['1K–5K',         function(v){ return v > 1000 && v <= 5000; }],
-  ['5K+',           function(v){ return v > 5000; }],
-];
+// Modal de deals com filtro por faixa (chips) — receita ou vidas. Usado pelo C05 (donut).
+// Cada bucket é [label, predicado(deal)]; predicados mutuamente exclusivos.
+function _novoSizeFilterBuckets(isRev) {
+  if (isRev) {
+    var r = [['< 50k',0,50000],['50–100k',50000,100000],['100–250k',100000,250000],['250–500k',250000,500000],['500k–1M',500000,1000000],['1M+',1000000,Infinity]];
+    return [[t('donut_no_revenue'), function(d){ return _annualRev(d) <= 0; }]].concat(r.map(function(x){
+      return [x[0], function(d){ var v=_annualRev(d); return v>0 && v>=x[1] && v<x[2]; }];
+    }));
+  }
+  var vd = [['1–50',1,50],['51–200',51,200],['201–500',201,500],['501–1K',501,1000],['1K–5K',1001,5000],['5K+',5001,Infinity]];
+  return [[t('donut_no_lives'), function(d){ return (d.vidas||0) <= 0; }]].concat(vd.map(function(x){
+    return [x[0], function(d){ var v=d.vidas||0; return v>0 && v>=x[1] && v<=x[2]; }];
+  }));
+}
 var _novoVfAll = [];
-var _novoVfSel = null; // índice da faixa selecionada; null => todas
-function _novoVfChipsHtml() {
-  var counts = NOVO_VIDAS_BUCKETS.map(function(b){ return _novoVfAll.filter(function(d){ return b[1](d.vidas || 0); }).length; });
-  var allActive = _novoVfSel == null;
-  var html = '<div style="margin-bottom:1.1rem;display:flex;flex-wrap:wrap;gap:.45rem;align-items:center">' +
-    '<button class="stage-chip' + (allActive ? ' active' : '') + '" onclick="novoVfPick(-1)">' + t('p08_all_stages') + ' <span class="chip-count">' + _novoVfAll.length + '</span></button>';
-  NOVO_VIDAS_BUCKETS.forEach(function(b, i){
-    if (!counts[i]) return; // esconde faixas sem deals
-    var on = _novoVfSel === i;
-    html += '<button class="stage-chip' + (on ? ' active' : '') + '" onclick="novoVfPick(' + i + ')">' + _ne(b[0]) + ' <span class="chip-count">' + counts[i] + '</span></button>';
+var _novoVfRevBuckets = [];     // [label, predicado(deal)] por receita
+var _novoVfVidasBuckets = [];   // [label, predicado(deal)] por vidas
+var _novoVfRevSel = null;       // índice selecionado em Receita; null => todas
+var _novoVfVidasSel = null;     // índice selecionado em Vidas; null => todas
+// Lista filtrada: combina os dois grupos com E lógico.
+function _novoVfFiltered() {
+  return _novoVfAll.filter(function(d){
+    if (_novoVfRevSel != null && !_novoVfRevBuckets[_novoVfRevSel][1](d)) return false;
+    if (_novoVfVidasSel != null && !_novoVfVidasBuckets[_novoVfVidasSel][1](d)) return false;
+    return true;
+  });
+}
+// Um grupo de chips. As contagens já consideram a seleção do OUTRO grupo (cross-filter).
+function _novoVfGroupHtml(label, buckets, sel, kind) {
+  var base = _novoVfAll.filter(function(d){
+    if (kind === 'rev')  return _novoVfVidasSel == null || _novoVfVidasBuckets[_novoVfVidasSel][1](d);
+    return _novoVfRevSel == null || _novoVfRevBuckets[_novoVfRevSel][1](d);
+  });
+  var html = '<div style="display:flex;flex-wrap:wrap;gap:.4rem;align-items:center;margin-bottom:.55rem">' +
+    '<span style="font-size:.72rem;color:var(--text2);font-weight:600;min-width:54px">' + label + '</span>' +
+    '<button class="stage-chip' + (sel == null ? ' active' : '') + '" onclick="novoVfPick(\'' + kind + '\',-1)">' + t('p08_all_stages') + ' <span class="chip-count">' + base.length + '</span></button>';
+  buckets.forEach(function(b, i){
+    var c = base.filter(function(d){ return b[1](d); }).length;
+    if (!c && sel !== i) return; // esconde faixas vazias, mas nunca a selecionada
+    html += '<button class="stage-chip' + (sel === i ? ' active' : '') + '" onclick="novoVfPick(\'' + kind + '\',' + i + ')">' + _ne(b[0]) + ' <span class="chip-count">' + c + '</span></button>';
   });
   return html + '</div>';
 }
-function _novoVfRender() {
-  var list = _novoVfSel == null ? _novoVfAll
-    : _novoVfAll.filter(function(d){ return NOVO_VIDAS_BUCKETS[_novoVfSel][1](d.vidas || 0); });
-  var ch = document.getElementById('novo-vf-chips'); if (ch) ch.innerHTML = _novoVfChipsHtml();
-  var tb = document.getElementById('novo-vf-table'); if (tb) tb.innerHTML = _novoDealsTableHtml(list);
+function _novoVfChipsHtml() {
+  return '<div style="margin-bottom:.9rem">' +
+    _novoVfGroupHtml(t('vf_by_revenue'), _novoVfRevBuckets, _novoVfRevSel, 'rev') +
+    _novoVfGroupHtml(t('vf_by_lives'), _novoVfVidasBuckets, _novoVfVidasSel, 'vidas') +
+  '</div>';
 }
-function novoVfPick(i) {
-  _novoVfSel = (i === -1) ? null : i;
+function _novoVfRender() {
+  var ch = document.getElementById('novo-vf-chips'); if (ch) ch.innerHTML = _novoVfChipsHtml();
+  var tb = document.getElementById('novo-vf-table'); if (tb) tb.innerHTML = _novoDealsTableHtml(_novoVfFiltered());
+}
+function novoVfPick(kind, i) {
+  if (kind === 'rev') _novoVfRevSel = (i === -1) ? null : i;
+  else                _novoVfVidasSel = (i === -1) ? null : i;
   _novoVfRender();
 }
-function novoOpenDealsVidasFilterModal(title, deals) {
+function novoOpenDealsFilterModal(title, deals) {
   _novoVfAll = deals || [];
-  _novoVfSel = null;
+  _novoVfRevBuckets   = _novoSizeFilterBuckets(true);
+  _novoVfVidasBuckets = _novoSizeFilterBuckets(false);
+  _novoVfRevSel = null;
+  _novoVfVidasSel = null;
   openModal(title, '<div id="novo-vf-chips"></div><div id="novo-vf-table"></div>');
   _novoVfRender();
 }
@@ -1857,32 +1893,69 @@ function buildNovoConc() {
       onClick:function(e,el){ if(!el.length)return; novoOpenDealsModal(t('t_conc')+' | Top '+ranked.length, ranked); } } });
 }
 
-function buildNovoSizeDist() {
-  var th = _novoTheme(), open = _novoOpen();
-  var defs = [['< 50k',0,50000],['50–100k',50000,100000],['100–250k',100000,250000],['250–500k',250000,500000],['500k–1M',500000,1000000],['1M+',1000000,Infinity]];
-  var counts = defs.map(function(){return 0;}), by = defs.map(function(){return [];});
-  open.forEach(function(d){ var v=_annualRev(d); if(v<=0)return; for(var i=0;i<defs.length;i++){ if(v>=defs[i][1]&&v<defs[i][2]){ counts[i]++; by[i].push(d); break; } } });
-  _novoMkChart('chart-novo-sizedist', { type:'bar', plugins:[ChartDataLabels],
-    data:{ labels:defs.map(function(d){return d[0];}), datasets:[{ data:counts, backgroundColor:'rgba(88,166,255,.75)', borderRadius:3 }] },
-    options:{ responsive:true, layout:{padding:{top:24}}, plugins:{ legend:{display:false},
-      datalabels:{ anchor:'end', align:'end', color:th.cText, font:{family:NOVO_FONT,size:11,weight:'bold'}, formatter:function(v){return v||'';} },
-      tooltip:{ callbacks:{ label:function(c){return c.parsed.y+' deals';}, footer:function(){return 'Clique para ver os deals';} } } },
-      scales:{ x:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}}, y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0}} },
-      onClick:function(e,el){ if(!el.length)return; var all=[]; by.forEach(function(arr){ all=all.concat(arr); }); novoOpenDealsVidasFilterModal(t('t_sizedist'), all); } } });
+// C05 | Distribuição por Tamanho (donut). Toggle Receita | Vidas. Centro = total de deals
+// abertos no pipeline. A 1ª fatia é sempre "Sem informação" (deals sem aquele dado).
+// Tooltip externo (HTML) p/ gráficos — acima de tudo (z-index alto) e com fundo em blur real,
+// resolvendo o conflito visual com o número central do donut.
+function _novoChartExtTip(context) {
+  var el = document.getElementById('novo-charttip');
+  if (!el) { el = document.createElement('div'); el.id = 'novo-charttip'; document.body.appendChild(el); }
+  var tt = context.tooltip;
+  if (!tt || tt.opacity === 0) { el.style.opacity = '0'; return; }
+  var html = '';
+  (tt.title || []).forEach(function(tl){ html += '<div class="ct-line">' + _ne(tl) + '</div>'; });
+  (tt.body || []).forEach(function(b){ (b.lines || []).forEach(function(l){ html += '<div class="ct-line">' + _ne(l) + '</div>'; }); });
+  (tt.footer || []).forEach(function(f){ html += '<div class="ct-foot">' + _ne(f) + '</div>'; });
+  el.innerHTML = html;
+  var rect = context.chart.canvas.getBoundingClientRect();
+  el.style.opacity = '1';
+  el.style.left = (rect.left + window.scrollX + tt.caretX) + 'px';
+  el.style.top  = (rect.top + window.scrollY + tt.caretY) + 'px';
 }
-
-function buildNovoVidasDist() {
+var _novoSizeDistMode = 'revenue'; // 'revenue' | 'vidas'
+function novoSwitchSizeDist(m){ _novoSizeDistMode=m; _setActive('novo-sizedonut-tabs',m); buildNovoSizeDonut(); }
+function buildNovoSizeDonut() {
   var th = _novoTheme(), open = _novoOpen();
-  var defs = [['0 (sem vidas)',function(v){return v<=0;}],['1–50',function(v){return v>=1&&v<=50;}],['51–200',function(v){return v>50&&v<=200;}],['201–500',function(v){return v>200&&v<=500;}],['501–1K',function(v){return v>500&&v<=1000;}],['1K–5K',function(v){return v>1000&&v<=5000;}],['5K+',function(v){return v>5000;}]];
-  var counts = defs.map(function(){return 0;}), by = defs.map(function(){return [];});
-  open.forEach(function(d){ var v=d.vidas||0; for(var i=0;i<defs.length;i++){ if(defs[i][1](v)){ counts[i]++; by[i].push(d); break; } } });
-  _novoMkChart('chart-novo-vidasdist', { type:'bar', plugins:[ChartDataLabels],
-    data:{ labels:defs.map(function(d){return d[0];}), datasets:[{ data:counts, backgroundColor:'rgba(63,185,80,.75)', borderRadius:3 }] },
-    options:{ responsive:true, layout:{padding:{top:24}}, plugins:{ legend:{display:false},
-      datalabels:{ anchor:'end', align:'end', color:th.cText, font:{family:NOVO_FONT,size:11,weight:'bold'}, formatter:function(v){return v||'';} },
-      tooltip:{ callbacks:{ label:function(c){return c.parsed.y+' deals';}, footer:function(){return 'Clique para ver os deals';} } } },
-      scales:{ x:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}}, y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0}} },
-      onClick:function(e,el){ if(!el.length)return; novoOpenDealsModal(t('t_vidasdist')+' | '+defs[el[0].index][0], by[el[0].index]); } } });
+  var totalOpen = open.length;
+  var isRev = _novoSizeDistMode === 'revenue';
+  var labels, by;
+  if (isRev) {
+    var rdefs = [['< 50k',0,50000],['50–100k',50000,100000],['100–250k',100000,250000],['250–500k',250000,500000],['500k–1M',500000,1000000],['1M+',1000000,Infinity]];
+    var semInfo = [], rby = rdefs.map(function(){return [];});
+    open.forEach(function(d){ var v=_annualRev(d); if(v<=0){ semInfo.push(d); return; } for(var i=0;i<rdefs.length;i++){ if(v>=rdefs[i][1]&&v<rdefs[i][2]){ rby[i].push(d); break; } } });
+    labels = [t('donut_no_revenue')].concat(rdefs.map(function(x){return x[0];}));
+    by = [semInfo].concat(rby);
+  } else {
+    var vdefs = [['1–50',function(v){return v>=1&&v<=50;}],['51–200',function(v){return v>50&&v<=200;}],['201–500',function(v){return v>200&&v<=500;}],['501–1K',function(v){return v>500&&v<=1000;}],['1K–5K',function(v){return v>1000&&v<=5000;}],['5K+',function(v){return v>5000;}]];
+    var semVidas = [], vby = vdefs.map(function(){return [];});
+    open.forEach(function(d){ var v=d.vidas||0; if(v<=0){ semVidas.push(d); return; } for(var i=0;i<vdefs.length;i++){ if(vdefs[i][1](v)){ vby[i].push(d); break; } } });
+    labels = [t('donut_no_lives')].concat(vdefs.map(function(x){return x[0];}));
+    by = [semVidas].concat(vby);
+  }
+  var counts = by.map(function(a){ return a.length; });
+  var palette = ['rgba(88,166,255,.85)','rgba(58,184,183,.85)','rgba(63,185,80,.85)','rgba(210,153,34,.85)','rgba(147,112,219,.85)','rgba(248,81,73,.8)'];
+  var bg = counts.map(function(_,i){ return i===0 ? 'rgba(139,148,158,.5)' : palette[(i-1) % palette.length]; });
+  var centerLabel = t('donut_open_deals');
+  var allDeals = by.reduce(function(acc, arr){ return acc.concat(arr); }, []);
+  // Total das fatias VISÍVEIS (respeita fatias ocultadas via legenda).
+  function _visTotal(chart){ var d=chart.data.datasets[0].data, s=0; for(var i=0;i<d.length;i++){ if(chart.getDataVisibility(i)) s+=(d[i]||0); } return s; }
+  var centerPlugin = { id:'novoDonutCenter', afterDraw:function(chart){
+    var area = chart.chartArea; if(!area) return;
+    var ctx = chart.ctx, cx=(area.left+area.right)/2, cy=(area.top+area.bottom)/2;
+    ctx.save(); ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillStyle=th.cText;  ctx.font='700 27px '+NOVO_FONT; ctx.fillText(_visTotal(chart).toLocaleString('pt-BR'), cx, cy-7);
+    ctx.fillStyle=th.cText2; ctx.font='600 10px '+NOVO_FONT; ctx.fillText(centerLabel, cx, cy+15);
+    ctx.restore();
+  } };
+  _novoMkChart('chart-novo-sizedonut', { type:'doughnut', plugins:[ChartDataLabels, centerPlugin],
+    data:{ labels:labels, datasets:[{ data:counts, backgroundColor:bg, borderColor:'var(--card)', borderWidth:3, borderRadius:6, spacing:2, hoverOffset:10 }] },
+    options:{ responsive:true, cutout:'68%', layout:{padding:6}, plugins:{ legend:{display:true,position:'right',labels:{color:th.cText2,font:{family:NOVO_FONT,size:11},padding:10,usePointStyle:true,boxWidth:8,boxHeight:8}},
+      datalabels:{ color:'#fff', font:{family:NOVO_FONT,size:10,weight:'bold'}, formatter:function(v, ctx){ var tot=_visTotal(ctx.chart); return v>0 && tot>0 ? Math.round(v/tot*100)+'%' : ''; } },
+      tooltip:{ enabled:false, external:_novoChartExtTip, callbacks:{
+        title:function(items){ return items.length ? items[0].label : ''; },
+        label:function(c){ return c.parsed + ' deals'; },
+        footer:function(){ return 'Clique para ver os deals'; } } } },
+      onClick:function(e,el){ if(!el.length)return; novoOpenDealsFilterModal(t('t_sizedonut'), allDeals); } } });
 }
 
 function buildNovoStageVal() {
@@ -1899,21 +1972,24 @@ function buildNovoStageVal() {
     options:{ responsive:true, layout:{padding:{top:24}}, plugins:{ legend:{display:false},
       datalabels:{ anchor:'end', align:'end', color:th.cText, font:{family:NOVO_FONT,size:10,weight:'bold'}, formatter:_revShort },
       tooltip:{ callbacks:{ label:function(c){return 'R$ '+Math.round(c.parsed.y).toLocaleString('pt-BR')+' /ano';}, footer:function(){return 'Clique para ver os deals';} } } },
-      scales:{ x:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}}, y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},callback:function(v){return 'R$'+(v/1000)+'k';}}} },
+      scales:{ x:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}}, y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},callback:function(v){return _revShort(v);}}} },
       onClick:function(e,el){ if(!el.length)return; var s=labels[el[0].index]; novoOpenDealsModal(t('t_stageval')+' | '+s, by[s]); } } });
 }
 
 function buildNovoSegment() {
   var th = _novoTheme(), open = _novoOpen();
+  var isW = _novoSegMode === 'weighted';
   var defs = [['Pequeno (<50)',function(v){return v<50;}],['Médio (50–200)',function(v){return v>=50&&v<200;}],['Grande (200–1000)',function(v){return v>=200&&v<1000;}],['Enterprise (1000+)',function(v){return v>=1000;}]];
   var sums = defs.map(function(){return 0;}), by = defs.map(function(){return [];});
-  open.forEach(function(d){ var vidas=d.vidas||0, rev=_annualRev(d); for(var i=0;i<defs.length;i++){ if(defs[i][1](vidas)){ sums[i]+=rev; by[i].push(d); break; } } });
+  open.forEach(function(d){ var vidas=d.vidas||0, rev=_annualRev(d);
+    if(isW){ var p=d.probabilidade!=null?d.probabilidade:(NOVO_STAGE_PROB[d.stage]||0); rev=rev*p; }
+    for(var i=0;i<defs.length;i++){ if(defs[i][1](vidas)){ sums[i]+=rev; by[i].push(d); break; } } });
   _novoMkChart('chart-novo-segment', { type:'bar', plugins:[ChartDataLabels],
     data:{ labels:defs.map(function(d){return d[0];}), datasets:[{ data:sums.map(function(v){return Math.round(v);}), backgroundColor:'rgba(147,112,219,.75)', borderRadius:4 }] },
     options:{ responsive:true, layout:{padding:{top:24}}, plugins:{ legend:{display:false},
       datalabels:{ anchor:'end', align:'end', color:th.cText, font:{family:NOVO_FONT,size:10,weight:'bold'}, formatter:_revShort },
       tooltip:{ callbacks:{ label:function(c){return 'R$ '+Math.round(c.parsed.y).toLocaleString('pt-BR')+' /ano';}, footer:function(){return 'Clique para ver os deals';} } } },
-      scales:{ x:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}}, y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},callback:function(v){return 'R$'+(v/1000)+'k';}}} },
+      scales:{ x:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}}, y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},callback:function(v){return _revShort(v);}}} },
       onClick:function(e,el){ if(!el.length)return; novoOpenDealsModal(t('t_segment')+' | '+defs[el[0].index][0], by[el[0].index]); } } });
 }
 
@@ -1921,6 +1997,7 @@ function buildNovoSegment() {
 function novoSwitchStageMode(m){ _novoStageMode=m; _setActive('novo-stage-tabs',m); buildNovoStage(); }
 function novoSwitchConcMode(m){ _novoConcMode=m; _setActive('novo-conc-tabs',m); buildNovoConc(); }
 function novoSwitchValMode(m){ _novoValMode=m; _setActive('novo-val-tabs',m); buildNovoStageVal(); }
+function novoSwitchSegMode(m){ _novoSegMode=m; _setActive('novo-seg-tabs',m); buildNovoSegment(); }
 
 // ── State for new charts ────────────────────────────────────────────────────────
 var _novoSizeWindowMode  = 'all';
@@ -2696,7 +2773,7 @@ function _novoMetaBarHtml(val, meta, pct) {
       '<div style="height:100%;width:' + clamped + '%;background:' + col + ';border-radius:99px;transition:width .35s"></div>' +
     '</div>' +
     '<div style="font-size:.64rem;color:var(--text2);margin-top:.3rem">' +
-      pct + '% ' + t('kpi_mtd_of_goal') + ' · ' + t('kpi_mtd_goal') + ' ' + _fmtBig(meta) +
+      pct + '% ' + t('kpi_mtd_of_goal') + ' | ' + t('kpi_mtd_goal') + ' ' + _fmtBig(meta) +
     '</div>' +
   '</div>';
 }
@@ -2866,12 +2943,15 @@ function novoRender() {
       _card(t('t_conc'), t('tip_conc'),
         _subTabs('novo-conc-tabs', _novoConcMode, [{mode:'vidas',label:t('tab_vidas'),fn:'novoSwitchConcMode'},{mode:'revenue',label:t('lbl_revenue'),fn:'novoSwitchConcMode'}]),
         'chart-novo-conc', 360, 'conc') +
-      _card(t('t_sizedist'), t('tip_sizedist'), '', 'chart-novo-sizedist', 320, 'sizedist') +
-      _card(t('t_vidasdist'), t('tip_vidasdist'), '', 'chart-novo-vidasdist', 320, 'vidasdist') +
+      _card(t('t_sizedonut'), t('tip_sizedonut'),
+        _subTabs('novo-sizedonut-tabs', _novoSizeDistMode, [{mode:'revenue',label:t('lbl_revenue'),fn:'novoSwitchSizeDist'},{mode:'vidas',label:t('tab_vidas'),fn:'novoSwitchSizeDist'}]),
+        'chart-novo-sizedonut', 340, 'sizedonut') +
       _card(t('t_stageval'), t('tip_stageval'),
         _subTabs('novo-val-tabs', _novoValMode, [{mode:'raw',label:t('lbl_raw'),fn:'novoSwitchValMode'},{mode:'weighted',label:t('lbl_weighted'),fn:'novoSwitchValMode'}]),
         'chart-novo-stageval', 340, 'stageval') +
-      _card(t('t_segment'), t('tip_segment'), '', 'chart-novo-segment', 320, 'segment') +
+      _card(t('t_segment'), t('tip_segment'),
+        _subTabs('novo-seg-tabs', _novoSegMode, [{mode:'raw',label:t('lbl_raw'),fn:'novoSwitchSegMode'},{mode:'weighted',label:t('lbl_weighted'),fn:'novoSwitchSegMode'}]),
+        'chart-novo-segment', 320, 'segment') +
       _novoFunnelHorizCard() +
 
       // ── Seção: Análise de Funil e Pipeline ────────────────────────────────
@@ -2981,8 +3061,7 @@ function novoRender() {
   buildNovoVidasAE();
   buildNovoStage();
   buildNovoConc();
-  buildNovoSizeDist();
-  buildNovoVidasDist();
+  buildNovoSizeDonut();
   buildNovoStageVal();
   buildNovoSegment();
   if (_novoFunnelData) {
