@@ -120,6 +120,7 @@ body.nav-docked #view-novo{margin-left:280px}
 <link rel="stylesheet" href="/premium.css?v=5">
 <script src="/premium.js?v=5"></script>
 <script src="/filter-bar.js?v=1"></script>
+<script src="/settings-modal.js?v=1"></script>
 </head>
 <body>
 
@@ -190,9 +191,7 @@ function toggleTheme(){ var n=document.documentElement.getAttribute('data-theme'
 function doLogout(){ window.location.href='/login.html'; }
 function setContentBlur(on){ var el=document.getElementById('view-novo'); if(el) el.classList.toggle('content-blur',on); }
 // ── Configurações globais (compartilhadas via localStorage entre os painéis) ───
-function _gsSync(){ var a=document.getElementById('gs-impl'); if(a)a.classList.toggle('on',_novoImplWon); var b=document.getElementById('gs-ra'); if(b)b.classList.toggle('on',_novoActiveMeetings); var c=document.getElementById('gs-sb'); if(c)c.classList.toggle('on',_novoActiveStandby); }
-function novoOpenSettings(){ _gsSync(); setContentBlur(true); document.getElementById('gs-backdrop').classList.add('open'); document.getElementById('gs-drawer').classList.add('open'); }
-function novoCloseSettings(){ document.getElementById('gs-backdrop').classList.remove('open'); document.getElementById('gs-drawer').classList.remove('open'); setContentBlur(false); }
+// _gsSync / novoOpenSettings / novoCloseSettings: agora no módulo compartilhado settings-modal.js
 function novoToggleImplWon(){ _novoImplWon=!_novoImplWon; try{localStorage.setItem('novo_impl_won',_novoImplWon?'1':'0');}catch(e){} _gsSync(); if(_novoDeals)novoRender(); }
 function novoToggleActiveMeetings(){ _novoActiveMeetings=!_novoActiveMeetings; try{localStorage.setItem('novo_active_meetings',_novoActiveMeetings?'1':'0');}catch(e){} _gsSync(); if(_novoDeals)novoRender(); }
 function novoToggleActiveStandby(){ _novoActiveStandby=!_novoActiveStandby; try{localStorage.setItem('novo_active_standby',_novoActiveStandby?'1':'0');}catch(e){} _gsSync(); if(_novoDeals)novoRender(); }

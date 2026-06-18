@@ -127,6 +127,7 @@ body.nav-docked #view-novo{margin-left:280px}
 <link rel="stylesheet" href="/premium.css?v=5">
 <script src="/premium.js?v=5"></script>
 <script src="/filter-bar.js?v=1"></script>
+<script src="/settings-modal.js?v=1"></script>
 </head>
 <body>
 
@@ -198,9 +199,7 @@ function toggleTheme(){ var n=document.documentElement.getAttribute('data-theme'
 function doLogout(){ window.location.href='/login.html'; }
 function setContentBlur(on){ var el=document.getElementById('view-novo'); if(el) el.classList.toggle('content-blur',on); }
 // ── Configurações globais (compartilhadas via localStorage entre os painéis) ───
-function _gsSync(){ var a=document.getElementById('gs-impl'); if(a)a.classList.toggle('on',_novoImplWon); var b=document.getElementById('gs-ra'); if(b)b.classList.toggle('on',_novoActiveMeetings); var c=document.getElementById('gs-sb'); if(c)c.classList.toggle('on',_novoActiveStandby); }
-function novoOpenSettings(){ _gsSync(); setContentBlur(true); document.getElementById('gs-backdrop').classList.add('open'); document.getElementById('gs-drawer').classList.add('open'); }
-function novoCloseSettings(){ document.getElementById('gs-backdrop').classList.remove('open'); document.getElementById('gs-drawer').classList.remove('open'); setContentBlur(false); }
+// _gsSync / novoOpenSettings / novoCloseSettings: agora no módulo compartilhado settings-modal.js
 function novoToggleImplWon(){ _novoImplWon=!_novoImplWon; try{localStorage.setItem('novo_impl_won',_novoImplWon?'1':'0');}catch(e){} _gsSync(); if(_novoDeals)novoRender(); }
 function novoToggleActiveMeetings(){ _novoActiveMeetings=!_novoActiveMeetings; try{localStorage.setItem('novo_active_meetings',_novoActiveMeetings?'1':'0');}catch(e){} _gsSync(); if(_novoDeals)novoRender(); }
 function novoToggleActiveStandby(){ _novoActiveStandby=!_novoActiveStandby; try{localStorage.setItem('novo_active_standby',_novoActiveStandby?'1':'0');}catch(e){} _gsSync(); if(_novoDeals)novoRender(); }
@@ -243,7 +242,7 @@ var NOVO_I18N={
 function t(k){ return (NOVO_I18N[NOVO_LANG]||NOVO_I18N.pt)[k]||(NOVO_I18N.pt[k])||k; }
 function novoToggleLang(){ NOVO_LANG=NOVO_LANG==='pt'?'en':'pt'; try{localStorage.setItem('novo_lang',NOVO_LANG);}catch(e){} (function(_e){if(_e)_e.textContent=NOVO_LANG.toUpperCase();})(document.getElementById('novo-lang-label')); if(_novoDeals) novoRender(); }
 
-var AE_CARD_CODES={'kpi-open-lives':'P02','kpi-won-lives':'P08','kpi-won-arr':'P07','vidas-ae':'C01','arr':'A07','wonrev':'A08','winrate':'A09','monthly-won':'A10','pipeline-stage':'A11','aging':'A12','age-dist':'A13','radar':'A14','loss-reason':'A15'};
+var AE_CARD_CODES={'kpi-open-lives':'P02','kpi-won-lives':'P08','kpi-won-arr':'P07','vidas-ae':'C01','arr':'A07','wonrev':'A08','winrate':'A09','monthly-won':'A10','pipeline-stage':'A11','aging':'A12','age-dist':'A13','radar':'A14','loss-reason':'A15','meeting-rate':'A16'};
 var _novoShowInfo=(function(){try{return localStorage.getItem('ae_show_info')==='1';}catch(e){return false;}})();
 function _codeTag(key){var c=AE_CARD_CODES[key]||'';return c?'<span class="novo-code-tag">'+c+'</span>':'';}
 function novoToggleInfo(){_novoShowInfo=!_novoShowInfo;document.body.classList.toggle('novo-info-on',_novoShowInfo);var b=document.getElementById('btn-info-toggle');if(b)b.classList.toggle('highlighted',_novoShowInfo);try{localStorage.setItem('ae_show_info',_novoShowInfo?'1':'0');}catch(e){}}
@@ -258,6 +257,7 @@ var AE_HELP_CHARTS=[
   {key:'ae-aging',title:'Idade Média por AE',fields:[['ae','Responsável.'],['dias_no_pipe','Dias desde criação (proxy).']]},
   {key:'ae-age-dist',title:'Deal Age Distribution (Open)',fields:[['stage','Pipeline aberto (mesma base do filtro de Reunião Agendada).'],['dias_no_pipe','Idade do deal em dias; agrupado em faixas (0-30, 31-60, 61-90, 91-120, 121-180, +180).']]},
   {key:'ae-loss-reason',title:'Motivos de Perda por Deals',fields:[['stage','Deals em Perdido no período (close_date).'],['motivo_do_declinio_ou_perdido','Motivo do declínio/perda; contagem de deals por motivo.']]},
+  {key:'ae-meeting-rate',title:'Meeting Rate Evolution (Monthly)',fields:[['createdate','Mês de criação do deal (eixo X).'],['a_reuniao_ocorreu_','Sim / Não / sem preenchimento; base das barras empilhadas e da Occurrence Rate = Sim ÷ (Sim+Não).']]},
   {key:'ae-monthly-won',title:'Ganhos Mensais por AE',fields:[['ae','Responsável.'],['stage','Ganho + Implantação conforme toggle.'],['close_date','Data de fechamento.']]},
   {key:'ae-radar',title:'Radar de Performance',fields:[['ae','Responsável.'],['vidas','Vidas abertas.'],['arr_estimado','ARR pipeline.'],['stage','Won/open.']]},
 ];
@@ -413,14 +413,17 @@ function novoRender(){
       '<div class="section-hdr"><h2>Conversão & Win Rate</h2></div>'+
       c(t('ae_winrate')+_aeCntSpan(won.length+lost.length),t('ae_winrate_tip'),'winrate',320)+
       c(t('ae_monthly_won')+_aeCntSpan(won.length),t('ae_monthly_won_tip'),'monthly-won',320,'',true)+
+      // Seção Reuniões
+      '<div class="section-hdr"><h2>Reuniões</h2></div>'+
+      cWide('Meeting Rate Evolution (Monthly)','Mês a mês (por createdate): barras com o total de deals criados, fatiadas por a_reuniao_ocorreu_ (Sim | Não | sem preenchimento). A linha mostra a Occurrence Rate = Sim ÷ (Sim + Não) do mês. Clique numa barra para ver os deals criados no mês.','meeting-rate',340)+
       // Seção Perdas
       '<div class="section-hdr"><h2>Motivos de Perda</h2></div>'+
-      cWide('Motivos de Perda por Deals'+_aeCntSpan(lost.length),'Contagem de deals perdidos por motivo (campo HubSpot motivo_do_declinio_ou_perdido). Considera deals em Perdido no período (close_date). Clique numa barra para ver os deals.','loss-reason',340)+
+      cWide('Motivos de Perda por Deals'+_aeCntSpan(lost.length),'Contagem de deals perdidos por motivo (campo HubSpot motivo_do_declinio_ou_perdido). Considera deals em Perdido no período (close_date). Clique numa barra para ver os deals.','loss-reason',340,'',true)+
       // Seção Pipeline
       '<div class="section-hdr"><h2>Pipeline</h2></div>'+
-      cWide(t('ae_pipeline_stage')+_aeCntSpan(open.length),t('ae_pipeline_stage_tip'),'pipeline-stage',340)+
+      cWide(t('ae_pipeline_stage')+_aeCntSpan(_aeActivePipeline().length),t('ae_pipeline_stage_tip'),'pipeline-stage',340)+
       c(t('ae_aging')+_aeCntSpan(open.length),t('ae_aging_tip'),'aging',300)+
-      c('Deal Age Distribution (Open)'+_aeCntSpan(open.length),'Distribuição dos deals abertos por faixa de idade (dias_no_pipe): 0-30, 31-60, 61-90, 91-120, 121-180 e +180 dias. Mesma base de abertos. Clique numa barra para ver os deals.','age-dist',300)+
+      c('Deal Age Distribution (Open)'+_aeCntSpan(open.length),'Distribuição dos deals abertos por faixa de idade (dias_no_pipe): 0-30, 31-60, 61-90, 91-120, 121-180 e +180 dias. Mesma base de abertos. Clique numa barra para ver os deals.','age-dist',300,'',true)+
       // Seção Radar
       '<div class="section-hdr"><h2>Visão Multi-Dimensional</h2></div>'+
       cWide(t('ae_radar'),t('ae_radar_tip'),'radar',380)+
@@ -431,6 +434,7 @@ function novoRender(){
   buildAEWonRev();
   buildAEWinRate();
   buildAEMonthlyWon();
+  buildAEMeetingRate();
   buildAELossReason();
   buildAEPipelineStage();
   buildAEAging();
@@ -538,8 +542,11 @@ function buildAEMonthlyWon(){
 }
 
 function buildAEPipelineStage(){
-  var th=_novoTheme(), open=_novoOpen();
-  var stages=NOVO_STAGE_ORDER.filter(function(s){return open.some(function(d){return _stageNorm(d.stage)===s;});});
+  // Base = pipeline ativo (honra os toggles globais: Reunião Agendada e Standby entram
+  // ou saem conforme a configuração; Implantação/Ganho/Perdido sempre fora).
+  var th=_novoTheme(), open=_aeActivePipeline();
+  var stageOrder=['Reunião Agendada'].concat(NOVO_STAGE_ORDER);
+  var stages=stageOrder.filter(function(s){return open.some(function(d){return _stageNorm(d.stage)===s;});});
   var aes=_getAEs().filter(function(ae){return open.some(function(d){return d.ae===ae;});});
   var aeColorArr=['rgba(88,166,255,.75)','rgba(63,185,80,.7)','rgba(58,184,183,.75)','rgba(210,153,34,.8)','rgba(147,112,219,.75)','rgba(248,81,73,.65)','rgba(230,150,80,.75)'];
   // Barras por etapa, fatiadas por AE (cada dataset é um AE).
@@ -598,6 +605,34 @@ function buildAELossReason(){
       tooltip:{callbacks:{label:function(c){return c.parsed.x+' deals';}}}},
       scales:{x:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0}},y:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}}},
       onClick:function(e,el){ if(!el.length)return; var r=ranked[el[0].index].reason; novoOpenDealsModal('Perdidos | '+r, lost.filter(function(d){return _aeLossReason(d)===r;})); }}});
+}
+
+function _aeMeetingClass(d){ var v=((d.reuniao_ocorreu==null?'':d.reuniao_ocorreu)+''); if(/sim/i.test(v)) return 'sim'; if(/n[aã]o/i.test(v)) return 'nao'; return 'vazio'; }
+function buildAEMeetingRate(){
+  var th=_novoTheme(), deals=_rawDeals();
+  var now=new Date(), allMonths=[];
+  for(var i=11;i>=0;i--){ var dd=new Date(now.getFullYear(),now.getMonth()-i,1); allMonths.push(dd.getFullYear()+'-'+String(dd.getMonth()+1).padStart(2,'0')); }
+  var byMonth={};
+  deals.forEach(function(d){ if(!d.createdate)return; var m=String(d.createdate).substring(0,7); if(allMonths.indexOf(m)<0)return; var b=byMonth[m]||(byMonth[m]={sim:0,nao:0,vazio:0}); b[_aeMeetingClass(d)]++; });
+  var months=allMonths.filter(function(m){ var b=byMonth[m]; return b&&(b.sim+b.nao+b.vazio)>0; });
+  var sim=months.map(function(m){return byMonth[m].sim;});
+  var nao=months.map(function(m){return byMonth[m].nao;});
+  var vaz=months.map(function(m){return byMonth[m].vazio;});
+  var rate=months.map(function(m){ var b=byMonth[m], den=b.sim+b.nao; return den>0?Math.round(b.sim/den*100):null; });
+  _novoMkChart('chart-ae-meeting-rate',{type:'bar',plugins:[ChartDataLabels],
+    data:{labels:months.map(_mlbl),datasets:[
+      {label:'Sim',data:sim,backgroundColor:'rgba(63,185,80,.8)',stack:'s',borderRadius:2,order:2},
+      {label:'Não',data:nao,backgroundColor:'rgba(248,81,73,.7)',stack:'s',borderRadius:2,order:2},
+      {label:'Sem preenchimento',data:vaz,backgroundColor:'rgba(140,140,150,.5)',stack:'s',borderRadius:2,order:2},
+      {label:'Occurrence Rate',type:'line',data:rate,yAxisID:'y2',borderColor:'rgba(58,184,183,1)',backgroundColor:'rgba(58,184,183,1)',borderWidth:2,tension:.3,pointRadius:3,spanGaps:true,fill:false,order:1,datalabels:{display:false}}
+    ]},
+    options:{responsive:true,layout:{padding:{top:24}},plugins:{legend:{display:true,labels:{color:th.cText2,font:{family:NOVO_FONT,size:10},padding:8}},
+      datalabels:{display:false},
+      tooltip:{callbacks:{label:function(c){ if(c.dataset.label==='Occurrence Rate') return 'Occurrence Rate: '+(c.parsed.y==null?'—':c.parsed.y+'%'); return c.dataset.label+': '+c.parsed.y; }}}},
+      scales:{x:{grid:{display:false},ticks:{color:th.cText2,font:{family:NOVO_FONT}},stacked:true},
+        y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0},stacked:true,title:{display:true,text:'Deals criados',color:th.cText2,font:{family:NOVO_FONT}}},
+        y2:{position:'right',grid:{display:false},min:0,max:100,ticks:{color:th.cText2,font:{family:NOVO_FONT},callback:function(v){return v+'%';}},title:{display:true,text:'Occurrence Rate',color:th.cText2,font:{family:NOVO_FONT}}}},
+      onClick:function(e,el){ if(!el.length)return; var m=months[el[0].index]; novoOpenDealsModal('Criados | '+_mlbl(m), deals.filter(function(d){return d.createdate&&String(d.createdate).substring(0,7)===m;})); }}});
 }
 
 function buildAERadar(){

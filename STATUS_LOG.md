@@ -1134,6 +1134,14 @@ Registro curto, uma linha por interação (a cada alteração).
 - **N18** (`Velocidade de Qualificação`) agora renderiza imediatamente ao lado do N17 na seção `Análise de Tempo`.
 - **Validação:** sintaxe inline OK e smoke render OK (`1235 deals`).
 
+### Modal de Configurações compartilhado + A11 por config + A16 Meeting Rate (2026-06-18)
+
+- **Modal de Configurações unificado (`public/settings-modal.js`, novo):** módulo compartilhado que reproduz o modal do CRO Dashboard (`novo-prob-drawer`: toggles Implantação/Reunião/Standby + Meta Receita + probabilidades por etapa). Injeta CSS + HTML e expõe `novoOpenSettings`/`novoCloseSettings`/`novoSaveSettings`/`_gsSync`. Persiste no mesmo localStorage do CRO (`novo_stage_prob`, `novo_meta_mtd`, etc.) → config realmente global. Incluído em **board, ae, bdr, 48h** (após `filter-bar.js`); o CRO mantém o modal inline (referência). Removidas as funções inline `_gsSync`/`novoOpenSettings`/`novoCloseSettings` desses 4 painéis (agora donas no módulo); os `novoToggle*` foram mantidos. `NOVO_STAGE_PROB`/`NOVO_META_MTD` ganham fallback no módulo (bdr/48h não os tinham). Obs.: o antigo `gs-drawer` ficou no DOM como markup morto (nunca aberto) — limpeza menor pendente. CS/Cotação/Forecast não têm gear de Configurações, fora de escopo.
+- **A11 honra os toggles globais:** `buildAEPipelineStage` passou a usar `_aeActivePipeline()` (em vez de `_novoOpen()`) e ordem de etapas `['Reunião Agendada'].concat(NOVO_STAGE_ORDER)`. Assim, Reunião Agendada e Standby entram/saem das colunas conforme a configuração global; Implantação/Ganho/Perdido sempre fora. Título usa contagem do pipeline ativo.
+- **A16 (novo) `Meeting Rate Evolution (Monthly)`:** `buildAEMeetingRate()`, seção "Reuniões". Barras empilhadas por mês de criação (`createdate`) com total de deals criados fatiado por `a_reuniao_ocorreu_` (Sim/Não/sem preenchimento); linha (eixo direito) com Occurrence Rate = Sim ÷ (Sim+Não). Classificação tolerante a múltiplos valores (`Sim;Nao`). Clique abre os deals criados no mês. Code `A16`.
+- **Emoji 🟡 removido** de **A13** (`age-dist`) e **A15** (`loss-reason`).
+- **Validação:** `node --check settings-modal.js` OK; inline 0 erros nos 5 painéis; i18n ae `PT=24 / EN=24`; smoke render ae OK (298); localhost serve `/settings-modal.js` 200 e `/novo-ae|board|bdr|48h` 200.
+
 ### AE | A11 invertido, A13 Age Dist, A15 Motivos de Perda, emojis C01/A08 (2026-06-18)
 
 - **A11 invertido (`buildAEPipelineStage`):** antes barras por AE fatiadas por etapa; agora **barras por etapa, fatiadas por AE** (cada dataset = um AE, `labels=stages`). `onClick` abre o modal filtrando por etapa + AE (`datasetIndex`).
