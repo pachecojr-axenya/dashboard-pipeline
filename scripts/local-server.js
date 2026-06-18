@@ -52,14 +52,13 @@ if (!process.env.ALLOWED_ORIGIN) process.env.ALLOWED_ORIGIN = `http://localhost:
 const REWRITES = {
   '/': '/login.html',
   '/dashboard': '/dashboard.html',
-  '/watcher': '/hubspot-watcher.html',
-  '/novo': '/novo-dashboard.html',
-  '/novo-ae': '/novo-ae.html',
-  '/novo-bdr': '/novo-bdr.html',
-  '/novo-board': '/novo-board.html',
-  '/novo-48h': '/novo-48h.html',
-  '/novo-cs': '/novo-cs.html',
-  '/novo-cotacao': '/novo-cotacao.html',
+  '/novo': '/dashboard.html',
+  '/novo-ae': '/ae.html',
+  '/novo-bdr': '/bdr.html',
+  '/novo-board': '/board.html',
+  '/novo-48h': '/48h.html',
+  '/novo-cs': '/cs.html',
+  '/novo-cotacao': '/cotacao.html',
   '/forecast': '/forecast.html',
 };
 
@@ -205,7 +204,6 @@ server.listen(PORT, () => {
   console.log(`   Dashboard    →  http://localhost:${PORT}/dashboard`);
   console.log(`   NOVO (visual)→  http://localhost:${PORT}/novo`);
   console.log(`   Forecast     →  http://localhost:${PORT}/forecast`);
-  console.log(`   Watcher      →  http://localhost:${PORT}/watcher`);
   console.log('');
   console.log(`   Auth bypass  →  ATIVO (LOCAL_DEV_BYPASS=true)`);
   console.log(`   HubSpot data →  ${process.env.HUBSPOT_TOKEN ? 'token presente ✔' : 'sem token (UI carrega, dados não)'}`);

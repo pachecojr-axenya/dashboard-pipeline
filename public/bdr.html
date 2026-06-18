@@ -29,12 +29,31 @@ html[data-theme="light"] .hdr-sep{background:rgba(0,0,0,0.12)}
 html[data-theme="light"] .hdr-actions{background:rgba(0,0,0,0.03)}
 @keyframes hdr-spin{to{transform:rotate(360deg)}}
 .hdr-btn.spinning svg{animation:hdr-spin .7s linear infinite}
+/* Settings drawer global */
+.gs-toggle{display:inline-flex;align-items:center;cursor:pointer;background:var(--card2);border:1px solid var(--border);border-radius:99px;padding:.3rem;flex:none}
+.gs-sw{width:34px;height:19px;border-radius:99px;background:var(--border);position:relative;transition:background .18s;flex:none}
+.gs-toggle.on .gs-sw{background:var(--teal)}
+.gs-sw::after{content:'';position:absolute;top:2px;left:2px;width:15px;height:15px;border-radius:50%;background:#fff;transition:transform .18s}
+.gs-toggle.on .gs-sw::after{transform:translateX(15px)}
+.gs-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:3000;opacity:0;pointer-events:none;transition:opacity .25s}
+.gs-backdrop.open{opacity:1;pointer-events:auto}
+.gs-drawer{position:fixed;top:0;right:-380px;width:360px;max-width:100vw;height:100vh;background:var(--card);border-left:1px solid var(--border);z-index:3001;display:flex;flex-direction:column;transition:right .28s cubic-bezier(.4,0,.2,1);box-shadow:-8px 0 32px rgba(0,0,0,.25)}
+.gs-drawer.open{right:0}
+.gs-hdr{display:flex;align-items:center;justify-content:space-between;padding:1.25rem 1.5rem;border-bottom:1px solid var(--border);flex-shrink:0}
+.gs-hdr h3{margin:0;font-size:1.2rem;font-weight:600;color:var(--text)}
+.gs-body{flex:1;overflow-y:auto;padding:1rem 1.5rem}
+.gs-row{display:flex;align-items:center;gap:.75rem;padding:.85rem 0;border-bottom:1px solid var(--border)}
+.gs-row label{flex:1;font-size:.9rem;color:var(--text)}
 .nav-drawer{position:fixed;top:0;left:-280px;width:280px;height:100vh;background:var(--card);border-right:1px solid rgba(255,255,255,.08);z-index:1000;transition:left .25s cubic-bezier(0.4,0,0.2,1);display:flex;flex-direction:column}
 .nav-drawer.open{left:0}
 .nav-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:999;opacity:0;pointer-events:none;transition:opacity .25s ease}
 .nav-backdrop.open{opacity:1;pointer-events:auto}
 .nav-drawer-header{display:flex;align-items:center;gap:.75rem;padding:1.1rem 1.25rem;border-bottom:1px solid rgba(255,255,255,.08)}
 .nav-drawer-brand{font-weight:600;font-size:1rem;color:var(--text);flex:1}
+.nav-drawer-footer{margin-top:auto;display:flex;align-items:center;gap:.5rem;padding:.7rem .75rem;border-top:1px solid rgba(255,255,255,.08)}
+html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
+.nav-foot-btn{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:.4rem;min-height:38px;background:var(--card2);border:1px solid var(--border);border-radius:10px;color:var(--text2);cursor:pointer;padding:.4rem;font-family:inherit;font-size:.78rem;font-weight:700;letter-spacing:.04em;transition:border-color .15s,color .15s,background .15s}
+.nav-foot-btn:hover{border-color:var(--teal);color:var(--text)}
 .nav-menu{list-style:none;padding:.5rem 0;margin:0}
 .nav-item{display:flex;align-items:center;gap:.75rem;padding:.7rem 1.25rem;cursor:pointer;font-size:.9rem;color:var(--text2);transition:background .15s,color .15s}
 .nav-item:hover{background:rgba(255,255,255,.06);color:var(--text)}
@@ -49,7 +68,10 @@ html[data-theme="light"] .hdr-actions{background:rgba(0,0,0,0.03)}
 .novo-card{background:var(--card);border-radius:10px;padding:1.25rem 1.5rem}
 .novo-card-header{display:flex;align-items:center;gap:.6rem;margin-bottom:1rem;flex-wrap:wrap}
 .novo-card-header h3{font-size:.88rem;font-weight:600;color:var(--text);margin:0;flex:1}
+.novo-code-tag{display:none;align-items:center;font-size:.6rem;font-weight:700;letter-spacing:.04em;font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--teal);background:rgba(58,184,183,.14);border:1px solid rgba(58,184,183,.32);border-radius:5px;padding:.05rem .32rem;line-height:1.35;flex-shrink:0}
 .novo-info-btn{width:16px;height:16px;border-radius:50%;border:1.5px solid var(--text2);background:none;color:var(--text2);font-size:.62rem;font-style:normal;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;position:relative;flex-shrink:0;padding:0;line-height:1}
+body:not(.novo-info-on) .novo-card .novo-info-btn{display:none}
+body.novo-info-on .novo-code-tag{display:inline-flex}
 #novo-tip{position:fixed;z-index:9999;background:rgba(23,31,46,.78);backdrop-filter:blur(14px) saturate(1.5);border-radius:6px;padding:.45rem .7rem;width:278px;pointer-events:none;display:none;box-shadow:0 6px 20px rgba(0,0,0,.3)}
 html[data-theme="light"] #novo-tip{background:rgba(246,248,250,.82)}
 #novo-tip.nt-show{display:block}
@@ -58,6 +80,7 @@ html[data-theme="light"] #novo-tip{background:rgba(246,248,250,.82)}
 html[data-theme="light"] #novo-tip .nt-code{border-top-color:rgba(0,0,0,.1)}
 .kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem;margin-bottom:.75rem}
 .kpi-card{background:var(--card);border-radius:14px;padding:1.6rem 1.8rem}
+.kpi-click{cursor:pointer}
 .kpi-label{font-size:.66rem;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;line-height:1}
 .kpi-value{font-size:2rem;font-weight:800;line-height:1.1;margin:.35rem 0 .25rem}
 .kpi-sub{font-size:.7rem;color:var(--muted);line-height:1.35}
@@ -96,6 +119,7 @@ body.nav-docked #view-novo{margin-left:280px}
 </style>
 <link rel="stylesheet" href="/premium.css?v=5">
 <script src="/premium.js?v=5"></script>
+<script src="/filter-bar.js?v=1"></script>
 </head>
 <body>
 
@@ -119,14 +143,12 @@ body.nav-docked #view-novo{margin-left:280px}
   <div class="novo-hdr" id="novo-hdr">
     <div style="display:flex;align-items:center;gap:.75rem">
       <button class="hdr-btn" onclick="toggleDrawer()" data-tooltip="Menu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
-      <div class="panel-switcher" id="panel-switcher"><button class="panel-switch-btn" type="button" onclick="togglePanelMenu(event)" aria-haspopup="true" aria-expanded="false"><h1>🎯 BDR Performance</h1><svg class="panel-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button><div class="panel-dd" id="panel-dd" role="menu"></div></div>
+      <div class="panel-switcher" id="panel-switcher"><button class="panel-switch-btn" type="button" onclick="togglePanelMenu(event)" aria-haspopup="true" aria-expanded="false"><h1>BDR Performance</h1><svg class="panel-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button><div class="panel-dd" id="panel-dd" role="menu"></div></div>
     </div>
     <div class="hdr-actions">
-      <button class="hdr-btn" onclick="doLogout()" data-tooltip="Sair"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></button>
-      <div class="hdr-sep"></div>
-      <button class="hdr-btn novo-lang-btn" onclick="novoToggleLang()" data-tooltip="Idioma"><span id="novo-lang-label">PT</span></button>
-      <button class="hdr-btn" onclick="toggleTheme()" data-tooltip="Tema"><svg class="novo-theme-sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg><svg class="novo-theme-moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></button>
+      <button class="hdr-btn" id="btn-info-toggle" onclick="novoToggleInfo()" data-tooltip="Mostrar/ocultar IDs e auditoria" style="font-size:.9rem;font-weight:800">?</button>
       <button class="hdr-btn" onclick="novoHelp()" data-tooltip="Campos HubSpot"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></button>
+      <button class="hdr-btn" onclick="novoOpenSettings()" data-tooltip="Configurações"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
       <button class="hdr-btn highlighted" id="btn-refresh" onclick="_novoDeals=null;novoLoadData();" data-tooltip="Atualizar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></button>
     </div>
   </div>
@@ -150,11 +172,30 @@ body.nav-docked #view-novo{margin-left:280px}
   <div class="novo-help-body" id="novo-help-body"></div>
 </div>
 
+<!-- Settings drawer (global, compartilhado entre painéis via localStorage) -->
+<div class="gs-backdrop" id="gs-backdrop" onclick="novoCloseSettings()"></div>
+<div class="gs-drawer" id="gs-drawer">
+  <div class="gs-hdr"><h3>Configurações</h3><button class="hdr-btn" onclick="novoCloseSettings()" aria-label="Fechar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+  <div class="gs-body">
+    <div class="gs-row"><label>Implantação = Ganho</label><button class="gs-toggle" id="gs-impl" onclick="novoToggleImplWon()" aria-label="Implantação = Ganho"><span class="gs-sw"></span></button></div>
+    <div class="gs-row"><label>Ativos incluem Reunião Agendada</label><button class="gs-toggle" id="gs-ra" onclick="novoToggleActiveMeetings()" aria-label="Ativos incluem Reunião Agendada"><span class="gs-sw"></span></button></div>
+    <div class="gs-row"><label>Ativos incluem Standby</label><button class="gs-toggle" id="gs-sb" onclick="novoToggleActiveStandby()" aria-label="Ativos incluem Standby"><span class="gs-sw"></span></button></div>
+    <p style="font-size:.74rem;color:var(--text2);line-height:1.5;margin:1rem 0 0">Estas opções são globais: valem para CRO Dashboard, Board View, AE, BDR e Last 48h.</p>
+  </div>
+</div>
+
 <script>
 (function(){ var s=localStorage.getItem('axenya_theme')||'dark'; if(s==='light') document.documentElement.setAttribute('data-theme','light'); })();
 function toggleTheme(){ var n=document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark'; document.documentElement.setAttribute('data-theme',n); localStorage.setItem('axenya_theme',n); if(_novoDeals) novoRender(); }
 function doLogout(){ window.location.href='/login.html'; }
 function setContentBlur(on){ var el=document.getElementById('view-novo'); if(el) el.classList.toggle('content-blur',on); }
+// ── Configurações globais (compartilhadas via localStorage entre os painéis) ───
+function _gsSync(){ var a=document.getElementById('gs-impl'); if(a)a.classList.toggle('on',_novoImplWon); var b=document.getElementById('gs-ra'); if(b)b.classList.toggle('on',_novoActiveMeetings); var c=document.getElementById('gs-sb'); if(c)c.classList.toggle('on',_novoActiveStandby); }
+function novoOpenSettings(){ _gsSync(); setContentBlur(true); document.getElementById('gs-backdrop').classList.add('open'); document.getElementById('gs-drawer').classList.add('open'); }
+function novoCloseSettings(){ document.getElementById('gs-backdrop').classList.remove('open'); document.getElementById('gs-drawer').classList.remove('open'); setContentBlur(false); }
+function novoToggleImplWon(){ _novoImplWon=!_novoImplWon; try{localStorage.setItem('novo_impl_won',_novoImplWon?'1':'0');}catch(e){} _gsSync(); if(_novoDeals)novoRender(); }
+function novoToggleActiveMeetings(){ _novoActiveMeetings=!_novoActiveMeetings; try{localStorage.setItem('novo_active_meetings',_novoActiveMeetings?'1':'0');}catch(e){} _gsSync(); if(_novoDeals)novoRender(); }
+function novoToggleActiveStandby(){ _novoActiveStandby=!_novoActiveStandby; try{localStorage.setItem('novo_active_standby',_novoActiveStandby?'1':'0');}catch(e){} _gsSync(); if(_novoDeals)novoRender(); }
 function _setNavOpen(open){ document.getElementById('nav-drawer').classList.toggle('open',open); document.body.classList.toggle('nav-docked',open); var narrow=window.matchMedia('(max-width:820px)').matches; document.getElementById('nav-backdrop').classList.toggle('open',open&&narrow); try{localStorage.setItem('novo_nav_open',open?'true':'false');}catch(e){} }
 function openDrawer(){ _setNavOpen(true); }
 function closeDrawer(){ _setNavOpen(false); setContentBlur(false); }
@@ -166,38 +207,43 @@ function exportModalCSV(){ var title=document.getElementById('modal-title').text
 var NOVO_LANG=(function(){ try{return localStorage.getItem('novo_lang')||'pt';}catch(e){return 'pt';} })();
 var NOVO_I18N={
   pt:{loading:'Buscando dados…',error_prefix:'Erro: ',retry:'Tentar novamente',updated_at:'Atualizado às',
-    bdr_note:'🟡 A API não possui campo source (BDR/AE). Proxy: deals com colaboradores > 0 são tratados como originados pelo BDR. Para segmentação precisa, adicione o campo <code>source_bdr</code> (booleano) ao pipeline do HubSpot.',
-    bdr_new_deals:'🟡 Novos Deals por Mês',bdr_new_deals_tip:'Deals criados por mês (todos), segmentados por colaboradores>0 (proxy BDR). Fonte: createdate, colaboradores.',
-    bdr_new_vidas:'🟡 Novas Vidas por Mês',bdr_new_vidas_tip:'Soma de vidas de deals criados por mês. Fonte: createdate, vidas, colaboradores.',
-    bdr_net_flow:'🟡 Net Flow de Deals (Entrada vs Saída)',bdr_net_flow_tip:'Deals criados (entrada) vs deals ganhos (saída por mês). Fonte: createdate, close_date, stage.',
-    bdr_net_vidas:'🟡 Net Flow de Vidas',bdr_net_vidas_tip:'Vidas de deals criados vs vidas de deals ganhos por mês. Fonte: createdate, close_date, stage, vidas.',
-    bdr_avg_vidas:'🟡 Vidas Médias por Deal ao Longo do Tempo',bdr_avg_vidas_tip:'Média de vidas por deal criado por mês. Tendência de qualidade do pipeline. Fonte: createdate, vidas.',
-    bdr_colabs:'🟡 Deals com vs sem Colaboradores',bdr_colabs_tip:'% dos deals com colaboradores > 0 (proxy BDR). Fonte: colaboradores.',
-    bdr_stage_entry:'🟡 Etapa de Entrada dos Deals',bdr_stage_entry_tip:'Distribuição da primeira etapa dos deals ao entrar no pipeline. Fonte: stage, createdate.',
-    bdr_size_dist:'🟡 Distribuição de Porte (Vidas)',bdr_size_dist_tip:'Deals por faixa de vidas (pequeno/médio/grande). Fonte: vidas.',
+    bdr_note:'BDR = campo HubSpot <code>sdr</code> preenchido. Entradas usam createdate; resultados usam close_date; snapshots de pipeline aberto não usam filtro de período.',
+    bdr_new_deals:'Novos Deals por Mês',bdr_new_deals_tip:'Deals criados por mês, segmentados por campo sdr preenchido. Filtro usa createdate.',
+    bdr_new_vidas:'Novas Vidas por Mês',bdr_new_vidas_tip:'Vidas de deals criados por mês. Segmento BDR usa sdr preenchido. Filtro usa createdate.',
+    bdr_net_flow:'Net Flow de Deals (Entrada vs Saída)',bdr_net_flow_tip:'Entradas por createdate; saídas por close_date, separando ganhos e perdidos.',
+    bdr_net_vidas:'Net Flow de Vidas',bdr_net_vidas_tip:'Vidas de deals criados vs vidas de deals ganhos/perdidos por mês. Datas: createdate e close_date.',
+    bdr_avg_vidas:'Vidas Médias por Deal ao Longo do Tempo',bdr_avg_vidas_tip:'Média de vidas por deal criado por mês. Filtro usa createdate.',
+    bdr_colabs:'Origem BDR vs Não BDR',bdr_colabs_tip:'% de deals com campo sdr preenchido. Snapshot atual da base carregada.',
+    bdr_stage_entry:'Etapa de Entrada dos Deals',bdr_stage_entry_tip:'Não exibido: requer histórico de etapa inicial; etapa atual não representa entrada.',
+    bdr_size_dist:'Distribuição de Porte (Vidas)',bdr_size_dist_tip:'Deals por faixa de vidas, por createdate quando o filtro está ativo.',
   },
   en:{loading:'Fetching data…',error_prefix:'Error: ',retry:'Try again',updated_at:'Updated at',
-    bdr_note:'🟡 The API has no source field (BDR/AE). Proxy: deals with colaboradores > 0 are treated as BDR-sourced. For accurate segmentation, add a <code>source_bdr</code> (boolean) field to the HubSpot pipeline.',
-    bdr_new_deals:'🟡 New Deals by Month',bdr_new_deals_tip:'Deals created per month (all), split by colaboradores>0 (BDR proxy). Source: createdate, colaboradores.',
-    bdr_new_vidas:'🟡 New Lives by Month',bdr_new_vidas_tip:'Sum of lives from deals created per month. Source: createdate, vidas, colaboradores.',
-    bdr_net_flow:'🟡 Deal Net Flow (Inflow vs Outflow)',bdr_net_flow_tip:'Deals created (inflow) vs deals won (outflow) by month. Source: createdate, close_date, stage.',
-    bdr_net_vidas:'🟡 Lives Net Flow',bdr_net_vidas_tip:'Lives from created deals vs lives from won deals by month. Source: createdate, close_date, stage, vidas.',
-    bdr_avg_vidas:'🟡 Avg Lives per Deal Over Time',bdr_avg_vidas_tip:'Avg lives per deal created by month. Pipeline quality trend. Source: createdate, vidas.',
-    bdr_colabs:'🟡 Deals with vs without Colaboradores',bdr_colabs_tip:'% of deals with colaboradores > 0 (BDR proxy). Source: colaboradores.',
-    bdr_stage_entry:'🟡 Deal Entry Stage Distribution',bdr_stage_entry_tip:'Distribution of the first stage of deals entering pipeline. Source: stage, createdate.',
-    bdr_size_dist:'🟡 Deal Size Distribution (Lives)',bdr_size_dist_tip:'Deals by lives range (small/medium/large). Source: vidas.',
+    bdr_note:'BDR = HubSpot field <code>sdr</code> filled. Inflow uses createdate; outcomes use close_date; open-pipeline snapshots do not use the period filter.',
+    bdr_new_deals:'New Deals by Month',bdr_new_deals_tip:'Deals created per month, split by filled sdr field. Filter uses createdate.',
+    bdr_new_vidas:'New Lives by Month',bdr_new_vidas_tip:'Lives from deals created per month. BDR segment uses filled sdr. Filter uses createdate.',
+    bdr_net_flow:'Deal Net Flow (Inflow vs Outflow)',bdr_net_flow_tip:'Inflow by createdate; outflow by close_date, split into won and lost.',
+    bdr_net_vidas:'Lives Net Flow',bdr_net_vidas_tip:'Lives from created deals vs won/lost deals by month. Dates: createdate and close_date.',
+    bdr_avg_vidas:'Avg Lives per Deal Over Time',bdr_avg_vidas_tip:'Avg lives per created deal by month. Filter uses createdate.',
+    bdr_colabs:'BDR vs Non-BDR Origin',bdr_colabs_tip:'% of deals with sdr field filled. Current loaded-base snapshot.',
+    bdr_stage_entry:'Deal Entry Stage Distribution',bdr_stage_entry_tip:'Not rendered: requires stage-history entry data; current stage is not entry stage.',
+    bdr_size_dist:'Deal Size Distribution (Lives)',bdr_size_dist_tip:'Deals by lives range, by createdate when the filter is active.',
   }
 };
 function t(k){ return (NOVO_I18N[NOVO_LANG]||NOVO_I18N.pt)[k]||(NOVO_I18N.pt[k])||k; }
-function novoToggleLang(){ NOVO_LANG=NOVO_LANG==='pt'?'en':'pt'; try{localStorage.setItem('novo_lang',NOVO_LANG);}catch(e){} document.getElementById('novo-lang-label').textContent=NOVO_LANG.toUpperCase(); if(_novoDeals) novoRender(); }
+function novoToggleLang(){ NOVO_LANG=NOVO_LANG==='pt'?'en':'pt'; try{localStorage.setItem('novo_lang',NOVO_LANG);}catch(e){} (function(_e){if(_e)_e.textContent=NOVO_LANG.toUpperCase();})(document.getElementById('novo-lang-label')); if(_novoDeals) novoRender(); }
+
+var BDR_CARD_CODES={'kpi-total-bdr':'R01','kpi-bdr-open':'R02','kpi-new-deals':'R03','kpi-avg-vidas':'R04','new-deals':'R05','new-vidas':'R06','net-flow':'R07','net-vidas':'R08','avg-vidas':'R09','colabs':'R10','size-dist':'R11'};
+var _novoShowInfo=(function(){try{return localStorage.getItem('bdr_show_info')==='1';}catch(e){return false;}})();
+function _codeTag(key){var c=BDR_CARD_CODES[key]||'';return c?'<span class="novo-code-tag">'+c+'</span>':'';}
+function novoToggleInfo(){_novoShowInfo=!_novoShowInfo;document.body.classList.toggle('novo-info-on',_novoShowInfo);var b=document.getElementById('btn-info-toggle');if(b)b.classList.toggle('highlighted',_novoShowInfo);try{localStorage.setItem('bdr_show_info',_novoShowInfo?'1':'0');}catch(e){}}
 
 var BDR_HELP_CHARTS=[
-  {key:'bdr-new-deals',title:'Novos Deals por Mês',fields:[['createdate','Data de criação do deal.'],['colaboradores','Proxy BDR: >0 indica geração BDR.']]},
-  {key:'bdr-new-vidas',title:'Novas Vidas por Mês',fields:[['createdate','Data de criação.'],['vidas','Qtde de vidas.'],['colaboradores','Segmento BDR.']]},
-  {key:'bdr-net-flow',title:'Net Flow de Deals',fields:[['createdate','Entrada no pipeline.'],['close_date','Saída (won).'],['stage','stage=Ganho.']]},
+  {key:'bdr-new-deals',title:'Novos Deals por Mês',fields:[['createdate','Data de criação do deal.'],['sdr','BDR preenchido = origem BDR.']]},
+  {key:'bdr-new-vidas',title:'Novas Vidas por Mês',fields:[['createdate','Data de criação.'],['vidas','Qtde de vidas.'],['sdr','Segmento BDR.']]},
+  {key:'bdr-net-flow',title:'Net Flow de Deals',fields:[['createdate','Entrada no pipeline.'],['close_date','Saída por ganho/perda.'],['stage','Ganho/Implantação conforme toggle; Perdido para perdas.']]},
   {key:'bdr-net-vidas',title:'Net Flow de Vidas',fields:[['createdate','Entrada.'],['vidas','Vidas do deal.'],['stage','Won = saída.']]},
   {key:'bdr-avg-vidas',title:'Vidas Médias por Mês',fields:[['createdate','Data de criação.'],['vidas','Média mensal.']]},
-  {key:'bdr-colabs',title:'Com vs Sem Colaboradores',fields:[['colaboradores','Número de colaboradores no deal.']]},
+  {key:'bdr-colabs',title:'BDR vs Não BDR',fields:[['sdr','Campo BDR; preenchido = origem BDR.']]},
   {key:'bdr-stage-entry',title:'Etapa de Entrada',fields:[['stage','Etapa atual.'],['createdate','Proxy de entrada.']]},
   {key:'bdr-size-dist',title:'Distribuição de Porte',fields:[['vidas','Faixas: <50, 50-200, 200-500, 500+.']]},
 ];
@@ -206,7 +252,7 @@ function novoCloseHelp(){ document.getElementById('novo-help-backdrop').classLis
 document.addEventListener('mouseover',function(e){ var btn=e.target.closest('.novo-info-btn'); if(!btn)return; var tip=document.getElementById('novo-tip'); tip.querySelector('.nt-text').textContent=btn.getAttribute('data-tip')||''; tip.querySelector('.nt-code').textContent=btn.getAttribute('data-code')||''; tip.classList.add('nt-show'); });
 document.addEventListener('mouseout',function(e){ if(!e.target.closest('.novo-info-btn')) document.getElementById('novo-tip').classList.remove('nt-show'); });
 document.addEventListener('mousemove',function(e){ var tip=document.getElementById('novo-tip'); if(!tip.classList.contains('nt-show'))return; var r=tip.getBoundingClientRect(); var x=e.clientX+14; var y=e.clientY+14; if(x+r.width>window.innerWidth-8) x=e.clientX-r.width-10; if(y+r.height>window.innerHeight-8) y=e.clientY-r.height-10; tip.style.left=x+'px'; tip.style.top=y+'px'; });
-function _infoBtn(tip,code){ return '<button class="novo-info-btn" data-tip="'+_ne(tip)+'" data-code="'+(code||'')+'" aria-label="info">i</button>'; }
+function _infoBtn(tip,code){ return _codeTag(code)+'<button class="novo-info-btn" data-tip="'+_ne(tip)+'" data-code="'+(BDR_CARD_CODES[code]||code||'')+'" aria-label="info">i</button>'; }
 window.addEventListener('scroll',function(){ document.getElementById('novo-hdr').classList.toggle('scrolled',window.scrollY>10); },{passive:true});
 
 var _ne=function(s){ return (s==null?'—':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); };
@@ -215,25 +261,36 @@ function _revShort(v){ if(!v||v<=0)return 'R$0'; return v>=1000000?('R$'+(v/1000
 function _fmtBig(v){ if(v==null||isNaN(v))return '—'; if(Math.abs(v)>=1e6)return 'R$ '+(v/1e6).toFixed(2).replace('.',',')+'M'; if(Math.abs(v)>=1e3)return 'R$ '+(v/1e3).toFixed(1).replace('.',',')+'k'; return 'R$ '+Math.round(v).toLocaleString('pt-BR'); }
 function _mlbl(ym){ var p=ym.split('-'); return ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][parseInt(p[1])-1]+'/'+p[0].slice(2); }
 function _annualRev(d){ if(d.arr_estimado!=null&&d.arr_estimado>0)return d.arr_estimado; if(d.primeira_fatura!=null&&d.primeira_fatura>0)return d.primeira_fatura*12; return 0; }
+function _rawDeals(){ return window._novoDealsRaw || _novoDeals || []; }
+function _filterState(){ return (window.AxFilter && AxFilter.getState) ? AxFilter.getState() : {mode:'all',start:null,end:null}; }
+function _inWinStrict(dateStr){ var s=_filterState(); if(!s.start)return true; if(!dateStr)return false; return AxFilter.inWin(dateStr); }
+function _dealsByDate(field){ return _rawDeals().filter(function(d){ return _inWinStrict(d[field]); }); }
+function _isBdr(d){ return !!d.sdr; }
 
 var NOVO_FONT='Inter,\'Segoe UI\',system-ui,sans-serif';
 var NOVO_WON_STAGE='Ganho';
 var NOVO_STAGE_ORDER=['Diagnóstico','Cotação','Proposta Enviada','Consultoria','Negociação','Standby','Implantação'];
-function _novoOpen(){ return (_novoDeals||[]).filter(function(d){ return d.stage!==NOVO_WON_STAGE; }); }
+var _novoImplWon=(function(){try{return localStorage.getItem('novo_impl_won')!=='0';}catch(e){return true;}})();
+var _novoActiveMeetings=(function(){try{return localStorage.getItem('novo_active_meetings')!=='0';}catch(e){return true;}})();
+var _novoActiveStandby=(function(){try{return localStorage.getItem('novo_active_standby')==='1';}catch(e){return false;}})();
+function _novoIsWon(d){ return d.stage==='Ganho'||(_novoImplWon&&d.stage==='Implantação'); }
+function _novoOpen(){ return _rawDeals().filter(function(d){ return !_novoIsWon(d)&&d.stage!=='Perdido'&&(_novoActiveMeetings||d.stage!=='Reunião Agendada'); }); }
+function _novoWon(){ return _dealsByDate('close_date').filter(_novoIsWon); }
+function _novoLost(){ return _dealsByDate('close_date').filter(function(d){ return d.stage==='Perdido'; }); }
 function _novoTheme(){ var isLight=document.documentElement.getAttribute('data-theme')==='light'; return { cText:isLight?'#1f2328':'#e6edf3', cText2:isLight?'#57606a':'#8b949e', cGrid:isLight?'rgba(0,0,0,.08)':'rgba(255,255,255,.06)', isLight:isLight }; }
 var _novoCharts={};
 function _novoMkChart(id,cfg){ var ctx=document.getElementById(id); if(!ctx)return; if(_novoCharts[id]) _novoCharts[id].destroy(); _novoCharts[id]=new Chart(ctx,cfg); }
-function _novoDealsRows(deals){ return deals.map(function(d){ var hsUrl=d.hs_id?'https://app.hubspot.com/contacts/44715285/deal/'+d.hs_id:'#'; var nameCell=d.hs_id?'<a href="'+hsUrl+'" target="_blank" rel="noopener" style="color:var(--teal);text-decoration:none">'+_ne(d.dealname)+'</a>':_ne(d.dealname); return '<tr><td style="text-align:left;min-width:140px;max-width:190px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+nameCell+'</td><td style="text-align:left;white-space:nowrap">'+_ne(d.ae)+'</td><td style="white-space:nowrap">'+_ne(d.stage)+'</td><td>'+_ni(d.vidas)+'</td><td>'+_revShort(_annualRev(d))+'</td><td>'+(d.dias_no_pipe!=null?d.dias_no_pipe+'d':'—')+'</td></tr>'; }).join(''); }
-function novoOpenDealsModal(title,deals){ if(!deals||!deals.length){ openModal(title,'<p style="color:var(--text2);padding:1rem 0">Nenhum deal.</p>'); return; } var html='<table class="lb"><thead><tr><th style="text-align:left">Deal</th><th style="text-align:left">AE</th><th>Etapa</th><th>Vidas</th><th>ARR</th><th>Dias</th></tr></thead><tbody>'+_novoDealsRows(deals)+'</tbody></table>'; openModal(title+' ('+deals.length+')',html); }
+function _novoDealsRows(deals){ return deals.map(function(d){ var hsUrl=d.hs_id?'https://app.hubspot.com/contacts/44715285/deal/'+d.hs_id:'#'; var nameCell=d.hs_id?'<a href="'+hsUrl+'" target="_blank" rel="noopener" style="color:var(--teal);text-decoration:none">'+_ne(d.dealname)+'</a>':_ne(d.dealname); return '<tr><td style="text-align:left;min-width:150px;max-width:210px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+nameCell+'</td><td style="text-align:left;white-space:nowrap">'+_ne(d.sdr||'—')+'</td><td style="text-align:left;white-space:nowrap">'+_ne(d.ae)+'</td><td>'+_ne(d.pipeline)+'</td><td style="white-space:nowrap">'+_ne(d.stage)+'</td><td>'+_ni(d.vidas)+'</td><td>'+_revShort(_annualRev(d))+'</td><td style="white-space:nowrap">'+(d.createdate||'—')+'</td><td style="white-space:nowrap">'+(d.close_date||'—')+'</td></tr>'; }).join(''); }
+function novoOpenDealsModal(title,deals){ if(!deals||!deals.length){ openModal(title,'<p style="color:var(--text2);padding:1rem 0">Nenhum deal.</p>'); return; } var html='<table class="lb"><thead><tr><th style="text-align:left">Deal</th><th style="text-align:left">BDR</th><th style="text-align:left">AE</th><th>Pipe</th><th>Etapa</th><th>Vidas</th><th>ARR</th><th>Criado</th><th>Fechado</th></tr></thead><tbody>'+_novoDealsRows(deals)+'</tbody></table>'; openModal(title+' ('+deals.length+')',html); }
 
-function _getMonths(n){ var now=new Date(), months=[]; for(var i=n-1;i>=0;i--){ var dd=new Date(now.getFullYear(),now.getMonth()-i,1); months.push(dd.getFullYear()+'-'+String(dd.getMonth()+1).padStart(2,'0')); } return months; }
+function _getMonths(n){ var st=_filterState(), months=[]; if(st.start&&st.end){ var s=new Date(st.start+'T00:00:00'), e=new Date(st.end+'T00:00:00'); var y=s.getFullYear(), m=s.getMonth(); while(y<e.getFullYear()||(y===e.getFullYear()&&m<=e.getMonth())){ months.push(y+'-'+String(m+1).padStart(2,'0')); m++; if(m>11){m=0;y++;} } return months; } var now=new Date(); for(var i=n-1;i>=0;i--){ var dd=new Date(now.getFullYear(),now.getMonth()-i,1); months.push(dd.getFullYear()+'-'+String(dd.getMonth()+1).padStart(2,'0')); } return months; }
 
 var _novoDeals=null;
 function novoLoadData(){
   var btn=document.getElementById('btn-refresh'); if(btn) btn.classList.add('spinning');
   document.getElementById('novo-content').innerHTML='<div style="text-align:center;padding:3rem 0;color:var(--text2)">'+t('loading')+'</div>';
-  fetch('/api/forecast-table').then(function(r){return r.json();}).then(function(data){
-    _novoDeals=Array.isArray(data)?data:(data.deals||[]);
+  fetch('/api/forecast-table?includeLost=true').then(function(r){ if(!r.ok) return r.text().then(function(txt){ throw new Error(txt||('HTTP '+r.status)); }); return r.json(); }).then(function(data){
+    _novoDeals=Array.isArray(data)?data:(data.deals||[]);window._novoDealsRaw=_novoDeals;
     if(btn) btn.classList.remove('spinning');
     novoRender();
   }).catch(function(err){
@@ -243,30 +300,31 @@ function novoLoadData(){
 }
 
 function novoRender(){
-  var deals=_novoDeals||[];
-  var won=deals.filter(function(d){return d.stage===NOVO_WON_STAGE;});
+  var deals=_rawDeals();
+  var won=_novoWon();
   var open=_novoOpen();
-  var bdrDeals=deals.filter(function(d){return d.colaboradores&&d.colaboradores>0;});
-  var bdrOpen=bdrDeals.filter(function(d){return d.stage!==NOVO_WON_STAGE;});
-  var ts=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  var bdrDeals=deals.filter(_isBdr);
+  var bdrOpen=open.filter(_isBdr);
+  var ts=new Date().toLocaleTimeString('pt-BR',{timeZone:'America/Sao_Paulo',hour:'2-digit',minute:'2-digit'});
   var months=_getMonths(12);
-  var newTotal=deals.filter(function(d){return d.createdate&&d.createdate.substring(0,7)===months[months.length-1];}).length;
-  var newBdr=bdrDeals.filter(function(d){return d.createdate&&d.createdate.substring(0,7)===months[months.length-1];}).length;
+  var created=_dealsByDate('createdate');
+  var newTotal=created.filter(function(d){return d.createdate&&d.createdate.substring(0,7)===months[months.length-1];}).length;
+  var newBdr=created.filter(function(d){return d.createdate&&d.createdate.substring(0,7)===months[months.length-1]&&_isBdr(d);}).length;
   var bdrPct=deals.length>0?Math.round(bdrDeals.length/deals.length*100):0;
-  var avgVidas=deals.length?Math.round(deals.reduce(function(s,d){return s+(d.vidas||0);},0)/deals.length):0;
+  var avgVidas=created.length?Math.round(created.reduce(function(s,d){return s+(d.vidas||0);},0)/created.length):0;
 
-  var kpi=function(lbl,val,sub,col){ return '<div class="kpi-card"><div class="kpi-label">'+lbl+'</div><div class="kpi-value" style="color:'+(col||'var(--text)')+'">'+val+'</div><div class="kpi-sub">'+sub+'</div></div>'; };
+  var kpi=function(lbl,val,sub,col,key,kind){ return '<div class="kpi-card'+(kind?' kpi-click':'')+'" '+(kind?'onclick="bdrKpiOpen(\''+kind+'\')"':'')+'><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.35rem"><div class="kpi-label">'+lbl+'</div>'+_codeTag(key)+'</div><div class="kpi-value" style="color:'+(col||'var(--text)')+'">'+val+'</div><div class="kpi-sub">'+sub+'</div></div>'; };
   var c=function(title,tip,id,h){ return '<div class="novo-card"><div class="novo-card-header"><h3>'+title+'</h3>'+_infoBtn(tip,id)+'</div><canvas id="chart-bdr-'+id+'" style="max-height:'+(h||340)+'px"></canvas></div>'; };
   var cWide=function(title,tip,id,h){ return '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header"><h3>'+title+'</h3>'+_infoBtn(tip,id)+'</div><canvas id="chart-bdr-'+id+'" style="max-height:'+(h||320)+'px"></canvas></div>'; };
 
-  document.getElementById('novo-content').innerHTML=
-    '<div style="font-size:.78rem;color:var(--text2);margin-bottom:.75rem">'+t('updated_at')+' '+ts+' · '+deals.length+' deals totais · '+bdrDeals.length+' com colaboradores (proxy BDR)</div>'+
+  document.getElementById('novo-content').innerHTML=(window.AxFilter?AxFilter.barHtml():'')+
+    '<div style="font-size:.78rem;color:var(--text2);margin-bottom:.75rem">'+t('updated_at')+' '+ts+' | '+deals.length+' deals totais | '+bdrDeals.length+' com BDR (sdr) | '+bdrOpen.length+' abertos atuais</div>'+ 
     '<div class="novo-cards" style="margin-bottom:.5rem"><div class="banner-warn">'+t('bdr_note')+'</div></div>'+
     '<div class="kpi-row">'+
-      kpi('🟡 Total BDR (proxy)',_ni(bdrDeals.length),bdrPct+'% do pipeline total','var(--teal)')+
-      kpi('🟡 Pipeline BDR Aberto',_ni(bdrOpen.length),'deals com colaboradores abertos','var(--text)')+
-      kpi('🟡 Novos Deals (mês atual)',_ni(newTotal),newBdr+' com colaboradores (BDR)','var(--text)')+
-      kpi('🟡 Vidas Médias/Deal',_ni(avgVidas),'média de todos os deals','var(--text)')+
+      kpi('Total BDR',_ni(bdrDeals.length),bdrPct+'% da base carregada com sdr','var(--teal)','kpi-total-bdr','bdr')+
+      kpi('Pipeline BDR Aberto',_ni(bdrOpen.length),'snapshot atual por sdr','var(--text)','kpi-bdr-open','bdrOpen')+
+      kpi('Novos Deals no Período',_ni(newTotal),newBdr+' com BDR (sdr)','var(--text)','kpi-new-deals','new')+
+      kpi('Vidas Médias/Deal',_ni(avgVidas),'média por createdate no período','var(--text)','kpi-avg-vidas','created')+
     '</div>'+
     '<div class="novo-cards">'+
       '<div class="section-hdr"><h2>Origination Volume</h2></div>'+
@@ -290,41 +348,51 @@ function novoRender(){
   buildBdrSizeDist();
 }
 
+function bdrKpiOpen(kind){
+  var deals=_rawDeals(), created=_dealsByDate('createdate'), open=_novoOpen();
+  if(kind==='bdr') return novoOpenDealsModal('Total BDR', deals.filter(_isBdr));
+  if(kind==='bdrOpen') return novoOpenDealsModal('Pipeline BDR Aberto', open.filter(_isBdr));
+  if(kind==='new') return novoOpenDealsModal('Novos Deals no Período', created);
+  if(kind==='created') return novoOpenDealsModal('Deals criados no período', created);
+}
+
 function buildBdrNewDeals(){
-  var th=_novoTheme(), months=_getMonths(12), all=_novoDeals||[];
+  var th=_novoTheme(), months=_getMonths(12), all=_dealsByDate('createdate');
   var total=months.map(function(m){return all.filter(function(d){return d.createdate&&d.createdate.substring(0,7)===m;}).length;});
-  var bdr=months.map(function(m){return all.filter(function(d){return d.createdate&&d.createdate.substring(0,7)===m&&d.colaboradores&&d.colaboradores>0;}).length;});
+  var bdr=months.map(function(m){return all.filter(function(d){return d.createdate&&d.createdate.substring(0,7)===m&&_isBdr(d);}).length;});
   _novoMkChart('chart-bdr-new-deals',{type:'bar',plugins:[ChartDataLabels],
     data:{labels:months.map(_mlbl),datasets:[
       {label:'Total',data:total,backgroundColor:'rgba(88,166,255,.5)',borderRadius:2,stack:'s'},
-      {label:'Com Colaboradores (BDR)',data:bdr,backgroundColor:'rgba(58,184,183,.8)',borderRadius:2,stack:'s2'}
+      {label:'Com BDR (sdr)',data:bdr,backgroundColor:'rgba(58,184,183,.8)',borderRadius:2,stack:'s2'}
     ]},
     options:{responsive:true,layout:{padding:{top:24}},plugins:{legend:{display:true,labels:{color:th.cText2,font:{family:NOVO_FONT,size:10},padding:8}},datalabels:{display:false},tooltip:{callbacks:{label:function(c){return c.dataset.label+': '+c.parsed.y+' deals';}}}},
       scales:{x:{grid:{display:false},ticks:{color:th.cText2,font:{family:NOVO_FONT}}},y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0}}}}});
 }
 
 function buildBdrNewVidas(){
-  var th=_novoTheme(), months=_getMonths(12), all=_novoDeals||[];
+  var th=_novoTheme(), months=_getMonths(12), all=_dealsByDate('createdate');
   var total=months.map(function(m){return all.filter(function(d){return d.createdate&&d.createdate.substring(0,7)===m;}).reduce(function(s,d){return s+(d.vidas||0);},0);});
-  var bdr=months.map(function(m){return all.filter(function(d){return d.createdate&&d.createdate.substring(0,7)===m&&d.colaboradores&&d.colaboradores>0;}).reduce(function(s,d){return s+(d.vidas||0);},0);});
+  var bdr=months.map(function(m){return all.filter(function(d){return d.createdate&&d.createdate.substring(0,7)===m&&_isBdr(d);}).reduce(function(s,d){return s+(d.vidas||0);},0);});
   _novoMkChart('chart-bdr-new-vidas',{type:'bar',plugins:[ChartDataLabels],
     data:{labels:months.map(_mlbl),datasets:[
       {label:'Total',data:total,backgroundColor:'rgba(88,166,255,.5)',borderRadius:2,stack:'s'},
-      {label:'Com Colaboradores',data:bdr,backgroundColor:'rgba(63,185,80,.8)',borderRadius:2,stack:'s2'}
+      {label:'Com BDR (sdr)',data:bdr,backgroundColor:'rgba(63,185,80,.8)',borderRadius:2,stack:'s2'}
     ]},
     options:{responsive:true,layout:{padding:{top:24}},plugins:{legend:{display:true,labels:{color:th.cText2,font:{family:NOVO_FONT,size:10},padding:8}},datalabels:{display:false},tooltip:{callbacks:{label:function(c){return c.dataset.label+': '+_ni(c.parsed.y)+' vidas';}}}},
       scales:{x:{grid:{display:false},ticks:{color:th.cText2,font:{family:NOVO_FONT}}},y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT}}}}}});
 }
 
 function buildBdrNetFlow(){
-  var th=_novoTheme(), months=_getMonths(12), all=_novoDeals||[];
-  var inflow=months.map(function(m){return all.filter(function(d){return d.createdate&&d.createdate.substring(0,7)===m;}).length;});
-  var outflow=months.map(function(m){return all.filter(function(d){return d.stage===NOVO_WON_STAGE&&d.close_date&&d.close_date.substring(0,7)===m;}).length;});
-  var net=inflow.map(function(v,i){return v-outflow[i];});
+  var th=_novoTheme(), months=_getMonths(12), created=_dealsByDate('createdate').filter(_isBdr), won=_novoWon().filter(_isBdr), lost=_novoLost().filter(_isBdr);
+  var inflow=months.map(function(m){return created.filter(function(d){return d.createdate&&d.createdate.substring(0,7)===m;}).length;});
+  var wonOut=months.map(function(m){return won.filter(function(d){return d.close_date&&d.close_date.substring(0,7)===m;}).length;});
+  var lostOut=months.map(function(m){return lost.filter(function(d){return d.close_date&&d.close_date.substring(0,7)===m;}).length;});
+  var net=inflow.map(function(v,i){return v-wonOut[i]-lostOut[i];});
   _novoMkChart('chart-bdr-net-flow',{type:'bar',plugins:[ChartDataLabels],
     data:{labels:months.map(_mlbl),datasets:[
       {label:'Entrada (criados)',data:inflow,backgroundColor:'rgba(58,184,183,.75)',borderRadius:2,stack:'s'},
-      {label:'Saída (ganhos)',data:outflow.map(function(v){return -v;}),backgroundColor:'rgba(248,81,73,.65)',borderRadius:2,stack:'s'},
+      {label:'Saída (ganhos)',data:wonOut.map(function(v){return -v;}),backgroundColor:'rgba(63,185,80,.65)',borderRadius:2,stack:'s'},
+      {label:'Saída (perdidos)',data:lostOut.map(function(v){return -v;}),backgroundColor:'rgba(248,81,73,.65)',borderRadius:2,stack:'s'},
       {type:'line',label:'Net',data:net,borderColor:'rgba(227,179,65,.9)',backgroundColor:'rgba(227,179,65,.15)',pointRadius:3,borderWidth:2,tension:0.3,fill:false,stack:undefined,datalabels:{display:false}}
     ]},
     options:{responsive:true,layout:{padding:{top:24}},plugins:{legend:{display:true,labels:{color:th.cText2,font:{family:NOVO_FONT,size:10},padding:8}},datalabels:{display:false},tooltip:{mode:'index',intersect:false}},
@@ -332,14 +400,16 @@ function buildBdrNetFlow(){
 }
 
 function buildBdrNetVidas(){
-  var th=_novoTheme(), months=_getMonths(12), all=_novoDeals||[];
-  var inflow=months.map(function(m){return all.filter(function(d){return d.createdate&&d.createdate.substring(0,7)===m;}).reduce(function(s,d){return s+(d.vidas||0);},0);});
-  var outflow=months.map(function(m){return all.filter(function(d){return d.stage===NOVO_WON_STAGE&&d.close_date&&d.close_date.substring(0,7)===m;}).reduce(function(s,d){return s+(d.vidas||0);},0);});
-  var net=inflow.map(function(v,i){return v-outflow[i];});
+  var th=_novoTheme(), months=_getMonths(12), created=_dealsByDate('createdate').filter(_isBdr), won=_novoWon().filter(_isBdr), lost=_novoLost().filter(_isBdr);
+  var inflow=months.map(function(m){return created.filter(function(d){return d.createdate&&d.createdate.substring(0,7)===m;}).reduce(function(s,d){return s+(d.vidas||0);},0);});
+  var wonOut=months.map(function(m){return won.filter(function(d){return d.close_date&&d.close_date.substring(0,7)===m;}).reduce(function(s,d){return s+(d.vidas||0);},0);});
+  var lostOut=months.map(function(m){return lost.filter(function(d){return d.close_date&&d.close_date.substring(0,7)===m;}).reduce(function(s,d){return s+(d.vidas||0);},0);});
+  var net=inflow.map(function(v,i){return v-wonOut[i]-lostOut[i];});
   _novoMkChart('chart-bdr-net-vidas',{type:'bar',plugins:[ChartDataLabels],
     data:{labels:months.map(_mlbl),datasets:[
       {label:'Entrada (vidas criadas)',data:inflow,backgroundColor:'rgba(58,184,183,.75)',borderRadius:2,stack:'s'},
-      {label:'Saída (vidas ganhas)',data:outflow.map(function(v){return -v;}),backgroundColor:'rgba(248,81,73,.65)',borderRadius:2,stack:'s'},
+      {label:'Saída (vidas ganhas)',data:wonOut.map(function(v){return -v;}),backgroundColor:'rgba(63,185,80,.65)',borderRadius:2,stack:'s'},
+      {label:'Saída (vidas perdidas)',data:lostOut.map(function(v){return -v;}),backgroundColor:'rgba(248,81,73,.65)',borderRadius:2,stack:'s'},
       {type:'line',label:'Net Vidas',data:net,borderColor:'rgba(227,179,65,.9)',backgroundColor:'rgba(227,179,65,.15)',pointRadius:3,borderWidth:2,tension:0.3,fill:false,stack:undefined,datalabels:{display:false}}
     ]},
     options:{responsive:true,layout:{padding:{top:24}},plugins:{legend:{display:true,labels:{color:th.cText2,font:{family:NOVO_FONT,size:10},padding:8}},datalabels:{display:false},tooltip:{mode:'index',intersect:false}},
@@ -347,7 +417,7 @@ function buildBdrNetVidas(){
 }
 
 function buildBdrAvgVidas(){
-  var th=_novoTheme(), months=_getMonths(12), all=_novoDeals||[];
+  var th=_novoTheme(), months=_getMonths(12), all=_dealsByDate('createdate');
   var avgs=months.map(function(m){ var ds=all.filter(function(d){return d.createdate&&d.createdate.substring(0,7)===m&&d.vidas!=null;}); return ds.length?Math.round(ds.reduce(function(s,d){return s+(d.vidas||0);},0)/ds.length):null; });
   _novoMkChart('chart-bdr-avg-vidas',{type:'line',plugins:[ChartDataLabels],
     data:{labels:months.map(_mlbl),datasets:[{label:'Vidas Médias/Deal',data:avgs,borderColor:'rgba(147,112,219,.9)',backgroundColor:'rgba(147,112,219,.15)',pointRadius:4,borderWidth:2,tension:0.35,fill:true,spanGaps:true}]},
@@ -358,18 +428,18 @@ function buildBdrAvgVidas(){
 }
 
 function buildBdrColabs(){
-  var th=_novoTheme(), all=_novoDeals||[];
-  var withC=all.filter(function(d){return d.colaboradores&&d.colaboradores>0;}).length;
+  var th=_novoTheme(), all=_rawDeals();
+  var withC=all.filter(_isBdr).length;
   var without=all.length-withC;
   _novoMkChart('chart-bdr-colabs',{type:'doughnut',plugins:[ChartDataLabels],
-    data:{labels:['Com Colaboradores (BDR proxy)','Sem Colaboradores'],datasets:[{data:[withC,without],backgroundColor:['rgba(58,184,183,.8)','rgba(139,148,158,.4)'],borderWidth:0,hoverOffset:4}]},
+    data:{labels:['Com BDR (sdr)','Sem BDR'],datasets:[{data:[withC,without],backgroundColor:['rgba(58,184,183,.8)','rgba(139,148,158,.4)'],borderWidth:0,hoverOffset:4}]},
     options:{responsive:true,plugins:{legend:{display:true,position:'bottom',labels:{color:th.cText2,font:{family:NOVO_FONT,size:10},padding:12}},
       datalabels:{color:'#fff',font:{family:NOVO_FONT,weight:'bold',size:12},formatter:function(v,ctx){var total=ctx.dataset.data.reduce(function(a,b){return a+b;},0); return total?Math.round(v/total*100)+'%':''; }},
-      tooltip:{callbacks:{label:function(c){return c.label+': '+c.parsed+' deals ('+Math.round(c.parsed/all.length*100)+'%)';}}}}}});
+      tooltip:{callbacks:{label:function(c){var pct=all.length?Math.round(c.parsed/all.length*100):0; return c.label+': '+c.parsed+' deals ('+pct+'%)';}}}}}});
 }
 
 function buildBdrSizeDist(){
-  var th=_novoTheme(), all=_novoDeals||[];
+  var th=_novoTheme(), all=_dealsByDate('createdate');
   var bands=['< 50','50–200','200–500','500+'];
   var counts=[
     all.filter(function(d){return (d.vidas||0)<50;}).length,
@@ -388,7 +458,9 @@ function buildBdrSizeDist(){
 
 (function(){
   try{ if(localStorage.getItem('novo_nav_open')==='true') _setNavOpen(true); }catch(e){}
-  document.getElementById('novo-lang-label').textContent=NOVO_LANG.toUpperCase();
+  (function(_e){if(_e)_e.textContent=NOVO_LANG.toUpperCase();})(document.getElementById('novo-lang-label'));
+  document.body.classList.toggle('novo-info-on',_novoShowInfo);
+  var _ib=document.getElementById('btn-info-toggle'); if(_ib)_ib.classList.toggle('highlighted',_novoShowInfo);
   novoLoadData();
 })();
 </script>
@@ -426,13 +498,13 @@ function buildBdrSizeDist(){
 <script>
 (function(){
   var PANELS=[
-    {label:'CRO Dashboard',url:'/novo',file:'novo-dashboard.html',health:'y',icon:'<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>'},
-    {label:'Board View',url:'/novo-board',file:'novo-board.html',health:'r',icon:'<path d="M2 20h20M4 20V10l8-6 8 6v10"/><path d="M10 20v-6h4v6"/>'},
-    {label:'AE Performance',url:'/novo-ae',file:'novo-ae.html',health:'r',icon:'<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>'},
-    {label:'BDR Performance',url:'/novo-bdr',file:'novo-bdr.html',health:'r',icon:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'},
-    {label:'Last 48h',url:'/novo-48h',file:'novo-48h.html',health:'r',icon:'<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>'},
-    {label:'CS Dashboard',url:'/novo-cs',file:'novo-cs.html',health:'r',icon:'<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>'},
-    {label:'Cotação',url:'/novo-cotacao',file:'novo-cotacao.html',health:'r',icon:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>'},
+    {label:'CRO Dashboard',url:'/novo',file:'dashboard.html',health:'g',icon:'<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>'},
+    {label:'Board View',url:'/novo-board',file:'board.html',health:'g',icon:'<path d="M2 20h20M4 20V10l8-6 8 6v10"/><path d="M10 20v-6h4v6"/>'},
+    {label:'AE Performance',url:'/novo-ae',file:'ae.html',health:'g',icon:'<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>'},
+    {label:'BDR Performance',url:'/novo-bdr',file:'bdr.html',health:'r',icon:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'},
+    {label:'Last 48h',url:'/novo-48h',file:'48h.html',health:'r',icon:'<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>'},
+    {label:'CS Dashboard',url:'/novo-cs',file:'cs.html',health:'r',icon:'<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>'},
+    {label:'Cotação',url:'/novo-cotacao',file:'cotacao.html',health:'r',icon:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>'},
     {label:'Forecast',url:'/forecast',file:'forecast.html',health:'g',icon:'<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>'}
   ];
   function findByUrl(u){ for(var i=0;i<PANELS.length;i++){ if(PANELS[i].url===u) return PANELS[i]; } return null; }
@@ -451,7 +523,7 @@ function buildBdrSizeDist(){
       if(p.url==='/forecast') h+='<div style="height:1px;background:var(--border);margin:.4rem .75rem"></div>';
       h+='<li class="nav-item'+(p.url===current?' active':'')+'" data-url="'+p.url+'">'+svgFor(p)+'<span>'+p.label+'</span>'+dot(p.health)+'</li>';
     }
-    h+='</ul>';
+    h+='</ul>'+'<div class="nav-drawer-footer"><button class="nav-foot-btn" type="button" onclick="doLogout()" title="Sair" aria-label="Sair"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button><button class="nav-foot-btn" type="button" onclick="novoToggleLang()" title="Idioma / Language"><span id="novo-lang-label">'+(typeof NOVO_LANG!=="undefined"&&NOVO_LANG==="pt"?"EN":"PT")+'</span></button><button class="nav-foot-btn" type="button" onclick="toggleTheme()" title="Tema / Theme"><svg class="novo-theme-sun" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg><svg class="novo-theme-moon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></button></div>';
     nav.innerHTML=h;
     var nit=nav.getElementsByClassName('nav-item');
     for(var j=0;j<nit.length;j++){ nit[j].addEventListener('click',function(){ window.location.href=this.getAttribute('data-url'); }); }
@@ -478,7 +550,7 @@ function buildBdrSizeDist(){
   window.togglePanelMenu=function(e){ if(e){e.stopPropagation();} var sw=document.getElementById('panel-switcher'); if(!sw) return; var open=!sw.classList.contains('open'); sw.classList.toggle('open',open); var btn=sw.querySelector('.panel-switch-btn'); if(btn) btn.setAttribute('aria-expanded',open?'true':'false'); };
   window.closePanelMenu=function(){ var sw=document.getElementById('panel-switcher'); if(sw){ sw.classList.remove('open'); var btn=sw.querySelector('.panel-switch-btn'); if(btn) btn.setAttribute('aria-expanded','false'); } };
   document.addEventListener('click',function(e){ var sw=document.getElementById('panel-switcher'); if(sw&&sw.classList.contains('open')&&!sw.contains(e.target)) window.closePanelMenu(); });
-  document.addEventListener('keydown',function(e){ if(e.key==='Escape'||e.keyCode===27){ var sw=document.getElementById('panel-switcher'); if(sw&&sw.classList.contains('open')) window.closePanelMenu(); } });
+  document.addEventListener('keydown',function(e){ if(e.key!=='Escape'&&e.keyCode!==27)return; var gs=document.getElementById('gs-drawer'); if(gs&&gs.classList.contains('open')){ novoCloseSettings(); return; } var help=document.getElementById('novo-help-drawer'); if(help&&help.classList.contains('open')){ novoCloseHelp(); return; } var modal=document.getElementById('modal-overlay'); if(modal&&modal.classList.contains('open')){ closeModal(); return; } var sw=document.getElementById('panel-switcher'); if(sw&&sw.classList.contains('open')) window.closePanelMenu(); });
   if(document.readyState!=='loading') build(); else document.addEventListener('DOMContentLoaded',build);
 })();
 </script>

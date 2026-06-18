@@ -70,10 +70,7 @@
       color: var(--text);
       font-family: var(--font);
       font-size: 13px;
-      transition: padding-left .25s cubic-bezier(0.4,0,0.2,1);
     }
-    body.nav-docked { padding-left: 280px; }
-    @media(max-width:820px){body.nav-docked{padding-left:0}}
 
     /* ── HEADER ────────────────────────────────────────────────────────────────── */
     .header {
@@ -82,11 +79,8 @@
       align-items: center;
       justify-content: space-between;
       gap: 1rem;
-      padding: 1.25rem 2rem;
+      padding: 1.5rem 2rem 1rem;
       background: var(--card);
-      border-bottom: 1px solid var(--border);
-      position: relative;
-      z-index: 100;
     }
 
     .header h1 {
@@ -386,8 +380,8 @@
       animation: fddIn 0.14s cubic-bezier(0.4, 0, 0.2, 1) both;
       will-change: transform, opacity;
     }
-    html[data-theme="light"] .header { background: var(--card); }
-    html[data-theme="light"] .filter-bar { background: var(--card); }
+    html[data-theme="light"] .header { background: #edf0f2; }
+    html[data-theme="light"] .filter-bar { background: #edf0f2; }
     html[data-theme="light"] .kpis { background: #f6f8fa; }
     .fdd-trigger.filter-active { color: var(--accent); }
 
@@ -452,7 +446,7 @@
       box-shadow: 0 0 0 2px rgba(207, 34, 46, .2);
     }
 
-    /* AE dropdown | Apple style */
+    /* AE dropdown — Apple style */
     .ae-select {
       background: var(--card);
       border: none;
@@ -622,6 +616,35 @@
       color: var(--text2);
       margin-top: 0.12rem;
     }
+
+    /* ── KPI ACCORDION (big numbers colapsáveis) ───────────────────────────────── */
+    .kpi-bar {
+      display: flex;
+      align-items: center;
+      padding: .55rem 2rem 0;
+      background: var(--bg);
+    }
+    .kpi-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: .45rem;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--text2);
+      font-family: var(--font);
+      font-size: .72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      padding: .3rem .45rem;
+      border-radius: 6px;
+      transition: color .12s, background .12s;
+    }
+    .kpi-toggle:hover { color: var(--text); background: var(--hover); }
+    .kpi-chevron { transition: transform .2s; }
+    .kpi-toggle.collapsed .kpi-chevron { transform: rotate(-90deg); }
+    .kpis.kpi-hidden { display: none; }
 
     /* ── TABLE WRAP ────────────────────────────────────────────────────────────── */
     .table-wrap {
@@ -1225,6 +1248,81 @@
     }
     .help-table tbody tr:nth-child(even) td { background: var(--even-s); }
 
+    /* ── DEAL INFO MODAL ─────────────────────────────────────────────────────── */
+    .deal-modal-box {
+      position: fixed;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%) scale(0.96);
+      width: min(680px, 94vw);
+      max-height: 88vh;
+      overflow-y: auto;
+      background: var(--card);
+      border-radius: 14px;
+      padding: 1.6rem 1.8rem 1.8rem;
+      box-shadow: 0 24px 64px rgba(0, 0, 0, .45);
+      opacity: 0;
+      transition: opacity .22s, transform .22s cubic-bezier(0.4, 0, 0.2, 1);
+      will-change: transform, opacity;
+    }
+    .prob-overlay.open .deal-modal-box {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+    }
+    .deal-modal-head {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      gap: 1rem; margin-bottom: 1.3rem;
+    }
+    .deal-modal-title { font-size: 1.25rem; font-weight: 700; color: var(--text); line-height: 1.25; }
+    .deal-modal-sub { font-size: .82rem; color: var(--text2); margin-top: .3rem; }
+    .deal-modal-list {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0 1rem;
+    }
+    .deal-row {
+      display: flex; align-items: baseline; justify-content: space-between;
+      gap: .8rem; padding: .5rem .25rem; border-radius: 6px;
+      border-bottom: 1px solid var(--border);
+      transition: background .12s;
+    }
+    .deal-row:hover { background: var(--hover); }
+    .deal-row .dr-lbl {
+      color: var(--text2); font-size: .8rem; font-weight: 500;
+      flex-shrink: 0;
+    }
+    .deal-row .dr-val {
+      color: var(--text); font-size: .86rem; font-weight: 500;
+      text-align: right; word-break: break-word; min-width: 0;
+    }
+    @media (max-width: 560px) {
+      .deal-modal-list { grid-template-columns: 1fr; }
+    }
+    /* navegação prev/next no modal */
+    .deal-modal-nav { display: flex; align-items: center; gap: .35rem; flex-shrink: 0; }
+    .dm-nav-count { font-size: .72rem; color: var(--text2); min-width: 52px; text-align: center; user-select: none; }
+    .dm-nav-btn {
+      width: 30px; height: 30px; border: none; border-radius: 7px; cursor: pointer;
+      background: var(--card2); color: var(--text); font-size: 1.05rem; line-height: 1;
+      display: inline-flex; align-items: center; justify-content: center;
+      transition: background .12s, color .12s;
+    }
+    .dm-nav-btn:hover { background: var(--hover); }
+    .dm-close { background: none; color: var(--text2); }
+    .dm-close:hover { color: var(--text); }
+    .deal-modal-foot {
+      display: flex; justify-content: flex-end; gap: .7rem;
+      margin-top: 1.6rem;
+    }
+    .btn-hubspot {
+      display: inline-flex; align-items: center; gap: .5rem;
+      background: #ff7a59; color: #fff;
+      border: none; border-radius: 8px;
+      padding: .62rem 1.15rem; font-size: .88rem; font-weight: 600;
+      font-family: var(--font); cursor: pointer; text-decoration: none;
+      transition: opacity .15s, transform .12s;
+    }
+    .btn-hubspot:hover { opacity: .9; transform: translateY(-1px); }
+
     .btn-prob-edit {
       display: inline-flex; align-items: center; gap: 0.35rem;
       background: var(--card);
@@ -1279,12 +1377,23 @@
     }
     .hdr-btn:disabled { opacity: 0.4; cursor: default; }
     .hdr-btn.highlighted {
-      background: var(--teal) !important;
-      color: #fff !important;
-      box-shadow: 0 0 0 2px rgba(58,184,183,.3);
+      background: var(--teal);
+      color: #0d1117;
     }
-    .hdr-btn.highlighted:hover { filter: brightness(.88); }
-    html[data-theme="light"] .hdr-btn.highlighted { color: #fff !important; }
+    .hdr-btn.highlighted:hover {
+      background: var(--teal);
+      opacity: 0.85;
+      color: #0d1117;
+    }
+    html[data-theme="light"] .hdr-btn.highlighted {
+      background: #05c3cb;
+      color: #fff;
+    }
+    html[data-theme="light"] .hdr-btn.highlighted:hover {
+      background: #05c3cb;
+      opacity: 0.85;
+      color: #fff;
+    }
     @keyframes hdr-spin { to { transform: rotate(360deg); } }
     .hdr-btn.spinning svg { animation: hdr-spin 0.7s linear infinite; }
     .hdr-btn::after {
@@ -1553,6 +1662,9 @@
         padding: .25rem 0 .5rem !important;
       }
     }
+  </style>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <style>
     /* ── Nav Drawer (shared with CRO Dashboard) ──────────────────────────────── */
     .nav-drawer{position:fixed;top:0;left:-280px;width:280px;height:100vh;background:var(--card);border-right:1px solid rgba(255,255,255,.08);z-index:1000;transition:left .25s cubic-bezier(0.4,0,0.2,1);display:flex;flex-direction:column}
     .nav-drawer.open{left:0}
@@ -1560,6 +1672,10 @@
     .nav-backdrop.open{opacity:1;pointer-events:auto}
     .nav-drawer-header{display:flex;align-items:center;gap:.75rem;padding:1.1rem 1.25rem;border-bottom:1px solid rgba(255,255,255,.08)}
     .nav-drawer-brand{font-weight:600;font-size:1rem;color:var(--text);flex:1}
+.nav-drawer-footer{margin-top:auto;display:flex;align-items:center;gap:.5rem;padding:.7rem .75rem;border-top:1px solid rgba(255,255,255,.08)}
+html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
+.nav-foot-btn{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:.4rem;min-height:38px;background:var(--card2);border:1px solid var(--border);border-radius:10px;color:var(--text2);cursor:pointer;padding:.4rem;font-family:inherit;font-size:.78rem;font-weight:700;letter-spacing:.04em;transition:border-color .15s,color .15s,background .15s}
+.nav-foot-btn:hover{border-color:var(--teal);color:var(--text)}
     .nav-menu{list-style:none;padding:.5rem 0;margin:0}
     .nav-item{display:flex;align-items:center;gap:.75rem;padding:.7rem 1.25rem;cursor:pointer;font-size:.9rem;color:var(--text2);transition:background .15s,color .15s;user-select:none}
     .nav-item:hover{background:rgba(255,255,255,.06);color:var(--text)}
@@ -1568,33 +1684,30 @@
     html[data-theme="light"] .nav-drawer{background:var(--card);border-right-color:rgba(0,0,0,.1)}
     html[data-theme="light"] .nav-backdrop{background:rgba(0,0,0,.3)}
     html[data-theme="light"] .nav-item:hover{background:rgba(0,0,0,.04)}
+    /* Conteúdo desloca quando o drawer está docked (espelha o CRO Dashboard) */
+    body.nav-docked #app-header,
+    body.nav-docked #app-filters,
+    body.nav-docked #app-search,
+    body.nav-docked #kpi-accordion,
+    body.nav-docked #tw,
+    body.nav-docked #historico-panel{margin-left:280px;transition:margin-left .25s cubic-bezier(0.4,0,0.2,1)}
+    @media(max-width:820px){
+      body.nav-docked #app-header,
+      body.nav-docked #app-filters,
+      body.nav-docked #app-search,
+      body.nav-docked #kpi-accordion,
+      body.nav-docked #tw,
+      body.nav-docked #historico-panel{margin-left:0}
+    }
   </style>
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
 <link rel="stylesheet" href="/premium.css?v=5">
 <script src="/premium.js?v=5"></script>
 </head>
 
 <body>
 
-  <!-- Nav Drawer -->
-  <nav class="nav-drawer" id="nav-drawer" aria-label="Menu principal">
-    <div class="nav-drawer-header">
-      <span class="nav-drawer-brand">Dashboard Axenya</span>
-      <button class="hdr-btn" onclick="closeDrawer()" aria-label="Fechar menu">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
-    </div>
-    <ul class="nav-menu">
-      <li class="nav-item" onclick="window.location.href='/novo'">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-        CRO Dashboard
-      </li>
-      <li class="nav-item active">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-        Forecast
-      </li>
-    </ul>
-  </nav>
+  <!-- Nav Drawer (conteúdo regenerado pelo bloco PANELS no load) -->
+  <nav class="nav-drawer" id="nav-drawer" aria-label="Menu principal"></nav>
   <div class="nav-backdrop" id="nav-backdrop" onclick="closeDrawer()"></div>
 
   <div id="login-screen" style="display:none;">
@@ -1633,15 +1746,6 @@
       <span class="sub" id="sub"></span>
     </div>
     <div class="hdr-actions">
-      <!-- Usuário logado / Sair -->
-      <button class="hdr-btn" id="btn-person" onclick="logout()" aria-label="Sair">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-      </button>
-      <div class="hdr-sep"></div>
-      <!-- Tema -->
-      <button class="hdr-btn" id="btn-theme" onclick="toggleTheme()" aria-label="Alternar tema" data-tooltip="Alternar tema">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
-      </button>
       <!-- Ajuda -->
       <button class="hdr-btn" id="btn-help" onclick="openHelpModal()" aria-label="Como funciona" data-tooltip="Como funciona">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
@@ -1692,14 +1796,14 @@
             <button type="button" class="fbtn" style="flex:1; justify-content:center; padding:0.2rem" onclick="selectAllStages()">Todas</button>
             <button type="button" class="fbtn" style="flex:1; justify-content:center; padding:0.2rem" onclick="selectNoStages()">Nenhuma</button>
           </div>
-          <label class="stage-dd-item"><input type="checkbox" data-stage="Diagnóstico" onchange="onStageCheckbox(this)">Diagnóstico</label>
-          <label class="stage-dd-item"><input type="checkbox" data-stage="Cotação" onchange="onStageCheckbox(this)">Cotação</label>
-          <label class="stage-dd-item"><input type="checkbox" data-stage="Proposta Enviada" onchange="onStageCheckbox(this)">Proposta Enviada</label>
-          <label class="stage-dd-item"><input type="checkbox" data-stage="Consultoria" onchange="onStageCheckbox(this)">Consultoria</label>
-          <label class="stage-dd-item"><input type="checkbox" data-stage="Negociação" onchange="onStageCheckbox(this)">Negociação</label>
-          <label class="stage-dd-item"><input type="checkbox" data-stage="Implantação" onchange="onStageCheckbox(this)">Implantação</label>
-          <label class="stage-dd-item"><input type="checkbox" data-stage="Ganho" onchange="onStageCheckbox(this)">Ganho</label>
-          <label class="stage-dd-item"><input type="checkbox" data-stage="Standby" onchange="onStageCheckbox(this)">Standby</label>
+          <label class="custom-cb"><input type="checkbox" data-stage="Diagnóstico" onchange="onStageCheckbox(this)"><span class="cb-box"></span>Diagnóstico</label>
+          <label class="custom-cb"><input type="checkbox" data-stage="Cotação" onchange="onStageCheckbox(this)"><span class="cb-box"></span>Cotação</label>
+          <label class="custom-cb"><input type="checkbox" data-stage="Proposta Enviada" onchange="onStageCheckbox(this)"><span class="cb-box"></span>Proposta Enviada</label>
+          <label class="custom-cb"><input type="checkbox" data-stage="Consultoria" onchange="onStageCheckbox(this)"><span class="cb-box"></span>Consultoria</label>
+          <label class="custom-cb"><input type="checkbox" data-stage="Negociação" onchange="onStageCheckbox(this)"><span class="cb-box"></span>Negociação</label>
+          <label class="custom-cb"><input type="checkbox" data-stage="Implantação" onchange="onStageCheckbox(this)"><span class="cb-box"></span>Implantação</label>
+          <label class="custom-cb"><input type="checkbox" data-stage="Ganho" onchange="onStageCheckbox(this)"><span class="cb-box"></span>Ganho</label>
+          <label class="custom-cb"><input type="checkbox" data-stage="Standby" onchange="onStageCheckbox(this)"><span class="cb-box"></span>Standby</label>
         </div>
       </div>
       <div class="fdd-wrapper">
@@ -1849,9 +1953,9 @@
         </table>
       </section>
 
-      <!-- Receita | Diagnóstico -->
+      <!-- Receita — Diagnóstico -->
       <section class="help-section">
-        <h3 class="help-h3">Receita | Diagnóstico</h3>
+        <h3 class="help-h3">Receita — Diagnóstico</h3>
         <p class="help-p">Deals em Diagnóstico usam uma lógica própria baseada no número de vidas, pois ainda não há fatura definida.</p>
         <p class="help-p"><strong>Receita recorrente</strong> = vidas × R$/vida (por faixa)</p>
         <table class="help-table">
@@ -1866,15 +1970,15 @@
         <p class="help-p">Se a data projetada (cadastro + delay) já ficou no passado, a receita é projetada a partir do mês atual.</p>
       </section>
 
-      <!-- Receita | demais etapas -->
+      <!-- Receita — demais etapas -->
       <section class="help-section">
-        <h3 class="help-h3">Receita | demais etapas</h3>
+        <h3 class="help-h3">Receita — demais etapas</h3>
         <p class="help-p">Para todas as outras etapas, a receita mensal é calculada a partir da <strong>primeira fatura</strong> e do <strong>modelo de remuneração</strong>.</p>
 
         <p class="help-p" style="margin-top:.7rem;"><strong>Fee por vida</strong></p>
         <p class="help-p">Receita mensal = primeira fatura (valor fixo, todos os meses).</p>
 
-        <p class="help-p" style="margin-top:.7rem;"><strong>Corretagem | sem agenciamento</strong></p>
+        <p class="help-p" style="margin-top:.7rem;"><strong>Corretagem — sem agenciamento</strong></p>
         <table class="help-table">
           <thead><tr><th>Vidas</th><th>Receita mensal</th></tr></thead>
           <tbody>
@@ -1883,7 +1987,7 @@
           </tbody>
         </table>
 
-        <p class="help-p" style="margin-top:.7rem;"><strong>Corretagem | com agenciamento</strong></p>
+        <p class="help-p" style="margin-top:.7rem;"><strong>Corretagem — com agenciamento</strong></p>
         <table class="help-table">
           <thead><tr><th>Vidas</th><th>Mês</th><th>Receita</th></tr></thead>
           <tbody>
@@ -1903,6 +2007,11 @@
     </div>
   </div>
 
+  <!-- ── DEAL INFO MODAL ────────────────────────────────────────────────────── -->
+  <div class="prob-overlay" id="deal-overlay" onclick="if(event.target===this)closeDealModal()">
+    <div class="deal-modal-box" id="deal-modal-box"></div>
+  </div>
+
   <div class="search-bar" id="app-search" style="display:none;">
     <div class="search-wrap">
       <input type="text" class="search-input-full" id="search-input" placeholder="Filtrar por nome do negócio..."
@@ -1913,7 +2022,14 @@
     </div>
   </div>
 
-  <div class="kpis">
+  <div id="kpi-accordion">
+    <div class="kpi-bar">
+      <button class="kpi-toggle" id="kpi-toggle" onclick="toggleKpis()" aria-label="Mostrar/ocultar indicadores">
+        <svg class="kpi-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        <span>Indicadores</span>
+      </button>
+    </div>
+    <div class="kpis" id="kpis">
     <div class="kpi">
       <div class="lbl">Deals abertos</div>
       <div class="val" id="k-deals">—</div>
@@ -1933,6 +2049,7 @@
       data-tip="ARR ponderado dividido por 12 meses. Representa a expectativa real de adição mensal de receita.">
       <div class="lbl">MRR ponderado</div>
       <div class="val" id="k-mrrw">—</div>
+    </div>
     </div>
   </div>
 
@@ -2030,6 +2147,8 @@
     let completenessFilter = 'all'; // 'all' | 'complete' | 'incomplete'
     let sortKey = 'stage';
     let sortDir = 1;
+    let currentDeals = [];   // deals atualmente renderizados na tabela
+    let currentInfo = [];    // metadados de colunas (compartilhado com o modal de detalhes)
 
     // ── HELPERS ───────────────────────────────────────────────────────────────
     function esc(s) {
@@ -2130,6 +2249,16 @@
       document.getElementById('btn-theme').innerHTML = isLight ? SVG_SUN : SVG_MOON;
     }
 
+    // ── KPI ACCORDION ─────────────────────────────────────────────────────────
+    function toggleKpis() {
+      const body = document.getElementById('kpis');
+      const tog = document.getElementById('kpi-toggle');
+      if (!body) return;
+      const collapsed = body.classList.toggle('kpi-hidden');
+      tog && tog.classList.toggle('collapsed', collapsed);
+      try { localStorage.setItem('forecast_kpis_collapsed', collapsed ? '1' : '0'); } catch { }
+    }
+
     // ── COMPLETENESS FILTER ───────────────────────────────────────────────────
     function updateCompletenessPanel() {
       document.querySelectorAll('#completeness-menu .completeness-opt').forEach(opt => {
@@ -2165,6 +2294,98 @@
     function closeHelpModal() {
       document.getElementById('help-overlay').classList.remove('open');
     }
+
+    // ── DEAL INFO MODAL ───────────────────────────────────────────────────────
+    function dealFieldValue(c, v) {
+      if (c.k === 'produto') {
+        return v
+          ? String(v).split(';').filter(Boolean).map(s => `<span class="chip">${esc(s.trim())}</span>`).join(' ')
+          : '<span style="color:var(--text2)">—</span>';
+      }
+      if (c.bool) {
+        if (v === true) return '<span class="byes">Sim</span>';
+        if (v === false) return '<span class="bno">Não</span>';
+        return '<span class="bno">—</span>';
+      }
+      if (c.prob) return `<span class="${probCls(v)}">${fmtPct(v)}</span>`;
+      if (c.k === 'quarter') return quarterEmpty(v) ? '—' : `<span class="qbadge">${esc(v)}</span>`;
+      if (c.fmt) { const r = c.fmt(v); return r === '-' ? '—' : esc(r); }
+      return esc(v ?? '—');
+    }
+
+    let currentDealIndex = -1;
+
+    function openDealModal(di) {
+      if (di == null || di < 0 || di >= currentDeals.length) return;
+      currentDealIndex = di;
+      renderDealModal();
+      document.getElementById('deal-overlay').classList.add('open');
+    }
+
+    // Navega entre os deals ATUALMENTE filtrados na lista (currentDeals já é a
+    // lista filtrada+ordenada). Faz wrap nas pontas.
+    function navDealModal(delta) {
+      const n = currentDeals.length;
+      if (!n) return;
+      currentDealIndex = (currentDealIndex + delta + n) % n;
+      renderDealModal();
+      const box = document.getElementById('deal-modal-box');
+      if (box) box.scrollTop = 0;
+    }
+
+    function renderDealModal() {
+      const di = currentDealIndex;
+      const d = currentDeals[di];
+      if (!d) return;
+      const fields = currentInfo.filter(c => !c.sticky);
+      const total = currentDeals.length;
+
+      let body = `<div class="deal-modal-head">
+        <div style="min-width:0;">
+          <div class="deal-modal-title">${esc(d.dealname || '—')}</div>
+          <div class="deal-modal-sub">${esc(d.stage || '—')}${d.ae ? ' · ' + esc(d.ae) : ''}</div>
+        </div>
+        <div class="deal-modal-nav">
+          <button class="dm-nav-btn" onclick="navDealModal(-1)" title="Deal anterior (←)">‹</button>
+          <span class="dm-nav-count">${di + 1} / ${total}</span>
+          <button class="dm-nav-btn" onclick="navDealModal(1)" title="Próximo deal (→)">›</button>
+          <button class="dm-nav-btn dm-close" onclick="closeDealModal()" title="Fechar (Esc)">✕</button>
+        </div>
+      </div>`;
+
+      body += '<div class="deal-modal-list">';
+      fields.forEach(c => {
+        body += `<div class="deal-row"><span class="dr-lbl">${esc(c.lbl)}</span><span class="dr-val">${dealFieldValue(c, d[c.k])}</span></div>`;
+      });
+      body += '</div>';
+
+      const url = `https://app.hubspot.com/contacts/${HUB_ID}/deal/${esc(d.hs_id)}`;
+      body += `<div class="deal-modal-foot">
+        <a class="btn-hubspot" href="${url}" target="_blank" rel="noopener">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          Abrir deal no HubSpot
+        </a>
+      </div>`;
+
+      document.getElementById('deal-modal-box').innerHTML = body;
+    }
+
+    function closeDealModal() {
+      document.getElementById('deal-overlay').classList.remove('open');
+    }
+
+    document.addEventListener('keydown', e => {
+      const dealOpen = document.getElementById('deal-overlay')?.classList.contains('open');
+      if (e.key === 'Escape') {
+        closeDealModal();
+        closeHelpModal();
+        closeProbEditor();
+      } else if (dealOpen && e.key === 'ArrowLeft') {
+        e.preventDefault(); navDealModal(-1);
+      } else if (dealOpen && e.key === 'ArrowRight') {
+        e.preventDefault(); navDealModal(1);
+      }
+    });
 
     // ── PROB EDITOR ───────────────────────────────────────────────────────────
     function openProbEditor() {
@@ -2722,7 +2943,7 @@
     function syncStageButtons() {
       const label = document.getElementById('stage-dd-label');
       const trigger = document.getElementById('stage-dd-trigger');
-      const checkboxes = document.querySelectorAll('.stage-dd-item input[type=checkbox]');
+      const checkboxes = document.querySelectorAll('#stage-dd-panel input[type=checkbox]');
       if (!label) return;
       if (stageFilter.size === 0) {
         checkboxes.forEach(cb => { cb.checked = true; cb.indeterminate = false; });
@@ -2772,7 +2993,8 @@
     function selectNoStages() {
       stageFilter.clear();
       stageFilter.add('__NONE__');
-      document.getElementById('stage-dd').classList.remove('open');
+      // Mantém o dropdown aberto (igual ao Executivo): ao limpar tudo, assume-se
+      // que o usuário vai selecionar uma etapa em seguida.
       syncStageButtons();
       applyAndRender();
     }
@@ -2873,8 +3095,8 @@
           return;
         }
         allDeals = data.deals;
-        aeFilter = new Set();
-        pipelineFilter = new Set();
+        // Não resetamos os filtros aqui: ao atualizar, a tabela mantém os filtros
+        // já aplicados (as funções build*Filter respeitam o estado atual via .has()).
         const subEl = document.getElementById('sub');
         subEl.textContent = 'Atualizado';
         subEl.dataset.tooltip = new Date(data.timestamp)
@@ -3012,6 +3234,7 @@
 
     // ── RENDER ────────────────────────────────────────────────────────────────
     function render(deals) {
+      currentDeals = deals;
       const totalArr = deals.reduce((s, d) => s + (d.arr_estimado || 0), 0);
       const totalVidas = deals.reduce((s, d) => s + (d.vidas || 0), 0);
       const totalFatAtu = deals.reduce((s, d) => s + (d.fatura_atual || 0), 0);
@@ -3159,7 +3382,12 @@
           k: 'data_prevista_para_receita', lbl: 'Dt. Receita', w: 95, align: 'center', fmt: fmtDate, hideMobile: true,
           tip: 'Data prevista para início da receita. Ausente → linha em vermelho no modo Incompletos'
         },
+        {
+          k: 'vigencia', lbl: 'Vigência', w: 95, align: 'center', fmt: fmtDate, hideMobile: true,
+          tip: 'Data de Vigência do contrato (HubSpot)'
+        },
       ];
+      currentInfo = INFO;
 
       // ── Build HTML ──────────────────────────────────────────────────────────
       let h = '<table><thead>';
@@ -3225,8 +3453,7 @@
           }
 
           if (c.sticky) {
-            const url = `https://app.hubspot.com/contacts/${HUB_ID}/deal/${esc(d.hs_id)}`;
-            h += `<td class="${sc}" data-col="${ci}"><a class="deal-link" href="${url}" target="_blank" title="${esc(v ?? '')}"><span class="dl-txt">${esc(v || '-')}</span><span class="ext-icon">↗</span></a></td>`;
+            h += `<td class="${sc}" data-col="${ci}"><a class="deal-link" href="javascript:void(0)" onclick="openDealModal(${di})" title="Ver detalhes de ${esc(v ?? '')}"><span class="dl-txt">${esc(v || '-')}</span><span class="ext-icon">›</span></a></td>`;
             return;
           }
 
@@ -3271,6 +3498,7 @@
             const realCalcData = {
               isReal: true,
               dealname: d.dealname,
+              stage: d.stage,
               mod: d.modelo_remuneracao,
               ag: d.possui_agenciamento,
               vit: d.possui_vitalicio,
@@ -3352,9 +3580,32 @@
       if (m) m.style.display = m.style.display === 'none' ? 'flex' : 'none';
     }
 
+    // Reproduz a fórmula da Receita Real de um mês (mesma lógica de calcReceita /
+    // Diagnóstico), referenciando as células de 1ª Fatura (pf) e Vidas da mesma linha.
+    function buildRealFormula(data, R, pfCol, vidasCol) {
+      const pf = pfCol + R, vd = vidasCol + R;
+      const vidas = data.vidas || 0, n = data.n, mod = data.mod;
+      if (data.stage === 'Diagnóstico') {
+        if (vidas > 0 && data.rec != null) return vd + '*' + Math.round(data.rec / vidas);
+        return null;
+      }
+      if (mod === 'Fee por vida') return pf;
+      if (mod === 'Corretagem') {
+        if (data.ag === true) {
+          if (vidas < 200) return n <= 3 ? pf : pf + '*0.02';
+          return n === 1 ? pf + '*0.95' : pf + '*0.05';
+        }
+        return vidas < 200 ? pf + '*0.02' : pf + '*0.05';
+      }
+      return null;
+    }
+
     function exportData(format) {
       const table = document.querySelector('#tw table');
       if (!table) return alert('Nenhum dado para exportar.');
+
+      const isXlsx = format === 'xlsx' && typeof XLSX !== 'undefined';
+      const colL = c => (typeof XLSX !== 'undefined' ? XLSX.utils.encode_col(c) : '');
 
       const rows = [];
       const colRow = table.querySelector('thead tr.col-row') || table.querySelector('thead tr:last-child');
@@ -3362,18 +3613,61 @@
       colRow.querySelectorAll('th').forEach(th => headerRow.push(th.innerText.replace('▲', '').replace('▼', '').trim()));
       rows.push(headerRow);
 
-      table.querySelectorAll('tbody tr').forEach(tr => {
+      // Tipagem de cada coluna (info / receita real / receita probabilizada) p/ fórmulas.
+      const colTypes = [];
+      colRow.querySelectorAll('th').forEach(th => {
+        colTypes.push(th.classList.contains('m') ? (th.classList.contains('real') ? 'real' : 'prob') : 'info');
+      });
+      const nMonths = colTypes.filter(t => t === 'real').length;
+      const idxVidas = (currentInfo || []).findIndex(c => c.k === 'vidas');
+      const idxPf = (currentInfo || []).findIndex(c => c.k === 'primeira_fatura');
+
+      const numOverrides = [];  // {r,c,v,z} — base numérica p/ as fórmulas
+      const formulaCells = [];  // {r,c,f}
+
+      const trs = table.querySelectorAll('tbody tr');
+      trs.forEach((tr, di) => {
         const row = [];
-        tr.querySelectorAll('td').forEach(td => {
+        const realFormulaCols = new Set();
+        tr.querySelectorAll('td').forEach((td, ci) => {
           row.push(td.innerText.replace('↗', '').trim());
+          if (!isXlsx || !td.dataset.calc) return;
+          const type = colTypes[ci];
+          if (type === 'real') {
+            try {
+              const f = buildRealFormula(JSON.parse(td.dataset.calc), di + 2, colL(idxPf), colL(idxVidas));
+              if (f) { formulaCells.push({ r: di + 1, c: ci, f }); realFormulaCols.add(ci); }
+            } catch {}
+          } else if (type === 'prob') {
+            try {
+              const data = JSON.parse(td.dataset.calc);
+              const realCi = ci - nMonths;
+              // Probabilizada = Receita Real × Prob. Ajustada
+              if (data.probAdj != null && realFormulaCols.has(realCi)) {
+                formulaCells.push({ r: di + 1, c: ci, f: `${colL(realCi)}${di + 2}*${data.probAdj}` });
+              }
+            } catch {}
+          }
         });
+        if (isXlsx && currentDeals[di]) {
+          const d = currentDeals[di];
+          if (idxVidas >= 0 && Number.isFinite(d.vidas)) numOverrides.push({ r: di + 1, c: idxVidas, v: d.vidas, z: '#,##0' });
+          if (idxPf >= 0 && Number.isFinite(d.primeira_fatura)) numOverrides.push({ r: di + 1, c: idxPf, v: d.primeira_fatura, z: '#,##0' });
+        }
         rows.push(row);
       });
+      const dataRowCount = trs.length;
 
       const tfoots = table.querySelectorAll('tfoot tr.total td');
       if (tfoots.length > 0) {
         const row = [];
-        tfoots.forEach(td => row.push(td.innerText.trim()));
+        tfoots.forEach((td, ci) => {
+          row.push(td.innerText.trim());
+          if (isXlsx && (colTypes[ci] === 'real' || colTypes[ci] === 'prob') && dataRowCount > 0) {
+            const L = colL(ci);
+            formulaCells.push({ r: dataRowCount + 1, c: ci, f: `SUM(${L}2:${L}${dataRowCount + 1})` });
+          }
+        });
         rows.push(row);
       }
 
@@ -3396,6 +3690,14 @@
       } else if (format === 'xlsx') {
         if (typeof XLSX === 'undefined') return alert('Biblioteca XLSX não carregada ainda. Aguarde ou recarregue a página.');
         const ws = XLSX.utils.aoa_to_sheet(rows);
+        // Converte as bases (1ª Fatura, Vidas) para número, para as fórmulas calcularem.
+        numOverrides.forEach(o => {
+          ws[XLSX.utils.encode_cell({ r: o.r, c: o.c })] = { t: 'n', v: o.v, z: o.z };
+        });
+        // Substitui os valores das colunas U–BP pelas fórmulas de cálculo.
+        formulaCells.forEach(fc => {
+          ws[XLSX.utils.encode_cell({ r: fc.r, c: fc.c })] = { t: 'n', f: fc.f };
+        });
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Forecast");
         XLSX.writeFile(wb, filename + ".xlsx");
@@ -3404,6 +3706,12 @@
 
     // ── GLOBAL TOOLTIPS ───────────────────────────────────────────────────────
     document.addEventListener('DOMContentLoaded', () => {
+      try {
+        if (localStorage.getItem('forecast_kpis_collapsed') === '1') {
+          document.getElementById('kpis')?.classList.add('kpi-hidden');
+          document.getElementById('kpi-toggle')?.classList.add('collapsed');
+        }
+      } catch { }
       const calcTooltip = document.getElementById('calc-tooltip');
       const kpisEl = document.querySelector('.kpis');
       if (!kpisEl || !calcTooltip) return;
@@ -3488,8 +3796,8 @@
         const el = document.getElementById(id);
         if (el) el.style.display = isPipeline ? (id === 'mob-filter-fab' ? '' : 'block') : 'none';
       });
-      const kpis = document.querySelector('.kpis');
-      if (kpis) kpis.style.display = isPipeline ? 'flex' : 'none';
+      const kpis = document.getElementById('kpi-accordion');
+      if (kpis) kpis.style.display = isPipeline ? 'block' : 'none';
       document.getElementById('historico-panel').style.display = isPipeline ? 'none' : 'block';
 
       if (!isPipeline && !historicoTabsLoaded) {
@@ -3714,10 +4022,10 @@
         document.getElementById('app-filters').style.display = 'block';
         document.getElementById('app-search').style.display = 'block';
         document.getElementById('tw').style.display = 'block';
-        const kpis = document.querySelector('.kpis');
-        if (kpis) kpis.style.display = 'flex';
+        const kpis = document.getElementById('kpi-accordion');
+        if (kpis) kpis.style.display = 'block';
         const personBtn = document.getElementById('btn-person');
-        if (personBtn) personBtn.dataset.tooltip = 'Dev Local | Clique para sair';
+        if (personBtn) personBtn.dataset.tooltip = 'Dev Local — Clique para sair';
         load();
         return;
       }
@@ -3732,11 +4040,11 @@
             document.getElementById('app-filters').style.display = 'block';
             document.getElementById('app-search').style.display = 'block';
             document.getElementById('tw').style.display = 'block';
-            const kpis = document.querySelector('.kpis');
-            if (kpis) kpis.style.display = 'flex';
+            const kpis = document.getElementById('kpi-accordion');
+            if (kpis) kpis.style.display = 'block';
 
             const personBtn = document.getElementById('btn-person');
-            if (personBtn) personBtn.dataset.tooltip = (currentUser.name || '') + ' | Clique para sair';
+            if (personBtn) personBtn.dataset.tooltip = (currentUser.name || '') + ' — Clique para sair';
             load();
             return;
           }
@@ -3867,13 +4175,13 @@
 <script>
 (function(){
   var PANELS=[
-    {label:'CRO Dashboard',url:'/novo',file:'novo-dashboard.html',health:'y',icon:'<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>'},
-    {label:'Board View',url:'/novo-board',file:'novo-board.html',health:'r',icon:'<path d="M2 20h20M4 20V10l8-6 8 6v10"/><path d="M10 20v-6h4v6"/>'},
-    {label:'AE Performance',url:'/novo-ae',file:'novo-ae.html',health:'r',icon:'<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>'},
-    {label:'BDR Performance',url:'/novo-bdr',file:'novo-bdr.html',health:'r',icon:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'},
-    {label:'Last 48h',url:'/novo-48h',file:'novo-48h.html',health:'r',icon:'<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>'},
-    {label:'CS Dashboard',url:'/novo-cs',file:'novo-cs.html',health:'r',icon:'<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>'},
-    {label:'Cotação',url:'/novo-cotacao',file:'novo-cotacao.html',health:'r',icon:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>'},
+    {label:'CRO Dashboard',url:'/novo',file:'dashboard.html',health:'g',icon:'<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>'},
+    {label:'Board View',url:'/novo-board',file:'board.html',health:'g',icon:'<path d="M2 20h20M4 20V10l8-6 8 6v10"/><path d="M10 20v-6h4v6"/>'},
+    {label:'AE Performance',url:'/novo-ae',file:'ae.html',health:'g',icon:'<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>'},
+    {label:'BDR Performance',url:'/novo-bdr',file:'bdr.html',health:'r',icon:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'},
+    {label:'Last 48h',url:'/novo-48h',file:'48h.html',health:'r',icon:'<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>'},
+    {label:'CS Dashboard',url:'/novo-cs',file:'cs.html',health:'r',icon:'<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>'},
+    {label:'Cotação',url:'/novo-cotacao',file:'cotacao.html',health:'r',icon:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>'},
     {label:'Forecast',url:'/forecast',file:'forecast.html',health:'g',icon:'<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>'}
   ];
   function findByUrl(u){ for(var i=0;i<PANELS.length;i++){ if(PANELS[i].url===u) return PANELS[i]; } return null; }
@@ -3892,7 +4200,7 @@
       if(p.url==='/forecast') h+='<div style="height:1px;background:var(--border);margin:.4rem .75rem"></div>';
       h+='<li class="nav-item'+(p.url===current?' active':'')+'" data-url="'+p.url+'">'+svgFor(p)+'<span>'+p.label+'</span>'+dot(p.health)+'</li>';
     }
-    h+='</ul>';
+    h+='</ul>'+'<div class="nav-drawer-footer"><button class="nav-foot-btn" type="button" onclick="logout()" title="Sair" aria-label="Sair"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button><button class="nav-foot-btn" type="button" onclick="toggleTheme()" title="Tema / Theme"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></button></div>';
     nav.innerHTML=h;
     var nit=nav.getElementsByClassName('nav-item');
     for(var j=0;j<nit.length;j++){ nit[j].addEventListener('click',function(){ window.location.href=this.getAttribute('data-url'); }); }

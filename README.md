@@ -1,326 +1,247 @@
-# Axenya Pipeline Dashboard
+# Axenya | CRO Dashboard (Forecast)
 
-> Dashboard executivo de vendas com integracão HubSpot, análise AI (Claude) e autenticação Google OAuth.
-
-**Acesso:** Restrito a `@axenya.com` (Google OAuth)
-
-> **🚀 ATENÇÃO IAs e Desenvolvedores:** Para regras estritas de infraestrutura, Vercel Pro, e resolução de redirecionamentos do Google OAuth, leia obrigatoriamente o **[DEPLOY_GUIDE.md](file:///D:/0 PACHECO/Pacheco Remoto/Pacheco Remoto/10 PROJETOS/01 AXENYA/01 Projetos/Dashboard Ivan/dashboard-ivan-visual/DEPLOY_GUIDE.md)** antes de realizar qualquer modificação de deploy.
----
-
-## Arquitetura
-
-```
-┌─────────────────────────────────────────────────────────┐
-│  Frontend (HTML estático)                               │
-│  ┌──────────────┐ ┌──────────────┐ ┌─────────────────┐ │
-│  │ login.html   │ │dashboard.html│ │hubspot-watcher  │ │
-│  │ (Google GIS) │ │ (1MB, 8 abas)│ │     .html       │ │
-│  └──────┬───────┘ └──────┬───────┘ └───────┬─────────┘ │
-│         │                │                  │           │
-│         │    electron-shim.js (bridge)      │           │
-│         │    electronAPI → fetch()          │           │
-└─────────┼────────────────┼──────────────────┼───────────┘
-          │                │                  │
-          ▼                ▼                  ▼
-┌─────────────────────────────────────────────────────────┐
-│  API Routes (Vercel Serverless Functions)                │
-│                                                         │
-│  Auth:     /api/auth/google, /api/auth/callback,        │
-│            /api/auth/config                              │
-│  HubSpot:  /api/pull-hubspot, /api/pull-cs-data,        │
-│            /api/pull-tickets, /api/watcher-deals         │
-│  AI:       /api/ai-analysis, /api/ai-company-analysis,  │
-│            /api/ai-cs-insights, /api/jarvis-chat         │
-│  Misc:     /api/deal-activities, /api/company-activities,│
-│            /api/company-deals, /api/settings, /api/users │
-│            /api/explore-tickets, /api/ticket-activities  │
-└──────────────────────┬──────────────────────────────────┘
-                       │
-          ┌────────────┼────────────┐
-          ▼            ▼            ▼
-    ┌──────────┐ ┌──────────┐ ┌──────────┐
-    │ HubSpot  │ │ Claude   │ │ Google   │
-    │ API v3   │ │ API      │ │ OAuth    │
-    └──────────┘ └──────────┘ └──────────┘
-```
-
-### Decisões de design
-
-| Decisão | Motivo |
-|---------|--------|
-| Zero dependências npm | Elimina supply chain risk. JWT manual, fetch nativo, crypto nativo. |
-| HTML estático (não SPA) | Dashboard.html é 1MB monolítico — sem build step, sem framework. |
-| `electron-shim.js` | Bridge que traduz `electronAPI.*` para `fetch()`. Permite reusar o frontend do Electron original sem reescrever. |
-| Google OAuth (GIS) | Substitui login por senha. One Tap + fallback OAuth2 redirect. |
-| Sanitização anti-injection | Todos os dados HubSpot são sanitizados antes de injetar em prompts Claude (`lib/sanitize.js`). |
+> Painel de pipeline e forecast de vendas da Axenya, para uso do **CRO e da diretoria (BoD)**.
+> Este arquivo é o **ponto de partida de contexto**: qualquer pessoa ou IA que pegue o projeto
+> deve conseguir entender, lendo só ele, **o que estamos construindo, para quê e o que define sucesso**.
+>
+> Fonte do contexto estratégico: sessão de validação com o CRO (Ivan Gouvea) em **12/06/2026**
+> (`00 Base de Conhecimento/Reuniões/2026-06-12 - [Validacao Forecast]`). Estado técnico vivo: ver
+> **[STATUS_LOG.md](STATUS_LOG.md)**.
 
 ---
 
-## Abas do Dashboard
+## 1. O que é o projeto
 
-| # | Aba | Dados | Fonte |
-|:-:|-----|-------|-------|
-| 1 | **Last 48h** | Deals criados/movidos nas últimas 48h | `/api/pull-hubspot` |
-| 2 | **Board View** | Kanban visual por estágio do pipeline | `/api/pull-hubspot` |
-| 3 | **CRO Dashboard** | Métricas de conversão, funil, velocidade | `/api/pull-hubspot` |
-| 4 | **AE Performance** | Performance por Account Executive | `/api/pull-hubspot` |
-| 5 | **BDR Performance** | Performance por BDR (sourcing) | `/api/pull-hubspot` |
-| 6 | **CS Dashboard** | Customer Success — empresas, vigência, risco | `/api/pull-cs-data` |
-| 7 | **Cotação** | Pipeline de tickets de cotação | `/api/pull-tickets` |
-| 8 | **HubSpot Watcher** | Data discipline — preenchimento de propriedades | `/api/watcher-deals` |
+Um dashboard web que **automatiza o processo de forecast** que antes era feito manualmente
+(exportações de planilha, documentos duplicados, montagem à mão — o processo da Cíntia). Ele puxa os
+deals direto do HubSpot e os transforma na **fonte única de verdade** para a leitura de pipeline e
+projeção de receita.
 
----
+O problema que ele resolve, nas palavras do CRO: *"hoje cada um olha uma coisa diferente, de um jeito
+diferente, porque ninguém fez o trabalho de garantir que o número está correto."* O dashboard existe
+para que todos (CRO, diretoria, ops) olhem **o mesmo número, validado, no mesmo lugar**.
 
-## Setup Local
-
-### Pré-requisitos
-
-- Node.js >= 18.0.0
-- Vercel CLI (`npm i -g vercel`)
-- Acesso ao projeto Vercel (pedir convite)
-
-### Variáveis de ambiente
-
-Criar `.env.local` na raiz:
-
-```env
-# HubSpot Private App Token (scopes: crm.objects.deals.read, crm.objects.companies.read, etc.)
-HUBSPOT_TOKEN=pat-na1-XXXXX
-
-# Claude API Key (Anthropic)
-CLAUDE_API_KEY=sk-ant-XXXXX
-
-# JWT Session Secret (mínimo 32 caracteres)
-SESSION_SECRET=uma-string-aleatoria-com-pelo-menos-32-chars
-
-# Google OAuth (Cloud Console > APIs & Services > Credentials)
-GOOGLE_CLIENT_ID=XXXXX.apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=GOCSPX-XXXXX
-
-# Domínio permitido para CORS
-ALLOWED_ORIGIN=http://localhost:3000
-
-# (Opcional) Emails externos permitidos, separados por vírgula
-ALLOWED_EMAILS=parceiro@empresa.com
-```
-
-### Rodar
-
-```bash
-npm start            # Carrega .env.local e inicia Vercel dev em localhost:3000
-```
-
-> Por que não `vercel dev` direto? `vercel dev` não carrega `.env.local`
-> automaticamente quando o projeto não tem framework detectado. O `npm start`
-> usa `scripts/dev.js`, que lê o `.env.local` e em seguida chama `vercel dev`.
-
-### Deploy
-
-```bash
-npm run deploy       # Deploy para produção no Vercel (CLI)
-```
-
-Em produção (auto-deploy via Git), no painel do Vercel garantir que estão
-configuradas estas env vars no escopo **Production**:
-
-- `HUBSPOT_TOKEN`, `CLAUDE_API_KEY`, `SESSION_SECRET` (≥32 chars)
-- `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`
-- `ALLOWED_ORIGIN=https://<dominio-prod>` (ex: `https://pipeline.axenya.com`)
-- `ALLOWED_EMAILS` (opcional, lista separada por vírgula)
-
-Notas operacionais:
-
-- `vercel.json` define `maxDuration: 60` em `api/*` — requer plano **Pro**
-  (Hobby é limitado a 10s e o Jarvis com Opus 4.7 + thinking pode dar timeout).
-- O Jarvis usa `claude-opus-4-7`. A `CLAUDE_API_KEY` precisa de acesso a Opus 4.7.
-- No Google Cloud Console o OAuth client precisa ter o domínio de produção em
-  **Authorized JavaScript origins** e `https://<dominio>/api/auth/callback`
-  em **Authorized redirect URIs**.
+Diferencial que o CRO mais valorizou: a **memória de cálculo**. Todo indicador expõe, sob demanda, os
+campos do HubSpot que usa e a fórmula aplicada — para qualquer um auditar de onde veio o número.
 
 ---
 
-## Estrutura de Arquivos
+## 2. A pergunta-norte
 
-```
-.
-├── api/                          # Serverless functions (Vercel)
-│   ├── _helpers.js               # CORS, auth, token helpers
-│   ├── auth/
-│   │   ├── callback.js           # OAuth2 code exchange (fallback)
-│   │   ├── config.js             # Retorna GOOGLE_CLIENT_ID (público)
-│   │   └── google.js             # Verifica Google ID token → JWT
-│   ├── ai-analysis.js            # Prompt livre → Claude
-│   ├── ai-company-analysis.js    # Análise estruturada de conta CS
-│   ├── ai-cs-insights.js         # Insights de portfólio CS
-│   ├── jarvis-chat.js            # Chat multi-turn (Jarvis assistant)
-│   ├── company-activities.js     # Atividades de uma empresa
-│   ├── company-deals.js          # Deals de uma empresa
-│   ├── deal-activities.js        # Atividades de um deal
-│   ├── explore-tickets.js        # Debug: explorar pipelines de tickets
-│   ├── login.js                  # ⚠️ LEGADO — ver AUDIT.md
-│   ├── pull-cs-data.js           # Puxa dados CS (empresas + vigência)
-│   ├── pull-hubspot.js           # Puxa todos os deals do pipeline
-│   ├── pull-tickets.js           # Puxa tickets de cotação
-│   ├── settings.js               # Settings do usuário
-│   ├── ticket-activities.js      # Atividades de um ticket
-│   ├── users.js                  # Lista de usuários (sem hashes)
-│   └── watcher-deals.js          # Deals por owner+stage (HubSpot Watcher)
-├── lib/                          # Módulos compartilhados
-│   ├── auth.js                   # Google OAuth + JWT (HMAC-SHA256)
-│   ├── claude.js                 # Claude API client + prompts CS
-│   ├── credentials.json          # ⚠️ Hashes SHA-256 — ver AUDIT.md
-│   ├── hubspot.js                # Core: fetch deals, CS, tickets, owners
-│   └── sanitize.js               # Anti-prompt-injection
-├── public/                       # Arquivos estáticos
-│   ├── dashboard.html            # Dashboard principal (~1MB)
-│   ├── electron-shim.js          # Bridge electronAPI → fetch
-│   ├── hubspot-watcher.html      # HubSpot Watcher (standalone)
-│   ├── icon.png                  # Favicon
-│   └── login.html                # Tela de login (Google GIS)
-├── scripts/
-│   └── generate-credentials.js   # Gerador de hashes (legado)
-├── docs/                         # Onboarding docs
-├── src_electron_backup/          # Backup do Electron original (não versionado)
-├── AUDIT.md                      # 🔍 Auditoria completa — LEIA PRIMEIRO
-├── package.json
-├── vercel.json
-└── .gitignore
-```
+Tudo no CRO Dashboard serve para responder **uma pergunta macro**:
+
+> ### “Vou ou não vou bater a meta?”
+
+Para respondê-la, o CRO precisa de tudo num só lugar: taxa de conversão (geral e por etapa), receita
+média, ciclo de vendas, e a contribuição de cada conta para o forecast. E quando a resposta for
+**“não”**, o painel precisa ajudar a **levantar hipóteses e diagnosticar onde erramos** (custo por
+vida? receita média? ciclo? originação?).
 
 ---
 
-## API Routes — Referência Rápida
+## 3. Como o CRO lê o forecast (modelo mental)
+
+Conceitos que vieram direto do CRO e que orientam o desenho dos gráficos:
+
+- **Taxa de conversão ajustada** — o conceito-chave. Além da conversão bruta (hoje ~2,2% sobre tudo),
+  o forecast precisa de `ganhos ÷ (ganhos + perdidos)`, ou seja, **só sobre deals já finalizados**.
+  Isso remove o pipe ainda em aberto e **não depende do ciclo de vendas**. Como ~1/3 dos deals
+  históricos ainda estão ativos, assume-se que eles converterão na mesma proporção dos finalizados —
+  permitindo **projetar quantos fechamentos ainda virão** do pipe aberto.
+- **Ciclo de vendas vs. tempo até resposta** — “tempo até ganhar” e “tempo até ganhar/perder” são
+  perguntas diferentes e ambas válidas. Manter as duas leituras (toggle), com rótulos claros.
+- **Capital a risco** — o toggle *Implantação = Ganho* existe porque, na régua geral, **implantação já é
+  ganho** (não se perde conta depois de implantada). A distinção é mantida só para enxergar **capital
+  a risco** até a assinatura (houve caso real de conta dada como ganha que “sumiu”).
+- **Quebrar por porte de empresa** — PME e conta grande têm velocidades muito diferentes; visão
+  agregada distorce. Buckets sugeridos: **0–200 / 200–2.000 / >2.000 vidas**.
+
+---
+
+## 4. O que define sucesso (princípios inegociáveis)
+
+1. **Validação é o maior trabalho — não o design.** *"Com IA você cria coisas muito rápido, mas criar
+   errado não vale nada"* (Mariano, via Ivan). O diferencial é bater **cada número contra o HubSpot**.
+   Validar o **histórico primeiro**; se o histórico bate, mês/semana provavelmente batem (Aurilia).
+2. **Nenhum número é “verde” (validado) até os filtros de tempo existirem e cada indicador puxar a data
+   certa** (criação vs. fechamento vs. prevista). Por isso a prioridade #1 foi **implementar os filtros
+   de tempo antes de validar** — colocar o filtro é o mesmo trabalho de validação, então fazer os
+   filtros primeiro evita validar duas vezes.
+3. **Não expor número não validado como pronto.** Risco real de a diretoria pegar um número e usar numa
+   apresentação. Enquanto não validado: comunicar *“work in progress”* e **não marcar verde**.
+4. **Memória de cálculo sempre visível.** Cada gráfico precisa dizer quais campos do HubSpot usa, a
+   fórmula, e **qual data o filtro de período aplica**.
+5. **Auditabilidade dos dados de origem.** Ex.: roster de motivos de perda precisa ser revisto (eliminar
+   “outros”/“escolheu outra corretora” sem submotivo) — lixo na origem invalida a análise.
+
+> **Estado de validação é sinalizado pelo emoji no título de cada gráfico:**
+> 🟢 estrutura/cálculo corretos (origem ainda a validar) · 🟠 calcula certo, com ressalva (amostra
+> pequena, escopo, cobertura parcial, proxy) · 🔴 o que mostra diverge do título · 🟡 ainda não analisado.
+> Detalhes em **[AUDITORIA_GRAFICOS.md](AUDITORIA_GRAFICOS.md)**.
+
+---
+
+## 5. Stakeholders
+
+| Pessoa | Papel | O que importa para o projeto |
+|---|---|---|
+| **Ivan Gouvea** | CRO — usuário principal e dono da visão | Define a pergunta-norte e o modelo mental. Prioriza a pergunta de negócio sobre estética (mas valoriza o design). Confia no número validado. |
+| **Mariano** | Liderança acima do CRO | Pode pegar um número e levar ao board — daí o cuidado de não expor nada não validado. |
+| **Aurilia (Auris)** | Operações / Marketing | Validar histórico primeiro; visão de futuro (dashboard unificado forecast + campanhas em tempo real). |
+| **Cíntia** | Dona do processo manual de forecast | Referência do processo que está sendo automatizado. |
+| **Ágatta** | Account Executive | Parceira na auditoria dos motivos de perda. |
+| **Pacheco Jr** | Construtor do dashboard | Pensa visualmente; valida cada número no HubSpot. |
+
+---
+
+## 6. Estado atual
+
+- **Filtros de tempo implementados** nos 7 painéis (prioridade #1 do CRO). Cada painel filtra por janela
+  de período; no CRO o seletor tem presets (Mês atual, Mês passado, etc.), trimestre e intervalo de meses
+  com calendário próprio.
+- **Memória de cálculo por gráfico** — o botão **“i”** abre os campos do HubSpot + fórmula + **qual campo
+  de data o filtro usa** (criação `createdate`, fechamento `close_date` ou prevista
+  `data_prevista_para_receita`). O botão **“?”** do topo **mostra/oculta** os “i” e as tags de
+  identificação (C01/P01/N01…) de todos os cards.
+- **Bilíngue PT/EN** — toggle no topo; tudo o que é interface segue o idioma selecionado.
+- **Configurações** — probabilidades por etapa, meta de receita (MTD) e o toggle *Implantação = Ganho*
+  (ligado por padrão).
+- **Painéis modulares** (um HTML por painel) para poder agregar/duplicar em visões de apresentação no
+  futuro.
+
+---
+
+## 7. Arquitetura
+
+**Stack:** Vanilla HTML + JS (ES5, sem framework, sem bundler) · Chart.js 4.4.1 · funções serverless
+Vercel (Node 18+) · HubSpot CRM API v3 · Google OAuth (auth) · hospedagem Vercel.
+
+### Painéis e rotas
+
+| Rota | Arquivo | Painel |
+|---|---|---|
+| `/` | `public/login.html` | Login (Google OAuth) |
+| `/novo` (ou `/dashboard`) | `public/dashboard.html` | **CRO Dashboard** (o forecast — coração do projeto) |
+| `/novo-board` | `public/board.html` | Board View |
+| `/novo-ae` | `public/ae.html` | AE Performance |
+| `/novo-bdr` | `public/bdr.html` | BDR Performance |
+| `/novo-48h` | `public/48h.html` | Last 48h |
+| `/novo-cs` | `public/cs.html` | CS Dashboard |
+| `/novo-cotacao` | `public/cotacao.html` | Cotação |
+| `/forecast` | `public/forecast.html` | Forecast (visão dedicada) |
+
+> O CRO Dashboard concentra a lógica inline em `public/dashboard.html`. Menu lateral e dropdown de
+> painéis são gerados por um bloco `PANELS` compartilhado, idêntico em todas as páginas.
+>
+> **Nota sobre as rotas:** os arquivos não têm mais o prefixo `novo-`, mas as **rotas** mantêm o prefixo
+> (`/novo`, `/novo-board`, …) — preservadas de propósito para não quebrar links já compartilhados. O
+> mapeamento rota→arquivo fica em `vercel.json` (`rewrites`) e, para o servidor local, em
+> `scripts/local-server.js`.
+
+### Dados
+
+- **`GET /api/forecast-table`** — deals ativos dos pipelines **Vendas + Bid** (fonte principal do CRO,
+  Board, AE, BDR, Last 48h; CS e Cotação também usam como proxy enquanto as APIs próprias não existem).
+- **`GET /api/funnel-stages`** — histórico de etapas (via `propertiesWithHistory`) para o Funil de
+  Conversão.
+- `api/pull-hubspot`, `api/pull-cs-data`, `api/pull-tickets`, `api/watcher-deals` e os endpoints de IA
+  (`api/ai-*`, `api/jarvis-chat`) existem para fluxos secundários/legados.
+- Cron diário (`/api/snapshot`, 02:59) para snapshot.
+
+### Filtro de período (compartilhado)
+
+`public/filter-bar.js` é um módulo autocontido (classes `axf-*`, injeta o próprio CSS) usado pelas 6
+views além do CRO. O CRO tem implementação inline própria. Detalhe: o teste de janela é **tolerante**
+(registro sem data não é descartado), então painéis sem campo de data — CS/Cotação — exibem a barra sem
+esvaziar.
 
 ### Autenticação
 
-Todas as rotas (exceto `/api/auth/*`) exigem header `Authorization: Bearer <jwt>`.
-
-| Método | Rota | Body | Retorno |
-|--------|------|------|---------|
-| POST | `/api/auth/google` | `{ credential: "<google_id_token>" }` | `{ success, user, token }` |
-| GET | `/api/auth/config` | — | `{ clientId }` |
-| GET | `/api/auth/callback` | query: `code` | Redirect para `/dashboard#token=...` |
-
-### HubSpot Data
-
-| Método | Rota | Body | Retorno | Tempo |
-|--------|------|------|---------|:-----:|
-| POST | `/api/pull-hubspot` | — | Todos os deals do pipeline | ~30-60s |
-| POST | `/api/pull-cs-data` | — | Empresas CS + vigência deals | ~20-40s |
-| POST | `/api/pull-tickets` | — | Tickets de cotação | ~10-20s |
-| POST | `/api/watcher-deals` | `{ owner, stage }` | Deals com fill status | ~5-10s |
-| POST | `/api/deal-activities` | `{ hsId }` | Notes, emails, calls, meetings | ~5s |
-| POST | `/api/company-activities` | `{ hsId }` | Atividades da empresa | ~5s |
-| POST | `/api/company-deals` | `{ hsId }` | Deals da empresa | ~5s |
-| POST | `/api/ticket-activities` | `{ hsId }` | Atividades do ticket | ~5s |
-| POST | `/api/explore-tickets` | — | Pipelines + props (admin only) | ~5s |
-
-### AI (Claude)
-
-| Método | Rota | Body | Retorno |
-|--------|------|------|---------|
-| POST | `/api/ai-analysis` | `{ prompt }` | `{ text }` |
-| POST | `/api/ai-company-analysis` | `{ companyData, activities }` | `{ analysis }` (JSON estruturado) |
-| POST | `/api/ai-cs-insights` | `{ portfolioSummary }` | `{ insights }` (JSON estruturado) |
-| POST | `/api/jarvis-chat` | `{ messages, systemPrompt, model? }` | `{ text }` |
-
-### Misc
-
-| Método | Rota | Body | Retorno |
-|--------|------|------|---------|
-| GET/POST | `/api/settings` | GET: — / POST: `{ settings }` | Status dos tokens |
-| GET | `/api/users` | — | Lista de usuários (sem hashes) |
+- **Produção:** Google OAuth (`@axenya.com`) → sessão JWT. APIs exigem sessão (retornam 401 sem ela).
+- **Local:** `LOCAL_DEV_BYPASS=true` no `.env.local` injeta um usuário mock e dispensa o OAuth.
+  **Nunca** habilitar bypass em produção (o `.env*.local` está no `.vercelignore`).
 
 ---
 
-## HubSpot — Mapeamento de Pipeline
+## 8. Rodar localmente
 
-### Pipeline de Vendas (`782758156`)
+```powershell
+# A partir de dashboard-ivan-visual/
+# .env.local já contém HUBSPOT_TOKEN, SESSION_SECRET e LOCAL_DEV_BYPASS=true (não commitar)
+vercel dev --listen 3002 --yes
+# Acesse: http://localhost:3002/novo  (ou /dashboard)
+```
 
-| Stage ID | Nome | Tipo |
-|----------|------|:----:|
-| `1144746905` | Reunião Agendada | Open |
-| `1144746906` | Diagnóstico | Open |
-| `1144746908` | Cotação | Open |
-| `1144746909` | Consultoria | Open |
-| `1144746910` | Negociação | Open |
-| `1317543716` | Stand by | Open |
-| `1288611084` | Implantação | Open |
-| `1144844314` | Ganho | Won |
-| `1144746911` | Perdido | Lost |
-
-### Pipeline de Cotação (`847948895`)
-
-Usado pela aba "Cotação" para tickets de cotação de planos.
-
-### Propriedades Custom Relevantes
-
-| Propriedade | Tipo | Usado em |
-|-------------|------|----------|
-| `vidas` | number | Deals — quantidade de vidas do plano |
-| `premio_mensal` | number | Deals — prêmio mensal em R$ |
-| `sdr` | owner ID | Deals — BDR que originou |
-| `a_reuniao_ocorreu_` | enum | Deals — "Sim"/"Não" |
-| `tipo_de_negociacao` | enum | Deals — tipo de negociação |
-| `receita_vitalicio_estimada` | number | Deals — receita vitalícia |
-| `kam_responsavel` | text | Companies — KAM do CS |
-| `vigencia_do_contrato_atual` | date | Companies — vigência |
-| `maturidade_em_saude` | enum | Companies — maturidade |
+> No Windows, `npm start` (que chama `scripts/dev.js` → `spawnSync('vercel')`) pode não resolver o
+> binário do Vercel; rodar `vercel dev` direto, garantindo que as variáveis do `.env.local` estejam no
+> ambiente, é o caminho confiável. Para dados reais é preciso o `HUBSPOT_TOKEN` preenchido.
 
 ---
 
-## Segurança
+## 9. Deploy
 
-### Implementado
+```bash
+vercel --prod --yes        # projeto Vercel: dashboard-axenya
+```
 
-- [x] Google OAuth com verificação server-side do ID token
-- [x] JWT de sessão (HMAC-SHA256, 48h, `timingSafeEqual`)
-- [x] Domínio restrito a `@axenya.com` + whitelist de emails
-- [x] CORS restrito (sem wildcard `*`)
-- [x] Headers de segurança (`X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy`)
-- [x] Sanitização anti-prompt-injection em todos os dados antes do Claude
-- [x] Zero dependências npm (zero supply chain risk)
-- [x] Tokens nunca expostos no frontend (env vars do Vercel)
-- [x] Rate limiting básico (mutex por instância serverless)
-- [x] Input validation em todas as rotas
-
-### Pendente — ver `AUDIT.md`
-
-- [ ] `credentials.json` com hashes versionado no git (legado)
-- [ ] `login.js` referencia `attemptLogin` que não existe (dead code)
-- [ ] SHA-256 sem salt para hashes de senha (legado, não usado em produção)
-- [ ] Rate limiting real (não apenas mutex em memória)
-- [ ] Logs de auditoria persistentes
+- Alias de produção atual: **https://project-bsmfu.vercel.app**.
+- Pós-deploy, confirmar: páginas (`/`, `/novo`, …) respondem **200** e as APIs (`/api/auth/me`,
+  `/api/forecast-table`) respondem **401** — sinal de que a **auth está ativa** (bypass ausente em prod).
+- Regras detalhadas de infraestrutura/OAuth/Vercel: **[DEPLOY_GUIDE.md](DEPLOY_GUIDE.md)**.
 
 ---
 
-## Origem do Projeto
+## 10. HubSpot — mapeamento
 
-Este dashboard foi originalmente um app **Electron para macOS** (v5.7.0). Em abril/2026 foi reescrito como web app Vercel (v6.0), corrigindo 11 vulnerabilidades P0-P2 do original.
+- **Portal ID:** `44715285` (links de deal: `https://app.hubspot.com/contacts/44715285/deal/{id}`)
+- **Pipeline Vendas:** `782758156` · **Pipeline Bid:** `894130090`
 
-O `electron-shim.js` é o bridge que permite reusar o frontend HTML do Electron sem reescrever — traduz chamadas `electronAPI.*` para `fetch()` contra as API routes.
+**Etapas Vendas:** Reunião Agendada `1144746905` · Diagnóstico `1144746906` · Cotação `1144746908` ·
+Consultoria `1144746909` · Negociação `1144746910` · Stand by `1317543716` · Implantação `1288611084` ·
+Ganho `1144844314` · Perdido `1144746911`
 
-O `src_electron_backup/` contém o código original do Electron (não versionado, apenas referência local).
+**Etapas Bid:** Cotação `1363560722` · Proposta Enviada `1349620555` · Consultoria `1349620556` ·
+Negociação `1353387279` · Implantação `1353457025` · Ganho `1353387280` · Standby `1373066362`
 
----
-
-## Contribuindo
-
-1. Clone o repo
-2. Crie `.env.local` com as variáveis
-3. `npm start`
-4. **Leia `AUDIT.md` antes de fazer qualquer mudança** — contém todos os pontos que precisam de ajuste
-
-### Regras
-
-- **Zero dependências externas** — não adicionar pacotes npm
-- **Nunca hardcodar tokens** — sempre `process.env.*`
-- **Nunca expor hashes ou senhas** — nem em logs
-- **Testar antes e depois** de qualquer mudança em `lib/hubspot.js`
-- **Git author:** `Samuel Alencar <salencar@axenya.com>` (Vercel rejeita outros)
+Propriedades custom relevantes: `vidas`, `premio_mensal`, `sdr` (BDR), `arr_estimado`,
+`primeira_fatura`, `notes_last_updated` (→ dias sem atividade), `data_prevista_para_receita`,
+`closedate`/`createdate`.
 
 ---
 
-## Licença
+## 11. Convenções de código
 
-Proprietário. Uso interno Axenya apenas.
+- **Sem TypeScript, sem bundler, sem dependências npm** — ES5 puro no front-end.
+- **Separador de texto é SEMPRE `|`** — nunca `—`, `–`, `-` ou `·` em texto exibido. O travessão só vale
+  como placeholder de “sem dado” (`'—'`).
+- **Toggles** (seletores de modo): segmented control Apple-style via `.tab-sub` / `.tab-sub-btn` /
+  `.tab-sub-thumb`.
+- **i18n:** todo texto de interface passa por `t('chave')`, com paridade total entre os dicionários
+  `pt` e `en`. Nomes de etapa do CRM (Cotação, Negociação…) ficam em PT nos dois idiomas (nomes próprios).
+- **Menu lateral / dropdown de painéis:** fonte única (`PANELS`), propagada para os 7 arquivos.
+- **STATUS_LOG.md:** registrar uma linha por mudança, a cada iteração.
+
+---
+
+## 12. Mapa de documentação
+
+| Arquivo | Para quê |
+|---|---|
+| **README.md** (este) | Contexto, objetivo e o que define sucesso. Comece por aqui. |
+| **[STATUS_LOG.md](STATUS_LOG.md)** | Estado técnico vivo: diretrizes, arquitetura detalhada, histórico de iterações. Atualizado a cada mudança. |
+| **[AUDITORIA_GRAFICOS.md](AUDITORIA_GRAFICOS.md)** | Análise crítica de cada gráfico (o que promete × o que mostra) e a semântica dos emojis de veredito. |
+| **[DEPLOY_GUIDE.md](DEPLOY_GUIDE.md)** | Regras de deploy, Vercel e Google OAuth. |
+
+---
+
+## 13. Visão de futuro
+
+- **Dashboard unificado** combinando forecast com **campanhas/marketing em tempo real** (Aurilia).
+- **Visões de apresentação para o board** — duplicar/derivar gráficos numa leitura mais direta. O
+  desenho modular (um HTML por painel) já antecipa essa agregação. Cada conversa do board é um momento
+  diferente da empresa: o objetivo é **facilitar pegar os dados**, não prever exatamente o que será
+  pedido.
+
+---
+
+_Proprietário. Uso interno Axenya._

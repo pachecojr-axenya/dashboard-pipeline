@@ -1,6 +1,6 @@
 'use strict';
 /**
- * GET /api/funnel-stages?since=2025-08-01
+ * GET /api/funnel-stages?since=2025-08-01&until=2026-06-30
  *
  * Retorna quantos deals únicos entraram em cada etapa dos pipelines
  * Vendas e Bid desde a data informada — base para conversão do funil.
@@ -42,13 +42,13 @@ const VENDAS_EXTRA  = ['Stand by','Perdido'];
 const BID_FUNNEL = ['Cotação','Proposta Enviada','Consultoria','Negociação','Implantação','Ganho'];
 const BID_EXTRA  = ['Standby'];
 
-function buildResult(funnelOrder, extraStages, stageSets, dealNames) {
+function buildResult(funnelOrder, extraStages, stageSets, dealNames, stageDates) {
   const allStages = [...funnelOrder, ...extraStages];
   const stages = allStages.map(stage => ({
     stage,
     count: stageSets[stage] ? stageSets[stage].size : 0,
     deals: stageSets[stage]
-      ? [...stageSets[stage]].map(id => ({ hs_id: id, name: dealNames[id] || '' }))
+      ? [...stageSets[stage]].map(id => ({ hs_id: id, name: dealNames[id] || '', entered_date: stageDates[stage]?.[id] || null }))
       : [],
   }));
 
@@ -95,6 +95,7 @@ module.exports = async function handler(req, res) {
   if (!user) return;
 
   const since = req.query.since || '2025-08-01';
+  const until = req.query.until || null;
 
   let token;
   try { token = getHubspotToken(); } catch (e) {
@@ -140,19 +141,22 @@ module.exports = async function handler(req, res) {
     // 3. Contadores separados por pipeline
     const vendasSets = {};
     const bidSets    = {};
-    [...VENDAS_FUNNEL, ...VENDAS_EXTRA].forEach(s => { vendasSets[s] = new Set(); });
-    [...BID_FUNNEL,    ...BID_EXTRA   ].forEach(s => { bidSets[s]    = new Set(); });
+    const vendasDates = {};
+    const bidDates = {};
+    [...VENDAS_FUNNEL, ...VENDAS_EXTRA].forEach(s => { vendasSets[s] = new Set(); vendasDates[s] = {}; });
+    [...BID_FUNNEL,    ...BID_EXTRA   ].forEach(s => { bidSets[s]    = new Set(); bidDates[s] = {}; });
 
     hsIds.forEach(id => {
       const pipe = dealPipeline[id];
       (historyByDeal[id] || []).forEach(entry => {
         if (entry.entered_date < since) return;
+        if (until && entry.entered_date > until) return;
         if (pipe === VENDAS_ID) {
           const name = VENDAS_STAGE_MAP[entry.stage_id];
-          if (name && vendasSets[name]) vendasSets[name].add(id);
+          if (name && vendasSets[name]) { vendasSets[name].add(id); if (!vendasDates[name][id] || entry.entered_date < vendasDates[name][id]) vendasDates[name][id] = entry.entered_date; }
         } else if (pipe === BID_ID) {
           const name = BID_STAGE_MAP[entry.stage_id];
-          if (name && bidSets[name]) bidSets[name].add(id);
+          if (name && bidSets[name]) { bidSets[name].add(id); if (!bidDates[name][id] || entry.entered_date < bidDates[name][id]) bidDates[name][id] = entry.entered_date; }
         }
       });
     });
@@ -163,12 +167,13 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({
       success: true,
       since,
+      until,
       total_deals:        rawDeals.length,
       total_vendas:       totalVendas,
       total_bid:          totalBid,
       total_with_history: Object.keys(historyByDeal).length,
-      vendas: buildResult(VENDAS_FUNNEL, VENDAS_EXTRA, vendasSets, dealNames),
-      bid:    buildResult(BID_FUNNEL,    BID_EXTRA,    bidSets,    dealNames),
+      vendas: buildResult(VENDAS_FUNNEL, VENDAS_EXTRA, vendasSets, dealNames, vendasDates),
+      bid:    buildResult(BID_FUNNEL,    BID_EXTRA,    bidSets,    dealNames, bidDates),
       timestamp: new Date().toISOString(),
     });
   } catch (e) {

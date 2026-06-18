@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Board View | Axenya</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0d1117;--card:#171f2e;--card2:#1e2a3c;--border:#293a50;--text:#e6edf3;--text2:#8b949e;--muted:#6e7681;--teal:#3ab8b7;--green:#3fb950;--red:#f85149;--orange:#d29922;--yellow:#e3b341;--hover:rgba(255,255,255,0.06);--even-s:#131b28;--hover-s:#1c2b40;--hdr-glass:rgba(13,17,23,.78)}
+html[data-theme="light"]{--bg:#f6f8fa;--card:#ffffff;--card2:#eaeef2;--border:#d0d7de;--text:#1f2328;--text2:#57606a;--teal:#0d7377;--green:#1a7f37;--yellow:#9a6700;--red:#cf222e;--hover:rgba(0,0,0,0.05);--even-s:#f1f4f8;--hover-s:#e8eef4;--hdr-glass:rgba(246,248,250,.82)}
+body{background:var(--bg);color:var(--text);font-family:Inter,'Segoe UI',system-ui,sans-serif;font-size:13px;line-height:1.5}
+button,input,select,textarea{font-family:inherit}
+h1{font-size:1.5rem;font-weight:700;letter-spacing:-.02em;margin-bottom:.15rem}
+.hdr-btn{width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;background:none;border:none;color:var(--text2);border-radius:99px;cursor:pointer;transition:background .15s,color .15s;position:relative;flex-shrink:0}
+.hdr-btn:hover{background:rgba(255,255,255,0.13);color:var(--text)}
+html[data-theme="light"] .hdr-btn:hover{background:rgba(0,0,0,0.07)}
+.hdr-btn.highlighted{background:var(--teal)!important;color:#fff!important;box-shadow:0 0 0 2px rgba(58,184,183,.3)}
+.hdr-btn[data-tooltip]::after{content:attr(data-tooltip);position:absolute;top:calc(100% + 7px);left:50%;transform:translateX(-50%);background:var(--card2);color:var(--text);font-size:.73rem;padding:.26rem .62rem;border-radius:6px;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .15s;z-index:300}
+.hdr-btn[data-tooltip]:hover::after{opacity:1}
+.hdr-sep{width:1px;height:16px;background:rgba(255,255,255,0.12);margin:0 2px;flex-shrink:0}
+html[data-theme="light"] .hdr-sep{background:rgba(0,0,0,0.12)}
+.hdr-actions{display:flex;align-items:center;background:rgba(255,255,255,0.09);border-radius:99px;padding:7px;gap:12px}
+html[data-theme="light"] .hdr-actions{background:rgba(0,0,0,0.03)}
+@keyframes hdr-spin{to{transform:rotate(360deg)}}
+.hdr-btn.spinning svg{animation:hdr-spin .7s linear infinite}
+.nav-drawer{position:fixed;top:0;left:-280px;width:280px;height:100vh;background:var(--card);border-right:1px solid rgba(255,255,255,.08);z-index:1000;transition:left .25s cubic-bezier(0.4,0,0.2,1);display:flex;flex-direction:column}
+.nav-drawer.open{left:0}
+.nav-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:999;opacity:0;pointer-events:none;transition:opacity .25s ease}
+.nav-backdrop.open{opacity:1;pointer-events:auto}
+.nav-drawer-header{display:flex;align-items:center;gap:.75rem;padding:1.1rem 1.25rem;border-bottom:1px solid rgba(255,255,255,.08)}
+.nav-drawer-brand{font-weight:600;font-size:1rem;color:var(--text);flex:1}
+.nav-drawer-footer{margin-top:auto;display:flex;align-items:center;gap:.5rem;padding:.7rem .75rem;border-top:1px solid rgba(255,255,255,.08)}
+html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
+.nav-foot-btn{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:.4rem;min-height:38px;background:var(--card2);border:1px solid var(--border);border-radius:10px;color:var(--text2);cursor:pointer;padding:.4rem;font-family:inherit;font-size:.78rem;font-weight:700;letter-spacing:.04em;transition:border-color .15s,color .15s,background .15s}
+.nav-foot-btn:hover{border-color:var(--teal);color:var(--text)}
+.nav-menu{list-style:none;padding:.5rem 0;margin:0}
+.nav-item{display:flex;align-items:center;gap:.75rem;padding:.7rem 1.25rem;cursor:pointer;font-size:.9rem;color:var(--text2);transition:background .15s,color .15s}
+.nav-item:hover{background:rgba(255,255,255,.06);color:var(--text)}
+.nav-item.active{color:var(--teal);font-weight:500}
+.nav-item.active svg{stroke:var(--teal)}
+.novo-hdr{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:1.25rem 2rem;background:transparent;position:sticky;top:0;z-index:100;transition:background .25s,backdrop-filter .25s,box-shadow .25s}
+.novo-hdr.scrolled{background:var(--hdr-glass);backdrop-filter:blur(18px) saturate(1.5);-webkit-backdrop-filter:blur(18px) saturate(1.5);box-shadow:0 1px 0 var(--border)}
+.novo-theme-sun{display:block}.novo-theme-moon{display:none}
+[data-theme="light"] .novo-theme-sun{display:none}[data-theme="light"] .novo-theme-moon{display:block}
+.novo-lang-btn{width:auto !important;padding:0 9px;font-size:.71rem;font-weight:700;letter-spacing:.06em}
+.novo-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(480px,1fr));gap:1rem;padding-bottom:2rem}
+.novo-card{background:var(--card);border-radius:10px;padding:1.25rem 1.5rem}
+.novo-card-header{display:flex;align-items:center;gap:.6rem;margin-bottom:1rem;flex-wrap:wrap}
+.novo-card-header h3{font-size:.88rem;font-weight:600;color:var(--text);margin:0;flex:1}
+.novo-code-tag{display:none;align-items:center;font-size:.6rem;font-weight:700;letter-spacing:.04em;font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--teal);background:rgba(58,184,183,.14);border:1px solid rgba(58,184,183,.32);border-radius:5px;padding:.05rem .32rem;line-height:1.35;flex-shrink:0}
+.novo-info-btn{width:16px;height:16px;border-radius:50%;border:1.5px solid var(--text2);background:none;color:var(--text2);font-size:.62rem;font-style:normal;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;position:relative;flex-shrink:0;padding:0;line-height:1}
+body:not(.novo-info-on) .novo-card .novo-info-btn{display:none}
+body.novo-info-on .novo-code-tag{display:inline-flex}
+#novo-tip{position:fixed;z-index:9999;background:rgba(23,31,46,.78);backdrop-filter:blur(14px) saturate(1.5);border-radius:6px;padding:.45rem .7rem;width:278px;pointer-events:none;display:none;box-shadow:0 6px 20px rgba(0,0,0,.3)}
+html[data-theme="light"] #novo-tip{background:rgba(246,248,250,.82)}
+#novo-tip.nt-show{display:block}
+#novo-tip .nt-text{font-size:.73rem;color:var(--text);font-weight:400;line-height:1.5}
+#novo-tip .nt-code{font-size:.62rem;font-weight:700;color:var(--teal);font-family:ui-monospace,Menlo,Consolas,monospace;margin-top:.3rem;padding-top:.28rem;border-top:1px solid rgba(255,255,255,.12);letter-spacing:.07em}
+html[data-theme="light"] #novo-tip .nt-code{border-top-color:rgba(0,0,0,.1)}
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem;margin-bottom:.75rem}
+.kpi-card{background:var(--card);border-radius:14px;padding:1.6rem 1.8rem;transition:box-shadow .18s}
+.kpi-card:hover{box-shadow:0 0 0 2px rgba(58,184,183,.35)}
+.kpi-click{cursor:pointer}
+.kpi-label{font-size:.66rem;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;line-height:1}
+.kpi-value{font-size:2rem;font-weight:800;line-height:1.1;margin:.35rem 0 .25rem}
+.kpi-sub{font-size:.7rem;color:var(--muted);line-height:1.35}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:2000;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s linear;backdrop-filter:blur(5px)}
+.modal-overlay.open{opacity:1;pointer-events:auto}
+.modal{background:var(--card);border:1px solid var(--border);border-radius:14px;width:90vw;max-width:960px;max-height:85vh;display:flex;flex-direction:column;transform:translateY(20px);transition:transform .28s cubic-bezier(0.4,0,0.2,1)}
+.modal-overlay.open .modal{transform:translateY(0)}
+.modal-header{display:flex;justify-content:space-between;align-items:center;padding:1.2rem 1.5rem;border-bottom:1px solid var(--border)}
+.modal-header h2{font-size:1rem;font-weight:600;color:var(--text)}
+.modal-close{background:none;border:none;color:var(--text2);font-size:1.4rem;cursor:pointer;padding:.2rem .5rem;border-radius:4px}
+.modal-close:hover{color:var(--red)}
+.modal-body{padding:1.2rem 1.5rem;overflow-y:auto;flex:1}
+.btn-export{background:transparent;border:1px solid var(--border);color:var(--text2);border-radius:8px;padding:.3rem .7rem;font-size:.7rem;cursor:pointer;margin-left:auto}
+.btn-export:hover{border-color:var(--teal);color:var(--teal)}
+table.lb{width:100%;border-collapse:separate;border-spacing:0;font-size:14px}
+table.lb th{text-align:right;color:var(--teal);font-size:.72rem;font-weight:700;text-transform:uppercase;padding:.6rem 1rem;border-bottom:2px solid var(--teal);white-space:nowrap;position:sticky;top:0;background:var(--card)}
+table.lb th:first-child{text-align:left}
+table.lb td{padding:.38rem 1rem;border-bottom:1px solid var(--border);color:var(--text);text-align:right}
+table.lb td:first-child{text-align:left;font-weight:600}
+table.lb tbody tr:nth-child(even) td{background:var(--even-s)}
+table.lb tbody tr:hover td{background:var(--hover-s)}
+/* Stats grid dos modais (idêntico ao CRO) */
+.kpi-sec{background:var(--card2);border-radius:10px;padding:.9rem 1.1rem;transition:box-shadow .18s}
+.kpi-sec-label{font-size:.62rem;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0;line-height:1}
+.kpi-sec-value{font-size:1.15rem;font-weight:700;line-height:1.15;margin:.22rem 0 .15rem;word-break:break-all}
+/* Settings drawer global */
+.gs-toggle{display:inline-flex;align-items:center;cursor:pointer;background:var(--card2);border:1px solid var(--border);border-radius:99px;padding:.3rem;flex:none}
+.gs-sw{width:34px;height:19px;border-radius:99px;background:var(--border);position:relative;transition:background .18s;flex:none}
+.gs-toggle.on .gs-sw{background:var(--teal)}
+.gs-sw::after{content:'';position:absolute;top:2px;left:2px;width:15px;height:15px;border-radius:50%;background:#fff;transition:transform .18s}
+.gs-toggle.on .gs-sw::after{transform:translateX(15px)}
+.gs-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:3000;opacity:0;pointer-events:none;transition:opacity .25s}
+.gs-backdrop.open{opacity:1;pointer-events:auto}
+.gs-drawer{position:fixed;top:0;right:-380px;width:360px;max-width:100vw;height:100vh;background:var(--card);border-left:1px solid var(--border);z-index:3001;display:flex;flex-direction:column;transition:right .28s cubic-bezier(.4,0,.2,1);box-shadow:-8px 0 32px rgba(0,0,0,.25)}
+.gs-drawer.open{right:0}
+.gs-hdr{display:flex;align-items:center;justify-content:space-between;padding:1.25rem 1.5rem;border-bottom:1px solid var(--border);flex-shrink:0}
+.gs-hdr h3{margin:0;font-size:1.2rem;font-weight:600;color:var(--text)}
+.gs-body{flex:1;overflow-y:auto;padding:1rem 1.5rem}
+.gs-row{display:flex;align-items:center;gap:.75rem;padding:.85rem 0;border-bottom:1px solid var(--border)}
+.gs-row label{flex:1;font-size:.9rem;color:var(--text)}
+/* Toggle de abas (raw/ponderado) — idêntico ao CRO */
+.tab-sub{display:inline-flex;background:var(--card2);border-radius:99px;padding:3px;gap:0;margin-bottom:1rem;position:relative}
+.tab-sub-thumb{position:absolute;top:3px;height:calc(100% - 6px);border-radius:99px;background:rgba(255,255,255,.14);pointer-events:none;z-index:0;transition:left .22s cubic-bezier(.4,0,.2,1),width .22s cubic-bezier(.4,0,.2,1)}
+html[data-theme="light"] .tab-sub-thumb{background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.15)}
+.tab-sub-btn{background:transparent;border:none;border-radius:99px;color:var(--text2);padding:.3rem .9rem;cursor:pointer;font-size:.75rem;font-weight:500;transition:color .18s;position:relative;z-index:1}
+.tab-sub-btn.active{color:var(--text);font-weight:600}
+.novo-card-header .tab-sub{margin-bottom:0}
+/* Chips de etapa nos modais */
+.stage-chip{background:var(--card2);border:1px solid var(--border);border-radius:99px;color:var(--text2);padding:.34rem .82rem;cursor:pointer;font-size:.72rem;font-weight:700;font-family:inherit;transition:border-color .15s,color .15s,background .15s,box-shadow .15s;display:inline-flex;align-items:center;gap:.35rem}
+.stage-chip:hover{border-color:var(--teal);color:var(--text);box-shadow:0 0 0 2px rgba(58,184,183,.1)}
+.stage-chip.active{background:rgba(58,184,183,.16);border-color:var(--teal);color:var(--teal);box-shadow:inset 0 0 0 1px rgba(58,184,183,.12)}
+.stage-chip .chip-count{font-size:.62rem;opacity:.7;font-weight:500}
+#view-novo{transition:filter .25s ease,margin-left .25s cubic-bezier(0.4,0,0.2,1)}
+body.nav-docked #view-novo{margin-left:280px}
+@media(max-width:820px){body.nav-docked #view-novo{margin-left:0}}
+.content-blur{filter:blur(4px);pointer-events:none;user-select:none}
+.novo-help-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:3000;opacity:0;pointer-events:none;transition:opacity .25s ease}
+.novo-help-backdrop.open{opacity:1;pointer-events:auto}
+.novo-help-drawer{position:fixed;top:0;right:-580px;width:540px;max-width:100vw;height:100vh;background:var(--card);border-left:1px solid var(--border);z-index:3001;display:flex;flex-direction:column;transition:right .28s cubic-bezier(0.4,0,0.2,1);box-shadow:-8px 0 32px rgba(0,0,0,.25)}
+.novo-help-drawer.open{right:0}
+.novo-help-hdr{display:flex;align-items:center;justify-content:space-between;padding:1.25rem 1.5rem;border-bottom:1px solid var(--border);flex-shrink:0}
+.novo-help-hdr h3{margin:0;font-size:1.15rem;font-weight:600;color:var(--text)}
+.novo-help-body{flex:1;overflow-y:auto;padding:1.25rem 1.5rem}
+.section-hdr{grid-column:1/-1;margin:1.5rem 0 .25rem;border-top:1px solid var(--border);padding-top:1.25rem}
+.section-hdr h2{font-size:.78rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.1em;margin:0}
+</style>
+<link rel="stylesheet" href="/premium.css?v=5">
+<script src="/premium.js?v=5"></script>
+<script src="/filter-bar.js?v=1"></script>
+<script src="/shared-charts.js?v=1"></script>
+</head>
+<body>
+
+<nav class="nav-drawer" id="nav-drawer">
+  <div class="nav-drawer-header"><span class="nav-drawer-brand">Dashboard Axenya</span><button class="hdr-btn" onclick="closeDrawer()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+  <ul class="nav-menu">
+    <li class="nav-item" onclick="location.href='/novo'"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>CRO Dashboard</li>
+    <li class="nav-item active" onclick="location.href='/novo-board'"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20h20M4 20V10l8-6 8 6v10"/><path d="M10 20v-6h4v6"/></svg>Board View</li>
+    <li class="nav-item" onclick="location.href='/novo-ae'"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>AE Performance</li>
+    <li class="nav-item" onclick="location.href='/novo-bdr'"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>BDR Performance</li>
+    <li class="nav-item" onclick="location.href='/novo-48h'"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Last 48h</li>
+    <li class="nav-item" onclick="location.href='/novo-cs'"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>CS Dashboard</li>
+    <li class="nav-item" onclick="location.href='/novo-cotacao'"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Cotação</li>
+    <div style="height:1px;background:var(--border);margin:.4rem .75rem"></div>
+    <li class="nav-item" onclick="location.href='/forecast'"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Forecast</li>
+  </ul>
+</nav>
+<div class="nav-backdrop" id="nav-backdrop" onclick="closeDrawer()"></div>
+
+<div id="view-novo">
+  <div class="novo-hdr" id="novo-hdr">
+    <div style="display:flex;align-items:center;gap:.75rem">
+      <button class="hdr-btn" onclick="toggleDrawer()" data-tooltip="Menu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
+      <div class="panel-switcher" id="panel-switcher"><button class="panel-switch-btn" type="button" onclick="togglePanelMenu(event)" aria-haspopup="true" aria-expanded="false"><h1>Board View</h1><svg class="panel-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button><div class="panel-dd" id="panel-dd" role="menu"></div></div>
+    </div>
+    <div class="hdr-actions">
+      <button class="hdr-btn" id="btn-info-toggle" onclick="boardToggleInfo()" data-tooltip="Mostrar/ocultar IDs e auditoria" style="font-size:.9rem;font-weight:800">?</button>
+      <button class="hdr-btn" onclick="novoHelp()" data-tooltip="Campos HubSpot"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></button>
+      <button class="hdr-btn" onclick="novoOpenSettings()" data-tooltip="Configurações"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+      <button class="hdr-btn highlighted" id="btn-refresh" onclick="_novoDeals=null;novoLoadData();" data-tooltip="Atualizar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></button>
+    </div>
+  </div>
+  <div id="novo-content" style="max-width:1400px;margin:0 auto;padding:2rem">
+    <div style="text-align:center;padding:3rem 0;color:var(--text2)">Aguardando dados…</div>
+  </div>
+</div>
+
+<div id="novo-tip"><div class="nt-text"></div><div class="nt-code"></div></div>
+
+<div class="modal-overlay" id="modal-overlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-header"><h2 id="modal-title"></h2><button class="btn-export" onclick="exportModalCSV()">&#11015; CSV</button><button class="modal-close" onclick="closeModal()">&times;</button></div>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
+<div class="novo-help-backdrop" id="novo-help-backdrop" onclick="novoCloseHelp()"></div>
+<div class="novo-help-drawer" id="novo-help-drawer">
+  <div class="novo-help-hdr"><h3>Campos do HubSpot</h3><button class="hdr-btn" onclick="novoCloseHelp()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+  <div class="novo-help-body" id="novo-help-body"></div>
+</div>
+
+<!-- Settings drawer (global, compartilhado entre painéis via localStorage) -->
+<div class="gs-backdrop" id="gs-backdrop" onclick="novoCloseSettings()"></div>
+<div class="gs-drawer" id="gs-drawer">
+  <div class="gs-hdr"><h3>Configurações</h3><button class="hdr-btn" onclick="novoCloseSettings()" aria-label="Fechar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+  <div class="gs-body">
+    <div class="gs-row"><label>Implantação = Ganho</label><button class="gs-toggle" id="gs-impl" onclick="novoToggleImplWon()" aria-label="Implantação = Ganho"><span class="gs-sw"></span></button></div>
+    <div class="gs-row"><label>Ativos incluem Reunião Agendada</label><button class="gs-toggle" id="gs-ra" onclick="novoToggleActiveMeetings()" aria-label="Ativos incluem Reunião Agendada"><span class="gs-sw"></span></button></div>
+    <div class="gs-row"><label>Ativos incluem Standby</label><button class="gs-toggle" id="gs-sb" onclick="novoToggleActiveStandby()" aria-label="Ativos incluem Standby"><span class="gs-sw"></span></button></div>
+    <p style="font-size:.74rem;color:var(--text2);line-height:1.5;margin:1rem 0 0">Estas opções são globais: valem para CRO Dashboard, Board View, AE, BDR e Last 48h.</p>
+  </div>
+</div>
+
+<script>
+(function(){ var s=localStorage.getItem('axenya_theme')||'dark'; if(s==='light') document.documentElement.setAttribute('data-theme','light'); })();
+function toggleTheme(){ var n=document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark'; document.documentElement.setAttribute('data-theme',n); localStorage.setItem('axenya_theme',n); if(_novoDeals) novoRender(); }
+function doLogout(){ window.location.href='/login.html'; }
+function setContentBlur(on){ var el=document.getElementById('view-novo'); if(el) el.classList.toggle('content-blur',on); }
+function _setNavOpen(open){ document.getElementById('nav-drawer').classList.toggle('open',open); document.body.classList.toggle('nav-docked',open); var narrow=window.matchMedia('(max-width:820px)').matches; document.getElementById('nav-backdrop').classList.toggle('open',open&&narrow); try{localStorage.setItem('novo_nav_open',open?'true':'false');}catch(e){} }
+function closeDrawer(){ _setNavOpen(false); setContentBlur(false); }
+function toggleDrawer(){ _setNavOpen(!document.getElementById('nav-drawer').classList.contains('open')); }
+function openModal(title,bodyHtml){ setContentBlur(true); document.getElementById('modal-title').textContent=title; document.getElementById('modal-body').innerHTML=bodyHtml; document.getElementById('modal-overlay').classList.add('open'); }
+function closeModal(){ document.getElementById('modal-overlay').classList.remove('open'); setContentBlur(false); }
+function exportModalCSV(){ var title=document.getElementById('modal-title').textContent; var table=document.getElementById('modal-body').querySelector('table'); if(!table)return; var rows=[]; table.querySelectorAll('tr').forEach(function(tr){ var cells=[]; tr.querySelectorAll('th,td').forEach(function(c){ cells.push('"'+(c.textContent.trim().replace(/"/g,'""'))+'"'); }); rows.push(cells.join(',')); }); var a=document.createElement('a'); a.href='data:text/csv;charset=utf-8,﻿'+encodeURIComponent(rows.join('\n')); a.download=(title||'export').slice(0,40).replace(/[^a-z0-9]/gi,'-')+'-'+new Date().toISOString().slice(0,10)+'.csv'; a.click(); }
+
+var NOVO_LANG=(function(){ try{return localStorage.getItem('novo_lang')||'pt';}catch(e){return 'pt';} })();
+var NOVO_I18N={
+  pt:{loading:'Buscando dados…',error_prefix:'Erro: ',retry:'Tentar novamente',updated_at:'Atualizado às',
+    bd_rev_trend:'Receita & Ganhos | Mensal',bd_rev_trend_tip:'Por mês de fechamento: barras = nº de deals ganhos, linha = receita ARR. O toggle alterna para Porte Médio (vidas médias). Meses sem receita são ocultados.',
+    bd_pipe_stage:'Valor do Pipeline Aberto por Etapa (ARR)',bd_pipe_stage_tip:'Snapshot atual: soma do ARR estimado de deals abertos por etapa. Não usa filtro de período.',
+    bd_conversion:'Conversão Ajustada (Ganhos vs Perdidos)',bd_conversion_tip:'Ganhos ÷ (ganhos + perdidos), usando close_date no período selecionado. Esta é a taxa ajustada pedida pelo CRO.',
+    bd_deal_bench:'Distribuição por Tamanho',bd_deal_bench_tip:'Donut de deals do pipeline ativo por faixa, com toggle entre Receita e Vidas. O centro mostra o total de deals ativos. A fatia cinza conta deals sem aquela informação. Clique numa fatia para ver os deals.',
+    bd_concentration:'Concentração de Receita do Pipeline Aberto',bd_concentration_tip:'% do ARR aberto atual representado pelos top deals. Não usa filtro de período.',
+    bd_entry_exit:'Entrada vs Saída de Deals por Mês',bd_entry_exit_tip:'Entradas por createdate; saídas por close_date, separando ganhos e perdidos.',
+    bd_arr_bridge:'ARR Bridge (Variação Mensal)',bd_arr_bridge_tip:'Variação mensal do ARR ganho, por close_date.',
+    bd_won_size:'Porte Médio dos Deals Ganhos (Vidas)',bd_won_size_tip:'Vidas médias de deals ganhos por mês de fechamento. Filtro usa close_date.',
+    bd_forecast:'Cenários de Forecast (Data Prevista)',bd_forecast_tip:'Pipeline aberto alocado pela data_prevista_para_receita quando há filtro ativo; sem filtro, snapshot do pipeline aberto atual.',
+    bd_won_monthly:'Deals Ganhos por Mês',bd_won_monthly_tip:'Contagem de deals ganhos por mês de fechamento. Filtro usa close_date.',
+  },
+  en:{loading:'Fetching data…',error_prefix:'Error: ',retry:'Try again',updated_at:'Updated at',
+    bd_rev_trend:'Revenue & Wins | Monthly',bd_rev_trend_tip:'By close month: bars = number of won deals, line = ARR revenue. Toggle switches to Avg Deal Size (lives). Months without revenue are hidden.',
+    bd_pipe_stage:'Open Pipeline Value by Stage (ARR)',bd_pipe_stage_tip:'Current snapshot: estimated ARR from open deals per stage. Does not use the period filter.',
+    bd_conversion:'Adjusted Conversion (Won vs Lost)',bd_conversion_tip:'Won ÷ (won + lost), using close_date inside the selected period. This is the adjusted conversion requested by the CRO.',
+    bd_deal_bench:'Size Distribution',bd_deal_bench_tip:'Donut of active pipeline deals by band, with a toggle between Revenue and Lives. The center shows the total active deals. The grey slice counts deals missing that info. Click a slice to see the deals.',
+    bd_concentration:'Open Pipeline Revenue Concentration',bd_concentration_tip:'% of current open ARR represented by top deals. Does not use the period filter.',
+    bd_entry_exit:'Deal Inflow vs Outflow by Month',bd_entry_exit_tip:'Inflow by createdate; outflow by close_date, split into won and lost.',
+    bd_arr_bridge:'ARR Bridge (Monthly Variation)',bd_arr_bridge_tip:'Monthly delta in won ARR, by close_date.',
+    bd_won_size:'Avg Won Deal Size (Lives)',bd_won_size_tip:'Average lives from won deals by close month. Filter uses close_date.',
+    bd_forecast:'Forecast Scenarios (Expected Date)',bd_forecast_tip:'Open pipeline allocated by data_prevista_para_receita when a filter is active; without a filter, current open pipeline snapshot.',
+    bd_won_monthly:'Won Deals by Month',bd_won_monthly_tip:'Count of won deals by close month. Filter uses close_date.',
+  }
+};
+function t(k){ return (NOVO_I18N[NOVO_LANG]||NOVO_I18N.pt)[k]||(NOVO_I18N.pt[k])||k; }
+function novoToggleLang(){ NOVO_LANG=NOVO_LANG==='pt'?'en':'pt'; try{localStorage.setItem('novo_lang',NOVO_LANG);}catch(e){} (function(_e){if(_e)_e.textContent=NOVO_LANG.toUpperCase();})(document.getElementById('novo-lang-label')); if(_novoDeals) novoRender(); }
+
+var BOARD_CARD_CODES={
+  'kpi-won-arr':'P07','kpi-open-pipe':'B02','kpi-adjusted-conv':'B03','kpi-forecast':'P03',
+  'rev-trend':'B05','pipe-stage':'C04','deal-bench':'C03',
+  'top-ae':'B15','watchlist':'B16',
+  'entry-exit':'B11','arr-bridge':'B12','forecast':'B14'
+};
+var _boardShowInfo=(function(){try{return localStorage.getItem('board_show_info')==='1';}catch(e){return false;}})();
+function _boardCodeTag(key){ var code=BOARD_CARD_CODES[key]||''; return code?'<span class="novo-code-tag">'+code+'</span>':''; }
+function boardToggleInfo(){
+  _boardShowInfo=!_boardShowInfo;
+  document.body.classList.toggle('novo-info-on',_boardShowInfo);
+  var b=document.getElementById('btn-info-toggle'); if(b)b.classList.toggle('highlighted',_boardShowInfo);
+  try{localStorage.setItem('board_show_info',_boardShowInfo?'1':'0');}catch(e){}
+}
+
+// Mapa por gráfico (mesmo formato do CRO Dashboard): campos INTERNOS do HubSpot
+// que alimentam cada card, com descrição e fórmula opcional. Indexado pelo id do
+// card (o mesmo passado a _infoBtn). Fonte: GET /api/forecast-table.
+var BOARD_HELP_CHARTS=[
+  {key:'kpi-won-arr',title:'ARR Ganho no Período',
+    desc:'Soma do ARR estimado dos deals ganhos (Ganho + Implantação conforme toggle). Sem filtro: all-time; com filtro: por close_date na janela.',
+    fields:[['close_date','Filtro de período.'],['stage','Define ganho (Ganho + Implantação conforme toggle).'],['arr_estimado','ARR somado (fallback 1ª fatura × 12).']]},
+  {key:'kpi-open-pipe',title:'Pipeline Aberto Atual (ARR)',
+    desc:'Soma do ARR estimado do pipeline aberto atual. Sem filtro de período.',
+    fields:[['stage','Define aberto (exclui Ganho/Perdido; Reunião Agendada conforme toggle).'],['arr_estimado','ARR somado.'],['primeira_fatura','Fallback.']]},
+  {key:'kpi-adjusted-conv',title:'Conversão Ajustada',
+    desc:'Ganhos ÷ (ganhos + perdidos) no período, por close_date.',
+    fields:[['close_date','Filtro de fechados.'],['stage','Separa ganhos e perdidos.']]},
+  {key:'kpi-forecast',title:'Forecast Ponderado',
+    desc:'Σ (ARR × probabilidade) do pipeline; alocado pela data prevista quando há filtro.',
+    fields:[['arr_estimado','Base do ponderado.'],['probabilidade','Peso; fallback prob. da etapa.'],['data_prevista_para_receita','Filtro quando ativo.']]},
+  {key:'rev-trend',title:'Receita & Ganhos | Mensal',
+    desc:'Por mês de fechamento (close_date): barras = nº de deals ganhos, linha teal = receita ARR, linha lilás = vidas totais. Todas as séries são mostráveis/ocultáveis pela legenda. Meses sem ganhos são ocultados.',
+    fields:[['close_date','Agrupa por mês de fechamento.'],['stage','Define ganho (Ganho + Implantação conforme toggle).'],['arr_estimado','Receita ARR (linha teal; fallback 1ª fatura × 12).'],['vidas','Vidas totais ganhas no mês (linha lilás).']]},
+  {key:'pipe-stage',title:'Valor do Pipeline Aberto por Etapa (ARR)',
+    desc:'Snapshot atual: soma do ARR estimado de deals abertos por etapa. Não usa filtro de período.',
+    fields:[['stage','Etapa atual dos deals abertos. Snapshot atual, sem filtro de período.'],['arr_estimado','ARR estimado atual.'],['primeira_fatura','Fallback de ARR.']]},
+  {key:'deal-bench',title:'Distribuição por Tamanho',
+    desc:'Donut de deals do pipeline ativo por faixa, alternando entre Receita (ARR) e Vidas. O centro mostra o total de deals ativos. Não usa filtro de período.',
+    fields:[['arr_estimado','Define a faixa no modo Receita (fallback 1ª fatura × 12).'],['vidas','Define a faixa no modo Vidas.'],['stage','Pipeline ativo (exclui Ganho/Perdido/Standby/Implantação; Reunião Agendada conforme toggle).']]},
+  {key:'top-ae',title:'Top 5 AEs by Weighted Open Pipeline',
+    desc:'Top 5 AEs por Receita Ponderada (Σ ARR × probabilidade) do pipeline ativo — quem carrega o forecast. Não usa filtro de período.',
+    fields:[['hubspot_owner_id','Agrupa por AE.'],['arr_estimado','ARR estimado (fallback 1ª fatura × 12).'],['probabilidade','Peso; fallback prob. da etapa.'],['vidas','Vidas somadas por AE.'],['stage','Pipeline ativo (exclui Ganho/Perdido/Standby/Implantação; Reunião conforme toggle).']]},
+  {key:'watchlist',title:'Top 10 Open Deals by Weighted R$/yr | BoD Watchlist',
+    desc:'Top 10 deals abertos por Receita Ponderada (ARR × probabilidade). Lista de acompanhamento da diretoria. Não usa filtro de período.',
+    fields:[['arr_estimado','ARR estimado (fallback 1ª fatura × 12).'],['probabilidade','Peso; fallback prob. da etapa.'],['vidas','Vidas do deal.'],['dias_no_pipe','Idade do deal no pipeline.'],['stage','Etapa atual.']]},
+  {key:'entry-exit',title:'Entrada vs Saída de Deals por Mês',
+    desc:'Entradas por createdate; saídas por close_date, separando ganhos e perdidos.',
+    fields:[['createdate','Entrada no pipeline.'],['close_date','Saída por ganho/perda.'],['stage','Separa ganhos e perdidos.']]},
+  {key:'arr-bridge',title:'ARR Bridge (Variação Mensal)',
+    desc:'Variação mensal do ARR ganho, por close_date.',
+    fields:[['close_date','Mês do ganho.'],['arr_estimado','ARR ganho no mês.']]},
+  {key:'forecast',title:'Cenários de Forecast (Data Prevista)',
+    desc:'Pipeline aberto alocado pela data_prevista_para_receita quando há filtro ativo; sem filtro, snapshot do pipeline aberto atual. A etapa define a probabilidade padrão e a probabilidade customizada do deal tem prioridade.',
+    formula:'Forecast ponderado = Σ (ARR × probabilidade)',
+    fields:[['data_prevista_para_receita','Filtro de período quando ativo.'],['stage','Etapa define probabilidade padrão.'],['probabilidade','Probabilidade customizada do deal quando preenchida.'],['arr_estimado','ARR projetado.']]},
+];
+
+// Qual dimensão de data o FILTRO GLOBAL de período usa em cada gráfico.
+var BOARD_FILT_FIELD={
+  'rev-trend':'close','pipe-stage':'none',
+  'deal-bench':'none','top-ae':'none','watchlist':'none','entry-exit':'both','arr-bridge':'close',
+  'forecast':'prev',
+};
+var BOARD_FILT_LABEL={
+  pt:{
+    create:'Data de criação | <code>createdate</code>',
+    close:'Data de fechamento | <code>close_date</code>',
+    both:'Criação (<code>createdate</code>) para entradas e fechamento (<code>close_date</code>) para ganhos/perdidos',
+    prev:'Data prevista de receita | <code>data_prevista_para_receita</code>',
+    none:'Não filtra por período | considera todos os deals',
+  },
+  en:{
+    create:'Creation date | <code>createdate</code>',
+    close:'Close date | <code>close_date</code>',
+    both:'Creation (<code>createdate</code>) for inflow and close (<code>close_date</code>) for won/lost',
+    prev:'Expected revenue date | <code>data_prevista_para_receita</code>',
+    none:'Not filtered by period | considers all deals',
+  }
+};
+
+// Tabela de detalhe comum a todos os gráficos (abre ao clicar numa barra).
+var BOARD_HELP_DETAIL=[
+  ['dealname','Nome do deal (link para o HubSpot via hs_id).'],
+  ['ae','Coluna "AE".'],
+  ['pipeline','Coluna "Pipe".'],
+  ['stage','Coluna "Etapa".'],
+  ['vidas','Coluna "Vidas".'],
+  ['arr_estimado','Coluna "ARR" (fallback primeira_fatura × 12).'],
+  ['probabilidade','Coluna "Prob.".'],
+  ['createdate','Coluna "Criado".'],
+  ['close_date','Coluna "Fechado".'],
+  ['data_prevista_para_receita','Coluna "Dt. Receita".'],
+  ['lost_reason','Coluna "Motivo perda".'],
+];
+
+function _boardHelpRow(name,desc){
+  return '<tr>'+
+    '<td style="text-align:left;font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--teal);white-space:nowrap;font-weight:600">'+name+'</td>'+
+    '<td style="text-align:left;color:var(--text2);font-weight:400">'+desc+'</td>'+
+  '</tr>';
+}
+function _boardHelpSection(c){
+  var code=BOARD_CARD_CODES[c.key]||'';
+  var codeTag=code?'<span style="font-size:.66rem;background:var(--card2);color:var(--teal);padding:.05rem .28rem;border-radius:3px;font-weight:700;letter-spacing:.05em;font-family:ui-monospace,Menlo,monospace;margin-left:.4rem;vertical-align:middle">'+code+'</span>':'';
+  var driving=c.fields.map(function(f){ return _boardHelpRow(f[0],f[1]); }).join('');
+  var formulaHtml=c.formula?'<div style="margin:0 0 .65rem;padding:.5rem .65rem;background:var(--card2);border-radius:6px;border-left:3px solid var(--teal)"><div style="font-size:.61rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);font-weight:700;margin-bottom:.22rem">Fórmula</div><code style="font-size:.75rem;color:var(--text);font-family:ui-monospace,Menlo,Consolas,monospace;line-height:1.5">'+c.formula+'</code></div>':'';
+  var fk=BOARD_FILT_FIELD[c.key];
+  var filtLabels=BOARD_FILT_LABEL[NOVO_LANG]||BOARD_FILT_LABEL.pt;
+  var filtTitle=NOVO_LANG==='en'?'Period filter uses':'Filtro de período usa';
+  var filtHtml=(fk&&fk!=='none')?'<div style="margin:0 0 .65rem;padding:.5rem .65rem;background:var(--card2);border-radius:6px;border-left:3px solid var(--blue)"><div style="font-size:.61rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);font-weight:700;margin-bottom:.22rem">'+filtTitle+'</div><div style="font-size:.76rem;color:var(--text);line-height:1.5">'+(filtLabels[fk]||fk)+'</div></div>':'';
+  return '<div style="margin-bottom:1.5rem">'+
+    '<h3 style="font-size:.92rem;color:var(--text);margin:0 0 .25rem">'+c.title+codeTag+'</h3>'+
+    '<p style="font-size:.8rem;line-height:1.6;color:var(--text2);margin:0 0 .5rem">'+c.desc+'</p>'+
+    formulaHtml+
+    filtHtml+
+    '<table class="lb" style="width:100%;font-size:.78rem"><thead><tr>'+
+      '<th style="text-align:left">Campo HubSpot (interno)</th>'+
+      '<th style="text-align:left">Como é usado</th>'+
+    '</tr></thead><tbody>'+driving+'</tbody></table>'+
+  '</div>';
+}
+// Abre o drawer lateral com a(s) seção(ões) de campos + a tabela de detalhe.
+function _boardOpenHelp(headerTitle,charts){
+  var detailRows=BOARD_HELP_DETAIL.map(function(f){ return _boardHelpRow(f[0],f[1]); }).join('');
+  var html=
+    '<p style="font-size:.78rem;color:var(--muted);margin:0 0 1.1rem">Fonte: <code style="color:var(--text2)">GET /api/forecast-table?includeLost=true</code> (deals dos pipelines Vendas + Bid, incluindo perdidos).</p>'+
+    charts.map(_boardHelpSection).join('')+
+    '<div style="margin-top:.5rem;padding-top:1rem;border-top:1px solid var(--border)">'+
+      '<h3 style="font-size:.92rem;color:var(--text);margin:0 0 .25rem">Tabela de detalhe (comum a todos)</h3>'+
+      '<p style="font-size:.8rem;line-height:1.6;color:var(--text2);margin:0 0 .5rem">Colunas exibidas ao clicar em qualquer barra.</p>'+
+      '<table class="lb" style="width:100%;font-size:.78rem"><tbody>'+detailRows+'</tbody></table>'+
+    '</div>';
+  var ttl=document.querySelector('#novo-help-drawer .novo-help-hdr h3');
+  if(ttl) ttl.textContent=headerTitle;
+  document.getElementById('novo-help-body').innerHTML=html;
+  setContentBlur(true);
+  document.getElementById('novo-help-backdrop').classList.add('open');
+  document.getElementById('novo-help-drawer').classList.add('open');
+}
+// Botão "i" de cada gráfico: abre o drawer com os campos só daquele gráfico.
+function boardHelpChart(key){
+  var c=BOARD_HELP_CHARTS.filter(function(x){ return x.key===key; });
+  if(!c.length) return;
+  _boardOpenHelp('Campos do HubSpot | '+c[0].title.replace(/^(?:🟡|🟢|🟠|🔴) /,''),c);
+}
+// Botão de ajuda do topo: abre o drawer com todos os gráficos.
+function novoHelp(){ _boardOpenHelp('Campos do HubSpot por gráfico',BOARD_HELP_CHARTS); }
+function novoCloseHelp(){ document.getElementById('novo-help-backdrop').classList.remove('open'); document.getElementById('novo-help-drawer').classList.remove('open'); setContentBlur(false); }
+document.addEventListener('mouseover',function(e){ var btn=e.target.closest('.novo-info-btn'); if(!btn)return; var tip=document.getElementById('novo-tip'); tip.querySelector('.nt-text').textContent=btn.getAttribute('data-tip')||''; tip.querySelector('.nt-code').textContent=btn.getAttribute('data-code')||''; tip.classList.add('nt-show'); });
+document.addEventListener('mouseout',function(e){ if(!e.target.closest('.novo-info-btn')) document.getElementById('novo-tip').classList.remove('nt-show'); });
+document.addEventListener('mousemove',function(e){ var tip=document.getElementById('novo-tip'); if(!tip.classList.contains('nt-show'))return; var r=tip.getBoundingClientRect(); var x=e.clientX+14; var y=e.clientY+14; if(x+r.width>window.innerWidth-8) x=e.clientX-r.width-10; if(y+r.height>window.innerHeight-8) y=e.clientY-r.height-10; tip.style.left=x+'px'; tip.style.top=y+'px'; });
+function _infoBtn(tip,code){ var hasHelp=BOARD_HELP_CHARTS.some(function(x){ return x.key===code; }); return _boardCodeTag(code)+'<button class="novo-info-btn" data-tip="'+_ne(tip)+'" data-code="'+(BOARD_CARD_CODES[code]||code||'')+'"'+(hasHelp?' onclick="event.stopPropagation();boardHelpChart(\''+code+'\')"':'')+' aria-label="Campos do HubSpot">i</button>'; }
+window.addEventListener('scroll',function(){ document.getElementById('novo-hdr').classList.toggle('scrolled',window.scrollY>10); },{passive:true});
+
+var _ne=function(s){ return (s==null?'—':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); };
+var _ni=function(v){ return v!=null?Number(v).toLocaleString('pt-BR'):'—'; };
+function _revShort(v){ if(!v||v<=0)return 'R$0'; return v>=1000000?('R$'+(v/1000000).toFixed(1)+'M'):('R$'+Math.round(v/1000)+'k'); }
+function _fmtBig(v){ if(v==null||isNaN(v))return '—'; if(Math.abs(v)>=1e6)return 'R$ '+(v/1e6).toFixed(2).replace('.',',')+'M'; if(Math.abs(v)>=1e3)return 'R$ '+(v/1e3).toFixed(1).replace('.',',')+'k'; return 'R$ '+Math.round(v).toLocaleString('pt-BR'); }
+function _mlbl(ym){ var p=ym.split('-'); return ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][parseInt(p[1])-1]+'/'+p[0].slice(2); }
+function _annualRev(d){ if(d.arr_estimado!=null&&d.arr_estimado>0)return d.arr_estimado; if(d.primeira_fatura!=null&&d.primeira_fatura>0)return d.primeira_fatura*12; return 0; }
+function _rawDeals(){ return window._novoDealsRaw || _novoDeals || []; }
+function _filterState(){ return (window.AxFilter && AxFilter.getState) ? AxFilter.getState() : {mode:'all',start:null,end:null}; }
+function _inWinStrict(dateStr){ var s=_filterState(); if(!s.start)return true; if(!dateStr)return false; return AxFilter.inWin(dateStr); }
+function _dealsByDate(field){ return _rawDeals().filter(function(d){ return _inWinStrict(d[field]); }); }
+
+var NOVO_FONT='Inter,\'Segoe UI\',system-ui,sans-serif';
+var NOVO_WON_STAGE='Ganho';
+var _novoImplWon=(function(){try{return localStorage.getItem('novo_impl_won')!=='0';}catch(e){return true;}})();
+var _novoActiveMeetings=(function(){try{return localStorage.getItem('novo_active_meetings')!=='0';}catch(e){return true;}})();
+var _novoActiveStandby=(function(){try{return localStorage.getItem('novo_active_standby')==='1';}catch(e){return false;}})();
+function _novoIsWon(d){ var s=d.stage; return s==='Ganho'||(_novoImplWon&&s==='Implantação'); }
+function _novoIsOpen(d){ return !_novoIsWon(d)&&d.stage!=='Perdido'&&(_novoActiveMeetings||d.stage!=='Reunião Agendada'); }
+var NOVO_STAGE_ORDER=['Diagnóstico','Cotação','Proposta Enviada','Consultoria','Negociação','Standby','Implantação'];
+var NOVO_STAGE_PROB_DEFAULT={'Cotação':0.33,'Proposta Enviada':0.285,'Consultoria':0.611,'Negociação':0.42,'Implantação':0.581,'Ganho':1.0,'Standby':0.12,'Stand by':0.12,'Diagnóstico':0.06};
+var NOVO_STAGE_PROB=(function(){try{var raw=localStorage.getItem('novo_stage_prob');if(raw){var parsed=JSON.parse(raw);var merged={};Object.keys(NOVO_STAGE_PROB_DEFAULT).forEach(function(k){merged[k]=NOVO_STAGE_PROB_DEFAULT[k];});Object.keys(parsed).forEach(function(k){merged[k]=parsed[k];});return merged;}}catch(e){}var copy={};Object.keys(NOVO_STAGE_PROB_DEFAULT).forEach(function(k){copy[k]=NOVO_STAGE_PROB_DEFAULT[k];});return copy;})();
+function _novoOpen(){ return _rawDeals().filter(_novoIsOpen); }
+function _novoWon(){ return _dealsByDate('close_date').filter(_novoIsWon); }
+function _novoLost(){ return _dealsByDate('close_date').filter(function(d){ return d.stage==='Perdido'; }); }
+function _novoForecastOpen(){ return _rawDeals().filter(function(d){ return _novoIsOpen(d) && _inWinStrict(d.data_prevista_para_receita); }); }
+function _novoTheme(){ var isLight=document.documentElement.getAttribute('data-theme')==='light'; return { cText:isLight?'#1f2328':'#e6edf3', cText2:isLight?'#57606a':'#8b949e', cGrid:isLight?'rgba(0,0,0,.08)':'rgba(255,255,255,.06)', isLight:isLight }; }
+var _novoCharts={};
+function _novoMkChart(id,cfg){ var ctx=document.getElementById(id); if(!ctx)return; if(_novoCharts[id]) _novoCharts[id].destroy(); _novoCharts[id]=new Chart(ctx,cfg); }
+function _novoDealsRows(deals){ return deals.map(function(d){ var hsUrl=d.hs_id?'https://app.hubspot.com/contacts/44715285/deal/'+d.hs_id:'#'; var nameCell=d.hs_id?'<a href="'+hsUrl+'" target="_blank" rel="noopener" style="color:var(--teal);text-decoration:none">'+_ne(d.dealname)+'</a>':_ne(d.dealname); var p=d.probabilidade!=null?Math.round(d.probabilidade*100)+'%':'—'; return '<tr><td style="text-align:left;min-width:150px;max-width:210px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+nameCell+'</td><td style="text-align:left;white-space:nowrap">'+_ne(d.ae)+'</td><td>'+_ne(d.pipeline)+'</td><td style="white-space:nowrap">'+_ne(d.stage)+'</td><td>'+_ni(d.vidas)+'</td><td>'+_revShort(_annualRev(d))+'</td><td>'+p+'</td><td style="white-space:nowrap">'+(d.createdate||'—')+'</td><td style="white-space:nowrap">'+(d.close_date||'—')+'</td><td style="white-space:nowrap">'+(d.data_prevista_para_receita||'—')+'</td><td style="text-align:left">'+_ne(d.lost_reason||'')+'</td></tr>'; }).join(''); }
+function novoOpenDealsModal(title,deals){ if(!deals||!deals.length){ openModal(title,'<p style="color:var(--text2);padding:1rem 0">Nenhum deal.</p>'); return; } var html='<table class="lb"><thead><tr><th style="text-align:left">Deal</th><th style="text-align:left">AE</th><th>Pipe</th><th>Etapa</th><th>Vidas</th><th>ARR</th><th>Prob.</th><th>Criado</th><th>Fechado</th><th>Dt. Receita</th><th style="text-align:left">Motivo perda</th></tr></thead><tbody>'+_novoDealsRows(deals)+'</tbody></table>'; openModal(title+' ('+deals.length+')',html); }
+function _getMonths(n){ var st=_filterState(), months=[]; if(st.start&&st.end){ var s=new Date(st.start+'T00:00:00'), e=new Date(st.end+'T00:00:00'); var y=s.getFullYear(), m=s.getMonth(); while(y<e.getFullYear()||(y===e.getFullYear()&&m<=e.getMonth())){ months.push(y+'-'+String(m+1).padStart(2,'0')); m++; if(m>11){m=0;y++;} } return months; } var now=new Date(); for(var i=n-1;i>=0;i--){ var dd=new Date(now.getFullYear(),now.getMonth()-i,1); months.push(dd.getFullYear()+'-'+String(dd.getMonth()+1).padStart(2,'0')); } return months; }
+function _stageNorm(s){ return s==='Stand by'?'Standby':s; }
+
+var _novoDeals=null;
+function novoLoadData(){
+  var btn=document.getElementById('btn-refresh'); if(btn) btn.classList.add('spinning');
+  document.getElementById('novo-content').innerHTML='<div style="text-align:center;padding:3rem 0;color:var(--text2)">'+t('loading')+'</div>';
+  fetch('/api/forecast-table?includeLost=true').then(function(r){ if(!r.ok) return r.text().then(function(txt){ throw new Error(txt||('HTTP '+r.status)); }); return r.json(); }).then(function(data){
+    _novoDeals=Array.isArray(data)?data:(data.deals||[]);window._novoDealsRaw=_novoDeals;
+    if(btn) btn.classList.remove('spinning');
+    novoRender();
+  }).catch(function(err){
+    if(btn) btn.classList.remove('spinning');
+    document.getElementById('novo-content').innerHTML='<div style="text-align:center;padding:3rem 0;color:var(--red)">'+t('error_prefix')+_ne(String(err))+'<br><br><button onclick="novoLoadData()" style="background:var(--teal);color:#fff;border:none;border-radius:8px;padding:.5rem 1.2rem;cursor:pointer">'+t('retry')+'</button></div>';
+  });
+}
+
+function novoRender(){
+  var deals=_rawDeals();
+  var open=_novoOpen();
+  var won=_novoWon();
+  var lost=_novoLost();
+  var ts=new Date().toLocaleTimeString('pt-BR',{timeZone:'America/Sao_Paulo',hour:'2-digit',minute:'2-digit'});
+
+  var totalPipe=open.reduce(function(s,d){return s+_annualRev(d);},0);
+  var totalWon=won.reduce(function(s,d){return s+_annualRev(d);},0);
+  var months=_getMonths(12);
+  var lastM=months[months.length-1];
+  var wonLast=won.filter(function(d){return d.close_date&&d.close_date.substring(0,7)===lastM;});
+  var wonLastRev=wonLast.reduce(function(s,d){return s+_annualRev(d);},0);
+  // P03 | Receita Ponderada: Σ ARR × prob sobre o pipeline ativo — fonte única
+  // compartilhada com o CRO Dashboard (shared-charts.js) para garantir paridade.
+  var weighted=sharedWeightedPipelineARR(_croActivePipeline());
+  var adjRate=(won.length+lost.length)>0?Math.round(won.length/(won.length+lost.length)*1000)/10:null;
+
+  var kpi=function(lbl,val,sub,col,key,clickTitle,tip){ return '<div class="kpi-card'+(clickTitle?' kpi-click':'')+'" '+(clickTitle?'onclick="boardKpiOpen(\''+clickTitle+'\')"':'')+'><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.35rem"><div class="kpi-label">'+lbl+'</div>'+_infoBtn(tip||'',key)+'</div><div class="kpi-value" style="color:'+(col||'var(--text)')+'">'+val+'</div><div class="kpi-sub">'+sub+'</div></div>'; };
+  var _cnt=function(n){ return ' <span style="font-size:.68rem;color:var(--text2);font-weight:600;margin-left:.35rem;white-space:nowrap">'+(n||0).toLocaleString('pt-BR')+' deals</span>'; };
+  var c=function(title,tip,id,h,count,tabs,noEmoji){ return '<div class="novo-card"><div class="novo-card-header"><h3>'+(noEmoji?'':'🟡 ')+title+(count!=null?_cnt(count):'')+'</h3>'+_infoBtn(tip,id)+(tabs||'')+'</div><canvas id="chart-bd-'+id+'" style="max-height:'+(h||340)+'px"></canvas></div>'; };
+  var cWide=function(title,tip,id,h,count,tabs,noEmoji){ return '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header"><h3>'+(noEmoji?'':'🟡 ')+title+(count!=null?_cnt(count):'')+'</h3>'+_infoBtn(tip,id)+(tabs||'')+'</div><canvas id="chart-bd-'+id+'" style="max-height:'+(h||320)+'px"></canvas></div>'; };
+  var cTbl=function(title,tip,id,count){ return '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header"><h3>🟡 '+title+(count!=null?_cnt(count):'')+'</h3>'+_infoBtn(tip,id)+'</div><div id="tbl-bd-'+id+'" style="overflow:auto"></div></div>'; };
+  var _activePipe=_croActivePipeline();
+
+  document.getElementById('novo-content').innerHTML=(window.AxFilter?AxFilter.barHtml():'')+
+    '<div style="font-size:.78rem;color:var(--text2);margin-bottom:1rem">'+t('updated_at')+' '+ts+' | '+deals.length+' deals totais | '+open.length+' abertos atuais | '+won.length+' ganhos no período | '+lost.length+' perdidos no período</div>'+
+    '<div class="kpi-row">'+
+      kpi('ARR Ganho no Período',_fmtBig(totalWon),won.length+' deals por close_date','var(--green)','kpi-won-arr','won','Receita ganha (ARR) — all-time sem filtro, ou no período por close_date.')+
+      kpi('Pipeline Aberto Atual (ARR)',_fmtBig(totalPipe),open.length+' deals abertos','var(--teal)','kpi-open-pipe','open','ARR do pipeline aberto atual.')+
+      kpi('Conversão Ajustada',adjRate!=null?adjRate+'%':'—',won.length+' ganhos / '+(won.length+lost.length)+' fechados','var(--text)','kpi-adjusted-conv','closed','Ganhos ÷ (ganhos + perdidos) no período.')+
+      kpi('Receita Ponderada',_fmtBig(weighted),'Σ ARR × probabilidade | pipeline ativo','var(--text)','kpi-forecast','forecast','Σ (ARR × probabilidade) do pipeline ativo. Idêntico ao P03 do CRO Dashboard.')+
+    '</div>'+
+    '<div class="novo-cards">'+
+      '<div class="section-hdr"><h2>Receita</h2></div>'+
+      cWide(t('bd_rev_trend'),t('bd_rev_trend_tip'),'rev-trend',300,won.length,null,true)+
+      '<div class="section-hdr"><h2>Pipeline &amp; Porte</h2></div>'+
+      c(t('bd_deal_bench'),t('bd_deal_bench_tip'),'deal-bench',300,_activePipe.length,_subTabs('bd-sizedonut-tabs',_novoSizeDistMode,[{mode:'revenue',label:'Receita',fn:'novoSwitchSizeDist'},{mode:'vidas',label:'Vidas',fn:'novoSwitchSizeDist'}]),true)+
+      c(t('bd_pipe_stage'),t('bd_pipe_stage_tip'),'pipe-stage',320,_activePipe.length,_subTabs('bd-val-tabs',_novoValMode,[{mode:'raw',label:'Receita',fn:'novoSwitchValMode'},{mode:'weighted',label:'Ponderado',fn:'novoSwitchValMode'}]),true)+
+      '<div class="section-hdr"><h2>Ranking &amp; Watchlist</h2></div>'+
+      cTbl('Top 5 AEs by Weighted Open Pipeline','Top 5 AEs por Receita Ponderada do pipeline ativo (quem carrega o forecast). Σ ARR × probabilidade por AE. Não usa filtro de período.','top-ae',_activePipe.length)+
+      cTbl('Top 10 Open Deals by Weighted R$/yr | BoD Watchlist','Top 10 deals abertos por Receita Ponderada (ARR × probabilidade). Não usa filtro de período.','watchlist',_activePipe.length)+
+      '<div class="section-hdr"><h2>Fluxo & Forecast</h2></div>'+
+      cWide(t('bd_entry_exit'),t('bd_entry_exit_tip'),'entry-exit',300,deals.length,null,true)+
+      cWide(t('bd_arr_bridge'),t('bd_arr_bridge_tip'),'arr-bridge',280,won.length)+
+      c(t('bd_forecast'),t('bd_forecast_tip'),'forecast',300,_novoForecastOpen().length)+
+    '</div>';
+
+  buildBdRevTrend();
+  buildBdPipeStage();
+  buildBdSizeDonut();
+  buildBdTopAE();
+  buildBdWatchlist();
+  buildBdEntryExit();
+  buildBdArrBridge();
+  buildBdForecast();
+  _initTabSubs();
+}
+
+// ── Configurações globais (compartilhadas via localStorage entre os painéis) ───
+function _gsSync(){ var a=document.getElementById('gs-impl'); if(a)a.classList.toggle('on',_novoImplWon); var b=document.getElementById('gs-ra'); if(b)b.classList.toggle('on',_novoActiveMeetings); var c=document.getElementById('gs-sb'); if(c)c.classList.toggle('on',_novoActiveStandby); }
+function novoOpenSettings(){ _gsSync(); setContentBlur(true); document.getElementById('gs-backdrop').classList.add('open'); document.getElementById('gs-drawer').classList.add('open'); }
+function novoCloseSettings(){ document.getElementById('gs-backdrop').classList.remove('open'); document.getElementById('gs-drawer').classList.remove('open'); setContentBlur(false); }
+function novoToggleImplWon(){ _novoImplWon=!_novoImplWon; try{localStorage.setItem('novo_impl_won',_novoImplWon?'1':'0');}catch(e){} _gsSync(); if(_novoDeals)novoRender(); }
+function novoToggleActiveMeetings(){ _novoActiveMeetings=!_novoActiveMeetings; try{localStorage.setItem('novo_active_meetings',_novoActiveMeetings?'1':'0');}catch(e){} _gsSync(); if(_novoDeals)novoRender(); }
+function novoToggleActiveStandby(){ _novoActiveStandby=!_novoActiveStandby; try{localStorage.setItem('novo_active_standby',_novoActiveStandby?'1':'0');}catch(e){} _gsSync(); if(_novoDeals)novoRender(); }
+
+// ── Modal idêntico ao CRO Dashboard (B01 = P07, B02 = P03) ────────────────────
+// Porta a tabela rica de deals e o grid de stats do CRO para que B01/B02 abram
+// exatamente o mesmo modal de P07/P03. Mesma fonte de dados (/api/forecast-table).
+var _crNd=function(v){ if(!v)return '—'; var p=String(v).slice(0,10).split('-'); return p.length===3?p[2]+'/'+p[1]+'/'+p[0]:v; };
+var _crNr=function(v){ return v!=null?Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}):'—'; };
+var _crNp=function(v){ return v!=null?(v*100).toFixed(1)+'%':'—'; };
+var _crNb=function(v){ return v===true?'Sim':v===false?'Não':'—'; };
+function _croCalcProbInfo(d){ var sp=NOVO_STAGE_PROB[d.stage]; if(sp==null)return{sp:null,cp:null,final:null}; var cp=d.probabilidade; if(cp==null)return{sp:sp,cp:null,final:sp}; if(cp<=sp-0.3)return{sp:sp,cp:cp,final:sp*0.9}; if(cp>=sp+0.3)return{sp:sp,cp:cp,final:sp*1.1}; return{sp:sp,cp:cp,final:sp}; }
+function _croIsActivePipelineDeal(d){ var s=_stageNorm(d.stage); if(d.stage==='Ganho'||d.stage==='Perdido'||(s==='Standby'&&!_novoActiveStandby)||d.stage==='Implantação')return false; if(!_novoActiveMeetings&&d.stage==='Reunião Agendada')return false; return true; }
+function _croActivePipeline(){ return _rawDeals().filter(_croIsActivePipelineDeal); }
+function _croDealsRows(deals){ return deals.map(function(d){ var hsUrl='https://app.hubspot.com/contacts/44715285/deal/'+d.hs_id; var nameCell=d.hs_id?'<a href="'+hsUrl+'" target="_blank" rel="noopener" style="color:var(--teal);text-decoration:none">'+_ne(d.dealname)+'</a>':_ne(d.dealname); var pi=_croCalcProbInfo(d); return '<tr>'+
+    '<td style="text-align:left;min-width:150px;max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+nameCell+'</td>'+
+    '<td style="text-align:left;white-space:nowrap">'+_ne(d.ae)+'</td>'+
+    '<td style="white-space:nowrap">'+_ne(d.pipeline)+'</td>'+
+    '<td style="white-space:nowrap">'+_ne(d.stage)+'</td>'+
+    '<td style="white-space:nowrap">'+_crNd(d.ultima_atividade)+'</td>'+
+    '<td>'+_ni(d.dias_sem_atividade)+'</td>'+
+    '<td style="white-space:nowrap">'+_crNd((d.close_date||'').slice(0,10))+'</td>'+
+    '<td>'+_ni(d.dias_no_pipe)+'</td>'+
+    '<td>'+_ni(d.colaboradores)+'</td>'+
+    '<td>'+_ni(d.vidas)+'</td>'+
+    '<td>'+_crNr(d.primeira_fatura)+'</td>'+
+    '<td>'+_crNr(d.arr_estimado)+'</td>'+
+    '<td style="white-space:nowrap">'+_ne(d.modelo_remuneracao)+'</td>'+
+    '<td>'+_crNb(d.possui_agenciamento)+'</td>'+
+    '<td>'+_crNb(d.possui_vitalicio)+'</td>'+
+    '<td>'+_crNp(d.probabilidade)+'</td>'+
+    '<td>'+_crNp(pi.sp)+'</td>'+
+    '<td>'+_crNp(pi.final)+'</td>'+
+    '<td style="white-space:nowrap">'+_ne(d.quarter)+'</td>'+
+    '<td style="white-space:nowrap">'+_crNd(d.data_prevista_para_receita)+'</td>'+
+    '<td style="text-align:left;white-space:nowrap">'+_ne(d.sdr)+'</td>'+
+  '</tr>'; }).join(''); }
+var _croModalDeals=[], _croModalSort={col:-1,dir:1};
+function _croSortVal(d,col){ switch(col){ case 0:return (d.dealname||'').toLowerCase(); case 1:return (d.ae||'').toLowerCase(); case 2:return (d.pipeline||'').toLowerCase(); case 3:return (d.stage||'').toLowerCase(); case 4:return (d.close_date||'').slice(0,10); case 5:return d.dias_no_pipe; case 6:return d.colaboradores; case 7:return d.vidas; case 8:return d.primeira_fatura; case 9:return d.arr_estimado; case 10:return (d.modelo_remuneracao||'').toLowerCase(); case 11:return d.possui_agenciamento===true?1:d.possui_agenciamento===false?0:null; case 12:return d.possui_vitalicio===true?1:d.possui_vitalicio===false?0:null; case 13:return d.probabilidade; case 14:return _croCalcProbInfo(d).sp; case 15:return _croCalcProbInfo(d).final; case 16:return (d.quarter||'').toLowerCase(); case 17:return d.data_prevista_para_receita||''; case 18:return (d.sdr||'').toLowerCase(); case 19:return d.ultima_atividade||''; case 21:return d.dias_sem_atividade; default:return null; } }
+function croSortDeals(col){ if(_croModalSort.col===col){_croModalSort.dir*=-1;}else{_croModalSort.col=col;_croModalSort.dir=1;} for(var i=0;i<22;i++){var ind=document.getElementById('cdsi-'+i); if(ind)ind.textContent=i===col?(_croModalSort.dir===1?' ↑':' ↓'):'';} var dir=_croModalSort.dir; var sorted=_croModalDeals.slice().sort(function(a,b){var va=_croSortVal(a,col),vb=_croSortVal(b,col); if(va==null&&vb==null)return 0; if(va==null)return 1; if(vb==null)return -1; if(typeof va==='string')return va.localeCompare(vb)*dir; return (va-vb)*dir;}); var tbody=document.getElementById('cro-deals-tbody'); if(tbody)tbody.innerHTML=_croDealsRows(sorted); }
+function _croDealsTableHtml(deals){ _croModalDeals=(deals||[]).slice().sort(function(a,b){return (b.vidas||0)-(a.vidas||0);}); _croModalSort={col:-1,dir:1}; var totalVidas=_croModalDeals.reduce(function(s,d){return s+(d.vidas||0);},0); var totalArr=_croModalDeals.reduce(function(s,d){return s+(d.arr_estimado||0);},0); var avgFinalProb=_croModalDeals.length?_croModalDeals.reduce(function(s,d){return s+(_croCalcProbInfo(d).final||0);},0)/_croModalDeals.length:null; var sub=_croModalDeals.length+' deals'; var tfoot=_croModalDeals.length>0?'<tfoot><tr><td style="text-align:left;font-weight:600" colspan="9">Total</td><td style="font-weight:600">'+_ni(totalVidas)+'</td><td></td><td style="font-weight:600">'+_crNr(totalArr)+'</td><td colspan="5"></td><td style="font-weight:600">'+_crNp(avgFinalProb)+'</td><td colspan="3"></td></tr></tfoot>':''; var ts='padding:.4rem .5rem;white-space:nowrap;font-size:.68rem;cursor:pointer;user-select:none'; var th=function(label,col,left){return '<th style="'+ts+(left?';text-align:left':'')+'" onclick="croSortDeals('+col+')">'+label+'<span id="cdsi-'+col+'" style="color:var(--teal);font-size:.6rem"></span></th>';}; return '<p style="font-size:.78rem;color:var(--text2);margin-bottom:.6rem">'+sub+'</p>'+
+    '<div style="overflow-x:auto;overflow-y:auto;max-height:55vh">'+
+    '<table class="lb" style="width:100%;font-size:.75rem"><thead><tr>'+
+      th('Deal',0,true)+th('AE',1,true)+th('Pipe',2)+th('Etapa',3)+th('Últ. Atividade',19)+th('Dias s/ Ativ.',21)+th('Fechamento',4)+th('Dias',5)+th('Colab.',6)+th('Vidas',7)+th('1ª Fatura (R$)',8)+th('ARR Est. (R$)',9)+th('Modelo',10)+th('Agenc.',11)+th('Vit.',12)+th('Prob AE',13)+th('P. Etapa',14)+th('P. Ajust.',15)+th('Quarter',16)+th('Dt. Receita',17)+th('BDR',18)+
+    '</tr></thead><tbody id="cro-deals-tbody">'+_croDealsRows(_croModalDeals)+'</tbody>'+tfoot+'</table></div>'; }
+function _croKpiStatsHtml(deals){ var count=deals.length; var vidas=deals.reduce(function(s,d){return s+(d.vidas||0);},0); var annual=deals.reduce(function(s,d){return s+(d.arr_estimado||0);},0); var monthly=annual/12; function c(label,val){return '<div class="kpi-sec"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.3rem"><span class="kpi-sec-label">'+label+'</span></div><div class="kpi-sec-value">'+val+'</div></div>';} return '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.6rem;margin-bottom:1.1rem">'+
+    c('Negócios Ganhos',count.toLocaleString('pt-BR'))+
+    c('Vidas Totais',vidas.toLocaleString('pt-BR'))+
+    c('Receita Mensal',_fmtBig(monthly))+
+    c('Receita Anual',_fmtBig(annual))+
+  '</div>'; }
+
+// ── Toggle de abas + modal de filtro por etapa (idêntico ao CRO C04) ──────────
+var _novoValMode='raw';
+function _subTabs(id,current,opts){ return '<div id="'+id+'" class="tab-sub">'+opts.map(function(o){ return '<button class="tab-sub-btn'+(current===o.mode?' active':'')+'" data-mode="'+o.mode+'" onclick="'+o.fn+'(\''+o.mode+'\')">'+o.label+'</button>'; }).join('')+'</div>'; }
+function _moveTabSubThumb(sub,animate){ var thumb=sub&&sub.querySelector('.tab-sub-thumb'); if(!thumb)return; var active=sub.querySelector('.tab-sub-btn.active'); if(!active){thumb.style.opacity='0';thumb.style.width='0px';return;} thumb.style.opacity=''; if(!animate)thumb.style.transition='none'; thumb.style.left=active.offsetLeft+'px'; thumb.style.width=active.offsetWidth+'px'; if(!animate){void thumb.offsetWidth;thumb.style.transition='';} }
+function _setActive(containerId,mode){ var c=document.getElementById(containerId); if(!c)return; c.querySelectorAll('.tab-sub-btn').forEach(function(b){ b.classList.toggle('active',b.getAttribute('data-mode')===mode); }); _moveTabSubThumb(c,true); }
+function _initTabSubs(){ document.querySelectorAll('.tab-sub').forEach(function(sub){ if(!sub.querySelector('.tab-sub-thumb')){ var th=document.createElement('div'); th.className='tab-sub-thumb'; sub.insertBefore(th,sub.firstChild); } _moveTabSubThumb(sub,false); }); }
+function novoSwitchValMode(m){ _novoValMode=m; _setActive('bd-val-tabs',m); buildBdPipeStage(); }
+var _novoSfAll=[], _novoSfStages=[], _novoSfSel=null;
+function _novoSfRender(){ var counts={}; _novoSfAll.forEach(function(d){ var s=d.stage||'—'; counts[s]=(counts[s]||0)+1; }); var html='<div style="margin-bottom:1.1rem;display:flex;flex-wrap:wrap;gap:.45rem;align-items:center">'+ '<span style="font-size:.72rem;color:var(--text2);font-weight:600;min-width:54px">Por etapa</span>'+ '<button class="stage-chip'+(_novoSfSel==null?' active':'')+'" onclick="novoSfPick(\'__all\')">Todas as etapas <span class="chip-count">'+_novoSfAll.length+'</span></button>'; _novoSfStages.forEach(function(s,i){ html+='<button class="stage-chip'+(_novoSfSel===s?' active':'')+'" onclick="novoSfPick('+i+')">'+_ne(s)+' <span class="chip-count">'+(counts[s]||0)+'</span></button>'; }); var ch=document.getElementById('novo-sf-chips'); if(ch)ch.innerHTML=html+'</div>'; var list=_novoSfSel==null?_novoSfAll:_novoSfAll.filter(function(d){ return (d.stage||'—')===_novoSfSel; }); var tb=document.getElementById('novo-sf-table'); if(tb)tb.innerHTML=_croDealsTableHtml(list); }
+function novoSfPick(i){ _novoSfSel=(i==='__all')?null:_novoSfStages[i]; _novoSfRender(); }
+function novoOpenDealsStageFilterModal(title,deals){ _novoSfAll=deals||[]; var counts={}; _novoSfAll.forEach(function(d){ var s=d.stage||'—'; counts[s]=(counts[s]||0)+1; }); _novoSfStages=Object.keys(counts).sort(function(a,b){ return counts[b]-counts[a]; }); _novoSfSel=null; openModal(title,'<div id="novo-sf-chips"></div><div id="novo-sf-table"></div>'); _novoSfRender(); }
+
+// ── C03 portado: Distribuição por Tamanho (donut, toggle Receita/Vidas) | item 4 ─
+var _novoSizeDistMode='revenue';
+function novoSwitchSizeDist(m){ _novoSizeDistMode=m; _setActive('bd-sizedonut-tabs',m); buildBdSizeDonut(); }
+function buildBdSizeDonut(){
+  buildSharedSizeDonut('chart-bd-deal-bench', _croActivePipeline, {
+    modalTitle: NOVO_LANG==='en'?'Size Distribution':'Distribuição por Tamanho',
+    noRevenue:  NOVO_LANG==='en'?'No revenue':'Sem receita',
+    noLives:    NOVO_LANG==='en'?'No lives':'Sem vidas',
+    openDeals:  NOVO_LANG==='en'?'active deals':'deals ativos'
+  });
+}
+
+// B15 | Top 5 AEs por Receita Ponderada do pipeline ativo (quem carrega o forecast)
+function buildBdTopAE(){
+  var el=document.getElementById('tbl-bd-top-ae'); if(!el)return;
+  var deals=_croActivePipeline(), agg={};
+  deals.forEach(function(d){
+    var ae=(!d.ae||d.ae==='-')?'(sem AE)':d.ae;
+    if(!agg[ae])agg[ae]={ae:ae,n:0,vidas:0,arr:0,weighted:0};
+    var p=d.probabilidade!=null?d.probabilidade:(NOVO_STAGE_PROB[d.stage]||0);
+    agg[ae].n++; agg[ae].vidas+=(d.vidas||0); agg[ae].arr+=_annualRev(d); agg[ae].weighted+=_annualRev(d)*p;
+  });
+  var rows=Object.keys(agg).map(function(k){return agg[k];}).sort(function(a,b){return b.weighted-a.weighted;}).slice(0,5);
+  if(!rows.length){ el.innerHTML='<p style="color:var(--text2);padding:1rem 0">Nenhum deal ativo.</p>'; return; }
+  var html='<table class="lb"><thead><tr><th>#</th><th style="text-align:left">AE</th><th>Open Deals</th><th>Vidas</th><th>ARR Estimado</th><th>ARR Ponderado</th></tr></thead><tbody>';
+  rows.forEach(function(r,i){
+    html+='<tr><td>'+(i+1)+'</td><td style="text-align:left;white-space:nowrap">'+_ne(r.ae)+'</td><td>'+r.n.toLocaleString('pt-BR')+'</td><td>'+r.vidas.toLocaleString('pt-BR')+'</td><td>'+_fmtBig(r.arr)+'</td><td style="font-weight:600">'+_fmtBig(r.weighted)+'</td></tr>';
+  });
+  el.innerHTML=html+'</tbody></table>';
+}
+
+// B16 | Top 10 deals abertos por Receita Ponderada — BoD Watchlist
+function buildBdWatchlist(){
+  var el=document.getElementById('tbl-bd-watchlist'); if(!el)return;
+  var arr=_croActivePipeline().map(function(d){ var p=d.probabilidade!=null?d.probabilidade:(NOVO_STAGE_PROB[d.stage]||0); return {d:d,p:p,w:_annualRev(d)*p}; });
+  arr.sort(function(a,b){return b.w-a.w;});
+  var rows=arr.slice(0,10);
+  if(!rows.length){ el.innerHTML='<p style="color:var(--text2);padding:1rem 0">Nenhum deal ativo.</p>'; return; }
+  var html='<table class="lb"><thead><tr><th style="text-align:left">Deal</th><th>Etapa</th><th>Vidas</th><th>ARR</th><th>Prob.</th><th>ARR Ponderado</th><th>Dias no Pipe</th><th style="text-align:left">AE</th></tr></thead><tbody>';
+  rows.forEach(function(r){
+    var d=r.d;
+    var hsUrl=d.hs_id?'https://app.hubspot.com/contacts/44715285/deal/'+d.hs_id:'#';
+    var nameCell=d.hs_id?'<a href="'+hsUrl+'" target="_blank" rel="noopener" style="color:var(--teal);text-decoration:none">'+_ne(d.dealname)+'</a>':_ne(d.dealname);
+    html+='<tr><td style="text-align:left;min-width:160px;max-width:230px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+nameCell+'</td><td style="white-space:nowrap">'+_ne(d.stage)+'</td><td>'+(d.vidas!=null?d.vidas.toLocaleString('pt-BR'):'—')+'</td><td>'+_fmtBig(_annualRev(d))+'</td><td>'+Math.round(r.p*100)+'%</td><td style="font-weight:600">'+_fmtBig(r.w)+'</td><td>'+(d.dias_no_pipe!=null?d.dias_no_pipe.toLocaleString('pt-BR'):'—')+'</td><td style="text-align:left;white-space:nowrap">'+_ne(d.ae)+'</td></tr>';
+  });
+  el.innerHTML=html+'</tbody></table>';
+}
+// Modal com filtro cruzado por Receita + Vidas (idêntico ao C03)
+function _novoSizeFilterBuckets(isRev){
+  if(isRev){ var r=[['< 50k',0,50000],['50–100k',50000,100000],['100–250k',100000,250000],['250–500k',250000,500000],['500k–1M',500000,1000000],['1M+',1000000,Infinity]];
+    return [['Sem receita',function(d){return _annualRev(d)<=0;}]].concat(r.map(function(x){ return [x[0],function(d){ var v=_annualRev(d); return v>0&&v>=x[1]&&v<x[2]; }]; })); }
+  var vd=[['1–50',1,50],['51–200',51,200],['201–500',201,500],['501–1K',501,1000],['1K–5K',1001,5000],['5K+',5001,Infinity]];
+  return [['Sem vidas',function(d){return (d.vidas||0)<=0;}]].concat(vd.map(function(x){ return [x[0],function(d){ var v=d.vidas||0; return v>0&&v>=x[1]&&v<=x[2]; }]; }));
+}
+var _novoVfAll=[], _novoVfRevBuckets=[], _novoVfVidasBuckets=[], _novoVfRevSel=null, _novoVfVidasSel=null;
+function _novoVfFiltered(){ return _novoVfAll.filter(function(d){ if(_novoVfRevSel!=null&&!_novoVfRevBuckets[_novoVfRevSel][1](d))return false; if(_novoVfVidasSel!=null&&!_novoVfVidasBuckets[_novoVfVidasSel][1](d))return false; return true; }); }
+function _novoVfGroupHtml(label,buckets,sel,kind){ var base=_novoVfAll.filter(function(d){ if(kind==='rev')return _novoVfVidasSel==null||_novoVfVidasBuckets[_novoVfVidasSel][1](d); return _novoVfRevSel==null||_novoVfRevBuckets[_novoVfRevSel][1](d); }); var html='<div style="display:flex;flex-wrap:wrap;gap:.4rem;align-items:center;margin-bottom:.55rem">'+ '<span style="font-size:.72rem;color:var(--text2);font-weight:600;min-width:54px">'+label+'</span>'+ '<button class="stage-chip'+(sel==null?' active':'')+'" onclick="novoVfPick(\''+kind+'\',-1)">Todas <span class="chip-count">'+base.length+'</span></button>'; buckets.forEach(function(b,i){ var c=base.filter(function(d){return b[1](d);}).length; if(!c&&sel!==i)return; html+='<button class="stage-chip'+(sel===i?' active':'')+'" onclick="novoVfPick(\''+kind+'\','+i+')">'+_ne(b[0])+' <span class="chip-count">'+c+'</span></button>'; }); return html+'</div>'; }
+function _novoVfChipsHtml(){ return '<div style="margin-bottom:.9rem">'+_novoVfGroupHtml('Receita',_novoVfRevBuckets,_novoVfRevSel,'rev')+_novoVfGroupHtml('Vidas',_novoVfVidasBuckets,_novoVfVidasSel,'vidas')+'</div>'; }
+function _novoVfRender(){ var ch=document.getElementById('novo-vf-chips'); if(ch)ch.innerHTML=_novoVfChipsHtml(); var tb=document.getElementById('novo-vf-table'); if(tb)tb.innerHTML=_croDealsTableHtml(_novoVfFiltered()); }
+function novoVfPick(kind,i){ if(kind==='rev')_novoVfRevSel=(i===-1)?null:i; else _novoVfVidasSel=(i===-1)?null:i; _novoVfRender(); }
+function novoOpenDealsFilterModal(title,deals){ _novoVfAll=deals||[]; _novoVfRevBuckets=_novoSizeFilterBuckets(true); _novoVfVidasBuckets=_novoSizeFilterBuckets(false); _novoVfRevSel=null; _novoVfVidasSel=null; openModal(title,'<div id="novo-vf-chips"></div><div id="novo-vf-table"></div>'); _novoVfRender(); }
+
+function boardKpiOpen(kind){
+  // B01 = P07 (Receita Ganha): mesmo modal — grid de stats + tabela rica de ganhos.
+  if(kind==='won'){ openModal('ARR Ganho no Período', _croKpiStatsHtml(_novoWon())+_croDealsTableHtml(_novoWon())); return; }
+  // B02 = P03 (Pipe Ativo): mesmo modal — tabela rica do pipeline ativo.
+  if(kind==='open'){ openModal('Pipeline Aberto Atual', _croDealsTableHtml(_croActivePipeline())); return; }
+  // B03 = S01 (Conversão Ajustada): mesmo modal — tabela rica de fechados (ganhos + perdidos).
+  if(kind==='closed'){ openModal('Conversão Ajustada | Fechados', _croDealsTableHtml(_novoWon().concat(_novoLost()))); return; }
+  // P03 (Receita Ponderada): mesmo modal — tabela rica do pipeline ativo.
+  if(kind==='forecast'){ openModal('Receita Ponderada', _croDealsTableHtml(_croActivePipeline())); return; }
+  novoOpenDealsModal('Deals',[]);
+}
+
+// B05: barras = nº de deals ganhos | linha teal = Receita ARR | linha lilás = Vidas totais
+function buildBdRevTrend(){
+  var th=_novoTheme(), won=_novoWon(), allMonths=_getMonths(18);
+  var rows=allMonths.map(function(m){
+    var ds=won.filter(function(d){return d.close_date&&d.close_date.substring(0,7)===m;});
+    return {m:m,n:ds.length,rev:ds.reduce(function(s,d){return s+_annualRev(d);},0),vidas:ds.reduce(function(s,d){return s+(d.vidas||0);},0)};
+  }).filter(function(r){return r.n>0;});
+  var lab=rows.map(function(r){return _mlbl(r.m);}),
+      counts=rows.map(function(r){return r.n;}),
+      revs=rows.map(function(r){return Math.round(r.rev);}),
+      vidasArr=rows.map(function(r){return r.vidas;}),
+      keys=rows.map(function(r){return r.m;});
+  _novoMkChart('chart-bd-rev-trend',{type:'bar',plugins:[ChartDataLabels],
+    data:{labels:lab,datasets:[
+      {type:'bar',label:'Deals ganhos',data:counts,backgroundColor:'rgba(63,185,80,.55)',borderRadius:4,yAxisID:'yCount',order:3,
+        datalabels:{anchor:'end',align:'end',color:th.cText2,font:{family:NOVO_FONT,size:9,weight:'bold'},formatter:function(v){return v>0?v:'';}}},
+      {type:'line',label:'Receita ARR',data:revs,borderColor:'rgba(58,184,183,.95)',backgroundColor:'rgba(58,184,183,.12)',pointRadius:3,borderWidth:2,tension:0.35,fill:true,yAxisID:'yRev',order:1,
+        datalabels:{display:false}},
+      {type:'line',label:'Vidas',data:vidasArr,borderColor:'rgba(147,112,219,.9)',backgroundColor:'rgba(147,112,219,0)',pointRadius:3,borderWidth:2,tension:0.35,fill:false,yAxisID:'yVidas',order:2,
+        datalabels:{display:false}}
+    ]},
+    options:{responsive:true,layout:{padding:{top:8}},
+      plugins:{
+        legend:{display:true,labels:{color:th.cText2,font:{family:NOVO_FONT,size:10},padding:8,usePointStyle:true}},
+        datalabels:{},
+        tooltip:{mode:'index',intersect:false,callbacks:{label:function(c){
+          if(c.dataset.yAxisID==='yRev') return 'Receita: '+_fmtBig(c.parsed.y);
+          if(c.dataset.yAxisID==='yVidas') return 'Vidas: '+(c.parsed.y||0).toLocaleString('pt-BR');
+          return c.parsed.y+' deals ganhos';
+        }}}
+      },
+      scales:{
+        x:{grid:{display:false},ticks:{color:th.cText2,font:{family:NOVO_FONT}}},
+        yRev:{position:'left',grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},callback:_revShort},beginAtZero:true},
+        yCount:{position:'right',grid:{display:false},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0},beginAtZero:true},
+        yVidas:{position:'right',display:false,beginAtZero:true}
+      },
+      onClick:function(e,el){ if(!el.length)return; var m=keys[el[0].index]; novoOpenDealsModal('Ganhos em '+_mlbl(m), won.filter(function(d){return d.close_date&&d.close_date.substring(0,7)===m;})); }
+    }
+  });
+}
+
+
+function buildBdPipeStage(){
+  buildSharedStageVal('chart-bd-pipe-stage', _croActivePipeline, t('bd_pipe_stage'));
+}
+
+function buildBdEntryExit(){
+  var th=_novoTheme(), months=_getMonths(12), all=_rawDeals(), won=_novoWon(), lost=_novoLost();
+  var inflow=months.map(function(m){return all.filter(function(d){return d.createdate&&_inWinStrict(d.createdate)&&d.createdate.substring(0,7)===m;}).length;});
+  var wonOut=months.map(function(m){return won.filter(function(d){return d.close_date&&d.close_date.substring(0,7)===m;}).length;});
+  var lostOut=months.map(function(m){return lost.filter(function(d){return d.close_date&&d.close_date.substring(0,7)===m;}).length;});
+  _novoMkChart('chart-bd-entry-exit',{type:'line',plugins:[ChartDataLabels],
+    data:{labels:months.map(_mlbl),datasets:[
+      {label:'Entrada (criados)',data:inflow,borderColor:'rgba(58,184,183,.95)',backgroundColor:'rgba(58,184,183,.12)',pointRadius:3,borderWidth:2,tension:0.35,fill:false},
+      {label:'Saída (perdidos)',data:lostOut,borderColor:'rgba(248,81,73,.9)',backgroundColor:'rgba(248,81,73,.12)',pointRadius:3,borderWidth:2,tension:0.35,fill:false},
+      {label:'Saída (ganhos)',data:wonOut,borderColor:'rgba(63,185,80,.9)',backgroundColor:'rgba(63,185,80,.12)',pointRadius:3,borderWidth:2,tension:0.35,fill:false}
+    ]},
+    options:{responsive:true,layout:{padding:{top:24}},plugins:{legend:{display:true,labels:{color:th.cText2,font:{family:NOVO_FONT,size:10},padding:8}},datalabels:{display:false},tooltip:{mode:'index',intersect:false}},
+      scales:{x:{grid:{display:false},ticks:{color:th.cText2,font:{family:NOVO_FONT}}},y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0}}}}});
+}
+
+function buildBdArrBridge(){
+  var th=_novoTheme(), months=_getMonths(12), won=_novoWon();
+  var revs=months.map(function(m){return won.filter(function(d){return d.close_date&&d.close_date.substring(0,7)===m;}).reduce(function(s,d){return s+_annualRev(d);},0);});
+  var deltas=revs.map(function(v,i){return i===0?0:v-revs[i-1];});
+  _novoMkChart('chart-bd-arr-bridge',{type:'bar',plugins:[ChartDataLabels],
+    data:{labels:months.map(_mlbl),datasets:[{data:deltas,backgroundColor:deltas.map(function(v){return v>=0?'rgba(63,185,80,.75)':'rgba(248,81,73,.65)';}),borderRadius:4}]},
+    options:{responsive:true,layout:{padding:{top:28}},plugins:{legend:{display:false},
+      datalabels:{anchor:'end',align:function(ctx){return ctx.dataset.data[ctx.dataIndex]>=0?'end':'start';},color:th.cText,font:{family:NOVO_FONT,size:9,weight:'bold'},formatter:function(v){return v!==0?_revShort(Math.abs(v)):'';},display:function(ctx){return ctx.dataset.data[ctx.dataIndex]!==0;}},
+      tooltip:{callbacks:{label:function(c){return (c.parsed.y>=0?'+':'')+_fmtBig(c.parsed.y);}}}},
+      scales:{x:{grid:{display:false},ticks:{color:th.cText2,font:{family:NOVO_FONT}}},y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},callback:function(v){return _revShort(Math.abs(v));}}}}}});
+}
+
+function buildBdForecast(){
+  var th=_novoTheme(), open=_novoForecastOpen();
+  var totalOpen=open.reduce(function(s,d){return s+_annualRev(d);},0);
+  var weighted=open.reduce(function(s,d){ var p=d.probabilidade!=null?d.probabilidade:(NOVO_STAGE_PROB[_stageNorm(d.stage)]||0); return s+_annualRev(d)*p; },0);
+  var optimistic=totalOpen*0.8;
+  var conservative=totalOpen*0.5;
+  var labels=['Ponderado (prob)','Otimista (80%)','Conservador (50%)'];
+  var vals=[Math.round(weighted),Math.round(optimistic),Math.round(conservative)];
+  _novoMkChart('chart-bd-forecast',{type:'bar',plugins:[ChartDataLabels],
+    data:{labels:labels,datasets:[{data:vals,backgroundColor:['rgba(88,166,255,.75)','rgba(63,185,80,.75)','rgba(210,153,34,.8)'],borderRadius:6}]},
+    options:{responsive:true,layout:{padding:{top:28}},plugins:{legend:{display:false},
+      datalabels:{anchor:'end',align:'end',color:th.cText,font:{family:NOVO_FONT,size:11,weight:'bold'},formatter:_revShort},
+      tooltip:{callbacks:{label:function(c){return _fmtBig(c.parsed.y);}}}},
+      scales:{x:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}},y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},callback:_revShort}}}}});
+}
+
+function _stageNorm(s){ return s==='Stand by'?'Standby':s; }
+
+(function(){
+  try{ if(localStorage.getItem('novo_nav_open')==='true') _setNavOpen(true); }catch(e){}
+  (function(_e){if(_e)_e.textContent=NOVO_LANG.toUpperCase();})(document.getElementById('novo-lang-label'));
+  document.body.classList.toggle('novo-info-on',_boardShowInfo);
+  var _ib=document.getElementById('btn-info-toggle'); if(_ib)_ib.classList.toggle('highlighted',_boardShowInfo);
+  novoLoadData();
+})();
+</script>
+<!-- Panel switcher + menu lateral compartilhado (fonte unica: PANELS) -->
+<style>
+.panel-switcher{position:relative;display:inline-block}
+.panel-switch-btn{display:inline-flex;align-items:center;gap:.5rem;background:none;border:none;padding:0;margin:0;cursor:pointer;color:inherit;font:inherit;text-align:left}
+.panel-switch-btn h1{margin:0}
+.panel-chevron{transition:transform .22s ease,color .15s ease;color:var(--text2);flex-shrink:0}
+.panel-switcher.open .panel-chevron{transform:rotate(180deg)}
+.panel-switch-btn:hover .panel-chevron{color:var(--teal)}
+.panel-dd{position:absolute;top:calc(100% + 10px);left:0;min-width:236px;background:rgba(23,31,46,.62);backdrop-filter:blur(20px) saturate(1.7);-webkit-backdrop-filter:blur(20px) saturate(1.7);border:none;border-radius:12px;box-shadow:0 16px 40px rgba(0,0,0,.4);padding:.4rem;z-index:1500;opacity:0;transform:translateY(-6px);pointer-events:none;transition:opacity .18s ease,transform .18s ease}
+[data-theme="light"] .panel-dd{background:rgba(246,248,250,.7)}
+.panel-switcher.open .panel-dd{opacity:1;transform:translateY(0);pointer-events:auto}
+.panel-dd-item{display:flex;align-items:center;gap:.65rem;padding:.55rem .7rem;border-radius:8px;cursor:pointer;font-size:.85rem;color:var(--text2);transition:background .14s,color .14s;white-space:nowrap}
+.panel-dd-item:hover{background:rgba(255,255,255,.1);color:var(--text)}
+.panel-dd-item.active{color:var(--teal);font-weight:600;background:rgba(58,184,183,.16)}
+.panel-dd-item.active svg{stroke:var(--teal)}
+.panel-dd-item svg{flex-shrink:0;opacity:.9}
+[data-theme="light"] .panel-dd-item:hover{background:rgba(0,0,0,.06)}
+.health-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;display:inline-block;animation:health-glow 1.8s ease-in-out infinite}
+.panel-switch-btn .health-dot{margin:0 .15rem}
+.nav-item .health-dot,.panel-dd-item .health-dot{margin-left:auto}
+@keyframes health-glow{0%,100%{box-shadow:0 0 3px 0 var(--hg)}50%{box-shadow:0 0 9px 2px var(--hg)}}
+.health-dot.g{background:#2ecc71;--hg:rgba(46,204,113,.95)}
+.health-dot.y{background:#f1c40f;--hg:rgba(241,196,15,.95)}
+.health-dot.r{background:#e74c3c;--hg:rgba(231,76,60,.95)}
+
+.modal-body,.novo-help-body,.novo-prob-body,[style*="overflow-x:auto"]{scrollbar-width:thin;scrollbar-color:var(--text2) transparent}
+.modal-body::-webkit-scrollbar,.novo-help-body::-webkit-scrollbar,.novo-prob-body::-webkit-scrollbar,[style*="overflow-x:auto"]::-webkit-scrollbar{height:11px;width:11px}
+.modal-body::-webkit-scrollbar-track,.novo-help-body::-webkit-scrollbar-track,.novo-prob-body::-webkit-scrollbar-track,[style*="overflow-x:auto"]::-webkit-scrollbar-track{background:transparent}
+.modal-body::-webkit-scrollbar-thumb,.novo-help-body::-webkit-scrollbar-thumb,.novo-prob-body::-webkit-scrollbar-thumb,[style*="overflow-x:auto"]::-webkit-scrollbar-thumb{background:var(--text2);border-radius:8px;border:2px solid transparent;background-clip:padding-box}
+.modal-body::-webkit-scrollbar-thumb:hover,.novo-help-body::-webkit-scrollbar-thumb:hover,.novo-prob-body::-webkit-scrollbar-thumb:hover,[style*="overflow-x:auto"]::-webkit-scrollbar-thumb:hover{background:var(--teal)}
+</style>
+<script>
+(function(){
+  var PANELS=[
+    {label:'CRO Dashboard',url:'/novo',file:'dashboard.html',health:'g',icon:'<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>'},
+    {label:'Board View',url:'/novo-board',file:'board.html',health:'g',icon:'<path d="M2 20h20M4 20V10l8-6 8 6v10"/><path d="M10 20v-6h4v6"/>'},
+    {label:'AE Performance',url:'/novo-ae',file:'ae.html',health:'g',icon:'<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>'},
+    {label:'BDR Performance',url:'/novo-bdr',file:'bdr.html',health:'r',icon:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'},
+    {label:'Last 48h',url:'/novo-48h',file:'48h.html',health:'r',icon:'<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>'},
+    {label:'CS Dashboard',url:'/novo-cs',file:'cs.html',health:'r',icon:'<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>'},
+    {label:'Cotação',url:'/novo-cotacao',file:'cotacao.html',health:'r',icon:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>'},
+    {label:'Forecast',url:'/forecast',file:'forecast.html',health:'g',icon:'<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>'}
+  ];
+  function findByUrl(u){ for(var i=0;i<PANELS.length;i++){ if(PANELS[i].url===u) return PANELS[i]; } return null; }
+  var p2=location.pathname; if(p2.length>1&&p2.charAt(p2.length-1)==='/') p2=p2.slice(0,-1);
+  var current=null;
+  for(var i=0;i<PANELS.length;i++){ if(p2===PANELS[i].url||p2.indexOf(PANELS[i].file)!==-1){ current=PANELS[i].url; break; } }
+  function dot(h){ var tt={g:'live',y:'wip',r:'not working'}; var t=tt[h]||''; return '<span class="health-dot '+h+'" title="'+t+'" aria-label="'+t+'"></span>'; }
+  function svgFor(p){ return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+p.icon+'</svg>'; }
+  function buildNav(){
+    var nav=document.getElementById('nav-drawer'); if(!nav) return;
+    var h='<div class="nav-drawer-header"><span class="nav-drawer-brand">Dashboard Axenya</span>'+
+      '<button class="hdr-btn" onclick="closeDrawer()" aria-label="Fechar menu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>'+
+      '<ul class="nav-menu">';
+    for(var i=0;i<PANELS.length;i++){
+      var p=PANELS[i];
+      if(p.url==='/forecast') h+='<div style="height:1px;background:var(--border);margin:.4rem .75rem"></div>';
+      h+='<li class="nav-item'+(p.url===current?' active':'')+'" data-url="'+p.url+'">'+svgFor(p)+'<span>'+p.label+'</span>'+dot(p.health)+'</li>';
+    }
+    h+='</ul>'+'<div class="nav-drawer-footer"><button class="nav-foot-btn" type="button" onclick="doLogout()" title="Sair" aria-label="Sair"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button><button class="nav-foot-btn" type="button" onclick="novoToggleLang()" title="Idioma / Language"><span id="novo-lang-label">'+(typeof NOVO_LANG!=="undefined"&&NOVO_LANG==="pt"?"EN":"PT")+'</span></button><button class="nav-foot-btn" type="button" onclick="toggleTheme()" title="Tema / Theme"><svg class="novo-theme-sun" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg><svg class="novo-theme-moon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></button></div>';
+    nav.innerHTML=h;
+    var nit=nav.getElementsByClassName('nav-item');
+    for(var j=0;j<nit.length;j++){ nit[j].addEventListener('click',function(){ window.location.href=this.getAttribute('data-url'); }); }
+  }
+  function buildDropdown(){
+    var dd=document.getElementById('panel-dd'); if(!dd) return;
+    var html='';
+    for(var i=0;i<PANELS.length;i++){
+      var p=PANELS[i], act=(p.url===current?' active':'');
+      html+='<div class="panel-dd-item'+act+'" role="menuitem" data-url="'+p.url+'">'+svgFor(p)+'<span>'+p.label+'</span>'+dot(p.health)+'</div>';
+    }
+    dd.innerHTML=html;
+    var items=dd.getElementsByClassName('panel-dd-item');
+    for(var j=0;j<items.length;j++){ items[j].addEventListener('click',function(){ window.location.href=this.getAttribute('data-url'); }); }
+  }
+  function buildTitleDot(){
+    var btn=document.querySelector('.panel-switch-btn');
+    if(btn && current && !btn.querySelector('.health-dot')){
+      var cp=findByUrl(current);
+      if(cp){ var s=document.createElement('span'); s.className='health-dot '+cp.health; var _tt={g:'live',y:'wip',r:'not working'}; s.title=_tt[cp.health]||''; s.setAttribute('aria-label',s.title); var ch=btn.querySelector('.panel-chevron'); if(ch) btn.insertBefore(s,ch); else btn.appendChild(s); }
+    }
+  }
+  function build(){ buildNav(); buildDropdown(); buildTitleDot(); }
+  window.togglePanelMenu=function(e){ if(e){e.stopPropagation();} var sw=document.getElementById('panel-switcher'); if(!sw) return; var open=!sw.classList.contains('open'); sw.classList.toggle('open',open); var btn=sw.querySelector('.panel-switch-btn'); if(btn) btn.setAttribute('aria-expanded',open?'true':'false'); };
+  window.closePanelMenu=function(){ var sw=document.getElementById('panel-switcher'); if(sw){ sw.classList.remove('open'); var btn=sw.querySelector('.panel-switch-btn'); if(btn) btn.setAttribute('aria-expanded','false'); } };
+  document.addEventListener('click',function(e){ var sw=document.getElementById('panel-switcher'); if(sw&&sw.classList.contains('open')&&!sw.contains(e.target)) window.closePanelMenu(); });
+  document.addEventListener('keydown',function(e){ if(e.key!=='Escape'&&e.keyCode!==27) return; var sw=document.getElementById('panel-switcher'); if(sw&&sw.classList.contains('open')){ window.closePanelMenu(); return; } var gs=document.getElementById('gs-drawer'); if(gs&&gs.classList.contains('open')){ novoCloseSettings(); return; } var help=document.getElementById('novo-help-drawer'); if(help&&help.classList.contains('open')){ novoCloseHelp(); return; } var modal=document.getElementById('modal-overlay'); if(modal&&modal.classList.contains('open')){ closeModal(); return; } });
+  if(document.readyState!=='loading') build(); else document.addEventListener('DOMContentLoaded',build);
+})();
+</script>
+</body>
+</html>

@@ -28,6 +28,7 @@ const STAGE_MAP = {
   '1144746911': 'Perdido',
   // Bid
   '1363560722': 'Cotação',
+  '1349620551': 'Reunião Pré-RFP',
   '1349620555': 'Proposta Enviada',
   '1349620556': 'Consultoria',
   '1353387279': 'Negociação',
@@ -40,7 +41,7 @@ const ACTIVE_STAGE_IDS = [
   // Vendas - activos + Reunião Agendada (sem Perdido)
   '1144746905', '1144746906', '1144746908', '1144746909', '1144746910', '1288611084', '1144844314',
   // Bid
-  '1363560722', '1349620555', '1349620556', '1353387279', '1353387280', '1353457025', '1373066362',
+  '1363560722', '1349620551', '1349620555', '1349620556', '1353387279', '1353387280', '1353457025', '1373066362',
 ];
 // Etapas de Perdido — incluídas APENAS quando o cliente pede ?includeLost=true (ex.: CRO Dashboard).
 // Os demais painéis chamam sem o parâmetro e continuam recebendo só os ativos.
@@ -62,8 +63,16 @@ const PROPERTIES = [
   'qual_quarter_de_fechamento', 'data_prevista_para_receita',
   'hs_is_closed_won', 'hs_is_closed_lost', 'hs_object_id',
   'createdate', 'closedate',
+  // Datas de entrada de etapa (variante v2, populada neste portal — a v1 hs_date_entered_* vem vazia).
+  // Usadas pelo P01 (Receita Ganha): data em que o deal entrou em Ganho (Vendas), com fallback p/ Implantação (Vendas).
+  'hs_v2_date_entered_1144844314', // Vendas | Ganho
+  'hs_v2_date_entered_1288611084', // Vendas | Implantação
   'motivo_do_declinio_ou_perdido',
   'a_reuniao_ocorreu_',
+  // Campos adicionais (preenchidos no portal, confirmados via /api/forecast-table):
+  'premio_mensal',        // prêmio mensal real (vs proxy ARR/12) | ~224 deals
+  'notes_last_updated',   // data da última atividade/nota | ~1144 deals
+  'vigencia',             // data de vigência | usado na coluna "Vigência" do forecast novo
 ];
 
 // S06 (Completude): campos do HubSpot avaliados, com rótulo amigável. Avalia os valores
@@ -264,7 +273,15 @@ module.exports = async function handler(req, res) {
           quarter,
           data_prevista_para_receita: dateStr,
           close_date: p.closedate ? p.closedate.substring(0, 10) : null,
+          data_ganho: p.hs_v2_date_entered_1144844314 ? p.hs_v2_date_entered_1144844314.substring(0, 10) : null,
+          data_implantacao: p.hs_v2_date_entered_1288611084 ? p.hs_v2_date_entered_1288611084.substring(0, 10) : null,
           reuniao_ocorreu: p.a_reuniao_ocorreu_ || null,
+          premio_mensal: p.premio_mensal ? parseFloat(p.premio_mensal) : null,
+          vigencia: p.vigencia ? p.vigencia.substring(0, 10) : null,
+          ultima_atividade: p.notes_last_updated ? p.notes_last_updated.substring(0, 10) : null,
+          dias_sem_atividade: p.notes_last_updated
+            ? Math.floor((Date.now() - new Date(p.notes_last_updated).getTime()) / 86400000)
+            : null,
           campos_faltantes: camposFaltantes,
           dados_completos: camposFaltantes.length === 0,
           lost_reason: p.motivo_do_declinio_ou_perdido || null,

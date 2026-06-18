@@ -1,15 +1,14 @@
 {
   "rewrites": [
     { "source": "/", "destination": "/login.html" },
-    { "source": "/dashboard", "destination": "/novo-dashboard.html" },
-    { "source": "/watcher", "destination": "/hubspot-watcher.html" },
-    { "source": "/novo", "destination": "/novo-dashboard.html" },
-    { "source": "/novo-ae", "destination": "/novo-ae.html" },
-    { "source": "/novo-bdr", "destination": "/novo-bdr.html" },
-    { "source": "/novo-board", "destination": "/novo-board.html" },
-    { "source": "/novo-48h", "destination": "/novo-48h.html" },
-    { "source": "/novo-cs", "destination": "/novo-cs.html" },
-    { "source": "/novo-cotacao", "destination": "/novo-cotacao.html" },
+    { "source": "/dashboard", "destination": "/dashboard.html" },
+    { "source": "/novo", "destination": "/dashboard.html" },
+    { "source": "/novo-ae", "destination": "/ae.html" },
+    { "source": "/novo-bdr", "destination": "/bdr.html" },
+    { "source": "/novo-board", "destination": "/board.html" },
+    { "source": "/novo-48h", "destination": "/48h.html" },
+    { "source": "/novo-cs", "destination": "/cs.html" },
+    { "source": "/novo-cotacao", "destination": "/cotacao.html" },
     { "source": "/forecast", "destination": "/forecast.html" }
   ],
   "crons": [
