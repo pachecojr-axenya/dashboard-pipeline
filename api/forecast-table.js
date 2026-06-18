@@ -75,6 +75,35 @@ const PROPERTIES = [
   'vigencia',             // data de vigência | usado na coluna "Vigência" do forecast novo
 ];
 
+// Tempo médio por etapa (AE Deal Velocity): entrada/saída v2 de cada etapa do pipeline Vendas.
+// stage_days[etapa] = (saída || hoje) - entrada, em dias. Usado pela tabela A19 do painel AE.
+const STAGE_DUR = [
+  ['Reunião Agendada', '1144746905'],
+  ['Diagnóstico',      '1144746906'],
+  ['Cotação',          '1144746908'],
+  ['Consultoria',      '1144746909'],
+  ['Negociação',       '1144746910'],
+  ['Implantação',      '1288611084'],
+];
+STAGE_DUR.forEach(function(pair){ PROPERTIES.push('hs_v2_date_entered_' + pair[1], 'hs_v2_date_exited_' + pair[1]); });
+function computeStageDays(p) {
+  const now = Date.now();
+  const out = {};
+  STAGE_DUR.forEach(function(pair) {
+    const ent = p['hs_v2_date_entered_' + pair[1]];
+    if (!ent) return;
+    const start = Date.parse(ent);
+    if (isNaN(start)) return;
+    const exRaw = p['hs_v2_date_exited_' + pair[1]];
+    const end = exRaw ? Date.parse(exRaw) : now;
+    if (isNaN(end)) return;
+    let days = Math.round((end - start) / 86400000);
+    if (days < 0) days = 0;
+    out[pair[0]] = days;
+  });
+  return out;
+}
+
 // S06 (Completude): campos do HubSpot avaliados, com rótulo amigável. Avalia os valores
 // CRUS (sem fallback) — por isso a completude é calculada no servidor, não derivada de arr/prob/quarter já mesclados.
 const S06_FIELDS = [
@@ -192,7 +221,7 @@ async function fetchDeals(token, includeLost) {
         { propertyName: 'pipeline',  operator: 'IN', values: [PIPELINE_ID, PIPELINE_2_ID] },
         { propertyName: 'dealstage', operator: 'IN', values: stageIds },
       ]}],
-      properties: PROPERTIES,
+      properties: [...new Set(PROPERTIES)],
       limit: 200,
       after,
     };
@@ -289,6 +318,7 @@ module.exports = async function handler(req, res) {
           dias_no_pipe: p.createdate
             ? Math.floor((Date.now() - new Date(p.createdate).getTime()) / 86400000)
             : null,
+          stage_days: computeStageDays(p),
         };
       });
 

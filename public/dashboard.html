@@ -1628,10 +1628,10 @@ function buildNovoVidasAE() {
   }
   // C01 | fonte única compartilhada (shared-charts.js) com o painel AE Performance
   // (cards A05/A06 mesclados). Alterar buildSharedVidasDealsAE muda nos dois painéis.
-  buildSharedVidasDealsAE('chart-novo-vidas-ae', _novoC01Deals, _novoAeMode, {
+  buildSharedVidasDealsAE('chart-novo-vidas-ae', _novoC01CoreDeals, _novoAeMode, {
     unitLives: t('tab_vidas').toLowerCase(),
     unitDeals: t('tab_deals').toLowerCase(),
-    onClick: function(ae){ novoOpenAeDealsModal(t('title_vidas_ae'), _novoC01Deals(), ae); }
+    onClick: function(ae){ novoOpenAeDealsModal(t('title_vidas_ae'), _novoC01CoreDeals(), ae); }
   });
   var _c01canvas = document.getElementById('chart-novo-vidas-ae');
   if (_c01canvas) _c01canvas.style.cursor = 'pointer';
@@ -2173,7 +2173,7 @@ function _syncActiveStandbyToggle() {
   if (lbl) lbl.textContent = t('active_standby_label');
 }
 function _novoIsWon(d) { var s = d.stage; return s === 'Ganho' || (_novoImplWon && s === 'Implantação'); }
-function _novoIsOpen(d) { return !_novoIsWon(d) && d.stage !== 'Perdido' && (_novoActiveMeetings || d.stage !== 'Reunião Agendada'); }
+function _novoIsOpen(d) { return !_novoIsWon(d) && d.stage !== 'Perdido' && (_novoActiveMeetings || d.stage !== 'Reunião Agendada') && (_novoActiveStandby || (d.stage !== 'Standby' && d.stage !== 'Stand by')); }
 function _novoIsActivePipelineDeal(d) {
   var s = _stageNorm(d.stage);
   if (d.stage === 'Ganho' || d.stage === 'Perdido' || (s === 'Standby' && !_novoActiveStandby) || d.stage === 'Implantação') return false;
@@ -2269,6 +2269,11 @@ function _titleWithCount(title, count) {
 function _novoC01Deals() {
   return _novoCurrentActivePipeline();
 }
+// AEs ativos do time. O C01 mostra apenas estes (Juliana, Ágatta, Guilherme, André,
+// Rafael, Fausto); owners fora da lista (ops, CS, importações) ficam de fora.
+var AE_CORE_FIRSTNAMES = ['andré','andre','fausto','guilherme','juliana','rafael','ágatta','agatta'];
+function _novoIsCoreAE(ae) { if (!ae || ae === '-') return false; var f = ae.trim().split(/\s+/)[0].toLowerCase(); return AE_CORE_FIRSTNAMES.indexOf(f) >= 0; }
+function _novoC01CoreDeals() { return _novoC01Deals().filter(function(d){ return _novoIsCoreAE(d.ae); }); }
 function _novoActiveChartDeals() { return _novoCurrentActivePipeline(); }
 function _novoFreshnessDeals() { return _novoOpenRaw().filter(function(d){ return d.dias_sem_atividade != null; }); }
 function _novoTimeInStageDeals() { return _novoCurrentActivePipeline().filter(function(d){ return d.dias_no_pipe != null; }); }
@@ -3698,7 +3703,7 @@ function novoRender() {
   var total  = _activeDeals.length;
   var vendas = _activeDeals.filter(function(d) { return d.pipeline === 'Vendas'; }).length;
   var bid    = _activeDeals.filter(function(d) { return d.pipeline === 'Bid'; }).length;
-  var c01Count = _novoC01Deals().length;
+  var c01Count = _novoC01CoreDeals().length;
   var activeCount = _novoActiveChartDeals().length;
   var ts = new Date().toLocaleTimeString('pt-BR', {timeZone:'America/Sao_Paulo', hour:'2-digit', minute:'2-digit', second:'2-digit'});
 

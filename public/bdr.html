@@ -273,7 +273,7 @@ var _novoImplWon=(function(){try{return localStorage.getItem('novo_impl_won')!==
 var _novoActiveMeetings=(function(){try{return localStorage.getItem('novo_active_meetings')!=='0';}catch(e){return true;}})();
 var _novoActiveStandby=(function(){try{return localStorage.getItem('novo_active_standby')==='1';}catch(e){return false;}})();
 function _novoIsWon(d){ return d.stage==='Ganho'||(_novoImplWon&&d.stage==='Implantação'); }
-function _novoOpen(){ return _rawDeals().filter(function(d){ return !_novoIsWon(d)&&d.stage!=='Perdido'&&(_novoActiveMeetings||d.stage!=='Reunião Agendada'); }); }
+function _novoOpen(){ return _rawDeals().filter(function(d){ return !_novoIsWon(d)&&d.stage!=='Perdido'&&(_novoActiveMeetings||d.stage!=='Reunião Agendada')&&(_novoActiveStandby||(d.stage!=='Standby'&&d.stage!=='Stand by')); }); }
 function _novoWon(){ return _dealsByDate('close_date').filter(_novoIsWon); }
 function _novoLost(){ return _dealsByDate('close_date').filter(function(d){ return d.stage==='Perdido'; }); }
 function _novoTheme(){ var isLight=document.documentElement.getAttribute('data-theme')==='light'; return { cText:isLight?'#1f2328':'#e6edf3', cText2:isLight?'#57606a':'#8b949e', cGrid:isLight?'rgba(0,0,0,.08)':'rgba(255,255,255,.06)', isLight:isLight }; }

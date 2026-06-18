@@ -242,7 +242,7 @@ var NOVO_I18N={
 function t(k){ return (NOVO_I18N[NOVO_LANG]||NOVO_I18N.pt)[k]||(NOVO_I18N.pt[k])||k; }
 function novoToggleLang(){ NOVO_LANG=NOVO_LANG==='pt'?'en':'pt'; try{localStorage.setItem('novo_lang',NOVO_LANG);}catch(e){} (function(_e){if(_e)_e.textContent=NOVO_LANG.toUpperCase();})(document.getElementById('novo-lang-label')); if(_novoDeals) novoRender(); }
 
-var AE_CARD_CODES={'kpi-open-lives':'P02','kpi-won-lives':'P08','kpi-won-arr':'P07','vidas-ae':'C01','arr':'A07','wonrev':'A08','winrate':'A09','monthly-won':'A10','pipeline-stage':'A11','aging':'A12','age-dist':'A13','radar':'A14','loss-reason':'A15','meeting-rate':'A16','efficiency':'A17','meeting-ae':'A18'};
+var AE_CARD_CODES={'kpi-open-lives':'P02','kpi-won-lives':'P08','kpi-won-arr':'P07','vidas-ae':'C01','arr':'A07','wonrev':'A08','winrate':'A09','monthly-won':'A10','pipeline-stage':'A11','aging':'A12','age-dist':'A13','radar':'A14','loss-reason':'A15','meeting-rate':'A16','efficiency':'A17','meeting-ae':'A18','velocity-stage':'A19'};
 var _novoShowInfo=(function(){try{return localStorage.getItem('ae_show_info')==='1';}catch(e){return false;}})();
 function _codeTag(key){var c=AE_CARD_CODES[key]||'';return c?'<span class="novo-code-tag">'+c+'</span>':'';}
 function novoToggleInfo(){_novoShowInfo=!_novoShowInfo;document.body.classList.toggle('novo-info-on',_novoShowInfo);var b=document.getElementById('btn-info-toggle');if(b)b.classList.toggle('highlighted',_novoShowInfo);try{localStorage.setItem('ae_show_info',_novoShowInfo?'1':'0');}catch(e){}}
@@ -260,6 +260,7 @@ var AE_HELP_CHARTS=[
   {key:'ae-meeting-rate',title:'Meeting Rate Evolution (Monthly)',fields:[['createdate','Mês de criação do deal (eixo X).'],['a_reuniao_ocorreu_','Sim / Não / sem preenchimento; base das barras empilhadas e da Occurrence Rate = Sim ÷ (Sim+Não).']]},
   {key:'ae-efficiency',title:'AE Efficiency | Deals vs Win Rate',fields:[['hubspot_owner_id','Define o AE (só AEs do time).'],['stage','Ganho/Perdido para o win rate ajustado; abertos contam no total.'],['vidas','Tamanho da bolha (vidas em pipeline aberto).']]},
   {key:'ae-meeting-ae',title:'Meeting Effectiveness by AE',fields:[['hubspot_owner_id','Define o AE (só AEs do time).'],['a_reuniao_ocorreu_','Sim / Não / sem preenchimento; fatias da barra de cada AE.']]},
+  {key:'ae-velocity-stage',title:'AE Deal Velocity by Stage (Avg Days)',fields:[['hubspot_owner_id','Define o AE (só AEs do time).'],['hs_v2_date_entered_/exited_','Dias em cada etapa do pipeline Vendas = (saída || hoje) - entrada; média por AE; última linha = média do time.']]},
   {key:'ae-monthly-won',title:'Ganhos Mensais por AE',fields:[['ae','Responsável.'],['stage','Ganho + Implantação conforme toggle.'],['close_date','Data de fechamento.']]},
   {key:'ae-radar',title:'Radar de Performance',fields:[['ae','Responsável.'],['vidas','Vidas abertas.'],['arr_estimado','ARR pipeline.'],['stage','Won/open.']]},
 ];
@@ -295,7 +296,7 @@ var _novoImplWon=(function(){try{return localStorage.getItem('novo_impl_won')!==
 var _novoActiveMeetings=(function(){try{return localStorage.getItem('novo_active_meetings')!=='0';}catch(e){return true;}})();
 var _novoActiveStandby=(function(){try{return localStorage.getItem('novo_active_standby')==='1';}catch(e){return false;}})();
 function _novoIsWon(d){ return d.stage==='Ganho'||(_novoImplWon&&d.stage==='Implantação'); }
-function _novoOpen(){ return _rawDeals().filter(function(d){ return !_novoIsWon(d)&&d.stage!=='Perdido'&&(_novoActiveMeetings||d.stage!=='Reunião Agendada'); }); }
+function _novoOpen(){ return _rawDeals().filter(function(d){ return !_novoIsWon(d)&&d.stage!=='Perdido'&&(_novoActiveMeetings||d.stage!=='Reunião Agendada')&&(_novoActiveStandby||(d.stage!=='Standby'&&d.stage!=='Stand by')); }); }
 function _novoWon(){ return _dealsByDate('close_date').filter(_novoIsWon); }
 function _novoLost(){ return _dealsByDate('close_date').filter(function(d){ return d.stage==='Perdido'; }); }
 function _novoTheme(){ var isLight=document.documentElement.getAttribute('data-theme')==='light'; return { cText:isLight?'#1f2328':'#e6edf3', cText2:isLight?'#57606a':'#8b949e', cGrid:isLight?'rgba(0,0,0,.08)':'rgba(255,255,255,.06)', isLight:isLight }; }
@@ -428,6 +429,9 @@ function novoRender(){
       cWide(t('ae_pipeline_stage')+_aeCntSpan(_aeActivePipeline().length),t('ae_pipeline_stage_tip'),'pipeline-stage',340)+
       c(t('ae_aging')+_aeCntSpan(open.length),t('ae_aging_tip'),'aging',300)+
       c('Deal Age Distribution (Open)'+_aeCntSpan(open.length),'Distribuição dos deals abertos por faixa de idade (dias_no_pipe): 0-30, 31-60, 61-90, 91-120, 121-180 e +180 dias. Mesma base de abertos. Clique numa barra para ver os deals.','age-dist',300,'',true)+
+      // Seção Velocidade
+      '<div class="section-hdr"><h2>Velocidade por Etapa</h2></div>'+
+      '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header"><h3>AE Deal Velocity by Stage (Avg Days)</h3>'+_infoBtn('Tabela (heatmap) de dias médios por etapa do pipeline Vendas, por AE. Cada célula = média de (saída - entrada) da etapa nos deals do AE (hs_v2_date_entered/exited; etapa atual conta até hoje). Última linha = média do time. Só AEs do time.','velocity-stage')+'</div><div id="ae-velocity-table" style="overflow-x:auto;margin-top:.5rem"></div></div>'+
       // Seção Radar
       '<div class="section-hdr"><h2>Visão Multi-Dimensional</h2></div>'+
       cWide(t('ae_radar'),t('ae_radar_tip'),'radar',380)+
@@ -445,6 +449,7 @@ function novoRender(){
   buildAEPipelineStage();
   buildAEAging();
   buildAEAgeDist();
+  buildAEVelocityStage();
   buildAERadar();
   _initTabSubs();
 }
@@ -613,6 +618,27 @@ function buildAEMeetingByAE(){
       tooltip:{callbacks:{label:function(c){return c.dataset.label+': '+c.parsed.y+' deals';}}}},
       scales:{x:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}},stacked:true},y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0},stacked:true,title:{display:true,text:'Deals criados',color:th.cText2,font:{family:NOVO_FONT}}}},
       onClick:function(e,el){ if(!el.length)return; var ae=aes[el[0].index]; var k=['sim','nao','vazio'][el[0].datasetIndex]; novoOpenDealsModal('Reunião '+datasets[el[0].datasetIndex].label+' | '+ae, all.filter(function(d){return d.ae===ae&&_aeMeetingClass(d)===k;})); }}});
+}
+
+var _AE_VEL_STAGES=['Reunião Agendada','Diagnóstico','Cotação','Consultoria','Negociação','Implantação'];
+function buildAEVelocityStage(){
+  var el=document.getElementById('ae-velocity-table'); if(!el)return;
+  var all=_rawDeals();
+  var aes=_getAEs().filter(_isCoreAE).filter(function(ae){return all.some(function(d){return d.ae===ae;});});
+  var avg=function(deals,s){ var n=0,sum=0; deals.forEach(function(d){ if(d.stage_days&&d.stage_days[s]!=null){sum+=d.stage_days[s];n++;} }); return n?Math.round(sum/n):null; };
+  var rows=aes.map(function(ae){ var ds=all.filter(function(d){return d.ae===ae;}); return {ae:ae,vals:_AE_VEL_STAGES.map(function(s){return avg(ds,s);})}; });
+  var coreDeals=all.filter(function(d){return _isCoreAE(d.ae);});
+  var teamVals=_AE_VEL_STAGES.map(function(s){return avg(coreDeals,s);});
+  var maxCol=_AE_VEL_STAGES.map(function(s,i){ var m=0; rows.forEach(function(r){ if(r.vals[i]!=null&&r.vals[i]>m)m=r.vals[i]; }); return m||1; });
+  var lerp=function(a,b,r){return Math.round(a+(b-a)*r);};
+  var bg=function(v,ci){ if(v==null)return ''; var r=Math.min(1,v/maxCol[ci]); return 'background:rgba('+lerp(63,248,r)+','+lerp(185,81,r)+','+lerp(80,73,r)+',0.30)'; };
+  var hdr=['Reunião','Diagnóstico','Cotação','Consultoria','Negociação','Implantação'];
+  var html='<table class="lb" style="font-size:.82rem;width:100%"><thead><tr><th style="text-align:left">AE</th>'+hdr.map(function(h){return '<th style="text-align:center">'+h+'</th>';}).join('')+'</tr></thead><tbody>';
+  rows.forEach(function(r){
+    html+='<tr><td style="text-align:left;white-space:nowrap;font-weight:600">'+r.ae.split(' ')[0]+'</td>'+r.vals.map(function(v,ci){return '<td style="text-align:center;'+bg(v,ci)+'">'+(v==null?'—':v+'d')+'</td>';}).join('')+'</tr>';
+  });
+  html+='</tbody><tfoot><tr><td style="text-align:left;font-weight:700">Média do time</td>'+teamVals.map(function(v){return '<td style="text-align:center;font-weight:700">'+(v==null?'—':v+'d')+'</td>';}).join('')+'</tr></tfoot></table>';
+  el.innerHTML=html;
 }
 
 function buildAEAging(){

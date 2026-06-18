@@ -1134,6 +1134,19 @@ Registro curto, uma linha por interação (a cada alteração).
 - **N18** (`Velocidade de Qualificação`) agora renderiza imediatamente ao lado do N17 na seção `Análise de Tempo`.
 - **Validação:** sintaxe inline OK e smoke render OK (`1235 deals`).
 
+### AE | A19 Deal Velocity by Stage (heatmap) + stage_days na API (2026-06-18)
+
+- **API (`forecast-table.js`):** novo `stage_days` por deal — dias em cada etapa do pipeline Vendas = `(hs_v2_date_exited_<id> || hoje) - hs_v2_date_entered_<id>`, para Reunião Agendada, Diagnóstico, Cotação, Consultoria, Negociação e Implantação. Adicionadas as props entered/exited dessas etapas (dedupe via `[...new Set(PROPERTIES)]`) e helper `computeStageDays`. Verificado: 1102/1295 deals com dados; médias do time Reunião 22d, Diag 34d, Cotação 32d, Consultoria 30d, Negociação 38d, Implantação 40d.
+- **A19 (novo) `AE Deal Velocity by Stage (Avg Days)`:** `buildAEVelocityStage()`, seção "Velocidade por Etapa". Tabela heatmap (não-canvas, div `#ae-velocity-table`): linhas = AEs do time, colunas = as 6 etapas, célula = média de `stage_days[etapa]` dos deals do AE; última linha = média do time. Cor da célula escala verde→vermelho por coluna (mais dias = mais vermelho). Code `A19`.
+- **Validação:** `node --check` API OK; inline 0 erros; i18n ae `24/24`; smoke render ae OK (345).
+
+### CRO C01 só AEs do time + Standby toggle em todos os painéis (2026-06-18)
+
+- **C01 (CRO) restrito aos 6 AEs:** criado `AE_CORE_FIRSTNAMES` + `_novoIsCoreAE(ae)` e wrapper `_novoC01CoreDeals()` (= `_novoC01Deals()` filtrado por AE core). `buildNovoVidasAE` (gráfico, contagem do título e modal) passou a usar o wrapper — mostra apenas Juliana, Ágatta, Guilherme, André, Rafael e Fausto.
+- **Toggle Standby refletido em todos os painéis:** `_novoIsOpen`/`_novoOpen` passaram a honrar `_novoActiveStandby` em **dashboard, board, ae, bdr, 48h** (antes incluíam Standby sempre; só os predicados de pipeline ativo honravam). Cláusula `(_novoActiveStandby || (stage!=='Standby' && stage!=='Stand by'))`, cobrindo os dois nomes (Vendas/BID) sem depender de `_stageNorm`. Com o padrão (toggle off), os 48 Standby ficam fora de open/ativo em todos os painéis; ligando, entram.
+- **CS e Cotação:** sem mudança necessária — só exibem deals em **Ganho** (CS) e em etapa **Cotação** (Cotação); Standby nunca aparece nesses conjuntos, então já estão consistentes com o toggle.
+- **Validação:** inline 0 erros nos 5 painéis; i18n dashboard `257/257`, ae `24/24`; smoke render OK (dashboard 1295, ae 345, board 345).
+
 ### AE | A17 Efficiency (bubble), A18 Meeting by AE, A11 100% horizontal (2026-06-18)
 
 - **A17 (novo) `AE Efficiency | Deals vs Win Rate`:** `buildAEEfficiency()`, seção Conversão. Bubble chart por AE (só time core): X = total de deals (abertos+ganhos+perdidos), Y = win rate ajustado (ganhos ÷ (ganhos+perdidos)), tamanho da bolha = vidas em pipeline aberto. Eixo Y autoescala (win rates reais 0–7%). Clique abre os deals do AE. Code `A17`.
