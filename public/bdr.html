@@ -80,6 +80,12 @@ html[data-theme="light"] #novo-tip{background:rgba(246,248,250,.82)}
 html[data-theme="light"] #novo-tip .nt-code{border-top-color:rgba(0,0,0,.1)}
 .kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:.75rem;margin-bottom:.75rem}
 @media(max-width:1100px){.kpi-row{grid-template-columns:repeat(2,1fr)}}
+.tab-sub{display:inline-flex;background:var(--card2);border-radius:99px;padding:3px;gap:0;position:relative}
+.tab-sub-btn{background:transparent;border:none;border-radius:99px;color:var(--text2);padding:.3rem .9rem;cursor:pointer;font-size:.75rem;font-weight:500;transition:color .18s;position:relative;z-index:1}
+.tab-sub-btn.active{color:var(--text);font-weight:600}
+html[data-theme="light"] .tab-sub-btn.active{box-shadow:none}
+.tab-sub-thumb{position:absolute;top:3px;height:calc(100% - 6px);border-radius:99px;background:rgba(255,255,255,.14);pointer-events:none;z-index:0;transition:left .22s cubic-bezier(.4,0,.2,1),width .22s cubic-bezier(.4,0,.2,1)}
+html[data-theme="light"] .tab-sub-thumb{background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.15)}
 .kpi-card{background:var(--card);border-radius:14px;padding:1.6rem 1.8rem}
 .kpi-click{cursor:pointer}
 .kpi-label{font-size:.66rem;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;line-height:1}
@@ -232,7 +238,7 @@ var NOVO_I18N={
 function t(k){ return (NOVO_I18N[NOVO_LANG]||NOVO_I18N.pt)[k]||(NOVO_I18N.pt[k])||k; }
 function novoToggleLang(){ NOVO_LANG=NOVO_LANG==='pt'?'en':'pt'; try{localStorage.setItem('novo_lang',NOVO_LANG);}catch(e){} (function(_e){if(_e)_e.textContent=NOVO_LANG.toUpperCase();})(document.getElementById('novo-lang-label')); if(_novoDeals) novoRender(); }
 
-var BDR_CARD_CODES={'kpi-pipe-vidas':'P02','kpi-won-vidas':'P08','kpi-lost-vidas':'P09','kpi-pipe-reunioes':'P04','kpi-weighted-vidas':'P05','origin-bdr':'R12','new-deals':'R05','new-vidas':'R06','net-flow':'R07','net-vidas':'R08','avg-vidas':'R09','colabs':'R10','size-dist':'R11'};
+var BDR_CARD_CODES={'kpi-pipe-vidas':'P02','kpi-won-vidas':'P08','kpi-lost-vidas':'P09','kpi-pipe-reunioes':'P04','kpi-weighted-vidas':'P05','origin-bdr':'R12','weekly-origin':'R13','leads-origin':'R14','new-deals':'R05','new-vidas':'R06','net-flow':'R07','net-vidas':'R08','avg-vidas':'R09','colabs':'R10','size-dist':'R11'};
 var _novoShowInfo=(function(){try{return localStorage.getItem('bdr_show_info')==='1';}catch(e){return false;}})();
 function _codeTag(key){var c=BDR_CARD_CODES[key]||'';return c?'<span class="novo-code-tag">'+c+'</span>':'';}
 function novoToggleInfo(){_novoShowInfo=!_novoShowInfo;document.body.classList.toggle('novo-info-on',_novoShowInfo);var b=document.getElementById('btn-info-toggle');if(b)b.classList.toggle('highlighted',_novoShowInfo);try{localStorage.setItem('bdr_show_info',_novoShowInfo?'1':'0');}catch(e){}}
@@ -266,6 +272,24 @@ function _filterState(){ return (window.AxFilter && AxFilter.getState) ? AxFilte
 function _inWinStrict(dateStr){ var s=_filterState(); if(!s.start)return true; if(!dateStr)return false; return AxFilter.inWin(dateStr); }
 function _dealsByDate(field){ return _rawDeals().filter(function(d){ return _inWinStrict(d[field]); }); }
 function _isBdr(d){ return !!d.sdr; }
+// Alias para owners de BDR que não vêm resolvidos no ownerMap da API (id cru).
+var BDR_ALIAS={'76060683':'Fernando Henrique','83684312':'Beatriz Honorato'};
+function _bdrName(d){ var s=d.sdr; if(!s)return null; return BDR_ALIAS[s]||s; }
+// Toggle segmentado (Apple-style), portado do painel AE.
+function _subTabs(id,current,opts){ return '<div id="'+id+'" class="tab-sub">'+opts.map(function(o){ return '<button class="tab-sub-btn'+(current===o.mode?' active':'')+'" data-mode="'+o.mode+'" onclick="'+o.fn+'(\''+o.mode+'\')">'+o.label+'</button>'; }).join('')+'</div>'; }
+function _setActive(containerId,mode){ var c=document.getElementById(containerId); if(!c)return; c.querySelectorAll('.tab-sub-btn').forEach(function(b){ b.classList.toggle('active', b.getAttribute('data-mode')===mode); }); _moveTabSubThumb(c,true); }
+function _moveTabSubThumb(sub,animate){ var thumb=sub&&sub.querySelector('.tab-sub-thumb'); if(!thumb)return; var active=sub.querySelector('.tab-sub-btn.active'); if(!active){thumb.style.opacity='0';thumb.style.width='0px';return;} thumb.style.opacity=''; if(!animate)thumb.style.transition='none'; thumb.style.left=active.offsetLeft+'px'; thumb.style.width=active.offsetWidth+'px'; if(!animate){void thumb.offsetWidth;thumb.style.transition='';} }
+function _initTabSubs(){ document.querySelectorAll('.tab-sub').forEach(function(sub){ if(!sub.querySelector('.tab-sub-thumb')){ var th=document.createElement('div'); th.className='tab-sub-thumb'; sub.insertBefore(th,sub.firstChild); } _moveTabSubThumb(sub,false); }); }
+// Semanas (segunda-feira como início), últimas n.
+function _getWeeks(n){ var now=new Date(); var off=(now.getDay()+6)%7; now.setDate(now.getDate()-off); var ws=[]; for(var i=n-1;i>=0;i--){ var d=new Date(now); d.setDate(d.getDate()-i*7); ws.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')); } return ws; }
+function _weekKey(dateStr){ if(!dateStr)return null; var d=new Date(dateStr.substring(0,10)+'T00:00:00'); if(isNaN(d))return null; var off=(d.getDay()+6)%7; d.setDate(d.getDate()-off); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function _wlbl(k){ var p=k.split('-'); return p[2]+'/'+p[1]; }
+function _cntSpan(n){ return ' <span style="font-size:.68rem;color:var(--text2);font-weight:600;margin-left:.35rem;white-space:nowrap">'+(n||0).toLocaleString('pt-BR')+' deals</span>'; }
+var _MABBR=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+function _mlbl(m){ var p=m.split('-'); return _MABBR[(parseInt(p[1],10)||1)-1]+'/'+p[0].substring(2); }
+var _bdrOriginMode='deals', _bdrWeeklyMode='deals';
+function bdrSwitchOrigin(m){ _bdrOriginMode=m; _setActive('bdr-origin-tabs',m); buildBdrOrigin(); }
+function bdrSwitchWeekly(m){ _bdrWeeklyMode=m; _setActive('bdr-weekly-tabs',m); buildBdrWeekly(); }
 
 var NOVO_FONT='Inter,\'Segoe UI\',system-ui,sans-serif';
 var NOVO_WON_STAGE='Ganho';
@@ -311,6 +335,7 @@ function novoRender(){
   var ts=new Date().toLocaleTimeString('pt-BR',{timeZone:'America/Sao_Paulo',hour:'2-digit',minute:'2-digit'});
   var months=_getMonths(12);
   var created=_dealsByDate('createdate');
+  var createdBdr=created.filter(_isBdr).length;
   var newTotal=created.filter(function(d){return d.createdate&&d.createdate.substring(0,7)===months[months.length-1];}).length;
   var newBdr=created.filter(function(d){return d.createdate&&d.createdate.substring(0,7)===months[months.length-1]&&_isBdr(d);}).length;
   var bdrPct=deals.length>0?Math.round(bdrDeals.length/deals.length*100):0;
@@ -328,8 +353,8 @@ function novoRender(){
   var reuVidas=reuDeals.reduce(function(s,d){return s+(d.vidas||0);},0);
 
   var kpi=function(lbl,val,sub,col,key,kind){ return '<div class="kpi-card'+(kind?' kpi-click':'')+'" '+(kind?'onclick="bdrKpiOpen(\''+kind+'\')"':'')+'><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.35rem"><div class="kpi-label">'+lbl+'</div>'+_codeTag(key)+'</div><div class="kpi-value" style="color:'+(col||'var(--text)')+'">'+val+'</div><div class="kpi-sub">'+sub+'</div></div>'; };
-  var c=function(title,tip,id,h){ return '<div class="novo-card"><div class="novo-card-header"><h3>'+title+'</h3>'+_infoBtn(tip,id)+'</div><canvas id="chart-bdr-'+id+'" style="max-height:'+(h||340)+'px"></canvas></div>'; };
-  var cWide=function(title,tip,id,h){ return '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header"><h3>'+title+'</h3>'+_infoBtn(tip,id)+'</div><canvas id="chart-bdr-'+id+'" style="max-height:'+(h||320)+'px"></canvas></div>'; };
+  var c=function(title,tip,id,h,tabs){ return '<div class="novo-card"><div class="novo-card-header"><h3>🟡 '+title+'</h3>'+_infoBtn(tip,id)+(tabs||'')+'</div><canvas id="chart-bdr-'+id+'" style="max-height:'+(h||340)+'px"></canvas></div>'; };
+  var cWide=function(title,tip,id,h,tabs){ return '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header"><h3>🟡 '+title+'</h3>'+_infoBtn(tip,id)+(tabs||'')+'</div><canvas id="chart-bdr-'+id+'" style="max-height:'+(h||320)+'px"></canvas></div>'; };
 
   document.getElementById('novo-content').innerHTML=(window.AxFilter?AxFilter.barHtml():'')+
     '<div style="font-size:.78rem;color:var(--text2);margin-bottom:.75rem">'+t('updated_at')+' '+ts+' | '+deals.length+' deals totais | '+bdrDeals.length+' com BDR (sdr) | '+bdrOpen.length+' abertos atuais</div>'+ 
@@ -343,27 +368,27 @@ function novoRender(){
     '</div>'+
     '<div class="novo-cards">'+
       '<div class="section-hdr"><h2>Originação</h2></div>'+
-      cWide('Originação por BDR (Top 15)','Quantos deals foram criados por cada BDR (campo HubSpot sdr), Top 15 por volume. Considera deals criados (createdate) no período. Clique numa barra para ver os deals.','origin-bdr',320)+
-      '<div class="section-hdr"><h2>Origination Volume</h2></div>'+
-      cWide(t('bdr_new_deals'),t('bdr_new_deals_tip'),'new-deals',300)+
-      cWide(t('bdr_new_vidas'),t('bdr_new_vidas_tip'),'new-vidas',300)+
+      cWide('Originação por BDR (Top 15)'+_cntSpan(createdBdr),'Quantos deals (ou vidas) foram criados por cada BDR (campo HubSpot sdr), Top 15 por volume. Considera deals criados (createdate) no período. Clique numa barra para ver os deals.','origin-bdr',320,_subTabs('bdr-origin-tabs',_bdrOriginMode,[{mode:'deals',label:'Deals',fn:'bdrSwitchOrigin'},{mode:'vidas',label:'Vidas',fn:'bdrSwitchOrigin'}]))+
+      cWide('Weekly Origination (por BDR)'+_cntSpan(createdBdr),'Geração semanal por BDR (campo sdr): barras verticais empilhadas por BDR (Top 6 + Outros), últimas 13 semanas por createdate. Alterna Deals | Vidas.','weekly-origin',320,_subTabs('bdr-weekly-tabs',_bdrWeeklyMode,[{mode:'deals',label:'Deals',fn:'bdrSwitchWeekly'},{mode:'vidas',label:'Vidas',fn:'bdrSwitchWeekly'}]))+
+      cWide('Novos Leads por Mês | BDR vs AE'+_cntSpan(created.length),'Deals criados por mês, empilhados em dois grupos: origem BDR (campo sdr preenchido) vs origem AE (sdr vazio). Por createdate.','leads-origin',300)+
       '<div class="section-hdr"><h2>Fluxo de Pipeline</h2></div>'+
-      cWide(t('bdr_net_flow'),t('bdr_net_flow_tip'),'net-flow',300)+
-      cWide(t('bdr_net_vidas'),t('bdr_net_vidas_tip'),'net-vidas',300)+
+      cWide(t('bdr_net_flow')+_cntSpan(createdBdr),t('bdr_net_flow_tip'),'net-flow',300)+
+      cWide(t('bdr_net_vidas')+_cntSpan(createdBdr),t('bdr_net_vidas_tip'),'net-vidas',300)+
       '<div class="section-hdr"><h2>Qualidade</h2></div>'+
-      cWide(t('bdr_avg_vidas'),t('bdr_avg_vidas_tip'),'avg-vidas',280)+
-      c(t('bdr_colabs'),t('bdr_colabs_tip'),'colabs',300)+
-      c(t('bdr_size_dist'),t('bdr_size_dist_tip'),'size-dist',300)+
+      cWide(t('bdr_avg_vidas')+_cntSpan(created.length),t('bdr_avg_vidas_tip'),'avg-vidas',280)+
+      c(t('bdr_colabs')+_cntSpan(deals.length),t('bdr_colabs_tip'),'colabs',300)+
+      c(t('bdr_size_dist')+_cntSpan(created.length),t('bdr_size_dist_tip'),'size-dist',300)+
     '</div>';
 
   buildBdrOrigin();
-  buildBdrNewDeals();
-  buildBdrNewVidas();
+  buildBdrWeekly();
+  buildBdrLeadsOrigin();
   buildBdrNetFlow();
   buildBdrNetVidas();
   buildBdrAvgVidas();
   buildBdrColabs();
   buildBdrSizeDist();
+  _initTabSubs();
 }
 
 function bdrKpiOpen(kind){
@@ -377,16 +402,54 @@ function bdrKpiOpen(kind){
 
 function buildBdrOrigin(){
   var th=_novoTheme(), created=_dealsByDate('createdate').filter(_isBdr);
+  var vidas=_bdrOriginMode==='vidas';
   var agg={};
-  created.forEach(function(d){ var b=d.sdr||'(sem BDR)'; agg[b]=(agg[b]||0)+1; });
+  created.forEach(function(d){ var b=_bdrName(d)||'(sem BDR)'; agg[b]=(agg[b]||0)+(vidas?(d.vidas||0):1); });
   var ranked=Object.keys(agg).map(function(b){return {bdr:b,n:agg[b]};}).filter(function(r){return r.n>0;}).sort(function(a,b){return b.n-a.n;}).slice(0,15);
+  var unit=vidas?'vidas':'deals criados';
   _novoMkChart('chart-bdr-origin-bdr',{type:'bar',plugins:[ChartDataLabels],
     data:{labels:ranked.map(function(r){return r.bdr;}),datasets:[{data:ranked.map(function(r){return r.n;}),backgroundColor:'rgba(147,112,219,.75)',hoverBackgroundColor:'rgba(147,112,219,1)',borderRadius:4}]},
-    options:{indexAxis:'y',responsive:true,layout:{padding:{right:46}},plugins:{legend:{display:false},
-      datalabels:{anchor:'end',align:'right',color:th.cText,font:{family:NOVO_FONT,size:11,weight:'bold'},formatter:function(v){return v;}},
-      tooltip:{callbacks:{label:function(c){return c.parsed.x+' deals criados';}}}},
+    options:{indexAxis:'y',responsive:true,layout:{padding:{right:54}},plugins:{legend:{display:false},
+      datalabels:{anchor:'end',align:'right',color:th.cText,font:{family:NOVO_FONT,size:11,weight:'bold'},formatter:function(v){return _ni(v);}},
+      tooltip:{callbacks:{label:function(c){return _ni(c.parsed.x)+' '+unit;}}}},
       scales:{x:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0}},y:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}}},
-      onClick:function(e,el){ if(!el.length)return; var b=ranked[el[0].index].bdr; novoOpenDealsModal('Originação | '+b, created.filter(function(d){return (d.sdr||'(sem BDR)')===b;})); }}});
+      onClick:function(e,el){ if(!el.length)return; var b=ranked[el[0].index].bdr; novoOpenDealsModal('Originação | '+b, created.filter(function(d){return (_bdrName(d)||'(sem BDR)')===b;})); }}});
+}
+
+// R13 | Weekly Origination: barras verticais empilhadas por BDR (Top 6 + Outros), 13 semanas.
+function buildBdrWeekly(){
+  var th=_novoTheme(), weeks=_getWeeks(13), created=_dealsByDate('createdate').filter(_isBdr);
+  var vidas=_bdrWeeklyMode==='vidas';
+  var inc=function(d){ return vidas?(d.vidas||0):1; };
+  var tot={};
+  created.forEach(function(d){ var b=_bdrName(d)||'(sem BDR)'; tot[b]=(tot[b]||0)+inc(d); });
+  var top=Object.keys(tot).sort(function(a,b){return tot[b]-tot[a];}).slice(0,6);
+  var groups=top.concat(['Outros']);
+  var colors=['rgba(88,166,255,.8)','rgba(63,185,80,.75)','rgba(58,184,183,.8)','rgba(210,153,34,.85)','rgba(147,112,219,.8)','rgba(248,81,73,.7)','rgba(140,140,150,.5)'];
+  var gOf=function(d){ var b=_bdrName(d)||'(sem BDR)'; return top.indexOf(b)>=0?b:'Outros'; };
+  var datasets=groups.map(function(g,i){
+    return {label:g,data:weeks.map(function(w){ return created.filter(function(d){return _weekKey(d.createdate)===w&&gOf(d)===g;}).reduce(function(s,d){return s+inc(d);},0); }),backgroundColor:colors[i%colors.length],stack:'s',borderRadius:2};
+  });
+  _novoMkChart('chart-bdr-weekly-origin',{type:'bar',plugins:[ChartDataLabels],
+    data:{labels:weeks.map(_wlbl),datasets:datasets},
+    options:{responsive:true,layout:{padding:{top:18}},plugins:{legend:{display:true,labels:{color:th.cText2,font:{family:NOVO_FONT,size:10},padding:8}},datalabels:{display:false},
+      tooltip:{callbacks:{label:function(c){return c.dataset.label+': '+_ni(c.parsed.y)+(vidas?' vidas':' deals');}}}},
+      scales:{x:{grid:{display:false},ticks:{color:th.cText2,font:{family:NOVO_FONT}},stacked:true},y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0},stacked:true}}}});
+}
+
+// R14 | Novos Leads por Mês: empilhado em 2 grupos (origem BDR vs AE).
+function buildBdrLeadsOrigin(){
+  var th=_novoTheme(), months=_getMonths(12), created=_dealsByDate('createdate');
+  var seriesBdr=months.map(function(m){ return created.filter(function(d){return d.createdate&&d.createdate.substring(0,7)===m&&_isBdr(d);}).length; });
+  var seriesAe =months.map(function(m){ return created.filter(function(d){return d.createdate&&d.createdate.substring(0,7)===m&&!_isBdr(d);}).length; });
+  _novoMkChart('chart-bdr-leads-origin',{type:'bar',plugins:[ChartDataLabels],
+    data:{labels:months.map(_mlbl),datasets:[
+      {label:'BDR',data:seriesBdr,backgroundColor:'rgba(147,112,219,.8)',stack:'s',borderRadius:2},
+      {label:'AE',data:seriesAe,backgroundColor:'rgba(88,166,255,.8)',stack:'s',borderRadius:2}
+    ]},
+    options:{responsive:true,layout:{padding:{top:18}},plugins:{legend:{display:true,labels:{color:th.cText2,font:{family:NOVO_FONT,size:10},padding:8}},datalabels:{display:false},
+      tooltip:{callbacks:{label:function(c){return c.dataset.label+': '+_ni(c.parsed.y)+' deals';}}}},
+      scales:{x:{grid:{display:false},ticks:{color:th.cText2,font:{family:NOVO_FONT}},stacked:true},y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0},stacked:true}}}});
 }
 
 function buildBdrNewDeals(){
