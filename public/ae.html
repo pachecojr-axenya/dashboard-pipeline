@@ -242,7 +242,7 @@ var NOVO_I18N={
 function t(k){ return (NOVO_I18N[NOVO_LANG]||NOVO_I18N.pt)[k]||(NOVO_I18N.pt[k])||k; }
 function novoToggleLang(){ NOVO_LANG=NOVO_LANG==='pt'?'en':'pt'; try{localStorage.setItem('novo_lang',NOVO_LANG);}catch(e){} (function(_e){if(_e)_e.textContent=NOVO_LANG.toUpperCase();})(document.getElementById('novo-lang-label')); if(_novoDeals) novoRender(); }
 
-var AE_CARD_CODES={'kpi-open-lives':'P02','kpi-won-lives':'P08','kpi-won-arr':'P07','vidas-ae':'C01','arr':'A07','wonrev':'A08','winrate':'A09','monthly-won':'A10','pipeline-stage':'A11','aging':'A12','age-dist':'A13','radar':'A14','loss-reason':'A15','meeting-rate':'A16'};
+var AE_CARD_CODES={'kpi-open-lives':'P02','kpi-won-lives':'P08','kpi-won-arr':'P07','vidas-ae':'C01','arr':'A07','wonrev':'A08','winrate':'A09','monthly-won':'A10','pipeline-stage':'A11','aging':'A12','age-dist':'A13','radar':'A14','loss-reason':'A15','meeting-rate':'A16','efficiency':'A17','meeting-ae':'A18'};
 var _novoShowInfo=(function(){try{return localStorage.getItem('ae_show_info')==='1';}catch(e){return false;}})();
 function _codeTag(key){var c=AE_CARD_CODES[key]||'';return c?'<span class="novo-code-tag">'+c+'</span>':'';}
 function novoToggleInfo(){_novoShowInfo=!_novoShowInfo;document.body.classList.toggle('novo-info-on',_novoShowInfo);var b=document.getElementById('btn-info-toggle');if(b)b.classList.toggle('highlighted',_novoShowInfo);try{localStorage.setItem('ae_show_info',_novoShowInfo?'1':'0');}catch(e){}}
@@ -258,6 +258,8 @@ var AE_HELP_CHARTS=[
   {key:'ae-age-dist',title:'Deal Age Distribution (Open)',fields:[['stage','Pipeline aberto (mesma base do filtro de Reunião Agendada).'],['dias_no_pipe','Idade do deal em dias; agrupado em faixas (0-30, 31-60, 61-90, 91-120, 121-180, +180).']]},
   {key:'ae-loss-reason',title:'Motivos de Perda por Deals',fields:[['stage','Deals em Perdido no período (close_date).'],['motivo_do_declinio_ou_perdido','Motivo do declínio/perda; contagem de deals por motivo.']]},
   {key:'ae-meeting-rate',title:'Meeting Rate Evolution (Monthly)',fields:[['createdate','Mês de criação do deal (eixo X).'],['a_reuniao_ocorreu_','Sim / Não / sem preenchimento; base das barras empilhadas e da Occurrence Rate = Sim ÷ (Sim+Não).']]},
+  {key:'ae-efficiency',title:'AE Efficiency | Deals vs Win Rate',fields:[['hubspot_owner_id','Define o AE (só AEs do time).'],['stage','Ganho/Perdido para o win rate ajustado; abertos contam no total.'],['vidas','Tamanho da bolha (vidas em pipeline aberto).']]},
+  {key:'ae-meeting-ae',title:'Meeting Effectiveness by AE',fields:[['hubspot_owner_id','Define o AE (só AEs do time).'],['a_reuniao_ocorreu_','Sim / Não / sem preenchimento; fatias da barra de cada AE.']]},
   {key:'ae-monthly-won',title:'Ganhos Mensais por AE',fields:[['ae','Responsável.'],['stage','Ganho + Implantação conforme toggle.'],['close_date','Data de fechamento.']]},
   {key:'ae-radar',title:'Radar de Performance',fields:[['ae','Responsável.'],['vidas','Vidas abertas.'],['arr_estimado','ARR pipeline.'],['stage','Won/open.']]},
 ];
@@ -413,9 +415,11 @@ function novoRender(){
       '<div class="section-hdr"><h2>Conversão & Win Rate</h2></div>'+
       c(t('ae_winrate')+_aeCntSpan(won.length+lost.length),t('ae_winrate_tip'),'winrate',320)+
       c(t('ae_monthly_won')+_aeCntSpan(won.length),t('ae_monthly_won_tip'),'monthly-won',320,'',true)+
+      cWide('AE Efficiency | Deals vs Win Rate','Gráfico de bolhas por AE: eixo X = total de deals (abertos + ganhos + perdidos), eixo Y = win rate ajustado (ganhos ÷ (ganhos + perdidos)). O tamanho da bolha reflete as vidas em pipeline aberto. Só AEs do time. Clique numa bolha para ver os deals do AE.','efficiency',360)+
       // Seção Reuniões
       '<div class="section-hdr"><h2>Reuniões</h2></div>'+
       cWide('Meeting Rate Evolution (Monthly)','Mês a mês (por createdate): barras com o total de deals criados, fatiadas por a_reuniao_ocorreu_ (Sim | Não | sem preenchimento). A linha mostra a Occurrence Rate = Sim ÷ (Sim + Não) do mês. Clique numa barra para ver os deals criados no mês.','meeting-rate',340)+
+      cWide('Meeting Effectiveness by AE','Por AE: total de deals criados, fatiado por a_reuniao_ocorreu_ (Sim | Não | sem preenchimento). Só AEs do time. Clique numa barra para ver os deals do AE.','meeting-ae',340)+
       // Seção Perdas
       '<div class="section-hdr"><h2>Motivos de Perda</h2></div>'+
       cWide('Motivos de Perda por Deals'+_aeCntSpan(lost.length),'Contagem de deals perdidos por motivo (campo HubSpot motivo_do_declinio_ou_perdido). Considera deals em Perdido no período (close_date). Clique numa barra para ver os deals.','loss-reason',340,'',true)+
@@ -433,8 +437,10 @@ function novoRender(){
   buildAEArr();
   buildAEWonRev();
   buildAEWinRate();
+  buildAEEfficiency();
   buildAEMonthlyWon();
   buildAEMeetingRate();
+  buildAEMeetingByAE();
   buildAELossReason();
   buildAEPipelineStage();
   buildAEAging();
@@ -544,22 +550,69 @@ function buildAEMonthlyWon(){
 function buildAEPipelineStage(){
   // Base = pipeline ativo (honra os toggles globais: Reunião Agendada e Standby entram
   // ou saem conforme a configuração; Implantação/Ganho/Perdido sempre fora).
+  // Barras horizontais por AE, 100% empilhadas, fatiadas por etapa (mesma largura por AE).
   var th=_novoTheme(), open=_aeActivePipeline();
   var stageOrder=['Reunião Agendada'].concat(NOVO_STAGE_ORDER);
   var stages=stageOrder.filter(function(s){return open.some(function(d){return _stageNorm(d.stage)===s;});});
   var aes=_getAEs().filter(function(ae){return open.some(function(d){return d.ae===ae;});});
-  var aeColorArr=['rgba(88,166,255,.75)','rgba(63,185,80,.7)','rgba(58,184,183,.75)','rgba(210,153,34,.8)','rgba(147,112,219,.75)','rgba(248,81,73,.65)','rgba(230,150,80,.75)'];
-  // Barras por etapa, fatiadas por AE (cada dataset é um AE).
-  var datasets=aes.map(function(ae,i){
-    return {label:ae,data:stages.map(function(s){return open.filter(function(d){return d.ae===ae&&_stageNorm(d.stage)===s;}).length;}),backgroundColor:aeColorArr[i%aeColorArr.length],borderRadius:2,stack:'s'};
+  var stageColorArr=['rgba(88,166,255,.8)','rgba(58,184,183,.8)','rgba(147,112,219,.8)','rgba(63,185,80,.75)','rgba(210,153,34,.85)','rgba(248,81,73,.7)','rgba(230,150,80,.8)','rgba(120,140,160,.7)'];
+  var cnt=function(ae,s){ return open.filter(function(d){return d.ae===ae&&_stageNorm(d.stage)===s;}).length; };
+  var tot=function(ae){ return open.filter(function(d){return d.ae===ae;}).length; };
+  var datasets=stages.map(function(s,i){
+    return {label:s,data:aes.map(function(ae){ var t=tot(ae); return t?Math.round(cnt(ae,s)/t*1000)/10:0; }),backgroundColor:stageColorArr[i%stageColorArr.length],borderRadius:2,stack:'s'};
   });
   _novoMkChart('chart-ae-pipeline-stage',{type:'bar',plugins:[ChartDataLabels],
-    data:{labels:stages,datasets:datasets},
+    data:{labels:aes,datasets:datasets},
+    options:{indexAxis:'y',responsive:true,layout:{padding:{top:8}},plugins:{legend:{display:true,labels:{color:th.cText2,font:{family:NOVO_FONT,size:10},padding:8}},
+      datalabels:{display:function(c){return c.dataset.data[c.dataIndex]>=8;},color:'#fff',font:{family:NOVO_FONT,size:10,weight:'bold'},formatter:function(v){return v?v+'%':'';}},
+      tooltip:{callbacks:{label:function(c){ var ae=aes[c.dataIndex]; return c.dataset.label+': '+c.parsed.x+'% ('+cnt(ae,c.dataset.label)+' de '+tot(ae)+')'; }}}},
+      scales:{x:{min:0,max:100,grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},callback:function(v){return v+'%';}},stacked:true},y:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}},stacked:true}},
+      onClick:function(e,el){ if(!el.length)return; var ae=aes[el[0].index]; var s=stages[el[0].datasetIndex]; novoOpenDealsModal('Pipeline | '+ae+' | '+s, open.filter(function(d){return d.ae===ae&&_stageNorm(d.stage)===s;})); }}});
+}
+
+function buildAEEfficiency(){
+  var th=_novoTheme(), all=_rawDeals(), openD=_novoOpen();
+  var aes=_getAEs().filter(_isCoreAE);
+  var rows=aes.map(function(ae){
+    var w=_novoWon().filter(function(d){return d.ae===ae;}).length;
+    var l=_novoLost().filter(function(d){return d.ae===ae;}).length;
+    var total=all.filter(function(d){return d.ae===ae;}).length;
+    var vidas=openD.filter(function(d){return d.ae===ae;}).reduce(function(s,d){return s+(d.vidas||0);},0);
+    var wr=(w+l)>0?Math.round(w/(w+l)*1000)/10:0;
+    return {ae:ae,total:total,wr:wr,vidas:vidas};
+  }).filter(function(r){return r.total>0;});
+  var maxV=Math.max.apply(null,rows.map(function(r){return r.vidas;}).concat([1]));
+  var colors=['rgba(88,166,255,.7)','rgba(63,185,80,.65)','rgba(58,184,183,.7)','rgba(210,153,34,.75)','rgba(147,112,219,.7)','rgba(248,81,73,.6)'];
+  var datasets=rows.map(function(r,i){
+    return {label:r.ae,data:[{x:r.total,y:r.wr,_v:r.vidas}],backgroundColor:colors[i%colors.length],borderColor:colors[i%colors.length].replace(/\.\d+\)/,'1)'),borderWidth:1,
+      radius:6+Math.round(Math.sqrt(r.vidas/maxV)*22),hoverRadius:6+Math.round(Math.sqrt(r.vidas/maxV)*22)+2};
+  });
+  _novoMkChart('chart-ae-efficiency',{type:'bubble',plugins:[ChartDataLabels],
+    data:{datasets:datasets},
+    options:{responsive:true,layout:{padding:{top:18,right:18}},plugins:{legend:{display:true,position:'right',labels:{color:th.cText2,font:{family:NOVO_FONT,size:10},padding:6,usePointStyle:true}},
+      datalabels:{display:true,color:th.cText,font:{family:NOVO_FONT,size:9,weight:'bold'},formatter:function(v,c){return (c.dataset.label||'').split(' ')[0];},anchor:'center',align:'center'},
+      tooltip:{callbacks:{label:function(c){return c.dataset.label+': '+c.parsed.x+' deals | win rate '+c.parsed.y+'% | '+(c.raw._v||0)+' vidas';}}}},
+      scales:{x:{title:{display:true,text:'Total de deals',color:th.cText2,font:{family:NOVO_FONT}},grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0},beginAtZero:true},
+        y:{title:{display:true,text:'Win rate (%)',color:th.cText2,font:{family:NOVO_FONT}},grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},callback:function(v){return v+'%';}},beginAtZero:true,grace:'10%'}},
+      onClick:function(e,el){ if(!el.length)return; var ae=datasets[el[0].datasetIndex].label; novoOpenDealsModal('Deals | '+ae, all.filter(function(d){return d.ae===ae;})); }}});
+}
+
+function buildAEMeetingByAE(){
+  var th=_novoTheme(), all=_rawDeals();
+  var aes=_getAEs().filter(_isCoreAE).filter(function(ae){return all.some(function(d){return d.ae===ae;});});
+  var cls=function(ae,k){ return all.filter(function(d){return d.ae===ae&&_aeMeetingClass(d)===k;}).length; };
+  var datasets=[
+    {label:'Sim',data:aes.map(function(ae){return cls(ae,'sim');}),backgroundColor:'rgba(63,185,80,.8)',stack:'s',borderRadius:2},
+    {label:'Não',data:aes.map(function(ae){return cls(ae,'nao');}),backgroundColor:'rgba(248,81,73,.7)',stack:'s',borderRadius:2},
+    {label:'Sem preenchimento',data:aes.map(function(ae){return cls(ae,'vazio');}),backgroundColor:'rgba(140,140,150,.5)',stack:'s',borderRadius:2}
+  ];
+  _novoMkChart('chart-ae-meeting-ae',{type:'bar',plugins:[ChartDataLabels],
+    data:{labels:aes,datasets:datasets},
     options:{responsive:true,layout:{padding:{top:24}},plugins:{legend:{display:true,labels:{color:th.cText2,font:{family:NOVO_FONT,size:10},padding:8}},
       datalabels:{display:false},
       tooltip:{callbacks:{label:function(c){return c.dataset.label+': '+c.parsed.y+' deals';}}}},
-      scales:{x:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}},stacked:true},y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0},stacked:true}},
-      onClick:function(e,el){ if(!el.length)return; var s=stages[el[0].index]; var ae=aes[el[0].datasetIndex]; novoOpenDealsModal('Pipeline | '+s+' | '+ae, open.filter(function(d){return d.ae===ae&&_stageNorm(d.stage)===s;})); }}});
+      scales:{x:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}},stacked:true},y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0},stacked:true,title:{display:true,text:'Deals criados',color:th.cText2,font:{family:NOVO_FONT}}}},
+      onClick:function(e,el){ if(!el.length)return; var ae=aes[el[0].index]; var k=['sim','nao','vazio'][el[0].datasetIndex]; novoOpenDealsModal('Reunião '+datasets[el[0].datasetIndex].label+' | '+ae, all.filter(function(d){return d.ae===ae&&_aeMeetingClass(d)===k;})); }}});
 }
 
 function buildAEAging(){

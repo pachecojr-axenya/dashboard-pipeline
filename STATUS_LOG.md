@@ -1134,6 +1134,13 @@ Registro curto, uma linha por interação (a cada alteração).
 - **N18** (`Velocidade de Qualificação`) agora renderiza imediatamente ao lado do N17 na seção `Análise de Tempo`.
 - **Validação:** sintaxe inline OK e smoke render OK (`1235 deals`).
 
+### AE | A17 Efficiency (bubble), A18 Meeting by AE, A11 100% horizontal (2026-06-18)
+
+- **A17 (novo) `AE Efficiency | Deals vs Win Rate`:** `buildAEEfficiency()`, seção Conversão. Bubble chart por AE (só time core): X = total de deals (abertos+ganhos+perdidos), Y = win rate ajustado (ganhos ÷ (ganhos+perdidos)), tamanho da bolha = vidas em pipeline aberto. Eixo Y autoescala (win rates reais 0–7%). Clique abre os deals do AE. Code `A17`.
+- **A18 (novo) `Meeting Effectiveness by AE`:** `buildAEMeetingByAE()`, seção Reuniões. Barras empilhadas por AE (core) com total de deals criados fatiado por `a_reuniao_ocorreu_` (Sim/Não/sem preenchimento). Clique abre os deals do AE/fatia. Code `A18`.
+- **A11 reformatado:** `buildAEPipelineStage` voltou a barras por AE fatiadas por etapa, agora **horizontal e 100% empilhado** (cada AE = barra de mesma largura, fatias = % por etapa). Mantém base de pipeline ativo (toggle-aware) e ordem com Reunião Agendada. Datalabels mostram % (≥8%); tooltip mostra % + contagem.
+- **Validação:** inline 0 erros; i18n `PT=24 / EN=24`; smoke render ae OK (345).
+
 ### Fix | Standby de Vendas + BID no toggle de Pipeline Ativo (2026-06-18)
 
 - **Causa raiz:** `api/forecast-table.js` não buscava o Standby de Vendas (`1317543716` → nome `'Stand by'`); só o Standby de BID (`1373066362` → `'Standby'`) estava em `ACTIVE_STAGE_IDS`. Resultado: o toggle "Ativos incluem Standby" só conseguia contar o Standby de BID, porque os deals de Standby de Vendas nunca chegavam ao front-end.
