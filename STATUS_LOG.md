@@ -1134,6 +1134,13 @@ Registro curto, uma linha por interação (a cada alteração).
 - **N18** (`Velocidade de Qualificação`) agora renderiza imediatamente ao lado do N17 na seção `Análise de Tempo`.
 - **Validação:** sintaxe inline OK e smoke render OK (`1235 deals`).
 
+### BDR | KPIs P02/P08/P09/P04/P05, health amarelo, Originação por BDR (2026-06-18)
+
+- **KPIs principais reformulados:** a linha de KPIs do BDR passou de R01-R04 para **P02** (Vidas | Pipeline Ativo), **P08** (Vidas Ganhas), **P09** (Vidas Perdidas), **P04** (Reuniões Agendadas | Pipe Ativo) e **P05** (Vidas Ponderadas) — números globais, mesma régua do CRO. Criado `_bdrActivePipeline()` (exclui Ganho/Perdido/Implantação; Standby e Reunião Agendada por toggle); `NOVO_STAGE_PROB` vem do `settings-modal.js` (com guard). KPIs clicáveis (drill). Grid de KPIs → 5 colunas. `BDR_CARD_CODES` atualizado.
+- **Health dot amarelo:** BDR Performance `r`→`y` no bloco `PANELS` (propagado nos 8 arquivos).
+- **R12 (novo) `Originação por BDR (Top 15)`:** `buildBdrOrigin()` — barras horizontais com deals criados por cada BDR (campo `sdr`), top 15 por volume, por `createdate` no período. Clique abre os deals do BDR. Nota: alguns `sdr` aparecem como ID cru (owner não resolvido no ownerMap da API — qualidade de dado).
+- **Validação:** inline 0 erros (5 painéis); i18n bdr `21/21`; smoke render bdr OK (347); `/novo-bdr` → 200.
+
 ### C01 | contagem do título sensível ao toggle Vidas/Deals (2026-06-18)
 
 - **Pedido:** no C01 (CRO e AE), com **Vidas** selecionado, mostrar `xxx deals preenchidos de xxx` (só deals com `vidas` preenchida somam vidas); com **Deals**, contar todos os deals.
