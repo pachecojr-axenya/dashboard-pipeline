@@ -337,6 +337,8 @@ function _aeMap(fn){
   return map;
 }
 function _aeCntSpan(n){ return ' <span style="font-size:.68rem;color:var(--text2);font-weight:600;margin-left:.35rem;white-space:nowrap">'+(n||0).toLocaleString('pt-BR')+' deals</span>'; }
+// C01: em Vidas, "preenchidos de total" (só deals com vidas somam); em Deals, conta todos.
+function _c01CountText(deals,mode){ var total=deals.length; if(mode==='deals')return total.toLocaleString('pt-BR')+' deals'; var filled=0; deals.forEach(function(d){ if(d.vidas!=null&&d.vidas>0)filled++; }); return filled.toLocaleString('pt-BR')+' deals preenchidos de '+total.toLocaleString('pt-BR'); }
 
 // ── Probabilidades por etapa (espelha o CRO Dashboard) ──────────────────────────
 var NOVO_STAGE_PROB_DEFAULT={'Cotação':0.33,'Proposta Enviada':0.285,'Consultoria':0.611,'Negociação':0.42,'Implantação':0.581,'Ganho':1.0,'Standby':0.12,'Stand by':0.12,'Diagnóstico':0.06};
@@ -409,7 +411,7 @@ function novoRender(){
     '<div class="novo-cards">'+
       // Seção Leaderboard | C01 (mesclado A05+A06) + A07/A08
       '<div class="section-hdr"><h2>Leaderboard</h2></div>'+
-      cWide('Vidas e Deals por AE (Ativos)'+_aeCntSpan(_aeActivePipeline().length),'Soma de vidas (ou contagem de deals) por AE no pipeline ativo. Idêntico ao C01 do CRO Dashboard.','vidas-ae',360,_subTabs('ae-c01-tabs',_aeC01Mode,[{mode:'lives',label:'Vidas',fn:'aeSwitchC01Mode'},{mode:'deals',label:'Deals',fn:'aeSwitchC01Mode'}]),true)+
+      cWide('Vidas e Deals por AE (Ativos) <span id="ae-c01-count" style="font-size:.68rem;color:var(--text2);font-weight:600;margin-left:.35rem;white-space:nowrap">'+_c01CountText(_aeActivePipeline(),_aeC01Mode)+'</span>','Soma de vidas (ou contagem de deals) por AE no pipeline ativo. Idêntico ao C01 do CRO Dashboard.','vidas-ae',360,_subTabs('ae-c01-tabs',_aeC01Mode,[{mode:'lives',label:'Vidas',fn:'aeSwitchC01Mode'},{mode:'deals',label:'Deals',fn:'aeSwitchC01Mode'}]),true)+
       cWide('Receita Projetada por AE'+_aeCntSpan(_aePipeRevDeals().length),'Projeção de receita do pipeline ativo (mesmos cálculos do N06 | Projeção Mensal), agregada por AE — o total bate com o N06. Real ou Probabilizado. Clique numa barra para ver os deals (filtráveis por AE).','arr',300,_subTabs('ae-arr-tabs',_aePipeRevValueMode,[{mode:'raw',label:'Real',fn:'aeSwitchPipeRevValue'},{mode:'weighted',label:'Probabilizado',fn:'aeSwitchPipeRevValue'}]))+
       cWide('Ganhos por AE'+_aeCntSpan(won.length),'Deals ganhos por AE (mesmos cálculos do B05 | Receita & Ganhos). Alterna entre Receita, Ganhos (contagem) e Vidas — o total bate com o B05.','wonrev',300,_subTabs('ae-wonrev-tabs',_aeWonMetric,[{mode:'revenue',label:'Receita',fn:'aeSwitchWonMetric'},{mode:'deals',label:'Ganhos',fn:'aeSwitchWonMetric'},{mode:'vidas',label:'Vidas',fn:'aeSwitchWonMetric'}]),true)+
       // Seção Conversão
@@ -469,6 +471,8 @@ function buildAEC01(){
     unitLives:'vidas', unitDeals:'deals',
     onClick:function(ae,dealsAe){ novoOpenDealsModal((_aeC01Mode==='deals'?'Deals':'Vidas')+' | '+ae, dealsAe); }
   });
+  var _c01cnt=document.getElementById('ae-c01-count');
+  if(_c01cnt) _c01cnt.textContent=_c01CountText(_aeActivePipeline(),_aeC01Mode);
 }
 
 // A07 | Receita Projetada por AE — mesmos cálculos do N06; total bate com o N06.

@@ -1635,6 +1635,8 @@ function buildNovoVidasAE() {
   });
   var _c01canvas = document.getElementById('chart-novo-vidas-ae');
   if (_c01canvas) _c01canvas.style.cursor = 'pointer';
+  var _c01cnt = document.getElementById('novo-c01-count');
+  if (_c01cnt) _c01cnt.textContent = _c01CountText(_novoC01CoreDeals(), _novoAeMode);
 }
 
 var _novoAeModalAll = [];
@@ -2265,6 +2267,15 @@ function _card(title, tip, tabsHtml, canvasId, maxH, helpKey) {
 }
 function _titleWithCount(title, count) {
   return title + ' <span style="font-size:.68rem;color:var(--text2);font-weight:600;margin-left:.35rem;white-space:nowrap">' + (count || 0).toLocaleString('pt-BR') + ' deals</span>';
+}
+// C01: em Vidas, mostra "preenchidos de total" (só deals com vidas entram na soma);
+// em Deals, conta todos os deals.
+function _c01CountText(deals, mode) {
+  var total = deals.length;
+  if (mode === 'deals') return total.toLocaleString('pt-BR') + ' deals';
+  var filled = 0;
+  deals.forEach(function(d){ if (d.vidas != null && d.vidas > 0) filled++; });
+  return filled.toLocaleString('pt-BR') + ' deals preenchidos de ' + total.toLocaleString('pt-BR');
 }
 function _novoC01Deals() {
   return _novoCurrentActivePipeline();
@@ -3719,7 +3730,7 @@ function novoRender() {
     '<div id="novo-kpisec-wrap">' + _buildKpiSecRow() + '</div>' +
     '<div class="novo-cards">' +
       _sectionHdr(t('section_pipe_ativo')) +
-      _card(_titleWithCount(t('title_vidas_ae'), c01Count), t('tooltip_vidas_ae'),
+      _card(t('title_vidas_ae') + ' <span id="novo-c01-count" style="font-size:.68rem;color:var(--text2);font-weight:600;margin-left:.35rem;white-space:nowrap">' + _c01CountText(_novoC01CoreDeals(), _novoAeMode) + '</span>', t('tooltip_vidas_ae'),
         _subTabs('novo-ae-tabs', _novoAeMode, [{mode:'lives',label:t('tab_vidas'),fn:'novoSwitchAeMode'},{mode:'deals',label:t('tab_deals'),fn:'novoSwitchAeMode'}]),
         'chart-novo-vidas-ae', 360, 'ae') +
       _card(_titleWithCount(t('t_stage'), activeCount), t('tip_stage'), '',

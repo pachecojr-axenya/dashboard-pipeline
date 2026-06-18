@@ -1134,6 +1134,13 @@ Registro curto, uma linha por interação (a cada alteração).
 - **N18** (`Velocidade de Qualificação`) agora renderiza imediatamente ao lado do N17 na seção `Análise de Tempo`.
 - **Validação:** sintaxe inline OK e smoke render OK (`1235 deals`).
 
+### C01 | contagem do título sensível ao toggle Vidas/Deals (2026-06-18)
+
+- **Pedido:** no C01 (CRO e AE), com **Vidas** selecionado, mostrar `xxx deals preenchidos de xxx` (só deals com `vidas` preenchida somam vidas); com **Deals**, contar todos os deals.
+- **Implementação:** helper `_c01CountText(deals, mode)` nos dois painéis. Vidas → `filled deals preenchidos de total` (filled = `vidas != null && vidas > 0`); Deals → `total deals`. O título usa um `<span>` com id (`novo-c01-count` / `ae-c01-count`) e os builders (`buildNovoVidasAE`/`buildAEC01`) reescrevem o texto a cada toggle (o switch só reconstruía o gráfico, não o título).
+- **Verificado (CRO, core/ativo):** Vidas → `159 deals preenchidos de 253`; Deals → `253 deals`.
+- **Validação:** inline 0 erros; i18n dashboard `257/257`; smoke render OK (dashboard 1297, ae 346).
+
 ### Fix | Perdidos do BID contam (P09 e conversões) (2026-06-18)
 
 - **Sintoma:** P09 (Vidas Perdidas) e as taxas de conversão só consideravam Perdido de Vendas; o Perdido do BID não tinha stage id em `LOST_STAGE_IDS` e nunca era buscado.
