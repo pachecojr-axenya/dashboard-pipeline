@@ -1134,6 +1134,11 @@ Registro curto, uma linha por interação (a cada alteração).
 - **N18** (`Velocidade de Qualificação`) agora renderiza imediatamente ao lado do N17 na seção `Análise de Tempo`.
 - **Validação:** sintaxe inline OK e smoke render OK (`1235 deals`).
 
+### BDR | total no topo das colunas em R13 e R14 (2026-06-18)
+
+- R13 (Weekly Origination) e R14 (Leads BDR×AE): datalabel exibe o **total da coluna** no topo de cada barra empilhada (renderizado só no dataset do topo; formatter soma todos os segmentos do índice). Padding superior ajustado para não cortar o rótulo.
+- **Validação:** inline 0 erros; smoke render OK (346).
+
 ### BDR | emojis 🟡, contagem nos títulos, R14 mês abreviado, remove R05/R06 (2026-06-18)
 
 - **Emoji 🟡** adicionado a todos os títulos de gráfico (via `c()/cWide()`).

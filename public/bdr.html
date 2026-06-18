@@ -432,7 +432,7 @@ function buildBdrWeekly(){
   });
   _novoMkChart('chart-bdr-weekly-origin',{type:'bar',plugins:[ChartDataLabels],
     data:{labels:weeks.map(_wlbl),datasets:datasets},
-    options:{responsive:true,layout:{padding:{top:18}},plugins:{legend:{display:true,labels:{color:th.cText2,font:{family:NOVO_FONT,size:10},padding:8}},datalabels:{display:false},
+    options:{responsive:true,layout:{padding:{top:26}},plugins:{legend:{display:true,labels:{color:th.cText2,font:{family:NOVO_FONT,size:10},padding:8}},datalabels:{display:function(c){return c.datasetIndex===c.chart.data.datasets.length-1;},anchor:'end',align:'top',color:th.cText,font:{family:NOVO_FONT,size:10,weight:'bold'},formatter:function(v,c){var t=0;c.chart.data.datasets.forEach(function(ds){t+=(ds.data[c.dataIndex]||0);});return t?_ni(t):'';}},
       tooltip:{callbacks:{label:function(c){return c.dataset.label+': '+_ni(c.parsed.y)+(vidas?' vidas':' deals');}}}},
       scales:{x:{grid:{display:false},ticks:{color:th.cText2,font:{family:NOVO_FONT}},stacked:true},y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0},stacked:true}}}});
 }
@@ -447,7 +447,7 @@ function buildBdrLeadsOrigin(){
       {label:'BDR',data:seriesBdr,backgroundColor:'rgba(147,112,219,.8)',stack:'s',borderRadius:2},
       {label:'AE',data:seriesAe,backgroundColor:'rgba(88,166,255,.8)',stack:'s',borderRadius:2}
     ]},
-    options:{responsive:true,layout:{padding:{top:18}},plugins:{legend:{display:true,labels:{color:th.cText2,font:{family:NOVO_FONT,size:10},padding:8}},datalabels:{display:false},
+    options:{responsive:true,layout:{padding:{top:26}},plugins:{legend:{display:true,labels:{color:th.cText2,font:{family:NOVO_FONT,size:10},padding:8}},datalabels:{display:function(c){return c.datasetIndex===c.chart.data.datasets.length-1;},anchor:'end',align:'top',color:th.cText,font:{family:NOVO_FONT,size:10,weight:'bold'},formatter:function(v,c){var t=0;c.chart.data.datasets.forEach(function(ds){t+=(ds.data[c.dataIndex]||0);});return t?_ni(t):'';}},
       tooltip:{callbacks:{label:function(c){return c.dataset.label+': '+_ni(c.parsed.y)+' deals';}}}},
       scales:{x:{grid:{display:false},ticks:{color:th.cText2,font:{family:NOVO_FONT}},stacked:true},y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0},stacked:true}}}});
 }
