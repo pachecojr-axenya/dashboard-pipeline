@@ -3544,6 +3544,14 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       });
       h += '</tbody>';
 
+      // Probabilidade ajustada efetiva do total: razão entre Receita Probabilizada e
+      // Receita Real somadas (= haircut médio ponderado aplicado ao livro para gerar
+      // ARR/MRR probabilizado). É o "P. Ajust." agregado mostrado na linha de total.
+      const sumReal = mRealTotals.reduce((a, b) => a + (b || 0), 0);
+      const sumProb = mTotals.reduce((a, b) => a + (b || 0), 0);
+      const effAdjProb = sumReal > 0 ? (sumProb / sumReal) : null;
+      const effAdjTip = 'Probabilidade ajustada efetiva = Receita Probabilizada ÷ Receita Real (média ponderada da P. Ajust. usada para gerar o ARR/MRR probabilizado)';
+
       // Total row inside tfoot (sticky bottom)
       h += '<tfoot><tr class="total">';
       INFO.forEach((c, i) => {
@@ -3554,6 +3562,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
         else if (c.k === 'fatura_atual') h += `<td class="${mh}" style="text-align:right">${totalFatAtu > 0 ? fmtBRL(totalFatAtu) : ''}</td>`;
         else if (c.k === 'primeira_fatura') h += `<td class="${mh}" style="text-align:right">${totalPrimFat > 0 ? fmtBRL(totalPrimFat) : ''}</td>`;
         else if (c.k === 'arr_estimado') h += `<td class="${mh}" style="text-align:right">${fmtBRL(totalArr)}</td>`;
+        else if (c.k === 'prob_ajustada') h += `<td class="${mh}" style="text-align:right" data-tip="${esc(effAdjTip)}">${effAdjProb != null ? fmtPct(effAdjProb) : ''}</td>`;
         else h += `<td class="${mh}"></td>`;
       });
       mRealTotals.forEach((tot, i) => {

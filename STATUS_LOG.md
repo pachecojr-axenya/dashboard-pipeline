@@ -1134,6 +1134,25 @@ Registro curto, uma linha por interação (a cada alteração).
 - **N18** (`Velocidade de Qualificação`) agora renderiza imediatamente ao lado do N17 na seção `Análise de Tempo`.
 - **Validação:** sintaxe inline OK e smoke render OK (`1235 deals`).
 
+### Fix | Perdidos do BID contam (P09 e conversões) (2026-06-18)
+
+- **Sintoma:** P09 (Vidas Perdidas) e as taxas de conversão só consideravam Perdido de Vendas; o Perdido do BID não tinha stage id em `LOST_STAGE_IDS` e nunca era buscado.
+- **Correção (`forecast-table.js`):** `fetchDeals` agora usa 2 `filterGroups` (OR): grupo 1 = ativos por stage; grupo 2 (só com `includeLost`) = `hs_is_closed_lost = true` nos dois pipelines — pega todo closed-lost independi­ente do stage id. No mapeamento, `hs_is_closed_lost === 'true'` força `stage = 'Perdido'` (cobre o BID, cujo stage de perdido não está mapeado).
+- **Efeito:** Perdido por pipeline passou a `Vendas 950 + Bid 1`; total 1295→1297 (inclui também 1 closed-lost de Vendas fora do stage 1144746911). Vale para P09, S01/S02/S03, B03 e win rates (API compartilhada).
+- **Validação:** `node --check` OK; smoke render OK (dashboard 1297, board 346, ae 346).
+
+### Forecast | P. Ajust. efetiva na linha de total (2026-06-18)
+
+- A linha **TOTAL** da tabela do Forecast passou a exibir, na coluna **P. Ajust.** (`prob_ajustada`), a **probabilidade ajustada efetiva** do livro = `Σ Receita Probabilizada ÷ Σ Receita Real` (`sumProb/sumReal`), o haircut médio ponderado usado para gerar ARR/MRR probabilizado. Formatado com `fmtPct` (1 decimal) e com `data-tip` explicando a fórmula. Antes a célula ficava vazia.
+- **Validação:** `_check-inline-js.js public/forecast.html` → 0 erros; `/forecast` → 200.
+
+### Fix | S01 (CRO) = B03 (Board): arredondamento da conversão ajustada (2026-06-18)
+
+- **Sintoma:** S01 (CRO | Taxa de Ganho) e B03 (Board | Conversão Ajustada) mostravam números diferentes (ex.: 2% vs 2,5%) apesar de mesma base.
+- **Causa:** mesma fórmula e dados (24 ganhos / 950 perdidos = 2,46%), mas o CRO arredondava para inteiro (`Math.round(r*100)` → 2%) enquanto o Board usa 1 decimal (`Math.round(r*1000)/10` → 2,5%).
+- **Correção:** `_buildKpiSecRow` no CRO passou a usar 1 decimal em S01 (`winRate`) e, por consistência, S02 (`bdrConv`) e S03 (`aeConv`). Agora batem com o Board e com as taxas do painel AE.
+- **Validação:** inline 0 erros; i18n `257/257`; smoke render dashboard OK (1295).
+
 ### AE | A19 Deal Velocity by Stage (heatmap) + stage_days na API (2026-06-18)
 
 - **API (`forecast-table.js`):** novo `stage_days` por deal — dias em cada etapa do pipeline Vendas = `(hs_v2_date_exited_<id> || hoje) - hs_v2_date_entered_<id>`, para Reunião Agendada, Diagnóstico, Cotação, Consultoria, Negociação e Implantação. Adicionadas as props entered/exited dessas etapas (dedupe via `[...new Set(PROPERTIES)]`) e helper `computeStageDays`. Verificado: 1102/1295 deals com dados; médias do time Reunião 22d, Diag 34d, Cotação 32d, Consultoria 30d, Negociação 38d, Implantação 40d.

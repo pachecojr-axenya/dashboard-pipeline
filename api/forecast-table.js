@@ -213,14 +213,26 @@ async function fetchOwners(token) {
 }
 
 async function fetchDeals(token, includeLost) {
-  const stageIds = includeLost ? ACTIVE_STAGE_IDS.concat(LOST_STAGE_IDS) : ACTIVE_STAGE_IDS;
+  // Grupo 1: ativos (por stage). Grupo 2 (só com includeLost): TODOS os closed-lost dos
+  // dois pipelines via hs_is_closed_lost — pega o Perdido do BID, que não tem stage id
+  // mapeado em LOST_STAGE_IDS (filterGroups são OR entre si). P09 (Vidas Perdidas) e as
+  // taxas de conversão passam a contar perdidos de Vendas + Bid.
+  const filterGroups = [
+    { filters: [
+      { propertyName: 'pipeline',  operator: 'IN', values: [PIPELINE_ID, PIPELINE_2_ID] },
+      { propertyName: 'dealstage', operator: 'IN', values: ACTIVE_STAGE_IDS },
+    ]},
+  ];
+  if (includeLost) {
+    filterGroups.push({ filters: [
+      { propertyName: 'pipeline',          operator: 'IN', values: [PIPELINE_ID, PIPELINE_2_ID] },
+      { propertyName: 'hs_is_closed_lost', operator: 'EQ', value: 'true' },
+    ]});
+  }
   let all = [], after = 0, hasMore = true;
   while (hasMore) {
     const body = {
-      filterGroups: [{ filters: [
-        { propertyName: 'pipeline',  operator: 'IN', values: [PIPELINE_ID, PIPELINE_2_ID] },
-        { propertyName: 'dealstage', operator: 'IN', values: stageIds },
-      ]}],
+      filterGroups,
       properties: [...new Set(PROPERTIES)],
       limit: 200,
       after,
@@ -254,7 +266,10 @@ module.exports = async function handler(req, res) {
       .filter(r => includeLost || r.properties.hs_is_closed_lost !== 'true')
       .map(r => {
         const p = r.properties;
-        const stageName = STAGE_MAP[p.dealstage] || p.dealstage || '-';
+        // closed-lost → 'Perdido' mesmo quando o stage id do BID não está mapeado.
+        const stageName = p.hs_is_closed_lost === 'true'
+          ? 'Perdido'
+          : (STAGE_MAP[p.dealstage] || p.dealstage || '-');
 
         const prob = (() => {
           const custom = normalizeProb(p.probabilidade_de_fechamento_);

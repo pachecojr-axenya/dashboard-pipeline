@@ -3438,7 +3438,7 @@ function _buildKpiSecRow() {
   var lostList = _novoLost();
   var wrWon  = wonList.length;
   var wrLost = lostList.length;
-  var winRate = (wrWon + wrLost) > 0 ? Math.round(wrWon / (wrWon + wrLost) * 100) : null;
+  var winRate = (wrWon + wrLost) > 0 ? Math.round(wrWon / (wrWon + wrLost) * 1000) / 10 : null;
 
   // S02/S03 | Conversão por origem. BDR = deals com o campo BDR (interno: sdr) preenchido; AE = sem.
   // Conversão = ganhos ÷ (ganhos + perdidos) dentro de cada origem (mesma base do win rate).
@@ -3448,8 +3448,8 @@ function _buildKpiSecRow() {
   var aeLost    = lostList.filter(function(d) { return !d.sdr; });
   var bdrClosed = bdrWon.length + bdrLost.length;
   var aeClosed  = aeWon.length + aeLost.length;
-  var bdrConv   = bdrClosed > 0 ? Math.round(bdrWon.length / bdrClosed * 100) : null;
-  var aeConv    = aeClosed  > 0 ? Math.round(aeWon.length  / aeClosed  * 100) : null;
+  var bdrConv   = bdrClosed > 0 ? Math.round(bdrWon.length / bdrClosed * 1000) / 10 : null;
+  var aeConv    = aeClosed  > 0 ? Math.round(aeWon.length  / aeClosed  * 1000) / 10 : null;
 
   // S04 | Taxa de Reunião (Reunião Agendada → Diagnóstico). Depende de _novoFunnelData (carga assíncrona).
   var meetStats = _novoMeetingStats();
