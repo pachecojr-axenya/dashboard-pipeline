@@ -1134,6 +1134,18 @@ Registro curto, uma linha por interação (a cada alteração).
 - **N18** (`Velocidade de Qualificação`) agora renderiza imediatamente ao lado do N17 na seção `Análise de Tempo`.
 - **Validação:** sintaxe inline OK e smoke render OK (`1235 deals`).
 
+### BDR | 🟡 R14/R15 + R15 exclui Aurilia/Gabriele dos AEs (2026-06-19)
+
+- **🟡 removido** dos títulos R14 (Novos Leads BDR vs AE) e R15 (Handoff Matrix).
+- **R15:** Aurilia e Gabriele removidas da lista de AE (matriz filtra deals cujo AE tem primeiro nome `aurilia`/`gabriele` via `EXCL_AE`) — não são AEs do time.
+- **Validação:** inline 0 erros; smoke render OK (334).
+
+### BDR | R15 Handoff Matrix BDR→AE + 🟡 R11 (2026-06-19)
+
+- **🟡 removido** do título do R11 (Distribuição de Porte).
+- **R15 (novo) `BDR→AE Handoff Quality Matrix`:** `buildBdrHandoff()` — tabela heatmap (div `#bdr-handoff-matrix`): linhas = BDR (Top 12), colunas = AE (Top 8), célula = nº de deals passados daquele BDR para aquele AE; cor por volume (intensidade teal); linha/coluna de Total. Base: deals criados (createdate) no período com `sdr` e `ae` preenchidos (850 atuais). Clique numa célula abre os deals do par. Usa `_bdrName` (alias). Code `R15`.
+- **Validação:** inline 0 erros; smoke render OK (333).
+
 ### BDR | filtros combináveis nos modais + 🟡 R10 (2026-06-19)
 
 - **🟡 removido** do título do R10 (BDR vs Não BDR).
