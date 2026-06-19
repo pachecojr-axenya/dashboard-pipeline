@@ -1134,6 +1134,26 @@ Registro curto, uma linha por interação (a cada alteração).
 - **N18** (`Velocidade de Qualificação`) agora renderiza imediatamente ao lado do N17 na seção `Análise de Tempo`.
 - **Validação:** sintaxe inline OK e smoke render OK (`1235 deals`).
 
+### BDR | filtros combináveis nos modais + 🟡 R10 (2026-06-19)
+
+- **🟡 removido** do título do R10 (BDR vs Não BDR).
+- **Filtros combináveis:** o modal de deals (`bdrOpenFacetModal`) passou de faceta única para **múltiplas facetas em AND** — Origem, BDR, Desfecho, Porte e Mês. Cada dimensão tem chips (Todos + valores, top 12 + contador "+N"); a tabela mostra os deals que satisfazem todas as seleções. Facetas de categoria única são ocultadas. O clique no gráfico pré-seleciona a dimensão correspondente (`bdrOpenFacetModal(title,deals,preKey,preVal)`), e o usuário pode cruzar (ex.: BDR=X **e** Porte=500+ **e** Desfecho=Ganho).
+- **Validação:** inline 0 erros; smoke render OK (333).
+
+### BDR | modais com filtros por faceta, R10 donut C03 filtrável, 🟡 R07-R09 (2026-06-19)
+
+- **🟡 removido** dos títulos R07 (net-flow), R08 (net-vidas), R09 (avg-vidas) via `noEmoji`.
+- **R10 (BDR vs Não BDR):** agora **filtrável pelo período** da página (`_dealsByDate('createdate')` em vez de `_rawDeals()`) e com **visual de donut igual ao C03** (cutout 68%, legenda à direita, plugin de centro com total + "deals criados", gradiente radial, % nas fatias).
+- **Modais com filtros (facetas) em todos os gráficos:** novo `bdrOpenFacetModal(title, deals, label, facetFn, preCat)` + `bdrFacetSel` + `_bdrFacetRender` + chips `.bdr-fchip`. Cada gráfico, ao clicar em barra/fatia/linha, abre a lista geral de deals com chips de filtro no topo baseados na dimensão do gráfico, pré-selecionando o item clicado:
+  - R12/R13 → faceta **BDR** (`_fBdr`); R14/R10 → **Origem** (BDR/AE); R07/R08 → **Desfecho** (Ganho/Perdido/Aberto); R09 → **Mês**; R11 → **Porte**.
+- **Validação:** inline 0 erros; i18n bdr `21/21`; smoke render OK (333).
+
+### BDR | remove 🟡 de R12/R13 (2026-06-19)
+
+- `c()/cWide()` ganharam param `noEmoji`; R12 (Originação por BDR) e R13 (Weekly Origination) passam `true` — títulos sem o 🟡. Demais gráficos do BDR mantêm o 🟡.
+- Nota (contagem): R12/R13 contam `createdBdr` (deals criados com campo `sdr` = origem BDR ≈ 942); R14 conta `created.length` (todos os criados ≈ 1299 = BDR 942 + AE 357). Diferença = deals de origem AE.
+- **Validação:** inline 0 erros; smoke render OK.
+
 ### BDR | total no topo das colunas em R13 e R14 (2026-06-18)
 
 - R13 (Weekly Origination) e R14 (Leads BDR×AE): datalabel exibe o **total da coluna** no topo de cada barra empilhada (renderizado só no dataset do topo; formatter soma todos os segmentos do índice). Padding superior ajustado para não cortar o rótulo.
