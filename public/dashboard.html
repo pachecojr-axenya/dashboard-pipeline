@@ -643,7 +643,7 @@ var NOVO_I18N = {
     tip_sizedonut:'Donut dos deals abertos por faixa, com toggle entre Receita e Vidas. O centro mostra o total de deals abertos no pipeline (atualiza ao ocultar fatias na legenda). A fatia cinza "Sem receita"/"Sem vidas" conta os deals sem aquela informação. Etapas contadas: Diagnóstico, Cotação, Proposta Enviada, Consultoria, Negociação e Stand by (Implantação entra quando o toggle "Implantação = Ganho" está desligado). Clique numa fatia para ver os deals. Pipelines Vendas + Bid.',
     donut_open_deals:'deals abertos', donut_no_revenue:'Sem receita', donut_no_lives:'Sem vidas', donut_stages_label:'Etapas',
     vf_by_revenue:'Receita', vf_by_lives:'Vidas', vf_by_stage:'Etapa', vf_by_segment:'Segmento',
-    t_stageval:'Valor do Pipeline por Etapa',
+    t_stageval:'🟡 Valor do Pipeline por Etapa',
     tip_stageval:'Soma da receita anual estimada por etapa. "Ponderado" multiplica pela probabilidade da etapa (ajustável em ⚙). Inclui os pipelines Vendas + Bid.',
     t_segment:'Receita por Segmento',
     tip_segment:'Receita anual estimada (potencial) somada por segmento de tamanho do cliente (vidas). Inclui os pipelines Vendas + Bid.',
@@ -717,7 +717,7 @@ var NOVO_I18N = {
     t_vidaswindow:'🟡 Distribuição de Vidas',tip_vidaswindow:'Deals ativos por faixa de vidas. Sem filtro local de data.',
     t_winfactor:'Taxa de Ganho por AE',tip_winfactor:'Taxa de ganho ajustada por AE: deals ganhos ÷ (deals ganhos + deals perdidos).',
     t_coverage:'🟡 Cobertura do Pipeline (Ponderado vs Meta)',tip_coverage:'Ratio entre pipeline ponderado e meta de receita configurável.',
-    t_piperev12:'Valor do Pipeline (Projeção Mensal)',tip_piperev12:'Receita ou quantidade de deals por mês da data prevista de receita. A contagem mostra deals ativos com data prevista sobre o total de ativos P09. Considera pipes Vendas + Bid.',
+    t_piperev12:'🟡 Valor do Pipeline (Projeção Mensal)',tip_piperev12:'Receita ou quantidade de deals por mês da data prevista de receita. A contagem mostra deals ativos com data prevista sobre o total de ativos P09. Considera pipes Vendas + Bid.',
     t_segdoughnut:'🟡 Receita por Segmento (Donut)',tip_segdoughnut:'ARR estimado total por segmento de tamanho de cliente (baseado em vidas).',
     t_visibility:'🟡 Visibilidade de Receita | Timeline',tip_visibility:'Quantidade de deals com data prevista de receita por mês.',
     t_timeinstage:'🟡 Tempo em Etapa (Análise de Gargalo)',tip_timeinstage:'Dias médios em aberto por etapa (proxy via dias_no_pipe). Identifica gargalos.',
@@ -731,7 +731,7 @@ var NOVO_I18N = {
     t_receivables:'🟡 Timeline de Recebíveis Estimados',tip_receivables:'ARR ÷ 12 dos deals abertos por mês da data prevista de receita.',
     t_risktriage:'🟡 Triagem de Risco | Top 20 Deals',tip_risktriage:'Top 20 deals mais arriscados: vidas, ARR, tempo em aberto, etapa inicial.',
     lbl_all_time:'Todo período',lbl_last90:'Últ. 90d',lbl_last30:'Últ. 30d',
-    fnl_title:'🟡 Funil de Conversão Histórico', fnl_tip:'Quantos deals únicos entraram em cada etapa dos pipelines Vendas e Bid desde a data selecionada | taxas de conversão entre etapas adjacentes.', fnl_both:'Ambos', fnl_since:'Desde', fnl_custom:'Personalizar', fnl_load:'Carregar', fnl_loading_sub:'Pode levar 15–30s para pipelines com 1.000+ deals', cfg_title:'Configurações', cfg_meta:'Meta Receita Ganha (MTD)', active_meetings_label:'Ativos incluem Reunião Agendada', active_meetings_tip:'Quando ligado, Pipeline Ativo, P08 e gráficos C01/C02/C05/C07/C08 incluem deals em Reunião Agendada. Quando desligado, Reunião Agendada fica fora de negócios ativos.',
+    fnl_title:'Funil de Conversão Histórico', fnl_tip:'Quantos deals únicos entraram em cada etapa dos pipelines Vendas e Bid desde a data selecionada | taxas de conversão entre etapas adjacentes.', fnl_both:'Ambos', fnl_since:'Desde', fnl_custom:'Personalizar', fnl_load:'Carregar', fnl_loading_sub:'Pode levar 15–30s para pipelines com 1.000+ deals', cfg_title:'Configurações', cfg_meta:'Meta Receita Ganha (MTD)', active_meetings_label:'Ativos incluem Reunião Agendada', active_meetings_tip:'Quando ligado, Pipeline Ativo, P08 e gráficos C01/C02/C05/C07/C08 incluem deals em Reunião Agendada. Quando desligado, Reunião Agendada fica fora de negócios ativos.',
     active_standby_label:'Ativos incluem Standby', active_standby_tip:'Quando ligado, Pipeline Ativo (P09) e os gráficos de pipeline ativo passam a incluir deals em Standby. Quando desligado (padrão), Standby fica fora de negócios ativos.',
     lbl_set_target:'Definir Meta',lbl_days:'Dias',lbl_risk_score:'Score de Risco',lbl_no_funnel:'Carregue o funil histórico primeiro.',
   },
@@ -759,7 +759,7 @@ var NOVO_I18N = {
     tip_sizedonut:'Donut of open deals by band, with a toggle between Revenue and Lives. The center shows the total open deals in the pipeline (updates when slices are hidden via the legend). The grey "No revenue"/"No lives" slice counts deals missing that info. Stages counted: Diagnóstico, Cotação, Proposta Enviada, Consultoria, Negociação and Stand by (Implantação is included when the "Implantação = Ganho" toggle is off). Click a slice to see the deals. Vendas + Bid pipelines.',
     donut_open_deals:'open deals', donut_no_revenue:'No revenue', donut_no_lives:'No lives', donut_stages_label:'Stages',
     vf_by_revenue:'Revenue', vf_by_lives:'Lives', vf_by_stage:'Stage', vf_by_segment:'Segment',
-    t_stageval:'Pipeline Value by Stage',
+    t_stageval:'🟡 Pipeline Value by Stage',
     tip_stageval:'Sum of estimated annual revenue per stage. "Weighted" multiplies by the stage probability (editable in ⚙). Includes the Vendas + Bid pipelines.',
     t_segment:'Revenue by Segment',
     tip_segment:'Estimated annual revenue (potential) summed by customer-size segment (lives). Includes the Vendas + Bid pipelines.',
@@ -833,7 +833,7 @@ var NOVO_I18N = {
     t_vidaswindow:'🟡 Vidas Distribution by Bucket',tip_vidaswindow:'Active deals by lives band. No local date filter.',
     t_winfactor:'Win Rate by AE',tip_winfactor:'Adjusted win rate by AE: won deals ÷ (won deals + lost deals).',
     t_coverage:'🟡 Pipeline Coverage Ratio (Weighted vs Target)',tip_coverage:'Weighted pipeline vs a configurable revenue target.',
-    t_piperev12:'Pipeline Value (Monthly Projection)',tip_piperev12:'Revenue or deal count by expected revenue month. Count shows active deals with expected revenue date over total active P09 deals. Considers Sales + Bid pipelines.',
+    t_piperev12:'🟡 Pipeline Value (Monthly Projection)',tip_piperev12:'Revenue or deal count by expected revenue month. Count shows active deals with expected revenue date over total active P09 deals. Considers Sales + Bid pipelines.',
     t_segdoughnut:'🟡 Revenue by Segment (Deal Size)',tip_segdoughnut:'Total estimated ARR by customer-size segment (based on lives).',
     t_visibility:'🟡 Revenue Visibility Timeline',tip_visibility:'Count of deals with expected revenue date by month.',
     t_timeinstage:'🟡 Time in Stage (Bottleneck Analysis)',tip_timeinstage:'Avg days open per stage (proxy via dias_no_pipe total). Identifies bottlenecks.',
@@ -847,7 +847,7 @@ var NOVO_I18N = {
     t_receivables:'🟡 Estimated Receivables Timeline',tip_receivables:'ARR ÷ 12 of open deals grouped by expected revenue month.',
     t_risktriage:'🟡 Deal Risk Triage (Top 20)',tip_risktriage:'Top 20 riskiest deals by computed score: lives, ARR, time open, early stage.',
     lbl_all_time:'All time',lbl_last90:'Last 90d',lbl_last30:'Last 30d',
-    fnl_title:'🟡 Historical Conversion Funnel', fnl_tip:'How many unique deals entered each stage of the Sales and Bid pipelines since the selected date | conversion rates between adjacent stages.', fnl_both:'Both', fnl_since:'Since', fnl_custom:'Custom', fnl_load:'Load', fnl_loading_sub:'May take 15–30s for pipelines with 1,000+ deals', cfg_title:'Settings', cfg_meta:'Won Revenue Target (MTD)', active_meetings_label:'Active includes Scheduled Meeting', active_meetings_tip:'When on, Active Pipeline, P08 and charts C01/C02/C05/C07/C08 include deals in Reunião Agendada. When off, Reunião Agendada is excluded from active deals.',
+    fnl_title:'Historical Conversion Funnel', fnl_tip:'How many unique deals entered each stage of the Sales and Bid pipelines since the selected date | conversion rates between adjacent stages.', fnl_both:'Both', fnl_since:'Since', fnl_custom:'Custom', fnl_load:'Load', fnl_loading_sub:'May take 15–30s for pipelines with 1,000+ deals', cfg_title:'Settings', cfg_meta:'Won Revenue Target (MTD)', active_meetings_label:'Active includes Scheduled Meeting', active_meetings_tip:'When on, Active Pipeline, P08 and charts C01/C02/C05/C07/C08 include deals in Reunião Agendada. When off, Reunião Agendada is excluded from active deals.',
     active_standby_label:'Active includes Standby', active_standby_tip:'When on, Active Pipeline (P09) and active-pipeline charts include deals in Standby. When off (default), Standby is excluded from active deals.',
     lbl_set_target:'Set Target',lbl_days:'Days',lbl_risk_score:'Risk Score',lbl_no_funnel:'Load the historical funnel first.',
   }
@@ -1755,22 +1755,29 @@ function novoVfPick(kind, i) {
   else                _novoVfVidasSel = (i === -1) ? null : i;
   _novoVfRender();
 }
-function novoOpenDealsFilterModal(title, deals) {
+// preKind ('rev'|'vidas') + preIndex (opcional): pré-seleciona uma faixa ao abrir.
+function novoOpenDealsFilterModal(title, deals, preKind, preIndex) {
   _novoVfAll = deals || [];
   _novoVfRevBuckets   = _novoSizeFilterBuckets(true);
   _novoVfVidasBuckets = _novoSizeFilterBuckets(false);
   _novoVfRevSel = null;
   _novoVfVidasSel = null;
+  if (preIndex != null && preIndex >= 0) {
+    if (preKind === 'rev'   && preIndex < _novoVfRevBuckets.length)   _novoVfRevSel = preIndex;
+    if (preKind === 'vidas' && preIndex < _novoVfVidasBuckets.length) _novoVfVidasSel = preIndex;
+  }
   openModal(title, '<div id="novo-vf-chips"></div><div id="novo-vf-table"></div>');
   _novoVfRender();
 }
 
-// Modal de deals com filtro por ETAPA (seleção única). Usado pelos C07 e C08.
+// Modal de deals com filtro por ETAPA (seleção única). Usado por C00/C02/C04 e N17/N23.
+// Agrupa por etapa normalizada (_stageNorm) p/ casar com os rótulos dos gráficos.
 var _novoSfAll = [];
-var _novoSfStages = [];   // etapas distintas (ordenadas por contagem desc)
-var _novoSfSel = null;    // etapa selecionada (string); null => todas
+var _novoSfStages = [];   // etapas distintas (normalizadas, ordenadas por contagem desc)
+var _novoSfSel = null;    // etapa selecionada (normalizada); null => todas
+function _novoSfKey(d) { var s = (d && d.stage) || '—'; return (typeof _stageNorm === 'function') ? _stageNorm(s) : s; }
 function _novoSfRender() {
-  var counts = {}; _novoSfAll.forEach(function(d){ var s=d.stage||'—'; counts[s]=(counts[s]||0)+1; });
+  var counts = {}; _novoSfAll.forEach(function(d){ var s=_novoSfKey(d); counts[s]=(counts[s]||0)+1; });
   var html = '<div style="margin-bottom:1.1rem;display:flex;flex-wrap:wrap;gap:.45rem;align-items:center">' +
     '<span style="font-size:.72rem;color:var(--text2);font-weight:600;min-width:54px">' + t('vf_by_stage') + '</span>' +
     '<button class="stage-chip' + (_novoSfSel==null?' active':'') + '" onclick="novoSfPick(\'__all\')">' + t('p08_all_stages') + ' <span class="chip-count">' + _novoSfAll.length + '</span></button>';
@@ -1778,18 +1785,23 @@ function _novoSfRender() {
     html += '<button class="stage-chip' + (_novoSfSel===s?' active':'') + '" onclick="novoSfPick(' + i + ')">' + _ne(s) + ' <span class="chip-count">' + (counts[s]||0) + '</span></button>';
   });
   var ch = document.getElementById('novo-sf-chips'); if (ch) ch.innerHTML = html + '</div>';
-  var list = _novoSfSel==null ? _novoSfAll : _novoSfAll.filter(function(d){ return (d.stage||'—')===_novoSfSel; });
+  var list = _novoSfSel==null ? _novoSfAll : _novoSfAll.filter(function(d){ return _novoSfKey(d)===_novoSfSel; });
   var tb = document.getElementById('novo-sf-table'); if (tb) tb.innerHTML = _novoDealsTableHtml(list);
 }
 function novoSfPick(i) {
   _novoSfSel = (i === '__all') ? null : _novoSfStages[i];
   _novoSfRender();
 }
-function novoOpenDealsStageFilterModal(title, deals) {
+// preStage (opcional): etapa pré-selecionada ao abrir (casa pela forma normalizada).
+function novoOpenDealsStageFilterModal(title, deals, preStage) {
   _novoSfAll = deals || [];
-  var counts = {}; _novoSfAll.forEach(function(d){ var s=d.stage||'—'; counts[s]=(counts[s]||0)+1; });
+  var counts = {}; _novoSfAll.forEach(function(d){ var s=_novoSfKey(d); counts[s]=(counts[s]||0)+1; });
   _novoSfStages = Object.keys(counts).sort(function(a,b){ return counts[b]-counts[a]; });
   _novoSfSel = null;
+  if (preStage != null) {
+    var pk = (typeof _stageNorm === 'function') ? _stageNorm(preStage) : preStage;
+    if (_novoSfStages.indexOf(pk) !== -1) _novoSfSel = pk;
+  }
   openModal(title, '<div id="novo-sf-chips"></div><div id="novo-sf-table"></div>');
   _novoSfRender();
 }
@@ -1817,13 +1829,56 @@ function novoBfPick(i) {
   _novoBfSel = (i === -1) ? null : i;
   _novoBfRender();
 }
-function novoOpenDealsBucketFilterModal(title, deals, label, buckets) {
+// preIndex (opcional): índice de bucket pré-selecionado ao abrir.
+function novoOpenDealsBucketFilterModal(title, deals, label, buckets, preIndex) {
   _novoBfAll = deals || [];
   _novoBfBuckets = buckets || [];
   _novoBfLabel = label || '';
-  _novoBfSel = null;
+  _novoBfSel = (preIndex != null && preIndex >= 0 && preIndex < _novoBfBuckets.length) ? preIndex : null;
   openModal(title, '<div id="novo-bf-chips"></div><div id="novo-bf-table"></div>');
   _novoBfRender();
+}
+
+// ── Modal de deals com filtro superior por RÓTULO genérico (seleção única) ──────
+// Serve qualquer dimensão (etapa, mês, semana, coorte, segmento, par de etapas...).
+// categories: array ordenado de rótulos | byMap: {rótulo: [deals]} | preLabel: pré-selecionado.
+// "Todas" mostra a união deduplicada por hs_id (evita inflar em dimensões cumulativas).
+var _novoLfCats = [];
+var _novoLfBy = {};
+var _novoLfSel = null;       // rótulo selecionado; null => todos
+var _novoLfDimLabel = '';
+function _novoLfPooled() {
+  var seen = {}, out = [];
+  _novoLfCats.forEach(function(c){ (_novoLfBy[c]||[]).forEach(function(d){
+    var k = (d && d.hs_id != null) ? ('#'+d.hs_id) : (d && (d.dealname||d.name)) || JSON.stringify(d);
+    if (!seen[k]) { seen[k] = 1; out.push(d); }
+  }); });
+  return out;
+}
+function _novoLfRender() {
+  var pooled = _novoLfPooled();
+  var html = '<div style="margin-bottom:1.1rem;display:flex;flex-wrap:wrap;gap:.45rem;align-items:center">' +
+    (_novoLfDimLabel ? '<span style="font-size:.72rem;color:var(--text2);font-weight:600;margin-right:.15rem">' + _ne(_novoLfDimLabel) + '</span>' : '') +
+    '<button class="stage-chip' + (_novoLfSel==null?' active':'') + '" onclick="novoLfPick(\'__all\')">' + t('p08_all_stages') + ' <span class="chip-count">' + pooled.length + '</span></button>';
+  _novoLfCats.forEach(function(c, i){
+    html += '<button class="stage-chip' + (_novoLfSel===c?' active':'') + '" onclick="novoLfPick(' + i + ')">' + _ne(c) + ' <span class="chip-count">' + ((_novoLfBy[c]||[]).length) + '</span></button>';
+  });
+  var ch = document.getElementById('novo-lf-chips'); if (ch) ch.innerHTML = html + '</div>';
+  var list = _novoLfSel==null ? pooled : (_novoLfBy[_novoLfSel] || []);
+  var tb = document.getElementById('novo-lf-table'); if (tb) tb.innerHTML = _novoDealsTableHtml(list);
+}
+function novoLfPick(i) {
+  _novoLfSel = (i === '__all') ? null : _novoLfCats[i];
+  _novoLfRender();
+}
+function novoOpenDealsLabelFilterModal(title, dimLabel, categories, byMap, preLabel) {
+  _novoLfBy = byMap || {};
+  // mantém só categorias com deals (ou a pré-selecionada, ainda que vazia), preservando a ordem.
+  _novoLfCats = (categories || []).filter(function(c){ return (_novoLfBy[c] && _novoLfBy[c].length) || c === preLabel; });
+  _novoLfDimLabel = dimLabel || '';
+  _novoLfSel = (preLabel != null && _novoLfCats.indexOf(preLabel) !== -1) ? preLabel : null;
+  openModal(title, '<div id="novo-lf-chips"></div><div id="novo-lf-table"></div>');
+  _novoLfRender();
 }
 // Drill dos big-number cards: cada KPI abre a lista de deals que o compõe.
 // P02 (Receita Ganha | Ano Atual) ganha 4 mini big-numbers no topo.
@@ -2299,8 +2354,8 @@ function _novoEngagementBuckets() {
     ['180d+', function(d){ var age=d.dias_sem_atividade; return age>=181; }]
   ];
 }
-function _novoOpenEngagementFilterModal(title, deals) {
-  novoOpenDealsBucketFilterModal(title, deals || [], NOVO_LANG==='en'?'Engagement age':'Tempo sem atividade', _novoEngagementBuckets());
+function _novoOpenEngagementFilterModal(title, deals, preIndex) {
+  novoOpenDealsBucketFilterModal(title, deals || [], NOVO_LANG==='en'?'Engagement age':'Tempo sem atividade', _novoEngagementBuckets(), preIndex);
 }
 
 function _novoCardOrderKey() { return 'novo_card_order_v1_' + (_novoUserKey || 'local'); }
@@ -2406,7 +2461,7 @@ function buildNovoStage() {
         y:{grid:{color:th.cGrid},ticks:{color:'rgba(88,166,255,.9)',font:{family:NOVO_FONT},precision:0},position:'left'},
         yV:{grid:{display:false},ticks:{color:'rgba(147,112,219,.9)',font:{family:NOVO_FONT},precision:0,callback:function(v){return _novoCompactNum(v);}},position:'left'},
         y2:{grid:{display:false},ticks:{color:'rgba(58,184,183,.9)',font:{family:NOVO_FONT},callback:function(v){ return 'R$'+(v>=1e6?(v/1e6).toFixed(1)+'M':v>=1e3?(v/1e3).toFixed(0)+'K':v); }},position:'right'} },
-      onClick:function(e,el){ if(!el.length)return; var s=labels[el[0].index]; novoOpenDealsModal(t('t_stage')+' | '+s, by[s]); } } });
+      onClick:function(e,el){ if(!el.length)return; var s=labels[el[0].index]; novoOpenDealsLabelFilterModal(t('t_stage'), t('vf_by_stage'), labels, by, s); } } });
 }
 
 function buildNovoConc() {
@@ -2431,7 +2486,7 @@ function buildNovoConc() {
       datalabels:{ anchor:'end', align:'right', color:th.cText, font:{family:NOVO_FONT,size:10,weight:'bold'}, formatter:function(v){ return isRev ? _fmtBig(v) : _novoCompactNum(v); } },
       tooltip:{ callbacks:{ label:function(c){ return isRev ? (_fmtBig(c.parsed.x)+' /ano') : (_novoCompactNum(c.parsed.x)+' vidas'); }, footer:function(){return 'Clique para ver o Top '+ranked.length+' completo';} } } },
       scales:{ x:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT}}}, y:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT,size:10}}} },
-      onClick:function(e,el){ if(!el.length)return; novoOpenDealsModal(t('t_conc')+' | Top '+ranked.length, ranked); } } });
+      onClick:function(e,el){ if(!el.length)return; novoOpenDealsStageFilterModal(t('t_conc')+' | Top '+ranked.length, ranked); } } });
 }
 
 // C05 | Distribuição por Tamanho (donut). Toggle Receita | Vidas. Centro = total de deals
@@ -2485,7 +2540,7 @@ function buildNovoSegment() {
       datalabels:{ anchor:'end', align:'right', color:th.cText, font:{family:NOVO_FONT,size:10,weight:'bold'}, formatter:_revShort },
       tooltip:{ callbacks:{ label:function(c){return 'R$ '+Math.round(c.parsed.x).toLocaleString('pt-BR')+' /ano';}, footer:function(){return 'Clique para ver os deals';} } } },
       scales:{ x:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},callback:function(v){return _revShort(v);}}}, y:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}} },
-      onClick:function(e,el){ if(!el.length)return; novoOpenDealsBucketFilterModal(t('t_segment'), open, t('vf_by_segment'), segBuckets); } } });
+      onClick:function(e,el){ if(!el.length)return; novoOpenDealsBucketFilterModal(t('t_segment'), open, t('vf_by_segment'), segBuckets, el[0].index); } } });
 }
 
 // Switchers dos toggles
@@ -2582,9 +2637,10 @@ function buildNovoWeeklyFlow() {
       datalabels:{ display:false },
       tooltip:{ mode:'index', intersect:false, callbacks:{ label:function(c){ return c.dataset.label+': '+c.parsed.y; }, footer:function(){ return 'Clique numa barra para ver os deals'; } } } },
       scales:{ x:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT,size:10}}}, y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0}} },
-      onClick:function(e,el){ if(!el.length)return; var w=weeks[el[0].index]; var di=el[0].datasetIndex, list, lbl;
-        if(di===1){ list=w.won; lbl='Ganhos'; } else if(di===2){ list=w.lost; lbl='Perdidos'; } else { list=w.created; lbl='Criados'; }
-        novoOpenDealsModal('Semana '+w.label+' | '+lbl, list||[]); } } });
+      onClick:function(e,el){ if(!el.length)return; var w=weeks[el[0].index];
+        var wkCats=weeks.map(function(x){ return x.label; });
+        var wkBy={}; weeks.forEach(function(x){ wkBy[x.label]=x.created.concat(x.won, x.lost); });
+        novoOpenDealsLabelFilterModal('Fluxo Semanal', NOVO_LANG==='en'?'Week':'Semana', wkCats, wkBy, w.label); } } });
 }
 
 // ── N02: Net Pipeline Flow (Vidas, Monthly) ─────────────────────────────────────
@@ -2633,7 +2689,7 @@ function buildNovoStageProgression() {
       datalabels:{ anchor:'end', align:'right', color:th.cText, font:{family:NOVO_FONT,size:11,weight:'bold'}, formatter:function(v){ return v+'%'; } },
       tooltip:{ callbacks:{ label:function(c){ return c.parsed.x.toFixed(1)+'% de passagem'; } } } },
       scales:{ x:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT}},max:100}, y:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}} },
-      onClick:function(e,el){ if(!el.length)return; var lbl=labels[el[0].index]; novoOpenDealsModal('Progressão | '+lbl, byPair[lbl]||[]); } } });
+      onClick:function(e,el){ if(!el.length)return; var lbl=labels[el[0].index]; novoOpenDealsLabelFilterModal(t('t_stageprog'), NOVO_LANG==='en'?'Step':'Passagem', labels, byPair, lbl); } } });
 }
 
 // N05 removido — redundante com o N26 (Triagem de Risco | Top 20), que usa o mesmo
@@ -2693,7 +2749,10 @@ function buildNovoCohortMaturity() {
       tooltip:{ callbacks:{ label:function(c){ return c.dataset.label+': '+(c.parsed.y==null?'—':c.parsed.y+'%'); } } } },
       scales:{ x:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}},title:{display:true,text:t('cohort_x'),color:th.cText2,font:{family:NOVO_FONT,size:10}}},
         y:{min:0,max:100,grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},callback:function(v){return v+'%';}},title:{display:true,text:'% '+outLbl,color:th.cText2,font:{family:NOVO_FONT,size:10}}} },
-      onClick:function(e,el){ if(!el.length)return; var cm=usedKeys[el[0].datasetIndex]; novoOpenDealsModal('Coorte | '+_cohortLabel(cm), byM[cm]||[]); } } });
+      onClick:function(e,el){ if(!el.length)return; var cm=usedKeys[el[0].datasetIndex];
+        var coCats=usedKeys.map(_cohortLabel);
+        var coBy={}; usedKeys.forEach(function(k){ coBy[_cohortLabel(k)]=byM[k]||[]; });
+        novoOpenDealsLabelFilterModal(NOVO_LANG==='en'?'Cohort':'Coorte', NOVO_LANG==='en'?'Cohort':'Coorte', coCats, coBy, _cohortLabel(cm)); } } });
 }
 
 // ── N07: Engagement Freshness ─────────────────────────────────────────────────
@@ -2711,7 +2770,7 @@ function buildNovoFreshness() {
       datalabels:{ anchor:'end', align:'end', color:th.cText, font:{family:NOVO_FONT,size:11,weight:'bold'}, formatter:function(v){return v||'';} },
       tooltip:{ callbacks:{ label:function(c){return c.parsed.y+' deals'; }, footer:function(){return 'Clique para ver os deals';} } } },
       scales:{ x:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}}, y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0}} },
-      onClick:function(){ _novoOpenEngagementFilterModal('Frescor', open); } } });
+      onClick:function(e,el){ _novoOpenEngagementFilterModal('Frescor', open, (el&&el.length)?el[0].index:null); } } });
 }
 
 // ── N08: Stage Pass-Through Rate ───────────────────────────────────────────────
@@ -2736,7 +2795,7 @@ function buildNovoPassThrough() {
       datalabels:{ anchor:'end', align:'right', color:th.cText, font:{family:NOVO_FONT,size:11,weight:'bold'}, formatter:function(v){return v+'%';} },
       tooltip:{ callbacks:{ label:function(c){return c.parsed.x.toFixed(1)+'% de passagem';} } } },
       scales:{ x:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT}},max:100}, y:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT},font:{size:10}}} },
-      onClick:function(e,el){ if(!el.length)return; var lbl=labels[el[0].index]; novoOpenDealsModal('Passagem | '+lbl, byPair[lbl]||[]); } } });
+      onClick:function(e,el){ if(!el.length)return; var lbl=labels[el[0].index]; novoOpenDealsLabelFilterModal(NOVO_LANG==='en'?'Stage Pass-Through':'Passagem entre Etapas', NOVO_LANG==='en'?'Step':'Passagem', labels, byPair, lbl); } } });
 }
 
 // ── N09: Win Rate by Deal Size ─────────────────────────────────────────────────
@@ -2760,7 +2819,9 @@ function buildNovoWinRateSize() {
       datalabels:{ anchor:'end', align:'end', color:th.cText, font:{family:NOVO_FONT,size:11,weight:'bold'}, formatter:function(v){return v?v+'%':'';} },
       tooltip:{ callbacks:{ label:function(c){ var i=visibleIdx[c.dataIndex]; return [c.parsed.y+'% taxa de ganho', wonC[i]+' ganhos / '+(wonC[i]+lostC[i])+' fechados']; } } } },
       scales:{ x:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}}, y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT}},max:50} },
-      onClick:function(){ _novoOpenEngagementFilterModal('Taxa de Ganho por Tamanho | Ganhos', wonForModal); } } });
+      onClick:function(e,el){ var pi=(el&&el.length)?visibleIdx[el[0].index]:null;
+        var sizeBuckets=buckets.map(function(b){ return [b[0], function(d){ return b[1](d.vidas||0); }]; });
+        novoOpenDealsBucketFilterModal('Taxa de Ganho por Tamanho | Ganhos', wonForModal, NOVO_LANG==='en'?'Lives bucket':'Faixa de vidas', sizeBuckets, pi); } } });
 }
 
 // ── N10: Deal Size Distribution (Window) ──────────────────────────────────────
@@ -2780,7 +2841,7 @@ function buildNovoSizeWindow() {
       datalabels:{ anchor:'end', align:'end', color:th.cText, font:{family:NOVO_FONT,size:11,weight:'bold'}, formatter:function(v){return v||'';} },
       tooltip:{ callbacks:{ label:function(c){return c.parsed.y+' deals';}, footer:function(){return 'Clique para ver';} } } },
       scales:{ x:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}}, y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0}} },
-      onClick:function(){ novoOpenDealsBucketFilterModal('Tamanho', deals, 'Faixa de receita', buckets); } } });
+      onClick:function(e,el){ var pi=(el&&el.length)?visibleIdx[el[0].index]:null; novoOpenDealsBucketFilterModal('Tamanho', deals, 'Faixa de receita', buckets, pi); } } });
 }
 
 // ── N11: Vidas Distribution (Window) ─────────────────────────────────────────
@@ -2800,7 +2861,7 @@ function buildNovoVidasWindow() {
       datalabels:{ anchor:'end', align:'end', color:th.cText, font:{family:NOVO_FONT,size:11,weight:'bold'}, formatter:function(v){return v||'';} },
       tooltip:{ callbacks:{ label:function(c){return c.parsed.y+' deals';}, footer:function(){return 'Clique para ver';} } } },
       scales:{ x:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}}, y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0}} },
-      onClick:function(){ novoOpenDealsBucketFilterModal('Vidas', deals, 'Faixa de vidas', buckets); } } });
+      onClick:function(e,el){ var pi=(el&&el.length)?visibleIdx[el[0].index]:null; novoOpenDealsBucketFilterModal('Vidas', deals, 'Faixa de vidas', buckets, pi); } } });
 }
 
 // ── N12: Win Factor Analysis (by AE) ─────────────────────────────────────────
@@ -2820,7 +2881,7 @@ function buildNovoWinFactor() {
       datalabels:{ anchor:'end', align:'right', color:th.cText, font:{family:NOVO_FONT,size:10,weight:'bold'}, formatter:function(v){return v+'%';} },
       tooltip:{ callbacks:{ label:function(c){ var ae=aes[c.dataIndex]; var m=aeMap[ae]; return [c.parsed.x+'% taxa de ganho', m.won+' ganhos / '+(m.won+m.lost)+' fechados']; } } } },
       scales:{ x:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT}},max:50}, y:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}} },
-      onClick:function(){ novoOpenDealsBucketFilterModal('Taxa de Ganho por AE | Ganhos', _novoWon(), 'AE', buckets); } } });
+      onClick:function(e,el){ var pi=(el&&el.length)?el[0].index:null; novoOpenDealsBucketFilterModal('Taxa de Ganho por AE | Ganhos', _novoWon(), 'AE', buckets, pi); } } });
 }
 
 // ── N13: Pipeline Coverage Ratio ──────────────────────────────────────────────
@@ -3003,7 +3064,10 @@ function buildNovoSegDoughnut() {
     options:{ responsive:true, plugins:{ legend:{display:true,position:'bottom',labels:{color:th.cText2,font:{family:NOVO_FONT,size:11},padding:12}},
       datalabels:{ color:'#fff', font:{family:NOVO_FONT,size:10,weight:'bold'}, formatter:function(v){ return v>0?(v/total*100).toFixed(0)+'%':''; } },
       tooltip:{ callbacks:{ label:function(c){return c.label+': R$ '+Math.round(c.raw).toLocaleString('pt-BR'); } } } },
-      onClick:function(e,el){ if(!el.length)return; novoOpenDealsModal('Segmento | '+defs[el[0].index][0], by[el[0].index]); } } });
+      onClick:function(e,el){ if(!el.length)return; var si=el[0].index;
+        var segCats=defs.map(function(x){ return x[0]; });
+        var segBy={}; defs.forEach(function(x,i){ segBy[x[0]]=by[i]; });
+        novoOpenDealsLabelFilterModal(t('t_segment'), t('vf_by_segment'), segCats, segBy, defs[si][0]); } } });
 }
 
 // ── N16: Revenue Visibility Timeline ─────────────────────────────────────────
@@ -3019,7 +3083,10 @@ function buildNovoVisibility() {
       datalabels:{ anchor:'end', align:'end', color:th.cText, font:{family:NOVO_FONT,size:11,weight:'bold'}, formatter:function(v){return v;} },
       tooltip:{ callbacks:{ label:function(c){return c.parsed.y+' deals esperados';}, footer:function(){return 'Clique para ver';} } } },
       scales:{ x:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}}, y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0}} },
-      onClick:function(e,el){ if(!el.length)return; var m=months[el[0].index]; var ds=open.filter(function(d){return d.data_prevista_para_receita&&_novoInWin(d.data_prevista_para_receita)&&d.data_prevista_para_receita.substring(0,7)===m;}); novoOpenDealsModal('Visibilidade | '+_mlbl(m), ds); } } });
+      onClick:function(e,el){ if(!el.length)return; var m=months[el[0].index];
+        var viCats=months.map(_mlbl);
+        var viBy={}; months.forEach(function(mm){ viBy[_mlbl(mm)]=open.filter(function(d){return d.data_prevista_para_receita&&_novoInWin(d.data_prevista_para_receita)&&d.data_prevista_para_receita.substring(0,7)===mm;}); });
+        novoOpenDealsLabelFilterModal(NOVO_LANG==='en'?'Revenue Visibility':'Visibilidade de Receita', NOVO_LANG==='en'?'Month':'Mês', viCats, viBy, _mlbl(m)); } } });
 }
 
 // ── N17: Time in Stage (Bottleneck Analysis) ──────────────────────────────────
@@ -3037,7 +3104,7 @@ function buildNovoTimeInStage() {
       datalabels:{ anchor:'end', align:'right', color:th.cText, font:{family:NOVO_FONT,size:11,weight:'bold'}, formatter:function(v){return v+'d';} },
       tooltip:{ callbacks:{ label:function(c){return c.parsed.x+' dias em média ('+cnt[stages[c.dataIndex]]+' deals)';} } } },
       scales:{ x:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT}}}, y:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}} },
-      onClick:function(e,el){ if(!el.length)return; var s=stages[el[0].index]; novoOpenDealsModal('Tempo em Etapa | '+s, open.filter(function(d){return _stageNorm(d.stage)===s;})); } } });
+      onClick:function(e,el){ if(!el.length)return; var s=stages[el[0].index]; novoOpenDealsStageFilterModal(NOVO_LANG==='en'?'Time in Stage':'Tempo em Etapa', open, s); } } });
 }
 
 // ── N18: Speed to Qualify (Days to Diagnóstico) ───────────────────────────────
@@ -3064,7 +3131,10 @@ function buildNovoSpeedQualify() {
       datalabels:{ anchor:'end', align:'end', color:th.cText, font:{family:NOVO_FONT,size:10,weight:'bold'}, formatter:function(v){return v+'d';} },
       tooltip:{ callbacks:{ label:function(c){return c.parsed.y+' dias até Diagnóstico ('+byMonth[months[c.dataIndex]].length+' deals)';} } } },
       scales:{ x:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}}, y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT}}} },
-      onClick:function(e,el){ if(!el.length)return; var m=months[el[0].index]; novoOpenDealsModal('Speed to Qualify | '+_mlbl(m), byMonth[m].map(function(x){return x.deal;})); } } });
+      onClick:function(e,el){ if(!el.length)return; var m=months[el[0].index];
+        var sqCats=months.map(_mlbl);
+        var sqBy={}; months.forEach(function(mm){ sqBy[_mlbl(mm)]=byMonth[mm].map(function(x){return x.deal;}); });
+        novoOpenDealsLabelFilterModal('Speed to Qualify', NOVO_LANG==='en'?'Month':'Mês', sqCats, sqBy, _mlbl(m)); } } });
 }
 
 // ── N23: Pipeline Revenue Estimate by Stage (raw) ─────────────────────────────
@@ -3085,7 +3155,7 @@ function buildNovoPipeRevStage() {
       datalabels:{ anchor:'end', align:'end', color:th.cText, font:{family:NOVO_FONT,size:10,weight:'bold'}, formatter:_revShort },
       tooltip:{ callbacks:{ label:function(c){return 'R$ '+Math.round(c.parsed.y).toLocaleString('pt-BR')+(weighted?' ponderado':' ARR bruto');}, footer:function(){return 'Clique para ver os deals';} } } },
       scales:{ x:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}}, y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},callback:function(v){return _revShort(v);}}} },
-      onClick:function(e,el){ if(!el.length)return; var s=labels[el[0].index]; novoOpenDealsModal((weighted?'ARR Ponderado | ':'ARR Bruto | ')+s, by[s]); } } });
+      onClick:function(e,el){ if(!el.length)return; var s=labels[el[0].index]; novoOpenDealsStageFilterModal(weighted?(NOVO_LANG==='en'?'Weighted ARR by Stage':'ARR Ponderado por Etapa'):(NOVO_LANG==='en'?'Raw ARR by Stage':'ARR Bruto por Etapa'), open, s); } } });
 }
 
 
@@ -3102,7 +3172,10 @@ function buildNovoReceivables() {
       datalabels:{ anchor:'end', align:'end', color:th.cText, font:{family:NOVO_FONT,size:9,weight:'bold'}, formatter:function(v){return v>0?_revShort(v):'';} },
       tooltip:{ callbacks:{ label:function(c){return 'R$ '+Math.round(c.parsed.y).toLocaleString('pt-BR')+' /mês esperados';}, footer:function(){return 'Clique para ver';} } } },
       scales:{ x:{grid:{display:false},ticks:{color:th.cText2,font:{family:NOVO_FONT}}}, y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},callback:function(v){return _revShort(v);}}} },
-      onClick:function(e,el){ if(!el.length)return; var m=months[el[0].index]; novoOpenDealsModal('Recebíveis | '+_mlbl(m), dealMap[m]||[]); } } });
+      onClick:function(e,el){ if(!el.length)return; var m=months[el[0].index];
+        var rcCats=months.map(_mlbl);
+        var rcBy={}; months.forEach(function(mm){ rcBy[_mlbl(mm)]=dealMap[mm]||[]; });
+        novoOpenDealsLabelFilterModal(NOVO_LANG==='en'?'Estimated Receivables':'Recebíveis Estimados', NOVO_LANG==='en'?'Month':'Mês', rcCats, rcBy, _mlbl(m)); } } });
 }
 
 // ── N26: Deal Risk Triage (Top 20) ────────────────────────────────────────────
@@ -3875,7 +3948,6 @@ function _novoFunnelHorizCard() {
         '<button class="tab-sub-btn' + (_novoFunnelPipeline==='bid'?' active':'') + '" data-mode="bid" onclick="novoSwitchFunnelPipeline(\'bid\')">' + t('bid') + '</button>' +
       '</div>' +
       '<div style="display:flex;align-items:center;gap:.6rem;margin-left:auto;flex-wrap:wrap">' +
-        '<span style="font-size:.75rem;color:var(--text2)">' + (NOVO_LANG === 'en' ? 'Uses global period filter' : 'Usa o filtro global de período') + '</span>' +
         '<button id="btn-load-funnel" onclick="novoLoadFunnel()" style="background:var(--teal);color:#fff;border:none;border-radius:8px;padding:.3rem .75rem;font-size:.78rem;cursor:pointer;display:flex;align-items:center;gap:.35rem">' +
           '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>' +
           t('fnl_load') +
@@ -4022,9 +4094,9 @@ document.addEventListener('keydown', function(e) {
 });
 
 function novoOpenFunnelStage(stage) {
-  var deals = _novoFunnelStagesData[stage] || [];
   var since = _novoFunnelData ? _novoFunnelData.since : '';
-  _novoOpenFunnelDealsModal(stage + ' | desde ' + since, deals);
+  var order = _FUNNEL_STAGES[_novoFunnelPipeline] || Object.keys(_novoFunnelStagesData);
+  _novoOpenFunnelStageFilterModal(t('fnl_title') + (since ? ' | desde ' + since : ''), _novoFunnelStagesData, order, stage);
 }
 
 function novoLoadFunnel() {
@@ -4252,20 +4324,51 @@ function buildNovoFunnelHorizChart() {
   area.innerHTML = chartBox + labelsHtml + footer;
 }
 
-function _novoOpenFunnelDealsModal(title, deals) {
+// Tabela leve do funil (os deals do funil vêm da API só com hs_id/name/entered_date).
+function _novoFunnelDealsTableHtml(deals) {
+  var entLbl = NOVO_LANG==='en' ? 'Entered' : 'Entrou em';
   var rows = (deals || []).map(function(d) {
     var url = 'https://app.hubspot.com/contacts/44715285/deal/' + d.hs_id;
     return '<tr><td style="text-align:left"><a href="' + url + '" target="_blank" rel="noopener" ' +
       'style="color:var(--teal);text-decoration:none" onmouseover="this.style.textDecoration=\'underline\'" onmouseout="this.style.textDecoration=\'none\'">' +
-      _ne(d.name || d.hs_id) + '</a></td></tr>';
+      _ne(d.name || d.hs_id) + '</a></td><td style="text-align:left;color:var(--text2)">' + _ne(d.entered_date || '—') + '</td></tr>';
   }).join('');
-  openModal(title,
-    '<p style="font-size:.78rem;color:var(--text2);margin-bottom:.6rem">' + deals.length + ' deal' + (deals.length !== 1 ? 's' : '') + '</p>' +
-    '<div style="overflow-y:auto"><table class="lb" style="width:100%;font-size:.82rem">' +
-      '<thead><tr><th style="text-align:left">Deal</th></tr></thead>' +
+  return '<p style="font-size:.78rem;color:var(--text2);margin-bottom:.6rem">' + (deals || []).length + ' deal' + ((deals || []).length !== 1 ? 's' : '') + '</p>' +
+    '<div style="overflow-y:auto;max-height:55vh"><table class="lb" style="width:100%;font-size:.82rem">' +
+      '<thead><tr><th style="text-align:left">Deal</th><th style="text-align:left">' + entLbl + '</th></tr></thead>' +
       '<tbody>' + rows + '</tbody>' +
-    '</table></div>'
-  );
+    '</table></div>';
+}
+// C06 | Modal do funil com filtro superior por ETAPA do funil. Um deal pode constar
+// em várias etapas (passou por elas), então cada etapa lista suas próprias entradas.
+var _novoFnSfData = {};      // {stage: [deals]}
+var _novoFnSfStages = [];    // etapas do funil presentes, na ordem do funil
+var _novoFnSfSel = null;     // etapa selecionada; null => todas
+function _novoFnSfRender() {
+  var totalAll = 0; _novoFnSfStages.forEach(function(s){ totalAll += (_novoFnSfData[s] || []).length; });
+  var html = '<div style="margin-bottom:1.1rem;display:flex;flex-wrap:wrap;gap:.45rem;align-items:center">' +
+    '<span style="font-size:.72rem;color:var(--text2);font-weight:600;min-width:54px">' + t('vf_by_stage') + '</span>' +
+    '<button class="stage-chip' + (_novoFnSfSel==null?' active':'') + '" onclick="novoFnSfPick(\'__all\')">' + t('p08_all_stages') + ' <span class="chip-count">' + totalAll + '</span></button>';
+  _novoFnSfStages.forEach(function(s, i){
+    html += '<button class="stage-chip' + (_novoFnSfSel===s?' active':'') + '" onclick="novoFnSfPick(' + i + ')">' + _ne(s) + ' <span class="chip-count">' + ((_novoFnSfData[s] || []).length) + '</span></button>';
+  });
+  var ch = document.getElementById('novo-fnsf-chips'); if (ch) ch.innerHTML = html + '</div>';
+  var list;
+  if (_novoFnSfSel == null) { list = []; _novoFnSfStages.forEach(function(s){ list = list.concat(_novoFnSfData[s] || []); }); }
+  else list = _novoFnSfData[_novoFnSfSel] || [];
+  var tb = document.getElementById('novo-fnsf-table'); if (tb) tb.innerHTML = _novoFunnelDealsTableHtml(list);
+}
+function novoFnSfPick(i) {
+  _novoFnSfSel = (i === '__all') ? null : _novoFnSfStages[i];
+  _novoFnSfRender();
+}
+function _novoOpenFunnelStageFilterModal(title, stagesData, order, preStage) {
+  _novoFnSfData = stagesData || {};
+  var ord = order || Object.keys(_novoFnSfData);
+  _novoFnSfStages = ord.filter(function(s){ return (_novoFnSfData[s] || []).length > 0; });
+  _novoFnSfSel = (preStage != null && _novoFnSfStages.indexOf(preStage) !== -1) ? preStage : null;
+  openModal(title, '<div id="novo-fnsf-chips"></div><div id="novo-fnsf-table"></div>');
+  _novoFnSfRender();
 }
 
 // ── Info-button tooltip (JS-driven) ──────────────────────────────────────────

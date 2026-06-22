@@ -75,7 +75,7 @@ function buildSharedSizeDonut(canvasId, dataFn, opts) {
       legend:{display:true, position:'right', labels:{color:th.cText2, font:{family:NOVO_FONT,size:11}, padding:10, usePointStyle:true, boxWidth:8, boxHeight:8}},
       datalabels:{ color:'#fff', font:{family:NOVO_FONT,size:10,weight:'bold'}, formatter:function(v,ctx){ var tot=_visTotal(ctx.chart); return v>0&&tot>0 ? Math.round(v/tot*100)+'%' : ''; } },
       tooltip: tooltipCfg },
-      onClick:function(e,el){ if(!el.length)return; novoOpenDealsFilterModal(modalTitle, allDeals); } } });
+      onClick:function(e,el){ if(!el.length)return; var kind=isRev?'rev':'vidas'; novoOpenDealsFilterModal(modalTitle, allDeals, kind, el[0].index); } } });
 }
 
 // ── C04 | Valor do Pipeline por Etapa (barras horizontais, Receita | Ponderado) ──
@@ -97,7 +97,7 @@ function buildSharedStageVal(canvasId, dataFn, modalTitle) {
       datalabels:{ anchor:'end', align:'right', color:th.cText, font:{family:NOVO_FONT,size:10,weight:'bold'}, formatter:_revShort },
       tooltip:{ callbacks:{ label:function(c){return 'R$ '+Math.round(c.parsed.x).toLocaleString('pt-BR')+' /ano';}, footer:function(){return 'Clique para ver os deals';} } } },
       scales:{ x:{grid:{color:th.cGrid}, ticks:{color:th.cText2, font:{family:NOVO_FONT}, callback:function(v){return _revShort(v);}}}, y:{grid:{display:false}, ticks:{color:th.cText, font:{family:NOVO_FONT}}} },
-      onClick:function(e,el){ if(!el.length)return; novoOpenDealsStageFilterModal(modalTitle, open); } } });
+      onClick:function(e,el){ if(!el.length)return; novoOpenDealsStageFilterModal(modalTitle, open, labels[el[0].index]); } } });
 }
 
 // ── P03 | Receita Ponderada do pipeline ativo ───────────────────────────────────
