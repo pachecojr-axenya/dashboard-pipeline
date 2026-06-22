@@ -717,6 +717,7 @@ var NOVO_I18N = {
     t_vidaswindow:'🟡 Distribuição de Vidas',tip_vidaswindow:'Deals ativos por faixa de vidas. Sem filtro local de data.',
     t_winfactor:'Taxa de Ganho por AE',tip_winfactor:'Taxa de ganho ajustada por AE: deals ganhos ÷ (deals ganhos + deals perdidos).',
     t_coverage:'🟡 Cobertura do Pipeline (Ponderado vs Meta)',tip_coverage:'Ratio entre pipeline ponderado e meta de receita configurável.',
+    t_piperev12b:'🟡 Valor do Pipeline (Projeção Mensal)',tip_piperev12b:'Cópia do N06 (Valor do Pipeline | Projeção Mensal), com toggles independentes.',
     t_piperev12:'🟡 Valor do Pipeline (Projeção Mensal)',tip_piperev12:'Receita ou quantidade de deals por mês da data prevista de receita. A contagem mostra deals ativos com data prevista sobre o total de ativos P09. Considera pipes Vendas + Bid.',
     t_segdoughnut:'🟡 Receita por Segmento (Donut)',tip_segdoughnut:'ARR estimado total por segmento de tamanho de cliente (baseado em vidas).',
     t_visibility:'🟡 Visibilidade de Receita | Timeline',tip_visibility:'Quantidade de deals com data prevista de receita por mês.',
@@ -833,6 +834,7 @@ var NOVO_I18N = {
     t_vidaswindow:'🟡 Vidas Distribution by Bucket',tip_vidaswindow:'Active deals by lives band. No local date filter.',
     t_winfactor:'Win Rate by AE',tip_winfactor:'Adjusted win rate by AE: won deals ÷ (won deals + lost deals).',
     t_coverage:'🟡 Pipeline Coverage Ratio (Weighted vs Target)',tip_coverage:'Weighted pipeline vs a configurable revenue target.',
+    t_piperev12b:'🟡 Pipeline Value (Monthly Projection)',tip_piperev12b:'Copy of N06 (Pipeline Value | Monthly Projection), with independent toggles.',
     t_piperev12:'🟡 Pipeline Value (Monthly Projection)',tip_piperev12:'Revenue or deal count by expected revenue month. Count shows active deals with expected revenue date over total active P09 deals. Considers Sales + Bid pipelines.',
     t_segdoughnut:'🟡 Revenue by Segment (Deal Size)',tip_segdoughnut:'Total estimated ARR by customer-size segment (based on lives).',
     t_visibility:'🟡 Revenue Visibility Timeline',tip_visibility:'Count of deals with expected revenue date by month.',
@@ -1167,6 +1169,9 @@ var NOVO_HELP_CHARTS = [
   { key:'piperev12', title:'🟡 Valor do Pipeline | Projeção Mensal (N14)',
     desc:'Receita ou quantidade de deals por mês da data prevista de receita. Considera deals abertos com data prevista: Diagnóstico, Cotação, Proposta Enviada, Consultoria, Negociação e Standby; Reunião Agendada entra se o toggle de Ativos estiver ligado; Implantação entra apenas se Implantação = Ganho estiver desligado.',
     fields:[['data_prevista_para_receita','Mês de alocação do deal.'],['arr_estimado','Receita real mensal = ARR ÷ 12.'],['probabilidade_de_fechamento_ / hs_deal_stage_probability','Receita probabilizada = Receita real mensal × probabilidade final.'],['dealstage','Define se o deal entra como aberto e qual probabilidade padrão é usada.']] },
+  { key:'piperev12b', title:'🟡 Valor do Pipeline | Projeção Mensal — Cópia (N06B)',
+    desc:'Cópia do N06 (Valor do Pipeline | Projeção Mensal). Mesma metodologia: receita ou quantidade de deals por mês da data prevista de receita, com toggles Real/Probabilizado e Receita/Deals independentes do N06.',
+    fields:[['data_prevista_para_receita','Mês de alocação do deal.'],['arr_estimado','Receita real mensal = ARR ÷ 12.'],['probabilidade_de_fechamento_ / hs_deal_stage_probability','Receita probabilizada = Receita real mensal × probabilidade final.'],['dealstage','Define se o deal entra como aberto e qual probabilidade padrão é usada.']] },
   { key:'segdoughnut', title:'🟡 Receita por Segmento | Donut (N15)',
     desc:'ARR estimado total distribuído por segmento de tamanho (Pequeno/Médio/Grande/Enterprise) baseado em vidas.',
     fields:[['vidas','Define o segmento.'],['arr_estimado','ARR somado por segmento.']] },
@@ -1242,7 +1247,7 @@ var NOVO_CARD_CODES = {
   'waterfall':'N00','netflow':'N00','stageprog':'N00',
   'cohort':'N01','freshness':'N02','passthru':'N00',
   'winratesize':'N03','sizewindow':'N00','vidaswindow':'N00','winfactor':'N04',
-  'coverage':'N05','piperev12':'N06','segdoughnut':'N00','visibility':'N00',
+  'coverage':'N05','piperev12':'N06','piperev12b':'N06B','segdoughnut':'N00','visibility':'N00',
   'timeinstage':'N07','speedqualify':'N08','timetomeeting':'N00','reassign':'N09',
   'financial':'N00','wonmonthly':'N10','piperevstage':'N11','weightedrevstage':'N12',
   'receivables':'N00','risktriage':'N00',
@@ -1259,7 +1264,7 @@ var NOVO_FILT_FIELD = {
   'kpi2-winrate':'close','kpi2-bdr':'close','kpi2-ae':'close','kpi2-meeting':'create','kpi2-stale':'none','kpi2-complete':'create','kpi2-momentum':'none',
   'waterfall':'both','netflow':'both','stageprog':'create','cohort':'both','freshness':'none','passthru':'create',
   'winratesize':'both','sizewindow':'create','vidaswindow':'create','winfactor':'both','coverage':'create',
-  'piperev12':'prev','segdoughnut':'create','visibility':'prev','timeinstage':'create','speedqualify':'create',
+  'piperev12':'prev','piperev12b':'prev','segdoughnut':'create','visibility':'prev','timeinstage':'create','speedqualify':'create',
   'timetomeeting':'none','reassign':'both','financial':'both','wonmonthly':'close','piperevstage':'create',
   'weightedrevstage':'create','receivables':'prev','risktriage':'none',
 };
@@ -1311,11 +1316,12 @@ function _novoHelpSection(c) {
   '</div>';
 }
 // Abre o drawer lateral com a(s) seção(ões) de campos + a tabela de detalhe.
-function _openHelpDrawer(headerTitle, charts) {
+function _openHelpDrawer(headerTitle, charts, extraHtml) {
   var detailRows = NOVO_HELP_DETAIL.map(function(f){ return _novoHelpRow(f[0], f[1]); }).join('');
   var html =
     '<p style="font-size:.78rem;color:var(--muted);margin:0 0 1.1rem">Fonte: <code style="color:var(--text2)">GET /api/forecast-table</code> (deals ativos dos pipelines Vendas + Bid).</p>'+
     charts.map(_novoHelpSection).join('')+
+    (extraHtml||'')+
     '<div style="margin-top:.5rem;padding-top:1rem;border-top:1px solid var(--border)">'+
       '<h3 style="font-size:.92rem;color:var(--text);margin:0 0 .25rem">Tabela de detalhe (comum a todos)</h3>'+
       '<p style="font-size:.8rem;line-height:1.6;color:var(--text2);margin:0 0 .5rem">Colunas exibidas ao clicar em qualquer barra.</p>'+
@@ -1342,7 +1348,8 @@ function novoToggleInfo() {
 function novoHelpChart(key) {
   var c = NOVO_HELP_CHARTS.filter(function(x){ return x.key === key; });
   if (!c.length) return;
-  _openHelpDrawer('Campos do HubSpot | ' + c[0].title.replace(/^(?:🟡|🟢|🟠|🔴) /,''), c);
+  var extra = (key === 'piperev12b' && typeof _novoForecastBMethodologyHtml === 'function') ? _novoForecastBMethodologyHtml() : '';
+  _openHelpDrawer('Campos do HubSpot | ' + c[0].title.replace(/^(?:🟡|🟢|🟠|🔴) /,''), c, extra);
 }
 function novoCloseHelp() {
   document.getElementById('novo-help-backdrop').classList.remove('open');
@@ -2555,6 +2562,8 @@ var _novoSizeWindowMode  = 'all';
 var _novoVidasWindowMode = 'all';
 var _novoPipeRevValueMode = 'weighted'; // 'raw' | 'weighted'
 var _novoPipeRevMetric = 'revenue';     // 'revenue' | 'deals'
+var _novoPipeRevValueModeB = 'weighted'; // N06B (cópia do N06) — toggles independentes
+var _novoPipeRevMetricB = 'revenue';
 var _novoCoverageTarget  = (function(){ try { return parseFloat(localStorage.getItem('novo_cov_target')) || 5000000; } catch(e){ return 5000000; } })();
 
 function novoSwitchSizeWindow(m){ _novoSizeWindowMode=m; _setActive('novo-sizewin-tabs',m); buildNovoSizeWindow(); }
@@ -2565,6 +2574,13 @@ function _novoSyncPipeRevToggles() {
   if (valueTabs) valueTabs.style.display = _novoPipeRevMetric === 'deals' ? 'none' : 'inline-flex';
 }
 function novoSwitchPipeRevMetric(m){ _novoPipeRevMetric=m; _setActive('novo-piperev-metric-tabs',m); _novoSyncPipeRevToggles(); buildNovoPipeRev12(); }
+// N06B — switchers da cópia (estado/ids independentes)
+function novoSwitchPipeRevValueB(m){ _novoPipeRevValueModeB=m; _setActive('novo-piperev-value-tabs-b',m); buildNovoPipeRev12B(); }
+function _novoSyncPipeRevTogglesB() {
+  var valueTabs = document.getElementById('novo-piperev-value-tabs-b');
+  if (valueTabs) valueTabs.style.display = _novoPipeRevMetricB === 'deals' ? 'none' : 'inline-flex';
+}
+function novoSwitchPipeRevMetricB(m){ _novoPipeRevMetricB=m; _setActive('novo-piperev-metric-tabs-b',m); _novoSyncPipeRevTogglesB(); buildNovoPipeRev12B(); }
 
 // helper: 'YYYY-MM' → 'Mar/25'
 function _mlbl(ym) {
@@ -2709,8 +2725,10 @@ function buildNovoCohortMaturity() {
   var isOutcome = _novoCohortOutcome==='won'
     ? function(d){ return _novoIsWon(d); }
     : function(d){ return _novoIsWon(d) || d.stage==='Perdido'; };
+  // N01: considera apenas coortes a partir de set/2025 (mais histórico).
+  var COHORT_MIN_MONTH = '2025-09';
   var byM = {};
-  (_novoDeals||[]).forEach(function(d){ if(!d.createdate || !_novoInWin(d.createdate)) return; var cm=d.createdate.substring(0,7); (byM[cm]=byM[cm]||[]).push(d); });
+  (_novoDeals||[]).forEach(function(d){ if(!d.createdate || !_novoInWin(d.createdate)) return; var cm=d.createdate.substring(0,7); if(cm < COHORT_MIN_MONTH) return; (byM[cm]=byM[cm]||[]).push(d); });
   var now = new Date();
   var colors = ['rgba(58,184,183,1)','rgba(88,166,255,1)','rgba(147,112,219,1)','rgba(63,185,80,1)','rgba(210,153,34,1)','rgba(248,81,73,1)','rgba(227,179,65,1)','rgba(110,118,129,1)','rgba(247,129,102,1)'];
   var datasets = [], usedKeys = [], ci = 0;
@@ -3050,6 +3068,174 @@ function buildNovoPipeRev12() {
       onClick:function(){ _novoOpenPipeRevModal(open, months); } } });
 }
 
+// ── N06B: Forecast dinâmico (pipe atual "parado" vs projeção "com o tempo") ──
+// Modelo v1 (idade-only): mantém a data_prevista de cada deal; recalcula a
+// probabilidade pela IDADE do deal (histórico) e soma a entrada de NOVOS negócios.
+// Linha A = N06 (prob congelada). Linha B = pipe re-pesado + novos negócios.
+var _novoForecastModelBLast = null;
+function _novoFcBMonthDiff(a,b){
+  if(!a||!b) return NaN;
+  var x=a.split('-'), y=b.split('-');
+  return (parseInt(y[0],10)-parseInt(x[0],10))*12 + (parseInt(y[1],10)-parseInt(x[1],10));
+}
+function _novoForecastBModel() {
+  var deals = _novoDeals || [];
+  var now = new Date();
+  var nowYM = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
+  var AMAX = 6;       // faixas de idade 0..6 (6 = "6+ meses")
+  var MATURE = 6;     // meses mínimos p/ coorte ser considerada madura (estima conversão)
+  function cm(d){ return d.createdate ? d.createdate.substring(0,7) : null; }
+
+  // pWinByAge: entre deals de coortes maduras, prob. (ponderada por ARR) de
+  // ganhar, condicionada a estar aberto naquela idade.
+  var num=[], den=[];
+  for (var i=0;i<=AMAX;i++){ num[i]=0; den[i]=0; }
+  var wrNum=0, wrDen=0, matureN=0;
+  deals.forEach(function(d){
+    var c = cm(d); if(!c) return;
+    var ageNow = _novoFcBMonthDiff(c, nowYM);
+    if (isNaN(ageNow) || ageNow < MATURE) return;        // só coortes maduras
+    var arr = _annualRev(d) || 0; if (arr<=0) return;
+    matureN++;
+    var won = _novoIsWon(d);
+    var resAge;
+    if ((won || d.stage==='Perdido') && d.close_date) {
+      resAge = _novoFcBMonthDiff(c, d.close_date.substring(0,7));
+      if (isNaN(resAge) || resAge<0) resAge = 0;
+    } else {
+      resAge = ageNow;                                   // ainda aberto (maduro) → não-ganho até hoje
+    }
+    wrDen += arr; if (won) wrNum += arr;
+    for (var a=0;a<=AMAX;a++){
+      if (resAge > a) { den[a]+=arr; if (won) num[a]+=arr; }  // estava aberto no início do mês a
+    }
+  });
+  var WR = wrDen>0 ? wrNum/wrDen : 0;
+  var pWinByAge=[];
+  for (var a2=0;a2<=AMAX;a2++){ pWinByAge[a2] = den[a2]>0 ? num[a2]/den[a2] : WR; }
+
+  // L: atraso médio (meses) criação → data prevista de receita (ponderado por ARR)
+  var lagNum=0, lagDen=0;
+  deals.forEach(function(d){
+    var c=cm(d); if(!c||!d.data_prevista_para_receita) return;
+    var arr=_annualRev(d)||0; if(arr<=0) return;
+    var lg=_novoFcBMonthDiff(c, d.data_prevista_para_receita.substring(0,7));
+    if(isNaN(lg)||lg<0) lg=0;
+    lagNum += lg*arr; lagDen += arr;
+  });
+  var L = lagDen>0 ? Math.round(lagNum/lagDen) : 0;
+
+  // Entrada média de novos negócios: média mensal dos últimos 6 meses de criação
+  var dt=new Date(now.getTime()); dt.setMonth(dt.getMonth()-6);
+  var floor6 = dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0');
+  var newArrSum=0, newCount=0;
+  deals.forEach(function(d){ var c=cm(d); if(!c) return; if(c>=floor6 && c<nowYM){ newArrSum += (_annualRev(d)||0); newCount++; } });
+
+  return { nowYM:nowYM, AMAX:AMAX, MATURE:MATURE, WR:WR, pWinByAge:pWinByAge, L:L,
+           A_new:newArrSum/6, avgCount:newCount/6, matureN:matureN, newCount:newCount };
+}
+// Documentação dinâmica (números calculados) injetada no modal de info do N06B.
+function _novoForecastBMethodologyHtml() {
+  var M = _novoForecastModelBLast; if (!M) return '';
+  var pct=function(x){ return (x*100).toFixed(0)+'%'; };
+  var brl=function(v){ return 'R$ '+Math.round(v).toLocaleString('pt-BR'); };
+  var ageRows='';
+  for (var a=0;a<=M.AMAX;a++){
+    var lbl = a===M.AMAX ? (a+'+ meses') : (a+(a===1?' mês':' meses'));
+    ageRows += '<tr><td style="text-align:left">'+lbl+'</td><td>'+pct(M.pWinByAge[a])+'</td></tr>';
+  }
+  return '<div style="margin:0 0 1.4rem;padding-top:1rem;border-top:1px solid var(--border)">'+
+    '<h3 style="font-size:.92rem;color:var(--text);margin:0 0 .4rem">Metodologia do forecast (N06B)</h3>'+
+    '<p style="font-size:.8rem;line-height:1.6;color:var(--text2);margin:0 0 .6rem">'+
+      '<b>Linha "Pipe atual (parado no tempo)"</b>: cada deal aberto coloca a receita no mês da sua <code>data_prevista</code>, ponderada pela probabilidade da sua <b>etapa atual</b> — piso conservador, idêntico ao N06.<br>'+
+      '<b>Linha "Projeção (com o tempo)" = pipe atual + novos negócios.</b> O pipe atual entra <b>igual à linha azul</b> (a probabilidade da etapa já embute o avanço esperado do deal — somar "maturação" por cima seria contar duas vezes). Por cima, soma a receita dos <b>negócios que ainda vão entrar</b>: nº médio de leads/mês × ARR médio × taxa de conversão, aparecendo ~L meses após a criação. Por isso a verde fica sempre ≥ azul e descola pra cima com o tempo.'+
+    '</p>'+
+    '<div style="margin:0 0 .65rem;padding:.5rem .65rem;background:var(--card2);border-radius:6px;border-left:3px solid var(--teal)">'+
+      '<div style="font-size:.61rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);font-weight:700;margin-bottom:.3rem">Parâmetros calculados do histórico (fixos nesta versão)</div>'+
+      '<div style="font-size:.78rem;color:var(--text);line-height:1.7">'+
+        '• Taxa de conversão (WR): <b>'+pct(M.WR)+'</b> <span style="color:var(--text2)">(ARR ganho ÷ ARR criado, coortes com ≥ '+M.MATURE+' meses; base '+M.matureN+' deals)</span><br>'+
+        '• Atraso médio criação→receita (L): <b>'+M.L+' '+(M.L===1?'mês':'meses')+'</b><br>'+
+        '• Entrada média de novos negócios: <b>'+brl(M.A_new)+'/mês</b> · <b>'+M.avgCount.toFixed(1)+' deals/mês</b> <span style="color:var(--text2)">(últimos 6 meses; '+M.newCount+' deals)</span>'+
+      '</div>'+
+    '</div>'+
+    '<div style="margin:0 0 .65rem">'+
+      '<div style="font-size:.61rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);font-weight:700;margin-bottom:.3rem">Taxa de ganho histórica por idade do deal (referência)</div>'+
+      '<table class="lb" style="width:100%;font-size:.78rem"><thead><tr><th style="text-align:left">Idade do deal (aberto)</th><th>Taxa de ganho</th></tr></thead><tbody>'+ageRows+'</tbody></table>'+
+    '</div>'+
+    '<p style="font-size:.72rem;color:var(--muted);line-height:1.5;margin:0">'+
+      'Novos negócios entram como receita recorrente (ARR convertido ÷ 12), começando '+M.L+' '+(M.L===1?'mês':'meses')+' após a criação — simplificação que não usa o cronograma de primeira fatura por deal. '+
+      'Histórico curto ⇒ estimativas aproximadas. Em versão futura, estes parâmetros serão editáveis aqui.'+
+    '</p>'+
+  '</div>';
+}
+function buildNovoPipeRev12B() {
+  var open = _novoPipeRevDeals();
+  var months = _novoProjectionMonthsToDec27();
+  var M = _novoForecastBModel();
+  _novoForecastModelBLast = M;
+  var th = _novoTheme();
+  var isDeals = _novoPipeRevMetricB === 'deals';
+  var weighted = _novoPipeRevValueModeB === 'weighted';
+  var conv = (isDeals || weighted) ? M.WR : 1;   // conversão aplicada aos novos negócios
+
+  var A={}, Bnew={};
+  for (var k=0;k<months.length;k++){ A[months[k]]=0; Bnew[months[k]]=0; }
+
+  // Pipe atual (idêntico ao N06) — base comum às duas linhas
+  if (isDeals) {
+    open.forEach(function(d){
+      var dm = d.data_prevista_para_receita ? d.data_prevista_para_receita.substring(0,7) : null;
+      if (dm && A[dm]!=null && _novoInWin(d.data_prevista_para_receita)) A[dm]+=1;
+    });
+  } else {
+    open.forEach(function(d){
+      for (var i=0;i<months.length;i++){ var m=months[i]; var v=_novoPipeRevMonthValue(d, m, weighted); if(v>0) A[m]+=v; }
+    });
+  }
+  // Novos negócios (somados só na linha verde): nº de leads × ARR médio × conversão,
+  // aparecendo ~L meses após a criação como recorrência mensal que se acumula.
+  for (var j=0;j<months.length;j++){
+    var m2 = months[j];
+    var ahead = _novoFcBMonthDiff(M.nowYM, m2);
+    if (isDeals) { Bnew[m2] = (ahead-M.L >= 1) ? (M.avgCount*conv) : 0; }       // 1 coorte madura/mês
+    else { var matured = ahead-M.L; if(matured<0)matured=0; Bnew[m2] = matured*(M.A_new*conv/12); }
+  }
+
+  var firstNonZero=-1;
+  for (var f=0; f<months.length; f++){ if (((A[months[f]]||0)+(Bnew[months[f]]||0))>0.0001){ firstNonZero=f; break; } }
+  if (firstNonZero>0) months = months.slice(firstNonZero);
+
+  var dataA=[], dataB=[], bGar=[], bNovos=[];
+  months.forEach(function(m){
+    var a=A[m]||0, bn=Bnew[m]||0;
+    dataA.push(isDeals ? Math.round(a*10)/10 : Math.round(a));
+    dataB.push(isDeals ? Math.round((a+bn)*10)/10 : Math.round(a+bn));
+    bGar.push(a); bNovos.push(bn);
+  });
+  var yMax=null;
+  if (!isDeals){ var mx=0; for (var z=0;z<dataB.length;z++){ if(dataB[z]>mx)mx=dataB[z]; } yMax=mx; }
+  var fmt=function(v){ return isDeals ? (Math.round(v*10)/10) : _revShort(v); };
+  var L=NOVO_LANG==='en';
+
+  _novoMkChart('chart-novo-piperev12b', { type:'line', plugins:[ChartDataLabels],
+    data:{ labels:months.map(_mlbl), datasets:[
+      { label:(L?'Projection (over time)':'Projeção (com o tempo)'), data:dataB, borderColor:'rgba(63,185,80,.95)', backgroundColor:'rgba(63,185,80,.14)', pointRadius:3, pointHoverRadius:5, borderWidth:2, tension:0.35, fill:true, order:1 },
+      { label:(L?'Current pipe (frozen)':'Pipe atual (parado no tempo)'), data:dataA, borderColor:'rgba(88,166,255,.95)', backgroundColor:'transparent', borderDash:[5,4], pointRadius:2, pointHoverRadius:4, borderWidth:2, tension:0.35, fill:false, order:2 }
+    ]},
+    options:{ responsive:true, layout:{padding:{top:28}}, plugins:{
+      legend:{display:true, labels:{color:th.cText2, font:{family:NOVO_FONT,size:11}, usePointStyle:true}},
+      datalabels:{ display:function(ctx){ return ctx.datasetIndex===0; }, anchor:'end', align:'top', color:th.cText, font:{family:NOVO_FONT,size:9,weight:'bold'}, formatter:function(v){ return v>0?fmt(v):''; } },
+      tooltip:{ mode:'index', intersect:false, callbacks:{
+        label:function(c){ var v=c.parsed.y; return c.dataset.label+': '+(isDeals ? (Math.round(v*10)/10)+' deals' : 'R$ '+Math.round(v).toLocaleString('pt-BR')); },
+        afterBody:function(items){ if(!items.length) return ''; var i=items[0].dataIndex;
+          if (isDeals) return ['', (L?'Projection breakdown:':'Quebra da projeção (verde):'), '• '+(L?'current pipe':'pipe atual')+': '+(Math.round(bGar[i]*10)/10), '• '+(L?'new business':'novos negócios')+': +'+(Math.round(bNovos[i]*10)/10)];
+          return ['', (L?'Projection breakdown:':'Quebra da projeção (verde):'), '• '+(L?'committed (current pipe)':'garantido (pipe atual)')+': '+_revShort(bGar[i]), '• '+(L?'new business':'novos negócios')+': +'+_revShort(bNovos[i])];
+        }
+      } } },
+      scales:{ x:{grid:{display:false},ticks:{color:th.cText2,font:{family:NOVO_FONT}}}, y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},callback:function(v){return isDeals?v:_revShort(v);}}, suggestedMax:yMax} },
+      onClick:function(){ _novoOpenPipeRevModal(open, months); } } });
+}
+
 // ── N15: Revenue by Segment (Doughnut) ───────────────────────────────────────
 function buildNovoSegDoughnut() {
   var open = _novoOpen();
@@ -3122,7 +3308,9 @@ function buildNovoSpeedQualify() {
     : _novoOpen().filter(function(d){ return d.stage==='Diagnóstico' && d.createdate && d.dias_no_pipe!=null; }).map(function(d){ return {deal:d,days:d.dias_no_pipe,entered:null}; });
   var byMonth={};
   diaEntries.forEach(function(x){ var m=x.deal.createdate.substring(0,7); if(!byMonth[m])byMonth[m]=[]; byMonth[m].push(x); });
-  var months=Object.keys(byMonth).sort();
+  // N08: considera apenas meses de set/2025 até o mês atual.
+  var _sqNow=new Date(); var _sqNowYM=_sqNow.getFullYear()+'-'+String(_sqNow.getMonth()+1).padStart(2,'0');
+  var months=Object.keys(byMonth).sort().filter(function(m){ return m>='2025-09' && m<=_sqNowYM; });
   var avgs=months.map(function(m){ var arr=byMonth[m]; return Math.round(arr.reduce(function(s,x){return s+x.days;},0)/arr.length); });
   var th=_novoTheme();
   _novoMkChart('chart-novo-speedqualify', { type:'bar', plugins:[ChartDataLabels],
@@ -3857,6 +4045,12 @@ function novoRender() {
         _subTabs('novo-piperev-metric-tabs', _novoPipeRevMetric, [{mode:'revenue',label:t('lbl_revenue'),fn:'novoSwitchPipeRevMetric'},{mode:'deals',label:t('tab_deals'),fn:'novoSwitchPipeRevMetric'}])+
       '</div><canvas id="chart-novo-piperev12" style="max-height:300px"></canvas></div>' +
 
+      // N06B | Cópia do N14/N06 (Pipeline 12-Month) — toggles independentes
+      '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header" style="flex-wrap:wrap;gap:.5rem"><h3>' + _titleWithPipeRevCoverage(t('t_piperev12b')) + '</h3>' + _infoBtn(t('tip_piperev12b'),'piperev12b') +
+        (_novoPipeRevMetricB === 'revenue' ? _subTabs('novo-piperev-value-tabs-b', _novoPipeRevValueModeB, [{mode:'raw',label:(NOVO_LANG==='en'?'Real':'Real'),fn:'novoSwitchPipeRevValueB'},{mode:'weighted',label:(NOVO_LANG==='en'?'Probability-weighted':'Probabilizado'),fn:'novoSwitchPipeRevValueB'}]) : '')+
+        _subTabs('novo-piperev-metric-tabs-b', _novoPipeRevMetricB, [{mode:'revenue',label:t('lbl_revenue'),fn:'novoSwitchPipeRevMetricB'},{mode:'deals',label:t('tab_deals'),fn:'novoSwitchPipeRevMetricB'}])+
+      '</div><canvas id="chart-novo-piperev12b" style="max-height:300px"></canvas></div>' +
+
       // N15/N16 removidos a pedido; N16 foi unido ao N14 via toggle Receita | Deals.
 
       // ── Seção: Análise de Tempo ───────────────────────────────────────────
@@ -3902,6 +4096,7 @@ function novoRender() {
   buildNovoWinFactor();
   buildNovoCoverage();
   buildNovoPipeRev12();
+  buildNovoPipeRev12B();
   buildNovoTimeInStage();
   buildNovoSpeedQualify();
   buildNovoReassign();
@@ -3909,6 +4104,7 @@ function novoRender() {
 
   _initTabSubs();
   _novoSyncPipeRevToggles();
+  _novoSyncPipeRevTogglesB();
   _funnelSyncUI();
   _updateFilterBadge();
   _novoInitCardReorder();
