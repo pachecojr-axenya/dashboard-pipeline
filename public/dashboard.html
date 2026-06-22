@@ -1123,15 +1123,6 @@ var NOVO_HELP_CHARTS = [
       ['data_prevista_para_receita', 'Campo obrigatório | basta não estar vazio.'],
     ],
   },
-  {
-    key: 'kpi2-momentum',
-    formula: 'Momentum = deals criados nos últimos 30d − deals criados nos 30d anteriores',
-    title: '🟡 Momentum',
-    desc: 'Deals abertos criados nos últimos 30 dias vs. os 30 dias anteriores. Indica se o pipeline está crescendo.',
-    fields: [
-      ['createdate', 'Data de criação do deal | base para os dois janelas de 30 dias.'],
-    ],
-  },
   // ── N-series: new charts ──────────────────────────────────────────────────────
   { key:'waterfall', title:'Fluxo Semanal | Criados · Ganhos · Perdidos (N01)',
     desc:'Por semana (segunda a domingo): nº de deals criados (por createdate), ganhos e perdidos (por close_date), mais o Δ líquido = criados − ganhos − perdidos. Últimas 13 semanas.',
@@ -1242,7 +1233,6 @@ var NOVO_CARD_CODES = {
   'kpi-won-vidas':'P08','kpi-lost-vidas':'P09','kpi-weighted-vidas':'P05',
   'kpi2-winrate':'S01','kpi2-bdr':'S02','kpi2-ae':'S03',
   'kpi2-meeting':'S04','kpi2-stale':'S05','kpi2-complete':'S06',
-  'kpi2-momentum':'S08',
   // New N-series
   'waterfall':'N00','netflow':'N00','stageprog':'N00',
   'cohort':'N01','freshness':'N02','passthru':'N00',
@@ -1261,7 +1251,7 @@ var NOVO_FILT_FIELD = {
   'funnel-conv':'funnel',
   'kpi-revenue-mtd':'won','kpi-won-annual':'close','kpi-weighted-pipe':'none',
   'kpi-won-vidas':'close','kpi-lost-vidas':'close','kpi-weighted-vidas':'none',
-  'kpi2-winrate':'close','kpi2-bdr':'close','kpi2-ae':'close','kpi2-meeting':'create','kpi2-stale':'none','kpi2-complete':'create','kpi2-momentum':'none',
+  'kpi2-winrate':'close','kpi2-bdr':'close','kpi2-ae':'close','kpi2-meeting':'create','kpi2-stale':'none','kpi2-complete':'create',
   'waterfall':'both','netflow':'both','stageprog':'create','cohort':'both','freshness':'none','passthru':'create',
   'winratesize':'both','sizewindow':'create','vidaswindow':'create','winfactor':'both','coverage':'create',
   'piperev12':'prev','piperev12b':'prev','segdoughnut':'create','visibility':'prev','timeinstage':'create','speedqualify':'create',
@@ -2093,7 +2083,6 @@ function novoKpiDrill(key) {
   if (key === 'kpi-lost-vidas') { _novoOpenLostModal(d); return; }
   if (key === 'kpi-weighted-vidas') { _novoOpenWeightedVidasModal(d); return; }
   if (key === 'kpi2-stale') { openModal(t('kpi2_stale_label'), _novoStaleStatsHtml(d.deals, d.totalOpen) + _novoDealsTableHtml(d.deals)); return; }
-  if (key === 'kpi2-momentum') { openModal(t('kpi2_momentum_label'), _novoMomentumStatsHtml(d.deals, d.prevDeals) + _novoDealsTableHtml(d.deals)); return; }
   var title = (d.label || '').replace(/^(?:🟡|🟢|🟠|🔴) /, '');
   var stats = '';
   if (key === 'kpi-won-annual') stats = _novoKpiStatsHtml(d.deals);
@@ -3790,14 +3779,6 @@ function _buildKpiSecRow() {
       color: staleDeals.length > 10 ? 'var(--yellow)' : 'var(--text)',
       tip: t('kpi2_stale_tip'),
     },
-    {
-      key: 'kpi2-momentum', na: false,
-      label: t('kpi2_momentum_label'),
-      value: recent + momArrow,
-      sub: t('kpi2_deals_recent') + ' | ' + prev + ' ' + t('kpi2_vs_prev'),
-      color: momColor,
-      tip: t('kpi2_momentum_tip'),
-    },
   ];
 
   _novoKpiDrill['kpi2-winrate']  = { deals: wonList.concat(lostList), label: t('kpi2_winrate_label') };
@@ -3805,7 +3786,6 @@ function _buildKpiSecRow() {
   _novoKpiDrill['kpi2-ae']       = { deals: aeWon.concat(aeLost),      label: t('kpi2_ae_label') };
   _novoKpiDrill['kpi2-meeting']  = { deals: meetStats ? meetStats.trackedDeals : [], label: t('kpi2_meeting_label') };
   _novoKpiDrill['kpi2-stale']    = { deals: staleDeals,  label: t('kpi2_stale_label'), totalOpen: openDeals.length };
-  _novoKpiDrill['kpi2-momentum'] = { deals: recentDeals, label: t('kpi2_momentum_label'), prevDeals: prevDeals };
 
   var html = '<div class="kpi-row-sec">';
   kpis.forEach(function(k) {
