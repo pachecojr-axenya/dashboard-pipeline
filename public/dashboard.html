@@ -3693,7 +3693,7 @@ function buildNovoReassign() {
         yCount:{ type:'linear', position:'left', grid:{color:th.cGrid},
           ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0},
           title:{display:true,text:NOVO_LANG==='en'?'Deals':'Deals',color:th.cText2,font:{family:NOVO_FONT,size:10}} },
-        yRate:{ type:'linear', position:'right', min:0, max:100, grid:{drawOnChartArea:false},
+        yRate:{ type:'linear', position:'right', min:0, max:20, grid:{drawOnChartArea:false},
           ticks:{color:'rgba(255,180,0,1)',font:{family:NOVO_FONT},callback:function(v){return v+'%';}},
           title:{display:true,text:'Win Rate',color:'rgba(255,180,0,1)',font:{family:NOVO_FONT,size:10}} }
       },
