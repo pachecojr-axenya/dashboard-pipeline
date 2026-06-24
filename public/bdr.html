@@ -466,18 +466,25 @@ function buildBdrOrigin(){
   var agg=colab?aggColab:vidas?aggVidas:aggDeals;
   var ranked=Object.keys(agg).map(function(b){return {bdr:b,n:agg[b]};}).filter(function(r){return r.n>0;}).sort(function(a,b){return b.n-a.n;}).slice(0,15);
   // Pre-compute per-BDR metadata (level + goal) for tooltip
+  // Lookup robusto: normaliza NFD+lower para tolerar acentuação; fallback na BDR_LIST
+  // quando o localStorage tem chaves antigas (ex: "Emmanuelle"→"Emanuelle", "Letícia"→"Leticia").
+  var _normF=function(s){ return (s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase(); };
   var bdrInfo={};
   ranked.forEach(function(r){
     var metas=window.BDR_METAS||{};
-    var goal=metas[r.bdr], level=null;
-    var first=r.bdr.split(' ')[0].toLowerCase();
+    var first=_normF(r.bdr.split(' ')[0]);
+    var goal=metas[r.bdr]; // direct lookup
     if(goal==null){
-      var ks=Object.keys(metas).filter(function(k){return k.split(' ')[0].toLowerCase()===first;});
+      var ks=Object.keys(metas).filter(function(k){ return _normF(k.split(' ')[0])===first; });
       if(ks.length===1) goal=metas[ks[0]];
     }
+    var level=null;
     if(window.BDR_LIST){
-      var match=window.BDR_LIST.filter(function(b){return b.name===r.bdr||(b.name.split(' ')[0].toLowerCase()===first);});
-      if(match.length===1) level=match[0].level;
+      var match=window.BDR_LIST.filter(function(b){ return _normF(b.name.split(' ')[0])===first; });
+      if(match.length===1){
+        level=match[0].level;
+        if(goal==null) goal=match[0].goal; // fallback: usa default da BDR_LIST se metas obsoleto
+      }
     }
     bdrInfo[r.bdr]={goal:goal,level:level};
   });
