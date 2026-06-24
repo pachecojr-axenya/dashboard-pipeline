@@ -800,6 +800,18 @@ Registro curto, uma linha por interação (a cada alteração).
 
 ---
 
+## BDR | R12 metas coloridas + colaboradores + salvar globalmente (2026-06-24)
+
+- **R12 buildBdrOrigin()** | barras coloridas por atingimento de meta: verde ≥100%, amarelo ≥85%, laranja ≥70%, vermelho <70%. Lookup fuzzy por primeiro nome se nome HubSpot não casa com `window.BDR_METAS`. Apenas no modo Deals.
+- **R12, R13** | novo toggle **Colaboradores** (soma `d.colaboradores`) em ambos os gráficos; `_bdrOriginMode` e `_bdrWeeklyMode` aceitam `'colaboradores'`; builders atualizados.
+- **N09 buildNovoReassign()** | fallback diferencia estado: spinner + "Carregando..." quando `_novoFunnelLoading===true`; texto estático "Carregue o funil" apenas quando nunca iniciado.
+- **C06 btn-load-funnel** | removido texto "Carregar" do botão; mantido apenas o ícone SVG (tooltip via `title` attribute).
+- **api/bdr-metas.js** (novo) | GET retorna metas globais (`/tmp/bdr-metas.json` ou defaults); POST salva globalmente. Requer auth.
+- **settings-modal.js** | botão único substituído por dois: **Salvar Probabilidades** (localStorage, local) e **Salvar Metas** (POST `/api/bdr-metas`, global todos usuários). `novoOpenSettings` busca metas frescas da API (não-bloqueante). `novoSaveSettings` mantido como alias de `novoSaveProbs`.
+- i18n: PT=257/EN=257 (inalterado).
+
+---
+
 ## Board + CRO | consolidação de gráficos mensais e por etapa (2026-06-18, rodada 2)
 
 > A pedido (itens 1–8). Duas instruções se contradiziam e foram confirmadas com o usuário: **N10** (item 1 pedia corrigir, item 3 remover → confirmado **remover**); **B05/B06/B13** (itens 6 e 7 se sobrepunham no B06 → confirmado **tudo num card só**).
@@ -1319,3 +1331,81 @@ Registro curto, uma linha por interação (a cada alteração).
 - **C01:** o gráfico usa `new Chart(...)` diretamente e não passava pelo helper global `_novoMkChart()`, então os AEs com valor `0` continuavam aparecendo. O builder agora filtra `ranked` para manter apenas barras com valor `> 0`.
 - **N14:** meses com valor real positivo mas arredondado para `R$0` continuavam visíveis. O filtro de meses agora usa o valor exibido (`Math.round(totals[m])` em Receita, ou contagem em Deals), removendo meses/barras com label `0`.
 - **Validação:** sintaxe inline OK e smoke render OK (`1235 deals`).
+
+### N06B | regras de forecasting da Cintia aplicadas (2026-06-23)
+
+- **N06B (`buildNovoPipeRev12B`) reescrito:** a linha verde "Projeção (com o tempo)" deixou de usar a heurística antiga (curva histórica de fechamento p75/p90 + desconto de vencidos + 4% de conversão) e passou a ser o **forecast pelas regras por bloco da Cintia** aplicado à carteira atual + novos negócios. A linha azul "Pipe atual (parado)" segue como visão ingênua (data prevista × prob da etapa) para contraste. Mudança isolada ao N06B — N06/N14 e o modal de clique compartilhado (`_novoOpenPipeRevModal`) intactos.
+- **Regras (constantes editáveis no topo da seção N06B):** Diagnóstico → `vidas × R$/vida(36 ≤200 / 24 ≤5.000 / 12 >5.000) × 6%`, reconhecido a partir de `createdate + 9/14/18 meses` por porte; Cotação/Proposta/Consultoria/Negociação/Standby → `1ª fatura × prob da etapa` via a mecânica de 1ª fatura existente (`_novoForecastCalcReceita`), reconhecida em `vigência + 2 meses` (fallback data prevista); Reunião Agendada/Pré-RFP não entram (são topo de funil).
+- **Novos negócios (topo de funil):** `vidas originadas/mês × R$24 × Win Rate 2,3% × +15 meses`, recorrente. Cronograma de vidas conforme a **aba MQL** da planilha `Axenya - Forecast (2026.06.22)`: jul/26=162.667, ago/26=216.000, set/26=285.600, platô 367.200. Dentro da janela (até dez/27) a receita aparece em out/nov/dez 2027 (R$ 89.792 / 209.024 / 366.675/mês). Helpers novos: `_novoFcAddMonths`, `_novoFcMqlVidas`, `_novoFcDiagFee/Meses`, `_novoFcRuleStart(Month)`, `_novoFcRuleMonthValue`, `_novoFcNewBizRev`.
+- **Modal do "i" (`_novoForecastBMethodologyHtml`) reescrito** para documentar as regras por bloco, o cronograma MQL, as conversões (6%/2,3%), a regra de vigência+2m e a semântica Real × Probabilizado. Removida a documentação da metodologia antiga.
+- **Win Rate de novos negócios = taxa do S01** (pedido do usuário: "usar sempre a taxa de S01"). Removida a constante fixa `NOVO_FC_TOPO_CONV`; criada `_novoFcWinRate()` = `_novoWon().length ÷ (_novoWon()+_novoLost())` — mesma fórmula/base do S01 (por contagem, close_date na janela), logo **filtro-aware** (muda com o período). Hoje, all-time = 2,3% (23 ÷ 1.001). Diagnóstico mantém 6%. Modal do "i" exibe a win rate viva com a nota "(= taxa do S01)".
+- **Validação:** `_check-inline-js.js` → 0 erros; smoke render OK (330 deals); novos negócios out/27 = 162.667 × 24 × 2,3% = R$ 89.792 confere; 0 refs à constante removida. Servidor local `/novo` 200.
+
+### N06B | alinhado à linha 7 do forecast da Cintia (forecast total) (2026-06-23)
+
+- **N06B virou "Forecast Total (regras da Cintia)"** — a linha verde passou a reproduzir a **linha 7 da planilha** dela (`SUM` dos blocos 8 a 14), com **deals vivos do HubSpot** e os **cálculos dela**. Antes cobria só pipeline aberto + diagnóstico + topo; faltavam os dois maiores blocos. Títulos/tip/help (`t_piperev12b`, entrada `piperev12b`) atualizados PT/EN; linha azul mantida como visão ingênua de contraste.
+- **Blocos somados na verde:** (11) **Negócio Ganho/Implantação** = receita recorrente `ARR ÷ 12` a partir da vigência, sem probabilidade (é o bloco que faz acumular) — `_novoFcWonMonthValue`/`_novoFcWonStartMonth`, respeita o toggle Implantação=Ganho via `_novoIsWon`; (8-10/12) pipeline aberto não-Bid pelas regras já existentes; (14) **BID** = 1ª fatura × prob para `pipeline==='Bid'`, com **Pré-RFP zerado** (`_novoFcBidMonthValue`); (13) topo de funil (MQL). Sem dupla contagem: ativo split por `pipeline`, ganhos via `_novoIsWon` (que o ativo exclui).
+- **Confirmado na planilha:** o multiplicador de probabilidade dela (`AS3`/`AU4` = `IF(N<=AR-0.3,AR*0.9,IF(N>=AR+0.3,AR*1.1,AR))`) é idêntico ao `_calcProbInfo`/`sharedProbFinal` do dashboard — a probabilização do pipeline já batia. A mecânica de 1ª fatura (T:AQ) também é a mesma.
+- **Divergências esperadas (documentadas no modal "i"):** snapshot 22/06 (lista fixa, curada) × HubSpot vivo (329 deals); BID dela é suprimido manualmente a ~0,5% (transcrição), enquanto usamos a prob da etapa/deal — só o Pré-RFP foi zerado; o cenário por porte (célula D3) não é aplicado. Por isso os totais ficam acima da planilha (ex.: verde acumula de ~319k em jun/26 para ~1,6M em dez/27).
+- **Modal do "i" reescrito** para os 4 blocos (Ganho/Implantação, pipeline aberto, BID, topo) mapeados às linhas 11/8-10+12/14/13 da Cintia; tooltip com quebra por bloco.
+- **Validação:** `_check-inline-js.js` → 0 erros; smoke render OK (329 deals); recomputação por bloco confere (ganho/impl recorrente ~300k/mês, novos negócios out/nov/dez 27). Servidor `/novo` 200.
+
+### R14 (BDR) | toggle Deals/Vidas + vidas geradas no mês (2026-06-24)
+
+- **R14 `buildBdrLeadsOrigin` ("Novos Leads por Mês | BDR vs AE")** ganhou o toggle **Deals/Vidas** (padrão Deals), no mesmo padrão do R12/R13: var `_bdrLeadsMode`, função `bdrSwitchLeads`, `_subTabs('bdr-leads-tabs', ...)` no `cWide`.
+- No modo **Vidas**, as séries somam `d.vidas` por mês (em vez de contar deals) via `reduce`; o data-label do topo de cada barra passa a mostrar **quantas vidas foram geradas no mês** (soma BDR+AE). Tooltip alterna unidade "vidas"/"deals". Ajuda do card atualizada.
+- **Validação:** `_check-inline-js.js` → 0 erros; smoke render OK (327 deals); 3 bytes nulos do `buildBdrHandoff` (separador de chave `b+\0+a`) preservados na edição.
+
+### CRO Dashboard | modal de Configurações reordenado + override manual sinalizado (2026-06-24)
+
+- **Ordem do modal (⚙) reorganizada:** (a) Implantação=Ganho, (b) Ativos incluem Reunião Agendada, (c) Ativos incluem Standby, (d) Meta Receita Ganha, (e) separador com título **"Probabilidades"**, (f) aviso de probabilidades calculadas pelo funil, (g–m) inputs de probabilidade na ordem do funil: **Reunião Agendada, Diagnóstico, Cotação, Proposta Enviada, Consultoria, Negociação, Implantação/Ganho** — cada um com o rótulo "(calculado pelo funil)".
+- **Reunião Agendada** virou probabilidade derivada do funil (adicionada ao `_novoFunnelDerivedProb`); novo input `np-rag`. **Implantação** e **Ganho** unificados em "Implantação/Ganho" (input `np-imp`; Ganho fixo em 100%). Inputs avulsos de **Ganho** (`np-gan`) e **Standby** (`np-stb`) removidos da UI (Standby/Ganho preservados no modelo).
+- **Input fica amarelo** quando o valor difere do padrão calculado pelo funil — via `oninput="_npCheckYellow(...)"` e reavaliado ao abrir o modal (classe `.np-edited`). Helper `_npFunnelDefaultPct` compara com o valor do funil (ou default fixo).
+- **Bolinha vermelha no ícone ⚙** (`#btn-settings .np-settings-dot`, classe `.has-override`) quando há override manual de probabilidade — `_npUpdateSettingsDot()` chamado no load, no salvar e no restaurar. `novoSaveProbEditor` agora só marca `manual=true` se algum valor de fato difere do funil (senão volta ao automático), então o ponto reflete fielmente "algo diferente do padrão".
+- **Validação:** inline JS 0 erros; smoke render OK (327 deals); i18n PT=EN=259; 0 refs aos removidos `np-gan`/`np-stb`; elementos confirmados na página servida.
+
+### CRO Dashboard | probabilidades por usuário, reset por campo, ícones </> e ? (2026-06-24)
+
+- **(1) Override de probabilidade é por usuário:** confirmado que `novo_stage_prob_cfg` vive só em `localStorage` (linhas de leitura/escrita em `_novoStageProbCfg`/`novoSaveProbEditor`) — nenhuma chamada a `/api/settings` ou `user-state` para isso. Já era per-navegador/usuário, não global. Sem mudança de código necessária.
+- **(2) Botão de reset por campo:** cada um dos 7 inputs de probabilidade ganhou um botão `↺` (`.np-reset`) que chama `_npResetField(id, etapa)` e restaura o valor calculado pelo funil (pendente de salvar), limpando o amarelo.
+- **(3) Ícone de toggle vira `</>`:** `#btn-info-toggle` trocou o SVG de interrogação por um ícone de código (`</>`); segue chamando `novoToggleInfo()` (mostra/oculta tags C01… e os `i` dos gráficos).
+- **(4) Novo ícone `?` com modal de regras:** novo `#btn-rules` (`novoOpenRulesModal`) abre um modal "Regras de probabilização" explicando: prob por etapa = chegaram à Implantação ÷ entraram na etapa (funil C06 Vendas+Bid, amostra mín. 20; Ganho 100%, Implantação 58,1%); ajuste por deal (clamp ±30 pts → ×0,9 / ×1,1); uso no pipeline ponderado (Σ ARR × prob) e nas projeções; e a edição manual (por usuário, amarelo, ponto vermelho, reset). Tabela mostra a prob atual e a fonte (funil n=/padrão/manual) de cada etapa — bate com o estado real.
+- **Validação:** inline JS 0 erros; smoke render OK (327 deals); i18n PT=EN=259; elementos confirmados na página servida (7 botões reset, btn-rules, ícone </>, modal).
+
+### CRO Dashboard | N07 mediana + modal de regras vira drawer (2026-06-24)
+
+- **N07 (Tempo em Etapa, `buildNovoTimeInStage`)** passou a calcular a **mediana** de `dias_no_pipe` por etapa, em vez da **média** (antes: somava o acumulado e dividia pela contagem). Novo helper `_novoMedian`. Tooltip "X dias (mediana) | N deals"; títulos/ajuda PT/EN trocados de "médios/Avg"→"medianos/Median"; corrigido o código do help de (N17) para (N07), batendo com o `NOVO_CARD_CODES` (`timeinstage:'N07'`).
+- **Modal de regras de probabilização virou drawer lateral** (desliza da direita, mesmo estilo das Configurações): novo `#novo-rules-drawer`/`#novo-rules-backdrop` reutilizando as classes `.novo-prob-drawer`/`.novo-prob-backdrop` (largura 460px). `novoOpenRulesModal` agora popula `#novo-rules-body` e abre o drawer (não usa mais `openModal`); adicionado `novoCloseRulesDrawer` + Esc fecha o drawer (prioridade antes do help/config).
+- **Validação:** inline JS 0 erros; smoke render OK (327 deals); i18n PT=EN=259; elementos confirmados na página servida.
+
+### N08 modal + R14 colaboradores (2026-06-24)
+
+- **N07 (Tempo em Etapa) — diagnóstico:** Diagnóstico é a única barra laranja porque sua mediana de `dias_no_pipe` cai entre 15–45 dias (faixa laranja). Todas as outras etapas têm medianas >45 dias (vermelho). Comportamento correto — deals recém-criados chegam em Diagnóstico antes de acumular tempo. Sem mudança de código.
+- **N08 modal corrigido (`speedqualify`):** (a) título corrigido de "(N18)" para "(N08)" — alinhado ao `NOVO_CARD_CODES`; (b) `tip_speedqualify` PT/EN reescritos para descrever fonte primária (/api/funnel-stages: `entered_date − createdate`) e fallback (`dias_no_pipe`); (c) entrada `NOVO_HELP_CHARTS` completamente reescrita: explica fonte primária (todos os deals que passaram por Diagnóstico, não só os ativos), fallback, janela set/2025, métrica de média, e **instruções de auditoria** — abrir deal no HubSpot → Timeline → evento de mudança para Diagnóstico → data = `hs_date_entered_1144746906`.
+- **R14 (BDR | Novos Leads por Mês | BDR vs AE) — toggle Colaboradores:** adicionado `{mode:'colaboradores'}` ao `_subTabs` e lógica em `buildBdrLeadsOrigin`: BDR = contagem de `sdr` únicos por mês; AE = contagem de `ae` únicos por mês entre deals sem BDR. Tooltip exibe "colaboradores"; datalabel continua somando BDR+AE. onClick: continua abrindo `bdrOpenFacetModal` com `origem=BDR/AE`.
+- **Validação:** inline JS 0 erros (dashboard + bdr); i18n dashboard PT=EN=259, bdr PT=EN=21; smoke render OK (327 deals, ambos).
+
+### N07 histórico + R12 labels + BDR ícones + settings-modal Metas (2026-06-24)
+
+- **N07 (Tempo em Etapa) — histórico completo:** `_novoTimeInStageDeals()` alterado para incluir TODOS os deals (`_novoDeals`) com `dias_no_pipe != null` e filtro de createdate — não mais só ativos (`_novoCurrentActivePipeline`). `buildNovoTimeInStage` substituiu `NOVO_STAGE_ORDER` por lista completa `['Reunião Agendada','Diagnóstico','Cotação','Proposta Enviada','Consultoria','Negociação','Standby','Implantação','Ganho','Perdido']`. Ganho/Perdido aparecem como barras históricas. Canvas com altura dinâmica (`deals.length * 36 + 48`) + `maintainAspectRatio:false` + `autoSkip:false` nas ticks. Tooltips PT/EN atualizados: "inclui deals ativos, ganhos e perdidos".
+- **R12 (Originação por BDR) — labels sempre visíveis:** `buildBdrOrigin` agora define altura dinâmica do canvas (`ranked.length * 36 + 48`), usa `maintainAspectRatio:false` e `autoSkip:false` no eixo Y — todos os nomes dos BDRs sempre visíveis independente do tamanho de tela.
+- **BDR Performance — ícone </> e botão ?:** `btn-info-toggle` (mostrar/ocultar IDs e auditoria) mudou de "?" para "</>" (texto, estilo compacto). Adicionado `btn-rules-bdr` com "?" que abre um modal `bdrOpenRulesModal()` — explica as regras de probabilização (fonte funil C06, ajuste ±30 pp, uso em pipeline ponderado e forecast, persistência por usuário/localStorage) + tabela com probs atuais de `NOVO_STAGE_PROB`.
+- **settings-modal.js — reescrito com seção Metas:** nova estrutura: (1) toggles (Implantação=Ganho, Reunião Agendada, Standby); (2) separador "Metas" com 13 BDRs individualmente (Anderson/Cintia/Gabriele/Priscilla/Letícia/Allan/Bruna/Emmanuelle/Felipe/Giovana/Marcelli/Thauan/Yokyko) — tag de nível (Antigo/Intermediário/Novo) colorida, input de meta numérica, padrões hard-coded conforme lista; (3) separador "Probabilidades" com aviso + 7 campos com botão ↺ reset (Reunião Agendada, Diagnóstico, Cotação, Proposta Enviada, Consultoria, Negociação, Implantação/Ganho); (4) Meta Receita Ganha (MTD) ao final. Metas BDR persistidas em `localStorage:bdr_metas`; expostas em `window.BDR_METAS` para uso em gráficos futuros.
+- **Item 4 (saves por usuário):** confirmado — settings-modal.js e dashboard.html usam apenas `localStorage`. Nenhuma chamada a APIs de servidor. Cada usuário/navegador tem sua própria configuração.
+- **Validação:** `_check-inline-js.js` → 0 erros (dashboard + bdr); i18n dashboard PT=EN=257, bdr PT=EN=21; smoke render OK (327 deals, ambos).
+
+### N09 + N11 + R14 colaboradores (2026-06-24)
+
+- **N09 (Impacto de Reatribuição de Deals) — redesenhado:** função `buildNovoReassign` substituída: agora exibe um gráfico dual-axis (barras + linha) com deals agrupados por número de mudanças de proprietário (0 / 1 / 2+). Barras (eixo Y esq.) = contagem de deals; linha dourada (eixo Y dir.) = win rate (ganhos ÷ fechados) por grupo. Clique na barra abre `novoOpenDealsModal` com os deals do grupo. Se `_novoFunnelData.owner_changes` não disponível, exibe mensagem orientando a carregar o funil.
+- **N09 — backend (`api/funnel-stages.js`):** adicionado `hubspot_owner_id` ao `propertiesWithHistory` do batch/read. Novo mapa `ownerChangesByDeal` captura `historyLength - 1` por deal. Resposta passa a incluir `owner_changes: {deal_id: n_changes}`. O gráfico se ativa automaticamente quando o funil é carregado (novo `buildNovoReassign()` no callback `.then` do funnel-stages).
+- **N09 — metadados:** tooltips PT/EN reescritos; entrada `NOVO_HELP_CHARTS` atualizada com fonte (propertiesWithHistory), campos e instruções; código corrigido de (N20) para (N09) no título do help.
+- **N11 (`piperevstage` | "Estimativa de Receita por Etapa") — removido:** 8 locais limpos em `dashboard.html`: (1) i18n PT `t_piperevstage`/`tip_piperevstage`; (2) i18n EN idem; (3) entrada `NOVO_HELP_CHARTS`; (4) `NOVO_CARD_CODES`; (5) `NOVO_FILT_FIELD`; (6) variável `_novoPipeRevStageMode` + funções `novoSwitchPipeRevStage`/`buildNovoPipeRevStage`; (7) seção "Resultados Financeiros" + card N23 no render; (8) chamada `buildNovoPipeRevStage()` no buildAll.
+- **R14 (BDR | Novos Leads | toggle Colaboradores) — corrigido:** lógica anterior (contagem de SDRs/AEs únicos) substituída por `reduce` somando `d.colaboradores` (campo HubSpot `quantidade_de_colaboradores`). Coluna **Colabs** adicionada às tabelas de drill-down (`novoOpenDealsModal` + `_bdrFacetRender`) e à função `_novoDealsRows`.
+- **Validação:** `_check-inline-js.js` → 0 erros (dashboard + bdr); i18n dashboard PT=EN=257, bdr PT=EN=21; smoke render OK (327 deals, ambos); `/novo` → 200.
+
+### Infra | servidor local + skill `/axenya-dashboard` + DEPLOY_GUIDE (2026-06-24)
+
+- **Servidor local ativo na porta 3002** (`node scripts/local-server.js`, PID registrado em sessão). Carrega `.env.local` automaticamente — `LOCAL_DEV_BYPASS=true`, `HUBSPOT_TOKEN`, `SESSION_SECRET`. `/novo` e `/api/forecast-table` → 200.
+- **Skill `/axenya-dashboard` criada** (`.claude/commands/axenya-dashboard.md`): protocolo de 5 passos que toda IA deve seguir ao avaliar ou editar o projeto — ativar localhost 3002, enviar requisições pelo env local, ler arquivos de contexto na ordem correta, verificar rotas-chave antes de reportar.
+- **README.md (seção 8):** adicionado callout de protocolo para IAs + documentadas as duas opções de dev (`local-server.js` recomendada vs. `vercel dev`) com trade-offs.
+- **DEPLOY_GUIDE.md:** (a) corrigido `novo-dashboard.html` → `dashboard.html` na seção de rotas; (b) adicionado mapa completo de rotas; (c) adicionada seção 5 de verificação pós-deploy com comandos curl; (d) adicionada seção 6 explicando `ALLOWED_EMAILS` (formato vírgula, comportamento aditivo, confirmado no `lib/auth.js` linha 38).

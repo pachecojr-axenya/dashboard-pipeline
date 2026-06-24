@@ -213,6 +213,8 @@ table.lb tfoot td{font-weight:600;border-top:2px solid var(--border);position:st
 .novo-prob-backdrop.open{opacity:1;pointer-events:auto}
 .novo-prob-drawer{position:fixed;top:0;right:-380px;width:360px;max-width:100vw;height:100vh;background:var(--card);border-left:1px solid var(--border);z-index:3001;display:flex;flex-direction:column;transition:right .28s cubic-bezier(0.4,0,0.2,1);box-shadow:-8px 0 32px rgba(0,0,0,.25)}
 .novo-prob-drawer.open{right:0}
+#novo-rules-drawer{width:460px;right:-540px}
+#novo-rules-body{flex:1;overflow-y:auto;padding:1.25rem 1.5rem}
 .novo-prob-drawer-hdr{display:flex;align-items:center;justify-content:space-between;padding:1.25rem 1.5rem;border-bottom:1px solid var(--border);flex-shrink:0}
 .novo-prob-drawer-hdr h3{margin:0;font-size:1.35rem;font-weight:600;color:var(--text)}
 .novo-prob-body{flex:1;overflow-y:auto;padding:0 1.5rem}
@@ -220,6 +222,13 @@ table.lb tfoot td{font-weight:600;border-top:2px solid var(--border);position:st
 .novo-prob-field label{flex:1;font-size:.9rem;color:var(--text)}
 .novo-prob-field input{width:72px;text-align:right;background:var(--card2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:.35rem .5rem;font-size:.9rem;font-family:inherit}
 .novo-prob-field input:focus{outline:none;border-color:var(--teal)}
+.novo-prob-field input.np-edited{background:rgba(241,196,15,.18);border-color:rgba(241,196,15,.75)}
+.np-cf{opacity:.55;font-size:.72em;font-weight:400;color:var(--text2)}
+.np-reset{flex:0 0 auto;margin-left:.4rem;background:var(--card2);border:1px solid var(--border);border-radius:6px;color:var(--text2);width:30px;height:30px;cursor:pointer;font-size:1rem;line-height:1;display:inline-flex;align-items:center;justify-content:center;padding:0}
+.np-reset:hover{border-color:var(--teal);color:var(--teal)}
+#btn-settings{position:relative}
+.np-settings-dot{display:none;position:absolute;top:4px;right:4px;width:8px;height:8px;border-radius:50%;background:#e5484d;box-shadow:0 0 0 2px var(--card)}
+#btn-settings.has-override .np-settings-dot{display:block}
 .novo-prob-pct{font-size:.85rem;color:var(--text2);width:14px}
 .novo-prob-drawer-ftr{display:flex;justify-content:center;gap:1rem;padding:1.25rem 1.5rem;border-top:1px solid var(--border);flex-shrink:0}
 .novo-prob-cancel{width:48px;height:48px;border-radius:50%;border:1px solid var(--border);background:var(--card2);color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s}
@@ -300,10 +309,14 @@ table.lb tfoot td{font-weight:600;border-top:2px solid var(--border);position:st
     </div>
     <div class="hdr-actions">
       <button class="hdr-btn" id="btn-info-toggle" onclick="novoToggleInfo()" data-tooltip="Mostrar/ocultar identificadores e info dos gráficos">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+      </button>
+      <button class="hdr-btn" id="btn-rules" onclick="novoOpenRulesModal()" data-tooltip="Regras de probabilização">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
       </button>
-      <button class="hdr-btn" onclick="novoOpenProbEditor()" data-tooltip="Configurações">
+      <button class="hdr-btn" id="btn-settings" onclick="novoOpenProbEditor()" data-tooltip="Configurações">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        <span class="np-settings-dot"></span>
       </button>
       <button class="hdr-btn" onclick="exportFullLayout()" data-tooltip="Exportar">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -338,16 +351,19 @@ table.lb tfoot td{font-weight:600;border-top:2px solid var(--border);position:st
     <div class="novo-prob-field" style="border-bottom:none;align-items:center"><label id="np-sb-label">Ativos incluem Standby</label><button class="impl-toggle" id="np-sb-toggle" onclick="novoToggleActiveStandby()" title="" style="margin-left:auto"><span class="sw"></span></button></div>
     <div style="height:1px;background:var(--border);margin:.25rem 0 .55rem"></div>
     <div class="novo-prob-field" style="border-bottom:none"><label id="np-meta-label">Meta Receita Ganha (MTD)</label><input type="text" id="np-meta" placeholder="ex: 500.000"><span class="novo-prob-pct">R$</span></div>
-    <div style="height:1px;background:var(--border);margin:.25rem 0 .55rem"></div>
-    <div class="novo-prob-field"><label>Cotação</label><input type="text" id="np-cot"><span class="novo-prob-pct">%</span></div>
-    <div class="novo-prob-field"><label>Proposta Enviada <span style="opacity:.5;font-size:.8em">(BID)</span></label><input type="text" id="np-pro"><span class="novo-prob-pct">%</span></div>
-    <div class="novo-prob-field"><label>Consultoria</label><input type="text" id="np-con"><span class="novo-prob-pct">%</span></div>
-    <div class="novo-prob-field"><label>Negociação</label><input type="text" id="np-neg"><span class="novo-prob-pct">%</span></div>
-    <div class="novo-prob-field"><label>Implantação</label><input type="text" id="np-imp"><span class="novo-prob-pct">%</span></div>
-    <div class="novo-prob-field"><label>Ganho</label><input type="text" id="np-gan"><span class="novo-prob-pct">%</span></div>
-    <div class="novo-prob-field" style="border-bottom:none"><label>Standby</label><input type="text" id="np-stb"><span class="novo-prob-pct">%</span></div>
-    <div style="height:1px;background:var(--border);margin:.25rem 0"></div>
-    <div class="novo-prob-field" style="border-bottom:none"><label>Diagnóstico <span style="opacity:.5;font-size:.8em">(conversão)</span></label><input type="text" id="np-dia"><span class="novo-prob-pct">%</span></div>
+    <div style="margin:.85rem 0 .35rem;padding-top:.65rem;border-top:1px solid var(--border)"><span style="font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text2);font-weight:700">Probabilidades</span></div>
+    <div id="np-prob-status" style="display:none;margin:.2rem 0 .45rem;font-size:.72rem;line-height:1.4"></div>
+    <div id="np-prob-alert" style="display:none;margin:.3rem 0 .5rem;padding:.55rem .7rem;background:rgba(241,196,15,.12);border:1px solid rgba(241,196,15,.45);border-radius:7px;font-size:.74rem;color:var(--text);line-height:1.45">
+      ⚠️ Você alterou as probabilidades padrão manualmente. O padrão calculado pelo funil (C06) não está sendo aplicado.
+      <button onclick="novoResetStageProbToFunnel()" style="margin-top:.45rem;display:block;background:var(--teal);color:#fff;border:none;border-radius:6px;padding:.3rem .65rem;font-size:.72rem;cursor:pointer">Restaurar padrão do funil</button>
+    </div>
+    <div class="novo-prob-field"><label>Reunião Agendada <span class="np-cf">(calculado pelo funil)</span> <span class="np-hint" id="np-hint-rag"></span></label><input type="text" id="np-rag" oninput="_npCheckYellow('np-rag','Reunião Agendada')"><span class="novo-prob-pct">%</span><button type="button" class="np-reset" onclick="_npResetField('np-rag','Reunião Agendada')" title="Restaurar valor do funil">↺</button></div>
+    <div class="novo-prob-field"><label>Diagnóstico <span class="np-cf">(calculado pelo funil)</span> <span class="np-hint" id="np-hint-dia"></span></label><input type="text" id="np-dia" oninput="_npCheckYellow('np-dia','Diagnóstico')"><span class="novo-prob-pct">%</span><button type="button" class="np-reset" onclick="_npResetField('np-dia','Diagnóstico')" title="Restaurar valor do funil">↺</button></div>
+    <div class="novo-prob-field"><label>Cotação <span class="np-cf">(calculado pelo funil)</span> <span class="np-hint" id="np-hint-cot"></span></label><input type="text" id="np-cot" oninput="_npCheckYellow('np-cot','Cotação')"><span class="novo-prob-pct">%</span><button type="button" class="np-reset" onclick="_npResetField('np-cot','Cotação')" title="Restaurar valor do funil">↺</button></div>
+    <div class="novo-prob-field"><label>Proposta Enviada <span style="opacity:.5;font-size:.8em">(BID)</span> <span class="np-cf">(calculado pelo funil)</span> <span class="np-hint" id="np-hint-pro"></span></label><input type="text" id="np-pro" oninput="_npCheckYellow('np-pro','Proposta Enviada')"><span class="novo-prob-pct">%</span><button type="button" class="np-reset" onclick="_npResetField('np-pro','Proposta Enviada')" title="Restaurar valor do funil">↺</button></div>
+    <div class="novo-prob-field"><label>Consultoria <span class="np-cf">(calculado pelo funil)</span> <span class="np-hint" id="np-hint-con"></span></label><input type="text" id="np-con" oninput="_npCheckYellow('np-con','Consultoria')"><span class="novo-prob-pct">%</span><button type="button" class="np-reset" onclick="_npResetField('np-con','Consultoria')" title="Restaurar valor do funil">↺</button></div>
+    <div class="novo-prob-field"><label>Negociação <span class="np-cf">(calculado pelo funil)</span> <span class="np-hint" id="np-hint-neg"></span></label><input type="text" id="np-neg" oninput="_npCheckYellow('np-neg','Negociação')"><span class="novo-prob-pct">%</span><button type="button" class="np-reset" onclick="_npResetField('np-neg','Negociação')" title="Restaurar valor do funil">↺</button></div>
+    <div class="novo-prob-field" style="border-bottom:none"><label>Implantação/Ganho <span class="np-cf">(calculado pelo funil)</span> <span class="np-hint" id="np-hint-imp"></span></label><input type="text" id="np-imp" oninput="_npCheckYellow('np-imp','Implantação')"><span class="novo-prob-pct">%</span><button type="button" class="np-reset" onclick="_npResetField('np-imp','Implantação')" title="Restaurar valor do funil">↺</button></div>
   </div>
   <div class="novo-prob-drawer-ftr">
     <button class="novo-prob-cancel" onclick="novoCloseProbEditor()" title="Cancelar">
@@ -357,6 +373,18 @@ table.lb tfoot td{font-weight:600;border-top:2px solid var(--border);position:st
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
     </button>
   </div>
+</div>
+
+<!-- Rules drawer (regras de probabilização, desliza da direita | mesmo estilo das Configurações) -->
+<div class="novo-prob-backdrop" id="novo-rules-backdrop" onclick="novoCloseRulesDrawer()"></div>
+<div class="novo-prob-drawer" id="novo-rules-drawer" aria-label="Regras de probabilização">
+  <div class="novo-prob-drawer-hdr">
+    <h3>Regras de probabilização</h3>
+    <button class="hdr-btn" onclick="novoCloseRulesDrawer()" aria-label="Fechar">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="novo-prob-body" id="novo-rules-body"></div>
 </div>
 
 <!-- Help drawer (desliza da direita) -->
@@ -538,21 +566,50 @@ var NOVO_STAGE_PROB_DEFAULT = {
   'Negociação': 0.42, 'Implantação': 0.581, 'Ganho': 1.0,
   'Standby': 0.12, 'Stand by': 0.12, 'Diagnóstico': 0.06,
 };
-var NOVO_STAGE_PROB = (function() {
-  try {
-    var raw = localStorage.getItem('novo_stage_prob');
-    if (raw) {
-      var parsed = JSON.parse(raw);
-      var merged = {};
-      Object.keys(NOVO_STAGE_PROB_DEFAULT).forEach(function(k) { merged[k] = NOVO_STAGE_PROB_DEFAULT[k]; });
-      Object.keys(parsed).forEach(function(k) { merged[k] = parsed[k]; });
-      return merged;
-    }
-  } catch(e) {}
-  var copy = {};
-  Object.keys(NOVO_STAGE_PROB_DEFAULT).forEach(function(k) { copy[k] = NOVO_STAGE_PROB_DEFAULT[k]; });
-  return copy;
+// Config de probabilidade por etapa (por usuário): { manual, values }.
+// manual=false → usa as conversões derivadas do funil combinado (C06) como padrão.
+// manual=true  → usa os valores editados pelo usuário (e mostra alerta no drawer).
+var _novoStageProbCfg = (function() {
+  try { var r = localStorage.getItem('novo_stage_prob_cfg'); if (r) { var p = JSON.parse(r); if (p && typeof p === 'object') return { manual: !!p.manual, values: p.values || {} }; } } catch(e) {}
+  try { var old = localStorage.getItem('novo_stage_prob'); if (old) return { manual: true, values: JSON.parse(old) }; } catch(e) {}  // migra formato antigo → manual
+  return { manual: false, values: {} };
 })();
+// Conversões derivadas do funil COMBINADO (Vendas+Bid): para cada etapa, a prob.
+// padrão = deals que chegaram à Implantação ÷ deals que entraram na etapa.
+// Etapas com amostra pequena (< MIN) ficam de fora e mantêm o fallback fixo —
+// evita que uma etapa rara (ex.: Proposta Enviada, só no Bid) gere % absurdo.
+var NOVO_FC_PROB_MIN_SAMPLE = 20;
+function _novoFunnelCombinedCount(stage) {
+  if (!_novoFunnelData) return 0;
+  var t = 0;
+  [(_novoFunnelData.vendas||{}).stages, (_novoFunnelData.bid||{}).stages].forEach(function(arr) {
+    (arr||[]).forEach(function(s) { if (s.stage === stage) t += (s.count||0); });
+  });
+  return t;
+}
+function _novoFunnelDerivedProb() {
+  if (!_novoFunnelData) return null;
+  var finalC = _novoFunnelCombinedCount('Implantação'); if (finalC <= 0) return null;
+  var order = ['Reunião Agendada','Diagnóstico','Cotação','Proposta Enviada','Consultoria','Negociação'];
+  var out = {};
+  order.forEach(function(s) { var c = _novoFunnelCombinedCount(s); if (c >= NOVO_FC_PROB_MIN_SAMPLE) { var p = finalC/c; if (p>1) p=1; if (p<0) p=0; out[s]=p; } });
+  return out;
+}
+function _novoApplyStageProb() {
+  var base = {};
+  Object.keys(NOVO_STAGE_PROB_DEFAULT).forEach(function(k) { base[k] = NOVO_STAGE_PROB_DEFAULT[k]; });
+  if (_novoStageProbCfg.manual) {
+    var vals = _novoStageProbCfg.values || {};
+    Object.keys(vals).forEach(function(k) { base[k] = vals[k]; });
+  } else {
+    var d = _novoFunnelDerivedProb();
+    if (d) Object.keys(d).forEach(function(k) { base[k] = d[k]; });
+  }
+  NOVO_STAGE_PROB = base;
+}
+var NOVO_STAGE_PROB = {};
+_novoApplyStageProb();
+try { _npUpdateSettingsDot(); } catch(e) {}
 
 // Meta de Receita Ganha (MTD) para o P01 — definida no modal de Configurações.
 var NOVO_META_MTD = (function() {
@@ -562,17 +619,25 @@ var NOVO_META_MTD = (function() {
 function novoOpenProbEditor() {
   setContentBlur(true);
   document.getElementById('np-meta').value = NOVO_META_MTD ? NOVO_META_MTD.toLocaleString('pt-BR') : '';
-  document.getElementById('np-cot').value = (NOVO_STAGE_PROB['Cotação']         * 100).toFixed(1).replace('.', ',');
-  document.getElementById('np-pro').value = (NOVO_STAGE_PROB['Proposta Enviada'] * 100).toFixed(1).replace('.', ',');
-  document.getElementById('np-con').value = (NOVO_STAGE_PROB['Consultoria']      * 100).toFixed(1).replace('.', ',');
-  document.getElementById('np-neg').value = (NOVO_STAGE_PROB['Negociação']       * 100).toFixed(1).replace('.', ',');
-  document.getElementById('np-imp').value = (NOVO_STAGE_PROB['Implantação']      * 100).toFixed(1).replace('.', ',');
-  document.getElementById('np-gan').value = (NOVO_STAGE_PROB['Ganho']            * 100).toFixed(1).replace('.', ',');
-  document.getElementById('np-stb').value = (NOVO_STAGE_PROB['Standby']          * 100).toFixed(1).replace('.', ',');
-  document.getElementById('np-dia').value = (NOVO_STAGE_PROB['Diagnóstico']      * 100).toFixed(1).replace('.', ',');
+  var _pairs = [['np-rag','Reunião Agendada'],['np-dia','Diagnóstico'],['np-cot','Cotação'],['np-pro','Proposta Enviada'],['np-con','Consultoria'],['np-neg','Negociação'],['np-imp','Implantação']];
+  _pairs.forEach(function(p){ var el=document.getElementById(p[0]); if(!el) return; var v=NOVO_STAGE_PROB[p[1]]; el.value = (v!=null) ? (v*100).toFixed(1).replace('.', ',') : ''; });
   _syncImplToggle();
   _syncActiveMeetingsToggle();
   _syncActiveStandbyToggle();
+  // Valores sugeridos pelo funil (C06, combinado) ao lado de cada etapa derivada, com amostra (n).
+  var _fd = _novoFunnelDerivedProb();
+  var _hint = function(id, key) { var el=document.getElementById(id); if(!el) return; el.textContent = (_fd && _fd[key]!=null) ? ('funil: '+(_fd[key]*100).toFixed(0)+'% (n='+_novoFunnelCombinedCount(key)+')') : ''; };
+  _hint('np-hint-rag','Reunião Agendada'); _hint('np-hint-dia','Diagnóstico'); _hint('np-hint-cot','Cotação'); _hint('np-hint-pro','Proposta Enviada'); _hint('np-hint-con','Consultoria'); _hint('np-hint-neg','Negociação'); _hint('np-hint-imp','Implantação');
+  // Amarela os campos diferentes do padrão calculado pelo funil (override manual).
+  _pairs.forEach(function(p){ _npCheckYellow(p[0], p[1]); });
+  var _al = document.getElementById('np-prob-alert'); if (_al) _al.style.display = _novoStageProbCfg.manual ? 'block' : 'none';
+  // Status: deixa explícito se o padrão do funil já está aplicado ou se ainda está carregando.
+  var _st = document.getElementById('np-prob-status');
+  if (_st) {
+    if (_novoStageProbCfg.manual) { _st.style.display = 'none'; }
+    else if (_novoFunnelData) { _st.style.display='block'; _st.style.color='var(--green)'; _st.innerHTML='✓ Probabilidades calculadas pelo funil (C06, Vendas+Bid). Os valores abaixo já são os do funil.'; }
+    else { _st.style.display='block'; _st.style.color='var(--text2)'; _st.innerHTML='⏳ Funil ainda carregando — valores abaixo são provisórios (padrão fixo). Recalcula automaticamente quando o funil terminar.'; }
+  }
   var _ct = document.getElementById('np-cfg-title'); if (_ct) _ct.textContent = t('cfg_title');
   var _ml = document.getElementById('np-meta-label'); if (_ml) _ml.textContent = t('cfg_meta');
   document.getElementById('novo-prob-backdrop').classList.add('open');
@@ -583,23 +648,105 @@ function novoCloseProbEditor() {
   document.getElementById('novo-prob-drawer').classList.remove('open');
   setContentBlur(false);
 }
+// Restaura o padrão automático (conversões do funil) e remove o override manual.
+function novoResetStageProbToFunnel() {
+  _novoStageProbCfg = { manual: false, values: {} };
+  try { localStorage.setItem('novo_stage_prob_cfg', JSON.stringify(_novoStageProbCfg)); localStorage.removeItem('novo_stage_prob'); } catch(e) {}
+  _novoApplyStageProb();
+  _npUpdateSettingsDot();
+  novoCloseProbEditor();
+  novoRender();
+}
+// Valor de referência (padrão) de uma etapa, em %, para detectar alteração manual.
+// Usa o valor calculado pelo funil quando disponível; senão o default fixo.
+function _npFunnelDefaultPct(stageKey){
+  var fd=_novoFunnelDerivedProb();
+  var v=(fd && fd[stageKey]!=null) ? fd[stageKey] : NOVO_STAGE_PROB_DEFAULT[stageKey];
+  return (v==null) ? null : Math.round(v*1000)/10;
+}
+// Caixa do input fica amarela quando o valor difere do padrão (calculado pelo funil).
+function _npCheckYellow(inputId, stageKey){
+  var el=document.getElementById(inputId); if(!el) return;
+  var def=_npFunnelDefaultPct(stageKey);
+  var cur=parseFloat((el.value||'').replace(',','.'));
+  var diff = (def==null) ? !isNaN(cur) : (isNaN(cur) || Math.abs(cur-def)>0.05);
+  el.classList.toggle('np-edited', !!diff);
+}
+// Bolinha vermelha no ícone de Configurações quando há override manual de probabilidade.
+function _npUpdateSettingsDot(){
+  var b=document.getElementById('btn-settings'); if(!b) return;
+  b.classList.toggle('has-override', !!(_novoStageProbCfg && _novoStageProbCfg.manual));
+}
+// Restaura um campo de probabilidade para o valor calculado pelo funil (pendente de salvar).
+function _npResetField(inputId, stageKey){
+  var el=document.getElementById(inputId); if(!el) return;
+  var def=_npFunnelDefaultPct(stageKey);
+  el.value = (def==null) ? '' : String(def).replace('.', ',');
+  _npCheckYellow(inputId, stageKey);
+}
+// Modal (ícone ?) com as regras de probabilização usadas em todos os gráficos.
+function novoOpenRulesModal(){
+  var fd=_novoFunnelDerivedProb()||{};
+  var stages=[['Reunião Agendada','Reunião Agendada'],['Diagnóstico','Diagnóstico'],['Cotação','Cotação'],['Proposta Enviada','Proposta Enviada'],['Consultoria','Consultoria'],['Negociação','Negociação'],['Implantação','Implantação/Ganho']];
+  var rows='';
+  stages.forEach(function(s){
+    var k=s[0], p=NOVO_STAGE_PROB[k], src;
+    if(_novoStageProbCfg.manual) src='manual (override do usuário)';
+    else if(fd[k]!=null) src='funil C06 (n='+_novoFunnelCombinedCount(k)+')';
+    else src='padrão fixo';
+    rows+='<tr><td style="text-align:left">'+s[1]+'</td><td>'+(p!=null?(p*100).toFixed(1).replace('.',',')+'%':'—')+'</td><td style="text-align:left;color:var(--text2)">'+src+'</td></tr>';
+  });
+  var manualNote = _novoStageProbCfg.manual
+    ? '<p style="margin:.6rem 0 0;padding:.5rem .7rem;background:rgba(241,196,15,.12);border:1px solid rgba(241,196,15,.45);border-radius:7px;font-size:.78rem">⚠️ Há um <b>override manual</b> ativo (só no seu navegador). As taxas acima são as que você editou, não as do funil. Use o ⚙ para restaurar o padrão.</p>'
+    : '';
+  var html =
+    '<div style="font-size:.85rem;line-height:1.6;color:var(--text)">'+
+    '<p style="margin:0 0 .8rem;color:var(--text2)">Como o dashboard calcula a probabilidade de cada deal e o pipeline ponderado.</p>'+
+    '<h4 style="margin:.2rem 0 .4rem">1 | Probabilidade por etapa (calculada pelo funil)</h4>'+
+    '<p style="margin:0 0 .5rem">Para cada etapa, a taxa = <b>deals que chegaram à Implantação ÷ deals que entraram na etapa</b>, no funil histórico combinado <b>Vendas + Bid</b> (gráfico C06). Etapas com menos de <b>20</b> deals na amostra usam o padrão fixo. <b>Ganho</b> = 100%; <b>Implantação</b> = 58,1% (capital a risco, não vem do funil).</p>'+
+    '<table class="lb" style="width:100%;font-size:.8rem;margin:.3rem 0 .9rem"><thead><tr><th style="text-align:left">Etapa</th><th>Prob. atual</th><th style="text-align:left">Fonte</th></tr></thead><tbody>'+rows+'</tbody></table>'+
+    '<h4 style="margin:.2rem 0 .4rem">2 | Ajuste pela probabilidade do deal (HubSpot)</h4>'+
+    '<p style="margin:0 0 .5rem">A probabilidade final de cada deal parte da taxa da etapa e é ajustada pela probabilidade própria do deal (campo do HubSpot):</p>'+
+    '<ul style="margin:0 0 .9rem;padding-left:1.1rem;color:var(--text2)"><li>deal ≤ etapa − 30 pontos → <b>etapa × 0,9</b></li><li>deal ≥ etapa + 30 pontos → <b>etapa × 1,1</b></li><li>caso contrário → <b>= etapa</b></li><li>deal sem probabilidade preenchida → <b>= etapa</b></li></ul>'+
+    '<h4 style="margin:.2rem 0 .4rem">3 | Onde isso é usado</h4>'+
+    '<p style="margin:0 0 .9rem">O <b>pipeline ponderado</b> (P03 e correlatos) = Σ (ARR do deal × probabilidade final). A mesma probabilidade alimenta as projeções de receita ponderada (ex.: N06/N06B no modo Probabilizado).</p>'+
+    '<h4 style="margin:.2rem 0 .4rem">4 | Edição manual (⚙)</h4>'+
+    '<p style="margin:0 0 .3rem">Você pode sobrescrever cada taxa em Configurações. As alterações ficam <b>só no seu navegador</b> (não afetam outros usuários). Campo alterado fica <b>amarelo</b>, o ⚙ ganha um <b>ponto vermelho</b>, e cada campo tem um botão <b>↺</b> para voltar ao valor do funil.</p>'+
+    manualNote+
+    '</div>';
+  var body = document.getElementById('novo-rules-body'); if (body) body.innerHTML = html;
+  setContentBlur(true);
+  document.getElementById('novo-rules-backdrop').classList.add('open');
+  document.getElementById('novo-rules-drawer').classList.add('open');
+}
+function novoCloseRulesDrawer(){
+  document.getElementById('novo-rules-backdrop').classList.remove('open');
+  document.getElementById('novo-rules-drawer').classList.remove('open');
+  setContentBlur(false);
+}
 function novoSaveProbEditor() {
-  var parse = function(id) { return parseFloat(document.getElementById(id).value.replace(',', '.')); };
-  var v = { cot: parse('np-cot'), pro: parse('np-pro'), con: parse('np-con'), neg: parse('np-neg'),
-            imp: parse('np-imp'), gan: parse('np-gan'), stb: parse('np-stb'), dia: parse('np-dia') };
-  var list = [v.cot, v.pro, v.con, v.neg, v.imp, v.gan, v.stb, v.dia];
+  var parseOr = function(id, key) { var n=parseFloat((document.getElementById(id).value||'').replace(',', '.')); if(!isNaN(n)) return n; var d=_npFunnelDefaultPct(key); return d==null?NaN:d; };
+  var v = { rag: parseOr('np-rag','Reunião Agendada'), dia: parseOr('np-dia','Diagnóstico'), cot: parseOr('np-cot','Cotação'),
+            pro: parseOr('np-pro','Proposta Enviada'), con: parseOr('np-con','Consultoria'), neg: parseOr('np-neg','Negociação'), imp: parseOr('np-imp','Implantação') };
+  var list = [v.rag, v.dia, v.cot, v.pro, v.con, v.neg, v.imp];
   if (list.some(isNaN)) { alert('Preencha todos os campos com valores numéricos.'); return; }
   if (list.some(function(n) { return n < 0 || n > 100; })) { alert('Probabilidades devem estar entre 0 e 100.'); return; }
-  NOVO_STAGE_PROB['Cotação']          = v.cot / 100;
-  NOVO_STAGE_PROB['Proposta Enviada'] = v.pro / 100;
-  NOVO_STAGE_PROB['Consultoria']      = v.con / 100;
-  NOVO_STAGE_PROB['Negociação']       = v.neg / 100;
-  NOVO_STAGE_PROB['Implantação']      = v.imp / 100;
-  NOVO_STAGE_PROB['Ganho']            = v.gan / 100;
-  NOVO_STAGE_PROB['Standby']          = v.stb / 100;
-  NOVO_STAGE_PROB['Stand by']         = v.stb / 100;
-  NOVO_STAGE_PROB['Diagnóstico']      = v.dia / 100;
-  try { localStorage.setItem('novo_stage_prob', JSON.stringify(NOVO_STAGE_PROB)); } catch(e) {}
+  // Override manual só se algum valor diferir do padrão calculado pelo funil; senão volta ao automático.
+  var pairs = [['Reunião Agendada',v.rag],['Diagnóstico',v.dia],['Cotação',v.cot],['Proposta Enviada',v.pro],['Consultoria',v.con],['Negociação',v.neg],['Implantação',v.imp]];
+  var changed = pairs.some(function(p){ var def=_npFunnelDefaultPct(p[0]); return (def==null) ? true : Math.abs(p[1]-def)>0.05; });
+  if (changed) {
+    var stb = (NOVO_STAGE_PROB['Standby']!=null) ? NOVO_STAGE_PROB['Standby'] : (NOVO_STAGE_PROB_DEFAULT['Standby']||0.12);
+    _novoStageProbCfg = { manual: true, values: {
+      'Reunião Agendada': v.rag/100, 'Diagnóstico': v.dia/100, 'Cotação': v.cot/100,
+      'Proposta Enviada': v.pro/100, 'Consultoria': v.con/100, 'Negociação': v.neg/100,
+      'Implantação': v.imp/100, 'Ganho': 1.0, 'Standby': stb, 'Stand by': stb
+    } };
+  } else {
+    _novoStageProbCfg = { manual: false, values: {} };
+  }
+  try { localStorage.setItem('novo_stage_prob_cfg', JSON.stringify(_novoStageProbCfg)); localStorage.removeItem('novo_stage_prob'); } catch(e) {}
+  _novoApplyStageProb();
+  _npUpdateSettingsDot();
 
   // Meta de Receita (MTD) — aceita vazio (= sem meta). Formato pt-BR: '.' milhar, ',' decimal.
   var metaRaw = document.getElementById('np-meta').value.replace(/[^\d.,]/g, '').replace(/\./g, '').replace(',', '.');
@@ -717,17 +864,16 @@ var NOVO_I18N = {
     t_vidaswindow:'🟡 Distribuição de Vidas',tip_vidaswindow:'Deals ativos por faixa de vidas. Sem filtro local de data.',
     t_winfactor:'Taxa de Ganho por AE',tip_winfactor:'Taxa de ganho ajustada por AE: deals ganhos ÷ (deals ganhos + deals perdidos).',
     t_coverage:'🟡 Cobertura do Pipeline (Ponderado vs Meta)',tip_coverage:'Ratio entre pipeline ponderado e meta de receita configurável.',
-    t_piperev12b:'🟡 Valor do Pipeline (Projeção Mensal)',tip_piperev12b:'Cópia do N06 (Valor do Pipeline | Projeção Mensal), com toggles independentes.',
+    t_piperev12b:'🟡 Forecast Total (Regras da Cintia)',tip_piperev12b:'Reproduz a linha 7 do forecast da Cintia (todos os blocos) com deals vivos do HubSpot. Linha azul = visão ingênua para contraste. Detalhes no i.',
     t_piperev12:'🟡 Valor do Pipeline (Projeção Mensal)',tip_piperev12:'Receita ou quantidade de deals por mês da data prevista de receita. A contagem mostra deals ativos com data prevista sobre o total de ativos P09. Considera pipes Vendas + Bid.',
     t_segdoughnut:'🟡 Receita por Segmento (Donut)',tip_segdoughnut:'ARR estimado total por segmento de tamanho de cliente (baseado em vidas).',
     t_visibility:'🟡 Visibilidade de Receita | Timeline',tip_visibility:'Quantidade de deals com data prevista de receita por mês.',
-    t_timeinstage:'🟡 Tempo em Etapa (Análise de Gargalo)',tip_timeinstage:'Dias médios em aberto por etapa (proxy via dias_no_pipe). Identifica gargalos.',
-    t_speedqualify:'🟡 Velocidade de Qualificação (Dias até Diagnóstico)',tip_speedqualify:'Dias entre createdate e a entrada histórica em Diagnóstico. Para de contar quando o deal entra em Diagnóstico.',
+    t_timeinstage:'🟡 Tempo em Etapa | Histórico',tip_timeinstage:'Mediana de dias_no_pipe por etapa — inclui deals ativos, ganhos e perdidos. Análise histórica de gargalos do ciclo de vendas.',
+    t_speedqualify:'🟡 Velocidade de Qualificação (Dias até Diagnóstico)',tip_speedqualify:'Dias médios entre a criação do deal e a entrada histórica em Diagnóstico, agrupados por mês de criação. Fonte: histórico de etapas via /api/funnel-stages. Fallback: dias_no_pipe dos deals ativos em Diagnóstico.',
     t_timetomeeting:'🟡 Reunião Ocorreu | Cobertura do Campo',tip_timetomeeting:'Campo a_reuniao_ocorreu_ já disponível na API como reuniao_ocorreu. Mostra cobertura Sim/Não/sem preenchimento; tempo real até reunião ainda requer uma data da reunião.',
-    t_reassign:'🟡 Impacto de Reatribuição de Deals',tip_reassign:'Proxy de performance por AE (taxa de fechamento). Histórico de reatribuição não disponível.',
+    t_reassign:'🟡 Impacto de Reatribuição de Deals',tip_reassign:'Deals agrupados por número de mudanças de proprietário (0 / 1 / 2+): barras = contagem de deals; linha = win rate (ganhos ÷ fechados). Fonte: histórico de hubspot_owner_id via /api/funnel-stages. Carregue o funil histórico para ativar.',
     t_financial:'🟡 Resultados Financeiros e Estimativas',tip_financial:'Métricas financeiras: receita ganha MTD/YTD, pipeline bruto, pipeline ponderado.',
     t_wonmonthly:'🟡 Deals Ganhos | Receita Axenya (Mensal)',tip_wonmonthly:'ARR ÷ 12 de deals ganhos por mês de fechamento. Usa a mesma base fechada de P02/S01/S02/S03: ano atual sem filtro, ou período selecionado com filtro.',
-    t_piperevstage:'🟡 Estimativa de Receita do Pipeline por Etapa',tip_piperevstage:'ARR estimado bruto (sem ponderação) por etapa | mesma base ativa do P09.',
     t_weightedrevstage:'🟡 Receita Axenya Ponderada por Etapa',tip_weightedrevstage:'ARR × probabilidade por etapa | mesma base ativa do P09.',
     t_receivables:'🟡 Timeline de Recebíveis Estimados',tip_receivables:'ARR ÷ 12 dos deals abertos por mês da data prevista de receita.',
     t_risktriage:'🟡 Triagem de Risco | Top 20 Deals',tip_risktriage:'Top 20 deals mais arriscados: vidas, ARR, tempo em aberto, etapa inicial.',
@@ -834,17 +980,16 @@ var NOVO_I18N = {
     t_vidaswindow:'🟡 Vidas Distribution by Bucket',tip_vidaswindow:'Active deals by lives band. No local date filter.',
     t_winfactor:'Win Rate by AE',tip_winfactor:'Adjusted win rate by AE: won deals ÷ (won deals + lost deals).',
     t_coverage:'🟡 Pipeline Coverage Ratio (Weighted vs Target)',tip_coverage:'Weighted pipeline vs a configurable revenue target.',
-    t_piperev12b:'🟡 Pipeline Value (Monthly Projection)',tip_piperev12b:'Copy of N06 (Pipeline Value | Monthly Projection), with independent toggles.',
+    t_piperev12b:'🟡 Total Forecast (Cintia Rules)',tip_piperev12b:'Reproduces Cintia forecast row 7 (all blocks) with live HubSpot deals. Blue line = naive view for contrast. Details in the i.',
     t_piperev12:'🟡 Pipeline Value (Monthly Projection)',tip_piperev12:'Revenue or deal count by expected revenue month. Count shows active deals with expected revenue date over total active P09 deals. Considers Sales + Bid pipelines.',
     t_segdoughnut:'🟡 Revenue by Segment (Deal Size)',tip_segdoughnut:'Total estimated ARR by customer-size segment (based on lives).',
     t_visibility:'🟡 Revenue Visibility Timeline',tip_visibility:'Count of deals with expected revenue date by month.',
-    t_timeinstage:'🟡 Time in Stage (Bottleneck Analysis)',tip_timeinstage:'Avg days open per stage (proxy via dias_no_pipe total). Identifies bottlenecks.',
-    t_speedqualify:'🟡 Speed to Qualify (Days to Diagnóstico)',tip_speedqualify:'Days between createdate and historical entry into Diagnóstico. Stops counting when the deal enters Diagnóstico.',
+    t_timeinstage:'🟡 Time in Stage | Historical',tip_timeinstage:'Median of dias_no_pipe per stage — includes active, won, and lost deals. Historical analysis of sales-cycle bottlenecks.',
+    t_speedqualify:'🟡 Speed to Qualify (Days to Diagnóstico)',tip_speedqualify:'Average days from deal creation to first entry into Diagnóstico, by creation month. Source: stage history via /api/funnel-stages. Fallback: dias_no_pipe for open Diagnóstico deals.',
     t_timetomeeting:'🟡 Meeting Occurred | Field Coverage',tip_timetomeeting:'Field a_reuniao_ocorreu_ is available in the API as reuniao_ocorreu. Shows Yes/No/empty coverage; actual time to meeting still requires a meeting date field.',
-    t_reassign:'🟡 Deal Reassignment Impact',tip_reassign:'AE performance proxy (close rate). True reassignment history not available.',
+    t_reassign:'🟡 Deal Reassignment Impact',tip_reassign:'Deals grouped by number of owner changes (0 / 1 / 2+): bars = deal count; line = win rate (won ÷ closed). Source: hubspot_owner_id history via /api/funnel-stages. Load the historical funnel to activate.',
     t_financial:'🟡 Financial Results & Revenue Estimates',tip_financial:'Key financial metrics: won revenue MTD/YTD, raw pipeline, weighted pipeline.',
     t_wonmonthly:'🟡 Won Deals | Axenya Revenue (Monthly)',tip_wonmonthly:'ARR ÷ 12 from won deals by close month. Uses the same closed base as P02/S01/S02/S03: current year without filter, or selected period with filter.',
-    t_piperevstage:'🟡 Pipeline Revenue Estimate by Stage',tip_piperevstage:'Raw (unweighted) ARR per stage | same active base as P09.',
     t_weightedrevstage:'🟡 Weighted Axenya Revenue by Stage',tip_weightedrevstage:'ARR × stage probability per stage | same active base as P09.',
     t_receivables:'🟡 Estimated Receivables Timeline',tip_receivables:'ARR ÷ 12 of open deals grouped by expected revenue month.',
     t_risktriage:'🟡 Deal Risk Triage (Top 20)',tip_risktriage:'Top 20 riskiest deals by computed score: lives, ARR, time open, early stage.',
@@ -1160,8 +1305,8 @@ var NOVO_HELP_CHARTS = [
   { key:'piperev12', title:'🟡 Valor do Pipeline | Projeção Mensal (N14)',
     desc:'Receita ou quantidade de deals por mês da data prevista de receita. Considera deals abertos com data prevista: Diagnóstico, Cotação, Proposta Enviada, Consultoria, Negociação e Standby; Reunião Agendada entra se o toggle de Ativos estiver ligado; Implantação entra apenas se Implantação = Ganho estiver desligado.',
     fields:[['data_prevista_para_receita','Mês de alocação do deal.'],['arr_estimado','Receita real mensal = ARR ÷ 12.'],['probabilidade_de_fechamento_ / hs_deal_stage_probability','Receita probabilizada = Receita real mensal × probabilidade final.'],['dealstage','Define se o deal entra como aberto e qual probabilidade padrão é usada.']] },
-  { key:'piperev12b', title:'🟡 Valor do Pipeline | Projeção Mensal — Cópia (N06B)',
-    desc:'Cópia do N06 (Valor do Pipeline | Projeção Mensal). Mesma metodologia: receita ou quantidade de deals por mês da data prevista de receita, com toggles Real/Probabilizado e Receita/Deals independentes do N06.',
+  { key:'piperev12b', title:'🟡 Forecast Total | Regras da Cintia (N06B)',
+    desc:'Reproduz a linha 7 do forecast da Cintia (soma dos blocos: Negócio Ganho/Implantação recorrente + Cotação/Consultoria/Negociação + Diagnóstico + BID + Topo de funil), com os deals vivos do HubSpot e os cálculos dela. Linha azul = visão ingênua (data prevista × prob) para contraste. Toggles Real/Probabilizado e Receita/Deals.',
     fields:[['data_prevista_para_receita','Mês de alocação do deal.'],['arr_estimado','Receita real mensal = ARR ÷ 12.'],['probabilidade_de_fechamento_ / hs_deal_stage_probability','Receita probabilizada = Receita real mensal × probabilidade final.'],['dealstage','Define se o deal entra como aberto e qual probabilidade padrão é usada.']] },
   { key:'segdoughnut', title:'🟡 Receita por Segmento | Donut (N15)',
     desc:'ARR estimado total distribuído por segmento de tamanho (Pequeno/Médio/Grande/Enterprise) baseado em vidas.',
@@ -1169,27 +1314,24 @@ var NOVO_HELP_CHARTS = [
   { key:'visibility', title:'🟡 Visibilidade de Receita | Timeline (N16)',
     desc:'Quantidade de deals com data prevista de receita por mês | concentração de fechamentos esperados.',
     fields:[['data_prevista_para_receita','Agrupa deals por mês de expectativa.']] },
-  { key:'timeinstage', title:'🟡 Tempo em Etapa | Análise de Gargalo (N17)',
-    desc:'Dias médios em aberto por etapa (proxy: usa dias_no_pipe total). Identifica onde os deals ficam presos.',
+  { key:'timeinstage', title:'🟡 Tempo em Etapa | Análise de Gargalo (N07)',
+    desc:'Dias medianos em aberto por etapa (mediana de dias_no_pipe). Identifica onde os deals ficam presos.',
     fields:[['createdate','Base do dias_no_pipe.'],['dealstage','Agrupa por etapa.']] },
-  { key:'speedqualify', title:'🟡 Velocidade de Qualificação | Dias até Diagnóstico (N18)',
-    desc:'Para deals em Diagnóstico: dias_no_pipe médio por mês de criação | proxy de velocidade de qualificação.',
-    fields:[['createdate','Base do dias_no_pipe e agrupamento por mês.'],['dealstage','Filtra etapa Diagnóstico.']] },
+  { key:'speedqualify', title:'🟡 Velocidade de Qualificação | Dias até Diagnóstico (N08)',
+    desc:'Média de dias entre a criação do deal e a entrada na etapa Diagnóstico, agrupados pelo mês de criação (createdate). Janela: set/2025 ao mês atual.\n\nFonte primária: /api/funnel-stages retorna o histórico de etapas via propertiesWithHistory do HubSpot. Para cada deal que passou por Diagnóstico, calcula entered_date − createdate em dias. Inclui todos os deals que já passaram pela etapa (não só os ativos hoje).\n\nFallback (quando /api/funnel-stages não retorna dados): usa apenas os deals atualmente em Diagnóstico e aplica dias_no_pipe como proxy — menos preciso, pois dias_no_pipe acumula até hoje e não para de contar ao entrar na etapa.\n\nComo auditar: no HubSpot, abra um deal que aparece no mês X → veja a Timeline → localize o evento de mudança para "Diagnóstico" → a data desse evento é o entered_date. Subtraia o createdate. O valor deve bater com a barra do mês de criação do deal. Alternativamente, a propriedade hs_date_entered_1144746906 (ID da etapa Diagnóstico no pipeline Vendas) armazena essa data diretamente.',
+    fields:[['createdate','Base do agrupamento: mês em que o deal foi criado.'],['hs_date_entered_1144746906','Data de entrada em Diagnóstico (pipeline Vendas). Diferença entered_date − createdate = dias plotados. Retornada pelo /api/funnel-stages via propertiesWithHistory.'],['dias_no_pipe','Usado apenas no fallback: dias desde a criação até hoje, independente de quando o deal entrou em Diagnóstico.']] },
   { key:'timetomeeting', title:'🟡 Reunião Ocorreu | Cobertura do Campo (N19)',
     desc:'Campo a_reuniao_ocorreu_ já está disponível na API como reuniao_ocorreu. O card mostra cobertura Sim/Não/sem preenchimento; tempo real até reunião ainda requer uma data de reunião.',
     fields:[['a_reuniao_ocorreu_','Campo booleano de reunião, retornado como reuniao_ocorreu.'],['createdate','Pode ser usado para coortes futuras quando houver data da reunião.']] },
-  { key:'reassign', title:'🟡 Impacto de Reatribuição de Deals (N20)',
-    desc:'Proxy de performance por AE. Histórico de reatribuições não disponível na API atual.',
-    fields:[['hubspot_owner_id','AE atual do deal.'],['dealstage','Etapa atual.']] },
+  { key:'reassign', title:'🟡 Impacto de Reatribuição de Deals (N09)',
+    desc:'Deals agrupados por número de reatribuições de proprietário (0 / 1 / 2+). Barras: contagem de deals por grupo; linha: win rate (ganhos ÷ fechados). Requer o funil histórico carregado — os dados de histórico de hubspot_owner_id chegam junto via /api/funnel-stages.',
+    fields:[['hubspot_owner_id','Histórico de proprietários via propertiesWithHistory — cada entrada = 1 mudança de dono.'],['dealstage','Determina Ganho ou Perdido para o cálculo de win rate.'],['close_date','Confirma fechamento do deal.']] },
   { key:'financial', title:'🟡 Resultados Financeiros e Estimativas (N21)',
     desc:'Painel financeiro consolidado: receita ganha, pipeline bruto, ponderado, projeções mensais e cobertura.',
     fields:[['arr_estimado','Base de todos os cálculos financeiros.'],['closedate','Fecha deals MTD/YTD.'],['data_prevista_para_receita','Projeção de recebíveis.']] },
   { key:'wonmonthly', title:'🟡 Deals Ganhos | Receita Mensal (N22)',
     desc:'ARR ÷ 12 de deals ganhos por mês de fechamento (close_date). Histórico de receita realizada.',
     fields:[['close_date','Mês de ganho.'],['arr_estimado','ARR ÷ 12 somado por mês.'],['dealstage','Filtra estágio Ganho.']] },
-  { key:'piperevstage', title:'🟡 Estimativa de Receita por Etapa (N23)',
-    desc:'ARR estimado bruto (sem ponderação) por etapa | potencial máximo do pipeline.',
-    fields:[['dealstage','Agrupa por etapa.'],['arr_estimado','ARR somado por etapa.']] },
   { key:'weightedrevstage', title:'🟡 Receita Ponderada por Etapa (N24)',
     desc:'ARR × probabilidade por etapa | estimativa realista de receita futura.',
     fields:[['dealstage','Agrupa por etapa.'],['arr_estimado','ARR × prob por etapa.'],['hs_deal_stage_probability','Probabilidade da etapa.']] },
@@ -1239,7 +1381,7 @@ var NOVO_CARD_CODES = {
   'winratesize':'N03','sizewindow':'N00','vidaswindow':'N00','winfactor':'N04',
   'coverage':'N05','piperev12':'N06','piperev12b':'N06B','segdoughnut':'N00','visibility':'N00',
   'timeinstage':'N07','speedqualify':'N08','timetomeeting':'N00','reassign':'N09',
-  'financial':'N00','wonmonthly':'N10','piperevstage':'N11','weightedrevstage':'N12',
+  'financial':'N00','wonmonthly':'N10','weightedrevstage':'N12',
   'receivables':'N00','risktriage':'N00',
 };
 
@@ -1255,7 +1397,7 @@ var NOVO_FILT_FIELD = {
   'waterfall':'both','netflow':'both','stageprog':'create','cohort':'both','freshness':'none','passthru':'create',
   'winratesize':'both','sizewindow':'create','vidaswindow':'create','winfactor':'both','coverage':'create',
   'piperev12':'prev','piperev12b':'prev','segdoughnut':'create','visibility':'prev','timeinstage':'create','speedqualify':'create',
-  'timetomeeting':'none','reassign':'both','financial':'both','wonmonthly':'close','piperevstage':'create',
+  'timetomeeting':'none','reassign':'both','financial':'both','wonmonthly':'close',
   'weightedrevstage':'create','receivables':'prev','risktriage':'none',
 };
 var NOVO_FILT_LABEL = {
@@ -2338,7 +2480,7 @@ function _novoIsCoreAE(ae) { if (!ae || ae === '-') return false; var f = ae.tri
 function _novoC01CoreDeals() { return _novoC01Deals().filter(function(d){ return _novoIsCoreAE(d.ae); }); }
 function _novoActiveChartDeals() { return _novoCurrentActivePipeline(); }
 function _novoFreshnessDeals() { return _novoOpenRaw().filter(function(d){ return d.dias_sem_atividade != null; }); }
-function _novoTimeInStageDeals() { return _novoCurrentActivePipeline().filter(function(d){ return d.dias_no_pipe != null; }); }
+function _novoTimeInStageDeals() { return (_novoDeals||[]).filter(function(d){ return d.dias_no_pipe != null && _novoInWin(d.createdate); }); }
 function _novoEngagementBuckets() {
   return [
     ['≤7d', function(d){ var age=d.dias_sem_atividade; return age!=null&&age<=7; }],
@@ -3057,147 +3199,195 @@ function buildNovoPipeRev12() {
       onClick:function(){ _novoOpenPipeRevModal(open, months); } } });
 }
 
-// ── N06B: Forecast dinâmico (pipe atual "parado" vs projeção "com o tempo") ──
-// Base histórica: deals criados a partir de set/2025 (NOVO_FC_B_FLOOR).
-// Linha A (azul) = pipe atual congelado (= N06, visão ingênua).
-// Linha B (verde) = pipe atual DESCONTANDO deals vencidos + NOVOS negócios
-// (conversão assumida, espalhada pela curva real de fechamento). Premissas no modal.
-var _novoForecastModelBLast = null;
-var NOVO_FC_B_FLOOR = '2025-09';    // base histórica (mês de criação)
-var NOVO_FC_B_CONVERSION = 0.04;    // PREMISSA de conversão dos novos negócios (editável)
-var NOVO_FC_B_STALE_FLOOR = 0.25;   // piso de desconto para deals vencidos
+// ── N06B: Forecast total pelas regras da Cintia (reproduz a linha 7 da planilha) ──
+// Linha A (azul) = visão ingênua (pipeline aberto na data prevista × prob da etapa), p/ contraste.
+// Linha B (verde) = forecast TOTAL = soma dos blocos da Cintia, com deals vivos do HubSpot:
+//   (11) Ganho/Implantação → receita recorrente ARR/12 a partir da vigência (certo);
+//   (12) Diagnóstico → vidas × R$/vida por porte × 6%, a partir de createdate + 9/14/18m;
+//   (8-10) Cotação/Negociação/etc → 1ª fatura × prob da etapa, reconhecida em vigência + 2m;
+//   (14) BID → 1ª fatura × prob (pipeline de Bid);
+//   (13) Topo de funil → vidas originadas (aba MQL) × R$24 × win rate S01, +15m. Detalhes no modal.
 function _novoFcBMonthDiff(a,b){
   if(!a||!b) return NaN;
   var x=a.split('-'), y=b.split('-');
   return (parseInt(y[0],10)-parseInt(x[0],10))*12 + (parseInt(y[1],10)-parseInt(x[1],10));
 }
-function _novoForecastBModel() {
-  var now = new Date();
-  var nowYM = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
-  function cm(d){ return d.createdate ? d.createdate.substring(0,7) : null; }
-  // base histórica: criados a partir de set/2025
-  var base = (_novoDeals || []).filter(function(d){ var c=cm(d); return c && c >= NOVO_FC_B_FLOOR; });
-
-  // Curva de fechamento: tempo (meses) entre criação e ganho, dos deals ganhos.
-  var JMAX = 12;
-  var hist=[]; for (var i=0;i<=JMAX;i++) hist[i]=0;
-  var winN=0;
-  base.forEach(function(d){
-    if (!_novoIsWon(d) || !d.close_date) return;
-    var j=_novoFcBMonthDiff(cm(d), d.close_date.substring(0,7));
-    if (isNaN(j)||j<0) j=0; if (j>JMAX) j=JMAX;
-    hist[j]+=1; winN++;
-  });
-  var f=[];
-  if (winN >= 5) { for (var a=0;a<=JMAX;a++) f[a]=hist[a]/winN; }
-  else { for (var a0=0;a0<=JMAX;a0++) f[a0]=(a0<=3?0.25:0); }   // fallback: poucos ganhos → 0–3 meses
-  var Fcum=[], acc=0;
-  for (var b=0;b<=JMAX;b++){ acc+=f[b]; Fcum[b]=acc>1?1:acc; }
-  function pctl(p){ var t=0; for (var k=0;k<=JMAX;k++){ t+=f[k]; if (t>=p) return k; } return JMAX; }
-  var p75=pctl(0.75), p90=pctl(0.90); if (p90<=p75) p90=p75+2;
-
-  // Taxa de ganho REAL (referência; não usada na projeção — usamos a premissa)
-  var wonA=0, resA=0;
-  base.forEach(function(d){ var a=_annualRev(d)||0; if(_novoIsWon(d)) wonA+=a; if(_novoIsWon(d)||d.stage==='Perdido') resA+=a; });
-  var WRreal = resA>0 ? wonA/resA : 0;
-
-  // Entrada de novos negócios: ARR médio criado nos últimos 6 meses
-  var dt=new Date(now.getTime()); dt.setMonth(dt.getMonth()-6);
-  var floor6 = dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0');
-  var newArr=0, newCnt=0;
-  base.forEach(function(d){ var c=cm(d); if(c>=floor6 && c<nowYM){ newArr+=(_annualRev(d)||0); newCnt++; } });
-
-  return { nowYM:nowYM, JMAX:JMAX, f:f, Fcum:Fcum, winN:winN, p75:p75, p90:p90,
-           conv:NOVO_FC_B_CONVERSION, WRreal:WRreal, A_new:newArr/6, avgCount:newCnt/6,
-           baseN:base.length, floor6:floor6 };
+function _novoFcAddMonths(ym, n){
+  var p=ym.split('-'); var y=parseInt(p[0],10), m=parseInt(p[1],10)-1+n;
+  y+=Math.floor(m/12); m=((m%12)+12)%12;
+  return y+'-'+String(m+1).padStart(2,'0');
 }
-function _novoFcBAge(M, d){ if(!d.createdate) return 0; var a=_novoFcBMonthDiff(d.createdate.substring(0,7), M.nowYM); return (isNaN(a)||a<0)?0:a; }
-// Desconto de "deal vencido": aberto além do tempo típico de fechar → menos provável.
-function _novoFcBStale(M, age){ if(age<=M.p75) return 1; if(age>=M.p90) return NOVO_FC_B_STALE_FLOOR; return 1-(1-NOVO_FC_B_STALE_FLOOR)*((age-M.p75)/(M.p90-M.p75)); }
-// Σ Fcum(0..n-1): fração de fechamento das safras novas já realizada até o mês.
-function _novoFcBNewFactor(M, ahead){ var s=0; for (var k=0;k<ahead;k++){ s += (k<=M.JMAX ? M.Fcum[k] : 1); } return s; }
+// ── Regras de forecasting da Cintia (aplicadas só ao N06B) | constantes editáveis ──
+var NOVO_FC_DIAG_CONV  = 0.06;    // conversão Diagnóstico para fechado
+var NOVO_FC_VIDA_FEE   = 24;      // R$/vida (topo de funil | aba MQL)
+// Win Rate dos novos negócios (topo de funil) = sempre a mesma taxa do S01:
+// deals ganhos ÷ (ganhos + perdidos), por contagem e por close_date na janela (filtro-aware).
+function _novoFcWinRate(){ var w=_novoWon().length, l=_novoLost().length; return (w+l)>0 ? w/(w+l) : 0; }
+var NOVO_FC_VIG_OFFSET = 2;       // receita entra na vigência + N meses (regra conservadora)
+var NOVO_FC_TOPO_MESES = 15;      // meses até a receita das vidas originadas (aba MQL)
+function _novoFcDiagFee(v){ return v<=200 ? 36 : (v<=5000 ? 24 : 12); }    // R$/vida por porte
+function _novoFcDiagMeses(v){ return v<=200 ? 9 : (v<=5000 ? 14 : 18); }   // meses até receita por porte
+// Vidas originadas por mês | aba MQL da planilha (4 BDRs antigos a 34k + 8 novos em rampagem,
+// com efeito deflator). Platô em 367.200; salto p/ 918.000 em jun/2028 (fora da janela atual).
+function _novoFcMqlVidas(ym){
+  if (ym < '2026-07') return 0;
+  if (ym === '2026-07') return 162667;
+  if (ym === '2026-08') return 216000;
+  if (ym === '2026-09') return 285600;
+  if (ym <= '2028-05') return 367200;
+  return 918000;
+}
+// Início de reconhecimento de receita pela regra de vigência (vigência + 2m; fallback data prevista).
+function _novoFcRuleStart(d){
+  if (d.vigencia) return _novoFcAddMonths(d.vigencia.substring(0,7), NOVO_FC_VIG_OFFSET);
+  if (d.data_prevista_para_receita) return d.data_prevista_para_receita.substring(0,7);
+  return null;
+}
+// Mês em que o deal começa a gerar receita pela regra (usado na contagem do modo Deals). null = não projeta.
+function _novoFcRuleStartMonth(d){
+  var s=d.stage;
+  if (s==='Reunião Agendada' || s==='Reunião Pré-RFP') return null;  // topo de funil: vem do bloco de novos negócios
+  if (s==='Diagnóstico'){ if(!d.createdate || (d.vidas||0)<=0) return null; return _novoFcAddMonths(d.createdate.substring(0,7), _novoFcDiagMeses(d.vidas||0)); }
+  return _novoFcRuleStart(d);
+}
+// Receita da CARTEIRA ATUAL num mês, pelas regras por bloco.
+function _novoFcRuleMonthValue(d, month, weighted){
+  var s=d.stage;
+  if (s==='Reunião Agendada' || s==='Reunião Pré-RFP') return 0;
+  if (s==='Diagnóstico'){
+    var v=d.vidas||0; if(!d.createdate || v<=0) return 0;
+    var start=_novoFcAddMonths(d.createdate.substring(0,7), _novoFcDiagMeses(v));
+    if (month < start) return 0;
+    return v * _novoFcDiagFee(v) * (weighted ? NOVO_FC_DIAG_CONV : 1);   // vidas × R$/vida × 6%
+  }
+  var base=_novoFcRuleStart(d); if(!base) return 0;
+  var diff=_novoFcBMonthDiff(base, month);
+  if (diff<0 || diff>23) return 0;
+  var real=_novoForecastCalcReceita(diff+1, d);   // mecânica de 1ª fatura (corretagem × fee por vida)
+  if (real==null) return 0;
+  if (!weighted) return real;
+  var p=_calcProbInfo(d).final; if(p==null)p=0;
+  return real * p;                                 // × probabilidade da etapa
+}
+// Bloco NEGÓCIO GANHO/IMPLANTAÇÃO (linha 11 da Cintia): receita recorrente (ARR ÷ 12) dos deals
+// já ganhos/implantação, fixa a partir da vigência. Receita certa | sem probabilidade.
+function _novoFcWonStartMonth(d){
+  return d.vigencia ? d.vigencia.substring(0,7) : (d.data_implantacao ? d.data_implantacao.substring(0,7) : (d.data_ganho ? d.data_ganho.substring(0,7) : null));
+}
+function _novoFcWonMonthValue(d, month){
+  var start=_novoFcWonStartMonth(d);
+  if (start && month < start) return 0;   // ainda não entrou em vigência
+  return (_annualRev(d)||0)/12;           // recorrente mensal (= ARR ÷ 12)
+}
+// Bloco BID (linha 14 da Cintia): deals do pipeline de Bid pela mecânica de 1ª fatura × probabilidade.
+// Cintia zera a probabilidade de tudo que está em Pré-RFP (não conta receita antes da RFP abrir).
+function _novoFcBidMonthValue(d, month, weighted){
+  if (d.stage==='Reunião Pré-RFP') return 0;   // pré-RFP zerado (regra conservadora da Cintia)
+  var base=_novoFcRuleStart(d); if(!base) return 0;
+  var diff=_novoFcBMonthDiff(base, month);
+  if (diff<0 || diff>23) return 0;
+  var real=_novoForecastCalcReceita(diff+1, d);
+  if (real==null) return 0;
+  if (!weighted) return real;
+  var p=_calcProbInfo(d).final; if(p==null)p=0;
+  return real * p;
+}
+// Receita de NOVOS NEGÓCIOS (topo de funil) num mês: Σ coortes de originação cuja receita já entrou
+// (origem + 15m <= mês), vidas originadas × R$24 × Win Rate. Recorrente, conforme a aba MQL.
+function _novoFcNewBizRev(month, weighted){
+  var lastOrig=_novoFcAddMonths(month, -NOVO_FC_TOPO_MESES);
+  if (lastOrig < '2026-07') return 0;
+  var vidas=0, c='2026-07', guard=0;
+  while (c <= lastOrig && guard++ < 240){ vidas += _novoFcMqlVidas(c); c=_novoFcAddMonths(c,1); }
+  return vidas * NOVO_FC_VIDA_FEE * (weighted ? _novoFcWinRate() : 1);
+}
 
 // Documentação dinâmica (números calculados) injetada no modal de info do N06B.
+// Reflete as regras de forecasting da Cintia aplicadas só neste gráfico.
 function _novoForecastBMethodologyHtml() {
-  var M = _novoForecastModelBLast; if (!M) return '';
-  var pct1=function(x){ return (x*100).toFixed(1)+'%'; };
-  var pct0=function(x){ return Math.round(x*100)+'%'; };
+  var active = (typeof _novoCurrentActivePipeline==='function') ? _novoCurrentActivePipeline() : [];
+  var nDiag=0, nConc=0, nBid=0;
+  for (var i=0;i<active.length;i++){ var s=active[i].stage, isBid=active[i].pipeline==='Bid';
+    if (isBid) nBid++;
+    else if (s==='Diagnóstico') nDiag++;
+    else if (s!=='Reunião Agendada' && s!=='Reunião Pré-RFP') nConc++;
+  }
+  var nWon=(_novoDeals||[]).filter(function(d){ return _novoIsWon(d); }).length;
   var brl=function(v){ return 'R$ '+Math.round(v).toLocaleString('pt-BR'); };
-  var curveRows='';
-  for (var j=0;j<=M.JMAX;j++){ if (M.f[j]>0 || j<=M.p90){ curveRows += '<tr><td style="text-align:left">'+j+' '+(j===1?'mês':'meses')+'</td><td>'+pct0(M.f[j])+'</td><td>'+pct0(M.Fcum[j])+'</td></tr>'; } }
+  var nbRows='';
+  ['2027-10','2027-11','2027-12'].forEach(function(m){ nbRows += '<tr><td style="text-align:left">'+_mlbl(m)+'</td><td>'+brl(_novoFcNewBizRev(m,true))+' /mês</td></tr>'; });
   return '<div style="margin:0 0 1.4rem;padding-top:1rem;border-top:1px solid var(--border)">'+
-    '<h3 style="font-size:.92rem;color:var(--text);margin:0 0 .4rem">Metodologia do forecast (N06B)</h3>'+
+    '<h3 style="font-size:.92rem;color:var(--text);margin:0 0 .4rem">Metodologia do forecast (N06B) | forecast total da Cintia (linha 7)</h3>'+
     '<p style="font-size:.8rem;line-height:1.6;color:var(--text2);margin:0 0 .6rem">'+
-      'Base histórica: deals criados a partir de <b>set/2025</b> ('+M.baseN+' deals).<br>'+
-      '<b>Linha "Pipe atual (parado no tempo)"</b> (azul): visão ingênua — cada deal aberto na sua <code>data_prevista</code>, com a probabilidade da etapa atual. Não considera que muitos deals já estão vencidos.<br>'+
-      '<b>Linha "Projeção (com o tempo)"</b> (verde) = <b>pipe atual ajustado + novos negócios</b>. Desconta os <b>deals vencidos</b> (abertos há mais tempo do que costumam levar pra fechar) e soma a receita dos <b>novos negócios</b> que ainda vão entrar, espalhada pela curva de fechamento.'+
+      'A linha <b>verde "Forecast total"</b> reproduz a <b>linha 7 da planilha da Cintia</b> (soma dos blocos 8 a 14), mas com os <b>deals vivos do HubSpot</b> e os <b>cálculos dela</b>. A linha <b>azul</b> é a visão ingênua (pipeline aberto na <code>data_prevista</code> × prob da etapa), para contraste.'+
     '</p>'+
-    '<div style="margin:0 0 .65rem;padding:.5rem .65rem;background:var(--card2);border-radius:6px;border-left:3px solid var(--yellow)">'+
-      '<div style="font-size:.61rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);font-weight:700;margin-bottom:.3rem">Premissa de conversão (ajustável)</div>'+
+    '<div style="margin:0 0 .65rem;padding:.5rem .65rem;background:var(--card2);border-radius:6px;border-left:3px solid var(--green)">'+
+      '<div style="font-size:.61rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);font-weight:700;margin-bottom:.3rem">Bloco recorrente | Negócio Ganho + Implantação (linha 11)</div>'+
       '<div style="font-size:.78rem;color:var(--text);line-height:1.7">'+
-        'Conversão dos novos negócios assumida: <b>'+pct0(M.conv)+'</b>.<br>'+
-        '<span style="color:var(--text2)">A conversão observada no histórico é só <b>'+pct1(M.WRreal)+'</b> (dominada por leads de topo de funil que viram "Perdido"), então usamos uma premissa de gestão em vez do dado cru.</span>'+
+        'Receita <b>recorrente (ARR ÷ 12)</b> dos '+nWon+' deals ganhos/implantação, fixa a partir da vigência. Receita certa | sem probabilidade. <span style="color:var(--text2)">(É este bloco que faz o forecast acumular.)</span>'+
       '</div>'+
     '</div>'+
     '<div style="margin:0 0 .65rem;padding:.5rem .65rem;background:var(--card2);border-radius:6px;border-left:3px solid var(--teal)">'+
-      '<div style="font-size:.61rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);font-weight:700;margin-bottom:.3rem">Parâmetros calculados (set/2025+)</div>'+
+      '<div style="font-size:.61rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);font-weight:700;margin-bottom:.3rem">Pipeline aberto (linhas 8 a 10 + 12)</div>'+
       '<div style="font-size:.78rem;color:var(--text);line-height:1.7">'+
-        '• Entrada de novos negócios: <b>'+brl(M.A_new)+'/mês</b> · <b>'+M.avgCount.toFixed(0)+' deals/mês</b> <span style="color:var(--text2)">(últimos 6 meses)</span><br>'+
-        '• Tempo típico de fechar: <b>'+M.p75+' meses</b> (p75) a <b>'+M.p90+' meses</b> (p90) — base de '+M.winN+' ganhos<br>'+
-        '• Deal vencido (aberto além de p75) é descontado até <b>'+pct0(NOVO_FC_B_STALE_FLOOR)+'</b> em p90'+
+        '<b>Diagnóstico</b> ('+nDiag+' deals): vidas × R$/vida por porte × <b>6%</b>, a partir de <code>createdate</code> + meses por porte.<br>'+
+        '<span style="color:var(--text2)">Porte: até 200 vidas → R$ 36/vida e +9m | 200 a 5.000 → R$ 24 e +14m | acima de 5.000 → R$ 12 e +18m.</span><br>'+
+        '<b>Cotação | Consultoria | Negociação | etc</b> ('+nConc+' deals): 1ª fatura × probabilidade da etapa (mecânica de 1ª fatura: corretagem com/sem agenciamento), reconhecida na <b>vigência + '+NOVO_FC_VIG_OFFSET+' meses</b> (fallback data prevista).<br>'+
+        '<b>BID</b> ('+nBid+' deals): mesma mecânica de 1ª fatura × probabilidade, para o pipeline de Bid (linha 14). Pré-RFP zerado (não conta receita antes da RFP abrir).'+
       '</div>'+
     '</div>'+
-    '<div style="margin:0 0 .65rem">'+
-      '<div style="font-size:.61rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);font-weight:700;margin-bottom:.3rem">Curva de fechamento (quando os deals tendem a ganhar)</div>'+
-      '<table class="lb" style="width:100%;font-size:.78rem"><thead><tr><th style="text-align:left">Meses até ganhar</th><th>% dos ganhos</th><th>Acumulado</th></tr></thead><tbody>'+curveRows+'</tbody></table>'+
+    '<div style="margin:0 0 .65rem;padding:.5rem .65rem;background:var(--card2);border-radius:6px;border-left:3px solid var(--yellow)">'+
+      '<div style="font-size:.61rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);font-weight:700;margin-bottom:.3rem">Novos negócios | topo de funil (linha 13 | aba MQL)</div>'+
+      '<div style="font-size:.78rem;color:var(--text);line-height:1.7">'+
+        'Vidas originadas/mês × <b>R$ '+NOVO_FC_VIDA_FEE+'/vida</b> × Win Rate <b>'+(_novoFcWinRate()*100).toFixed(1).replace('.',',')+'%</b> <span style="color:var(--text2)">(= taxa do S01, ganhos ÷ fechados)</span>, receita <b>'+NOVO_FC_TOPO_MESES+' meses</b> após a originação (recorrente).<br>'+
+        '<span style="color:var(--text2)">Originação (aba MQL): jul/26 = 162.667 vidas | ago/26 = 216.000 | set/26 = 285.600 | platô 367.200. Com +15m, entram como receita dentro da janela em out/nov/dez 2027.</span>'+
+      '</div>'+
+      '<table class="lb" style="width:100%;font-size:.78rem;margin-top:.45rem"><thead><tr><th style="text-align:left">Mês</th><th>Novos negócios (probabilizado)</th></tr></thead><tbody>'+nbRows+'</tbody></table>'+
     '</div>'+
     '<p style="font-size:.72rem;color:var(--muted);line-height:1.5;margin:0">'+
-      'Novos negócios entram como receita recorrente (ARR convertido ÷ 12), espalhada pela curva de fechamento acima. Histórico curto ⇒ estimativas aproximadas; as premissas (conversão, entrada) serão editáveis aqui numa próxima versão.'+
+      'Modo <b>Probabilizado</b>: aplica conversões (6% Diagnóstico, win rate do S01 no topo) e a probabilidade da etapa; o bloco Ganho/Implantação é sempre cheio (certo). Modo <b>Real</b>: potencial cheio (sem conversão). Snapshot vivo do HubSpot, então não bate na vírgula com a planilha (lista fixa de 22/06); o cenário por porte da planilha (D3) não é aplicado. Constantes editáveis no código.'+
     '</p>'+
   '</div>';
 }
 function buildNovoPipeRev12B() {
-  var open = _novoPipeRevDeals();
+  var open = _novoPipeRevDeals();   // linha azul (ingênua) + modal de clique
+  var active = (typeof _novoCurrentActivePipeline==='function') ? _novoCurrentActivePipeline() : open;
+  var nonBid = active.filter(function(d){ return d.pipeline!=='Bid'; });   // pipeline concreto + Diagnóstico
+  var bid    = active.filter(function(d){ return d.pipeline==='Bid'; });   // bloco BID (linha 14)
+  var won    = (_novoDeals||[]).filter(function(d){ return _novoIsWon(d); }); // Ganho/Implantação (linha 11; respeita toggle)
   var months = _novoProjectionMonthsToDec27();
-  var M = _novoForecastBModel();
-  _novoForecastModelBLast = M;
   var th = _novoTheme();
   var isDeals = _novoPipeRevMetricB === 'deals';
   var weighted = _novoPipeRevValueModeB === 'weighted';
-  var conv = (isDeals || weighted) ? M.conv : 1;   // novos negócios: premissa (ou 1 no modo Real)
 
-  var A={}, Bex={}, Bnew={};
-  for (var k=0;k<months.length;k++){ A[months[k]]=0; Bex[months[k]]=0; Bnew[months[k]]=0; }
+  // Linha verde = forecast total (linha 7 da Cintia): won/impl + pipe + bid + novos negócios.
+  var A={}, Bw={}, Bp={}, Bb={}, Bn={};
+  for (var k=0;k<months.length;k++){ A[months[k]]=0; Bw[months[k]]=0; Bp[months[k]]=0; Bb[months[k]]=0; Bn[months[k]]=0; }
 
-  // Pipe atual: A (azul, congelado) e Bex (verde, descontando deals vencidos)
   if (isDeals) {
-    open.forEach(function(d){
-      var dm = d.data_prevista_para_receita ? d.data_prevista_para_receita.substring(0,7) : null;
-      if (dm && A[dm]!=null && _novoInWin(d.data_prevista_para_receita)) { A[dm]+=1; Bex[dm]+=_novoFcBStale(M, _novoFcBAge(M,d)); }
-    });
+    open.forEach(function(d){ var dm=d.data_prevista_para_receita?d.data_prevista_para_receita.substring(0,7):null; if(dm&&A[dm]!=null&&_novoInWin(d.data_prevista_para_receita)) A[dm]+=1; });
+    nonBid.forEach(function(d){ var sm=_novoFcRuleStartMonth(d); if(sm&&Bp[sm]!=null) Bp[sm]+=1; });
+    bid.forEach(function(d){ if(d.stage==='Reunião Pré-RFP')return; var sb=_novoFcRuleStart(d); if(sb&&Bb[sb]!=null) Bb[sb]+=1; });
+    won.forEach(function(d){ var sw=_novoFcWonStartMonth(d); if(sw&&Bw[sw]!=null) Bw[sw]+=1; });
+    // Novos negócios (topo de funil) são modelados em vidas/receita, não em contagem de deals.
   } else {
-    open.forEach(function(d){
-      var sf=_novoFcBStale(M, _novoFcBAge(M,d));
-      for (var i=0;i<months.length;i++){ var m=months[i]; var v=_novoPipeRevMonthValue(d, m, weighted); if(v>0){ A[m]+=v; Bex[m]+=v*sf; } }
-    });
-  }
-  // Novos negócios (só na verde): entrada × conversão, espalhada pela curva de fechamento
-  for (var j=0;j<months.length;j++){
-    var ahead=_novoFcBMonthDiff(M.nowYM, months[j]);
-    if (isDeals) { Bnew[months[j]] = (ahead>=1) ? (M.avgCount*conv*M.Fcum[Math.min(ahead-1,M.JMAX)]) : 0; }
-    else { Bnew[months[j]] = (ahead>=1) ? ((M.A_new*conv/12)*_novoFcBNewFactor(M, ahead)) : 0; }
+    open.forEach(function(d){ for (var i=0;i<months.length;i++){ var m=months[i]; var v=_novoPipeRevMonthValue(d, m, weighted); if(v>0) A[m]+=v; } });
+    nonBid.forEach(function(d){ for (var i2=0;i2<months.length;i2++){ var m2=months[i2]; var rv=_novoFcRuleMonthValue(d, m2, weighted); if(rv>0) Bp[m2]+=rv; } });
+    bid.forEach(function(d){ for (var i3=0;i3<months.length;i3++){ var m3=months[i3]; var bv=_novoFcBidMonthValue(d, m3, weighted); if(bv>0) Bb[m3]+=bv; } });
+    won.forEach(function(d){ for (var i4=0;i4<months.length;i4++){ var m4=months[i4]; var wv=_novoFcWonMonthValue(d, m4); if(wv>0) Bw[m4]+=wv; } });
+    for (var j=0;j<months.length;j++){ Bn[months[j]] = _novoFcNewBizRev(months[j], weighted); }
   }
 
   var firstNonZero=-1;
-  for (var f=0; f<months.length; f++){ if (((A[months[f]]||0)+(Bex[months[f]]||0)+(Bnew[months[f]]||0))>0.0001){ firstNonZero=f; break; } }
+  for (var f=0; f<months.length; f++){ var mm=months[f]; if (((A[mm]||0)+(Bw[mm]||0)+(Bp[mm]||0)+(Bb[mm]||0)+(Bn[mm]||0))>0.0001){ firstNonZero=f; break; } }
   if (firstNonZero>0) months = months.slice(firstNonZero);
 
-  var dataA=[], dataB=[], bGar=[], bNovos=[];
+  var dataA=[], dataB=[], cWon=[], cPipe=[], cBid=[], cNew=[];
   months.forEach(function(m){
-    var a=A[m]||0, bx=Bex[m]||0, bn=Bnew[m]||0;
+    var a=A[m]||0, bw=Bw[m]||0, bp=Bp[m]||0, bb=Bb[m]||0, bn=Bn[m]||0, tot=bw+bp+bb+bn;
     dataA.push(isDeals ? Math.round(a*10)/10 : Math.round(a));
-    dataB.push(isDeals ? Math.round((bx+bn)*10)/10 : Math.round(bx+bn));
-    bGar.push(bx); bNovos.push(bn);
+    dataB.push(isDeals ? Math.round(tot*10)/10 : Math.round(tot));
+    cWon.push(bw); cPipe.push(bp); cBid.push(bb); cNew.push(bn);
   });
   var yMax=null;
   if (!isDeals){ var mx=0; for (var z=0;z<dataB.length;z++){ if(dataB[z]>mx)mx=dataB[z]; if(dataA[z]>mx)mx=dataA[z]; } yMax=mx; }
@@ -3206,7 +3396,7 @@ function buildNovoPipeRev12B() {
 
   _novoMkChart('chart-novo-piperev12b', { type:'line', plugins:[ChartDataLabels],
     data:{ labels:months.map(_mlbl), datasets:[
-      { label:(L?'Projection (over time)':'Projeção (com o tempo)'), data:dataB, borderColor:'rgba(63,185,80,.95)', backgroundColor:'rgba(63,185,80,.14)', pointRadius:3, pointHoverRadius:5, borderWidth:2, tension:0.35, fill:true, order:1 },
+      { label:(L?'Total forecast (Cintia rules)':'Forecast total (regras Cintia)'), data:dataB, borderColor:'rgba(63,185,80,.95)', backgroundColor:'rgba(63,185,80,.14)', pointRadius:3, pointHoverRadius:5, borderWidth:2, tension:0.35, fill:true, order:1 },
       { label:(L?'Current pipe (frozen)':'Pipe atual (parado no tempo)'), data:dataA, borderColor:'rgba(88,166,255,.95)', backgroundColor:'transparent', borderDash:[5,4], pointRadius:2, pointHoverRadius:4, borderWidth:2, tension:0.35, fill:false, order:2 }
     ]},
     options:{ responsive:true, layout:{padding:{top:28}}, plugins:{
@@ -3215,8 +3405,9 @@ function buildNovoPipeRev12B() {
       tooltip:{ mode:'index', intersect:false, callbacks:{
         label:function(c){ var v=c.parsed.y; return c.dataset.label+': '+(isDeals ? (Math.round(v*10)/10)+' deals' : 'R$ '+Math.round(v).toLocaleString('pt-BR')); },
         afterBody:function(items){ if(!items.length) return ''; var i=items[0].dataIndex;
-          if (isDeals) return ['', (L?'Projection breakdown:':'Quebra da projeção (verde):'), '• '+(L?'current pipe (adjusted)':'pipe atual (ajustado)')+': '+(Math.round(bGar[i]*10)/10), '• '+(L?'new business':'novos negócios')+': +'+(Math.round(bNovos[i]*10)/10)];
-          return ['', (L?'Projection breakdown:':'Quebra da projeção (verde):'), '• '+(L?'current pipe (adjusted)':'pipe atual (ajustado)')+': '+_revShort(bGar[i]), '• '+(L?'new business':'novos negócios')+': +'+_revShort(bNovos[i])];
+          var lbW=L?'won/onboarding':'ganho/implantação', lbP=L?'open pipeline (rules)':'pipeline (regras)', lbB='bid', lbN=L?'new business':'novos negócios';
+          if (isDeals) return ['', (L?'Breakdown (green):':'Quebra (verde):'), '• '+lbW+': '+(Math.round(cWon[i]*10)/10), '• '+lbP+': '+(Math.round(cPipe[i]*10)/10), '• '+lbB+': '+(Math.round(cBid[i]*10)/10)];
+          return ['', (L?'Breakdown (green):':'Quebra (verde):'), '• '+lbW+': '+_revShort(cWon[i]), '• '+lbP+': '+_revShort(cPipe[i]), '• '+lbB+': '+_revShort(cBid[i]), '• '+lbN+': +'+_revShort(cNew[i])];
         }
       } } },
       scales:{ x:{grid:{display:false},ticks:{color:th.cText2,font:{family:NOVO_FONT}}}, y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},callback:function(v){return isDeals?v:_revShort(v);}}, suggestedMax:yMax} },
@@ -3263,21 +3454,31 @@ function buildNovoVisibility() {
 }
 
 // ── N17: Time in Stage (Bottleneck Analysis) ──────────────────────────────────
+function _novoMedian(arr){
+  if(!arr||!arr.length) return 0;
+  var a=arr.slice().sort(function(x,y){return x-y;});
+  var n=a.length, mid=Math.floor(n/2);
+  return n%2 ? a[mid] : Math.round((a[mid-1]+a[mid])/2);
+}
 function buildNovoTimeInStage() {
-  var open = _novoTimeInStageDeals();
-  var agg={}, cnt={};
-  open.forEach(function(d){ var s=_stageNorm(d.stage); agg[s]=(agg[s]||0)+d.dias_no_pipe; cnt[s]=(cnt[s]||0)+1; });
-  var stages=NOVO_STAGE_ORDER.filter(function(s){return cnt[s]>0;});
-  var avgs=stages.map(function(s){return cnt[s]?Math.round(agg[s]/cnt[s]):0;});
+  var allDeals = _novoTimeInStageDeals();
+  var byStage={}, byStageDeals={};
+  allDeals.forEach(function(d){ var s=_stageNorm(d.stage); if(!byStage[s])byStage[s]=[]; byStage[s].push(d.dias_no_pipe); if(!byStageDeals[s])byStageDeals[s]=[]; byStageDeals[s].push(d); });
+  // Full stage order including historical (Ganho/Perdido)
+  var _histOrder=['Reunião Agendada','Diagnóstico','Cotação','Proposta Enviada','Consultoria','Negociação','Standby','Implantação','Ganho','Perdido'];
+  var stages=_histOrder.filter(function(s){return byStage[s]&&byStage[s].length>0;});
+  var meds=stages.map(function(s){return _novoMedian(byStage[s]);});
   var th=_novoTheme();
-  var colors=avgs.map(function(v){return v<=14?'rgba(63,185,80,.75)':v<=45?'rgba(210,153,34,.8)':'rgba(248,81,73,.75)';});
+  var colors=meds.map(function(v){return v<=14?'rgba(63,185,80,.75)':v<=45?'rgba(210,153,34,.8)':'rgba(248,81,73,.75)';});
+  var canvas=document.getElementById('chart-novo-timeinstage');
+  if(canvas) canvas.style.height=Math.max(stages.length*36+48,180)+'px';
   _novoMkChart('chart-novo-timeinstage', { type:'bar', plugins:[ChartDataLabels],
-    data:{ labels:stages, datasets:[{ data:avgs, backgroundColor:colors, borderRadius:4 }] },
-    options:{ indexAxis:'y', responsive:true, layout:{padding:{right:55}}, plugins:{ legend:{display:false},
+    data:{ labels:stages, datasets:[{ data:meds, backgroundColor:colors, borderRadius:4 }] },
+    options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, layout:{padding:{right:55}}, plugins:{ legend:{display:false},
       datalabels:{ anchor:'end', align:'right', color:th.cText, font:{family:NOVO_FONT,size:11,weight:'bold'}, formatter:function(v){return v+'d';} },
-      tooltip:{ callbacks:{ label:function(c){return c.parsed.x+' dias em média ('+cnt[stages[c.dataIndex]]+' deals)';} } } },
-      scales:{ x:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT}}}, y:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}} },
-      onClick:function(e,el){ if(!el.length)return; var s=stages[el[0].index]; novoOpenDealsStageFilterModal(NOVO_LANG==='en'?'Time in Stage':'Tempo em Etapa', open, s); } } });
+      tooltip:{ callbacks:{ label:function(c){return c.parsed.x+' dias (mediana) | '+byStage[stages[c.dataIndex]].length+' deals';} } } },
+      scales:{ x:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT}}}, y:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT},autoSkip:false}} },
+      onClick:function(e,el){ if(!el.length)return; var s=stages[el[0].index]; novoOpenDealsStageFilterModal(NOVO_LANG==='en'?'Time in Stage':'Tempo em Etapa', allDeals, s); } } });
 }
 
 // ── N18: Speed to Qualify (Days to Diagnóstico) ───────────────────────────────
@@ -3312,26 +3513,7 @@ function buildNovoSpeedQualify() {
         novoOpenDealsLabelFilterModal('Speed to Qualify', NOVO_LANG==='en'?'Month':'Mês', sqCats, sqBy, _mlbl(m)); } } });
 }
 
-// ── N23: Pipeline Revenue Estimate by Stage (raw) ─────────────────────────────
-var _novoPipeRevStageMode='raw'; // 'raw' | 'weighted'
-function novoSwitchPipeRevStage(m){ _novoPipeRevStageMode=m; _setActive('novo-piperevstage-tabs',m); buildNovoPipeRevStage(); }
-function buildNovoPipeRevStage() {
-  var open=_novoCurrentActivePipeline();
-  var weighted = _novoPipeRevStageMode==='weighted';
-  var agg={},by={};
-  NOVO_STAGE_ORDER.forEach(function(s){agg[s]=0;by[s]=[];});
-  open.forEach(function(d){ var s=_stageNorm(d.stage); if(!(s in agg)){agg[s]=0;by[s]=[];} var v=_annualRev(d)||0; if(weighted){ var p=d.probabilidade!=null?d.probabilidade:(NOVO_STAGE_PROB[s]||0); v=v*p; } agg[s]+=v; by[s].push(d); });
-  var labels=NOVO_STAGE_ORDER.filter(function(s){return agg[s]>0;});
-  var data=labels.map(function(s){return Math.round(agg[s]);});
-  var th=_novoTheme();
-  _novoMkChart('chart-novo-piperevstage', { type:'bar', plugins:[ChartDataLabels],
-    data:{ labels:labels, datasets:[{ data:data, backgroundColor: weighted?'rgba(88,166,255,.75)':'rgba(58,184,183,.75)', borderRadius:4 }] },
-    options:{ responsive:true, layout:{padding:{top:28}}, plugins:{ legend:{display:false},
-      datalabels:{ anchor:'end', align:'end', color:th.cText, font:{family:NOVO_FONT,size:10,weight:'bold'}, formatter:_revShort },
-      tooltip:{ callbacks:{ label:function(c){return 'R$ '+Math.round(c.parsed.y).toLocaleString('pt-BR')+(weighted?' ponderado':' ARR bruto');}, footer:function(){return 'Clique para ver os deals';} } } },
-      scales:{ x:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}}, y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},callback:function(v){return _revShort(v);}}} },
-      onClick:function(e,el){ if(!el.length)return; var s=labels[el[0].index]; novoOpenDealsStageFilterModal(weighted?(NOVO_LANG==='en'?'Weighted ARR by Stage':'ARR Ponderado por Etapa'):(NOVO_LANG==='en'?'Raw ARR by Stage':'ARR Bruto por Etapa'), open, s); } } });
-}
+
 
 
 // ── N25: Estimated Receivables Timeline ───────────────────────────────────────
@@ -3436,24 +3618,73 @@ function buildNovoTimeToMeeting() {
     '</p>';
 }
 function buildNovoReassign() {
-  var aeMap={};
-  function _ae(d){ if(!d.ae||d.ae==='-')return null; if(!aeMap[d.ae])aeMap[d.ae]={won:0,open:0,vidas:0,arr:0}; return aeMap[d.ae]; }
-  // Ganhos por close_date (janela); abertos por createdate (janela).
-  _novoWon().forEach(function(d){ var m=_ae(d); if(m){ m.won++; m.vidas+=(d.vidas||0); m.arr+=(d.arr_estimado||0); } });
-  _novoOpen().forEach(function(d){ var m=_ae(d); if(m){ m.open++; } });
-  var aes=Object.keys(aeMap).sort(function(a,b){return (aeMap[b].won)-(aeMap[a].won);});
-  var html='<p style="font-size:.76rem;color:var(--text2);margin:0 0 .75rem">🟡 Dados de reatribuição não disponíveis | exibindo performance geral por AE como proxy.</p>'+
-    '<div style="overflow-x:auto"><table class="lb" style="width:100%;font-size:.75rem"><thead><tr>'+
-    '<th style="text-align:left">AE</th><th>Abertos</th><th>Ganhos</th><th>Taxa</th><th>Vidas Ganhas</th><th>ARR Ganho</th></tr></thead><tbody>';
-  aes.forEach(function(ae){
-    var m=aeMap[ae]; var tot=m.won+m.open; var rate=tot>0?Math.round(m.won/tot*1000)/10:0;
-    var col=rate>=30?'var(--green)':rate>=15?'var(--yellow)':'var(--text)';
-    html+='<tr><td style="text-align:left;font-weight:600">'+_ne(ae)+'</td><td>'+m.open+'</td><td>'+m.won+'</td>'+
-      '<td style="color:'+col+';font-weight:700">'+rate+'%</td><td>'+_ni(m.vidas)+'</td><td>'+_revShort(m.arr)+'</td></tr>';
+  var ownerChanges = _novoFunnelData && _novoFunnelData.owner_changes;
+  var el = document.getElementById('novo-reassign-body');
+  if (!el) return;
+  if (!ownerChanges) {
+    var _isLoading = !!_novoFunnelLoading;
+    el.innerHTML = '<p style="font-size:.76rem;color:var(--text2);margin:0">'
+      + (_isLoading
+        ? '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="animation:hdr-spin .8s linear infinite;vertical-align:middle;margin-right:.4rem"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>'
+          + (NOVO_LANG==='en' ? 'Loading owner history… (may take 15–30 s)' : 'Carregando histórico de proprietários… (pode levar 15–30 s)')
+        : '🟡 ' + (NOVO_LANG==='en' ? 'Load the historical funnel (Conversion Funnel button) to activate this chart.' : 'Carregue o funil histórico (botão "Funil de Conversão") para ativar este gráfico.')
+      ) + '</p>';
+    return;
+  }
+  var groups = [
+    { label: NOVO_LANG==='en' ? '0 changes' : '0 reatribuições',  won:0, lost:0, deals:[] },
+    { label: NOVO_LANG==='en' ? '1 change'  : '1 reatribuição',   won:0, lost:0, deals:[] },
+    { label: NOVO_LANG==='en' ? '2+ changes': '2+ reatribuições', won:0, lost:0, deals:[] },
+  ];
+  (_novoDeals || []).forEach(function(d) {
+    if (!d.hs_id) return;
+    var n = ownerChanges[String(d.hs_id)] || 0;
+    var g = n === 0 ? groups[0] : n === 1 ? groups[1] : groups[2];
+    g.deals.push(d);
+    if (_novoIsWon(d)) g.won++;
+    else if (d.stage === 'Perdido') g.lost++;
   });
-  html+='</tbody></table></div>';
-  var el=document.getElementById('novo-reassign-body');
-  if(el) el.innerHTML=html;
+  var labels = groups.map(function(g) { return g.label; });
+  var counts = groups.map(function(g) { return g.deals.length; });
+  var rates  = groups.map(function(g) { var c=g.won+g.lost; return c>0 ? Math.round(g.won/c*1000)/10 : null; });
+  var th = _novoTheme();
+  el.innerHTML = '<canvas id="chart-novo-reassign-canvas" style="max-height:280px"></canvas>';
+  _novoMkChart('chart-novo-reassign-canvas', {
+    type:'bar', plugins:[ChartDataLabels],
+    data:{ labels:labels, datasets:[
+      { type:'bar', label: NOVO_LANG==='en'?'Deals':'Deals', data:counts,
+        backgroundColor:['rgba(58,184,183,.7)','rgba(147,112,219,.7)','rgba(248,81,73,.7)'],
+        borderRadius:6, yAxisID:'yCount', order:2 },
+      { type:'line', label:'Win Rate', data:rates,
+        borderColor:'rgba(255,180,0,1)', backgroundColor:'rgba(255,180,0,.12)',
+        pointRadius:6, pointHoverRadius:8, borderWidth:2.5,
+        yAxisID:'yRate', tension:0.3, order:1 },
+    ]},
+    options:{ responsive:true, layout:{padding:{top:32}},
+      plugins:{
+        legend:{ display:true, labels:{color:th.cText2,font:{family:NOVO_FONT,size:11},padding:14} },
+        datalabels:{ display:function(c){ return c.datasetIndex===0; },
+          anchor:'end', align:'end', color:th.cText, font:{family:NOVO_FONT,size:11,weight:'bold'},
+          formatter:function(v){ return v!=null?String(v):''; } },
+        tooltip:{ callbacks:{ label:function(c){
+          if(c.datasetIndex===1) return 'Win Rate: '+(c.parsed.y!=null?c.parsed.y.toFixed(1):'—')+'%';
+          var g=groups[c.dataIndex];
+          return 'Deals: '+c.parsed.y+' | '+g.won+' '+(NOVO_LANG==='en'?'won':'ganhos')+' / '+g.lost+' '+(NOVO_LANG==='en'?'lost':'perdidos')+' / '+(g.deals.length-g.won-g.lost)+' '+(NOVO_LANG==='en'?'open':'abertos');
+        }}}
+      },
+      scales:{
+        x:{ grid:{display:false}, ticks:{color:th.cText,font:{family:NOVO_FONT}} },
+        yCount:{ type:'linear', position:'left', grid:{color:th.cGrid},
+          ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0},
+          title:{display:true,text:NOVO_LANG==='en'?'Deals':'Deals',color:th.cText2,font:{family:NOVO_FONT,size:10}} },
+        yRate:{ type:'linear', position:'right', min:0, max:100, grid:{drawOnChartArea:false},
+          ticks:{color:'rgba(255,180,0,1)',font:{family:NOVO_FONT},callback:function(v){return v+'%';}},
+          title:{display:true,text:'Win Rate',color:'rgba(255,180,0,1)',font:{family:NOVO_FONT,size:10}} }
+      },
+      onClick:function(e,el){ if(!el.length)return; var g=groups[el[0].index];
+        novoOpenDealsModal((NOVO_LANG==='en'?'Deals with ':'Deals com ')+g.label, g.deals); }
+    }
+  });
 }
 
 // Número compacto sem moeda (K para milhar, M para milhão) — usado em rótulos de gráfico.
@@ -4040,16 +4271,8 @@ function novoRender() {
       // N18 | Speed to Qualify
       _card(t('t_speedqualify'), t('tip_speedqualify'), '', 'chart-novo-speedqualify', 300, 'speedqualify') +
 
-      // N20 | Deal Reassignment (wide table proxy)
+      // N09 | Deal Reassignment — owner changes impact on win rate
       '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header"><h3>' + t('t_reassign') + '</h3>' + _infoBtn(t('tip_reassign'),'reassign') + '</div><div id="novo-reassign-body" style="padding:.25rem 0"></div></div>' +
-
-      // ── Seção: Resultados Financeiros ─────────────────────────────────────
-      _sectionHdr('Resultados Financeiros') +
-
-      // N23 | Pipeline Rev by Stage (toggle bruto/ponderado — absorve o antigo N24)
-      _card(_titleWithCount(t('t_piperevstage'), _novoCurrentActivePipeline().length), t('tip_piperevstage'),
-        _subTabs('novo-piperevstage-tabs', _novoPipeRevStageMode, [{mode:'raw',label:t('lbl_raw'),fn:'novoSwitchPipeRevStage'},{mode:'weighted',label:t('lbl_weighted'),fn:'novoSwitchPipeRevStage'}]),
-        'chart-novo-piperevstage', 300, 'piperevstage') +
 
     '</div>';
 
@@ -4078,7 +4301,6 @@ function novoRender() {
   buildNovoTimeInStage();
   buildNovoSpeedQualify();
   buildNovoReassign();
-  buildNovoPipeRevStage();
 
   _initTabSubs();
   _novoSyncPipeRevToggles();
@@ -4122,9 +4344,8 @@ function _novoFunnelHorizCard() {
         '<button class="tab-sub-btn' + (_novoFunnelPipeline==='bid'?' active':'') + '" data-mode="bid" onclick="novoSwitchFunnelPipeline(\'bid\')">' + t('bid') + '</button>' +
       '</div>' +
       '<div style="display:flex;align-items:center;gap:.6rem;margin-left:auto;flex-wrap:wrap">' +
-        '<button id="btn-load-funnel" onclick="novoLoadFunnel()" style="background:var(--teal);color:#fff;border:none;border-radius:8px;padding:.3rem .75rem;font-size:.78rem;cursor:pointer;display:flex;align-items:center;gap:.35rem">' +
+        '<button id="btn-load-funnel" onclick="novoLoadFunnel()" style="background:var(--teal);color:#fff;border:none;border-radius:8px;padding:.3rem .6rem;font-size:.78rem;cursor:pointer;display:flex;align-items:center" title="' + t('fnl_load') + '">' +
           '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>' +
-          t('fnl_load') +
         '</button>' +
       '</div>' +
     '</div>' +
@@ -4296,11 +4517,19 @@ function novoLoadFunnel() {
       if (btn) { btn.disabled = false; }
       if (!data.success) throw new Error(data.error || 'Erro desconhecido');
       _novoFunnelData = data;
+      // Padrão automático: se não for override manual, recalcula NOVO_STAGE_PROB pelas
+      // conversões do funil e re-renderiza (afeta os cálculos ponderados do dashboard).
+      if (!_novoStageProbCfg.manual) {
+        var _pb = JSON.stringify(NOVO_STAGE_PROB);
+        _novoApplyStageProb();
+        if (JSON.stringify(NOVO_STAGE_PROB) !== _pb) { novoRender(); return; }
+      }
       buildNovoFunnelHorizChart();
       // S04 depende do histórico de etapas — atualiza a linha de KPIs secundários agora que chegou.
       var _kw = document.getElementById('novo-kpisec-wrap');
       if (_kw) _kw.innerHTML = _buildKpiSecRow();
       buildNovoSpeedQualify();
+      buildNovoReassign();
     })
     .catch(function(err) {
       _novoFunnelLoading = false;
@@ -4584,7 +4813,9 @@ document.addEventListener('keydown', function(e) {
   if (e.key !== 'Escape' && e.keyCode !== 27) return;
   var help  = document.getElementById('novo-help-drawer');
   var prob  = document.getElementById('novo-prob-drawer');
+  var rules = document.getElementById('novo-rules-drawer');
   var modal = document.getElementById('modal-overlay');
+  if (rules && rules.classList.contains('open'))  { novoCloseRulesDrawer(); return; }
   if (help && help.classList.contains('open'))   { novoCloseHelp(); return; }
   if (prob && prob.classList.contains('open'))   { novoCloseProbEditor(); return; }
   if (modal && modal.classList.contains('open')) { closeModal(); return; }
