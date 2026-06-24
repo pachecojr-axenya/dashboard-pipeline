@@ -115,28 +115,65 @@ module.exports = async function handler(req, res) {
       dealPipeline[id] = r.properties.pipeline;
     });
 
-    // 2. Histórico de dealstage em batches de 50
+    // 2. Histórico de dealstage + owner em batches de 50
     const historyByDeal = {};
+    const ownerChangesByDeal = {};
     for (let i = 0; i < hsIds.length; i += 50) {
       const batch = hsIds.slice(i, i + 50);
       try {
         const resp = await hubspotPost(token, '/crm/v3/objects/deals/batch/read', {
           properties: ['dealstage'],
-          propertiesWithHistory: ['dealstage'],
+          propertiesWithHistory: ['dealstage', 'hubspot_owner_id'],
           inputs: batch.map(id => ({ id: String(id) })),
         });
         (resp.results || []).forEach(r => {
           const hist = r.propertiesWithHistory?.dealstage;
-          if (!hist || hist.length === 0) return;
-          historyByDeal[r.id] = hist
-            .slice()
-            .sort((a, b) => a.timestamp < b.timestamp ? -1 : 1)
-            .map(h => ({ stage_id: h.value, entered_date: h.timestamp.substring(0, 10) }));
+          if (hist && hist.length > 0) {
+            historyByDeal[r.id] = hist
+              .slice()
+              .sort((a, b) => a.timestamp < b.timestamp ? -1 : 1)
+              .map(h => ({ stage_id: h.value, entered_date: h.timestamp.substring(0, 10) }));
+          }
+          const ownerHist = r.propertiesWithHistory?.hubspot_owner_id;
+          ownerChangesByDeal[r.id] = ownerHist ? Math.max(0, ownerHist.length - 1) : 0;
         });
       } catch (e) {
         console.error('[funnel-stages] batch/read error:', e.message);
       }
     }
+
+    // 2.5: Mediana de tempo REAL em cada etapa (stage_medians para N07)
+    function _medianArr(arr) {
+      if (!arr.length) return null;
+      const s = arr.slice().sort((a, b) => a - b);
+      const m = Math.floor(s.length / 2);
+      return s.length % 2 ? s[m] : Math.round((s[m - 1] + s[m]) / 2);
+    }
+    const todayStr = new Date().toISOString().substring(0, 10);
+    const _stageDurs = {};
+    const _stageCts  = {};
+    hsIds.forEach(id => {
+      const pipe = dealPipeline[id];
+      const stageMap = pipe === VENDAS_ID ? VENDAS_STAGE_MAP : pipe === BID_ID ? BID_STAGE_MAP : null;
+      if (!stageMap) return;
+      const hist = (historyByDeal[id] || []).filter(e => e.entered_date >= since && (!until || e.entered_date <= until));
+      if (!hist.length) return;
+      for (let i = 0; i < hist.length; i++) {
+        const stageName = stageMap[hist[i].stage_id];
+        if (!stageName) continue;
+        const exitDate = i + 1 < hist.length ? hist[i + 1].entered_date : todayStr;
+        const days = Math.max(0, Math.round(
+          (new Date(exitDate + 'T00:00:00') - new Date(hist[i].entered_date + 'T00:00:00')) / 86400000
+        ));
+        if (!_stageDurs[stageName]) _stageDurs[stageName] = [];
+        _stageDurs[stageName].push(days);
+      }
+    });
+    const stageMedsByName = {};
+    Object.keys(_stageDurs).forEach(s => {
+      stageMedsByName[s] = _medianArr(_stageDurs[s]);
+      _stageCts[s] = _stageDurs[s].length;
+    });
 
     // 3. Contadores separados por pipeline
     const vendasSets = {};
@@ -174,6 +211,9 @@ module.exports = async function handler(req, res) {
       total_with_history: Object.keys(historyByDeal).length,
       vendas: buildResult(VENDAS_FUNNEL, VENDAS_EXTRA, vendasSets, dealNames, vendasDates),
       bid:    buildResult(BID_FUNNEL,    BID_EXTRA,    bidSets,    dealNames, bidDates),
+      owner_changes:  ownerChangesByDeal,
+      stage_medians:  stageMedsByName,
+      stage_counts:   _stageCts,
       timestamp: new Date().toISOString(),
     });
   } catch (e) {

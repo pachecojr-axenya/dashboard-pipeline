@@ -308,9 +308,7 @@ table.lb tfoot td{font-weight:600;border-top:2px solid var(--border);position:st
       <span id="funnel-date-badge" class="hdr-date-badge" style="display:none" data-tooltip="Período ativo no filtro do dashboard"></span>
     </div>
     <div class="hdr-actions">
-      <button class="hdr-btn" id="btn-info-toggle" onclick="novoToggleInfo()" data-tooltip="Mostrar/ocultar identificadores e info dos gráficos">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-      </button>
+      <button class="hdr-btn" id="btn-info-toggle" onclick="novoToggleInfo()" data-tooltip="Mostrar/ocultar identificadores e info dos gráficos" style="font-size:.78rem;font-weight:800;letter-spacing:-.5px">&lt;/&gt;</button>
       <button class="hdr-btn" id="btn-rules" onclick="novoOpenRulesModal()" data-tooltip="Regras de probabilização">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
       </button>
@@ -1315,11 +1313,11 @@ var NOVO_HELP_CHARTS = [
     desc:'Quantidade de deals com data prevista de receita por mês | concentração de fechamentos esperados.',
     fields:[['data_prevista_para_receita','Agrupa deals por mês de expectativa.']] },
   { key:'timeinstage', title:'🟡 Tempo em Etapa | Análise de Gargalo (N07)',
-    desc:'Dias medianos em aberto por etapa (mediana de dias_no_pipe). Identifica onde os deals ficam presos.',
-    fields:[['createdate','Base do dias_no_pipe.'],['dealstage','Agrupa por etapa.']] },
+    desc:'Mediana de dias que os deals ficam em cada etapa do pipeline, calculada a partir do histórico real de transições (via /api/funnel-stages). Para cada deal, mede o tempo de entrada em uma etapa até a entrada na etapa seguinte (ou hoje, se ainda estiver na etapa). Inclui todos os deals que já passaram pela etapa desde set/2025 — não apenas os ativos hoje.\n\nEtapas Ganho e Perdido não são exibidas (negócios encerrados não refletem gargalos operacionais).\n\nFallback (quando o funil histórico ainda não foi carregado): usa dias_no_pipe (tempo total desde a criação do deal até hoje), agrupados pela etapa atual — este valor é sistematicamente mais alto porque acumula tempo em todas as etapas anteriores, não apenas na etapa corrente. Carregue o funil histórico para obter os valores precisos.',
+    fields:[['dealstage','Histórico de transições de etapa via propertiesWithHistory — base para o cálculo de tempo por etapa.'],['createdate','Referência de data para filtrar por janela (set/2025+).'],['dias_no_pipe','Usado apenas no fallback: dias desde a criação até hoje.']] },
   { key:'speedqualify', title:'🟡 Velocidade de Qualificação | Dias até Diagnóstico (N08)',
-    desc:'Média de dias entre a criação do deal e a entrada na etapa Diagnóstico, agrupados pelo mês de criação (createdate). Janela: set/2025 ao mês atual.\n\nFonte primária: /api/funnel-stages retorna o histórico de etapas via propertiesWithHistory do HubSpot. Para cada deal que passou por Diagnóstico, calcula entered_date − createdate em dias. Inclui todos os deals que já passaram pela etapa (não só os ativos hoje).\n\nFallback (quando /api/funnel-stages não retorna dados): usa apenas os deals atualmente em Diagnóstico e aplica dias_no_pipe como proxy — menos preciso, pois dias_no_pipe acumula até hoje e não para de contar ao entrar na etapa.\n\nComo auditar: no HubSpot, abra um deal que aparece no mês X → veja a Timeline → localize o evento de mudança para "Diagnóstico" → a data desse evento é o entered_date. Subtraia o createdate. O valor deve bater com a barra do mês de criação do deal. Alternativamente, a propriedade hs_date_entered_1144746906 (ID da etapa Diagnóstico no pipeline Vendas) armazena essa data diretamente.',
-    fields:[['createdate','Base do agrupamento: mês em que o deal foi criado.'],['hs_date_entered_1144746906','Data de entrada em Diagnóstico (pipeline Vendas). Diferença entered_date − createdate = dias plotados. Retornada pelo /api/funnel-stages via propertiesWithHistory.'],['dias_no_pipe','Usado apenas no fallback: dias desde a criação até hoje, independente de quando o deal entrou em Diagnóstico.']] },
+    desc:'Média de dias entre a criação do deal e sua primeira entrada na etapa Diagnóstico. **Agrupamento: pelo mês de CRIAÇÃO do deal (createdate)** — ou seja, uma barra para "maio/25" representa todos os deals criados em maio, independente de quando eles chegaram ao Diagnóstico. Janela: set/2025 ao mês atual.\n\nFonte primária: /api/funnel-stages (histórico via propertiesWithHistory). Para cada deal que passou por Diagnóstico, calcula entered_date − createdate em dias. Inclui todos os deals que já passaram pela etapa — não só os ativos hoje.\n\nFallback (quando o funil histórico não foi carregado): usa apenas deals atualmente em Diagnóstico, com dias_no_pipe como proxy — menos preciso, pois dias_no_pipe acumula até hoje.\n\nComo auditar: no HubSpot, abra um deal do mês X → Timeline → evento "mudou para Diagnóstico" → subtraia o createdate. Esse valor deve bater com a barra do mês de criação. A propriedade hs_date_entered_1144746906 armazena a data de entrada em Diagnóstico diretamente.',
+    fields:[['createdate','Base do agrupamento: mês em que o deal foi criado (não o mês em que entrou no Diagnóstico).'],['hs_date_entered_1144746906','Data de entrada em Diagnóstico (pipeline Vendas). Diferença entered_date − createdate = dias plotados.'],['dias_no_pipe','Usado apenas no fallback.']] },
   { key:'timetomeeting', title:'🟡 Reunião Ocorreu | Cobertura do Campo (N19)',
     desc:'Campo a_reuniao_ocorreu_ já está disponível na API como reuniao_ocorreu. O card mostra cobertura Sim/Não/sem preenchimento; tempo real até reunião ainda requer uma data de reunião.',
     fields:[['a_reuniao_ocorreu_','Campo booleano de reunião, retornado como reuniao_ocorreu.'],['createdate','Pode ser usado para coortes futuras quando houver data da reunião.']] },
@@ -3464,19 +3462,34 @@ function buildNovoTimeInStage() {
   var allDeals = _novoTimeInStageDeals();
   var byStage={}, byStageDeals={};
   allDeals.forEach(function(d){ var s=_stageNorm(d.stage); if(!byStage[s])byStage[s]=[]; byStage[s].push(d.dias_no_pipe); if(!byStageDeals[s])byStageDeals[s]=[]; byStageDeals[s].push(d); });
-  // Full stage order including historical (Ganho/Perdido)
-  var _histOrder=['Reunião Agendada','Diagnóstico','Cotação','Proposta Enviada','Consultoria','Negociação','Standby','Implantação','Ganho','Perdido'];
-  var stages=_histOrder.filter(function(s){return byStage[s]&&byStage[s].length>0;});
-  var meds=stages.map(function(s){return _novoMedian(byStage[s]);});
+  var _histOrder=['Reunião Agendada','Diagnóstico','Cotação','Proposta Enviada','Consultoria','Negociação','Standby','Implantação'];
+  var funMeds = _novoFunnelData && _novoFunnelData.stage_medians;
+  var funCts  = _novoFunnelData && _novoFunnelData.stage_counts;
+  var stages, meds, tipCounts;
+  if (funMeds) {
+    // Accurate: use real stage-transition medians from funnel history
+    stages = _histOrder.filter(function(s){ return funMeds[s] != null; });
+    meds = stages.map(function(s){ return funMeds[s]; });
+    tipCounts = stages.map(function(s){ return (funCts && funCts[s]) || 0; });
+  } else {
+    // Fallback: group by current stage, use dias_no_pipe (total pipeline age — imprecise)
+    stages = _histOrder.filter(function(s){ return byStage[s] && byStage[s].length > 0; });
+    meds = stages.map(function(s){ return _novoMedian(byStage[s]); });
+    tipCounts = stages.map(function(s){ return (byStage[s]||[]).length; });
+  }
   var th=_novoTheme();
   var colors=meds.map(function(v){return v<=14?'rgba(63,185,80,.75)':v<=45?'rgba(210,153,34,.8)':'rgba(248,81,73,.75)';});
   var canvas=document.getElementById('chart-novo-timeinstage');
   if(canvas) canvas.style.height=Math.max(stages.length*36+48,180)+'px';
+  var _usingFunnel = !!funMeds;
   _novoMkChart('chart-novo-timeinstage', { type:'bar', plugins:[ChartDataLabels],
     data:{ labels:stages, datasets:[{ data:meds, backgroundColor:colors, borderRadius:4 }] },
     options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, layout:{padding:{right:55}}, plugins:{ legend:{display:false},
       datalabels:{ anchor:'end', align:'right', color:th.cText, font:{family:NOVO_FONT,size:11,weight:'bold'}, formatter:function(v){return v+'d';} },
-      tooltip:{ callbacks:{ label:function(c){return c.parsed.x+' dias (mediana) | '+byStage[stages[c.dataIndex]].length+' deals';} } } },
+      tooltip:{ callbacks:{ label:function(c){
+        var n=tipCounts[c.dataIndex];
+        return c.parsed.x+'d (mediana) | n='+n+(_usingFunnel?' transições':' deals');
+      } } } },
       scales:{ x:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT}}}, y:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT},autoSkip:false}} },
       onClick:function(e,el){ if(!el.length)return; var s=stages[el[0].index]; novoOpenDealsStageFilterModal(NOVO_LANG==='en'?'Time in Stage':'Tempo em Etapa', allDeals, s); } } });
 }
@@ -4528,6 +4541,7 @@ function novoLoadFunnel() {
       // S04 depende do histórico de etapas — atualiza a linha de KPIs secundários agora que chegou.
       var _kw = document.getElementById('novo-kpisec-wrap');
       if (_kw) _kw.innerHTML = _buildKpiSecRow();
+      buildNovoTimeInStage();
       buildNovoSpeedQualify();
       buildNovoReassign();
     })

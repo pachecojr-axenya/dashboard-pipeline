@@ -455,23 +455,39 @@ function buildBdrOrigin(){
   var th=_novoTheme(), created=_dealsByDate('createdate').filter(_isBdr);
   var colab=_bdrOriginMode==='colaboradores';
   var vidas=_bdrOriginMode==='vidas';
-  var agg={};
-  created.forEach(function(d){ var b=_bdrName(d)||'(sem BDR)'; agg[b]=(agg[b]||0)+(vidas?(d.vidas||0):colab?(d.colaboradores||0):1); });
+  // Pre-compute all three aggregations for rich tooltip
+  var aggDeals={}, aggVidas={}, aggColab={};
+  created.forEach(function(d){
+    var b=_bdrName(d)||'(sem BDR)';
+    aggDeals[b]=(aggDeals[b]||0)+1;
+    aggVidas[b]=(aggVidas[b]||0)+(d.vidas||0);
+    aggColab[b]=(aggColab[b]||0)+(d.colaboradores||0);
+  });
+  var agg=colab?aggColab:vidas?aggVidas:aggDeals;
   var ranked=Object.keys(agg).map(function(b){return {bdr:b,n:agg[b]};}).filter(function(r){return r.n>0;}).sort(function(a,b){return b.n-a.n;}).slice(0,15);
-  var unit=vidas?'vidas':colab?'colaboradores':'deals criados';
+  // Pre-compute per-BDR metadata (level + goal) for tooltip
+  var bdrInfo={};
+  ranked.forEach(function(r){
+    var metas=window.BDR_METAS||{};
+    var goal=metas[r.bdr], level=null;
+    var first=r.bdr.split(' ')[0].toLowerCase();
+    if(goal==null){
+      var ks=Object.keys(metas).filter(function(k){return k.split(' ')[0].toLowerCase()===first;});
+      if(ks.length===1) goal=metas[ks[0]];
+    }
+    if(window.BDR_LIST){
+      var match=window.BDR_LIST.filter(function(b){return b.name===r.bdr||(b.name.split(' ')[0].toLowerCase()===first);});
+      if(match.length===1) level=match[0].level;
+    }
+    bdrInfo[r.bdr]={goal:goal,level:level};
+  });
   var canvas=document.getElementById('chart-bdr-origin-bdr');
   if(canvas) canvas.style.height=Math.max(ranked.length*36+48,160)+'px';
   // Color bars by goal attainment in deals mode
   var bgColors;
   if (!colab && !vidas) {
-    var metas=window.BDR_METAS||{};
     bgColors=ranked.map(function(r){
-      var goal=metas[r.bdr];
-      if (goal==null){
-        var first=r.bdr.split(' ')[0].toLowerCase();
-        var keys=Object.keys(metas).filter(function(k){return k.split(' ')[0].toLowerCase()===first;});
-        if(keys.length===1) goal=metas[keys[0]];
-      }
+      var goal=bdrInfo[r.bdr] && bdrInfo[r.bdr].goal;
       if(goal==null||goal<=0) return 'rgba(147,112,219,.75)';
       var pct=r.n/goal;
       if(pct>=1.0)  return 'rgba(63,185,80,.8)';
@@ -486,7 +502,22 @@ function buildBdrOrigin(){
     data:{labels:ranked.map(function(r){return r.bdr;}),datasets:[{data:ranked.map(function(r){return r.n;}),backgroundColor:bgColors,hoverBackgroundColor:'rgba(147,112,219,1)',borderRadius:4}]},
     options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,layout:{padding:{right:54}},plugins:{legend:{display:false},
       datalabels:{anchor:'end',align:'right',color:th.cText,font:{family:NOVO_FONT,size:11,weight:'bold'},formatter:function(v){return _ni(v);}},
-      tooltip:{callbacks:{label:function(c){return _ni(c.parsed.x)+' '+unit;}}}},
+      tooltip:{callbacks:{
+        title:function(items){
+          var r=ranked[items[0].dataIndex];
+          var info=bdrInfo[r.bdr]||{};
+          return r.bdr+(info.level?' | '+info.level:'');
+        },
+        label:function(c){
+          var r=ranked[c.dataIndex];
+          var info=bdrInfo[r.bdr]||{};
+          return [
+            'Deals: '+_ni(aggDeals[r.bdr]||0)+(info.goal!=null?' | Meta: '+info.goal:''),
+            'Colaboradores: '+_ni(aggColab[r.bdr]||0),
+            'Vidas: '+_ni(aggVidas[r.bdr]||0)
+          ];
+        }
+      }}},
       scales:{x:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0}},y:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT},autoSkip:false}}},
       onClick:function(e,el){ if(!el.length)return; var b=ranked[el[0].index].bdr; bdrOpenFacetModal('Originação por BDR', created, 'bdr', b); }}});
 }

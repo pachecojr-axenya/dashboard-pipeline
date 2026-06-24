@@ -21,7 +21,7 @@
     {name:'Cintia Rodrigues',     level:'Antigo',       goal:25},
     {name:'Gabriele Almeida',     level:'Antigo',       goal:23},
     {name:'Priscilla Feliciello', level:'Antigo',       goal:23},
-    {name:'Letícia Romão',        level:'Intermediário',goal:15},
+    {name:'Letícia Romão',        level:'Interm.',goal:15},
     {name:'Allan Valença',        level:'Novo',         goal:10},
     {name:'Bruna Reis',           level:'Novo',         goal:7},
     {name:'Emmanuelle Braga',     level:'Novo',         goal:10},
@@ -44,19 +44,20 @@
     var m={}; BDR_LIST.forEach(function(b){m[b.name]=b.goal;}); return m;
   }
 
-  // Expose BDR goals globally so charts can use them
+  // Expose BDR data globally so charts can use them
   if (typeof window.NOVO_STAGE_PROB === 'undefined' || !window.NOVO_STAGE_PROB) window.NOVO_STAGE_PROB = loadProb();
   if (typeof window.NOVO_META_MTD === 'undefined') window.NOVO_META_MTD = loadMeta();
   if (typeof window.BDR_METAS === 'undefined') window.BDR_METAS = loadBdrMetas();
+  window.BDR_LIST = BDR_LIST;
 
   var LEVEL_COLORS = {
     'Antigo':       'rgba(58,184,183,.25)',
-    'Intermediário':'rgba(147,112,219,.25)',
+    'Interm.':'rgba(147,112,219,.25)',
     'Novo':         'rgba(88,166,255,.2)',
   };
   var LEVEL_TEXT = {
     'Antigo':       'var(--teal)',
-    'Intermediário':'rgba(147,112,219,1)',
+    'Interm.':'rgba(147,112,219,1)',
     'Novo':         'rgba(88,166,255,1)',
   };
 
@@ -120,8 +121,9 @@
       + '    <div class="novo-prob-field" style="border-bottom:none;align-items:center"><label>Implantação = Ganho</label><button class="impl-toggle" id="np-impl-toggle" onclick="novoToggleImplWon()" style="margin-left:auto"><span class="sw"></span></button></div>'
       + '    <div class="novo-prob-field" style="border-bottom:none;align-items:center"><label>Ativos incluem Reunião Agendada</label><button class="impl-toggle" id="np-ra-toggle" onclick="novoToggleActiveMeetings()" style="margin-left:auto"><span class="sw"></span></button></div>'
       + '    <div class="novo-prob-field" style="border-bottom:none;align-items:center"><label>Ativos incluem Standby</label><button class="impl-toggle" id="np-sb-toggle" onclick="novoToggleActiveStandby()" style="margin-left:auto"><span class="sw"></span></button></div>'
-      // e: Metas separator
+      // e: Metas separator + global notice
       + '    <div class="np-section-sep">Metas</div>'
+      + '    <p style="font-size:.72rem;color:var(--text2);margin:.3rem 0 .5rem;line-height:1.4">Alterações salvas globalmente — visíveis para todos os usuários.</p>'
       // f-r: BDR goals
       + bdrRows
       // s: Probabilidades separator
