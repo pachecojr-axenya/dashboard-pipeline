@@ -3368,16 +3368,26 @@ function _novoOpenN06BForecastModal() {
     _mm++; if (_mm > 11) { _mm = 0; _my++; }
   }
 
-  // Calcular blocos para cada mês
-  var Bw={}, Bp={}, Bd={}, Bb={}, Bn={};
-  months.forEach(function(m){ Bw[m]=0; Bp[m]=0; Bd[m]=0; Bb[m]=0; Bn[m]=0; });
-  won.forEach(function(d){ months.forEach(function(m){ var v=_novoFcWonMonthValue(d,m); if(v>0) Bw[m]+=v; }); });
-  nonBid.forEach(function(d){ months.forEach(function(m){
-    var v=_novoFcRuleMonthValue(d,m,weighted);
-    if (v>0){ if(d.stage==='Diagnóstico') Bd[m]+=v; else Bp[m]+=v; }
-  }); });
-  bid.forEach(function(d){ months.forEach(function(m){ var v=_novoFcBidMonthValue(d,m,weighted); if(v>0) Bb[m]+=v; }); });
-  months.forEach(function(m){ Bn[m]=_novoFcNewBizRev(m,weighted); });
+  // Etapas individuais (ordem: mais comprometido → topo de funil)
+  var stageDefs = [
+    { label:'Ganho',            fn:'won',    color:'var(--green)',         deals: won.filter(function(d){ return d.stage==='Ganho'; }) },
+    { label:'Implantação',      fn:'won',    color:'rgba(63,185,80,.7)',   deals: won.filter(function(d){ return d.stage==='Implantação'; }) },
+    { label:'Negociação',       fn:'rule',   color:'var(--yellow)',        deals: nonBid.filter(function(d){ return d.stage==='Negociação'; }) },
+    { label:'Cotação',          fn:'rule',   color:'',                     deals: nonBid.filter(function(d){ return d.stage==='Cotação'; }) },
+    { label:'Consultoria',      fn:'rule',   color:'',                     deals: nonBid.filter(function(d){ return d.stage==='Consultoria'; }) },
+    { label:'Diagnóstico',      fn:'rule',   color:'',                     deals: nonBid.filter(function(d){ return d.stage==='Diagnóstico'; }) },
+    { label:'Reunião Agendada', fn:'rule',   color:'var(--text2)',         deals: nonBid.filter(function(d){ return d.stage==='Reunião Agendada'; }) },
+    { label:'BID',              fn:'bid',    color:'rgba(88,166,255,.85)', deals: bid },
+    { label:'Novos Negócios',   fn:'newbiz', color:'rgba(88,166,255,.6)',  deals: [] },
+  ];
+  stageDefs.forEach(function(s){
+    s.data = {};
+    months.forEach(function(m){ s.data[m] = 0; });
+    if (s.fn === 'won')    { s.deals.forEach(function(d){ months.forEach(function(m){ var v=_novoFcWonMonthValue(d,m);       if(v>0) s.data[m]+=v; }); }); }
+    else if (s.fn==='rule'){ s.deals.forEach(function(d){ months.forEach(function(m){ var v=_novoFcRuleMonthValue(d,m,weighted); if(v>0) s.data[m]+=v; }); }); }
+    else if (s.fn==='bid') { s.deals.forEach(function(d){ months.forEach(function(m){ var v=_novoFcBidMonthValue(d,m,weighted);  if(v>0) s.data[m]+=v; }); }); }
+    else if (s.fn==='newbiz') { months.forEach(function(m){ s.data[m]=_novoFcNewBizRev(m,weighted); }); }
+  });
 
   // Formatar valor compacto
   var fmt = function(v) {
@@ -3392,21 +3402,12 @@ function _novoOpenN06BForecastModal() {
   var yearCols = {};
   years.forEach(function(y){ yearCols[y] = months.filter(function(m){ return parseInt(m)===y; }).length; });
 
-  var rows = [
-    { label:'Ganho / Implantação',          data:Bw, color:'var(--green)' },
-    { label:'Cotação / Consult. / Neg.',     data:Bp, color:'' },
-    { label:'Diagnóstico',                   data:Bd, color:'' },
-    { label:'BID',                           data:Bb, color:'' },
-    { label:'Novos Negócios (topo de funil)',data:Bn, color:'rgba(88,166,255,.9)' },
-  ];
-
   var stickyTd = 'position:sticky;left:0;z-index:1';
-  var th = _novoTheme();
   var h = '<div style="overflow-x:auto;overflow-y:auto;max-height:65vh">'
     + '<table style="border-collapse:collapse;font-size:.71rem;white-space:nowrap;min-width:100%"><thead>';
 
   // Cabeçalho anos
-  h += '<tr><th style="'+stickyTd+';background:var(--card2);min-width:168px;padding:.4rem .65rem;text-align:left;font-size:.68rem;text-transform:uppercase;letter-spacing:.07em;color:var(--text2);border-right:2px solid var(--border)">Bloco</th>';
+  h += '<tr><th style="'+stickyTd+';background:var(--card2);min-width:168px;padding:.4rem .65rem;text-align:left;font-size:.68rem;text-transform:uppercase;letter-spacing:.07em;color:var(--text2);border-right:2px solid var(--border)">Etapa</th>';
   years.forEach(function(y){
     h += '<th colspan="'+yearCols[y]+'" style="text-align:center;background:var(--card2);padding:.28rem .4rem;border-left:2px solid var(--border);color:var(--teal);font-weight:700;font-size:.73rem">'+y+'</th>';
   });
@@ -3416,13 +3417,12 @@ function _novoOpenN06BForecastModal() {
   h += '<tr><th style="'+stickyTd+';background:var(--card2);border-right:2px solid var(--border)"></th>';
   months.forEach(function(m){
     var mo = parseInt(m.substring(5,7)) - 1;
-    var isJan = mo === 0;
-    h += '<th style="text-align:right;padding:.25rem .45rem;font-weight:500;color:var(--text2);min-width:66px;'+(isJan?'border-left:2px solid var(--border)':'')+'">'+ mAbbr[mo] +'</th>';
+    h += '<th style="text-align:right;padding:.25rem .45rem;font-weight:500;color:var(--text2);min-width:66px;'+(mo===0?'border-left:2px solid var(--border)':'')+'">'+ mAbbr[mo] +'</th>';
   });
   h += '</tr></thead><tbody>';
 
-  // Linhas de blocos
-  rows.forEach(function(row, ri){
+  // Linhas por etapa
+  stageDefs.forEach(function(row, ri){
     var bg = ri%2===0 ? 'var(--card)' : 'var(--card2)';
     h += '<tr style="background:'+bg+'"><td style="'+stickyTd+';background:'+bg+';padding:.33rem .65rem;font-weight:500;color:'+(row.color||'var(--text)')+';border-right:2px solid var(--border)">'+ row.label +'</td>';
     months.forEach(function(m){
@@ -3437,7 +3437,7 @@ function _novoOpenN06BForecastModal() {
   h += '<tr style="background:rgba(63,185,80,.1);font-weight:700"><td style="'+stickyTd+';background:rgba(63,185,80,.1);padding:.35rem .65rem;color:var(--green);border-right:2px solid var(--border);border-top:2px solid rgba(63,185,80,.4)">Total</td>';
   months.forEach(function(m){
     var mo = parseInt(m.substring(5,7)) - 1;
-    var v = (Bw[m]||0)+(Bp[m]||0)+(Bd[m]||0)+(Bb[m]||0)+(Bn[m]||0);
+    var v = 0; stageDefs.forEach(function(s){ v += s.data[m]||0; });
     h += '<td style="text-align:right;padding:.28rem .45rem;font-variant-numeric:tabular-nums;color:var(--green);border-top:2px solid rgba(63,185,80,.4);'+(mo===0?'border-left:2px solid var(--border)':'')+'">'+ fmt(v) +'</td>';
   });
   h += '</tr></tbody></table></div>';
