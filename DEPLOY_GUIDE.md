@@ -58,4 +58,46 @@ No painel do Vercel, o projeto **precisa** ter as seguintes variáveis de ambien
 
 O Vercel está configurado (`vercel.json`) para mapear rotas "amigáveis" para arquivos `.html` estáticos.
 - A página após o login redireciona para a rota `/dashboard`.
-- O `vercel.json` faz o rewrite de `/dashboard` para o arquivo correspondente (atualmente `novo-dashboard.html`). Se desejar voltar para o antigo, basta alterar a `destination` de `/dashboard` no arquivo `vercel.json`.
+- O `vercel.json` faz o rewrite de `/dashboard` para o arquivo `dashboard.html`. Para alterar o destino, edite a chave `destination` da rota `/dashboard` no `vercel.json`.
+
+Mapa atual de rotas (`vercel.json`):
+
+| Rota | Arquivo |
+|------|---------|
+| `/` | `login.html` |
+| `/dashboard` ou `/novo` | `dashboard.html` |
+| `/novo-board` | `board.html` |
+| `/novo-ae` | `ae.html` |
+| `/novo-bdr` | `bdr.html` |
+| `/novo-48h` | `48h.html` |
+| `/novo-cs` | `cs.html` |
+| `/novo-cotacao` | `cotacao.html` |
+| `/forecast` | `forecast.html` |
+
+---
+
+## 5. Verificação pós-deploy
+
+Após `vercel --prod --yes`, confirmar que o ambiente de produção está correto:
+
+```bash
+# Páginas públicas devem retornar 200
+curl -o /dev/null -s -w "%{http_code}" https://project-bsmfu.vercel.app/
+curl -o /dev/null -s -w "%{http_code}" https://project-bsmfu.vercel.app/novo
+
+# APIs devem retornar 401 (auth ativa — LOCAL_DEV_BYPASS ausente em prod)
+curl -o /dev/null -s -w "%{http_code}" https://project-bsmfu.vercel.app/api/auth/me
+curl -o /dev/null -s -w "%{http_code}" https://project-bsmfu.vercel.app/api/forecast-table
+```
+
+Se `/api/auth/me` retornar 200 sem cookie, o bypass está ativo em produção — **reverter o deploy imediatamente**.
+
+---
+
+## 6. Sobre `ALLOWED_EMAILS`
+
+A variável `ALLOWED_EMAILS` é **aditiva** à lista hardcoded em `lib/auth.js`: qualquer e-mail nela entra como autorizado _além_ dos já fixos no código.
+
+- **Formato:** lista separada por vírgula, sem espaços. Ex.: `maria@axenya.com,pedro@axenya.com`
+- **Se vazia ou ausente:** só os e-mails hardcoded em `lib/auth.js` têm acesso.
+- **Domínio `@axenya.com`:** dependendo da lógica em `lib/auth.js`, pode haver verificação de domínio além da lista — confirmar antes de adicionar e-mails externos.

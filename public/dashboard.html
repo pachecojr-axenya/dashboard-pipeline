@@ -214,6 +214,7 @@ table.lb tfoot td{font-weight:600;border-top:2px solid var(--border);position:st
 .novo-prob-drawer{position:fixed;top:0;right:-380px;width:360px;max-width:100vw;height:100vh;background:var(--card);border-left:1px solid var(--border);z-index:3001;display:flex;flex-direction:column;transition:right .28s cubic-bezier(0.4,0,0.2,1);box-shadow:-8px 0 32px rgba(0,0,0,.25)}
 .novo-prob-drawer.open{right:0}
 #novo-rules-drawer{width:460px;right:-540px}
+#novo-rules-drawer.open{right:0}
 #novo-rules-body{flex:1;overflow-y:auto;padding:1.25rem 1.5rem}
 .novo-prob-drawer-hdr{display:flex;align-items:center;justify-content:space-between;padding:1.25rem 1.5rem;border-bottom:1px solid var(--border);flex-shrink:0}
 .novo-prob-drawer-hdr h3{margin:0;font-size:1.35rem;font-weight:600;color:var(--text)}
@@ -224,6 +225,7 @@ table.lb tfoot td{font-weight:600;border-top:2px solid var(--border);position:st
 .novo-prob-field input:focus{outline:none;border-color:var(--teal)}
 .novo-prob-field input.np-edited{background:rgba(241,196,15,.18);border-color:rgba(241,196,15,.75)}
 .np-cf{opacity:.55;font-size:.72em;font-weight:400;color:var(--text2)}
+.np-hint{display:block;font-size:.68rem;color:var(--teal);opacity:.85;margin-top:.12rem;font-weight:500}
 .np-reset{flex:0 0 auto;margin-left:.4rem;background:var(--card2);border:1px solid var(--border);border-radius:6px;color:var(--text2);width:30px;height:30px;cursor:pointer;font-size:1rem;line-height:1;display:inline-flex;align-items:center;justify-content:center;padding:0}
 .np-reset:hover{border-color:var(--teal);color:var(--teal)}
 #btn-settings{position:relative}
@@ -355,13 +357,13 @@ table.lb tfoot td{font-weight:600;border-top:2px solid var(--border);position:st
       ⚠️ Você alterou as probabilidades padrão manualmente. O padrão calculado pelo funil (C06) não está sendo aplicado.
       <button onclick="novoResetStageProbToFunnel()" style="margin-top:.45rem;display:block;background:var(--teal);color:#fff;border:none;border-radius:6px;padding:.3rem .65rem;font-size:.72rem;cursor:pointer">Restaurar padrão do funil</button>
     </div>
-    <div class="novo-prob-field"><label>Reunião Agendada <span class="np-cf">(calculado pelo funil)</span> <span class="np-hint" id="np-hint-rag"></span></label><input type="text" id="np-rag" oninput="_npCheckYellow('np-rag','Reunião Agendada')"><span class="novo-prob-pct">%</span><button type="button" class="np-reset" onclick="_npResetField('np-rag','Reunião Agendada')" title="Restaurar valor do funil">↺</button></div>
-    <div class="novo-prob-field"><label>Diagnóstico <span class="np-cf">(calculado pelo funil)</span> <span class="np-hint" id="np-hint-dia"></span></label><input type="text" id="np-dia" oninput="_npCheckYellow('np-dia','Diagnóstico')"><span class="novo-prob-pct">%</span><button type="button" class="np-reset" onclick="_npResetField('np-dia','Diagnóstico')" title="Restaurar valor do funil">↺</button></div>
-    <div class="novo-prob-field"><label>Cotação <span class="np-cf">(calculado pelo funil)</span> <span class="np-hint" id="np-hint-cot"></span></label><input type="text" id="np-cot" oninput="_npCheckYellow('np-cot','Cotação')"><span class="novo-prob-pct">%</span><button type="button" class="np-reset" onclick="_npResetField('np-cot','Cotação')" title="Restaurar valor do funil">↺</button></div>
-    <div class="novo-prob-field"><label>Proposta Enviada <span style="opacity:.5;font-size:.8em">(BID)</span> <span class="np-cf">(calculado pelo funil)</span> <span class="np-hint" id="np-hint-pro"></span></label><input type="text" id="np-pro" oninput="_npCheckYellow('np-pro','Proposta Enviada')"><span class="novo-prob-pct">%</span><button type="button" class="np-reset" onclick="_npResetField('np-pro','Proposta Enviada')" title="Restaurar valor do funil">↺</button></div>
-    <div class="novo-prob-field"><label>Consultoria <span class="np-cf">(calculado pelo funil)</span> <span class="np-hint" id="np-hint-con"></span></label><input type="text" id="np-con" oninput="_npCheckYellow('np-con','Consultoria')"><span class="novo-prob-pct">%</span><button type="button" class="np-reset" onclick="_npResetField('np-con','Consultoria')" title="Restaurar valor do funil">↺</button></div>
-    <div class="novo-prob-field"><label>Negociação <span class="np-cf">(calculado pelo funil)</span> <span class="np-hint" id="np-hint-neg"></span></label><input type="text" id="np-neg" oninput="_npCheckYellow('np-neg','Negociação')"><span class="novo-prob-pct">%</span><button type="button" class="np-reset" onclick="_npResetField('np-neg','Negociação')" title="Restaurar valor do funil">↺</button></div>
-    <div class="novo-prob-field" style="border-bottom:none"><label>Implantação/Ganho <span class="np-cf">(calculado pelo funil)</span> <span class="np-hint" id="np-hint-imp"></span></label><input type="text" id="np-imp" oninput="_npCheckYellow('np-imp','Implantação')"><span class="novo-prob-pct">%</span><button type="button" class="np-reset" onclick="_npResetField('np-imp','Implantação')" title="Restaurar valor do funil">↺</button></div>
+    <div class="novo-prob-field"><label>Reunião Agendada<span class="np-hint" id="np-hint-rag"></span></label><input type="text" id="np-rag" oninput="_npCheckYellow('np-rag','Reunião Agendada')"><span class="novo-prob-pct">%</span><button type="button" class="np-reset" onclick="_npResetField('np-rag','Reunião Agendada')" title="Restaurar valor do funil">↺</button></div>
+    <div class="novo-prob-field"><label>Diagnóstico<span class="np-hint" id="np-hint-dia"></span></label><input type="text" id="np-dia" oninput="_npCheckYellow('np-dia','Diagnóstico')"><span class="novo-prob-pct">%</span><button type="button" class="np-reset" onclick="_npResetField('np-dia','Diagnóstico')" title="Restaurar valor do funil">↺</button></div>
+    <div class="novo-prob-field"><label>Cotação<span class="np-hint" id="np-hint-cot"></span></label><input type="text" id="np-cot" oninput="_npCheckYellow('np-cot','Cotação')"><span class="novo-prob-pct">%</span><button type="button" class="np-reset" onclick="_npResetField('np-cot','Cotação')" title="Restaurar valor do funil">↺</button></div>
+    <div class="novo-prob-field"><label>Proposta Enviada <span style="opacity:.5;font-size:.8em">(BID)</span><span class="np-hint" id="np-hint-pro"></span></label><input type="text" id="np-pro" oninput="_npCheckYellow('np-pro','Proposta Enviada')"><span class="novo-prob-pct">%</span><button type="button" class="np-reset" onclick="_npResetField('np-pro','Proposta Enviada')" title="Restaurar valor do funil">↺</button></div>
+    <div class="novo-prob-field"><label>Consultoria<span class="np-hint" id="np-hint-con"></span></label><input type="text" id="np-con" oninput="_npCheckYellow('np-con','Consultoria')"><span class="novo-prob-pct">%</span><button type="button" class="np-reset" onclick="_npResetField('np-con','Consultoria')" title="Restaurar valor do funil">↺</button></div>
+    <div class="novo-prob-field"><label>Negociação<span class="np-hint" id="np-hint-neg"></span></label><input type="text" id="np-neg" oninput="_npCheckYellow('np-neg','Negociação')"><span class="novo-prob-pct">%</span><button type="button" class="np-reset" onclick="_npResetField('np-neg','Negociação')" title="Restaurar valor do funil">↺</button></div>
+    <div class="novo-prob-field" style="border-bottom:none"><label>Implantação / Ganho<span class="np-hint" id="np-hint-imp"></span></label><input type="text" id="np-imp" oninput="_npCheckYellow('np-imp','Implantação')"><span class="novo-prob-pct">%</span><button type="button" class="np-reset" onclick="_npResetField('np-imp','Implantação')" title="Restaurar valor do funil">↺</button></div>
   </div>
   <div class="novo-prob-drawer-ftr">
     <button class="novo-prob-cancel" onclick="novoCloseProbEditor()" title="Cancelar">
@@ -624,7 +626,7 @@ function novoOpenProbEditor() {
   _syncActiveStandbyToggle();
   // Valores sugeridos pelo funil (C06, combinado) ao lado de cada etapa derivada, com amostra (n).
   var _fd = _novoFunnelDerivedProb();
-  var _hint = function(id, key) { var el=document.getElementById(id); if(!el) return; el.textContent = (_fd && _fd[key]!=null) ? ('funil: '+(_fd[key]*100).toFixed(0)+'% (n='+_novoFunnelCombinedCount(key)+')') : ''; };
+  var _hint = function(id, key) { var el=document.getElementById(id); if(!el) return; el.textContent = (_fd && _fd[key]!=null) ? ('funil: '+(_fd[key]*100).toFixed(1).replace('.',',')+'% (n='+_novoFunnelCombinedCount(key)+')') : ''; };
   _hint('np-hint-rag','Reunião Agendada'); _hint('np-hint-dia','Diagnóstico'); _hint('np-hint-cot','Cotação'); _hint('np-hint-pro','Proposta Enviada'); _hint('np-hint-con','Consultoria'); _hint('np-hint-neg','Negociação'); _hint('np-hint-imp','Implantação');
   // Amarela os campos diferentes do padrão calculado pelo funil (override manual).
   _pairs.forEach(function(p){ _npCheckYellow(p[0], p[1]); });

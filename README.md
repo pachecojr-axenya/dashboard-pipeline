@@ -165,16 +165,32 @@ esvaziar.
 
 ## 8. Rodar localmente
 
+> **Protocolo para IAs — obrigatório antes de qualquer avaliação ou edição:**
+> ative o servidor local na porta 3002 e envie todas as requisições pelo ambiente local
+> (`http://localhost:3002`). Use o comando `/axenya-dashboard` para o passo-a-passo completo.
+
+Há duas formas de rodar localmente:
+
+**Opção A — `local-server.js` (recomendada, zero dependências externas):**
+
 ```powershell
 # A partir de dashboard-ivan-visual/
-# .env.local já contém HUBSPOT_TOKEN, SESSION_SECRET e LOCAL_DEV_BYPASS=true (não commitar)
+node scripts/local-server.js
+# Acesse: http://localhost:3002/novo
+```
+
+Carrega o `.env.local` automaticamente (inclui `LOCAL_DEV_BYPASS=true`). Não requer login no Vercel CLI.
+
+**Opção B — Vercel CLI:**
+
+```powershell
 vercel dev --listen 3002 --yes
 # Acesse: http://localhost:3002/novo  (ou /dashboard)
 ```
 
 > No Windows, `npm start` (que chama `scripts/dev.js` → `spawnSync('vercel')`) pode não resolver o
-> binário do Vercel; rodar `vercel dev` direto, garantindo que as variáveis do `.env.local` estejam no
-> ambiente, é o caminho confiável. Para dados reais é preciso o `HUBSPOT_TOKEN` preenchido.
+> binário do Vercel; usar `vercel dev` direto é mais confiável. Para dados reais é preciso o
+> `HUBSPOT_TOKEN` preenchido no `.env.local`.
 
 ---
 

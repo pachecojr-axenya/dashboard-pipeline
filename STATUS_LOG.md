@@ -1409,3 +1409,26 @@ Registro curto, uma linha por interação (a cada alteração).
 - **Skill `/axenya-dashboard` criada** (`.claude/commands/axenya-dashboard.md`): protocolo de 5 passos que toda IA deve seguir ao avaliar ou editar o projeto — ativar localhost 3002, enviar requisições pelo env local, ler arquivos de contexto na ordem correta, verificar rotas-chave antes de reportar.
 - **README.md (seção 8):** adicionado callout de protocolo para IAs + documentadas as duas opções de dev (`local-server.js` recomendada vs. `vercel dev`) com trade-offs.
 - **DEPLOY_GUIDE.md:** (a) corrigido `novo-dashboard.html` → `dashboard.html` na seção de rotas; (b) adicionado mapa completo de rotas; (c) adicionada seção 5 de verificação pós-deploy com comandos curl; (d) adicionada seção 6 explicando `ALLOWED_EMAILS` (formato vírgula, comportamento aditivo, confirmado no `lib/auth.js` linha 38).
+
+### N07 | média real vs HubSpot + filtro por createdate + Vendas-only (2026-06-24)
+
+- **N07 (`buildNovoTimeInStage`) — fonte primária:** quando `_novoFunnelData.stage_medians` está disponível, o gráfico usa a **média de dias por etapa** calculada pelo backend (não mais a mediana de `dias_no_pipe`). Tooltip mostra "(média) | n=X transições". Mudança alinha com o HubSpot que exibe médias (ex: 14,8d / 24,9d).
+- **`api/funnel-stages.js` — seção 2.5 (stage_medians):** três correções: (1) **average** em vez de mediana — `_avgArr` retorna `Math.round(sum/len * 10)/10`; (2) **filtro por `createdate` do deal** (`cd >= since`) em vez de filtrar por data de transição — replica o filtro do HubSpot; (3) retorna **`null`** quando `stageMedsByName` está vazio (era `{}`, truthy, causando N07 mostrar gráfico vazio sem fallback); (4) toda a seção 2.5 isolada em **try-catch próprio** para não bloquear `owner_changes` em caso de erro; (5) `VENDAS_STAGE_MAP['1317543716']` corrigido de `'Stand by'` para `'Standby'` (alinhado com `_histOrder`).
+- **N07 — Vendas-only:** `api/funnel-stages.js` seção 2.5 agora filtra `pipe !== VENDAS_ID` antes de calcular durações de etapa — `stage_medians` reflete apenas deals do Pipeline de Vendas, como o HubSpot.
+
+### N09 | Win Rate axis + contagem + emoji removido (2026-06-24)
+
+- **N09 (Impacto de Reatribuição) — eixo Win Rate:** `yRate.max` reduzido de `100` para `20` — escala agora cobre 0–20%, que é o range real dos dados, tornando as variações visíveis.
+- **N08/N09 — badge de contagem de deals:** N08 (`buildNovoSpeedQualify`) atualiza `<span id="novo-sq-count">` com `diaEntries.length` deals; N09 (`buildNovoReassign`) atualiza `<span id="novo-reassign-count">` com a soma de `counts`. Spans injetados nos cards via `_card(title + span, ...)` / HTML inline.
+- **N09 — título:** emoji 🟡 removido de `t_reassign` PT e EN.
+
+### Infra | lib/hubspot.js — escopo de dados alinhado ao HubSpot (2026-06-24)
+
+- **Diferença de 1311 vs 1135 deals:** o dashboard usava apenas Pipeline de Vendas sem filtro de data (`lib/hubspot.js`), enquanto o HubSpot mostra Vendas + Bid + `createdate >= 01/09/2025`. Resultado: 1311 vs 1135 deals.
+- **`lib/hubspot.js` reestruturado:** adicionadas constantes `BID_PIPELINE = '894130090'` e `DEALS_SINCE_MS = '1756684800000'` (01/09/2025 UTC ms). `fetchAllDeals` atualizado com filtro `pipeline IN [VENDAS, BID]` e `createdate GTE DEALS_SINCE_MS`. `VENDAS_STAGE_MAP` e `BID_STAGE_MAP_LIB` separados; `STAGE_MAP = Object.assign(Vendas, Bid)`; `STAGE_IDS` mantém apenas IDs Vendas (para `hs_date_entered_*`). Exports atualizados.
+
+### CRO Dashboard | drawer de regras + settings visual + decimais (2026-06-24)
+
+- **Drawer `?` (regras de probabilização) — bug CSS corrigido:** `#novo-rules-drawer{right:-540px}` (especificidade de ID: 1,0,0) impedia `.novo-prob-drawer.open{right:0}` (classe: 0,2,0) de funcionar. Adicionado `#novo-rules-drawer.open{right:0}` para que o drawer efetivamente deslize para dentro ao clicar no `?`.
+- **Settings drawer — probabilidades reorganizadas:** removidos os spans `.np-cf` `"(calculado pelo funil)"` de cada label de probabilidade (redundante — o `#np-prob-status` já informa). Adicionado CSS `.np-hint{display:block;font-size:.68rem;color:var(--teal);opacity:.85;margin-top:.12rem;font-weight:500}` para que o valor do funil (ex: "funil: 6,0% (n=47)") apareça como sub-linha colorida abaixo do nome da etapa.
+- **Decimais padronizados:** a função `_hint` em `novoOpenProbEditor` usava `toFixed(0)` (ex: "funil: 6%") enquanto os inputs usam `toFixed(1)` (ex: "6,0"). Corrigido para `toFixed(1).replace('.',',')` — consistência entre hint e input.
