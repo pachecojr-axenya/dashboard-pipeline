@@ -3272,7 +3272,10 @@ function _novoFcRuleMonthValue(d, month, weighted){
 // Bloco NEGÓCIO GANHO/IMPLANTAÇÃO (linha 11 da Cintia): receita recorrente (ARR ÷ 12) dos deals
 // já ganhos/implantação, fixa a partir da vigência. Receita certa | sem probabilidade.
 function _novoFcWonStartMonth(d){
-  return d.vigencia ? d.vigencia.substring(0,7) : (d.data_implantacao ? d.data_implantacao.substring(0,7) : (d.data_ganho ? d.data_ganho.substring(0,7) : null));
+  if (d.data_prevista_para_receita) return d.data_prevista_para_receita.substring(0,7);
+  if (d.vigencia)                   return d.vigencia.substring(0,7);
+  if (d.data_implantacao)           return d.data_implantacao.substring(0,7);
+  return d.data_ganho ? d.data_ganho.substring(0,7) : null;
 }
 function _novoFcWonMonthValue(d, month){
   var start=_novoFcWonStartMonth(d);
