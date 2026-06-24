@@ -20,7 +20,7 @@ const VENDAS_STAGE_MAP = {
   '1144746908': 'Cotação',
   '1144746909': 'Consultoria',
   '1144746910': 'Negociação',
-  '1317543716': 'Stand by',
+  '1317543716': 'Standby',
   '1288611084': 'Implantação',
   '1144844314': 'Ganho',
   '1144746911': 'Perdido',
@@ -142,38 +142,44 @@ module.exports = async function handler(req, res) {
       }
     }
 
-    // 2.5: Mediana de tempo REAL em cada etapa (stage_medians para N07)
-    function _medianArr(arr) {
-      if (!arr.length) return null;
-      const s = arr.slice().sort((a, b) => a - b);
-      const m = Math.floor(s.length / 2);
-      return s.length % 2 ? s[m] : Math.round((s[m - 1] + s[m]) / 2);
+    // 2.5: Média de tempo REAL em cada etapa (stage_medians para N07)
+    // Isolado em try-catch para não bloquear owner_changes se houver erro.
+    let stageMedsByName = {};
+    let _stageCtsOut = {};
+    try {
+      const _avgArr = arr => {
+        if (!arr.length) return null;
+        return Math.round(arr.reduce((a, b) => a + b, 0) / arr.length * 10) / 10;
+      };
+      const todayStr = new Date().toISOString().substring(0, 10);
+      const _stageDurs = {};
+      const _stageCts  = {};
+      hsIds.forEach(id => {
+        const pipe = dealPipeline[id];
+        const stageMap = pipe === VENDAS_ID ? VENDAS_STAGE_MAP : pipe === BID_ID ? BID_STAGE_MAP : null;
+        if (!stageMap) return;
+        const hist = (historyByDeal[id] || []).filter(e => e.entered_date >= since && (!until || e.entered_date <= until));
+        if (!hist.length) return;
+        for (let i = 0; i < hist.length; i++) {
+          const stageName = stageMap[hist[i].stage_id];
+          if (!stageName) continue;
+          const exitDate = i + 1 < hist.length ? hist[i + 1].entered_date : todayStr;
+          const days = Math.max(0, Math.round(
+            (new Date(exitDate + 'T00:00:00') - new Date(hist[i].entered_date + 'T00:00:00')) / 86400000
+          ));
+          if (!_stageDurs[stageName]) _stageDurs[stageName] = [];
+          _stageDurs[stageName].push(days);
+        }
+      });
+      Object.keys(_stageDurs).forEach(s => {
+        stageMedsByName[s] = _avgArr(_stageDurs[s]);
+        _stageCtsOut[s] = _stageDurs[s].length;
+      });
+    } catch (e) {
+      console.error('[funnel-stages] stage_medians error:', e.message);
+      stageMedsByName = {};
+      _stageCtsOut = {};
     }
-    const todayStr = new Date().toISOString().substring(0, 10);
-    const _stageDurs = {};
-    const _stageCts  = {};
-    hsIds.forEach(id => {
-      const pipe = dealPipeline[id];
-      const stageMap = pipe === VENDAS_ID ? VENDAS_STAGE_MAP : pipe === BID_ID ? BID_STAGE_MAP : null;
-      if (!stageMap) return;
-      const hist = (historyByDeal[id] || []).filter(e => e.entered_date >= since && (!until || e.entered_date <= until));
-      if (!hist.length) return;
-      for (let i = 0; i < hist.length; i++) {
-        const stageName = stageMap[hist[i].stage_id];
-        if (!stageName) continue;
-        const exitDate = i + 1 < hist.length ? hist[i + 1].entered_date : todayStr;
-        const days = Math.max(0, Math.round(
-          (new Date(exitDate + 'T00:00:00') - new Date(hist[i].entered_date + 'T00:00:00')) / 86400000
-        ));
-        if (!_stageDurs[stageName]) _stageDurs[stageName] = [];
-        _stageDurs[stageName].push(days);
-      }
-    });
-    const stageMedsByName = {};
-    Object.keys(_stageDurs).forEach(s => {
-      stageMedsByName[s] = _medianArr(_stageDurs[s]);
-      _stageCts[s] = _stageDurs[s].length;
-    });
 
     // 3. Contadores separados por pipeline
     const vendasSets = {};
@@ -212,8 +218,8 @@ module.exports = async function handler(req, res) {
       vendas: buildResult(VENDAS_FUNNEL, VENDAS_EXTRA, vendasSets, dealNames, vendasDates),
       bid:    buildResult(BID_FUNNEL,    BID_EXTRA,    bidSets,    dealNames, bidDates),
       owner_changes:  ownerChangesByDeal,
-      stage_medians:  stageMedsByName,
-      stage_counts:   _stageCts,
+      stage_medians:  Object.keys(stageMedsByName).length ? stageMedsByName : null,
+      stage_counts:   _stageCtsOut,
       timestamp: new Date().toISOString(),
     });
   } catch (e) {
