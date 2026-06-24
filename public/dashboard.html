@@ -3507,6 +3507,8 @@ function buildNovoSpeedQualify() {
   var diaEntries = diagEntries.length
     ? diagEntries
     : _novoOpen().filter(function(d){ return d.stage==='Diagnóstico' && d.createdate && d.dias_no_pipe!=null; }).map(function(d){ return {deal:d,days:d.dias_no_pipe,entered:null}; });
+  var sqEl=document.getElementById('novo-sq-count');
+  if(sqEl) sqEl.textContent=diaEntries.length.toLocaleString('pt-BR')+' deals';
   var byMonth={};
   diaEntries.forEach(function(x){ var m=x.deal.createdate.substring(0,7); if(!byMonth[m])byMonth[m]=[]; byMonth[m].push(x); });
   // N08: considera apenas meses de set/2025 até o mês atual.
@@ -3663,6 +3665,9 @@ function buildNovoReassign() {
   var labels = groups.map(function(g) { return g.label; });
   var counts = groups.map(function(g) { return g.deals.length; });
   var rates  = groups.map(function(g) { var c=g.won+g.lost; return c>0 ? Math.round(g.won/c*1000)/10 : null; });
+  var _rTotal = counts.reduce(function(s,v){return s+v;},0);
+  var _rCountEl = document.getElementById('novo-reassign-count');
+  if (_rCountEl) _rCountEl.textContent = _rTotal.toLocaleString('pt-BR') + ' deals';
   var th = _novoTheme();
   el.innerHTML = '<canvas id="chart-novo-reassign-canvas" style="max-height:280px"></canvas>';
   _novoMkChart('chart-novo-reassign-canvas', {
@@ -4285,10 +4290,10 @@ function novoRender() {
       _card(_titleWithCount(t('t_timeinstage'), _novoTimeInStageDeals().length), t('tip_timeinstage'), '', 'chart-novo-timeinstage', 300, 'timeinstage') +
 
       // N18 | Speed to Qualify
-      _card(t('t_speedqualify'), t('tip_speedqualify'), '', 'chart-novo-speedqualify', 300, 'speedqualify') +
+      _card(t('t_speedqualify') + ' <span id="novo-sq-count" style="font-size:.68rem;color:var(--text2);font-weight:600;margin-left:.35rem;white-space:nowrap"></span>', t('tip_speedqualify'), '', 'chart-novo-speedqualify', 300, 'speedqualify') +
 
       // N09 | Deal Reassignment — owner changes impact on win rate
-      '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header"><h3>' + t('t_reassign') + '</h3>' + _infoBtn(t('tip_reassign'),'reassign') + '</div><div id="novo-reassign-body" style="padding:.25rem 0"></div></div>' +
+      '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header"><h3>' + t('t_reassign') + ' <span id="novo-reassign-count" style="font-size:.68rem;color:var(--text2);font-weight:600;margin-left:.35rem;white-space:nowrap"></span></h3>' + _infoBtn(t('tip_reassign'),'reassign') + '</div><div id="novo-reassign-body" style="padding:.25rem 0"></div></div>' +
 
     '</div>';
 

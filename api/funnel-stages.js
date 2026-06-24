@@ -163,8 +163,8 @@ module.exports = async function handler(req, res) {
         if (!cd || cd < since) return;
         if (until && cd > until) return;
         const pipe = dealPipeline[id];
-        const stageMap = pipe === VENDAS_ID ? VENDAS_STAGE_MAP : pipe === BID_ID ? BID_STAGE_MAP : null;
-        if (!stageMap) return;
+        if (pipe !== VENDAS_ID) return;   // N07: apenas Pipeline de Vendas
+        const stageMap = VENDAS_STAGE_MAP;
         const hist = historyByDeal[id] || [];
         if (!hist.length) return;
         for (let i = 0; i < hist.length; i++) {
