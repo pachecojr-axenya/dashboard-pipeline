@@ -2135,6 +2135,13 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       return VALOR_POR_VIDA.l;
     }
 
+    // AEs reconhecidos — exclui BDRs/SDRs do filtro de Executivo
+    const FC_AE_NAMES = new Set([
+      'Mariana Assis','Peterson Venancio','Fernando Siqueira','Juliana Dalberto',
+      'Rafael Leite','André Pontes','Andre Pontes','Fausto Haderspeck',
+      'Guilherme Gabiatti','Fernando Henrique',
+    ]);
+
     // ── STATE ─────────────────────────────────────────────────────────────────
     let allDeals = [];
     let stageFilter = new Set();
@@ -2502,7 +2509,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
     function buildAeFilter(deals) {
       const aMenu = document.getElementById('ae-menu');
       if (!aMenu) return;
-      const aes = [...new Set(deals.map(d => d.ae).filter(a => a && a !== '-'))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+      const aes = [...new Set(deals.map(d => d.ae).filter(a => a && a !== '-' && FC_AE_NAMES.has(a)))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
       let h = `
         <div style="display:flex; gap:0.4rem; margin-bottom:0; padding-bottom:0.3rem;">
           <button class="fbtn" style="flex:1; justify-content:center; padding:0.2rem" onclick="selectAllAes()">Todos</button>
@@ -3094,7 +3101,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
           document.getElementById('tw').innerHTML = `<div class="state err">Erro: ${esc(data.error || String(resp.status))}</div>`;
           return;
         }
-        allDeals = data.deals;
+        allDeals = data.deals.filter(d => d.createdate && d.createdate >= '2025-09-01');
         // Não resetamos os filtros aqui: ao atualizar, a tabela mantém os filtros
         // já aplicados (as funções build*Filter respeitam o estado atual via .has()).
         const subEl = document.getElementById('sub');

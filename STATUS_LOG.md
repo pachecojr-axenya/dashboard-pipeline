@@ -1432,3 +1432,9 @@ Registro curto, uma linha por interação (a cada alteração).
 - **Drawer `?` (regras de probabilização) — bug CSS corrigido:** `#novo-rules-drawer{right:-540px}` (especificidade de ID: 1,0,0) impedia `.novo-prob-drawer.open{right:0}` (classe: 0,2,0) de funcionar. Adicionado `#novo-rules-drawer.open{right:0}` para que o drawer efetivamente deslize para dentro ao clicar no `?`.
 - **Settings drawer — probabilidades reorganizadas:** removidos os spans `.np-cf` `"(calculado pelo funil)"` de cada label de probabilidade (redundante — o `#np-prob-status` já informa). Adicionado CSS `.np-hint{display:block;font-size:.68rem;color:var(--teal);opacity:.85;margin-top:.12rem;font-weight:500}` para que o valor do funil (ex: "funil: 6,0% (n=47)") apareça como sub-linha colorida abaixo do nome da etapa.
 - **Decimais padronizados:** a função `_hint` em `novoOpenProbEditor` usava `toFixed(0)` (ex: "funil: 6%") enquanto os inputs usam `toFixed(1)` (ex: "6,0"). Corrigido para `toFixed(1).replace('.',',')` — consistência entre hint e input.
+
+### CRO Dashboard + Forecast | implantação 100%, filtros de AE e data (2026-06-24)
+
+- **Implantação = 100% (CRO Dashboard):** `NOVO_STAGE_PROB_DEFAULT['Implantação']` alterado de `0.581` para `1.0` — alinhado com Ganho. Texto do drawer de regras (`novoOpenRulesModal`) atualizado: "Implantação/Ganho = 100% (padrão fixo, não vem do funil)".
+- **Forecast — BDRs removidos do filtro Executivo:** `buildAeFilter` agora filtra `d.ae` pela lista `FC_AE_NAMES` (10 AEs), excluindo BDRs/SDRs que aparecem como dono de deal no HubSpot. Lista sincronizada com `AE_NAMES` em `lib/hubspot.js`.
+- **Forecast — filtro de createdate:** `allDeals` agora filtrado por `d.createdate >= '2025-09-01'` logo após o carregamento da API — deals criados antes de 01/09/2025 não aparecem na tabela nem nos KPIs do Forecast.
