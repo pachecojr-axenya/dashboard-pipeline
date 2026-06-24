@@ -3269,18 +3269,43 @@ function _novoFcRuleMonthValue(d, month, weighted){
   var p=_calcProbInfo(d).final; if(p==null)p=0;
   return real * p;                                 // × probabilidade da etapa
 }
-// Bloco NEGÓCIO GANHO/IMPLANTAÇÃO (linha 11 da Cintia): receita recorrente (ARR ÷ 12) dos deals
-// já ganhos/implantação, fixa a partir da vigência. Receita certa | sem probabilidade.
+// Bloco NEGÓCIO GANHO/IMPLANTAÇÃO (linha 11 da Cintia): receita recorrente mês a mês dos deals
+// já ganhos/implantação. Usa a MESMA régua de previsibilidade do painel Forecast (calcReceita):
+// início em data_prevista_para_receita; receita do mês "n" do contrato depende do modelo de
+// remuneração, agenciamento e porte (vidas). Receita certa | sem probabilidade (ganho = 100%).
 function _novoFcWonStartMonth(d){
   if (d.data_prevista_para_receita) return d.data_prevista_para_receita.substring(0,7);
   if (d.vigencia)                   return d.vigencia.substring(0,7);
   if (d.data_implantacao)           return d.data_implantacao.substring(0,7);
   return d.data_ganho ? d.data_ganho.substring(0,7) : null;
 }
+// Receita recorrente do mês "n" do contrato (1-based) — portada de calcReceita() do Forecast.
+// Fee por vida: 1ª fatura fixa todo mês. Corretagem c/ agenciamento: vidas<200 → meses 1-3 cheios,
+// depois 2%; vidas>=200 → mês 1 a 95%, depois 5%. Corretagem s/ agenciamento: 2% (<200) ou 5% (>=200).
+function _novoFcWonReceita(n, d){
+  var pf = d.primeira_fatura;
+  var vidas = d.vidas || 0;
+  var mod = d.modelo_remuneracao;
+  var agenc = d.possui_agenciamento;
+  if (!pf || !mod) return null;
+  if (mod === 'Fee por vida') return pf;
+  if (mod === 'Corretagem') {
+    if (agenc === true) {
+      return vidas < 200 ? (n <= 3 ? pf : pf * 0.02) : (n === 1 ? pf * 0.95 : pf * 0.05);
+    }
+    return vidas < 200 ? pf * 0.02 : pf * 0.05;
+  }
+  return null;
+}
 function _novoFcWonMonthValue(d, month){
-  var start=_novoFcWonStartMonth(d);
-  if (start && month < start) return 0;   // ainda não entrou em vigência
-  return (_annualRev(d)||0)/12;           // recorrente mensal (= ARR ÷ 12)
+  var start = _novoFcWonStartMonth(d);
+  if (!start) return 0;
+  var sy = parseInt(start.substring(0,4),10), sm = parseInt(start.substring(5,7),10) - 1;
+  var my = parseInt(month.substring(0,4),10), mm = parseInt(month.substring(5,7),10) - 1;
+  var diff = (my - sy) * 12 + (mm - sm);
+  if (diff < 0) return 0;                       // ainda não entrou em vigência
+  var rec = _novoFcWonReceita(diff + 1, d);     // n = mês do contrato (1-based)
+  return rec != null ? rec : 0;
 }
 // Bloco BID (linha 14 da Cintia): deals do pipeline de Bid pela mecânica de 1ª fatura × probabilidade.
 // Cintia zera a probabilidade de tudo que está em Pré-RFP (não conta receita antes da RFP abrir).
