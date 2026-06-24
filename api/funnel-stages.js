@@ -76,7 +76,7 @@ async function fetchAllDeals(token) {
       filterGroups: [{ filters: [
         { propertyName: 'pipeline', operator: 'IN', values: [VENDAS_ID, BID_ID] },
       ]}],
-      properties: ['dealname', 'pipeline', 'hs_object_id'],
+      properties: ['dealname', 'pipeline', 'hs_object_id', 'createdate'],
       limit: 200,
       after,
     };
@@ -107,12 +107,14 @@ module.exports = async function handler(req, res) {
     const rawDeals = await fetchAllDeals(token);
     const hsIds = rawDeals.map(r => r.properties.hs_object_id).filter(Boolean);
 
-    const dealNames    = {};
-    const dealPipeline = {};
+    const dealNames      = {};
+    const dealPipeline   = {};
+    const dealCreateDate = {};
     rawDeals.forEach(r => {
       const id = r.properties.hs_object_id;
-      dealNames[id]    = (r.properties.dealname || '').trim();
-      dealPipeline[id] = r.properties.pipeline;
+      dealNames[id]      = (r.properties.dealname || '').trim();
+      dealPipeline[id]   = r.properties.pipeline;
+      dealCreateDate[id] = r.properties.createdate ? r.properties.createdate.substring(0, 10) : null;
     });
 
     // 2. Histórico de dealstage + owner em batches de 50
@@ -155,10 +157,15 @@ module.exports = async function handler(req, res) {
       const _stageDurs = {};
       const _stageCts  = {};
       hsIds.forEach(id => {
+        // Filtra por data de criação do deal (>= since), não por data de transição.
+        // Assim N07 reflete apenas o ciclo de deals abertos no período, igual ao HubSpot.
+        const cd = dealCreateDate[id];
+        if (!cd || cd < since) return;
+        if (until && cd > until) return;
         const pipe = dealPipeline[id];
         const stageMap = pipe === VENDAS_ID ? VENDAS_STAGE_MAP : pipe === BID_ID ? BID_STAGE_MAP : null;
         if (!stageMap) return;
-        const hist = (historyByDeal[id] || []).filter(e => e.entered_date >= since && (!until || e.entered_date <= until));
+        const hist = historyByDeal[id] || [];
         if (!hist.length) return;
         for (let i = 0; i < hist.length; i++) {
           const stageName = stageMap[hist[i].stage_id];
