@@ -3386,7 +3386,7 @@ function _novoN06BWonDrilldown() {
   h+='<tr style="background:rgba(63,185,80,.1);font-weight:700"><td style="'+st+';background:rgba(63,185,80,.1);padding:.35rem .65rem;color:var(--green);border-right:2px solid var(--border);border-top:2px solid rgba(63,185,80,.4)">Total</td>';
   months.forEach(function(m){ var mo=parseInt(m.substring(5,7))-1; var v=0; rows.forEach(function(r){ v+=r.data[m]||0; }); h+='<td style="text-align:right;padding:.28rem .45rem;color:var(--green);border-top:2px solid rgba(63,185,80,.4);'+(mo===0?'border-left:2px solid var(--border)':'')+'">'+ fmt(v) +'</td>'; });
   h+='</tr></tbody></table></div>';
-  openModal('Implantação / Ganho | mai/26 → dez/31', h);
+  openModal('Implantação / Ganho | jan/26 → dez/31', h);
 }
 
 function _novoOpenN06BForecastModal() {
@@ -3397,9 +3397,9 @@ function _novoOpenN06BForecastModal() {
   var weighted = _novoPipeRevValueModeB === 'weighted';
   window._novoN06BCtx = { won: won, months: null, weighted: weighted }; // months set after generation
 
-  // Meses fixos mai/2026 → dez/2031
+  // Meses fixos jan/2026 → dez/2031
   var months = [];
-  var _my = 2026, _mm = 4;
+  var _my = 2026, _mm = 0;
   while (_my < 2032) {
     months.push(_my + '-' + String(_mm + 1).padStart(2,'0'));
     _mm++; if (_mm > 11) { _mm = 0; _my++; }
@@ -3493,7 +3493,7 @@ function _novoOpenN06BForecastModal() {
   h += '</tr></tbody></table></div>';
 
   var modeTag = weighted ? 'Probabilizado' : 'Real';
-  openModal('Forecast N06B | ' + modeTag + ' | mai/26 → dez/31', h);
+  openModal('Forecast N06B | ' + modeTag + ' | jan/26 → dez/31', h);
 }
 
 function buildNovoPipeRev12B() {
