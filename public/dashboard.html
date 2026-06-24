@@ -3349,6 +3349,103 @@ function _novoForecastBMethodologyHtml() {
     '</p>'+
   '</div>';
 }
+// ── N06B | Modal "Forecast como planilha" ──────────────────────────────────────
+// Abre ao clicar em qualquer ponto/linha do N06B.
+// Linhas = blocos (Ganho/Impl, Pipeline, Diagnóstico, BID, Novos Negócios, Total)
+// Colunas = meses mai/2026 → dez/2031 com cabeçalhos de ano agrupados.
+function _novoOpenN06BForecastModal() {
+  var active = (typeof _novoCurrentActivePipeline==='function') ? _novoCurrentActivePipeline() : _novoPipeRevDeals();
+  var nonBid = active.filter(function(d){ return d.pipeline!=='Bid'; });
+  var bid    = active.filter(function(d){ return d.pipeline==='Bid'; });
+  var won    = (_novoDeals||[]).filter(function(d){ return _novoIsWon(d); });
+  var weighted = _novoPipeRevValueModeB === 'weighted';
+
+  // Meses fixos mai/2026 → dez/2031
+  var months = [];
+  var _my = 2026, _mm = 4; // maio = índice 4
+  while (_my < 2032) {
+    months.push(_my + '-' + String(_mm + 1).padStart(2,'0'));
+    _mm++; if (_mm > 11) { _mm = 0; _my++; }
+  }
+
+  // Calcular blocos para cada mês
+  var Bw={}, Bp={}, Bd={}, Bb={}, Bn={};
+  months.forEach(function(m){ Bw[m]=0; Bp[m]=0; Bd[m]=0; Bb[m]=0; Bn[m]=0; });
+  won.forEach(function(d){ months.forEach(function(m){ var v=_novoFcWonMonthValue(d,m); if(v>0) Bw[m]+=v; }); });
+  nonBid.forEach(function(d){ months.forEach(function(m){
+    var v=_novoFcRuleMonthValue(d,m,weighted);
+    if (v>0){ if(d.stage==='Diagnóstico') Bd[m]+=v; else Bp[m]+=v; }
+  }); });
+  bid.forEach(function(d){ months.forEach(function(m){ var v=_novoFcBidMonthValue(d,m,weighted); if(v>0) Bb[m]+=v; }); });
+  months.forEach(function(m){ Bn[m]=_novoFcNewBizRev(m,weighted); });
+
+  // Formatar valor compacto
+  var fmt = function(v) {
+    if (!v || v < 0.5) return '';
+    if (v >= 1e6) return 'R$ ' + (v/1e6).toFixed(1).replace('.',',') + 'M';
+    if (v >= 1e3) return 'R$ ' + Math.round(v/1e3) + 'k';
+    return 'R$ ' + Math.round(v);
+  };
+
+  var mAbbr = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+  var years = [2026,2027,2028,2029,2030,2031];
+  var yearCols = {};
+  years.forEach(function(y){ yearCols[y] = months.filter(function(m){ return parseInt(m)===y; }).length; });
+
+  var rows = [
+    { label:'Ganho / Implantação',          data:Bw, color:'var(--green)' },
+    { label:'Cotação / Consult. / Neg.',     data:Bp, color:'' },
+    { label:'Diagnóstico',                   data:Bd, color:'' },
+    { label:'BID',                           data:Bb, color:'' },
+    { label:'Novos Negócios (topo de funil)',data:Bn, color:'rgba(88,166,255,.9)' },
+  ];
+
+  var stickyTd = 'position:sticky;left:0;z-index:1';
+  var th = _novoTheme();
+  var h = '<div style="overflow-x:auto;overflow-y:auto;max-height:65vh">'
+    + '<table style="border-collapse:collapse;font-size:.71rem;white-space:nowrap;min-width:100%"><thead>';
+
+  // Cabeçalho anos
+  h += '<tr><th style="'+stickyTd+';background:var(--card2);min-width:168px;padding:.4rem .65rem;text-align:left;font-size:.68rem;text-transform:uppercase;letter-spacing:.07em;color:var(--text2);border-right:2px solid var(--border)">Bloco</th>';
+  years.forEach(function(y){
+    h += '<th colspan="'+yearCols[y]+'" style="text-align:center;background:var(--card2);padding:.28rem .4rem;border-left:2px solid var(--border);color:var(--teal);font-weight:700;font-size:.73rem">'+y+'</th>';
+  });
+  h += '</tr>';
+
+  // Cabeçalho meses
+  h += '<tr><th style="'+stickyTd+';background:var(--card2);border-right:2px solid var(--border)"></th>';
+  months.forEach(function(m){
+    var mo = parseInt(m.substring(5,7)) - 1;
+    var isJan = mo === 0;
+    h += '<th style="text-align:right;padding:.25rem .45rem;font-weight:500;color:var(--text2);min-width:66px;'+(isJan?'border-left:2px solid var(--border)':'')+'">'+ mAbbr[mo] +'</th>';
+  });
+  h += '</tr></thead><tbody>';
+
+  // Linhas de blocos
+  rows.forEach(function(row, ri){
+    var bg = ri%2===0 ? 'var(--card)' : 'var(--card2)';
+    h += '<tr style="background:'+bg+'"><td style="'+stickyTd+';background:'+bg+';padding:.33rem .65rem;font-weight:500;color:'+(row.color||'var(--text)')+';border-right:2px solid var(--border)">'+ row.label +'</td>';
+    months.forEach(function(m){
+      var mo = parseInt(m.substring(5,7)) - 1;
+      var v = row.data[m]||0;
+      h += '<td style="text-align:right;padding:.28rem .45rem;font-variant-numeric:tabular-nums;color:'+(row.color||'var(--text2)')+';'+(mo===0?'border-left:2px solid var(--border)':'')+'">'+ fmt(v) +'</td>';
+    });
+    h += '</tr>';
+  });
+
+  // Linha Total
+  h += '<tr style="background:rgba(63,185,80,.1);font-weight:700"><td style="'+stickyTd+';background:rgba(63,185,80,.1);padding:.35rem .65rem;color:var(--green);border-right:2px solid var(--border);border-top:2px solid rgba(63,185,80,.4)">Total</td>';
+  months.forEach(function(m){
+    var mo = parseInt(m.substring(5,7)) - 1;
+    var v = (Bw[m]||0)+(Bp[m]||0)+(Bd[m]||0)+(Bb[m]||0)+(Bn[m]||0);
+    h += '<td style="text-align:right;padding:.28rem .45rem;font-variant-numeric:tabular-nums;color:var(--green);border-top:2px solid rgba(63,185,80,.4);'+(mo===0?'border-left:2px solid var(--border)':'')+'">'+ fmt(v) +'</td>';
+  });
+  h += '</tr></tbody></table></div>';
+
+  var modeTag = weighted ? 'Probabilizado' : 'Real';
+  openModal('Forecast N06B | ' + modeTag + ' | mai/26 → dez/31', h);
+}
+
 function buildNovoPipeRev12B() {
   var open = _novoPipeRevDeals();   // linha azul (ingênua) + modal de clique
   var active = (typeof _novoCurrentActivePipeline==='function') ? _novoCurrentActivePipeline() : open;
@@ -3411,7 +3508,7 @@ function buildNovoPipeRev12B() {
         }
       } } },
       scales:{ x:{grid:{display:false},ticks:{color:th.cText2,font:{family:NOVO_FONT}}}, y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},callback:function(v){return isDeals?v:_revShort(v);}}, suggestedMax:yMax} },
-      onClick:function(){ _novoOpenPipeRevModal(open, months); } } });
+      onClick:function(){ _novoOpenN06BForecastModal(); } } });
 }
 
 // ── N15: Revenue by Segment (Doughnut) ───────────────────────────────────────
