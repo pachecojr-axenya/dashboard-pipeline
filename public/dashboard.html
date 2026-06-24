@@ -3635,7 +3635,10 @@ function buildNovoReassign() {
   var el = document.getElementById('novo-reassign-body');
   if (!el) return;
   if (!ownerChanges) {
-    var _isLoading = !!_novoFunnelLoading;
+    // Self-trigger funnel load if not already in progress
+    if (!_novoFunnelData && !_novoFunnelLoading) novoLoadFunnel();
+    // Show spinner whenever funnel hasn't arrived yet (loading or not started)
+    var _isLoading = _novoFunnelLoading || !_novoFunnelData;
     el.innerHTML = '<p style="font-size:.76rem;color:var(--text2);margin:0">'
       + (_isLoading
         ? '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="animation:hdr-spin .8s linear infinite;vertical-align:middle;margin-right:.4rem"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>'
