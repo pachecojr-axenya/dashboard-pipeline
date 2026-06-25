@@ -800,6 +800,17 @@ Registro curto, uma linha por interação (a cada alteração).
 
 ---
 
+## N05 | Meta global (default R$ 1,15M) + 'i' visual (2026-06-25, rodada 2)
+
+> A pedido: meta anual pré-definida em R$ 1.150.000, salva globalmente p/ todos os usuários; e a ficha do "i" do N05 mais visual (era texto corrido).
+
+- **Meta global** | `api/meta-receita.js` (novo): GET retorna a meta anual global (default **R$ 1.150.000**); POST salva globalmente. **KV-first** (`lib/kv`, chave `meta:receita_anual`) com fallback `os.tmpdir()/meta-receita.json` (per-instância, cross-plataforma). Requer auth. `dashboard.html`: `NOVO_META_DEFAULT=1150000`; `_novoLoadGlobalMeta()` busca a meta global no load (não-bloqueante); `_novoSaveGlobalMeta()` faz POST ao mudar (no 'i' do N05 e em Configurações). localStorage vira cache; espelhamento entre os dois inputs mantido.
+- **Ressalva** | persistência durável/compartilhada de verdade exige Vercel KV ativo (env `KV_REST_API_URL`/`KV_REST_API_TOKEN`), **não configurado hoje**. Sem KV cai no `/tmp` (reseta no redeploy/cold start) — mesma limitação do `bdr-metas`.
+- **'i' do N05 visual** | descrição corrida encurtada; novo `_novoCoverageHelpHtml()` injeta um bloco escaneável: 4 camadas com chips de cor batendo com o gráfico (Recorrente/Pontual/Diagnóstico est./MQL agregado), 2 cards "leituras" (cobertura principal × e cobertura de pipe), caixa "como ler" e o editor de meta no fim. `novoHelpChart('coverage')` passou a usar esse bloco como `extra`.
+- **Validação** | sintaxe API OK, inline 0 erros, i18n PT=257/EN=257, smoke OK, round-trip do endpoint (GET default 1,15M → POST → GET; inválido → 400), espelhamento da meta 12/12. **25ª função serverless** (deploy ok no time axenya-f1a041f6).
+
+---
+
 ## N05 | Pipeline Coverage v1 + Meta anual espelhada (2026-06-25)
 
 > Reconstrução do N05 conforme `docs/coverage-pipeline-v1-spec.md`, executada em fases com decisões a cada trava.
