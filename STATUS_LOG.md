@@ -800,6 +800,17 @@ Registro curto, uma linha por interação (a cada alteração).
 
 ---
 
+## N05 | drawer do 'i' 100% PT no modo PT (2026-06-25, rodada 3)
+
+> A pedido: o drawer do 'i' do N05 estava meio inglês/meio português no modo PT.
+
+- Traduzidos os trechos que vazavam inglês no modo PT: título "Pipeline Coverage | Forecast vs Meta" → "Cobertura do Pipeline | Forecast vs Meta" (card `t_coverage` + ficha `NOVO_HELP_CHARTS`); fórmula `winrate` → `taxa_ganho`; camada Diagnóstico ("headcount"/"começando em createdate" → "estimativa por vidas"/"a partir da data de criação"); camada MQL ("win rate" → "taxa de ganho", "sem drill por deal" → "sem detalhamento por deal"); footer do card e nota do modal de drill ("sem drill" → "sem detalhamento").
+- Mantidos termos próprios já usados no dash: Forecast, Pipeline, Fee por vida/Corretagem (valores do CRM), MQL, PME, nomes de campos do HubSpot. EN mode inalterado (segue em inglês).
+- Verificado por render (inspeção do HTML do drawer em modo PT): sem frase/termo solto em inglês.
+- Validação: inline 0 erros, i18n PT=257/EN=257, smoke OK.
+
+---
+
 ## N05 | Meta global (default R$ 1,15M) + 'i' visual (2026-06-25, rodada 2)
 
 > A pedido: meta anual pré-definida em R$ 1.150.000, salva globalmente p/ todos os usuários; e a ficha do "i" do N05 mais visual (era texto corrido).

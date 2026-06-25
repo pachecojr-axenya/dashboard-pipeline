@@ -708,9 +708,9 @@ function _novoCoverageHelpHtml() {
     _covLayer('rgba(58,184,183,.38)', (L?'One-time (real premium)':'Pontual (prêmio real)'),
       (L?'Entry-brokerage spike in the first months. Does not recur next year.':'Pico de corretagem de entrada nos primeiros meses. Não recorre no ano seguinte.')) +
     _covLayer('rgba(210,153,34,.85)', (L?'Diagnóstico (estimated)':'Diagnóstico (estimado)'),
-      (L?'No premium yet → headcount: lives × R$/life (36 ≤200 / 24 ≤5.000 / 12 >5.000) × 6%, starting createdate + 9/14/18 months.':'Ainda sem prêmio → headcount: vidas × R$/vida (36 ≤200 / 24 ≤5.000 / 12 >5.000) × 6%, começando em createdate + 9/14/18 meses.')) +
+      (L?'No premium yet → headcount: lives × R$/life (36 ≤200 / 24 ≤5.000 / 12 >5.000) × 6%, starting createdate + 9/14/18 months.':'Ainda sem prêmio → estimativa por vidas: vidas × R$/vida (36 ≤200 / 24 ≤5.000 / 12 >5.000) × 6%, a partir da data de criação + 9/14/18 meses.')) +
     _covLayer('rgba(147,112,219,.7)', (L?'MQL top-of-funnel (aggregate, est.)':'Topo de funil MQL (agregado, est.)'),
-      (L?'Future origination where Reunião Agendada is absorbed: originated lives × R$24 × win rate, +15 months. Aggregate — no per-deal drill.':'Originação futura onde a Reunião Agendada é absorvida: vidas originadas × R$24 × win rate, +15 meses. Agregado — sem drill por deal.'));
+      (L?'Future origination where Reunião Agendada is absorbed: originated lives × R$24 × win rate, +15 months. Aggregate — no per-deal drill.':'Originação futura onde a Reunião Agendada é absorvida: vidas originadas × R$24 × taxa de ganho, +15 meses. Agregado — sem detalhamento por deal.'));
 
   var readings =
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin:.1rem 0 .9rem">'+
@@ -978,7 +978,7 @@ var NOVO_I18N = {
     t_sizewindow:'🟡 Distribuição por Tamanho',tip_sizewindow:'Deals ativos por faixa de receita. Sem filtro local de data.',
     t_vidaswindow:'🟡 Distribuição de Vidas',tip_vidaswindow:'Deals ativos por faixa de vidas. Sem filtro local de data.',
     t_winfactor:'Taxa de Ganho por AE',tip_winfactor:'Taxa de ganho ajustada por AE: deals ganhos ÷ (deals ganhos + deals perdidos).',
-    t_coverage:'🟡 Pipeline Coverage | Forecast vs Meta (negócio novo)',tip_coverage:'Cobertura de negócio novo (deals criados desde set/2025), horizonte de 18 meses: forecast mensal ÷ meta mensal (meta anual ÷ 12). Camadas: prêmio real (recorrente+pontual, motor compartilhado), Diagnóstico estimado por headcount (vidas × R$/vida × 6%) e topo de funil MQL agregado (vidas originadas × R$24 × win rate, +15m, onde a Reunião Agendada é absorvida). Rótulo × = cobertura total do mês. KPI de cobertura de pipe (prêmio aberto bruto) mede segurança (3–4× saudável).',
+    t_coverage:'🟡 Cobertura do Pipeline | Forecast vs Meta (negócio novo)',tip_coverage:'Cobertura de negócio novo (deals criados desde set/2025), horizonte de 18 meses: forecast mensal ÷ meta mensal (meta anual ÷ 12). Camadas: prêmio real (recorrente+pontual, motor compartilhado), Diagnóstico estimado por headcount (vidas × R$/vida × 6%) e topo de funil MQL agregado (vidas originadas × R$24 × win rate, +15m, onde a Reunião Agendada é absorvida). Rótulo × = cobertura total do mês. KPI de cobertura de pipe (prêmio aberto bruto) mede segurança (3–4× saudável).',
     t_piperev12b:'🟡 Forecast Total (Regras da Cintia)',tip_piperev12b:'Reproduz a linha 7 do forecast da Cintia (todos os blocos) com deals vivos do HubSpot. Linha azul = visão ingênua para contraste. Detalhes no i.',
     t_piperev12:'🟡 Valor do Pipeline (Projeção Mensal)',tip_piperev12:'Receita ou quantidade de deals por mês da data prevista de receita. A contagem mostra deals ativos com data prevista sobre o total de ativos P09. Considera pipes Vendas + Bid.',
     t_segdoughnut:'🟡 Receita por Segmento (Donut)',tip_segdoughnut:'ARR estimado total por segmento de tamanho de cliente (baseado em vidas).',
@@ -1414,9 +1414,9 @@ var NOVO_HELP_CHARTS = [
   { key:'winfactor', title:'🟡 Análise de Fatores de Ganho / AE (N12)',
     desc:'Taxa de fechamento estimada por AE: deals em Ganho ÷ (Ganho + abertos) por owner.',
     fields:[['hubspot_owner_id','Dono do deal (AE).'],['dealstage','Separa Ganho vs abertos.']] },
-  { key:'coverage', title:'🟡 Pipeline Coverage | Forecast vs Meta (N05)',
+  { key:'coverage', title:'🟡 Cobertura do Pipeline | Forecast vs Meta (N05)',
     desc:'Mostra, mês a mês, o quanto o forecast de receita cobre a meta — e onde o pipe está descoberto (risco). Escopo: negócio novo (deals criados desde set/2025), próximos 18 meses. Veja as camadas e os cálculos abaixo.',
-    formula:'cobertura(mês) = Σ[(recorrente+pontual)×prob + Diag(vidas×R$/vida×6%)] + MQL(vidas×R$24×winrate) ÷ (meta_anual ÷ 12)',
+    formula:'cobertura(mês) = Σ[(recorrente+pontual)×prob + Diag(vidas×R$/vida×6%)] + MQL(vidas×R$24×taxa_ganho) ÷ (meta_anual ÷ 12)',
     fields:[['primeira_fatura','Base da receita (calcReceitaMes).'],['modelo_remuneracao','Fee por vida vs Corretagem.'],['possui_agenciamento','Define o pico pontual de entrada na corretagem.'],['vidas','Faixa PME (<200) × não-PME (≥200) p/ o % de corretagem.'],['data_prevista_para_receita','Mês de início da receita (n=1).'],['dealstage','Probabilidade da etapa (C06); Ganho/Implantação = 100%.'],['createdate','Recorte de negócio novo (≥ 2025-09-01).']] },
   { key:'piperev12', title:'🟡 Valor do Pipeline | Projeção Mensal (N14)',
     desc:'Receita ou quantidade de deals por mês da data prevista de receita. Considera deals abertos com data prevista: Diagnóstico, Cotação, Proposta Enviada, Consultoria, Negociação e Standby; Reunião Agendada entra se o toggle de Ativos estiver ligado; Implantação entra apenas se Implantação = Ganho estiver desligado.',
@@ -3265,7 +3265,7 @@ function buildNovoCoverage() {
     '<div style="margin-top:.85rem;font-size:.72rem;color:var(--muted);line-height:1.5">'+
       (L?'Coverage: ':'Cobertura: ')+data.completeN+' '+(L?'deals with real premium':'deals com prêmio real')+
       ' + '+data.diagN+' '+(L?'Diagnóstico estimated':'Diagnóstico estimado')+
-      ' + '+(L?'aggregate MQL top-of-funnel (no per-deal drill)':'topo de funil MQL agregado (sem drill por deal)')+
+      ' + '+(L?'aggregate MQL top-of-funnel (no per-deal drill)':'topo de funil MQL agregado (sem detalhamento por deal)')+
       (data.excludedN>0 ? (' | '+data.excludedN+' '+(L?'deals still excluded (incomplete data or revenue beyond horizon)':'deals ainda fora (dados incompletos ou receita além do horizonte)')) : '')+
     '</div>';
 
@@ -3302,7 +3302,7 @@ function _novoOpenCoverageDrill(month, data) {
   var rows = (data.dealsByMonth[month]||[]).slice().sort(function(a,b){ return (b.r.total*b.p)-(a.r.total*a.p); });
   var L = NOVO_LANG === 'en';
   var mql = (data.mqlProb && data.mqlProb[month]) || 0;
-  var mqlNote = mql>0 ? '<p style="font-size:.8rem;color:var(--text2);padding:.5rem .65rem;background:var(--card2);border-radius:6px;border-left:3px solid rgba(147,112,219,.8);margin-bottom:.75rem">'+(L?'Aggregate MQL top-of-funnel this month: ':'Topo de funil MQL agregado neste mês: ')+'<b>'+_revShort(mql)+'</b> '+(L?'(estimated, not per-deal — no drill).':'(estimado, não por deal — sem drill).')+'</p>' : '';
+  var mqlNote = mql>0 ? '<p style="font-size:.8rem;color:var(--text2);padding:.5rem .65rem;background:var(--card2);border-radius:6px;border-left:3px solid rgba(147,112,219,.8);margin-bottom:.75rem">'+(L?'Aggregate MQL top-of-funnel this month: ':'Topo de funil MQL agregado neste mês: ')+'<b>'+_revShort(mql)+'</b> '+(L?'(estimated, not per-deal — no drill).':'(estimado, não por deal — sem detalhamento).')+'</p>' : '';
   if (!rows.length) { openModal('Coverage | '+_mlbl(month), mqlNote || ('<p style="color:var(--text2);padding:1rem 0">'+(L?'No deals.':'Nenhum deal.')+'</p>')); return; }
   var body = '<table class="lb" style="font-size:.78rem"><thead><tr>'+
     '<th style="text-align:left">Deal</th><th style="text-align:left">Etapa</th><th>Modelo</th><th>Mês contrato (n)</th><th>Vidas</th><th>Prêmio</th><th>Prob.</th><th>Recorrente</th><th>Pontual</th><th>Receita ponderada</th></tr></thead><tbody>';
