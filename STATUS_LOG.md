@@ -800,6 +800,36 @@ Registro curto, uma linha por interação (a cada alteração).
 
 ---
 
+## N05 | Pipeline Coverage v1 + Meta anual espelhada (2026-06-25)
+
+> Reconstrução do N05 conforme `docs/coverage-pipeline-v1-spec.md`, executada em fases com decisões a cada trava.
+
+### Meta (Configurações ⇄ 'i' do N05), agora anual
+- **Espelhamento:** Meta vira fonte única (`novoSetMeta`/`_novoParseMeta`/`_novoSyncMetaInputs`). Editar no modal de Configurações (`#np-meta`) ou no editor dentro do 'i' do N05 (`#novo-cov-meta`) atualiza estado, localStorage e ambos os inputs + re-render. Editor injetado via o mecanismo `extra` do `novoHelpChart` (mesmo padrão do N06B).
+- **Meta anual (não anualizada):** N05 e a tabela N21 usam a meta direto (sem ×12); P01 (MTD) deriva o alvo mensal = meta anual ÷ 12. Labels PT/EN "(MTD)" → "(Anual)".
+
+### Motor de receita compartilhado (Decisão 9)
+- **`public/revenue-engine.js`** (novo): `calcReceitaMes(n, deal) → {total, recorrente, pontual}` + `taxaRecorrente`. Lógica de `total` idêntica à `calcReceita` histórica do Forecast; acrescenta decomposição recorrente × pontual (§3.1). Incluído via `<script src>` em `forecast.html` e `dashboard.html`. `calcReceita` (forecast) e `_novoFcWonReceita` (dashboard) passam a **delegar** à fonte única (equivalência provada: 864 comparações, 1158 asserts).
+
+### N05 reconstruído (era cobertura agregada N06B; virou Pipeline Coverage v1)
+- **Escopo:** negócio novo (`createdate ≥ 2025-09-01`, Decisão 5), com aviso de escopo visível (decisão do usuário: construir como spec e reconciliar meta com a CFO depois).
+- **Cálculo por deal:** receita do mês por `calcReceitaMes`, ponderada pela prob. da etapa (C06/override + ±10% do AE via `_calcProbInfo`; Ganho/Implantação = 100%). Cobertura do mês = forecast ÷ meta mensal. Segunda leitura: **cobertura de pipe** (prêmio aberto bruto, sem ponderar) como KPI de segurança (3–4× saudável).
+- **Diagnóstico:** estimado pela regra da Cintia (reusa `_novoFcRuleMonthValue`: vidas × R$/vida [36/24/12] × 6%, início em createdate + 9/14/18m), 100% recorrente, camada laranja marcada "(est.)".
+- **Horizonte 18 meses** (jun/26 → nov/27) para alcançar a maturação em 2027 — sem isso, Diagnóstico (+9/14/18m) e topo de funil (+15m) ficavam fora.
+- **Topo de funil MQL** (agregado, Decisão do usuário): camada roxa via `_novoFcNewBizRev` (vidas originadas × R$24 × win rate, +15m), onde a Reunião Agendada é absorvida; marcada agregada/estimada, nota no drill (sem auditabilidade por deal).
+- **Visual:** barras empilhadas (Recorrente + Diagnóstico est. + MQL est. + Pontual) + linha de meta mensal + rótulo × por mês (cor por faixa); 3 KPIs; drill-down deal a deal (memória de cálculo); indicador de completude honesto.
+- **Fix:** `R$` duplicado nos KPIs (`_revShort` já inclui `R$`).
+
+### Ressalvas (p/ CFO / follow-up)
+- Meta: confirmar se é de negócio novo ou company-wide (numerador × denominador).
+- Topo de funil usa win rate (S01), não os 3% do doc da Cintia (herdado do N06B).
+- `_novoForecastCalcReceita` (bloco BID/pipe) ainda é cópia da régua — consolidar na fonte única depois.
+
+### Validação
+- `_check-inline-js` 0 erros (dashboard + forecast) · `_i18n-parity` PT=257/EN=257 · `_smoke-render` OK · testes: engine 1158/0, espelhamento da meta 12/12, coverage 12/12.
+
+---
+
 ## BDR | aviso movido p/ modal "?" + R11 por colaboradores (2026-06-25, rodada 2)
 
 > A pedido (2 itens).

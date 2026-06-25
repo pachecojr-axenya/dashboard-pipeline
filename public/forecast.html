@@ -1702,6 +1702,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
   </style>
 <link rel="stylesheet" href="/premium.css?v=5">
 <script src="/premium.js?v=5"></script>
+<script src="/revenue-engine.js?v=1"></script>
 </head>
 
 <body>
@@ -2217,20 +2218,11 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
     }
 
     // ── REVENUE CALC ──────────────────────────────────────────────────────────
+    // Delegado à fonte única (revenue-engine.js). Mantém a assinatura/retorno
+    // histórico (só o total); a decomposição recorrente/pontual é usada no coverage.
     function calcReceita(n, deal) {
-      const pf = deal.primeira_fatura;
-      const vidas = deal.vidas || 0;
-      const mod = deal.modelo_remuneracao;
-      const agenc = deal.possui_agenciamento;
-      if (!pf || !mod) return null;
-      if (mod === 'Fee por vida') return pf;
-      if (mod === 'Corretagem') {
-        if (agenc === true) {
-          return vidas < 200 ? (n <= 3 ? pf : pf * 0.02) : (n === 1 ? pf * 0.95 : pf * 0.05);
-        }
-        return vidas < 200 ? pf * 0.02 : pf * 0.05;
-      }
-      return null;
+      var r = (typeof calcReceitaMes === 'function') ? calcReceitaMes(n, deal) : null;
+      return r ? r.total : null;
     }
 
     function calcProbInfo(deal) {
@@ -3767,6 +3759,11 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
     let historicoTabName  = null;
     let historicoTabsLoaded = false;
 
+    // Snapshots reconstruídos (dias em que o cron diário não rodou). Servidos
+    // pela rota autenticada /api/history?action=local — nunca como arquivo
+    // estático. Preenchida em loadHistoricoTabs().
+    let localSnapshotTabs = [];
+
     const HIST_STAGE_ORDER = {
       'Diagnóstico': 0, 'Cotação': 1, 'Proposta Enviada': 2, 'Consultoria': 3,
       'Negociação': 4, 'Implantação': 5, 'Ganho': 6,
@@ -3823,18 +3820,33 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
 
     async function loadHistoricoTabs() {
       const sel = document.getElementById('hist-month-select');
+      const addOpt = (value, label) => {
+        const opt = document.createElement('option');
+        opt.value = value; opt.textContent = label ?? value;
+        sel.appendChild(opt);
+      };
+
+      // Snapshots reconstruídos (rota autenticada). Falha aqui não impede as abas mensais.
+      try {
+        const res  = await fetch('/api/history?action=local', { credentials: 'same-origin' });
+        const data = await res.json();
+        if (data.success) localSnapshotTabs = data.tabs || [];
+      } catch { /* segue sem locais */ }
+
+      // Abas mensais da planilha.
+      let monthlyTabs = [], errMsg = '';
       try {
         const res  = await fetch('/api/history?action=tabs', { credentials: 'same-origin' });
         const data = await res.json();
-        if (!data.success) throw new Error(data.error);
-        sel.innerHTML = '<option value="">Selecione um mês...</option>';
-        [...(data.tabs || [])].reverse().forEach(tab => {
-          const opt = document.createElement('option');
-          opt.value = tab; opt.textContent = tab;
-          sel.appendChild(opt);
-        });
-      } catch (e) {
-        sel.innerHTML = `<option value="">Erro: ${esc(e.message)}</option>`;
+        if (data.success) monthlyTabs = data.tabs || [];
+        else errMsg = data.error;
+      } catch (e) { errMsg = e.message; }
+
+      sel.innerHTML = '<option value="">Selecione um mês...</option>';
+      localSnapshotTabs.forEach(t => addOpt(t));                 // reconstruídos primeiro
+      [...monthlyTabs].reverse().forEach(t => addOpt(t));        // mensais, mais recente no topo
+      if (errMsg && !monthlyTabs.length && !localSnapshotTabs.length) {
+        addOpt('', `Erro: ${errMsg}`);
       }
     }
 
@@ -3864,7 +3876,11 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       panel.innerHTML = '';
       loading.style.display = 'inline';
       try {
-        const res  = await fetch(`/api/history?action=snapshot&tab=${encodeURIComponent(tab)}`, { credentials: 'same-origin' });
+        const isLocal = localSnapshotTabs.includes(tab);
+        const url = isLocal
+          ? `/api/history?action=local&tab=${encodeURIComponent(tab)}`
+          : `/api/history?action=snapshot&tab=${encodeURIComponent(tab)}`;
+        const res  = await fetch(url, { credentials: 'same-origin' });
         const data = await res.json();
         if (!data.success) throw new Error(data.error);
         historicoDeals   = data.deals;
