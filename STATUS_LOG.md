@@ -800,6 +800,16 @@ Registro curto, uma linha por interação (a cada alteração).
 
 ---
 
+## Auth | liberar gramos + jdutra (deploy não pegava env var) (2026-06-25)
+
+- **Sintoma:** `gramos@axenya.com` travava na tela de login ("Acesso não autorizado"); `jdutra@axenya.com` passava da tela mas os dados não carregavam (todas as `/api/*` em 401). Ambos já constavam na env var `ALLOWED_EMAILS` do Vercel.
+- **Causa:** o Vercel **não aplica mudança de env var sem novo deploy**. O último deploy de produção era anterior à edição da lista, então as funções live ainda rodavam com o `ALLOWED_EMAILS` antigo (sem os dois e-mails). `isEmailAuthorized()` retornava `false` para ambos; a assimetria era só o caminho de acesso (gramos pelo botão Google → rejeição explícita; jdutra pela URL `/dashboard` direta → HTML estático carrega, mas API em 401).
+- **Fix:** array `AUTHORIZED_EMAILS` em `lib/auth.js` sincronizado com a env var (`+salencar, +jdutra, +gramos`) para robustez (independe de propagação de env), e novo deploy de produção (`dpl_Fx29S2zr9QAKQi85tf3aA8yRqs8d` → **READY**, alias `project-bsmfu.vercel.app`).
+- **Validação:** `node --check lib/auth.js` OK; `isEmailAuthorized` → `true` p/ os dois (case-insensitive). Pós-deploy: `/`, `/novo`, `/novo-board` → 200; `/api/auth/me` e `/api/forecast-table` → 401 (auth ativa, sem bypass em prod).
+- **Pendências anotadas (não tratadas):** `ALLOWED_ORIGIN` vazia em prod (cai no fallback `pipeline.axenya.com`, ≠ domínio atual — latente, não quebra same-origin); se `gramos` ainda travar no Google, checar *Test users* na tela de consentimento OAuth do Google Cloud Console.
+
+---
+
 ## BDR | R12 metas coloridas + colaboradores + salvar globalmente (2026-06-24)
 
 - **R12 buildBdrOrigin()** | barras coloridas por atingimento de meta: verde ≥100%, amarelo ≥85%, laranja ≥70%, vermelho <70%. Lookup fuzzy por primeiro nome se nome HubSpot não casa com `window.BDR_METAS`. Apenas no modo Deals.
