@@ -319,6 +319,9 @@ module.exports = async function handler(req, res) {
           close_date: p.closedate ? p.closedate.substring(0, 10) : null,
           data_ganho: p.hs_v2_date_entered_1144844314 ? p.hs_v2_date_entered_1144844314.substring(0, 10) : null,
           data_implantacao: p.hs_v2_date_entered_1288611084 ? p.hs_v2_date_entered_1288611084.substring(0, 10) : null,
+          // Data de entrada na etapa Reunião Agendada (Vendas). É o evento real de "BDR marcou reunião",
+          // usado pelo painel BDR no lugar de createdate (que é distorcido por importações em massa).
+          data_reuniao_agendada: p.hs_v2_date_entered_1144746905 ? p.hs_v2_date_entered_1144746905.substring(0, 10) : null,
           reuniao_ocorreu: p.a_reuniao_ocorreu_ || null,
           premio_mensal: p.premio_mensal ? parseFloat(p.premio_mensal) : null,
           vigencia: p.vigencia ? p.vigencia.substring(0, 10) : null,

@@ -800,6 +800,28 @@ Registro curto, uma linha por interação (a cada alteração).
 
 ---
 
+## BDR | aviso movido p/ modal "?" + R11 por colaboradores (2026-06-25, rodada 2)
+
+> A pedido (2 itens).
+
+- **Aviso do topo → modal "?"** | o banner `bdr_note` ("BDR = campo sdr… Originação usa data de entrada em Reunião Agendada…") saiu do topo da página e foi para dentro do modal de **Regras de Probabilização** (`bdrOpenRulesModal`, botão `?` do header), como primeiro parágrafo destacado. `.banner-warn` ficou sem uso (CSS inócuo).
+- **R11 Distribuição de Porte por Colaboradores** | novo toggle **Colaboradores | Vidas** (`_bdrSizeMode`, `bdrSwitchSize`), **Colaboradores como padrão**. `buildBdrSizeDist` usa a dimensão ativa nas faixas (<50 / 50-200 / 200-500 / 500+); `_fPorte` (faceta dos modais) respeita o mesmo toggle. Título perdeu o "(Vidas)"; tip/ficha de ajuda atualizados PT/EN.
+- **Validação** | `_check-inline-js` 0 erros; `_i18n-parity` PT=21/EN=21; `_smoke-render` OK; `_capture-charts` confirma R11 com as 4 faixas no modo Colaboradores. **Não deployado.**
+
+---
+
+## BDR | originação por data de entrada em Reunião Agendada, não createdate (2026-06-25)
+
+> A pedido: no painel BDR, todos os números de originação vinham por `createdate` (data de criação do deal), quando deveriam vir pela data em que o deal entrou na etapa **Reunião Agendada** (evento real de "BDR marcou a reunião"). `createdate` é distorcido por importações em massa (ex.: 181 deals num mês, na auditoria).
+
+- **api/forecast-table.js** | exposto novo campo `data_reuniao_agendada` = `hs_v2_date_entered_1144746905` (Vendas | Reunião Agendada). Custo zero: a propriedade já era buscada (usada em `stage_days`).
+- **public/bdr.html** | nova dimensão de data de originação centralizada: `BDR_ORIG_DATE='data_reuniao_agendada'` + helpers `_origDate()`, `_oym()`, `_origDeals()` (filtra pela janela global E exige a data; deals sem entrada em Reunião Agendada ficam de fora das séries de originação, sem fallback p/ createdate). Todos os gráficos de originação migrados de `createdate` → data de Reunião Agendada: R12 Originação por BDR, R13 Weekly Origination, R14 Novos Leads BDR×AE, R15 Handoff Matrix, R07 Net Flow Deals (só inflow; saídas seguem `close_date`), R08 Net Flow Vidas, R09 Vidas Médias, R10 BDR vs Não BDR, R11 Distribuição de Porte, + KPIs de cabeçalho (createdBdr/newTotal/newBdr/avgVidas) e builders mortos R05/R06. `_fMes` e o donut R10 também.
+- **Auditabilidade** | coluna **Reun. Ag.** adicionada às tabelas dos modais (ao lado de Criado/Fechado); banner, tooltips, fichas de ajuda (`BDR_HELP_CHARTS`, +3 fichas: origin/weekly/leads) e subtítulos atualizados PT/EN para citar a data de entrada em Reunião Agendada.
+- **Cobertura (dados reais)** | 908/958 deals BDR (94,8%) têm a data; dos 50 sem, 47 são Perdido sem histórico da etapa. 22 deals (2% dos com ambas datas) mudam de mês — exatamente os casos de importação que motivaram o pedido (ex.: criado 2024-03, reunião agendada 2025-1X).
+- **Validação** | `node --check api/forecast-table.js` OK; `_check-inline-js` 0 erros; `_i18n-parity` PT=21/EN=21; `_smoke-render` OK; `_capture-charts` confirma séries bucketizadas pela data de Reunião Agendada. **Não deployado** — vale no próximo `vercel --prod`.
+
+---
+
 ## Auth | liberar gramos + jdutra (deploy não pegava env var) (2026-06-25)
 
 - **Sintoma:** `gramos@axenya.com` travava na tela de login ("Acesso não autorizado"); `jdutra@axenya.com` passava da tela mas os dados não carregavam (todas as `/api/*` em 401). Ambos já constavam na env var `ALLOWED_EMAILS` do Vercel.
