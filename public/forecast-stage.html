@@ -322,22 +322,6 @@
     .hist-table-wrap tbody tr:hover td:first-child { background: rgba(255,255,255,.06); }
     html[data-theme="light"] .hist-table-wrap tbody td:first-child { background: var(--bg); }
     html[data-theme="light"] .hist-table-wrap tbody tr:hover td:first-child { background: rgba(0,0,0,.035); }
-    /* Segunda coluna congelada (Executivo) — left = 200px (largura do Deal) */
-    .hist-table-wrap thead th.hx,
-    .hist-table-wrap tbody td.hx {
-      position: sticky;
-      left: 200px;
-      z-index: 3;
-      box-shadow: 4px 0 10px rgba(0,0,0,.4);
-    }
-    .hist-table-wrap thead th.hx { background: var(--card); z-index: 5; }
-    .hist-table-wrap tbody td.hx { background: var(--bg); }
-    .hist-table-wrap tbody tr:hover td.hx { background: rgba(255,255,255,.06); }
-    html[data-theme="light"] .hist-table-wrap tbody tr:hover td.hx { background: rgba(0,0,0,.035); }
-    /* Cabeçalhos ordenáveis */
-    .hist-table-wrap th.hsort { cursor: pointer; user-select: none; }
-    .hist-table-wrap th.hsort:hover { color: var(--text); }
-    .hist-table-wrap th .sarr2 { font-size: .72em; color: var(--teal); }
     .st-avancou  { color: #3fb950; font-weight: 600; }
     .st-regrediu { color: #58a6ff; font-weight: 600; }
     .st-igual    { color: var(--text2); }
@@ -702,6 +686,17 @@
       background: var(--bg);
     }
 
+    /* Overall: linha New clients em destaque (fonte maior, fundo teal opaco, bordas).
+       Usa cor de base opaca (--bg) + overlay teal para a coluna sticky não deixar o
+       conteúdo vazar por baixo ao rolar horizontalmente. */
+    tbody tr.ov-newclients td {
+      font-size: 16px;
+      background-color: var(--bg);
+      background-image: linear-gradient(rgba(35, 209, 180, .16), rgba(35, 209, 180, .16));
+      border-top: 1px solid rgba(35, 209, 180, .55);
+      border-bottom: 2px solid rgba(35, 209, 180, .45);
+    }
+
     /* ── ROW HOVER ─────────────────────────────────────────────────────────────── */
     tbody tr:hover td {
       background: rgba(255, 255, 255, .08);
@@ -830,29 +825,6 @@
       position: sticky;
       left: 0;
     }
-
-    /* ── SEGUNDA COLUNA CONGELADA (Executivo) ─────────────────────────────────── */
-    /* left = largura da coluna Deal (.s = 210px). */
-    td.s2, th.s2 {
-      position: sticky;
-      left: 210px;
-      z-index: 3;
-      min-width: 125px;
-      max-width: 125px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      box-shadow: 4px 0 12px rgba(0, 0, 0, .5);
-    }
-    th.s2 { background: var(--card); z-index: 5; }
-    td.s2 { background: var(--bg); }
-    tbody tr:hover td.s2 { background: var(--hover-s); }
-    tfoot td.s2 {
-      background: #0e2424;
-      z-index: 6;
-      position: sticky;
-      left: 210px;
-    }
-    html[data-theme="light"] tfoot td.s2 { background: #d4efef; }
 
     tfoot tr.total td,
     tfoot tr.total td.now {
@@ -1779,7 +1751,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
       </button>
       <div class="panel-switcher" id="panel-switcher"><button class="panel-switch-btn" type="button" onclick="togglePanelMenu(event)" aria-haspopup="true" aria-expanded="false"><h1>Forecast</h1><svg class="panel-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button><div class="panel-dd" id="panel-dd" role="menu"></div></div>
-      <div class="seg-ctrl">
+      <div class="seg-ctrl" id="view-toggle">
         <button class="seg-btn active" data-view="pipeline" onclick="switchView('pipeline')">Pipeline</button>
         <button class="seg-btn" data-view="historico" onclick="switchView('historico')">Histórico</button>
       </div>
@@ -1968,10 +1940,27 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       </div>
       <h3>Como funciona o cálculo</h3>
 
+      <!-- Overall (DRE-resumo) -->
+      <section class="help-section" id="help-sec-overall" style="display:none">
+        <h3 class="help-h3">Visão Overall (DRE-resumo)</h3>
+        <p class="help-p">Esta tela resume, <strong>mês a mês (jan/26 a dez/27)</strong>, a Receita Real e a Receita Probabilizada de cada etapa do funil. Cada linha <strong>bate exatamente com o total do painel da etapa</strong> correspondente — usa o mesmo cálculo, a mesma deduplicação e a mesma probabilização.</p>
+        <table class="help-table">
+          <thead><tr><th>Linha</th><th>Origem</th></tr></thead>
+          <tbody>
+            <tr><td><strong>New clients</strong></td><td>Soma de todas as linhas visíveis (destaque)</td></tr>
+            <tr><td>MQLs / Reunião</td><td>Painel MQL (inclui projeção de BDRs)</td></tr>
+            <tr><td>Diagnóstico · Cotação · Consultoria · Negociação</td><td>Painéis das respectivas etapas</td></tr>
+            <tr><td>BID | Proposta Comercial · BID | Negociação</td><td>Painel BID (pipeline Bid, ~0,5%)</td></tr>
+            <tr><td>Ganho / Implantação</td><td>Painel Ganho (Ganho 100% + Implantação 80%)</td></tr>
+          </tbody>
+        </table>
+        <p class="help-p" style="margin-top:.6rem;">O <strong>olho</strong> em cada linha permite ocultá-la, <strong>subtraindo-a</strong> da linha New clients. O detalhe de cálculo de cada etapa está nas seções abaixo (e no '?' de cada painel).</p>
+      </section>
+
       <!-- Probabilidade por etapa -->
       <section class="help-section">
-        <h3 class="help-h3">Probabilidade por etapa</h3>
-        <p class="help-p">Cada etapa tem uma <strong>probabilidade de conversão padrão</strong>, configurável em Configurações. Ela representa a chance histórica de um deal nessa fase chegar ao fechamento.</p>
+        <h3 class="help-h3" id="help-prob-h3">Probabilidade por etapa</h3>
+        <p class="help-p" id="help-prob-p">Cada etapa tem uma <strong>probabilidade de conversão padrão</strong>, configurável em Configurações. Ela representa a chance histórica de um deal nessa fase chegar ao fechamento.</p>
         <table class="help-table">
           <thead><tr><th>Etapa</th><th>Padrão</th></tr></thead>
           <tbody id="help-stage-rows"></tbody>
@@ -1994,10 +1983,10 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       </section>
 
       <!-- Receita — Diagnóstico -->
-      <section class="help-section">
+      <section class="help-section" id="help-sec-diag">
         <h3 class="help-h3">Receita — Diagnóstico</h3>
-        <p class="help-p">Deals em Diagnóstico usam uma lógica própria baseada no número de vidas, pois ainda não há fatura definida.</p>
-        <p class="help-p"><strong>Receita recorrente</strong> = vidas × R$/vida (por faixa)</p>
+        <p class="help-p">Deals em Diagnóstico usam uma lógica própria baseada no número de <strong>vidas</strong> (ou, se vazio, o número de <strong>colaboradores</strong>), pois ainda não há fatura definida.</p>
+        <p class="help-p"><strong>Receita recorrente (real)</strong> = vidas × R$/vida (por faixa)</p>
         <table class="help-table">
           <thead><tr><th>Faixa</th><th>R$/vida</th><th>Delay até receita</th></tr></thead>
           <tbody>
@@ -2010,10 +1999,33 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
         <p class="help-p">Se a data projetada (cadastro + delay) já ficou no passado, a receita é projetada a partir do mês atual.</p>
       </section>
 
+      <!-- Receita — Reunião Agendada / MQL -->
+      <section class="help-section" id="help-sec-mql" style="display:none">
+        <h3 class="help-h3">Receita — Reunião Agendada (MQL)</h3>
+        <p class="help-p">Deals em Reunião Agendada usam o número de <strong>vidas</strong> como base (ou, se vazio, o de <strong>colaboradores</strong>), pois ainda não há fatura.</p>
+        <p class="help-p"><strong>Receita recorrente (real)</strong> = vidas × R$ 24/vida</p>
+        <p class="help-p"><strong>Receita probabilizada</strong> = Receita recorrente × Probabilidade ajustada (taxa do funil)</p>
+        <p class="help-p">Início da receita: <strong>+15 meses</strong> da data de criação do deal.</p>
+
+        <p class="help-p" style="margin-top:.9rem;"><strong>Projeção de originação dos BDRs</strong></p>
+        <p class="help-p">Além dos deals já existentes, projetamos a originação futura do time de BDRs (linha <em>Originação BDR (projeção)</em> na tabela e detalhamento ao final). Premissas:</p>
+        <table class="help-table">
+          <thead><tr><th>Coorte mensal</th><th>Vidas originadas / mês</th></tr></thead>
+          <tbody>
+            <tr><td>4 BDRs atuais</td><td>34.000 vidas cada (136.000/mês)</td></tr>
+            <tr><td>8 BDRs novos — jul/26</td><td>3.333 vidas cada (rampa)</td></tr>
+            <tr><td>8 BDRs novos — ago/26</td><td>10.000 vidas cada</td></tr>
+            <tr><td>8 BDRs novos — set/26</td><td>22.667 vidas cada</td></tr>
+            <tr><td>8 BDRs novos — out/26 em diante</td><td>34.000 vidas cada</td></tr>
+          </tbody>
+        </table>
+        <p class="help-p" style="margin-top:.6rem;">Coortes mensais de <strong>jul/26 a jan/28</strong>. Cada coorte gera receita <strong>vidas × R$ 24</strong> (recorrente), começando <strong>+15 meses</strong> da originação, probabilizada pelo <strong>win rate global (S01)</strong> = ganhos ÷ (ganhos + perdidos). Dentro do horizonte (até dez/27), só as coortes de jul–set/26 já entram (out/27+); as demais aparecem apenas na tabela de detalhe.</p>
+      </section>
+
       <!-- Receita — demais etapas -->
-      <section class="help-section">
-        <h3 class="help-h3">Receita — demais etapas</h3>
-        <p class="help-p">Para todas as outras etapas, a receita mensal é calculada a partir da <strong>primeira fatura</strong> e do <strong>modelo de remuneração</strong>.</p>
+      <section class="help-section" id="help-sec-rev">
+        <h3 class="help-h3" id="help-rev-h3">Receita — demais etapas</h3>
+        <p class="help-p" id="help-rev-p">Para todas as outras etapas, a receita mensal é calculada a partir da <strong>primeira fatura</strong> e do <strong>modelo de remuneração</strong>.</p>
 
         <p class="help-p" style="margin-top:.7rem;"><strong>Fee por vida</strong></p>
         <p class="help-p">Receita mensal = primeira fatura (valor fixo, todos os meses).</p>
@@ -2040,6 +2052,21 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
 
         <p class="help-p" style="margin-top:.7rem;"><strong>Receita probabilizada</strong> = Receita mensal × Probabilidade ajustada</p>
         <p class="help-p">A receita é projetada a partir da <em>data prevista para receita</em> cadastrada no deal, por até 24 meses.</p>
+      </section>
+
+      <!-- Deduplicação Fee × Corretagem (vale para todos os painéis) -->
+      <section class="help-section" id="help-sec-dedup">
+        <h3 class="help-h3">Deduplicação Fee × Corretagem</h3>
+        <p class="help-p">Um mesmo cliente costuma ter <strong>dois deals</strong> — um de <strong>Fee por vida</strong> e outro de <strong>Corretagem</strong> (os nomes diferem só por esse trecho). Para não contar receita em dobro, mantemos a receita de <strong>apenas um</strong> deles. Critério de desempate, nesta ordem:</p>
+        <table class="help-table">
+          <thead><tr><th>#</th><th>Mantém o deal com…</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td>etapa <strong>mais avançada</strong></td></tr>
+            <tr><td>2</td><td>menor <strong>TCV de 12 meses</strong></td></tr>
+            <tr><td>3</td><td><strong>vigência</strong> mais distante</td></tr>
+          </tbody>
+        </table>
+        <p class="help-p" style="margin-top:.6rem;">O deal "perdedor" continua aparecendo na lista, mas com <strong>receita zerada</strong> (não soma no total).</p>
       </section>
 
       <div style="height:1px;background:var(--border);margin:1.2rem 0 1rem;"></div>
@@ -2180,8 +2207,32 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
     const _fcAeNorm = s => s.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
     const FC_AE_FIRST = new Set(['agatta','andre','fausto','guilherme','juliana','rafael']);
 
+    // ── Forecast por etapa (Cotação / Consultoria / Negociação) ────────────────
+    // Quando servido por uma rota /forecast-<etapa>, este é o painel Forecast
+    // filtrado apenas para os negócios naquela etapa (mesmo motor de cálculo).
+    const FC_STAGE_MAP = { '/forecast-overall': 'Overall', '/forecast-cotacao': 'Cotação', '/forecast-consultoria': 'Consultoria', '/forecast-negociacao': 'Negociação', '/forecast-diagnostico': 'Diagnóstico', '/forecast-mql': 'Reunião Agendada', '/forecast-ganho': 'Ganho', '/forecast-bid': 'BID' };
+    const FC_PANEL_STAGE = (function(){ var p = location.pathname.replace(/\/+$/, ''); return FC_STAGE_MAP[p] || null; })();
+    // Painel BID: pipeline Bid, etapas Proposta Enviada + Negociação, em listas separadas,
+    // probabilidade fixa baixa (premissa conservadora), data de receita imputada à mão (vermelha).
+    const FC_BID_MODE = FC_PANEL_STAGE === 'BID';
+    const FC_BID_PROB = 0.005;   // ~0,5% (premissa conservadora do bloco BID)
+    // O painel de Ganho engloba também os deals em Implantação (Implantação ≈ ganho).
+    const FC_PANEL_STAGES = FC_BID_MODE ? ['Proposta Enviada', 'Negociação']
+                          : FC_PANEL_STAGE === 'Ganho' ? ['Ganho', 'Implantação']
+                          : (FC_PANEL_STAGE && FC_PANEL_STAGE !== 'Overall' ? [FC_PANEL_STAGE] : null);
+    if (FC_PANEL_STAGE) {
+      document.addEventListener('DOMContentLoaded', function(){
+        document.title = FC_PANEL_STAGE + ' | Forecast | Axenya';
+        var h = document.querySelector('.panel-switch-btn h1'); if (h) h.textContent = FC_PANEL_STAGE;
+        var sd = document.getElementById('stage-dd'); if (sd) sd.style.display = 'none'; // etapa travada → esconde o filtro Etapa
+        var vt = document.getElementById('view-toggle'); if (vt) vt.style.display = 'none'; // remove o toggle Pipeline/Histórico (visão Pipeline já é o default)
+      });
+    }
+
     // ── STATE ─────────────────────────────────────────────────────────────────
     let allDeals = [];
+    let allScopedDeals = [];   // conjunto completo (todas as etapas, escopo set/2025+) | base do dedup global
+    let FC_WIN_RATE = 0;       // win rate global (S01) = ganhos ÷ (ganhos + perdidos) | usado na projeção de BDRs
     let stageFilter = new Set();
     let quarterFilter = new Set();
     let tierFilter = new Set();
@@ -2324,6 +2375,45 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       return excl;
     }
 
+    // ── Projeção de originação dos BDRs (painel MQL/Reunião Agendada) ──────────
+    // 4 antigos × 34k/mês + 8 novos (rampa: jul/26 3.333 · ago 10k · set 22.667 · out/26+ 34k),
+    // jul/26 → jan/28. Cada coorte vira receita +15m da originação (vidas × R$24, recorrente),
+    // probabilizada pelo win rate global (S01).
+    function _fcBdrNewVidasPer(ym) {
+      if (ym < '2026-07' || ym > '2028-01') return 0;
+      if (ym === '2026-07') return 3333;
+      if (ym === '2026-08') return 10000;
+      if (ym === '2026-09') return 22667;
+      return 34000;   // out/26 em diante
+    }
+    function _fcBdrCohorts() {
+      const OLD = 4, NEW = 8, VIDA_OLD = 34000, out = [];
+      let y = 2026, mo = 6;   // jul/2026
+      while (y < 2028 || (y === 2028 && mo <= 0)) {   // até jan/2028
+        const ym = y + '-' + String(mo + 1).padStart(2, '0');
+        const vNew = NEW * _fcBdrNewVidasPer(ym);
+        const vOld = OLD * VIDA_OLD;
+        const vidas = vOld + vNew;
+        const t = mo + 15;
+        const rs = { y: y + Math.floor(t / 12), mo: ((t % 12) + 12) % 12 };
+        out.push({ ymLabel: MONTH_LABELS[mo] + '/' + String(y).slice(2), vidasOld: vOld, vidasNew: vNew, vidas: vidas, rec: vidas * 24, revStart: rs, revLabel: MONTH_LABELS[rs.mo] + '/' + String(rs.y).slice(2) });
+        mo++; if (mo > 11) { mo = 0; y++; }
+      }
+      return out;
+    }
+    function _fcBdrTableHtml(rows) {
+      const wr = (FC_WIN_RATE * 100).toFixed(1).replace('.', ',') + '%';
+      let h = '<style>.bdr-proj{width:100%;border-collapse:collapse;font-size:.8rem;margin-top:.5rem}.bdr-proj th,.bdr-proj td{padding:.4rem .7rem;border-bottom:1px solid var(--border)}.bdr-proj th{color:var(--accent,#3ab8b7);font-weight:700;border-bottom:2px solid var(--accent,#3ab8b7)}.bdr-proj tbody tr:hover td{background:rgba(255,255,255,.04)}</style>';
+      h += '<div style="margin-top:1.75rem"><h3 style="font-size:.95rem;font-weight:700;margin:0 0 .35rem">Projeção de originação BDR · jul/26 → jan/28</h3>';
+      h += '<p style="font-size:.78rem;color:var(--muted);margin:0 0 .4rem;line-height:1.55">4 BDRs antigos × 34k/mês + 8 novos em rampa. Receita = vidas × R$ 24 × win rate global (S01 = ' + wr + '), reconhecida <strong>+15 meses</strong> após a originação. Já aparece na linha <em>"Originação BDR (projeção)"</em> e nos totais da tabela acima (Receita Real / Probabilizada, a partir de out/27).</p>';
+      h += '<table class="bdr-proj"><thead><tr><th style="text-align:left">Mês originação</th><th style="text-align:right">Vidas antigos</th><th style="text-align:right">Vidas novos</th><th style="text-align:right">Total vidas</th><th style="text-align:center">Início receita</th><th style="text-align:right">Receita real/mês</th><th style="text-align:right">Receita prob./mês</th></tr></thead><tbody>';
+      rows.forEach(c => {
+        h += `<tr><td style="text-align:left">${c.ymLabel}</td><td style="text-align:right">${fmtNum(c.vidasOld)}</td><td style="text-align:right">${fmtNum(c.vidasNew)}</td><td style="text-align:right;font-weight:700">${fmtNum(c.vidas)}</td><td style="text-align:center">${c.revLabel}</td><td style="text-align:right">${fmtBRL(c.rec)}</td><td style="text-align:right">${fmtBRL(c.rec * FC_WIN_RATE)}</td></tr>`;
+      });
+      h += '</tbody></table></div>';
+      return h;
+    }
+
     // ── THEME ─────────────────────────────────────────────────────────────────
     const SVG_SUN     = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>`;
     const SVG_MOON    = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`;
@@ -2367,13 +2457,61 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
 
     // ── HELP MODAL ────────────────────────────────────────────────────────────
     function openHelpModal() {
-      const rows = ['Diagnóstico','Cotação','Proposta Enviada','Consultoria','Negociação','Implantação','Ganho','Standby'];
+      // Em painel travado numa etapa (Cotação/Consultoria/Negociação), o modal explica
+      // apenas as premissas daquela etapa; senão, lista todas (Forecast geral).
+      const locked = (typeof FC_PANEL_STAGE !== 'undefined' && FC_PANEL_STAGE) ? FC_PANEL_STAGE : null;
+      const isOverall = (locked === 'Overall');
+      const ALL_FUNNEL = ['Reunião Agendada','Diagnóstico','Cotação','Proposta Enviada','Consultoria','Negociação','Implantação','Ganho'];
+      const rows = isOverall ? ALL_FUNNEL
+                 : locked ? ((typeof FC_PANEL_STAGES !== 'undefined' && FC_PANEL_STAGES) ? FC_PANEL_STAGES : [locked])
+                 : ['Diagnóstico','Cotação','Proposta Enviada','Consultoria','Negociação','Implantação','Ganho','Standby'];
       const tbody = document.getElementById('help-stage-rows');
       if (tbody) {
         tbody.innerHTML = rows.map(s => {
-          const v = STAGE_PROB[s];
+          const v = (typeof FC_BID_MODE !== 'undefined' && FC_BID_MODE) ? FC_BID_PROB : STAGE_PROB[s];
           return `<tr><td>${s}</td><td>${v != null ? (v * 100).toFixed(1).replace('.', ',') + '%' : '—'}</td></tr>`;
         }).join('');
+      }
+      // Ajustes para o painel de etapa única
+      const probH3 = document.getElementById('help-prob-h3');
+      const probP  = document.getElementById('help-prob-p');
+      const secDiag = document.getElementById('help-sec-diag');
+      const secMql  = document.getElementById('help-sec-mql');
+      const secRev  = document.getElementById('help-sec-rev');
+      const secOverall = document.getElementById('help-sec-overall');
+      const revH3  = document.getElementById('help-rev-h3');
+      const revP   = document.getElementById('help-rev-p');
+      if (secOverall) secOverall.style.display = isOverall ? '' : 'none';
+      if (isOverall) {
+        // Overall agrega TODAS as lógicas de receita → mostra as três seções.
+        if (probH3) probH3.textContent = 'Probabilidade por etapa';
+        if (probP)  probP.innerHTML = 'Cada linha aplica a probabilização da sua etapa. As linhas <strong>BID</strong> usam probabilidade fixa de ~0,5% (não exibida na tabela abaixo).';
+        if (secDiag) secDiag.style.display = '';
+        if (secMql)  secMql.style.display  = '';
+        if (secRev)  secRev.style.display  = '';
+        if (revH3) revH3.textContent = 'Receita — Cotação / Consultoria / Negociação / BID / Ganho';
+        if (revP)  revP.innerHTML = 'Para as etapas com fatura definida, a receita mensal é calculada a partir da <strong>primeira fatura</strong> e do <strong>modelo de remuneração</strong>.';
+      } else if (locked) {
+        const isDiag = (locked === 'Diagnóstico');
+        const isMql  = (locked === 'Reunião Agendada');
+        const isBid  = (typeof FC_BID_MODE !== 'undefined' && FC_BID_MODE);
+        if (probH3) probH3.textContent = isBid ? 'Probabilidade (BID)' : 'Probabilidade da etapa';
+        if (probP)  probP.innerHTML = isBid
+          ? 'BID: probabilidade fixa e baixa (~0,5%) — premissa conservadora para <strong>não contar com esse dinheiro no curto prazo</strong>. A data de receita não é cravável: é imputada à mão e jogada para frente (marcada em <span style="color:#f85149">vermelho</span> na tabela).'
+          : `Premissa de probabilização da etapa <strong>${esc(locked)}</strong>: chance histórica de conversão usada no cálculo (configurável em Configurações).`;
+        if (secDiag) secDiag.style.display = isDiag ? '' : 'none';            // receita por vidas (Cintia)
+        if (secMql)  secMql.style.display  = isMql ? '' : 'none';             // receita por vidas × R$24, +15m
+        if (secRev)  secRev.style.display  = (isDiag || isMql) ? 'none' : ''; // receita por prêmio/modelo
+        if (!isDiag && !isMql) {
+          if (revH3) revH3.textContent = isBid ? 'Receita — BID' : `Receita — ${locked}`;
+          if (revP)  revP.innerHTML = 'Nesta etapa a receita mensal é calculada a partir da <strong>primeira fatura</strong> e do <strong>modelo de remuneração</strong>' + (isBid ? ', ponderada pela probabilidade fixa de BID (~0,5%).' : '.');
+        }
+      } else {
+        if (probH3) probH3.textContent = 'Probabilidade por etapa';
+        if (secDiag) secDiag.style.display = '';
+        if (secMql)  secMql.style.display = 'none';
+        if (secRev)  secRev.style.display = '';
+        if (revH3)  revH3.textContent = 'Receita — demais etapas';
       }
       document.getElementById('help-overlay').classList.add('open');
     }
@@ -3095,6 +3233,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
     // ── APPLY & RENDER ────────────────────────────────────────────────────────
     function applyAndRender() {
       updateMobFabBadge();
+      if (FC_PANEL_STAGE === 'Overall') { _fcRenderOverall(); return; }   // Overall = DRE-resumo, não lista de deals
       let deals = allDeals;
 
       if (pipelineFilter.has('__NONE__') || stageFilter.has('__NONE__') || quarterFilter.has('__NONE__') || tierFilter.has('__NONE__') || modeloFilter.has('__NONE__') || aeFilter.has('__NONE__')) {
@@ -3113,11 +3252,12 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
 
       deals = deals.map(d => {
         const pInfo = calcProbInfo(d);
+        const isBid = FC_BID_MODE && d.pipeline === 'Bid';
         return {
           ...d,
-          prob_etapa: STAGE_PROB[d.stage] ?? null,
-          prob_ajustada: pInfo.final,
-          prob_info: pInfo
+          prob_etapa: isBid ? FC_BID_PROB : (STAGE_PROB[d.stage] ?? null),
+          prob_ajustada: isBid ? FC_BID_PROB : pInfo.final,
+          prob_info: isBid ? { sp: FC_BID_PROB, cp: d.probabilidade, final: FC_BID_PROB, modStr: 'BID | probabilidade fixa conservadora (~0,5%)' } : pInfo
         };
       });
 
@@ -3174,13 +3314,23 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       document.getElementById('tw').innerHTML = '<div class="state">Buscando dados do HubSpot...</div>';
 
       try {
-        const resp = await fetch('/api/forecast-table', { credentials: 'same-origin' });
+        const resp = await fetch('/api/forecast-table?includeLost=true', { credentials: 'same-origin' });
         const data = await resp.json();
         if (!resp.ok || !data.success) {
           document.getElementById('tw').innerHTML = `<div class="state err">Erro: ${esc(data.error || String(resp.status))}</div>`;
           return;
         }
-        allDeals = data.deals.filter(d => d.createdate && d.createdate >= '2025-09-01');
+        const _scoped = data.deals.filter(d => d.createdate && d.createdate >= '2025-09-01');
+        // Win rate global (S01) = ganhos ÷ (ganhos + perdidos). Os perdidos só servem aqui;
+        // são removidos da exibição/dedup logo abaixo.
+        const _won = _scoped.filter(d => d.stage === 'Ganho').length;
+        const _lost = _scoped.filter(d => d.stage === 'Perdido').length;
+        FC_WIN_RATE = (_won + _lost) > 0 ? _won / (_won + _lost) : 0;
+        allScopedDeals = _scoped.filter(d => d.stage !== 'Perdido');  // todas as etapas (sem perdidos) | base do dedup global
+        allDeals = FC_PANEL_STAGES ? allScopedDeals.filter(function(d){
+          if (FC_PANEL_STAGES.indexOf(d.stage) === -1) return false;
+          return FC_BID_MODE ? d.pipeline === 'Bid' : d.pipeline !== 'Bid';  // BID isola o pipeline Bid; demais painéis são Vendas
+        }) : allScopedDeals;
         // Não resetamos os filtros aqui: ao atualizar, a tabela mantém os filtros
         // já aplicados (as funções build*Filter respeitam o estado atual via .has()).
         const subEl = document.getElementById('sub');
@@ -3319,9 +3469,36 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
     }
 
     // ── RENDER ────────────────────────────────────────────────────────────────
+    // Receita mensal (real + ponderada) de UM deal, por MONTHS. FONTE ÚNICA usada pelo
+    // render dos painéis E pelo Overall (garante que o Overall bata com cada painel).
+    // Não aplica dedup (o chamador trata) nem acumula totais (puro).
+    function _fcDealMonthly(d, probAdj) {
+      if (d.stage === 'Diagnóstico') {
+        const vidas = d.vidas || d.colaboradores || 0;
+        if (!vidas) return MONTHS.map(() => null);
+        const delay = vidas <= 200 ? 9 : vidas <= 4999 ? 14 : 18;
+        let revStart = null;
+        if (d.createdate) { const cd = new Date(d.createdate + 'T00:00:00'); const totalMo = cd.getMonth() + delay; revStart = { y: cd.getFullYear() + Math.floor(totalMo / 12), mo: totalMo % 12 }; }
+        const now = new Date(); const nowRef = { y: now.getFullYear(), mo: now.getMonth() };
+        if (!revStart || revStart.y < nowRef.y || (revStart.y === nowRef.y && revStart.mo < nowRef.mo)) revStart = nowRef;
+        const rec = vidas * getVpv(vidas);
+        return MONTHS.map(m => { if (probAdj == null) return null; const diff = (m.y - revStart.y) * 12 + (m.mo - revStart.mo); if (diff < 0) return null; return { val: rec * probAdj, rec: rec, probAdj: probAdj, n: diff + 1 }; });
+      }
+      if (d.stage === 'Reunião Agendada') {
+        const vidas = d.vidas || d.colaboradores || 0;
+        if (!vidas) return MONTHS.map(() => null);
+        let revStart = null;
+        if (d.createdate) { const cd = new Date(d.createdate + 'T00:00:00'); const t = cd.getMonth() + 15; revStart = { y: cd.getFullYear() + Math.floor(t / 12), mo: ((t % 12) + 12) % 12 }; }
+        if (!revStart) return MONTHS.map(() => null);
+        const rec = vidas * 24;
+        return MONTHS.map(m => { if (probAdj == null) return null; const diff = (m.y - revStart.y) * 12 + (m.mo - revStart.mo); if (diff < 0) return null; return { val: rec * probAdj, rec: rec, probAdj: probAdj, n: diff + 1 }; });
+      }
+      const revStart = parseRevenueDate(d.data_prevista_para_receita);
+      return MONTHS.map(m => { if (!revStart || probAdj == null) return null; const diff = (m.y - revStart.y) * 12 + (m.mo - revStart.mo); if (diff < 0 || diff > 23) return null; const n = diff + 1; const rec = calcReceita(n, d); if (rec == null) return null; return { val: rec * probAdj, rec: rec, probAdj: probAdj, n: n }; });
+    }
     function render(deals) {
       currentDeals = deals;
-      const revExcl = _fcRevExcluded((allDeals && allDeals.length) ? allDeals : deals);   // dedup global (todas as etapas)
+      const revExcl = _fcRevExcluded((allScopedDeals && allScopedDeals.length) ? allScopedDeals : deals);   // dedup global (todas as etapas)
       const totalArr = deals.reduce((s, d) => s + (revExcl.has(_fcDealId(d)) ? 0 : (d.arr_estimado || 0)), 0);
       const totalVidas = deals.reduce((s, d) => s + (d.vidas || 0), 0);
       const totalFatAtu = deals.reduce((s, d) => s + (d.fatura_atual || 0), 0);
@@ -3344,74 +3521,23 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       const mTotals = new Array(MONTHS.length).fill(0);
       const mRealTotals = new Array(MONTHS.length).fill(0);
 
-      const dealMonths = deals.map(d => {
-        if (revExcl.has(_fcDealId(d))) return MONTHS.map(() => null);   // duplicata: sem receita contada
-        // ── Diagnóstico: receita recorrente baseada em createdate + delay ────────
-        if (d.stage === 'Diagnóstico') {
-          if (!d.vidas || d.vidas === 0) return MONTHS.map(() => null);
-          const vidas = d.vidas;
-          const delay = vidas < 200 ? 9 : vidas <= 4999 ? 14 : 18;
-          let revStart = null;
-          if (d.createdate) {
-            const cd = new Date(d.createdate + 'T00:00:00');
-            const totalMo = cd.getMonth() + delay;
-            revStart = { y: cd.getFullYear() + Math.floor(totalMo / 12), mo: totalMo % 12 };
-          }
-          // Se a data projetada ficou no passado, usa o mês atual
-          const now = new Date();
-          const nowRef = { y: now.getFullYear(), mo: now.getMonth() };
-          if (!revStart || revStart.y < nowRef.y || (revStart.y === nowRef.y && revStart.mo < nowRef.mo)) {
-            revStart = nowRef;
-          }
-          const probAdj = d.prob_ajustada;
-          const rec = vidas * getVpv(vidas);
-          return MONTHS.map((m, i) => {
-            if (probAdj == null) return null;
-            const diff = (m.y - revStart.y) * 12 + (m.mo - revStart.mo);
-            if (diff < 0) return null;
-            const val = rec * probAdj;
-            mTotals[i] += val;
-            mRealTotals[i] += rec;
-            return { val, rec, probAdj, n: diff + 1 };
-          });
-        }
+      const dealMonths = deals.map(d => revExcl.has(_fcDealId(d)) ? MONTHS.map(() => null) : _fcDealMonthly(d, d.prob_ajustada));
+      dealMonths.forEach(arr => arr.forEach((mObj, i) => { if (mObj) { mTotals[i] += mObj.val; mRealTotals[i] += mObj.rec; } }));
 
-        // ── Reunião Agendada / MQL: vidas (ou colaboradores) × R$24, receita +15m da criação ──
-        if (d.stage === 'Reunião Agendada') {
-          const vidas = d.vidas || d.colaboradores || 0;
-          if (!vidas) return MONTHS.map(() => null);
-          let revStart = null;
-          if (d.createdate) { const cd = new Date(d.createdate + 'T00:00:00'); const t = cd.getMonth() + 15; revStart = { y: cd.getFullYear() + Math.floor(t / 12), mo: ((t % 12) + 12) % 12 }; }
-          if (!revStart) return MONTHS.map(() => null);
-          const probAdj = d.prob_ajustada;
-          const rec = vidas * 24;
-          return MONTHS.map((m, i) => {
-            if (probAdj == null) return null;
-            const diff = (m.y - revStart.y) * 12 + (m.mo - revStart.mo);
-            if (diff < 0) return null;
-            const val = rec * probAdj;
-            mTotals[i] += val;
-            mRealTotals[i] += rec;
-            return { val, rec, probAdj, n: diff + 1 };
+      // Projeção de originação dos BDRs somada aos totais mensais (só no painel MQL/Reunião Agendada).
+      let _bdrRows = [], _bdrReal = new Array(MONTHS.length).fill(0), _bdrProb = new Array(MONTHS.length).fill(0);
+      if (FC_PANEL_STAGE === 'Reunião Agendada') {
+        _bdrRows = _fcBdrCohorts();
+        _bdrRows.forEach(c => {
+          MONTHS.forEach((m, i) => {
+            const diff = (m.y - c.revStart.y) * 12 + (m.mo - c.revStart.mo);
+            if (diff < 0) return;
+            _bdrReal[i] += c.rec;
+            _bdrProb[i] += c.rec * FC_WIN_RATE;
           });
-        }
-
-        // ── Demais etapas ─────────────────────────────────────────────────────────
-        const revStart = parseRevenueDate(d.data_prevista_para_receita);
-        const probAdj = d.prob_ajustada;
-        return MONTHS.map((m, i) => {
-          if (!revStart || probAdj == null) return null;
-          const diff = (m.y - revStart.y) * 12 + (m.mo - revStart.mo);
-          if (diff < 0 || diff > 23) return null;
-          const n = diff + 1;
-          const rec = calcReceita(n, d);
-          if (rec == null) return null;
-          const val = rec * probAdj;
-          mTotals[i] += val;
-          mRealTotals[i] += rec;
-          return { val, rec, probAdj, n };
         });
-      });
+        MONTHS.forEach((m, i) => { mRealTotals[i] += _bdrReal[i]; mTotals[i] += _bdrProb[i]; });  // entra no TOTAL
+      }
 
       const INFO = [
         {
@@ -3423,7 +3549,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
           tip: 'Etapa atual no pipeline de vendas'
         },
         {
-          k: 'ae', lbl: 'Executivo', w: 125, sticky2: true,
+          k: 'ae', lbl: 'Executivo', w: 125,
           tip: 'Executivo de Contas responsável'
         },
         {
@@ -3495,6 +3621,11 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
           tip: 'Data de Vigência do contrato (HubSpot)'
         },
       ];
+      if (FC_PANEL_STAGE === 'Diagnóstico' || FC_PANEL_STAGE === 'Reunião Agendada') {
+        // Diagnóstico e Reunião Agendada calculam a receita a partir da data de criação → expõe "Criado".
+        const _ci = INFO.findIndex(c => c.k === 'dias_no_pipe');
+        INFO.splice(_ci >= 0 ? _ci + 1 : INFO.length, 0, { k: 'createdate', lbl: 'Criado', w: 95, align: 'center', fmt: fmtDate, tip: 'Data de criação do deal — base do cálculo de Diagnóstico (receita +9/14/18 meses da criação).' });
+      }
       currentInfo = INFO;
 
       // ── Build HTML ──────────────────────────────────────────────────────────
@@ -3511,7 +3642,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       // Row 2: individual column headers
       h += '<tr class="col-row">';
       INFO.forEach((c, ci) => {
-        const sc = c.sticky ? ' s' : (c.sticky2 ? ' s2' : '');
+        const sc = c.sticky ? ' s' : '';
         const mh = c.hideMobile ? ' m-hide' : '';
         const align = c.align === 'right' ? 'right' : (c.align === 'center' ? 'center' : 'left');
         const arr = sortKey === c.k ? `<span class="sarr">${sortDir > 0 ? '▲' : '▼'}</span>` : '';
@@ -3535,12 +3666,19 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       h += '</tr></thead><tbody>';
 
       // Deal rows
+      let _bidPrevStage = null;
       deals.forEach((d, di) => {
+        // BID: duas listas separadas (cabeçalho de seção por etapa). deals já vêm ordenados por etapa.
+        if (FC_BID_MODE && d.stage !== _bidPrevStage) {
+          _bidPrevStage = d.stage;
+          const lbl = d.stage === 'Proposta Enviada' ? 'Envio de Proposta Comercial (BID)' : (d.stage + ' (BID)');
+          h += `<tr class="bid-section"><td colspan="${INFO.length + MONTHS.length * 2}" style="background:rgba(248,81,73,.10);color:#f85149;font-weight:700;padding:.5rem .7rem;border-top:2px solid rgba(248,81,73,.4)">${esc(lbl)}</td></tr>`;
+        }
         const isWarn = completenessFilter === 'incomplete' && hasAnyEmpty(d);
         h += `<tr${isWarn ? ' class="row-warn"' : ''}>`;
 
         INFO.forEach((c, ci) => {
-          let sc = c.sticky ? 's' : (c.sticky2 ? 's2' : '');
+          let sc = c.sticky ? 's' : '';
           if (c.hideMobile) sc += (sc ? ' ' : '') + 'm-hide';
           const align = c.align === 'right' ? ' style="text-align:right"' : '';
           const v = d[c.k];
@@ -3593,7 +3731,9 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
           }
 
           const display = c.fmt ? c.fmt(v) : esc(v ?? '—');
-          h += `<td class="${sc}"${align} data-col="${ci}">${display}</td>`;
+          // BID: a data de receita é imputada à mão e marcada em vermelho (premissa conservadora).
+          const tdStyle = (FC_BID_MODE && c.k === 'data_prevista_para_receita' && v) ? ' style="color:#f85149;font-weight:600;text-align:center"' : align;
+          h += `<td class="${sc}"${tdStyle} data-col="${ci}">${display}</td>`;
         });
 
         // Receita Real cells (hidden on mobile)
@@ -3650,6 +3790,29 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
 
         h += '</tr>';
       });
+
+      // Linha sintética: projeção de originação BDR nas colunas Real/Probabilizada (a partir de out/27).
+      if (FC_PANEL_STAGE === 'Reunião Agendada' && _bdrRows.length) {
+        h += '<tr class="bdr-proj-row" style="background:rgba(147,112,219,.06)">';
+        INFO.forEach((c, ci) => {
+          let sc = c.sticky ? 's' : '';
+          if (c.hideMobile) sc += (sc ? ' ' : '') + 'm-hide';
+          if (c.sticky) h += `<td class="${sc}" data-col="${ci}" style="font-style:italic;color:var(--text2)" data-tip="Projeção de originação dos BDRs (não é deal do HubSpot) — vidas × R$24 × win rate, +15m. Detalhe na tabela abaixo.">Originação BDR (projeção)</td>`;
+          else if (c.k === 'stage') h += `<td class="${sc}" data-col="${ci}" style="color:var(--text2)">Projeção</td>`;
+          else h += `<td class="${sc}" data-col="${ci}"></td>`;
+        });
+        _bdrReal.forEach((v, i) => {
+          const m = MONTHS[i]; const ci = INFO.length + i;
+          const sep = i === 0 ? ' m-sep' : (m.mo === 0 ? ' y-sep' : ''); const now = m.key === NOW_KEY ? ' now' : '';
+          h += `<td class="m real m-hide${v > 0 ? ' v' : ''}${sep}${now}" data-col="${ci}">${v > 0 ? fmtBRL(v) : ''}</td>`;
+        });
+        _bdrProb.forEach((v, i) => {
+          const m = MONTHS[i]; const ci = INFO.length + MONTHS.length + i;
+          const sep = i === 0 ? ' m-sep' : (m.mo === 0 ? ' y-sep' : ''); const now = m.key === NOW_KEY ? ' now' : '';
+          h += `<td class="m m-hide${v > 0 ? ' v' : ''}${sep}${now}" data-col="${ci}">${v > 0 ? fmtBRL(v) : ''}</td>`;
+        });
+        h += '</tr>';
+      }
       h += '</tbody>';
 
       // Probabilidade ajustada efetiva do total: razão entre Receita Probabilizada e
@@ -3663,7 +3826,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       // Total row inside tfoot (sticky bottom)
       h += '<tfoot><tr class="total">';
       INFO.forEach((c, i) => {
-        const sc = c.sticky ? ' s' : (c.sticky2 ? ' s2' : '');
+        const sc = c.sticky ? ' s' : '';
         const mh = c.hideMobile ? ' m-hide' : '';
         if (i === 0) h += `<td class="${sc}">TOTAL</td>`;
         else if (c.k === 'vidas') h += `<td class="${mh}" style="text-align:right">${totalVidas > 0 ? fmtNum(totalVidas) : ''}</td>`;
@@ -3671,7 +3834,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
         else if (c.k === 'primeira_fatura') h += `<td class="${mh}" style="text-align:right">${totalPrimFat > 0 ? fmtBRL(totalPrimFat) : ''}</td>`;
         else if (c.k === 'arr_estimado') h += `<td class="${mh}" style="text-align:right">${fmtBRL(totalArr)}</td>`;
         else if (c.k === 'prob_ajustada') h += `<td class="${mh}" style="text-align:right" data-tip="${esc(effAdjTip)}">${effAdjProb != null ? fmtPct(effAdjProb) : ''}</td>`;
-        else h += `<td class="${mh}${c.sticky2 ? ' s2' : ''}"></td>`;
+        else h += `<td class="${mh}"></td>`;
       });
       mRealTotals.forEach((tot, i) => {
         const m = MONTHS[i];
@@ -3686,6 +3849,93 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
         h += `<td class="m m-hide${tot > 0 ? ' v' : ''}${sep}${now}">${tot > 0 ? fmtBRL(tot) : ''}</td>`;
       });
       h += '</tr></tfoot></table>';
+      if (FC_PANEL_STAGE === 'Reunião Agendada' && _bdrRows.length) h += _fcBdrTableHtml(_bdrRows);
+
+      document.getElementById('tw').innerHTML = h;
+      setupColumnHover();
+    }
+
+    // ── OVERALL (DRE-resumo mês a mês) ──────────────────────────────────────────
+    // Cada linha agrega uma etapa (ou grupo) exatamente como o painel correspondente,
+    // usando a MESMA fonte (_fcDealMonthly + dedup + prob) → bate com o total de cada painel.
+    const FC_OVERALL_ROWS = [
+      { key: 'mql',   label: 'MQLs / Reunião',           stages: ['Reunião Agendada'],  isBid: false, addBdr: true },
+      { key: 'diag',  label: 'Diagnóstico',              stages: ['Diagnóstico'],       isBid: false },
+      { key: 'cot',   label: 'Cotação',                  stages: ['Cotação'],           isBid: false },
+      { key: 'cons',  label: 'Consultoria',              stages: ['Consultoria'],       isBid: false },
+      { key: 'neg',   label: 'Negociação',               stages: ['Negociação'],        isBid: false },
+      { key: 'bidp',  label: 'BID | Proposta Comercial', stages: ['Proposta Enviada'],  isBid: true  },
+      { key: 'bidn',  label: 'BID | Negociação',         stages: ['Negociação'],        isBid: true  },
+      { key: 'ganho', label: 'Ganho / Implantação',      stages: ['Ganho', 'Implantação'], isBid: false },
+    ];
+    const _fcOvHidden = {};   // key -> true (linha oculta, subtraída do total)
+
+    // Soma mensal (real + probabilizada) de um grupo de etapas, espelhando o painel.
+    function _fcRowMonthly(stages, isBid, addBdr, revExcl) {
+      const real = new Array(MONTHS.length).fill(0);
+      const prob = new Array(MONTHS.length).fill(0);
+      (allScopedDeals || []).forEach(d => {
+        if (stages.indexOf(d.stage) === -1) return;
+        if (isBid ? d.pipeline !== 'Bid' : d.pipeline === 'Bid') return;
+        if (revExcl && revExcl.has(_fcDealId(d))) return;
+        const probAdj = isBid ? FC_BID_PROB : calcProbInfo(d).final;
+        _fcDealMonthly(d, probAdj).forEach((m, i) => { if (m) { real[i] += m.rec; prob[i] += m.val; } });
+      });
+      if (addBdr) {
+        _fcBdrCohorts().forEach(c => MONTHS.forEach((m, i) => {
+          const diff = (m.y - c.revStart.y) * 12 + (m.mo - c.revStart.mo);
+          if (diff < 0) return;
+          real[i] += c.rec; prob[i] += c.rec * FC_WIN_RATE;
+        }));
+      }
+      return { real, prob };
+    }
+
+    function fcOvToggle(key) { _fcOvHidden[key] = !_fcOvHidden[key]; _fcRenderOverall(); }
+
+    function _fcRenderOverall() {
+      const revExcl = _fcRevExcluded(allScopedDeals || []);
+      const rows = FC_OVERALL_ROWS.map(r => ({ ...r, data: _fcRowMonthly(r.stages, r.isBid, r.addBdr, revExcl) }));
+      // New clients = soma das linhas visíveis (não ocultas)
+      const sumReal = new Array(MONTHS.length).fill(0);
+      const sumProb = new Array(MONTHS.length).fill(0);
+      rows.forEach(r => { if (!_fcOvHidden[r.key]) MONTHS.forEach((m, i) => { sumReal[i] += r.data.real[i]; sumProb[i] += r.data.prob[i]; }); });
+
+      const eyeOpen = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+      const eyeOff = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+
+      let h = '<table><thead>';
+      // Row 1: group headers
+      h += '<tr class="group-row">';
+      h += `<th class="s" style="min-width:240px;max-width:240px"></th>`;
+      h += `<th class="group-real m-sep" colspan="${MONTHS.length}"><span class="sticky-label">Receita Real</span></th>`;
+      h += `<th class="group-months m-sep" colspan="${MONTHS.length}"><span class="sticky-label">Receita Probabilizada</span></th>`;
+      h += '</tr>';
+      // Row 2: month headers
+      h += '<tr class="col-row">';
+      h += `<th class="s" style="min-width:240px;max-width:240px;text-align:left">Etapa</th>`;
+      MONTHS.forEach((m, i) => { const sep = i === 0 ? ' m-sep' : (m.mo === 0 ? ' y-sep' : ''); const now = m.key === NOW_KEY ? ' now' : ''; h += `<th class="m real m-hide${sep}${now}" data-tip="${esc(m.label)}">${m.label}</th>`; });
+      MONTHS.forEach((m, i) => { const sep = i === 0 ? ' m-sep' : (m.mo === 0 ? ' y-sep' : ''); const now = m.key === NOW_KEY ? ' now' : ''; h += `<th class="m m-hide${sep}${now}" data-tip="${esc(m.label)}">${m.label}</th>`; });
+      h += '</tr></thead><tbody>';
+
+      // Linha 1 — New clients (destaque, soma das demais)
+      h += '<tr class="ov-newclients" style="font-weight:700">';
+      h += `<td class="s" style="font-weight:700">New clients</td>`;
+      sumReal.forEach((v, i) => { const m = MONTHS[i]; const sep = i === 0 ? ' m-sep' : (m.mo === 0 ? ' y-sep' : ''); const now = m.key === NOW_KEY ? ' now' : ''; h += `<td class="m real m-hide${v > 0 ? ' v' : ''}${sep}${now}">${v > 0 ? fmtBRL(v) : ''}</td>`; });
+      sumProb.forEach((v, i) => { const m = MONTHS[i]; const sep = i === 0 ? ' m-sep' : (m.mo === 0 ? ' y-sep' : ''); const now = m.key === NOW_KEY ? ' now' : ''; h += `<td class="m m-hide${v > 0 ? ' v' : ''}${sep}${now}">${v > 0 ? fmtBRL(v) : ''}</td>`; });
+      h += '</tr>';
+
+      // Linhas 2-9 — uma por etapa, com olhinho para ocultar
+      rows.forEach(r => {
+        const hidden = !!_fcOvHidden[r.key];
+        const op = hidden ? 'opacity:.4' : '';
+        h += `<tr style="${op}">`;
+        h += `<td class="s" style="text-align:left"><span class="ov-eye" onclick="fcOvToggle('${r.key}')" title="${hidden ? 'Mostrar (somar ao total)' : 'Ocultar (subtrair do total)'}" style="cursor:pointer;display:inline-flex;vertical-align:middle;margin-right:.5rem;color:var(--text2)">${hidden ? eyeOff : eyeOpen}</span>${esc(r.label)}</td>`;
+        r.data.real.forEach((v, i) => { const m = MONTHS[i]; const sep = i === 0 ? ' m-sep' : (m.mo === 0 ? ' y-sep' : ''); const now = m.key === NOW_KEY ? ' now' : ''; h += `<td class="m real m-hide${v > 0 ? ' v' : ''}${sep}${now}">${v > 0 ? fmtBRL(v) : ''}</td>`; });
+        r.data.prob.forEach((v, i) => { const m = MONTHS[i]; const sep = i === 0 ? ' m-sep' : (m.mo === 0 ? ' y-sep' : ''); const now = m.key === NOW_KEY ? ' now' : ''; h += `<td class="m m-hide${v > 0 ? ' v' : ''}${sep}${now}">${v > 0 ? fmtBRL(v) : ''}</td>`; });
+        h += '</tr>';
+      });
+      h += '</tbody></table>';
 
       document.getElementById('tw').innerHTML = h;
       setupColumnHover();
@@ -3877,12 +4127,6 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
     // Grupo de atrito do snapshot local (deals vivos no corte e perdidos desde então).
     let historicoAttrition = null;
 
-    // Ordenação das tabelas do Histórico (clique no cabeçalho de cada coluna).
-    let histSort     = { key: null, type: 'text', dir: 1 };
-    let histCols     = [];   // colunas da tabela comparativa (cache para o clique)
-    let histAttrSort = { key: null, type: 'text', dir: 1 };
-    let histAttrCols = [];   // colunas da tabela de atrito
-
     const HIST_STAGE_ORDER = {
       'Diagnóstico': 0, 'Cotação': 1, 'Proposta Enviada': 2, 'Consultoria': 3,
       'Negociação': 4, 'Implantação': 5, 'Ganho': 6,
@@ -4015,54 +4259,6 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       }
     }
 
-    // Converte o valor de uma célula em chave ordenável conforme o tipo da coluna.
-    function histSortKeyVal(v, type) {
-      if (type === 'num') {
-        if (typeof v === 'number') return isNaN(v) ? -Infinity : v;
-        let s = String(v ?? '').trim();
-        if (!s) return -Infinity;
-        if (s.includes(',')) s = s.replace(/\./g, '').replace(',', '.'); // pt-BR: 1.234,56
-        const n = parseFloat(s);
-        return isNaN(n) ? -Infinity : n;
-      }
-      if (type === 'date') {
-        if (!v) return -Infinity;
-        const p = String(v).split('/');
-        return p.length === 3 ? Date.parse(`${p[2]}-${p[1]}-${p[0]}`) : -Infinity;
-      }
-      if (type === 'stage')  return HIST_STAGE_ORDER[v] ?? 99;
-      if (type === 'status') return ({ avancou: 1, igual: 2, mudou: 3, regrediu: 4, saiu: 5 })[v] ?? 9;
-      return String(v ?? '').toLowerCase();
-    }
-
-    // Ordena uma cópia de `arr` segundo o estado `sort` e um acessor de valor.
-    function histSortApply(arr, sort, accessor) {
-      if (!sort.key) return arr;
-      return arr.slice().sort((a, b) => {
-        const x = histSortKeyVal(accessor(a, sort.key), sort.type);
-        const y = histSortKeyVal(accessor(b, sort.key), sort.type);
-        if (x < y) return -sort.dir;
-        if (x > y) return  sort.dir;
-        return 0;
-      });
-    }
-
-    // Cliques nos cabeçalhos: alterna direção na mesma coluna, senão ordena asc.
-    function histSortBy(i) {
-      const c = histCols[i];
-      if (!c) return;
-      if (histSort.key === c.k) histSort.dir *= -1;
-      else histSort = { key: c.k, type: c.type, dir: 1 };
-      renderComparativo();
-    }
-    function histAttrSortBy(i) {
-      const c = histAttrCols[i];
-      if (!c) return;
-      if (histAttrSort.key === c.k) histAttrSort.dir *= -1;
-      else histAttrSort = { key: c.k, type: c.type, dir: 1 };
-      renderComparativo();
-    }
-
     function renderComparativo() {
       if (!historicoDeals || !allDeals) return;
       const panel = document.getElementById('hist-comparison');
@@ -4076,7 +4272,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       const histIds = new Set(historicoDeals.map(hd => extractDealId(hd['URL HubSpot'])).filter(Boolean));
 
       // Filtra deals históricos com os filtros ativos
-      let histFiltered = historicoDeals.filter(hd => {
+      const histFiltered = historicoDeals.filter(hd => {
         if (pipelineFilter.size > 0 && !pipelineFilter.has(hd['Pipeline'])) return false;
         if (aeFilter.size > 0 && !aeFilter.has(hd['Executivo'])) return false;
         if (stageFilter.size > 0 && !stageFilter.has('__NONE__') && !stageFilter.has(hd['Etapa'])) return false;
@@ -4113,63 +4309,35 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
         h += `</tr>`;
       }
 
-      // Descritor das colunas (rótulo, chave de dados, tipo de ordenação, congelamento).
-      // '__hoje' e '__status' são colunas derivadas (calculadas no acessor abaixo).
-      const compCols = [
-        { k: 'Deal',              lbl: 'Deal',                         type: 'text',   sticky: 'first' },
-        { k: 'Pipeline',          lbl: 'Pipeline',                     type: 'text'   },
-        { k: 'Etapa',             lbl: `Etapa em ${historicoTabName}`, type: 'stage'  },
-        { k: '__hoje',            lbl: 'Etapa hoje',                   type: 'stage'  },
-        { k: 'Executivo',         lbl: 'Executivo',                    type: 'text',   sticky: 'hx' },
-        { k: 'Produto',           lbl: 'Produto',                      type: 'text'   },
-        { k: 'Vidas',             lbl: 'Vidas',                        type: 'num',    align: 'right' },
-        { k: 'Colaboradores',     lbl: 'Colab.',                       type: 'num',    align: 'right' },
-        { k: '1ª Fatura (R$)',    lbl: '1ª Fatura (R$)',               type: 'num',    align: 'right' },
-        { k: 'ARR Estimado (R$)', lbl: 'ARR (R$)',                     type: 'num',    align: 'right' },
-        { k: 'Modelo',            lbl: 'Modelo',                       type: 'text'   },
-        { k: 'Agenciamento',      lbl: 'Agenc.',                       type: 'text'   },
-        { k: 'Vitalício',         lbl: 'Vitalício',                    type: 'text'   },
-        { k: 'Probabilidade (%)', lbl: 'Prob. (%)',                    type: 'num',    align: 'right' },
-        { k: 'Quarter',           lbl: 'Quarter',                      type: 'text'   },
-        { k: 'Data Prevista',     lbl: 'Data Prevista',                type: 'date'   },
-        { k: 'Dias no Pipe',      lbl: 'Dias no Pipe',                 type: 'num',    align: 'right' },
-        { k: '__status',          lbl: 'Status',                       type: 'status' },
-      ];
-      const INFO_COLS = compCols.length; // 18
-      monthKeys.forEach(mk => compCols.push({ k: `${mk} Real (R$)`, lbl: mk, type: 'num', align: 'right', m: 'real' }));
-      monthKeys.forEach(mk => compCols.push({ k: `${mk} Prob (R$)`, lbl: mk, type: 'num', align: 'right', m: 'prob' }));
-      histCols = compCols;
-
-      // Ordena os deals filtrados conforme o estado de ordenação.
-      const compAccessor = (hd, key) => {
-        if (key === '__hoje' || key === '__status') {
-          const idH = extractDealId(hd['URL HubSpot']);
-          const cH  = idH ? currById[idH] : null;
-          return key === '__hoje' ? (cH ? cH.stage : '') : histStatus(hd['Etapa'], cH);
-        }
-        return hd[key];
-      };
-      histFiltered = histSortApply(histFiltered, histSort, compAccessor);
-
-      const arrow = k => histSort.key === k ? `<span class="sarr2">${histSort.dir > 0 ? '▲' : '▼'}</span>` : '';
-
-      // Linha 2: colunas individuais (ordenáveis)
+      // Linha 2: colunas individuais
       h += `<tr>`;
-      compCols.forEach((c, ci) => {
-        if (c.m) return; // colunas de mês renderizadas abaixo (com separadores)
-        const cls = ((c.sticky === 'hx' ? 'hx ' : '') + 'hsort').trim();
-        const stl = (c.align === 'right' ? 'text-align:right;' : '') + (c.sticky === 'first' ? 'min-width:200px;' : '');
-        h += `<th class="${cls}" style="${stl}" onclick="histSortBy(${ci})">${esc(c.lbl)} ${arrow(c.k)}</th>`;
+      h += `<th style="min-width:200px">Deal</th>`;
+      h += `<th>Pipeline</th>`;
+      h += `<th>Etapa em ${esc(historicoTabName)}</th>`;
+      h += `<th>Etapa hoje</th>`;
+      h += `<th>Executivo</th>`;
+      h += `<th>Produto</th>`;
+      h += `<th style="text-align:right">Vidas</th>`;
+      h += `<th style="text-align:right">Colab.</th>`;
+      h += `<th style="text-align:right">1ª Fatura (R$)</th>`;
+      h += `<th style="text-align:right">ARR (R$)</th>`;
+      h += `<th>Modelo</th>`;
+      h += `<th>Agenc.</th>`;
+      h += `<th>Vitalício</th>`;
+      h += `<th style="text-align:right">Prob. (%)</th>`;
+      h += `<th>Quarter</th>`;
+      h += `<th>Data Prevista</th>`;
+      h += `<th style="text-align:right">Dias no Pipe</th>`;
+      h += `<th>Status</th>`;
+      monthKeys.forEach((mk, i) => {
+        const isJan = mk.startsWith('Jan/');
+        const sep = i === 0 ? ' m-sep' : (isJan ? ' y-sep' : '');
+        h += `<th class="m real m-hide${sep}" style="text-align:right;min-width:80px">${esc(mk)}</th>`;
       });
       monthKeys.forEach((mk, i) => {
-        const ci = INFO_COLS + i;
-        const sep = i === 0 ? ' m-sep' : (mk.startsWith('Jan/') ? ' y-sep' : '');
-        h += `<th class="m real m-hide hsort${sep}" style="text-align:right;min-width:80px" onclick="histSortBy(${ci})">${esc(mk)} ${arrow(`${mk} Real (R$)`)}</th>`;
-      });
-      monthKeys.forEach((mk, i) => {
-        const ci = INFO_COLS + monthKeys.length + i;
-        const sep = i === 0 ? ' m-sep' : (mk.startsWith('Jan/') ? ' y-sep' : '');
-        h += `<th class="m m-hide hsort${sep}" style="text-align:right;min-width:80px" onclick="histSortBy(${ci})">${esc(mk)} ${arrow(`${mk} Prob (R$)`)}</th>`;
+        const isJan = mk.startsWith('Jan/');
+        const sep = i === 0 ? ' m-sep' : (isJan ? ' y-sep' : '');
+        h += `<th class="m m-hide${sep}" style="text-align:right;min-width:80px">${esc(mk)}</th>`;
       });
       h += `</tr></thead><tbody>`;
 
@@ -4185,7 +4353,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
         h += `<td>${esc(hd['Pipeline']   || '—')}</td>`;
         h += `<td>${esc(hd['Etapa']      || '—')}</td>`;
         h += `<td>${esc(currStage)}</td>`;
-        h += `<td class="hx">${esc(hd['Executivo']  || '—')}</td>`;
+        h += `<td>${esc(hd['Executivo']  || '—')}</td>`;
         h += `<td>${esc(hd['Produto']    || '—')}</td>`;
         h += `<td style="text-align:right">${hd['Vidas']         || '—'}</td>`;
         h += `<td style="text-align:right">${hd['Colaboradores'] || '—'}</td>`;
@@ -4234,7 +4402,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
 
       // ── Atrito: perdidos desde o snapshot (estavam vivos no corte) ──────────
       if (historicoAttrition && historicoAttrition.length) {
-        let attr = historicoAttrition.filter(d => {
+        const attr = historicoAttrition.filter(d => {
           if (pipelineFilter.size > 0 && !pipelineFilter.has(d['Pipeline'])) return false;
           if (aeFilter.size > 0 && !aeFilter.has(d['Executivo'])) return false;
           if (stageFilter.size > 0 && !stageFilter.has('__NONE__') && !stageFilter.has(d['Etapa em 12 Jun'])) return false;
@@ -4243,28 +4411,9 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
         });
         if (attr.length) {
           const lostArr = attr.reduce((s, d) => s + (parseFloat(d['ARR 12 Jun (R$)']) || 0), 0);
-          const attrColsDef = [
-            { k: 'Deal',            lbl: 'Deal',              type: 'text',  sticky: 'first' },
-            { k: 'Pipeline',        lbl: 'Pipeline',          type: 'text'  },
-            { k: 'Etapa em 12 Jun', lbl: 'Etapa no corte',    type: 'stage' },
-            { k: 'Etapa hoje',      lbl: 'Etapa hoje',        type: 'stage' },
-            { k: 'Executivo',       lbl: 'Executivo',         type: 'text',  sticky: 'hx' },
-            { k: 'ARR 12 Jun (R$)', lbl: 'ARR no corte (R$)', type: 'num',   align: 'right' },
-            { k: 'Data Perdido',    lbl: 'Data Perdido',      type: 'date'  },
-            { k: 'Motivo',          lbl: 'Motivo',            type: 'text'  },
-          ];
-          histAttrCols = attrColsDef;
-          attr = histSortApply(attr, histAttrSort, (d, key) => d[key]);
-          const arrowA = k => histAttrSort.key === k ? `<span class="sarr2">${histAttrSort.dir > 0 ? '▲' : '▼'}</span>` : '';
-
           h += `<div class="hist-section-title">💀 Perdidos desde ${esc(historicoTabName)} — estavam vivos no corte (${attr.length} deals · ${fmtBRL(lostArr)} de ARR)</div>`;
-          h += `<div class="hist-table-wrap"><table><thead><tr>`;
-          attrColsDef.forEach((c, ci) => {
-            const cls = ((c.sticky === 'hx' ? 'hx ' : '') + 'hsort').trim();
-            const stl = (c.align === 'right' ? 'text-align:right;' : '') + (c.sticky === 'first' ? 'min-width:200px;' : '');
-            h += `<th class="${cls}" style="${stl}" onclick="histAttrSortBy(${ci})">${esc(c.lbl)} ${arrowA(c.k)}</th>`;
-          });
-          h += `</tr></thead><tbody>`;
+          h += `<div class="hist-table-wrap"><table>`;
+          h += `<thead><tr><th style="min-width:200px">Deal</th><th>Pipeline</th><th>Etapa no corte</th><th>Etapa hoje</th><th>Executivo</th><th style="text-align:right">ARR no corte (R$)</th><th>Data Perdido</th><th>Motivo</th></tr></thead><tbody>`;
           attr.forEach(d => {
             const arr = parseFloat(d['ARR 12 Jun (R$)']);
             h += `<tr>`;
@@ -4272,7 +4421,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
             h += `<td>${esc(d['Pipeline'] || '—')}</td>`;
             h += `<td>${esc(d['Etapa em 12 Jun'] || '—')}</td>`;
             h += `<td>${esc(d['Etapa hoje'] || '—')}</td>`;
-            h += `<td class="hx">${esc(d['Executivo'] || '—')}</td>`;
+            h += `<td>${esc(d['Executivo'] || '—')}</td>`;
             h += `<td style="text-align:right">${!isNaN(arr) && arr > 0 ? fmtBRL(arr) : '—'}</td>`;
             h += `<td>${esc(d['Data Perdido'] || '—')}</td>`;
             h += `<td>${esc(d['Motivo'] || '—')}</td>`;

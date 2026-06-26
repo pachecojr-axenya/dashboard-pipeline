@@ -60,6 +60,14 @@ const REWRITES = {
   '/novo-cs': '/cs.html',
   '/novo-cotacao': '/cotacao.html',
   '/forecast': '/forecast.html',
+  '/forecast-overall': '/forecast-stage.html',
+  '/forecast-mql': '/forecast-stage.html',
+  '/forecast-diagnostico': '/forecast-stage.html',
+  '/forecast-cotacao': '/forecast-stage.html',
+  '/forecast-consultoria': '/forecast-stage.html',
+  '/forecast-negociacao': '/forecast-stage.html',
+  '/forecast-ganho': '/forecast-stage.html',
+  '/forecast-bid': '/forecast-stage.html',
 };
 
 const MIME = {

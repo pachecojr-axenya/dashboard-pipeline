@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Forecast | Axenya</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0d1117;--card:#171f2e;--card2:#1e2a3c;--border:#293a50;--text:#e6edf3;--text2:#8b949e;--muted:#6e7681;--teal:#3ab8b7;--green:#3fb950;--red:#f85149;--orange:#d29922;--yellow:#e3b341;--hdr-glass:rgba(13,17,23,.78)}
+html[data-theme="light"]{--bg:#f6f8fa;--card:#ffffff;--card2:#eaeef2;--border:#d0d7de;--text:#1f2328;--text2:#57606a;--teal:#0d7377;--green:#1a7f37;--yellow:#9a6700;--red:#cf222e;--hdr-glass:rgba(246,248,250,.82)}
+body{background:var(--bg);color:var(--text);font-family:Inter,'Segoe UI',system-ui,sans-serif;font-size:13px;line-height:1.5}
+button{font-family:inherit}
+h1{font-size:1.5rem;font-weight:700;letter-spacing:-.02em;margin:0}
+.hdr-btn{width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;background:none;border:none;color:var(--text2);border-radius:99px;cursor:pointer;transition:background .15s,color .15s;position:relative;flex-shrink:0}
+.hdr-btn:hover{background:rgba(255,255,255,0.13);color:var(--text)}
+html[data-theme="light"] .hdr-btn:hover{background:rgba(0,0,0,0.07)}
+.nav-drawer{position:fixed;top:0;left:-280px;width:280px;height:100vh;background:var(--card);border-right:1px solid rgba(255,255,255,.08);z-index:1000;transition:left .25s cubic-bezier(0.4,0,0.2,1);display:flex;flex-direction:column}
+.nav-drawer.open{left:0}
+.nav-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:999;opacity:0;pointer-events:none;transition:opacity .25s ease}
+.nav-backdrop.open{opacity:1;pointer-events:auto}
+.nav-drawer-header{display:flex;align-items:center;gap:.75rem;padding:1.1rem 1.25rem;border-bottom:1px solid rgba(255,255,255,.08)}
+.nav-drawer-brand{font-weight:600;font-size:1rem;color:var(--text);flex:1}
+.nav-drawer-footer{margin-top:auto;display:flex;align-items:center;gap:.5rem;padding:.7rem .75rem;border-top:1px solid rgba(255,255,255,.08)}
+html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
+.nav-foot-btn{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:.4rem;min-height:38px;background:var(--card2);border:1px solid var(--border);border-radius:10px;color:var(--text2);cursor:pointer;padding:.4rem;font-family:inherit;font-size:.78rem;font-weight:700;letter-spacing:.04em;transition:border-color .15s,color .15s,background .15s}
+.nav-foot-btn:hover{border-color:var(--teal);color:var(--text)}
+.nav-menu{list-style:none;padding:.5rem 0;margin:0;overflow-y:auto}
+.nav-item{display:flex;align-items:center;gap:.75rem;padding:.7rem 1.25rem;cursor:pointer;font-size:.9rem;color:var(--text2);transition:background .15s,color .15s}.nav-item.nav-sub{padding-left:2.7rem;font-size:.8rem;gap:.55rem}.nav-item.nav-sub svg{width:14px;height:14px}
+.nav-item:hover{background:rgba(255,255,255,.06);color:var(--text)}
+.nav-item.active{color:var(--teal);font-weight:500}
+.nav-item.active svg{stroke:var(--teal)}
+.novo-hdr{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:1.25rem 2rem;background:transparent;position:sticky;top:0;z-index:100;transition:background .25s,backdrop-filter .25s,box-shadow .25s}
+.novo-hdr.scrolled{background:var(--hdr-glass);backdrop-filter:blur(18px) saturate(1.5);-webkit-backdrop-filter:blur(18px) saturate(1.5);box-shadow:0 1px 0 var(--border)}
+.novo-theme-sun{display:block}.novo-theme-moon{display:none}
+[data-theme="light"] .novo-theme-sun{display:none}[data-theme="light"] .novo-theme-moon{display:block}
+#view-novo{transition:filter .25s ease,margin-left .25s cubic-bezier(0.4,0,0.2,1)}
+body.nav-docked #view-novo{margin-left:280px}
+@media(max-width:820px){body.nav-docked #view-novo{margin-left:0}}
+.panel-switcher{position:relative;display:inline-block}
+.panel-switch-btn{display:inline-flex;align-items:center;gap:.5rem;background:none;border:none;padding:0;margin:0;cursor:pointer;color:inherit;font:inherit;text-align:left}
+.panel-chevron{transition:transform .22s ease,color .15s ease;color:var(--text2);flex-shrink:0}
+.panel-switcher.open .panel-chevron{transform:rotate(180deg)}
+.panel-switch-btn:hover .panel-chevron{color:var(--teal)}
+.panel-dd{position:absolute;top:calc(100% + 10px);left:0;min-width:236px;max-height:70vh;overflow-y:auto;background:rgba(23,31,46,.62);backdrop-filter:blur(20px) saturate(1.7);-webkit-backdrop-filter:blur(20px) saturate(1.7);border:none;border-radius:12px;box-shadow:0 16px 40px rgba(0,0,0,.4);padding:.4rem;z-index:1500;opacity:0;transform:translateY(-6px);pointer-events:none;transition:opacity .18s ease,transform .18s ease}
+[data-theme="light"] .panel-dd{background:rgba(246,248,250,.7)}
+.panel-switcher.open .panel-dd{opacity:1;transform:translateY(0);pointer-events:auto}
+.panel-dd-item{display:flex;align-items:center;gap:.65rem;padding:.55rem .7rem;border-radius:8px;cursor:pointer;font-size:.85rem;color:var(--text2);transition:background .14s,color .14s;white-space:nowrap}
+.panel-dd-item:hover{background:rgba(255,255,255,.1);color:var(--text)}
+.panel-dd-item.active{color:var(--teal);font-weight:600;background:rgba(58,184,183,.16)}
+.panel-dd-item.active svg{stroke:var(--teal)}
+.panel-dd-item svg{flex-shrink:0;opacity:.9}
+[data-theme="light"] .panel-dd-item:hover{background:rgba(0,0,0,.06)}
+.health-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;display:inline-block;animation:health-glow 1.8s ease-in-out infinite}
+.panel-switch-btn .health-dot{margin:0 .15rem}
+.nav-item .health-dot,.panel-dd-item .health-dot{margin-left:auto}
+@keyframes health-glow{0%,100%{box-shadow:0 0 3px 0 var(--hg)}50%{box-shadow:0 0 9px 2px var(--hg)}}
+.health-dot.g{background:#2ecc71;--hg:rgba(46,204,113,.95)}
+.health-dot.y{background:#f1c40f;--hg:rgba(241,196,15,.95)}
+.health-dot.r{background:#e74c3c;--hg:rgba(231,76,60,.95)}
+.ph-wrap{max-width:1400px;margin:0 auto;padding:2rem}
+.ph-card{background:var(--card);border:1.5px dashed var(--border);border-radius:14px;padding:3rem 1.5rem;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.85rem;text-align:center;min-height:55vh}
+.ph-card .ph-emoji{font-size:2.6rem;opacity:.6}
+.ph-card .ph-title{font-size:1.15rem;font-weight:700;color:var(--text)}
+.ph-card .ph-body{font-size:.85rem;color:var(--text2);max-width:420px;line-height:1.6}
+</style>
+<link rel="stylesheet" href="/premium.css?v=5">
+<script src="/premium.js?v=5"></script>
+</head>
+<body>
+
+<nav class="nav-drawer" id="nav-drawer"></nav>
+<div class="nav-backdrop" id="nav-backdrop" onclick="closeDrawer()"></div>
+
+<div id="view-novo">
+  <div class="novo-hdr" id="novo-hdr">
+    <div style="display:flex;align-items:center;gap:.75rem">
+      <button class="hdr-btn" onclick="toggleDrawer()" data-tooltip="Menu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
+      <div class="panel-switcher" id="panel-switcher"><button class="panel-switch-btn" type="button" onclick="togglePanelMenu(event)" aria-haspopup="true" aria-expanded="false"><h1 id="panel-title">Forecast</h1><svg class="panel-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button><div class="panel-dd" id="panel-dd" role="menu"></div></div>
+    </div>
+  </div>
+  <div class="ph-wrap">
+    <div class="ph-card">
+      <div class="ph-emoji">🚧</div>
+      <div class="ph-title">Painel <span id="panel-name">Forecast</span> em construção</div>
+      <div class="ph-body">Este painel faz parte do detalhamento do Forecast e ainda não tem conteúdo. Em breve mostrará os números deste componente do forecast.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){ var s=localStorage.getItem('axenya_theme')||'dark'; if(s==='light') document.documentElement.setAttribute('data-theme','light'); })();
+function toggleTheme(){ var n=document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark'; document.documentElement.setAttribute('data-theme',n); localStorage.setItem('axenya_theme',n); }
+function doLogout(){ window.location.href='/login.html'; }
+function _setNavOpen(open){ document.getElementById('nav-drawer').classList.toggle('open',open); document.body.classList.toggle('nav-docked',open); var narrow=window.matchMedia('(max-width:820px)').matches; var bd=document.getElementById('nav-backdrop'); if(bd) bd.classList.toggle('open',open&&narrow); try{localStorage.setItem('novo_nav_open',open?'true':'false');}catch(e){} }
+function closeDrawer(){ _setNavOpen(false); }
+function openDrawer(){ _setNavOpen(true); }
+function toggleDrawer(){ _setNavOpen(!document.getElementById('nav-drawer').classList.contains('open')); }
+var NOVO_LANG=(function(){ try{return localStorage.getItem('novo_lang')||'pt';}catch(e){return 'pt';} })();
+function novoToggleLang(){ NOVO_LANG=NOVO_LANG==='pt'?'en':'pt'; try{localStorage.setItem('novo_lang',NOVO_LANG);}catch(e){} var _e=document.getElementById('novo-lang-label'); if(_e)_e.textContent=NOVO_LANG.toUpperCase(); }
+window.addEventListener('scroll',function(){ var h=document.getElementById('novo-hdr'); if(h) h.classList.toggle('scrolled',window.scrollY>10); },{passive:true});
+</script>
+
+<!-- Panel switcher + menu lateral compartilhado (fonte unica: PANELS) -->
+<script>
+(function(){
+  var PANELS=[
+    {label:'CRO Dashboard',url:'/novo',file:'dashboard.html',health:'y',icon:'<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>'},
+    {label:'Board View',url:'/novo-board',file:'board.html',health:'y',icon:'<path d="M2 20h20M4 20V10l8-6 8 6v10"/><path d="M10 20v-6h4v6"/>'},
+    {label:'AE Performance',url:'/novo-ae',file:'ae.html',health:'y',icon:'<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>'},
+    {label:'BDR Performance',url:'/novo-bdr',file:'bdr.html',health:'y',icon:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'},
+    {label:'Last 48h',url:'/novo-48h',file:'48h.html',health:'r',icon:'<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>'},
+    {label:'CS Dashboard',url:'/novo-cs',file:'cs.html',health:'r',icon:'<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>'},
+    {label:'Cotação',url:'/novo-cotacao',file:'cotacao.html',health:'r',icon:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>'},
+    {label:'Forecast',url:'/forecast',file:'forecast.html',health:'g',sec:'Forecast',icon:'<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>'},
+    {label:'Overall',url:'/forecast-overall',file:'forecast-panel.html',health:'y',icon:'<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>'},
+    {label:'MQL / Reunião',url:'/forecast-mql',sub:true,file:'forecast-panel.html',health:'y',icon:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'},
+    {label:'Diagnóstico',url:'/forecast-diagnostico',sub:true,file:'forecast-panel.html',health:'y',icon:'<path d="M9 11H5a2 2 0 0 0-2 2v7h6"/><path d="M14 11h5a2 2 0 0 1 2 2v7h-6"/><path d="M9 7h6"/><circle cx="12" cy="5" r="2"/>'},
+    {label:'Cotação',url:'/forecast-cotacao',sub:true,file:'forecast-panel.html',health:'y',icon:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>'},
+    {label:'Consultoria',url:'/forecast-consultoria',sub:true,file:'forecast-panel.html',health:'y',icon:'<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>'},
+    {label:'Negociação',url:'/forecast-negociacao',sub:true,file:'forecast-panel.html',health:'y',icon:'<line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>'},
+    {label:'BID',url:'/forecast-bid',sub:true,file:'forecast-panel.html',health:'y',icon:'<path d="M3 3v18h18"/><path d="M19 9l-5 5-3-3-4 4"/>'},
+    {label:'Ganho',url:'/forecast-ganho',sub:true,file:'forecast-panel.html',health:'y',icon:'<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>'}
+  ];
+  function findByUrl(u){ for(var i=0;i<PANELS.length;i++){ if(PANELS[i].url===u) return PANELS[i]; } return null; }
+  var p2=location.pathname; if(p2.length>1&&p2.charAt(p2.length-1)==='/') p2=p2.slice(0,-1);
+  var current=null;
+  for(var i=0;i<PANELS.length;i++){ if(p2===PANELS[i].url){ current=PANELS[i].url; break; } }
+  if(!current){ for(var k=0;k<PANELS.length;k++){ if(PANELS[k].file==='forecast-panel.html'&&p2.indexOf(PANELS[k].url)!==-1){ current=PANELS[k].url; break; } } }
+  function dot(h){ var tt={g:'live',y:'wip',r:'not working'}; var t=tt[h]||''; return '<span class="health-dot '+h+'" title="'+t+'" aria-label="'+t+'"></span>'; }
+  function svgFor(p){ return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+p.icon+'</svg>'; }
+  function buildNav(){
+    var nav=document.getElementById('nav-drawer'); if(!nav) return;
+    var h='<div class="nav-drawer-header"><span class="nav-drawer-brand">Dashboard Axenya</span>'+
+      '<button class="hdr-btn" onclick="closeDrawer()" aria-label="Fechar menu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>'+
+      '<ul class="nav-menu">';
+    for(var i=0;i<PANELS.length;i++){
+      var p=PANELS[i];
+      if(p.sec) h+='<li style="list-style:none;padding:.85rem 1.25rem .3rem;margin-top:.35rem;border-top:1px solid var(--border);font-size:.64rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text2)">'+p.sec+'</li>';
+      h+='<li class="nav-item'+(p.sub?' nav-sub':'')+(p.url===current?' active':'')+'" data-url="'+p.url+'">'+svgFor(p)+'<span>'+p.label+'</span>'+dot(p.health)+'</li>';
+    }
+    h+='</ul>'+'<div class="nav-drawer-footer"><button class="nav-foot-btn" type="button" onclick="doLogout()" title="Sair" aria-label="Sair"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button><button class="nav-foot-btn" type="button" onclick="novoToggleLang()" title="Idioma / Language"><span id="novo-lang-label">'+(NOVO_LANG==="pt"?"EN":"PT")+'</span></button><button class="nav-foot-btn" type="button" onclick="toggleTheme()" title="Tema / Theme"><svg class="novo-theme-sun" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg><svg class="novo-theme-moon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></button></div>';
+    nav.innerHTML=h;
+    var nit=nav.getElementsByClassName('nav-item');
+    for(var j=0;j<nit.length;j++){ nit[j].addEventListener('click',function(){ window.location.href=this.getAttribute('data-url'); }); }
+  }
+  function buildDropdown(){
+    var dd=document.getElementById('panel-dd'); if(!dd) return;
+    var html='';
+    for(var i=0;i<PANELS.length;i++){
+      var p=PANELS[i], act=(p.url===current?' active':'');
+      if(p.sec) html+='<div style="padding:.5rem .7rem .2rem;font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text2);border-top:1px solid var(--border);margin-top:.3rem">'+p.sec+'</div>';
+      html+='<div class="panel-dd-item'+act+'" role="menuitem" data-url="'+p.url+'">'+svgFor(p)+'<span>'+p.label+'</span>'+dot(p.health)+'</div>';
+    }
+    dd.innerHTML=html;
+    var items=dd.getElementsByClassName('panel-dd-item');
+    for(var j=0;j<items.length;j++){ items[j].addEventListener('click',function(){ window.location.href=this.getAttribute('data-url'); }); }
+  }
+  function buildTitleDot(){
+    var btn=document.querySelector('.panel-switch-btn');
+    if(btn && current && !btn.querySelector('.health-dot')){
+      var cp=findByUrl(current);
+      if(cp){ var s=document.createElement('span'); s.className='health-dot '+cp.health; var _tt={g:'live',y:'wip',r:'not working'}; s.title=_tt[cp.health]||''; s.setAttribute('aria-label',s.title); var ch=btn.querySelector('.panel-chevron'); if(ch) btn.insertBefore(s,ch); else btn.appendChild(s); }
+    }
+  }
+  function setPanelTitle(){
+    var cp=findByUrl(current); var label=cp?cp.label:'Forecast';
+    document.title=label+' | Forecast | Axenya';
+    var h=document.getElementById('panel-title'); if(h) h.textContent=label;
+    var pn=document.getElementById('panel-name'); if(pn) pn.textContent=label;
+  }
+  function build(){ buildNav(); buildDropdown(); buildTitleDot(); setPanelTitle(); var open=true; try{ open=localStorage.getItem('novo_nav_open')!=='false'; }catch(e){} _setNavOpen(open); }
+  window.togglePanelMenu=function(e){ if(e){e.stopPropagation();} var sw=document.getElementById('panel-switcher'); if(!sw) return; var open=!sw.classList.contains('open'); sw.classList.toggle('open',open); var btn=sw.querySelector('.panel-switch-btn'); if(btn) btn.setAttribute('aria-expanded',open?'true':'false'); };
+  window.closePanelMenu=function(){ var sw=document.getElementById('panel-switcher'); if(sw){ sw.classList.remove('open'); var btn=sw.querySelector('.panel-switch-btn'); if(btn) btn.setAttribute('aria-expanded','false'); } };
+  document.addEventListener('click',function(e){ var sw=document.getElementById('panel-switcher'); if(sw&&sw.classList.contains('open')&&!sw.contains(e.target)) window.closePanelMenu(); });
+  document.addEventListener('keydown',function(e){ if(e.key==='Escape'||e.keyCode===27){ var sw=document.getElementById('panel-switcher'); if(sw&&sw.classList.contains('open')) window.closePanelMenu(); } });
+  if(document.readyState!=='loading') build(); else document.addEventListener('DOMContentLoaded',build);
+})();
+</script>
+</body>
+</html>

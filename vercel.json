@@ -9,7 +9,15 @@
     { "source": "/novo-48h", "destination": "/48h.html" },
     { "source": "/novo-cs", "destination": "/cs.html" },
     { "source": "/novo-cotacao", "destination": "/cotacao.html" },
-    { "source": "/forecast", "destination": "/forecast.html" }
+    { "source": "/forecast", "destination": "/forecast.html" },
+    { "source": "/forecast-overall", "destination": "/forecast-stage.html" },
+    { "source": "/forecast-mql", "destination": "/forecast-stage.html" },
+    { "source": "/forecast-diagnostico", "destination": "/forecast-stage.html" },
+    { "source": "/forecast-cotacao", "destination": "/forecast-stage.html" },
+    { "source": "/forecast-consultoria", "destination": "/forecast-stage.html" },
+    { "source": "/forecast-negociacao", "destination": "/forecast-stage.html" },
+    { "source": "/forecast-ganho", "destination": "/forecast-stage.html" },
+    { "source": "/forecast-bid", "destination": "/forecast-stage.html" }
   ],
   "crons": [
     {
