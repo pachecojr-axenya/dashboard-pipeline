@@ -697,6 +697,19 @@
       border-bottom: 2px solid rgba(35, 209, 180, .45);
     }
 
+    /* Ganho: linha com faturamento manual (valores reais digitados à mão). */
+    tbody tr.row-manual td {
+      background-color: var(--bg);
+      background-image: linear-gradient(rgba(35, 209, 180, .07), rgba(35, 209, 180, .07));
+    }
+    .bill-btn {
+      margin-left: .4rem; padding: 2px; border: none; background: transparent;
+      color: var(--text2); cursor: pointer; vertical-align: middle; border-radius: 4px;
+      display: inline-flex; align-items: center;
+    }
+    .bill-btn:hover { background: rgba(35, 209, 180, .15); color: var(--teal); }
+    .bill-btn.on { color: var(--teal); }
+
     /* ── ROW HOVER ─────────────────────────────────────────────────────────────── */
     tbody tr:hover td {
       background: rgba(255, 255, 255, .08);
@@ -1233,6 +1246,31 @@
 
     html[data-theme="light"] .prob-actions .prob-save { color: #fff; }
 
+    /* ── Editor de faturamento manual ─────────────────────────────────────────── */
+    #bill-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: .5rem .7rem; }
+    @media (max-width: 560px) { #bill-grid { grid-template-columns: repeat(2, 1fr); } }
+    .bill-cell { display: flex; flex-direction: column; gap: .15rem; }
+    .bill-cell.pre { opacity: .55; }
+    .bill-cell label { font-size: .68rem; color: var(--text2); }
+    .bill-cell input {
+      width: 100%; padding: .35rem .45rem; border-radius: 7px;
+      border: 1px solid var(--border); background: var(--card2); color: var(--text);
+      font-size: .82rem; text-align: right;
+    }
+    .bill-cell input:focus { outline: none; border-color: var(--teal); box-shadow: 0 0 0 2px rgba(35,209,180,.25); }
+    .bill-yr-sep { grid-column: 1 / -1; font-size: .7rem; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: .06em; margin-top: .3rem; border-top: 1px solid var(--border); padding-top: .4rem; }
+    .bill-repeat-btn {
+      background: var(--card2); color: var(--teal); border: 1px solid var(--border);
+      border-radius: 8px; padding: .35rem .7rem; font-size: .78rem; cursor: pointer; font-weight: 600;
+    }
+    .bill-repeat-btn:hover { border-color: var(--teal); }
+    .bill-foot { display: flex; justify-content: flex-end; gap: .6rem; margin-top: 1.3rem; }
+    .bill-foot button { padding: .5rem 1.4rem; border-radius: 9px; border: none; cursor: pointer; font-size: .85rem; font-weight: 600; transition: opacity .12s; }
+    .bill-foot button:hover { opacity: .85; }
+    .bill-cancel { background: var(--card2); color: var(--text2); }
+    .bill-save { background: var(--teal); color: #0d1117; }
+    html[data-theme="light"] .bill-save { color: #fff; }
+
     /* ── HELP MODAL ──────────────────────────────────────────────────────────── */
     .help-section { margin-bottom: 1.4rem; }
     .help-h3 {
@@ -1688,7 +1726,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
 .nav-foot-btn{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:.4rem;min-height:38px;background:var(--card2);border:1px solid var(--border);border-radius:10px;color:var(--text2);cursor:pointer;padding:.4rem;font-family:inherit;font-size:.78rem;font-weight:700;letter-spacing:.04em;transition:border-color .15s,color .15s,background .15s}
 .nav-foot-btn:hover{border-color:var(--teal);color:var(--text)}
     .nav-menu{list-style:none;padding:.5rem 0;margin:0}
-    .nav-item{display:flex;align-items:center;gap:.75rem;padding:.7rem 1.25rem;cursor:pointer;font-size:.9rem;color:var(--text2);transition:background .15s,color .15s;user-select:none}.nav-item.nav-sub{padding-left:2.7rem;font-size:.8rem;gap:.55rem}.nav-item.nav-sub svg{width:14px;height:14px}
+    .nav-item{display:flex;align-items:center;gap:.75rem;padding:.7rem 1.25rem;cursor:pointer;font-size:.9rem;color:var(--text2);transition:background .15s,color .15s;user-select:none}.nav-item.nav-sub{padding-left:2.7rem;font-size:.8rem;gap:.55rem}.nav-item.nav-sub svg{width:14px;height:14px}.nav-menu.nav-group-collapsed .nav-item.nav-sub{display:none}.nav-acc-chevron{margin-left:auto;display:inline-flex;align-items:center;padding:2px;color:var(--text2);transition:transform .18s;border-radius:4px}.nav-acc-chevron:hover{background:rgba(35,209,180,.15);color:var(--teal)}.nav-acc-chevron.open{transform:rotate(180deg)}
     .nav-item:hover{background:rgba(255,255,255,.06);color:var(--text)}
     .nav-item.active{color:var(--teal);font-weight:500}
     .nav-item.active svg{stroke:var(--teal)}
@@ -2022,6 +2060,21 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
         <p class="help-p" style="margin-top:.6rem;">Coortes mensais de <strong>jul/26 a jan/28</strong>. Cada coorte gera receita <strong>vidas × R$ 24</strong> (recorrente), começando <strong>+15 meses</strong> da originação, probabilizada pelo <strong>win rate global (S01)</strong> = ganhos ÷ (ganhos + perdidos). Dentro do horizonte (até dez/27), só as coortes de jul–set/26 já entram (out/27+); as demais aparecem apenas na tabela de detalhe.</p>
       </section>
 
+      <!-- Receita — Ganho (faturamento real x forecast) -->
+      <section class="help-section" id="help-sec-ganho" style="display:none">
+        <h3 class="help-h3">Faturamento real x Forecast (Ganho)</h3>
+        <p class="help-p">Deals em <strong>Ganho/Implantação</strong> já fechados podem já estar faturando — e o valor real varia mês a mês, diferente da projeção do forecast. Por isso o painel separa em <strong>duas listas</strong>:</p>
+        <table class="help-table">
+          <thead><tr><th>Lista</th><th>Como a receita é calculada</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Forecast (projeção)</strong></td><td>Cálculo padrão (1ª fatura × modelo), prob. 100% (Ganho) / 80% (Implantação)</td></tr>
+            <tr><td><strong>Em faturamento (manual)</strong></td><td>Valores reais digitados à mão, mês a mês — substituem o forecast</td></tr>
+          </tbody>
+        </table>
+        <p class="help-p" style="margin-top:.6rem;"><strong>Gate automático:</strong> quando o campo <em>Vencimento da 1ª Fatura</em> (HubSpot) está preenchido e já passou, o deal entra automaticamente na lista de faturamento manual. Também é possível forçar a marcação no editor (botão ✎ na linha do deal).</p>
+        <p class="help-p">No editor é possível preencher cada mês individualmente e usar <strong>"Repetir último valor para frente"</strong>. Os valores são salvos globalmente (todos os usuários veem o mesmo) e refletem automaticamente no painel Overall.</p>
+      </section>
+
       <!-- Receita — demais etapas -->
       <section class="help-section" id="help-sec-rev">
         <h3 class="help-h3" id="help-rev-h3">Receita — demais etapas</h3>
@@ -2077,6 +2130,37 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
   <!-- ── DEAL INFO MODAL ────────────────────────────────────────────────────── -->
   <div class="prob-overlay" id="deal-overlay" onclick="if(event.target===this)closeDealModal()">
     <div class="deal-modal-box" id="deal-modal-box"></div>
+  </div>
+
+  <!-- ── EDITOR DE FATURAMENTO MANUAL (painel Ganho) ──────────────────────────── -->
+  <div id="bill-overlay" class="prob-overlay" onclick="if(event.target===this)closeBillingEditor();">
+    <div class="prob-modal" id="bill-modal" style="width:min(720px,96vw);">
+      <div class="prob-actions" style="margin-bottom:1rem;">
+        <button class="prob-cancel" onclick="closeBillingEditor()" title="Fechar">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <h3 id="bill-title">Faturamento manual</h3>
+      <p class="help-p" id="bill-sub" style="margin-bottom:.8rem;"></p>
+
+      <label style="display:flex;align-items:center;gap:.5rem;margin:.4rem 0 1rem;cursor:pointer;font-size:.85rem;">
+        <input type="checkbox" id="bill-manual-chk" onchange="fcBillToggleManual(this.checked)" style="width:16px;height:16px;cursor:pointer;">
+        <span>Tratar este deal como <strong>faturamento manual</strong> (substitui o forecast pelos valores abaixo)</span>
+      </label>
+
+      <div id="bill-grid-wrap">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem;gap:.6rem;flex-wrap:wrap;">
+          <span class="help-p" style="margin:0;">Receita real por mês (R$):</span>
+          <button class="bill-repeat-btn" onclick="fcBillRepeat()" type="button" title="Copia o último valor preenchido para todos os meses seguintes">⟳ Repetir último valor para frente</button>
+        </div>
+        <div id="bill-grid"></div>
+      </div>
+
+      <div class="bill-foot">
+        <button class="bill-cancel" type="button" onclick="closeBillingEditor()">Cancelar</button>
+        <button class="bill-save" type="button" onclick="fcBillSave()">Salvar</button>
+      </div>
+    </div>
   </div>
 
   <div class="search-bar" id="app-search" style="display:none;">
@@ -2233,6 +2317,9 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
     let allDeals = [];
     let allScopedDeals = [];   // conjunto completo (todas as etapas, escopo set/2025+) | base do dedup global
     let FC_WIN_RATE = 0;       // win rate global (S01) = ganhos ÷ (ganhos + perdidos) | usado na projeção de BDRs
+    // Faturamento manual (painel Ganho): mapa global { "<dealId>": { manual?: bool, months?: {"YYYY-MM": valor} } }.
+    // Deals em Ganho/Implantação que já começaram a faturar têm valor real mês a mês digitado à mão (≠ forecast).
+    let FC_MANUAL = {};
     let stageFilter = new Set();
     let quarterFilter = new Set();
     let tierFilter = new Set();
@@ -2479,22 +2566,26 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       const secMql  = document.getElementById('help-sec-mql');
       const secRev  = document.getElementById('help-sec-rev');
       const secOverall = document.getElementById('help-sec-overall');
+      const secGanho = document.getElementById('help-sec-ganho');
       const revH3  = document.getElementById('help-rev-h3');
       const revP   = document.getElementById('help-rev-p');
       if (secOverall) secOverall.style.display = isOverall ? '' : 'none';
       if (isOverall) {
-        // Overall agrega TODAS as lógicas de receita → mostra as três seções.
+        // Overall agrega TODAS as lógicas de receita → mostra as três seções + faturamento manual.
         if (probH3) probH3.textContent = 'Probabilidade por etapa';
         if (probP)  probP.innerHTML = 'Cada linha aplica a probabilização da sua etapa. As linhas <strong>BID</strong> usam probabilidade fixa de ~0,5% (não exibida na tabela abaixo).';
         if (secDiag) secDiag.style.display = '';
         if (secMql)  secMql.style.display  = '';
         if (secRev)  secRev.style.display  = '';
+        if (secGanho) secGanho.style.display = '';
         if (revH3) revH3.textContent = 'Receita — Cotação / Consultoria / Negociação / BID / Ganho';
         if (revP)  revP.innerHTML = 'Para as etapas com fatura definida, a receita mensal é calculada a partir da <strong>primeira fatura</strong> e do <strong>modelo de remuneração</strong>.';
       } else if (locked) {
         const isDiag = (locked === 'Diagnóstico');
         const isMql  = (locked === 'Reunião Agendada');
+        const isGanho = (locked === 'Ganho');
         const isBid  = (typeof FC_BID_MODE !== 'undefined' && FC_BID_MODE);
+        if (secGanho) secGanho.style.display = isGanho ? '' : 'none';
         if (probH3) probH3.textContent = isBid ? 'Probabilidade (BID)' : 'Probabilidade da etapa';
         if (probP)  probP.innerHTML = isBid
           ? 'BID: probabilidade fixa e baixa (~0,5%) — premissa conservadora para <strong>não contar com esse dinheiro no curto prazo</strong>. A data de receita não é cravável: é imputada à mão e jogada para frente (marcada em <span style="color:#f85149">vermelho</span> na tabela).'
@@ -2511,12 +2602,87 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
         if (secDiag) secDiag.style.display = '';
         if (secMql)  secMql.style.display = 'none';
         if (secRev)  secRev.style.display = '';
+        if (secGanho) secGanho.style.display = 'none';
         if (revH3)  revH3.textContent = 'Receita — demais etapas';
       }
       document.getElementById('help-overlay').classList.add('open');
     }
     function closeHelpModal() {
       document.getElementById('help-overlay').classList.remove('open');
+    }
+
+    // ── EDITOR DE FATURAMENTO MANUAL (painel Ganho) ─────────────────────────────
+    let _billDealId = null;
+    let _billManual = false;
+
+    function openBillingEditor(di) {
+      const d = currentDeals[di];
+      if (!d) return;
+      _billDealId = _fcDealId(d);
+      const e = FC_MANUAL[_billDealId] || {};
+      _billManual = (typeof e.manual === 'boolean') ? e.manual : _fcVencido(d);
+
+      document.getElementById('bill-title').textContent = 'Faturamento manual — ' + (d.dealname || '');
+      const venc = d.vencimento_primeira_fatura ? fmtDate(d.vencimento_primeira_fatura) : '—';
+      const pmRef = d.premio_mensal != null ? ('R$ ' + fmtBRL(d.premio_mensal))
+                  : (d.primeira_fatura != null ? ('R$ ' + fmtBRL(d.primeira_fatura) + ' (1ª fatura)') : '—');
+      document.getElementById('bill-sub').innerHTML = `Venc. 1ª fatura: <strong>${esc(venc)}</strong> &nbsp;·&nbsp; Prêmio mensal (ref.): <strong>${esc(pmRef)}</strong>`;
+      document.getElementById('bill-manual-chk').checked = _billManual;
+
+      const saved = e.months || {};
+      const hasSaved = Object.keys(saved).length > 0;
+      const vencKey = d.vencimento_primeira_fatura ? d.vencimento_primeira_fatura.substring(0, 7) : null; // YYYY-MM
+      const seedVal = d.premio_mensal != null ? d.premio_mensal : (d.primeira_fatura != null ? d.primeira_fatura : '');
+
+      let html = '', curYear = null;
+      MONTHS.forEach(m => {
+        const key = _fcMonthKey(m);
+        if (m.y !== curYear) { curYear = m.y; html += `<div class="bill-yr-sep">${curYear}</div>`; }
+        const pre = vencKey && key < vencKey;   // mês anterior ao vencimento (não fatura ainda)
+        let val = '';
+        if (key in saved) val = saved[key];
+        else if (!hasSaved && !pre && seedVal !== '' && vencKey && key >= vencKey) val = seedVal; // seed inicial
+        html += `<div class="bill-cell${pre ? ' pre' : ''}"><label>${esc(m.label)}</label><input type="number" min="0" step="0.01" data-key="${key}" value="${val === '' ? '' : val}"></div>`;
+      });
+      document.getElementById('bill-grid').innerHTML = html;
+      document.getElementById('bill-overlay').classList.add('open');
+    }
+
+    function closeBillingEditor() {
+      document.getElementById('bill-overlay').classList.remove('open');
+      _billDealId = null;
+    }
+
+    function fcBillToggleManual(on) { _billManual = !!on; }
+
+    // Copia o último valor preenchido para todos os meses seguintes (cada célula segue editável).
+    function fcBillRepeat() {
+      const inputs = Array.from(document.querySelectorAll('#bill-grid input'));
+      let lastVal = '', lastIdx = -1;
+      inputs.forEach((inp, i) => { if (inp.value !== '' && !isNaN(Number(inp.value))) { lastVal = inp.value; lastIdx = i; } });
+      if (lastIdx < 0) return;
+      for (let i = lastIdx + 1; i < inputs.length; i++) inputs[i].value = lastVal;
+    }
+
+    async function fcBillSave() {
+      if (!_billDealId) return;
+      const months = {};
+      document.querySelectorAll('#bill-grid input').forEach(inp => {
+        const v = inp.value;
+        if (v !== '' && !isNaN(Number(v)) && Number(v) >= 0) months[inp.dataset.key] = Number(v);
+      });
+      try {
+        const r = await fetch('/api/faturamento-manual', {
+          method: 'POST', credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ dealId: _billDealId, manual: _billManual, months })
+        });
+        const j = await r.json();
+        if (!r.ok || !j.success) throw new Error(j.error || ('HTTP ' + r.status));
+        if (j.data) FC_MANUAL = j.data;
+      } catch (e) { alert('Erro ao salvar faturamento: ' + e.message); return; }
+      closeBillingEditor();
+      applyAndRender();
     }
 
     // ── DEAL INFO MODAL ───────────────────────────────────────────────────────
@@ -3314,12 +3480,17 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       document.getElementById('tw').innerHTML = '<div class="state">Buscando dados do HubSpot...</div>';
 
       try {
-        const resp = await fetch('/api/forecast-table?includeLost=true', { credentials: 'same-origin' });
+        // Carrega em paralelo a tabela e o store de faturamento manual (painel Ganho/Overall).
+        const [resp, manResp] = await Promise.all([
+          fetch('/api/forecast-table?includeLost=true', { credentials: 'same-origin' }),
+          fetch('/api/faturamento-manual', { credentials: 'same-origin' }).catch(() => null),
+        ]);
         const data = await resp.json();
         if (!resp.ok || !data.success) {
           document.getElementById('tw').innerHTML = `<div class="state err">Erro: ${esc(data.error || String(resp.status))}</div>`;
           return;
         }
+        try { if (manResp && manResp.ok) { const mj = await manResp.json(); if (mj && mj.success && mj.data) FC_MANUAL = mj.data; } } catch (e) { /* mantém {} */ }
         const _scoped = data.deals.filter(d => d.createdate && d.createdate >= '2025-09-01');
         // Win rate global (S01) = ganhos ÷ (ganhos + perdidos). Os perdidos só servem aqui;
         // são removidos da exibição/dedup logo abaixo.
@@ -3468,11 +3639,42 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       });
     }
 
+    // ── FATURAMENTO MANUAL (painel Ganho) ───────────────────────────────────────
+    // Deals em Ganho/Implantação que já começaram a faturar têm valor real mês a mês,
+    // diferente do forecast. Gate: vencimento_da_1o_fatura preenchido e já vencido.
+    const _todayISO = (function(){ const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })();
+    function _fcMonthKey(m) { return m.y + '-' + String(m.mo + 1).padStart(2, '0'); }
+    function _fcVencido(d) { const v = d.vencimento_primeira_fatura; return !!v && v <= _todayISO; }
+    function _fcManualElegivel(d) { return d.stage === 'Ganho' || d.stage === 'Implantação'; }
+    // Estado manual efetivo: override explícito (botão) vence o gate; senão decide pelo vencimento.
+    function _fcIsManual(d) {
+      if (!_fcManualElegivel(d)) return false;
+      const e = FC_MANUAL[_fcDealId(d)];
+      if (e && typeof e.manual === 'boolean') return e.manual;
+      return _fcVencido(d);
+    }
+    // Mapa de meses do deal manual ({} se ainda não preenchido); null se o deal não é manual.
+    function _fcManualMonths(d) {
+      if (!_fcIsManual(d)) return null;
+      const e = FC_MANUAL[_fcDealId(d)];
+      return (e && e.months) ? e.months : {};
+    }
+
     // ── RENDER ────────────────────────────────────────────────────────────────
     // Receita mensal (real + ponderada) de UM deal, por MONTHS. FONTE ÚNICA usada pelo
     // render dos painéis E pelo Overall (garante que o Overall bata com cada painel).
     // Não aplica dedup (o chamador trata) nem acumula totais (puro).
     function _fcDealMonthly(d, probAdj) {
+      // Faturamento manual: substitui integralmente o forecast pelos valores digitados à mão.
+      const _man = _fcManualMonths(d);
+      if (_man) {
+        return MONTHS.map(m => {
+          const v = _man[_fcMonthKey(m)];
+          if (v == null || isNaN(v)) return null;
+          const val = Number(v);
+          return { val: val, rec: val, probAdj: 1, n: null, manual: true };
+        });
+      }
       if (d.stage === 'Diagnóstico') {
         const vidas = d.vidas || d.colaboradores || 0;
         if (!vidas) return MONTHS.map(() => null);
@@ -3497,6 +3699,12 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       return MONTHS.map(m => { if (!revStart || probAdj == null) return null; const diff = (m.y - revStart.y) * 12 + (m.mo - revStart.mo); if (diff < 0 || diff > 23) return null; const n = diff + 1; const rec = calcReceita(n, d); if (rec == null) return null; return { val: rec * probAdj, rec: rec, probAdj: probAdj, n: n }; });
     }
     function render(deals) {
+      // Painel Ganho: agrupa em duas listas (Forecast x Em faturamento manual), forecast primeiro.
+      if (FC_PANEL_STAGE === 'Ganho') {
+        const _fore = [], _man = [];
+        deals.forEach(d => (_fcIsManual(d) ? _man : _fore).push(d));
+        deals = _fore.concat(_man);
+      }
       currentDeals = deals;
       const revExcl = _fcRevExcluded((allScopedDeals && allScopedDeals.length) ? allScopedDeals : deals);   // dedup global (todas as etapas)
       const totalArr = deals.reduce((s, d) => s + (revExcl.has(_fcDealId(d)) ? 0 : (d.arr_estimado || 0)), 0);
@@ -3626,6 +3834,11 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
         const _ci = INFO.findIndex(c => c.k === 'dias_no_pipe');
         INFO.splice(_ci >= 0 ? _ci + 1 : INFO.length, 0, { k: 'createdate', lbl: 'Criado', w: 95, align: 'center', fmt: fmtDate, tip: 'Data de criação do deal — base do cálculo de Diagnóstico (receita +9/14/18 meses da criação).' });
       }
+      if (FC_PANEL_STAGE === 'Ganho') {
+        // Ganho: expõe o vencimento da 1ª fatura (gate do faturamento manual).
+        const _ci = INFO.findIndex(c => c.k === 'vigencia');
+        INFO.splice(_ci >= 0 ? _ci + 1 : INFO.length, 0, { k: 'vencimento_primeira_fatura', lbl: 'Venc. 1ª Fat.', w: 100, align: 'center', fmt: fmtDate, hideMobile: true, tip: 'Vencimento da 1ª fatura (HubSpot). Preenchido e já vencido → deal entra na lista de faturamento manual.' });
+      }
       currentInfo = INFO;
 
       // ── Build HTML ──────────────────────────────────────────────────────────
@@ -3667,6 +3880,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
 
       // Deal rows
       let _bidPrevStage = null;
+      let _ganhoPrevManual = null;   // controla os 2 cabeçalhos de seção do painel Ganho
       deals.forEach((d, di) => {
         // BID: duas listas separadas (cabeçalho de seção por etapa). deals já vêm ordenados por etapa.
         if (FC_BID_MODE && d.stage !== _bidPrevStage) {
@@ -3674,8 +3888,17 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
           const lbl = d.stage === 'Proposta Enviada' ? 'Envio de Proposta Comercial (BID)' : (d.stage + ' (BID)');
           h += `<tr class="bid-section"><td colspan="${INFO.length + MONTHS.length * 2}" style="background:rgba(248,81,73,.10);color:#f85149;font-weight:700;padding:.5rem .7rem;border-top:2px solid rgba(248,81,73,.4)">${esc(lbl)}</td></tr>`;
         }
+        // Ganho: cabeçalho de cada lista (Forecast / Em faturamento manual). deals já vêm agrupados.
+        const _man = (FC_PANEL_STAGE === 'Ganho') ? _fcIsManual(d) : null;
+        if (_man !== null && _man !== _ganhoPrevManual) {
+          _ganhoPrevManual = _man;
+          const lbl = _man ? 'Em faturamento (valores manuais)' : 'Forecast (projeção)';
+          const cor = _man ? '35,209,180' : '128,128,128';
+          h += `<tr class="ganho-section"><td colspan="${INFO.length + MONTHS.length * 2}" style="background:rgba(${cor},.12);color:var(--text);font-weight:700;padding:.5rem .7rem;border-top:2px solid rgba(${cor},.5)">${esc(lbl)}</td></tr>`;
+        }
         const isWarn = completenessFilter === 'incomplete' && hasAnyEmpty(d);
-        h += `<tr${isWarn ? ' class="row-warn"' : ''}>`;
+        const isManRow = _man === true;
+        h += `<tr${isWarn ? ' class="row-warn"' : (isManRow ? ' class="row-manual"' : '')}>`;
 
         INFO.forEach((c, ci) => {
           let sc = c.sticky ? 's' : '';
@@ -3699,7 +3922,11 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
           }
 
           if (c.sticky) {
-            h += `<td class="${sc}" data-col="${ci}"><a class="deal-link" href="javascript:void(0)" onclick="openDealModal(${di})" title="Ver detalhes de ${esc(v ?? '')}"><span class="dl-txt">${esc(v || '-')}</span><span class="ext-icon">›</span></a></td>`;
+            // Painel Ganho: botão de faturamento (abre o editor mês a mês / marcação manual).
+            const billBtn = (FC_PANEL_STAGE === 'Ganho')
+              ? `<button class="bill-btn${isManRow ? ' on' : ''}" title="Editar faturamento manual" onclick="event.stopPropagation();openBillingEditor(${di})"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button>`
+              : '';
+            h += `<td class="${sc}" data-col="${ci}"><a class="deal-link" href="javascript:void(0)" onclick="openDealModal(${di})" title="Ver detalhes de ${esc(v ?? '')}"><span class="dl-txt">${esc(v || '-')}</span><span class="ext-icon">›</span></a>${billBtn}</td>`;
             return;
           }
 
@@ -4608,7 +4835,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
     {label:'CS Dashboard',url:'/novo-cs',file:'cs.html',health:'r',icon:'<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>'},
     {label:'Cotação',url:'/novo-cotacao',file:'cotacao.html',health:'r',icon:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>'},
     {label:'Forecast',url:'/forecast',file:'forecast.html',health:'g',sec:'Forecast',icon:'<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>'},
-    {label:'Overall',url:'/forecast-overall',file:'forecast-panel.html',health:'y',icon:'<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>'},
+    {label:'Overall',url:'/forecast-overall',acc:true,file:'forecast-panel.html',health:'y',icon:'<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>'},
     {label:'MQL / Reunião',url:'/forecast-mql',sub:true,file:'forecast-panel.html',health:'y',icon:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'},
     {label:'Diagnóstico',url:'/forecast-diagnostico',sub:true,file:'forecast-panel.html',health:'y',icon:'<path d="M9 11H5a2 2 0 0 0-2 2v7h6"/><path d="M14 11h5a2 2 0 0 1 2 2v7h-6"/><path d="M9 7h6"/><circle cx="12" cy="5" r="2"/>'},
     {label:'Cotação',url:'/forecast-cotacao',sub:true,file:'forecast-panel.html',health:'y',icon:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>'},
@@ -4623,6 +4850,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
   for(var i=0;i<PANELS.length;i++){ if(p2===PANELS[i].url||p2.indexOf(PANELS[i].file)!==-1){ current=PANELS[i].url; break; } }
   function dot(h){ var tt={g:'live',y:'wip',r:'not working'}; var t=tt[h]||''; return '<span class="health-dot '+h+'" title="'+t+'" aria-label="'+t+'"></span>'; }
   function svgFor(p){ return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+p.icon+'</svg>'; }
+  window.toggleForecastAccordion=function(e){ if(e){e.stopPropagation();} var ul=document.querySelector('.nav-menu'); if(!ul) return; var collapsed=ul.classList.toggle('nav-group-collapsed'); var ch=document.getElementById('fc-acc-chevron'); if(ch) ch.classList.toggle('open', !collapsed); };
   function buildNav(){
     var nav=document.getElementById('nav-drawer'); if(!nav) return;
     var h='<div class="nav-drawer-header"><span class="nav-drawer-brand">Dashboard Axenya</span>'+
@@ -4631,12 +4859,14 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
     for(var i=0;i<PANELS.length;i++){
       var p=PANELS[i];
       if(p.sec) h+='<li style="list-style:none;padding:.85rem 1.25rem .3rem;margin-top:.35rem;border-top:1px solid var(--border);font-size:.64rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text2)">'+p.sec+'</li>';
-      h+='<li class="nav-item'+(p.sub?' nav-sub':'')+(p.url===current?' active':'')+'" data-url="'+p.url+'">'+svgFor(p)+'<span>'+p.label+'</span>'+dot(p.health)+'</li>';
+      var _accCh = p.acc ? '<span id="fc-acc-chevron" class="nav-acc-chevron" onclick="toggleForecastAccordion(event)" title="Mostrar/ocultar etapas"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>' : '';
+      h+='<li class="nav-item'+(p.sub?' nav-sub':'')+(p.acc?' nav-acc':'')+(p.url===current?' active':'')+'" data-url="'+p.url+'">'+svgFor(p)+'<span>'+p.label+'</span>'+dot(p.health)+_accCh+'</li>';
     }
     h+='</ul>'+'<div class="nav-drawer-footer"><button class="nav-foot-btn" type="button" onclick="logout()" title="Sair" aria-label="Sair"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button><button class="nav-foot-btn" type="button" onclick="toggleTheme()" title="Tema / Theme"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></button></div>';
     nav.innerHTML=h;
     var nit=nav.getElementsByClassName('nav-item');
     for(var j=0;j<nit.length;j++){ nit[j].addEventListener('click',function(){ window.location.href=this.getAttribute('data-url'); }); }
+    (function(){ var ul=nav.querySelector('.nav-menu'); if(!ul) return; var inGroup=false; for(var k=0;k<PANELS.length;k++){ if((PANELS[k].acc||PANELS[k].sub)&&PANELS[k].url===current){ inGroup=true; break; } } if(!inGroup) ul.classList.add('nav-group-collapsed'); var ch=document.getElementById('fc-acc-chevron'); if(ch&&inGroup) ch.classList.add('open'); })();
   }
   function buildDropdown(){
     var dd=document.getElementById('panel-dd'); if(!dd) return;

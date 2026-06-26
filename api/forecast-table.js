@@ -73,6 +73,7 @@ const PROPERTIES = [
   'premio_mensal',        // prêmio mensal real (vs proxy ARR/12) | ~224 deals
   'notes_last_updated',   // data da última atividade/nota | ~1144 deals
   'vigencia',             // data de vigência | usado na coluna "Vigência" do forecast novo
+  'vencimento_da_1o_fatura', // data de vencimento da 1ª fatura | gate do faturamento manual (painel Ganho)
 ];
 
 // Tempo médio por etapa (AE Deal Velocity): entrada/saída v2 de cada etapa do pipeline Vendas.
@@ -325,6 +326,7 @@ module.exports = async function handler(req, res) {
           reuniao_ocorreu: p.a_reuniao_ocorreu_ || null,
           premio_mensal: p.premio_mensal ? parseFloat(p.premio_mensal) : null,
           vigencia: p.vigencia ? p.vigencia.substring(0, 10) : null,
+          vencimento_primeira_fatura: p.vencimento_da_1o_fatura ? p.vencimento_da_1o_fatura.substring(0, 10) : null,
           ultima_atividade: p.notes_last_updated ? p.notes_last_updated.substring(0, 10) : null,
           dias_sem_atividade: p.notes_last_updated
             ? Math.floor((Date.now() - new Date(p.notes_last_updated).getTime()) / 86400000)

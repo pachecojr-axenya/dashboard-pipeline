@@ -29,7 +29,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
 .nav-foot-btn{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:.4rem;min-height:38px;background:var(--card2);border:1px solid var(--border);border-radius:10px;color:var(--text2);cursor:pointer;padding:.4rem;font-family:inherit;font-size:.78rem;font-weight:700;letter-spacing:.04em;transition:border-color .15s,color .15s,background .15s}
 .nav-foot-btn:hover{border-color:var(--teal);color:var(--text)}
 .nav-menu{list-style:none;padding:.5rem 0;margin:0;overflow-y:auto}
-.nav-item{display:flex;align-items:center;gap:.75rem;padding:.7rem 1.25rem;cursor:pointer;font-size:.9rem;color:var(--text2);transition:background .15s,color .15s}.nav-item.nav-sub{padding-left:2.7rem;font-size:.8rem;gap:.55rem}.nav-item.nav-sub svg{width:14px;height:14px}
+.nav-item{display:flex;align-items:center;gap:.75rem;padding:.7rem 1.25rem;cursor:pointer;font-size:.9rem;color:var(--text2);transition:background .15s,color .15s}.nav-item.nav-sub{padding-left:2.7rem;font-size:.8rem;gap:.55rem}.nav-item.nav-sub svg{width:14px;height:14px}.nav-menu.nav-group-collapsed .nav-item.nav-sub{display:none}.nav-acc-chevron{margin-left:auto;display:inline-flex;align-items:center;padding:2px;color:var(--text2);transition:transform .18s;border-radius:4px}.nav-acc-chevron:hover{background:rgba(35,209,180,.15);color:var(--teal)}.nav-acc-chevron.open{transform:rotate(180deg)}
 .nav-item:hover{background:rgba(255,255,255,.06);color:var(--text)}
 .nav-item.active{color:var(--teal);font-weight:500}
 .nav-item.active svg{stroke:var(--teal)}
@@ -116,7 +116,7 @@ window.addEventListener('scroll',function(){ var h=document.getElementById('novo
     {label:'CS Dashboard',url:'/novo-cs',file:'cs.html',health:'r',icon:'<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>'},
     {label:'Cotação',url:'/novo-cotacao',file:'cotacao.html',health:'r',icon:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>'},
     {label:'Forecast',url:'/forecast',file:'forecast.html',health:'g',sec:'Forecast',icon:'<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>'},
-    {label:'Overall',url:'/forecast-overall',file:'forecast-panel.html',health:'y',icon:'<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>'},
+    {label:'Overall',url:'/forecast-overall',acc:true,file:'forecast-panel.html',health:'y',icon:'<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>'},
     {label:'MQL / Reunião',url:'/forecast-mql',sub:true,file:'forecast-panel.html',health:'y',icon:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'},
     {label:'Diagnóstico',url:'/forecast-diagnostico',sub:true,file:'forecast-panel.html',health:'y',icon:'<path d="M9 11H5a2 2 0 0 0-2 2v7h6"/><path d="M14 11h5a2 2 0 0 1 2 2v7h-6"/><path d="M9 7h6"/><circle cx="12" cy="5" r="2"/>'},
     {label:'Cotação',url:'/forecast-cotacao',sub:true,file:'forecast-panel.html',health:'y',icon:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>'},
@@ -132,6 +132,7 @@ window.addEventListener('scroll',function(){ var h=document.getElementById('novo
   if(!current){ for(var k=0;k<PANELS.length;k++){ if(PANELS[k].file==='forecast-panel.html'&&p2.indexOf(PANELS[k].url)!==-1){ current=PANELS[k].url; break; } } }
   function dot(h){ var tt={g:'live',y:'wip',r:'not working'}; var t=tt[h]||''; return '<span class="health-dot '+h+'" title="'+t+'" aria-label="'+t+'"></span>'; }
   function svgFor(p){ return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+p.icon+'</svg>'; }
+  window.toggleForecastAccordion=function(e){ if(e){e.stopPropagation();} var ul=document.querySelector('.nav-menu'); if(!ul) return; var collapsed=ul.classList.toggle('nav-group-collapsed'); var ch=document.getElementById('fc-acc-chevron'); if(ch) ch.classList.toggle('open', !collapsed); };
   function buildNav(){
     var nav=document.getElementById('nav-drawer'); if(!nav) return;
     var h='<div class="nav-drawer-header"><span class="nav-drawer-brand">Dashboard Axenya</span>'+
@@ -140,12 +141,14 @@ window.addEventListener('scroll',function(){ var h=document.getElementById('novo
     for(var i=0;i<PANELS.length;i++){
       var p=PANELS[i];
       if(p.sec) h+='<li style="list-style:none;padding:.85rem 1.25rem .3rem;margin-top:.35rem;border-top:1px solid var(--border);font-size:.64rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text2)">'+p.sec+'</li>';
-      h+='<li class="nav-item'+(p.sub?' nav-sub':'')+(p.url===current?' active':'')+'" data-url="'+p.url+'">'+svgFor(p)+'<span>'+p.label+'</span>'+dot(p.health)+'</li>';
+      var _accCh = p.acc ? '<span id="fc-acc-chevron" class="nav-acc-chevron" onclick="toggleForecastAccordion(event)" title="Mostrar/ocultar etapas"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>' : '';
+      h+='<li class="nav-item'+(p.sub?' nav-sub':'')+(p.acc?' nav-acc':'')+(p.url===current?' active':'')+'" data-url="'+p.url+'">'+svgFor(p)+'<span>'+p.label+'</span>'+dot(p.health)+_accCh+'</li>';
     }
     h+='</ul>'+'<div class="nav-drawer-footer"><button class="nav-foot-btn" type="button" onclick="doLogout()" title="Sair" aria-label="Sair"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button><button class="nav-foot-btn" type="button" onclick="novoToggleLang()" title="Idioma / Language"><span id="novo-lang-label">'+(NOVO_LANG==="pt"?"EN":"PT")+'</span></button><button class="nav-foot-btn" type="button" onclick="toggleTheme()" title="Tema / Theme"><svg class="novo-theme-sun" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg><svg class="novo-theme-moon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></button></div>';
     nav.innerHTML=h;
     var nit=nav.getElementsByClassName('nav-item');
     for(var j=0;j<nit.length;j++){ nit[j].addEventListener('click',function(){ window.location.href=this.getAttribute('data-url'); }); }
+    (function(){ var ul=nav.querySelector('.nav-menu'); if(!ul) return; var inGroup=false; for(var k=0;k<PANELS.length;k++){ if((PANELS[k].acc||PANELS[k].sub)&&PANELS[k].url===current){ inGroup=true; break; } } if(!inGroup) ul.classList.add('nav-group-collapsed'); var ch=document.getElementById('fc-acc-chevron'); if(ch&&inGroup) ch.classList.add('open'); })();
   }
   function buildDropdown(){
     var dd=document.getElementById('panel-dd'); if(!dd) return;
