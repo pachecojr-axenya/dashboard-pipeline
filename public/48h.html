@@ -492,11 +492,11 @@ function buildH48NewTable(newDeals){
     {label:'Overall',url:'/forecast-overall',acc:true,file:'forecast-panel.html',health:'y',icon:'<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>'},
     {label:'MQL / Reunião',url:'/forecast-mql',sub:true,file:'forecast-panel.html',health:'y',icon:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'},
     {label:'Diagnóstico',url:'/forecast-diagnostico',sub:true,file:'forecast-panel.html',health:'y',icon:'<path d="M9 11H5a2 2 0 0 0-2 2v7h6"/><path d="M14 11h5a2 2 0 0 1 2 2v7h-6"/><path d="M9 7h6"/><circle cx="12" cy="5" r="2"/>'},
-    {label:'Cotação',url:'/forecast-cotacao',sub:true,file:'forecast-panel.html',health:'y',icon:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>'},
-    {label:'Consultoria',url:'/forecast-consultoria',sub:true,file:'forecast-panel.html',health:'y',icon:'<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>'},
-    {label:'Negociação',url:'/forecast-negociacao',sub:true,file:'forecast-panel.html',health:'y',icon:'<line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>'},
+    {label:'Cotação',url:'/forecast-cotacao',sub:true,file:'forecast-panel.html',health:'g',icon:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>'},
+    {label:'Consultoria',url:'/forecast-consultoria',sub:true,file:'forecast-panel.html',health:'g',icon:'<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>'},
+    {label:'Negociação',url:'/forecast-negociacao',sub:true,file:'forecast-panel.html',health:'g',icon:'<line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>'},
     {label:'BID',url:'/forecast-bid',sub:true,file:'forecast-panel.html',health:'y',icon:'<path d="M3 3v18h18"/><path d="M19 9l-5 5-3-3-4 4"/>'},
-    {label:'Ganho',url:'/forecast-ganho',sub:true,file:'forecast-panel.html',health:'y',icon:'<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>'}
+    {label:'Ganho',url:'/forecast-ganho',sub:true,file:'forecast-panel.html',health:'g',icon:'<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>'}
   ];
   function findByUrl(u){ for(var i=0;i<PANELS.length;i++){ if(PANELS[i].url===u) return PANELS[i]; } return null; }
   var p2=location.pathname; if(p2.length>1&&p2.charAt(p2.length-1)==='/') p2=p2.slice(0,-1);

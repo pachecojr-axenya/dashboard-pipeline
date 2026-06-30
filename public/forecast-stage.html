@@ -2599,14 +2599,14 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
         if (secGanho) secGanho.style.display = isGanho ? '' : 'none';
         if (probH3) probH3.textContent = isBid ? 'Probabilidade (BID)' : 'Probabilidade da etapa';
         if (probP)  probP.innerHTML = isBid
-          ? 'BID: probabilidade fixa e baixa (~0,5%) — premissa conservadora para <strong>não contar com esse dinheiro no curto prazo</strong>. A data de receita não é cravável: é imputada à mão e jogada para frente (marcada em <span style="color:#f85149">vermelho</span> na tabela).'
+          ? 'BID: probabilidade fixa e baixa (~0,5%) — premissa conservadora para <strong>não contar com esse dinheiro no curto prazo</strong>. O mês de início da receita é <strong>travado por etapa</strong>: <strong>Negociação → outubro/2026</strong> e <strong>Proposta Enviada → junho/2027</strong> (exibido na coluna <span style="color:#f85149">Dt. Receita</span>, em vermelho).'
           : `Premissa de probabilização da etapa <strong>${esc(locked)}</strong>: chance histórica de conversão usada no cálculo (configurável em Configurações).`;
         if (secDiag) secDiag.style.display = isDiag ? '' : 'none';            // receita por vidas (Cintia)
         if (secMql)  secMql.style.display  = isMql ? '' : 'none';             // receita por vidas × R$24, +15m
         if (secRev)  secRev.style.display  = (isDiag || isMql) ? 'none' : ''; // receita por prêmio/modelo
         if (!isDiag && !isMql) {
           if (revH3) revH3.textContent = isBid ? 'Receita — BID' : `Receita — ${locked}`;
-          if (revP)  revP.innerHTML = 'Nesta etapa a receita mensal é calculada a partir da <strong>primeira fatura</strong> e do <strong>modelo de remuneração</strong>' + (isBid ? ', ponderada pela probabilidade fixa de BID (~0,5%).' : '.');
+          if (revP)  revP.innerHTML = 'Nesta etapa a receita mensal é calculada a partir da <strong>primeira fatura</strong> e do <strong>modelo de remuneração</strong>' + (isBid ? ', ponderada pela probabilidade fixa de BID (~0,5%). O início da receita é travado por etapa: <strong>Negociação → out/2026</strong> e <strong>Proposta Enviada → jun/2027</strong>.' : '.');
         }
       } else {
         if (probH3) probH3.textContent = 'Probabilidade por etapa';
@@ -3558,10 +3558,11 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
         // (evita deals antigos importados distorcerem conversão), não para receita já fechada —
         // sem isso, um deal ganho criado antes de set/2025 some do painel Ganho e do Overall.
         const _isRealizada = d => d.stage === 'Ganho' || d.stage === 'Implantação';
-        // Pipeline BID é longo e de alto valor: deals ativos entram sempre, mesmo criados
-        // antes de set/2025 (senão CPFL, Cosan-Raízen etc. somem do painel BID).
+        // Pipeline BID é longo e de alto valor: deals criados em todo o 2025 entram, mesmo
+        // antes do cutoff set/2025 (senão CPFL, Cosan-Raízen etc. somem dos painéis BID/Overall).
         allScopedDeals = data.deals.filter(d => d.stage !== 'Perdido'
-          && ((d.createdate && d.createdate >= '2025-09-01') || _isRealizada(d) || d.pipeline === 'Bid'));  // base do dedup global
+          && ((d.createdate && d.createdate >= '2025-09-01') || _isRealizada(d)
+              || (d.pipeline === 'Bid' && d.createdate && d.createdate >= '2025-01-01')));  // base do dedup global
         allDeals = FC_PANEL_STAGES ? allScopedDeals.filter(function(d){
           if (FC_PANEL_STAGES.indexOf(d.stage) === -1) return false;
           return FC_BID_MODE ? d.pipeline === 'Bid' : d.pipeline !== 'Bid';  // BID isola o pipeline Bid; demais painéis são Vendas
@@ -4902,11 +4903,11 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
     {label:'Overall',url:'/forecast-overall',acc:true,file:'forecast-panel.html',health:'y',icon:'<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>'},
     {label:'MQL / Reunião',url:'/forecast-mql',sub:true,file:'forecast-panel.html',health:'y',icon:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'},
     {label:'Diagnóstico',url:'/forecast-diagnostico',sub:true,file:'forecast-panel.html',health:'y',icon:'<path d="M9 11H5a2 2 0 0 0-2 2v7h6"/><path d="M14 11h5a2 2 0 0 1 2 2v7h-6"/><path d="M9 7h6"/><circle cx="12" cy="5" r="2"/>'},
-    {label:'Cotação',url:'/forecast-cotacao',sub:true,file:'forecast-panel.html',health:'y',icon:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>'},
-    {label:'Consultoria',url:'/forecast-consultoria',sub:true,file:'forecast-panel.html',health:'y',icon:'<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>'},
-    {label:'Negociação',url:'/forecast-negociacao',sub:true,file:'forecast-panel.html',health:'y',icon:'<line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>'},
+    {label:'Cotação',url:'/forecast-cotacao',sub:true,file:'forecast-panel.html',health:'g',icon:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>'},
+    {label:'Consultoria',url:'/forecast-consultoria',sub:true,file:'forecast-panel.html',health:'g',icon:'<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>'},
+    {label:'Negociação',url:'/forecast-negociacao',sub:true,file:'forecast-panel.html',health:'g',icon:'<line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>'},
     {label:'BID',url:'/forecast-bid',sub:true,file:'forecast-panel.html',health:'y',icon:'<path d="M3 3v18h18"/><path d="M19 9l-5 5-3-3-4 4"/>'},
-    {label:'Ganho',url:'/forecast-ganho',sub:true,file:'forecast-panel.html',health:'y',icon:'<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>'}
+    {label:'Ganho',url:'/forecast-ganho',sub:true,file:'forecast-panel.html',health:'g',icon:'<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>'}
   ];
   function findByUrl(u){ for(var i=0;i<PANELS.length;i++){ if(PANELS[i].url===u) return PANELS[i]; } return null; }
   var p2=location.pathname; if(p2.length>1&&p2.charAt(p2.length-1)==='/') p2=p2.slice(0,-1);
