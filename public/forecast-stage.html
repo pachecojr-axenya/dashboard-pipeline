@@ -2423,6 +2423,8 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
     }
     // Soma n meses a um {y, mo} (mo base 0). Retorna null se a base for null.
     function _fcAddMonths(rs, n) { if (!rs) return null; const t = rs.mo + n; return { y: rs.y + Math.floor(t / 12), mo: ((t % 12) + 12) % 12 }; }
+    // Data de hoje em "YYYY-MM-DD" (comparável lexicalmente com vigencia/data_prevista).
+    function _fcTodayStr() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
 
     // Returns true if the deal has any field considered incomplete
     function hasAnyEmpty(d) {
@@ -2630,7 +2632,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
         if (secRev)  secRev.style.display  = '';
         if (secGanho) secGanho.style.display = '';
         if (revH3) revH3.textContent = 'Receita — Cotação / Consultoria / Negociação / BID / Ganho';
-        if (revP)  revP.innerHTML = 'Para as etapas com fatura definida, a receita mensal vem da <strong>primeira fatura</strong> e do <strong>modelo de remuneração</strong>. Início da receita (Cotação/Consultoria/Negociação): <strong>Corretagem → vigência + 2 meses</strong>; <strong>Fee por vida → data prevista + 2 meses</strong>. BID é travado por etapa (Negociação → out/2026, Proposta → jun/2027).';
+        if (revP)  revP.innerHTML = 'Para as etapas com fatura definida, a receita mensal vem da <strong>primeira fatura</strong> e do <strong>modelo de remuneração</strong>. Início da receita (Cotação/Consultoria/Negociação): <strong>Corretagem → vigência + 2 meses</strong> (vigência vencida/vazia → data prevista + 2); <strong>Fee por vida → data prevista + 2 meses</strong>. BID é travado por etapa (Negociação → out/2026, Proposta → jun/2027).';
       } else if (locked) {
         const isDiag = (locked === 'Diagnóstico');
         const isMql  = (locked === 'Reunião Agendada');
@@ -2653,7 +2655,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
           if (revP) {
             let _rev = 'Nesta etapa a receita mensal é calculada a partir da <strong>primeira fatura</strong> e do <strong>modelo de remuneração</strong>';
             if (isBid) _rev += ', ponderada pela probabilidade fixa de BID (~0,5%). O início da receita é travado por etapa: <strong>Negociação → out/2026</strong> e <strong>Proposta Enviada → jun/2027</strong>.';
-            else if (['Cotação', 'Consultoria', 'Negociação'].indexOf(locked) !== -1) _rev += '. O <strong>início da receita</strong> depende do modelo: <strong>Corretagem → data de vigência + 2 meses</strong>; <strong>Fee por vida → data prevista de receita + 2 meses</strong>; sem modelo definido, usa a data prevista de receita.';
+            else if (['Cotação', 'Consultoria', 'Negociação'].indexOf(locked) !== -1) _rev += '. O <strong>início da receita</strong> depende do modelo: <strong>Corretagem → data de vigência + 2 meses</strong> (se a vigência já passou ou está vazia, usa <strong>data prevista de receita + 2</strong>); <strong>Fee por vida → data prevista de receita + 2 meses</strong>; sem modelo definido, usa a data prevista de receita.';
             else _rev += '.';
             revP.innerHTML = _rev;
           }
@@ -3812,13 +3814,14 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
         return MONTHS.map(m => { if (probAdj == null) return null; const diff = (m.y - revStart.y) * 12 + (m.mo - revStart.mo); if (diff < 0) return null; return { val: rec * probAdj, rec: rec, probAdj: probAdj, n: diff + 1 }; });
       }
       // Cotação / Consultoria / Negociação: o início da receita depende do modelo de remuneração.
-      //   • Corretagem   → data de VIGÊNCIA + 2 meses
+      //   • Corretagem   → data de VIGÊNCIA + 2 meses; se a vigência já passou (ou está vazia),
+      //                    usa data PREVISTA de receita + 2 (vigência velha não serve de âncora).
       //   • Fee por vida → data PREVISTA de receita + 2 meses
       //   • sem modelo   → data prevista de receita (comportamento padrão)
       let revStart;
       if (['Cotação', 'Consultoria', 'Negociação'].indexOf(d.stage) !== -1) {
         const modelo = (d.modelo_remuneracao || '').toLowerCase();
-        if (modelo.indexOf('corretagem') !== -1)   revStart = _fcAddMonths(parseRevenueDate(d.vigencia), 2);
+        if (modelo.indexOf('corretagem') !== -1)   revStart = (d.vigencia && d.vigencia >= _fcTodayStr()) ? _fcAddMonths(parseRevenueDate(d.vigencia), 2) : _fcAddMonths(parseRevenueDate(d.data_prevista_para_receita), 2);
         else if (modelo.indexOf('fee') !== -1)      revStart = _fcAddMonths(parseRevenueDate(d.data_prevista_para_receita), 2);
         else                                        revStart = parseRevenueDate(d.data_prevista_para_receita);
       } else {

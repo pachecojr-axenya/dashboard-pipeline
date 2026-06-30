@@ -2272,6 +2272,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       return null;
     }
     function _fcAddMonths(rs, n) { if (!rs) return null; const t = rs.mo + n; return { y: rs.y + Math.floor(t / 12), mo: ((t % 12) + 12) % 12 }; }
+    function _fcTodayStr() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
 
     // Returns true if the deal has any field considered incomplete
     function hasAnyEmpty(d) {
@@ -3441,7 +3442,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
         let revStart;
         if (['Cotação', 'Consultoria', 'Negociação'].indexOf(d.stage) !== -1) {
           const modelo = (d.modelo_remuneracao || '').toLowerCase();
-          if (modelo.indexOf('corretagem') !== -1)   revStart = _fcAddMonths(parseRevenueDate(d.vigencia), 2);
+          if (modelo.indexOf('corretagem') !== -1)   revStart = (d.vigencia && d.vigencia >= _fcTodayStr()) ? _fcAddMonths(parseRevenueDate(d.vigencia), 2) : _fcAddMonths(parseRevenueDate(d.data_prevista_para_receita), 2);
           else if (modelo.indexOf('fee') !== -1)      revStart = _fcAddMonths(parseRevenueDate(d.data_prevista_para_receita), 2);
           else                                        revStart = parseRevenueDate(d.data_prevista_para_receita);
         } else {
