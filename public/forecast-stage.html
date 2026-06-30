@@ -1258,6 +1258,17 @@
       font-size: .82rem; text-align: right;
     }
     .bill-cell input:focus { outline: none; border-color: var(--teal); box-shadow: 0 0 0 2px rgba(35,209,180,.25); }
+    .bill-input-row { position: relative; display: flex; align-items: center; }
+    .bill-input-row:focus-within input { padding-right: 28px; }
+    .bill-dup-btn {
+      position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+      display: none; align-items: center; justify-content: center;
+      width: 20px; height: 20px; padding: 0; border-radius: 5px;
+      border: 1px solid var(--border); background: var(--card); color: var(--teal);
+      cursor: pointer; line-height: 1;
+    }
+    .bill-input-row:focus-within .bill-dup-btn { display: flex; }
+    .bill-dup-btn:hover { background: var(--teal); color: var(--bg); border-color: var(--teal); }
     .bill-yr-sep { grid-column: 1 / -1; font-size: .7rem; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: .06em; margin-top: .3rem; border-top: 1px solid var(--border); padding-top: .4rem; }
     .bill-repeat-btn {
       background: var(--card2); color: var(--teal); border: 1px solid var(--border);
@@ -2072,7 +2083,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
           </tbody>
         </table>
         <p class="help-p" style="margin-top:.6rem;"><strong>Gate automático:</strong> quando o campo <em>Vencimento da 1ª Fatura</em> (HubSpot) está preenchido e já passou, o deal entra automaticamente na lista de faturamento manual. Também é possível forçar a marcação no editor (botão ✎ na linha do deal).</p>
-        <p class="help-p">No editor é possível preencher cada mês individualmente e usar <strong>"Repetir último valor para frente"</strong>. Os valores são salvos globalmente (todos os usuários veem o mesmo) e refletem automaticamente no painel Overall.</p>
+        <p class="help-p">No editor é possível preencher cada mês individualmente; ao focar uma célula aparece um botão para <strong>duplicar aquele valor para os meses seguintes</strong>, e o botão <strong>Limpar</strong> apaga tudo. Os valores são salvos globalmente (todos os usuários veem o mesmo) e refletem automaticamente no painel Overall.</p>
       </section>
 
       <!-- Receita — demais etapas -->
@@ -2151,7 +2162,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       <div id="bill-grid-wrap">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem;gap:.6rem;flex-wrap:wrap;">
           <span class="help-p" style="margin:0;">Receita real por mês (R$):</span>
-          <button class="bill-repeat-btn" onclick="fcBillRepeat()" type="button" title="Copia o último valor preenchido para todos os meses seguintes">⟳ Repetir último valor para frente</button>
+          <button class="bill-repeat-btn" onclick="fcBillClear()" type="button" title="Apaga o valor de todos os meses">✕ Limpar</button>
         </div>
         <div id="bill-grid"></div>
       </div>
@@ -2642,7 +2653,13 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
         let val = '';
         if (key in saved) val = saved[key];
         else if (!hasSaved && !pre && seedVal !== '' && vencKey && key >= vencKey) val = seedVal; // seed inicial
-        html += `<div class="bill-cell${pre ? ' pre' : ''}"><label>${esc(m.label)}</label><input type="number" min="0" step="0.01" data-key="${key}" value="${val === '' ? '' : val}"></div>`;
+        const disp = (val === '' || val == null) ? '' : _billFmt(Number(val));
+        html += `<div class="bill-cell${pre ? ' pre' : ''}"><label>${esc(m.label)}</label>`
+              + `<div class="bill-input-row">`
+              + `<input type="text" inputmode="decimal" data-key="${key}" value="${disp}" onfocus="this.select()" onblur="fcBillFmtBlur(this)">`
+              + `<button class="bill-dup-btn" type="button" title="Duplicar este valor para os meses seguintes" onmousedown="event.preventDefault()" onclick="fcBillDupFrom(this)">`
+              + `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="7 7 12 12 17 7"/><polyline points="7 13 12 18 17 13"/></svg>`
+              + `</button></div></div>`;
       });
       document.getElementById('bill-grid').innerHTML = html;
       document.getElementById('bill-overlay').classList.add('open');
@@ -2655,21 +2672,47 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
 
     function fcBillToggleManual(on) { _billManual = !!on; }
 
-    // Copia o último valor preenchido para todos os meses seguintes (cada célula segue editável).
-    function fcBillRepeat() {
+    // Converte texto BR ("1.234,56") em número. Retorna NaN se vazio/inválido.
+    function _billParse(str) {
+      if (str == null) return NaN;
+      let s = String(str).trim();
+      if (s === '') return NaN;
+      s = s.replace(/\./g, '').replace(',', '.').replace(/[^0-9.\-]/g, '');
+      const n = Number(s);
+      return s === '' ? NaN : n;
+    }
+    // Formata número em BR: ponto para milhares, vírgula para decimais (até 2 casas).
+    function _billFmt(n) {
+      if (n == null || isNaN(n)) return '';
+      return Number(n).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    }
+    // Reformata a célula ao perder o foco (normaliza o que o usuário digitou).
+    function fcBillFmtBlur(inp) {
+      const n = _billParse(inp.value);
+      inp.value = isNaN(n) ? '' : _billFmt(n);
+    }
+    // Duplica o valor desta célula para todos os meses seguintes (cada célula segue editável).
+    function fcBillDupFrom(btn) {
       const inputs = Array.from(document.querySelectorAll('#bill-grid input'));
-      let lastVal = '', lastIdx = -1;
-      inputs.forEach((inp, i) => { if (inp.value !== '' && !isNaN(Number(inp.value))) { lastVal = inp.value; lastIdx = i; } });
-      if (lastIdx < 0) return;
-      for (let i = lastIdx + 1; i < inputs.length; i++) inputs[i].value = lastVal;
+      const inp = btn.closest('.bill-input-row').querySelector('input');
+      const idx = inputs.indexOf(inp);
+      if (idx < 0) return;
+      const n = _billParse(inp.value);
+      if (isNaN(n)) return;
+      const disp = _billFmt(n);
+      for (let i = idx + 1; i < inputs.length; i++) inputs[i].value = disp;
+    }
+    // Apaga o valor de todos os meses.
+    function fcBillClear() {
+      document.querySelectorAll('#bill-grid input').forEach(inp => { inp.value = ''; });
     }
 
     async function fcBillSave() {
       if (!_billDealId) return;
       const months = {};
       document.querySelectorAll('#bill-grid input').forEach(inp => {
-        const v = inp.value;
-        if (v !== '' && !isNaN(Number(v)) && Number(v) >= 0) months[inp.dataset.key] = Number(v);
+        const n = _billParse(inp.value);
+        if (!isNaN(n) && n >= 0) months[inp.dataset.key] = n;
       });
       try {
         const r = await fetch('/api/faturamento-manual', {
