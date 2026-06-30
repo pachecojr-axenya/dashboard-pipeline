@@ -2154,13 +2154,44 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
     const NOW_KEY = _today.getFullYear() * 100 + _today.getMonth();
 
     const STAGE_PROB_DEFAULT = { 'Reunião Agendada': 0.06, 'Cotação': 0.185790008, 'Proposta Enviada': 0.285, 'Consultoria': 0.284954, 'Negociação': 0.493, 'Implantação': 0.8, 'Ganho': 1.0, 'Standby': 0.12, 'Diagnóstico': 0.06 };
-    let STAGE_PROB = (() => {
-      try {
-        const saved = localStorage.getItem('forecast_stage_prob');
-        if (saved) return { ...STAGE_PROB_DEFAULT, ...JSON.parse(saved) };
-      } catch { }
-      return { ...STAGE_PROB_DEFAULT };
+    // Override manual salvo em Configurações (se houver) — vence sobre o funil.
+    const FC_STAGE_PROB_SAVED = (() => {
+      try { const s = localStorage.getItem('forecast_stage_prob'); if (s) return JSON.parse(s) || {}; } catch { }
+      return {};
     })();
+    // Probabilidade por etapa derivada AO VIVO do funil: deals que chegaram à Implantação
+    // ÷ deals que entraram na etapa (combinado Vendas+Bid, amostra mínima 20). Mesma regra
+    // do CRO. Carregada em 2º plano no load(); cache de 1h na sessão.
+    const FC_PROB_MIN_SAMPLE = 20;
+    let FC_FUNNEL_PROB = (() => {
+      try { const c = JSON.parse(sessionStorage.getItem('fc_funnel_prob') || 'null'); if (c && c.values && c.ts && (Date.now() - c.ts) < 3600000) return c.values; } catch { }
+      return null;
+    })();
+    let STAGE_PROB = {};
+    function _fcApplyStageProb() { STAGE_PROB = { ...STAGE_PROB_DEFAULT, ...(FC_FUNNEL_PROB || {}), ...FC_STAGE_PROB_SAVED }; }
+    _fcApplyStageProb();
+    function _fcFunnelDerivedProb(fd) {
+      if (!fd) return null;
+      const cnt = stage => { let t = 0; [(fd.vendas || {}).stages, (fd.bid || {}).stages].forEach(arr => (arr || []).forEach(s => { if (s.stage === stage) t += (s.count || 0); })); return t; };
+      const finalC = cnt('Implantação'); if (finalC <= 0) return null;
+      const order = ['Reunião Agendada', 'Diagnóstico', 'Cotação', 'Proposta Enviada', 'Consultoria', 'Negociação'];
+      const out = {};
+      order.forEach(s => { const c = cnt(s); if (c >= FC_PROB_MIN_SAMPLE) { let p = finalC / c; if (p > 1) p = 1; if (p < 0) p = 0; out[s] = p; } });
+      return out;
+    }
+    async function _fcLoadFunnelProb() {
+      try {
+        const r = await fetch('/api/funnel-stages', { credentials: 'same-origin' });
+        const j = await r.json();
+        if (!r.ok || !j.success) return;
+        const d = _fcFunnelDerivedProb(j);
+        if (!d || !Object.keys(d).length) return;
+        FC_FUNNEL_PROB = d;
+        try { sessionStorage.setItem('fc_funnel_prob', JSON.stringify({ ts: Date.now(), values: d })); } catch { }
+        _fcApplyStageProb();
+        if (typeof applyAndRender === 'function') applyAndRender();
+      } catch { /* mantém defaults/cache */ }
+    }
     const VPV_DEFAULT = { s: 36, m: 24, l: 12 };
     let VALOR_POR_VIDA = (() => {
       try {
@@ -3198,6 +3229,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
         buildModeloFilter();
         syncStageButtons();
         applyAndRender();
+        _fcLoadFunnelProb();   // em 2º plano: puxa as probabilidades ao vivo do funil e re-renderiza
       } catch (e) {
         document.getElementById('tw').innerHTML = `<div class="state err">Erro de conexão: ${esc(e.message)}</div>`;
       } finally {
