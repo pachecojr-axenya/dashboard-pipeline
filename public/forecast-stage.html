@@ -3534,6 +3534,19 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
           return;
         }
         try { if (manResp && manResp.ok) { const mj = await manResp.json(); if (mj && mj.success && mj.data) FC_MANUAL = mj.data; } } catch (e) { /* mantém {} */ }
+        // BID: o mês de início de receita é FIXO por etapa (regra do bloco BID), não a data
+        // por-deal do HubSpot. Sobrescreve data_prevista_para_receita (e o quarter derivado)
+        // para Negociação → out/2026 e Proposta Enviada → jun/2027. Vale no painel BID e no
+        // Overall, e a coluna "Dt. Receita" (vermelha) passa a refletir essa régua.
+        const FC_BID_REV_DATE = { 'Negociação': '2026-10-01', 'Proposta Enviada': '2027-06-01' };
+        data.deals.forEach(d => {
+          if (d.pipeline !== 'Bid') return;
+          const rd = FC_BID_REV_DATE[d.stage];
+          if (!rd) return;
+          d.data_prevista_para_receita = rd;
+          const _mo = parseInt(rd.substring(5, 7), 10) - 1;
+          d.quarter = 'Q' + (Math.floor(_mo / 3) + 1) + ' ' + rd.substring(0, 4);
+        });
         const _scoped = data.deals.filter(d => d.createdate && d.createdate >= '2025-09-01');
         // Win rate global (S01) = ganhos ÷ (ganhos + perdidos). Os perdidos só servem aqui;
         // são removidos da exibição/dedup logo abaixo.
@@ -3545,8 +3558,10 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
         // (evita deals antigos importados distorcerem conversão), não para receita já fechada —
         // sem isso, um deal ganho criado antes de set/2025 some do painel Ganho e do Overall.
         const _isRealizada = d => d.stage === 'Ganho' || d.stage === 'Implantação';
+        // Pipeline BID é longo e de alto valor: deals ativos entram sempre, mesmo criados
+        // antes de set/2025 (senão CPFL, Cosan-Raízen etc. somem do painel BID).
         allScopedDeals = data.deals.filter(d => d.stage !== 'Perdido'
-          && ((d.createdate && d.createdate >= '2025-09-01') || _isRealizada(d)));  // base do dedup global
+          && ((d.createdate && d.createdate >= '2025-09-01') || _isRealizada(d) || d.pipeline === 'Bid'));  // base do dedup global
         allDeals = FC_PANEL_STAGES ? allScopedDeals.filter(function(d){
           if (FC_PANEL_STAGES.indexOf(d.stage) === -1) return false;
           return FC_BID_MODE ? d.pipeline === 'Bid' : d.pipeline !== 'Bid';  // BID isola o pipeline Bid; demais painéis são Vendas
