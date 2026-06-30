@@ -2174,7 +2174,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       if (!fd) return null;
       const cnt = stage => { let t = 0; [(fd.vendas || {}).stages, (fd.bid || {}).stages].forEach(arr => (arr || []).forEach(s => { if (s.stage === stage) t += (s.count || 0); })); return t; };
       const finalC = cnt('Implantação'); if (finalC <= 0) return null;
-      const order = ['Reunião Agendada', 'Diagnóstico', 'Cotação', 'Proposta Enviada', 'Consultoria', 'Negociação'];
+      const order = ['Reunião Agendada', 'Cotação', 'Proposta Enviada', 'Consultoria', 'Negociação'];  // Diagnóstico fica fixo em 6% (não deriva do funil)
       const out = {};
       order.forEach(s => { const c = cnt(s); if (c >= FC_PROB_MIN_SAMPLE) { let p = finalC / c; if (p > 1) p = 1; if (p < 0) p = 0; out[s] = p; } });
       return out;
@@ -2271,6 +2271,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       if (m) return { y: parseInt(m[1]), mo: parseInt(m[2]) - 1 };
       return null;
     }
+    function _fcAddMonths(rs, n) { if (!rs) return null; const t = rs.mo + n; return { y: rs.y + Math.floor(t / 12), mo: ((t % 12) + 12) % 12 }; }
 
     // Returns true if the deal has any field considered incomplete
     function hasAnyEmpty(d) {
@@ -2296,6 +2297,8 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
     }
 
     function calcProbInfo(deal) {
+      // Diagnóstico: probabilidade SEMPRE fixa em 6% (não deriva do funil nem ajusta pelo AE).
+      if (deal.stage === 'Diagnóstico') return { sp: 0.06, cp: deal.probabilidade, final: 0.06, modStr: 'Diagnóstico: fixa em 6% (sem ajuste do AE)' };
       const sp = STAGE_PROB[deal.stage];
       if (sp == null) return { sp: null, cp: null, final: null, modStr: '' };
       const cp = deal.probabilidade;
@@ -3433,7 +3436,17 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
         }
 
         // ── Demais etapas ─────────────────────────────────────────────────────────
-        const revStart = parseRevenueDate(d.data_prevista_para_receita);
+        // Cotação / Consultoria / Negociação: início da receita por modelo de remuneração.
+        //   Corretagem → vigência + 2 meses · Fee por vida → data prevista + 2 meses · sem modelo → data prevista.
+        let revStart;
+        if (['Cotação', 'Consultoria', 'Negociação'].indexOf(d.stage) !== -1) {
+          const modelo = (d.modelo_remuneracao || '').toLowerCase();
+          if (modelo.indexOf('corretagem') !== -1)   revStart = _fcAddMonths(parseRevenueDate(d.vigencia), 2);
+          else if (modelo.indexOf('fee') !== -1)      revStart = _fcAddMonths(parseRevenueDate(d.data_prevista_para_receita), 2);
+          else                                        revStart = parseRevenueDate(d.data_prevista_para_receita);
+        } else {
+          revStart = parseRevenueDate(d.data_prevista_para_receita);
+        }
         const probAdj = d.prob_ajustada;
         return MONTHS.map((m, i) => {
           if (!revStart || probAdj == null) return null;

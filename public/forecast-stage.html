@@ -2297,7 +2297,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       if (!fd) return null;
       const cnt = stage => { let t = 0; [(fd.vendas || {}).stages, (fd.bid || {}).stages].forEach(arr => (arr || []).forEach(s => { if (s.stage === stage) t += (s.count || 0); })); return t; };
       const finalC = cnt('Implantação'); if (finalC <= 0) return null;
-      const order = ['Reunião Agendada', 'Diagnóstico', 'Cotação', 'Proposta Enviada', 'Consultoria', 'Negociação'];
+      const order = ['Reunião Agendada', 'Cotação', 'Proposta Enviada', 'Consultoria', 'Negociação'];  // Diagnóstico fica fixo em 6% (não deriva do funil)
       const out = {};
       order.forEach(s => { const c = cnt(s); if (c >= FC_PROB_MIN_SAMPLE) { let p = finalC / c; if (p > 1) p = 1; if (p < 0) p = 0; out[s] = p; } });
       return out;
@@ -2421,6 +2421,8 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       if (m) return { y: parseInt(m[1]), mo: parseInt(m[2]) - 1 };
       return null;
     }
+    // Soma n meses a um {y, mo} (mo base 0). Retorna null se a base for null.
+    function _fcAddMonths(rs, n) { if (!rs) return null; const t = rs.mo + n; return { y: rs.y + Math.floor(t / 12), mo: ((t % 12) + 12) % 12 }; }
 
     // Returns true if the deal has any field considered incomplete
     function hasAnyEmpty(d) {
@@ -2446,6 +2448,9 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
     }
 
     function calcProbInfo(deal) {
+      // Diagnóstico: probabilidade SEMPRE fixa em 6% — não deriva do funil nem sofre
+      // ajuste ±10% da probabilidade informada pelo AE.
+      if (deal.stage === 'Diagnóstico') return { sp: 0.06, cp: deal.probabilidade, final: 0.06, modStr: 'Diagnóstico: fixa em 6% (sem ajuste do AE)' };
       const sp = STAGE_PROB[deal.stage];
       if (sp == null) return { sp: null, cp: null, final: null, modStr: '' };
       const cp = deal.probabilidade;
@@ -2454,6 +2459,9 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       if (cp >= sp + 0.3) return { sp, cp, final: sp * 1.1, modStr: 'Bônus (+10% sobre P. Etapa)' };
       return { sp, cp, final: sp, modStr: 'Dentro da margem (sem ajuste)' };
     }
+    // Conversão do MQL puxada AO VIVO do funil (Reunião Agendada → Implantação).
+    // Usada na projeção de originação dos BDRs (antes usava o win rate global S01).
+    function _fcMqlConv() { const p = STAGE_PROB['Reunião Agendada']; return (p != null ? p : (FC_WIN_RATE || 0)); }
 
     // ── DEDUP Fee por vida × Corretagem ───────────────────────────────────────
     // Alguns negócios são duplicados (um para Fee por vida, outro para Corretagem);
@@ -2532,13 +2540,13 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       return out;
     }
     function _fcBdrTableHtml(rows) {
-      const wr = (FC_WIN_RATE * 100).toFixed(1).replace('.', ',') + '%';
+      const wr = (_fcMqlConv() * 100).toFixed(1).replace('.', ',') + '%';
       let h = '<style>.bdr-proj{width:100%;border-collapse:collapse;font-size:.8rem;margin-top:.5rem}.bdr-proj th,.bdr-proj td{padding:.4rem .7rem;border-bottom:1px solid var(--border)}.bdr-proj th{color:var(--accent,#3ab8b7);font-weight:700;border-bottom:2px solid var(--accent,#3ab8b7)}.bdr-proj tbody tr:hover td{background:rgba(255,255,255,.04)}</style>';
       h += '<div style="margin-top:1.75rem"><h3 style="font-size:.95rem;font-weight:700;margin:0 0 .35rem">Projeção de originação BDR · jul/26 → jan/28</h3>';
-      h += '<p style="font-size:.78rem;color:var(--muted);margin:0 0 .4rem;line-height:1.55">4 BDRs antigos × 34k/mês + 8 novos em rampa. Receita = vidas × R$ 24 × win rate global (S01 = ' + wr + '), reconhecida <strong>+15 meses</strong> após a originação. Já aparece na linha <em>"Originação BDR (projeção)"</em> e nos totais da tabela acima (Receita Real / Probabilizada, a partir de out/27).</p>';
+      h += '<p style="font-size:.78rem;color:var(--muted);margin:0 0 .4rem;line-height:1.55">4 BDRs antigos × 34k/mês + 8 novos em rampa. Receita = vidas × R$ 24 × conversão do funil Reunião Agendada → Implantação (ao vivo = ' + wr + '), reconhecida <strong>+15 meses</strong> após a originação. Já aparece na linha <em>"Originação BDR (projeção)"</em> e nos totais da tabela acima (Receita Real / Probabilizada, a partir de out/27).</p>';
       h += '<table class="bdr-proj"><thead><tr><th style="text-align:left">Mês originação</th><th style="text-align:right">Vidas antigos</th><th style="text-align:right">Vidas novos</th><th style="text-align:right">Total vidas</th><th style="text-align:center">Início receita</th><th style="text-align:right">Receita real/mês</th><th style="text-align:right">Receita prob./mês</th></tr></thead><tbody>';
       rows.forEach(c => {
-        h += `<tr><td style="text-align:left">${c.ymLabel}</td><td style="text-align:right">${fmtNum(c.vidasOld)}</td><td style="text-align:right">${fmtNum(c.vidasNew)}</td><td style="text-align:right;font-weight:700">${fmtNum(c.vidas)}</td><td style="text-align:center">${c.revLabel}</td><td style="text-align:right">${fmtBRL(c.rec)}</td><td style="text-align:right">${fmtBRL(c.rec * FC_WIN_RATE)}</td></tr>`;
+        h += `<tr><td style="text-align:left">${c.ymLabel}</td><td style="text-align:right">${fmtNum(c.vidasOld)}</td><td style="text-align:right">${fmtNum(c.vidasNew)}</td><td style="text-align:right;font-weight:700">${fmtNum(c.vidas)}</td><td style="text-align:center">${c.revLabel}</td><td style="text-align:right">${fmtBRL(c.rec)}</td><td style="text-align:right">${fmtBRL(c.rec * _fcMqlConv())}</td></tr>`;
       });
       h += '</tbody></table></div>';
       return h;
@@ -2616,13 +2624,13 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       if (isOverall) {
         // Overall agrega TODAS as lógicas de receita → mostra as três seções + faturamento manual.
         if (probH3) probH3.textContent = 'Probabilidade por etapa';
-        if (probP)  probP.innerHTML = 'Cada linha aplica a probabilização da sua etapa. As linhas <strong>BID</strong> usam probabilidade fixa de ~0,5% (não exibida na tabela abaixo).';
+        if (probP)  probP.innerHTML = 'Cada linha aplica a probabilização da sua etapa, puxada <strong>ao vivo do funil</strong> (deals que chegaram à Implantação ÷ que entraram na etapa). Exceções: <strong>Diagnóstico</strong> é fixo em 6% e as linhas <strong>BID</strong> usam probabilidade fixa de ~0,5%.';
         if (secDiag) secDiag.style.display = '';
         if (secMql)  secMql.style.display  = '';
         if (secRev)  secRev.style.display  = '';
         if (secGanho) secGanho.style.display = '';
         if (revH3) revH3.textContent = 'Receita — Cotação / Consultoria / Negociação / BID / Ganho';
-        if (revP)  revP.innerHTML = 'Para as etapas com fatura definida, a receita mensal é calculada a partir da <strong>primeira fatura</strong> e do <strong>modelo de remuneração</strong>.';
+        if (revP)  revP.innerHTML = 'Para as etapas com fatura definida, a receita mensal vem da <strong>primeira fatura</strong> e do <strong>modelo de remuneração</strong>. Início da receita (Cotação/Consultoria/Negociação): <strong>Corretagem → vigência + 2 meses</strong>; <strong>Fee por vida → data prevista + 2 meses</strong>. BID é travado por etapa (Negociação → out/2026, Proposta → jun/2027).';
       } else if (locked) {
         const isDiag = (locked === 'Diagnóstico');
         const isMql  = (locked === 'Reunião Agendada');
@@ -2632,13 +2640,23 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
         if (probH3) probH3.textContent = isBid ? 'Probabilidade (BID)' : 'Probabilidade da etapa';
         if (probP)  probP.innerHTML = isBid
           ? 'BID: probabilidade fixa e baixa (~0,5%) — premissa conservadora para <strong>não contar com esse dinheiro no curto prazo</strong>. O mês de início da receita é <strong>travado por etapa</strong>: <strong>Negociação → outubro/2026</strong> e <strong>Proposta Enviada → junho/2027</strong> (exibido na coluna <span style="color:#f85149">Dt. Receita</span>, em vermelho).'
+          : isDiag
+          ? 'Probabilidade do <strong>Diagnóstico</strong>: <strong>fixa em 6%</strong> — não é derivada do funil nem ajustada pela probabilidade informada pelo AE (premissa conservadora de topo de funil).'
+          : isMql
+          ? 'Probabilidade do <strong>MQL (Reunião Agendada)</strong>: taxa de conversão <strong>ao vivo do funil</strong> — deals que entraram em Reunião Agendada e chegaram à Implantação. Aplica-se aos deals individuais <strong>e</strong> à projeção de originação dos BDRs.'
           : `Probabilidade da etapa <strong>${esc(locked)}</strong>: taxa de conversão <strong>ao vivo do funil</strong> — deals que chegaram à Implantação ÷ deals que entraram na etapa (combinado Vendas+Bid, amostra mínima 20; etapas com amostra menor usam o valor padrão). Pode ser sobrescrita manualmente em Configurações.`;
         if (secDiag) secDiag.style.display = isDiag ? '' : 'none';            // receita por vidas (Cintia)
         if (secMql)  secMql.style.display  = isMql ? '' : 'none';             // receita por vidas × R$24, +15m
         if (secRev)  secRev.style.display  = (isDiag || isMql) ? 'none' : ''; // receita por prêmio/modelo
         if (!isDiag && !isMql) {
           if (revH3) revH3.textContent = isBid ? 'Receita — BID' : `Receita — ${locked}`;
-          if (revP)  revP.innerHTML = 'Nesta etapa a receita mensal é calculada a partir da <strong>primeira fatura</strong> e do <strong>modelo de remuneração</strong>' + (isBid ? ', ponderada pela probabilidade fixa de BID (~0,5%). O início da receita é travado por etapa: <strong>Negociação → out/2026</strong> e <strong>Proposta Enviada → jun/2027</strong>.' : '.');
+          if (revP) {
+            let _rev = 'Nesta etapa a receita mensal é calculada a partir da <strong>primeira fatura</strong> e do <strong>modelo de remuneração</strong>';
+            if (isBid) _rev += ', ponderada pela probabilidade fixa de BID (~0,5%). O início da receita é travado por etapa: <strong>Negociação → out/2026</strong> e <strong>Proposta Enviada → jun/2027</strong>.';
+            else if (['Cotação', 'Consultoria', 'Negociação'].indexOf(locked) !== -1) _rev += '. O <strong>início da receita</strong> depende do modelo: <strong>Corretagem → data de vigência + 2 meses</strong>; <strong>Fee por vida → data prevista de receita + 2 meses</strong>; sem modelo definido, usa a data prevista de receita.';
+            else _rev += '.';
+            revP.innerHTML = _rev;
+          }
         }
       } else {
         if (probH3) probH3.textContent = 'Probabilidade por etapa';
@@ -3793,7 +3811,19 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
         const rec = vidas * 24;
         return MONTHS.map(m => { if (probAdj == null) return null; const diff = (m.y - revStart.y) * 12 + (m.mo - revStart.mo); if (diff < 0) return null; return { val: rec * probAdj, rec: rec, probAdj: probAdj, n: diff + 1 }; });
       }
-      const revStart = parseRevenueDate(d.data_prevista_para_receita);
+      // Cotação / Consultoria / Negociação: o início da receita depende do modelo de remuneração.
+      //   • Corretagem   → data de VIGÊNCIA + 2 meses
+      //   • Fee por vida → data PREVISTA de receita + 2 meses
+      //   • sem modelo   → data prevista de receita (comportamento padrão)
+      let revStart;
+      if (['Cotação', 'Consultoria', 'Negociação'].indexOf(d.stage) !== -1) {
+        const modelo = (d.modelo_remuneracao || '').toLowerCase();
+        if (modelo.indexOf('corretagem') !== -1)   revStart = _fcAddMonths(parseRevenueDate(d.vigencia), 2);
+        else if (modelo.indexOf('fee') !== -1)      revStart = _fcAddMonths(parseRevenueDate(d.data_prevista_para_receita), 2);
+        else                                        revStart = parseRevenueDate(d.data_prevista_para_receita);
+      } else {
+        revStart = parseRevenueDate(d.data_prevista_para_receita);
+      }
       return MONTHS.map(m => { if (!revStart || probAdj == null) return null; const diff = (m.y - revStart.y) * 12 + (m.mo - revStart.mo); if (diff < 0 || diff > 23) return null; const n = diff + 1; const rec = calcReceita(n, d); if (rec == null) return null; return { val: rec * probAdj, rec: rec, probAdj: probAdj, n: n }; });
     }
     function render(deals) {
@@ -3839,7 +3869,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
             const diff = (m.y - c.revStart.y) * 12 + (m.mo - c.revStart.mo);
             if (diff < 0) return;
             _bdrReal[i] += c.rec;
-            _bdrProb[i] += c.rec * FC_WIN_RATE;
+            _bdrProb[i] += c.rec * _fcMqlConv();
           });
         });
         MONTHS.forEach((m, i) => { mRealTotals[i] += _bdrReal[i]; mTotals[i] += _bdrProb[i]; });  // entra no TOTAL
@@ -4210,7 +4240,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
         _fcBdrCohorts().forEach(c => MONTHS.forEach((m, i) => {
           const diff = (m.y - c.revStart.y) * 12 + (m.mo - c.revStart.mo);
           if (diff < 0) return;
-          real[i] += c.rec; prob[i] += c.rec * FC_WIN_RATE;
+          real[i] += c.rec; prob[i] += c.rec * _fcMqlConv();
         }));
       }
       return { real, prob };
