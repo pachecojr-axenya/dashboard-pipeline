@@ -3540,7 +3540,13 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
         const _won = _scoped.filter(d => d.stage === 'Ganho').length;
         const _lost = _scoped.filter(d => d.stage === 'Perdido').length;
         FC_WIN_RATE = (_won + _lost) > 0 ? _won / (_won + _lost) : 0;
-        allScopedDeals = _scoped.filter(d => d.stage !== 'Perdido');  // todas as etapas (sem perdidos) | base do dedup global
+        // Receita realizada/em implantação (Ganho, Implantação) é receita real e entra SEMPRE,
+        // independentemente da data de criação. O cutoff set/2025 vale só para o funil/pipeline
+        // (evita deals antigos importados distorcerem conversão), não para receita já fechada —
+        // sem isso, um deal ganho criado antes de set/2025 some do painel Ganho e do Overall.
+        const _isRealizada = d => d.stage === 'Ganho' || d.stage === 'Implantação';
+        allScopedDeals = data.deals.filter(d => d.stage !== 'Perdido'
+          && ((d.createdate && d.createdate >= '2025-09-01') || _isRealizada(d)));  // base do dedup global
         allDeals = FC_PANEL_STAGES ? allScopedDeals.filter(function(d){
           if (FC_PANEL_STAGES.indexOf(d.stage) === -1) return false;
           return FC_BID_MODE ? d.pipeline === 'Bid' : d.pipeline !== 'Bid';  // BID isola o pipeline Bid; demais painéis são Vendas
@@ -4893,7 +4899,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
   for(var i=0;i<PANELS.length;i++){ if(p2===PANELS[i].url||p2.indexOf(PANELS[i].file)!==-1){ current=PANELS[i].url; break; } }
   function dot(h){ var tt={g:'live',y:'wip',r:'not working'}; var t=tt[h]||''; return '<span class="health-dot '+h+'" title="'+t+'" aria-label="'+t+'"></span>'; }
   function svgFor(p){ return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+p.icon+'</svg>'; }
-  window.toggleForecastAccordion=function(e){ if(e){e.stopPropagation();} var ul=document.querySelector('.nav-menu'); if(!ul) return; var collapsed=ul.classList.toggle('nav-group-collapsed'); var ch=document.getElementById('fc-acc-chevron'); if(ch) ch.classList.toggle('open', !collapsed); };
+  window.toggleForecastAccordion=function(e){ if(e){e.stopPropagation();e.preventDefault();} var ul=document.querySelector('.nav-menu'); if(!ul) return; var collapsed=ul.classList.toggle('nav-group-collapsed'); var ch=document.getElementById('fc-acc-chevron'); if(ch) ch.classList.toggle('open', !collapsed); };
   function buildNav(){
     var nav=document.getElementById('nav-drawer'); if(!nav) return;
     var h='<div class="nav-drawer-header"><span class="nav-drawer-brand">Dashboard Axenya</span>'+
@@ -4903,12 +4909,12 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       var p=PANELS[i];
       if(p.sec) h+='<li style="list-style:none;padding:.85rem 1.25rem .3rem;margin-top:.35rem;border-top:1px solid var(--border);font-size:.64rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text2)">'+p.sec+'</li>';
       var _accCh = p.acc ? '<span id="fc-acc-chevron" class="nav-acc-chevron" onclick="toggleForecastAccordion(event)" title="Mostrar/ocultar etapas"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>' : '';
-      h+='<li class="nav-item'+(p.sub?' nav-sub':'')+(p.acc?' nav-acc':'')+(p.url===current?' active':'')+'" data-url="'+p.url+'">'+svgFor(p)+'<span>'+p.label+'</span>'+dot(p.health)+_accCh+'</li>';
+      h+='<li><a class="nav-item'+(p.sub?' nav-sub':'')+(p.acc?' nav-acc':'')+(p.url===current?' active':'')+'" href="'+p.url+'" data-url="'+p.url+'" style="text-decoration:none">'+svgFor(p)+'<span>'+p.label+'</span>'+dot(p.health)+_accCh+'</a></li>';
     }
     h+='</ul>'+'<div class="nav-drawer-footer"><button class="nav-foot-btn" type="button" onclick="logout()" title="Sair" aria-label="Sair"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button><button class="nav-foot-btn" type="button" onclick="toggleTheme()" title="Tema / Theme"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></button></div>';
     nav.innerHTML=h;
     var nit=nav.getElementsByClassName('nav-item');
-    for(var j=0;j<nit.length;j++){ nit[j].addEventListener('click',function(){ window.location.href=this.getAttribute('data-url'); }); }
+    /* itens do menu sao <a href>: clique normal navega; ctrl/meio/botao-direito abrem em nova aba */
     (function(){ var ul=nav.querySelector('.nav-menu'); if(!ul) return; var inGroup=false; for(var k=0;k<PANELS.length;k++){ if((PANELS[k].acc||PANELS[k].sub)&&PANELS[k].url===current){ inGroup=true; break; } } if(!inGroup) ul.classList.add('nav-group-collapsed'); var ch=document.getElementById('fc-acc-chevron'); if(ch&&inGroup) ch.classList.add('open'); })();
   }
   function buildDropdown(){
@@ -4916,11 +4922,11 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
     var html='';
     for(var i=0;i<PANELS.length;i++){
       var p=PANELS[i], act=(p.url===current?' active':'');
-      html+='<div class="panel-dd-item'+act+'" role="menuitem" data-url="'+p.url+'">'+svgFor(p)+'<span>'+p.label+'</span>'+dot(p.health)+'</div>';
+      html+='<a class="panel-dd-item'+act+'" role="menuitem" href="'+p.url+'" data-url="'+p.url+'" style="text-decoration:none">'+svgFor(p)+'<span>'+p.label+'</span>'+dot(p.health)+'</a>';
     }
     dd.innerHTML=html;
     var items=dd.getElementsByClassName('panel-dd-item');
-    for(var j=0;j<items.length;j++){ items[j].addEventListener('click',function(){ window.location.href=this.getAttribute('data-url'); }); }
+    /* itens do dropdown sao <a href>: suportam abrir em nova aba */
   }
   function buildTitleDot(){
     var btn=document.querySelector('.panel-switch-btn');
