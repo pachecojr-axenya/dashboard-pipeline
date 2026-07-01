@@ -1595,3 +1595,8 @@ Registro curto, uma linha por interação (a cada alteração).
 - **#1 C08 (bug de receita):** deixou de usar `_annualRev` (= arr_estimado / prêmio×12, que inflava corretagem → bruto 225,6M) e passou a usar a MESMA mecânica por deal do forecast (`_novoFcRuleMonthValue`/`_novoFcBidMonthValue`, regras da Cintia, janela de projeção; `weighted` interno). Agora bate com o forecast para os deals de pipe+bid.
 - **#2 C08:** nº de dias considerados (span da janela de projeção) ao lado do título.
 - **#3 (diagnóstico, sem mudança):** CRO ativo conta 17 Bid (Neg 2 + Proposta 3 + **Reunião Pré-RFP 11** + Consultoria 1); Forecast conta 7 (Neg 2 + Proposta 3 + Consultoria 1 + Standby 1). Diferença = o CRO inclui **Reunião Pré-RFP** (11) como ativo e exclui Standby; o Forecast exclui Pré-RFP (Cintia zera pré-RFP) e inclui Standby. Aguardando decisão de reconciliação.
+
+### CRO | C08 vira TCV do Pipe por Bucket (2026-07-01)
+
+- **C08 = TCV (12 meses) por deal, pela régua real**, distribuído por bucket de Receita e de Vidas, bruto × ponderado. `_novoDealTcv(d)` = Σ calcReceitaMes(1..12) (Diagnóstico = vidas × R$/vida × 12); inclui a corretagem de entrada (é TCV, não ACV). Período FECHADO por deal (independe de quando cai no calendário), resolvendo a perda de recorrência da régua-no-calendário. Deixou de usar arr_estimado (inflado, 139M/225M).
+- Total: ~65,0M bruto (132 deals). Responde a pergunta do CRO: "quanto tenho a receber no pipe e quanto cada bucket representa". Título vira "TCV do Pipe por Bucket"; tooltips/ficha PT-EN atualizados. NOVO_TCV_MESES=12 (regra da Cintia); trocar p/ 24 se quiser 2 anos.

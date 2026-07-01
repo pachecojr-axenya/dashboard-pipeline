@@ -999,7 +999,7 @@ var NOVO_I18N = {
     vf_by_revenue:'Receita', vf_by_lives:'Vidas', vf_by_stage:'Etapa', vf_by_segment:'Segmento',
     t_stageval:'🟡 Valor do Pipeline por Etapa',
     tip_stageval:'Soma da receita anual estimada por etapa. "Ponderado" multiplica pela probabilidade de ganho da etapa POR PIPELINE (C07, ao vivo do funil; cada deal usa a taxa do seu pipeline), ajustável em ⚙. Inclui os pipelines Vendas + Bid.',
-    tip_revbkt:'Dois donuts da RECEITA PREVISTA (ARR estimado): esquerda por bucket de Receita, direita por bucket de Vidas (faixas do C03). O toggle alterna Bruto (Σ ARR) × Ponderado (Σ ARR × probabilidade de ganho por pipeline, C07). Base: pipeline ativo (Vendas + Bid).',
+    tip_revbkt:'Dois donuts do TCV (valor do contrato em 12 meses pela régua real — inclui a corretagem de entrada; Diagnóstico = vidas × R$/vida × 12): esquerda por bucket de Receita, direita por bucket de Vidas (faixas do C03). Toggle alterna Bruto × Ponderado (× probabilidade de fechamento por pipeline, C07). Base: pipeline ativo (Vendas + Bid); só deals com TCV > 0.',
     t_segment:'Receita por Segmento',
     tip_segment:'Receita anual estimada (potencial) somada por segmento de tamanho do cliente (vidas). Inclui os pipelines Vendas + Bid.',
     // KPIs primários
@@ -1116,7 +1116,7 @@ var NOVO_I18N = {
     vf_by_revenue:'Revenue', vf_by_lives:'Lives', vf_by_stage:'Stage', vf_by_segment:'Segment',
     t_stageval:'🟡 Pipeline Value by Stage',
     tip_stageval:'Sum of estimated annual revenue per stage. "Weighted" multiplies by the stage win probability PER PIPELINE (C07, live from the funnel; each deal uses its own pipeline rate), editable in ⚙. Includes the Vendas + Bid pipelines.',
-    tip_revbkt:'Two donuts of FORECAST REVENUE (estimated ARR): left by Revenue bucket, right by Lives bucket (C03 tiers). The toggle switches Gross (Σ ARR) × Weighted (Σ ARR × per-pipeline win probability, C07). Base: active pipeline (Vendas + Bid).',
+    tip_revbkt:'Two donuts of TCV (12-month contract value from the real régua — includes the entry brokerage; Diagnóstico = lives × R$/life × 12): left by Revenue bucket, right by Lives bucket (C03 tiers). Toggle switches Gross × Weighted (× per-pipeline win probability, C07). Base: active pipeline (Vendas + Bid); only deals with TCV > 0.',
     t_segment:'Revenue by Segment',
     tip_segment:'Estimated annual revenue (potential) summed by customer-size segment (lives). Includes the Vendas + Bid pipelines.',
     // Primary KPIs
@@ -1276,12 +1276,12 @@ var NOVO_HELP_CHARTS = [
   },
   {
     key: 'revbkt',
-    title: 'Receita Prevista por Bucket',
-    desc: 'Dois donuts com a distribuição da receita prevista (ARR estimado): um por bucket de Receita e outro por bucket de Vidas (as mesmas faixas do C03). O toggle escolhe a métrica: Bruto = Σ ARR; Ponderado = Σ ARR × probabilidade de ganho por pipeline (C07). Base: pipeline ativo (Vendas + Bid).',
+    title: 'TCV do Pipe por Bucket',
+    desc: 'Dois donuts com a distribuição do TCV (valor do contrato em 12 meses pela régua real, incluindo a corretagem de entrada): um por bucket de Receita, outro por bucket de Vidas (faixas do C03). O toggle escolhe a métrica: Bruto = Σ TCV; Ponderado = Σ TCV × probabilidade de fechamento por pipeline (C07). É a receita que a Axenya tem a receber no pipe, e quanto cada bucket representa. Diagnóstico usa vidas × R$/vida × 12. Base: pipeline ativo (Vendas + Bid); só deals com TCV > 0.',
     fields: [
-      ['arr_estimado', 'Receita anual do deal (fallback primeira_fatura × 12) distribuída no bucket.'],
-      ['vidas', 'Define o bucket no modo Vidas; a receita também depende da faixa PME/não-PME.'],
-      ['dealstage + pipeline', 'Peso da versão Ponderada = probabilidade de ganho da etapa do pipeline do deal (C07).'],
+      ['primeira_fatura + modelo_remuneracao', 'Régua da receita (calcReceitaMes); TCV = soma dos 12 primeiros meses, com a entrada da corretagem.'],
+      ['vidas', 'Bucket no modo Vidas; no Diagnóstico o TCV = vidas × R$/vida × 12.'],
+      ['dealstage + pipeline', 'Peso da versão Ponderada = probabilidade de fechamento da etapa do pipeline do deal (C07).'],
     ],
   },
   {
@@ -2908,7 +2908,7 @@ function _novoRevBucketsCard() {
   var L = NOVO_LANG === 'en';
   var _col = function(lbl, cid){ return '<div style="flex:1;min-width:260px"><div style="text-align:center;font-size:.8rem;font-weight:600;color:var(--text2);margin-bottom:.3rem">'+lbl+'</div><canvas id="'+cid+'" style="max-height:300px"></canvas></div>'; };
   return '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header" style="flex-wrap:wrap;gap:.5rem">' +
-    '<h3>' + (L?'Forecast Revenue by Bucket':'Receita Prevista por Bucket') + '<span id="novo-revbkt-count" style="font-size:.68rem;color:var(--text2);font-weight:600;margin-left:.4rem;white-space:nowrap"></span></h3>' +
+    '<h3>' + (L?'Pipe TCV by Bucket':'TCV do Pipe por Bucket') + '<span id="novo-revbkt-count" style="font-size:.68rem;color:var(--text2);font-weight:600;margin-left:.4rem;white-space:nowrap"></span></h3>' +
     _infoBtn(t('tip_revbkt'), 'revbkt') +
     _subTabs('novo-revbkt-tabs', _novoRevBktMode, [{mode:'bruto',label:(L?'Gross':'Bruto'),fn:'novoSwitchRevBkt'},{mode:'ponderado',label:(L?'Weighted':'Ponderado'),fn:'novoSwitchRevBkt'}]) +
     '</div>' +
@@ -2918,24 +2918,27 @@ function _novoRevBucketsCard() {
     '</div>' +
   '</div>';
 }
-// Receita prevista de um deal pela MESMA mecânica do forecast (regras da Cintia, N06B):
-// soma o valor mensal por deal na janela de projeção. weighted=false → bruto; true → ponderado
-// (usa _calcProbInfo internamente). Bid usa a régua de Bid (pré-RFP zerado).
-function _novoDealFcRev(d, weighted){
-  var months = _novoProjectionMonthsToDec27();
-  var fn = (d.pipeline === 'Bid') ? _novoFcBidMonthValue : _novoFcRuleMonthValue;
-  var s=0; for (var i=0;i<months.length;i++){ var v=fn(d, months[i], weighted); if(v>0) s+=v; } return s;
+// TCV (Total Contract Value) de um deal = valor do contrato em 12 meses pela régua real
+// (regra da Cintia: contrato = 12 meses; inclui a corretagem de entrada). Período FECHADO
+// por deal, independe de quando a receita cai no calendário. Diagnóstico: vidas × R$/vida × 12.
+var NOVO_TCV_MESES = 12;
+function _novoDealTcv(d){
+  if (d.stage === 'Diagnóstico'){ var v=d.vidas||0; return v>0 ? v*_novoFcDiagFee(v)*NOVO_TCV_MESES : 0; }
+  if (typeof calcReceitaMes !== 'function') return 0;
+  var s=0; for (var n=1;n<=NOVO_TCV_MESES;n++){ var r=calcReceitaMes(n,d); if(r) s+=r.total; } return s;
 }
 function buildNovoRevBuckets() {
   if (!document.getElementById('chart-novo-revbkt-receita')) return;
   var L = NOVO_LANG === 'en';
   var weighted = _novoRevBktMode === 'ponderado';
-  // Mesma base do forecast (N06B) por deal → os totais batem com o forecast.
-  var metric = function(d){ return _novoDealFcRev(d, weighted); };
-  var lbl = weighted ? (L?'weighted fc':'fc ponderada') : (L?'gross fc':'fc bruta');
-  var mt  = weighted ? (L?'Weighted':'Ponderada') : (L?'Gross':'Bruta');
-  // Considera SÓ deals com receita prevista > 0 → donut, modal ('Todos') e contagem batem.
-  var considered = function(){ return _novoActiveChartDeals().filter(function(d){ return _novoDealFcRev(d, false) > 0; }); };
+  // TCV 12m por deal; ponderado usa a probabilidade final (mesma do forecast).
+  var metric = weighted
+    ? function(d){ var p=_calcProbInfo(d).final; return _novoDealTcv(d)*(p==null?0:p); }
+    : function(d){ return _novoDealTcv(d); };
+  var lbl = weighted ? (L?'weighted TCV':'TCV ponderado') : (L?'gross TCV':'TCV bruto');
+  var mt  = weighted ? (L?'Weighted':'Ponderado') : (L?'Gross':'Bruto');
+  // Considera SÓ deals com TCV > 0 → donut, modal ('Todos') e contagem batem.
+  var considered = function(){ return _novoActiveChartDeals().filter(function(d){ return _novoDealTcv(d) > 0; }); };
   var _cc = document.getElementById('novo-revbkt-count');
   if (_cc) { _cc.textContent = considered().length.toLocaleString('pt-BR') + (L?' deals considered':' deals considerados'); }
   buildSharedSizeDonut('chart-novo-revbkt-receita', considered, {
