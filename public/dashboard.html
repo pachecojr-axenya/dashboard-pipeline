@@ -1086,7 +1086,7 @@ var NOVO_I18N = {
     t_receivables:'🟡 Timeline de Recebíveis Estimados',tip_receivables:'ARR ÷ 12 dos deals abertos por mês da data prevista de receita.',
     t_risktriage:'🟡 Triagem de Risco | Top 20 Deals',tip_risktriage:'Top 20 deals mais arriscados: vidas, ARR, tempo em aberto, etapa inicial.',
     lbl_all_time:'Todo período',lbl_last90:'Últ. 90d',lbl_last30:'Últ. 30d',
-    fnl_title:'Funil de Conversão Histórico', fnl_tip:'Quantos deals únicos entraram em cada etapa dos pipelines Vendas e Bid desde a data selecionada | taxas de conversão entre etapas adjacentes.', fnl_both:'Ambos', fnl_since:'Desde', fnl_custom:'Personalizar', fnl_load:'Carregar', fnl_loading_sub:'Pode levar 15–30s para pipelines com 1.000+ deals', cfg_title:'Configurações', cfg_meta:'Meta Receita Ganha (Anual)', active_meetings_label:'Ativos incluem Reunião Agendada', active_meetings_tip:'Quando ligado, Pipeline Ativo, P08 e gráficos C01/C02/C05/C07/C08 incluem deals em Reunião Agendada. Quando desligado, Reunião Agendada fica fora de negócios ativos.',
+    fnl_title:'Funil de Conversão Histórico', fnl_tip:'Quantos deals únicos entraram em cada etapa dos pipelines Vendas e Bid desde a data selecionada | taxas de conversão entre etapas adjacentes.', fnl_both:'Ambos', fnl_since:'Desde', fnl_custom:'Personalizar', fnl_load:'Carregar', fnl_loading_sub:'Pode levar 15–30s para pipelines com 1.000+ deals', cfg_title:'Configurações', cfg_meta:'Meta Receita Ganha (Anual)', active_meetings_label:'Ativos incluem Reunião Agendada e Pré-RFP', active_meetings_tip:'Quando ligado, Pipeline Ativo, P08 e gráficos C01/C02/C05/C07/C08 incluem as reuniões de topo de funil dos dois pipes: Reunião Agendada (Vendas) e Reunião Pré-RFP (Bid). Quando desligado, as duas ficam fora de negócios ativos.',
     active_standby_label:'Ativos incluem Standby', active_standby_tip:'Quando ligado, Pipeline Ativo (P09) e os gráficos de pipeline ativo passam a incluir deals em Standby. Quando desligado (padrão), Standby fica fora de negócios ativos.',
     lbl_set_target:'Definir Meta',lbl_days:'Dias',lbl_risk_score:'Score de Risco',lbl_no_funnel:'Carregue o funil histórico primeiro.',
   },
@@ -1203,7 +1203,7 @@ var NOVO_I18N = {
     t_receivables:'🟡 Estimated Receivables Timeline',tip_receivables:'ARR ÷ 12 of open deals grouped by expected revenue month.',
     t_risktriage:'🟡 Deal Risk Triage (Top 20)',tip_risktriage:'Top 20 riskiest deals by computed score: lives, ARR, time open, early stage.',
     lbl_all_time:'All time',lbl_last90:'Last 90d',lbl_last30:'Last 30d',
-    fnl_title:'Historical Conversion Funnel', fnl_tip:'How many unique deals entered each stage of the Sales and Bid pipelines since the selected date | conversion rates between adjacent stages.', fnl_both:'Both', fnl_since:'Since', fnl_custom:'Custom', fnl_load:'Load', fnl_loading_sub:'May take 15–30s for pipelines with 1,000+ deals', cfg_title:'Settings', cfg_meta:'Won Revenue Target (Annual)', active_meetings_label:'Active includes Scheduled Meeting', active_meetings_tip:'When on, Active Pipeline, P08 and charts C01/C02/C05/C07/C08 include deals in Reunião Agendada. When off, Reunião Agendada is excluded from active deals.',
+    fnl_title:'Historical Conversion Funnel', fnl_tip:'How many unique deals entered each stage of the Sales and Bid pipelines since the selected date | conversion rates between adjacent stages.', fnl_both:'Both', fnl_since:'Since', fnl_custom:'Custom', fnl_load:'Load', fnl_loading_sub:'May take 15–30s for pipelines with 1,000+ deals', cfg_title:'Settings', cfg_meta:'Won Revenue Target (Annual)', active_meetings_label:'Active includes Scheduled Meeting & Pré-RFP', active_meetings_tip:'When on, Active Pipeline, P08 and charts C01/C02/C05/C07/C08 include both top-of-funnel meeting stages: Reunião Agendada (Sales) and Reunião Pré-RFP (Bid). When off, both are excluded from active deals.',
     active_standby_label:'Active includes Standby', active_standby_tip:'When on, Active Pipeline (P09) and active-pipeline charts include deals in Standby. When off (default), Standby is excluded from active deals.',
     lbl_set_target:'Set Target',lbl_days:'Days',lbl_risk_score:'Risk Score',lbl_no_funnel:'Load the historical funnel first.',
   }
@@ -2600,11 +2600,13 @@ function _syncActiveStandbyToggle() {
   if (lbl) lbl.textContent = t('active_standby_label');
 }
 function _novoIsWon(d) { var s = d.stage; return s === 'Ganho' || (_novoImplWon && s === 'Implantação'); }
-function _novoIsOpen(d) { return !_novoIsWon(d) && d.stage !== 'Perdido' && (_novoActiveMeetings || d.stage !== 'Reunião Agendada') && (_novoActiveStandby || (d.stage !== 'Standby' && d.stage !== 'Stand by')); }
+// Reuniões de topo de funil dos DOIS pipes: Reunião Agendada (Vendas) e Reunião Pré-RFP (Bid).
+function _novoIsMeetingStage(d) { return d.stage === 'Reunião Agendada' || d.stage === 'Reunião Pré-RFP'; }
+function _novoIsOpen(d) { return !_novoIsWon(d) && d.stage !== 'Perdido' && (_novoActiveMeetings || !_novoIsMeetingStage(d)) && (_novoActiveStandby || (d.stage !== 'Standby' && d.stage !== 'Stand by')); }
 function _novoIsActivePipelineDeal(d) {
   var s = _stageNorm(d.stage);
   if (d.stage === 'Ganho' || d.stage === 'Perdido' || (s === 'Standby' && !_novoActiveStandby) || d.stage === 'Implantação') return false;
-  if (!_novoActiveMeetings && d.stage === 'Reunião Agendada') return false;
+  if (!_novoActiveMeetings && _novoIsMeetingStage(d)) return false;
   return true;
 }
 // ── Filtro global (híbrido por desfecho) ────────────────────────────────────────
