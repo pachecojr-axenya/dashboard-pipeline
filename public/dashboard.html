@@ -3970,15 +3970,55 @@ if (typeof ForecastEngine !== 'undefined') {
 if (typeof FaturamentoManual !== 'undefined') {
   FaturamentoManual.config({ dealId: _novoFcDealId });
 }
-// probAdj por deal, idêntico ao /forecast: Ganho/Implantação = 100%; Diagnóstico fixo 6%;
-// demais = probabilidade da etapa (funil por pipeline) + ajuste do AE (_calcProbInfo).
+// Defaults de probabilidade do /forecast (NÃO os do dashboard) — usados só aqui, para o N06B
+// espelhar o Forecast Overall quando a amostra do funil de uma etapa é < 20.
+var NOVO_FC_STAGE_PROB_DEFAULT = { 'Reunião Agendada':0.06, 'Cotação':0.185790008, 'Proposta Enviada':0.285, 'Consultoria':0.284954, 'Negociação':0.493, 'Implantação':0.8, 'Ganho':1.0, 'Standby':0.12, 'Diagnóstico':0.06 };
+// Prob. de etapa do jeito do /forecast: funil por pipeline (C07) senão o default do /forecast.
+function _novoFcStageProbForwd(stage, pipeline){
+  var pk = pipeline==='Bid' ? 'bid' : 'vendas';
+  var fp = NOVO_FUNNEL_PROB_PIPE && NOVO_FUNNEL_PROB_PIPE[pk];
+  if (fp && fp[stage]!=null) return fp[stage];
+  return NOVO_FC_STAGE_PROB_DEFAULT[stage];
+}
+// probAdj por deal, IDÊNTICO ao calcProbInfo do /forecast: Diagnóstico fixo 6%; demais =
+// prob da etapa (funil/default do /forecast) com ajuste do AE (±10% se |cp-sp|>=30pp);
+// sp nulo → null (deal não entra, igual ao /forecast). Ganho/Impl. NÃO são forçados a 100%
+// (pegam o default 1.0/0.8); o faturamento manual já cobre os ganhos que estão faturando.
 function _novoFcProbAdj(d){
-  if (_novoIsWon(d)) return 1;
   if (d.stage==='Diagnóstico') return 0.06;
-  var p=_calcProbInfo(d).final; return p==null?0:p;
+  var sp = _novoFcStageProbForwd(d.stage, d.pipeline);
+  if (sp == null) return null;
+  var cp = d.probabilidade;
+  if (cp == null) return sp;
+  if (cp <= sp - 0.3) return sp*0.9;
+  if (cp >= sp + 0.3) return sp*1.1;
+  return sp;
 }
 // Conversão MQL (Reunião Agendada) que probabiliza os cohorts BDR — igual ao _fcMqlConv.
-function _novoFcMqlConv(){ var p=_novoStageProbFor('Reunião Agendada','Vendas'); return p==null?0:p; }
+function _novoFcMqlConv(){ var p=_novoFcStageProbForwd('Reunião Agendada','Vendas'); return p==null?0:p; }
+// Conjunto de deals do /forecast: negócio novo (createdate>=set/25) OU Ganho/Impl. OU Bid desde jan/25.
+function _novoFcInForecastSet(d){
+  return (d.createdate && d.createdate >= '2025-09-01')
+    || _novoIsWon(d)
+    || (d.pipeline === 'Bid' && d.createdate && d.createdate >= '2025-01-01');
+}
+// Dedup Fee×Corretagem (chave sem o modelo no nome) — zera a receita do gêmeo excluído.
+function _novoFcDedupKey(n){ return String(n||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/novo\(a\)\s*deal/g,' ').replace(/fii\s*por\s*vida/g,' ').replace(/fee\s*por\s*vida/g,' ').replace(/corretagem/g,' ').replace(/\bfee\b/g,' ').replace(/[-–—|]/g,' ').replace(/\s+/g,' ').trim(); }
+var _NOVO_FC_RANK = { 'Reunião Agendada':0,'Diagnóstico':1,'Cotação':2,'Proposta Enviada':3,'Consultoria':4,'Negociação':5,'Implantação':6,'Ganho':7 };
+function _novoFcTcv12(d){ var s=0; for(var n=1;n<=12;n++){ var r=(typeof calcReceitaMes==='function')?calcReceitaMes(n,d):null; if(r) s+=r.total; } return s; }
+function _novoFcRevExcluded(list){
+  var groups={}; list.forEach(function(d){ var k=_novoFcDedupKey(d.dealname); if(k){ (groups[k]=groups[k]||[]).push(d); } });
+  var excl={};
+  Object.keys(groups).forEach(function(k){
+    var g=groups[k]; if(g.length<2) return;
+    var hasFee=g.some(function(d){ return /fee/i.test(d.modelo_remuneracao||''); });
+    var hasCorr=g.some(function(d){ return /corretagem/i.test(d.modelo_remuneracao||''); });
+    if(!(hasFee&&hasCorr)) return;
+    var sorted=g.slice().sort(function(a,b){ var ra=_NOVO_FC_RANK[a.stage]||0, rb=_NOVO_FC_RANK[b.stage]||0; if(ra!==rb) return rb-ra; var ta=_novoFcTcv12(a), tb=_novoFcTcv12(b); if(ta!==tb) return ta-tb; return String(b.vigencia||'').localeCompare(String(a.vigencia||'')); });
+    for(var i=1;i<sorted.length;i++){ excl[_novoFcDealId(sorted[i])]=true; }
+  });
+  return { has:function(id){ return !!excl[id]; } };
+}
 // Clone raso do deal com outra data de receita (para a imputação do Bid, sem mutar o global).
 function _novoDealWithDate(d, ymd){ var o={}; for(var k in d){ if(Object.prototype.hasOwnProperty.call(d,k)) o[k]=d[k]; } o.data_prevista_para_receita=ymd; return o; }
 // Imputação de data do Bid, idêntica ao /forecast (régua de receita fixa por etapa).
@@ -3988,9 +4028,14 @@ function _novoFcMonthIdx(ym){ var y=parseInt(ym.substring(0,4),10), mo=parseInt(
 
 function buildNovoPipeRev12B() {
   var active = (typeof _novoCurrentActivePipeline==='function') ? _novoCurrentActivePipeline() : (_novoDeals||[]);
-  var nonBid = active.filter(function(d){ return d.pipeline!=='Bid'; });   // pipeline concreto + Diagnóstico
-  var bid    = active.filter(function(d){ return d.pipeline==='Bid'; });   // pipeline de Bid (data imputada)
   var won    = (_novoDeals||[]).filter(function(d){ return _novoIsWon(d); }); // Ganho/Implantação
+  // Mesmo conjunto do /forecast: negócio novo (createdate>=set/25) OU Ganho OU Bid desde jan/25.
+  var considered = active.concat(won).filter(_novoFcInForecastSet);
+  // Dedup Fee×Corretagem: zera a receita do gêmeo excluído (igual ao /forecast).
+  var excl = _novoFcRevExcluded(considered);
+  var nonBid = considered.filter(function(d){ return d.pipeline!=='Bid' && !_novoIsWon(d); }); // pipe concreto + Diagnóstico
+  var bid    = considered.filter(function(d){ return d.pipeline==='Bid'  && !_novoIsWon(d); }); // pipeline de Bid (data imputada)
+  var wonC   = considered.filter(function(d){ return _novoIsWon(d); });                          // Ganho/Implantação
   var months = _novoProjectionMonthsToDec27();
   var th = _novoTheme();
 
@@ -4000,13 +4045,14 @@ function buildNovoPipeRev12B() {
   for (var k=0;k<months.length;k++){ var mk=months[k]; Rwon[mk]=0;Rpipe[mk]=0;Rbid[mk]=0;Rnew[mk]=0; Pwon[mk]=0;Ppipe[mk]=0;Pbid[mk]=0;Pnew[mk]=0; }
   var _accum = function(d, R, P){
     if (typeof ForecastEngine === 'undefined') return;
+    if (excl.has(_novoFcDealId(d))) return;   // gêmeo Fee×Corretagem excluído: receita zerada
     var arr = ForecastEngine.dealMonthly(d, _novoFcProbAdj(d));
     for (var i=0;i<months.length;i++){ var m=months[i]; var idx=_novoFcMonthIdx(m); if(idx<0) continue; var o=arr[idx]; if(!o) continue; if(o.rec>0) R[m]+=o.rec; if(o.val>0) P[m]+=o.val; }
   };
   nonBid.forEach(function(d){ _accum(d, Rpipe, Ppipe); });          // pipe concreto + Diagnóstico
   // Bid: imputa a data por etapa (Negociação→out/26, Proposta Enviada→jun/27), igual ao /forecast.
   bid.forEach(function(d){ var rd=NOVO_BID_IMPUTE[d.stage]; _accum(rd ? _novoDealWithDate(d, rd) : d, Rbid, Pbid); });
-  won.forEach(function(d){ _accum(d, Rwon, Pwon); });                // Ganho/Implantação (faturamento manual)
+  wonC.forEach(function(d){ _accum(d, Rwon, Pwon); });               // Ganho/Implantação (faturamento manual)
   // Topo de funil (novos negócios) = cohorts BDR (Real) × conversão MQL (Probabilizada).
   if (typeof ForecastEngine !== 'undefined') {
     var mqlConv = _novoFcMqlConv();
