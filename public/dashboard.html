@@ -1064,7 +1064,7 @@ var NOVO_I18N = {
     t_waterfall:'🟡 Fluxo Semanal | Criados · Ganhos · Perdidos',tip_waterfall:'Por semana (segunda a domingo): nº de deals criados, ganhos e perdidos, mais a linha de Δ líquido (criados − ganhos − perdidos = variação do pipeline aberto na semana). Últimas 13 semanas. Clique numa barra para ver os deals daquela semana. ⚠ Ganhos aparecem baixos porque o pipeline retém poucos deals ganhos.',
     t_netflow:'🟡 Fluxo Líquido de Vidas (Mensal)',tip_netflow:'Vidas de deals criados vs vidas de deals ganhos por mês. Saldo = crescimento do pipeline.',
     t_stageprog:'🟡 Progressão por Etapa (Deals)',tip_stageprog:'Taxa de conversão de uma etapa para a próxima derivada do funil cumulativo atual.',
-    t_cohort:'🟡 Maturidade por Coorte (Curva de Desfecho)',tip_cohort:'Cada linha é uma coorte (mês de criação). Mostra o % do total da coorte que atingiu o desfecho escolhido por mês desde a criação. Todos = Ganho ou Perdido. Só inclui coortes com 2+ meses de maturidade e pelo menos 20 deals. Alterne entre Deals e Vidas.',
+    t_cohort:'🟢 Maturidade por Coorte (Curva de Desfecho)',tip_cohort:'Cada linha é uma coorte (mês de criação). Mostra o % do total da coorte que atingiu o desfecho escolhido por mês desde a criação. Todos = Ganho ou Perdido. Só inclui coortes com 2+ meses de maturidade e pelo menos 20 deals. Alterne entre Deals e Vidas.',
     t_freshness:'Frescor de Engajamento (Deals Abertos)',tip_freshness:'Deals abertos por faixa de dias desde a última atividade (notes_last_updated) | identifica deals sem engajamento recente. O modal permite filtrar por faixa de engajamento.',
     t_passthru:'🟡 Taxa de Passagem por Etapa',tip_passthru:'% de deals que passam de cada etapa para a seguinte (baseado no funil cumulativo).',
     t_winratesize:'Taxa de Ganho por Tamanho do Deal',tip_winratesize:'Deals ganhos vs abertos por faixa de vidas | mostra onde a conversão é maior. Buckets sem dados são ocultados.',
@@ -1181,7 +1181,7 @@ var NOVO_I18N = {
     t_waterfall:'🟡 Weekly Flow | Created · Won · Lost',tip_waterfall:'Per week (Monday–Sunday): number of deals created, won and lost, plus the net Δ line (created − won − lost = open-pipeline change for the week). Last 13 weeks. Click a bar to see that week\'s deals. ⚠ Won looks low because the pipeline retains few won deals.',
     t_netflow:'🟡 Net Pipeline Flow (Lives)',tip_netflow:'Lives from newly created deals vs lives from won deals per month. Net = pipeline growth.',
     t_stageprog:'🟡 Stage Progression (Deals)',tip_stageprog:'Stage-to-stage conversion rates derived from the current open-deal funnel.',
-    t_cohort:'🟡 Cohort Maturity (Outcome Curve)',tip_cohort:'Each line is a cohort (creation month). Shows the % of the cohort that reached the chosen outcome by months since creation. All = Won or Lost. Only cohorts with 2+ months maturity and at least 20 deals are included. Toggle Deals vs Lives.',
+    t_cohort:'🟢 Cohort Maturity (Outcome Curve)',tip_cohort:'Each line is a cohort (creation month). Shows the % of the cohort that reached the chosen outcome by months since creation. All = Won or Lost. Only cohorts with 2+ months maturity and at least 20 deals are included. Toggle Deals vs Lives.',
     t_freshness:'Engagement Freshness (Open Deals)',tip_freshness:'Distribution of open deals by days since last activity (notes_last_updated) | identifies deals without recent engagement. The modal can filter by engagement bucket.',
     t_passthru:'🟡 Stage Pass-Through Rate',tip_passthru:'% of deals passing from each stage to the next (cumulative funnel ratios).',
     t_winratesize:'Win Rate by Deal Size',tip_winratesize:'Won vs open deals by lives bucket | shows where conversion is strongest. Empty buckets are hidden.',
@@ -3143,7 +3143,7 @@ var _COHORT_MONTHS_PT = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','
 function _cohortLabel(cm){ var p=cm.split('-'); return _COHORT_MONTHS_PT[parseInt(p[1])-1]+' '+p[0].slice(2); }
 function buildNovoCohortMaturity() {
   var th = _novoTheme();
-  var MAX_M = 6, MIN_AGE = 1, MIN_N = 1;
+  var MAX_M = 6, MIN_AGE = 2, MIN_N = 20;   // honra o tooltip: coortes com 2+ meses e 20+ deals
   var metric = _novoCohortMetric==='lives' ? 'lives' : 'deals';
   var weightOf = function(d){ return metric==='lives' ? (d.vidas||0) : 1; };
   var isOutcome = _novoCohortOutcome==='won'
