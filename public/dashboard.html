@@ -4835,9 +4835,6 @@ function novoRender() {
       _card(_titleWithCount(t('t_stageval'), _novoActiveChartDeals().filter(function(d){ return _novoDealTcv(d) > 0; }).length), t('tip_stageval'),
         _subTabs('novo-val-tabs', _novoValMode, [{mode:'raw',label:t('lbl_raw'),fn:'novoSwitchValMode'},{mode:'weighted',label:t('lbl_weighted'),fn:'novoSwitchValMode'}]),
         'chart-novo-stageval', 340, 'stageval') +
-      _card(_titleWithCount(t('t_segment'), activeCount), t('tip_segment'),
-        _subTabs('novo-seg-tabs', _novoSegMode, [{mode:'raw',label:t('lbl_raw'),fn:'novoSwitchSegMode'},{mode:'weighted',label:t('lbl_weighted'),fn:'novoSwitchSegMode'}]),
-        'chart-novo-segment', 320, 'segment') +
       _novoFunnelHorizCard() +
       _novoWinProbCard() +
 
@@ -4906,7 +4903,7 @@ function novoRender() {
   buildNovoSizeDonut();
   buildNovoRevBuckets();
   buildNovoStageVal();
-  buildNovoSegment();
+  // C05 (Receita por Segmento) removido — redundante com o C08 (TCV por bucket) e usava arr_estimado.
   if (_novoFunnelData && (_novoFunnelData.since !== _novoFunnelEffectiveSince() || ((_novoFunnelData.until || null) !== _novoFunnelEffectiveUntil()))) {
     _novoFunnelData = null;
     if (!_novoFunnelLoading) novoLoadFunnel();
@@ -5225,7 +5222,7 @@ function buildNovoWinProb() {
         datalabels: { anchor: 'end', align: 'end', color: th.cText, font: { family: NOVO_FONT, size: 10, weight: 'bold' }, formatter: function(v) { return v == null ? '' : v.toFixed(1).replace('.', ',') + '%'; } },
         tooltip: { callbacks: { label: function(c) { var n = (c.datasetIndex === 0 ? vN : bN)[c.dataIndex]; return c.dataset.label + ': ' + (c.parsed.y == null ? '—' : c.parsed.y.toFixed(1).replace('.', ',') + '%') + (n != null ? ' (n=' + n + ')' : ''); } } } },
       scales: { x: { grid: { display: false }, ticks: { color: th.cText, font: { family: NOVO_FONT, size: 10 } } },
-        y: { grid: { color: th.cGrid }, beginAtZero: true, max: 100, ticks: { color: th.cText2, font: { family: NOVO_FONT }, callback: function(v) { return v + '%'; } } } } } });
+        y: { grid: { color: th.cGrid }, beginAtZero: true, max: 40, ticks: { color: th.cText2, font: { family: NOVO_FONT }, callback: function(v) { return v + '%'; } } } } } });
 }
 
 function buildNovoFunnelHorizChart() {
