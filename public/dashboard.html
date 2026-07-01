@@ -1074,7 +1074,7 @@ var NOVO_I18N = {
     t_vidaswindow:'🟡 Distribuição de Vidas',tip_vidaswindow:'Deals ativos por faixa de vidas. Sem filtro local de data.',
     t_winfactor:'Taxa de Ganho por AE',tip_winfactor:'Taxa de ganho ajustada por AE: deals ganhos ÷ (deals ganhos + deals perdidos).',
     t_coverage:'🟡 Cobertura do Pipeline | Forecast vs Meta (negócio novo)',tip_coverage:'Cobertura de negócio novo (deals criados desde set/2025), horizonte de 18 meses: forecast mensal ÷ meta mensal (meta anual ÷ 12). Camadas: prêmio real (recorrente+pontual, motor compartilhado), Diagnóstico estimado por headcount (vidas × R$/vida × 6%) e topo de funil MQL agregado (vidas originadas × R$24 × win rate, +15m, onde a Reunião Agendada é absorvida). Rótulo × = cobertura total do mês. KPI de cobertura de pipe (prêmio aberto bruto) mede segurança (3–4× saudável). Ao lado do título aparece o nº de deals considerados (prêmio + Diagnóstico; o topo de funil MQL é agregado, não por deal). Por padrão o gráfico NÃO considera deals ganhos (Ganho/Implantação); marque o checkbox para incluí-los.',
-    t_piperev12b:'🟡 Forecast Total (Regras da Cintia)',tip_piperev12b:'Reproduz a linha 7 do forecast da Cintia (todos os blocos) com deals vivos do HubSpot. Linha azul = visão ingênua para contraste. Detalhes no i.',
+    t_piperev12b:'🟡 Forecast Total (Regras da Cintia)',tip_piperev12b:'Forecast total mês a mês (Ganho/Implantação + pipeline + Bid + novos negócios), pelo MESMO motor do /forecast. Linha verde = Receita Real (bruta); linha azul = Receita Probabilizada (× probabilidade de fechamento). Detalhes no i.',
     t_piperev12:'🟡 Valor do Pipeline (Projeção Mensal)',tip_piperev12:'Receita ou quantidade de deals por mês da data prevista de receita. A contagem mostra deals ativos com data prevista sobre o total de ativos P09. Considera pipes Vendas + Bid.',
     t_segdoughnut:'🟡 Receita por Segmento (Donut)',tip_segdoughnut:'ARR estimado total por segmento de tamanho de cliente (baseado em vidas).',
     t_visibility:'🟡 Visibilidade de Receita | Timeline',tip_visibility:'Quantidade de deals com data prevista de receita por mês.',
@@ -1191,7 +1191,7 @@ var NOVO_I18N = {
     t_vidaswindow:'🟡 Vidas Distribution by Bucket',tip_vidaswindow:'Active deals by lives band. No local date filter.',
     t_winfactor:'Win Rate by AE',tip_winfactor:'Adjusted win rate by AE: won deals ÷ (won deals + lost deals).',
     t_coverage:'🟡 Pipeline Coverage | Forecast vs Target (new business)',tip_coverage:'New-business coverage (deals created since Sep/2025), 18-month horizon: monthly forecast ÷ monthly target (annual target ÷ 12). Layers: real premium (recurring+one-time, shared engine), Diagnóstico estimated by headcount (lives × R$/life × 6%) and aggregate MQL top-of-funnel (originated lives × R$24 × win rate, +15m, where Reunião Agendada is absorbed). × label = total monthly coverage. A pipe-coverage KPI (raw open premium pipe) measures safety (3–4× healthy). The number of deals considered is shown next to the title (premium + Diagnóstico; the MQL top-of-funnel is aggregate, not per-deal). By default the chart does NOT consider won deals (Ganho/Implantação); check the box to include them.',
-    t_piperev12b:'🟡 Total Forecast (Cintia Rules)',tip_piperev12b:'Reproduces Cintia forecast row 7 (all blocks) with live HubSpot deals. Blue line = naive view for contrast. Details in the i.',
+    t_piperev12b:'🟡 Total Forecast (Cintia Rules)',tip_piperev12b:'Month-by-month total forecast (won/onboarding + pipeline + Bid + new business), same engine as /forecast. Green line = Real revenue (gross); blue line = Weighted revenue (× close probability). Details in the i.',
     t_piperev12:'🟡 Pipeline Value (Monthly Projection)',tip_piperev12:'Revenue or deal count by expected revenue month. Count shows active deals with expected revenue date over total active P09 deals. Considers Sales + Bid pipelines.',
     t_segdoughnut:'🟡 Revenue by Segment (Deal Size)',tip_segdoughnut:'Total estimated ARR by customer-size segment (based on lives).',
     t_visibility:'🟡 Revenue Visibility Timeline',tip_visibility:'Count of deals with expected revenue date by month.',
@@ -3987,83 +3987,62 @@ var NOVO_BID_IMPUTE = { 'Negociação':'2026-10-01', 'Proposta Enviada':'2027-06
 function _novoFcMonthIdx(ym){ var y=parseInt(ym.substring(0,4),10), mo=parseInt(ym.substring(5,7),10)-1, k=y*100+mo; for(var i=0;i<NOVO_FC_MONTHS.length;i++){ if(NOVO_FC_MONTHS[i].key===k) return i; } return -1; }
 
 function buildNovoPipeRev12B() {
-  var open = _novoPipeRevDeals();   // linha azul (ingênua) + modal de clique
-  var active = (typeof _novoCurrentActivePipeline==='function') ? _novoCurrentActivePipeline() : open;
+  var active = (typeof _novoCurrentActivePipeline==='function') ? _novoCurrentActivePipeline() : (_novoDeals||[]);
   var nonBid = active.filter(function(d){ return d.pipeline!=='Bid'; });   // pipeline concreto + Diagnóstico
-  var bid    = active.filter(function(d){ return d.pipeline==='Bid'; });   // bloco BID (linha 14)
-  var won    = (_novoDeals||[]).filter(function(d){ return _novoIsWon(d); }); // Ganho/Implantação (linha 11; respeita toggle)
+  var bid    = active.filter(function(d){ return d.pipeline==='Bid'; });   // pipeline de Bid (data imputada)
+  var won    = (_novoDeals||[]).filter(function(d){ return _novoIsWon(d); }); // Ganho/Implantação
   var months = _novoProjectionMonthsToDec27();
   var th = _novoTheme();
-  var isDeals = _novoPipeRevMetricB === 'deals';
-  var weighted = _novoPipeRevValueModeB === 'weighted';
 
-  // Linha verde = forecast total (linha 7 da Cintia): won/impl + pipe + bid + novos negócios.
-  var A={}, Bw={}, Bp={}, Bb={}, Bn={};
-  for (var k=0;k<months.length;k++){ A[months[k]]=0; Bw[months[k]]=0; Bp[months[k]]=0; Bb[months[k]]=0; Bn[months[k]]=0; }
-
-  if (isDeals) {
-    open.forEach(function(d){ var dm=d.data_prevista_para_receita?d.data_prevista_para_receita.substring(0,7):null; if(dm&&A[dm]!=null&&_novoInWin(d.data_prevista_para_receita)) A[dm]+=1; });
-    nonBid.forEach(function(d){ var sm=_novoFcRuleStartMonth(d); if(sm&&Bp[sm]!=null) Bp[sm]+=1; });
-    bid.forEach(function(d){ if(d.stage==='Reunião Pré-RFP')return; var sb=_novoFcRuleStart(d); if(sb&&Bb[sb]!=null) Bb[sb]+=1; });
-    won.forEach(function(d){ var sw=_novoFcWonStartMonth(d); if(sw&&Bw[sw]!=null) Bw[sw]+=1; });
-    // Novos negócios (topo de funil) são modelados em vidas/receita, não em contagem de deals.
-  } else {
-    // Linha azul (ingênua): pipe aberto na data_prevista × prob, para contraste. Inalterada.
-    open.forEach(function(d){ for (var i=0;i<months.length;i++){ var m=months[i]; var v=_novoPipeRevMonthValue(d, m, weighted); if(v>0) A[m]+=v; } });
-    // Linha verde = forecast total via ForecastEngine (mesmo motor do /forecast).
-    // Cada deal: Real = rec; Probabilizado = rec × probAdj. Ganho usa faturamento manual.
-    var pick = function(o){ return weighted ? o.val : o.rec; };
-    var _accum = function(d, bucket){
-      if (typeof ForecastEngine === 'undefined') return;
-      var arr = ForecastEngine.dealMonthly(d, _novoFcProbAdj(d));
-      for (var i=0;i<months.length;i++){ var m=months[i]; var idx=_novoFcMonthIdx(m); if(idx<0) continue; var o=arr[idx]; if(!o) continue; var val=pick(o); if(val>0) bucket[m]+=val; }
-    };
-    nonBid.forEach(function(d){ _accum(d, Bp); });   // pipe concreto + Diagnóstico
-    // Bid: imputa a data por etapa (Negociação→out/26, Proposta Enviada→jun/27), igual ao /forecast.
-    bid.forEach(function(d){ var rd=NOVO_BID_IMPUTE[d.stage]; _accum(rd ? _novoDealWithDate(d, rd) : d, Bb); });
-    won.forEach(function(d){ _accum(d, Bw); });       // Ganho/Implantação (faturamento manual)
-    // Topo de funil (novos negócios) = cohorts BDR × conversão MQL, igual ao /forecast.
-    if (typeof ForecastEngine !== 'undefined') {
-      var mqlConv = _novoFcMqlConv();
-      ForecastEngine.bdrCohorts().forEach(function(c){
-        for (var i=0;i<months.length;i++){ var m=months[i]; var mo=parseInt(m.substring(5,7),10)-1, y=parseInt(m.substring(0,4),10);
-          var diff=(y-c.revStart.y)*12+(mo-c.revStart.mo); if(diff<0) continue;
-          Bn[m] += weighted ? c.rec*mqlConv : c.rec; }
-      });
-    }
+  // Duas linhas: Receita Real (bruta) e Receita Probabilizada, ambas do forecast total
+  // (won/impl + pipe + bid + novos negócios) via ForecastEngine — mesmo motor do /forecast.
+  var Rwon={},Rpipe={},Rbid={},Rnew={}, Pwon={},Ppipe={},Pbid={},Pnew={};
+  for (var k=0;k<months.length;k++){ var mk=months[k]; Rwon[mk]=0;Rpipe[mk]=0;Rbid[mk]=0;Rnew[mk]=0; Pwon[mk]=0;Ppipe[mk]=0;Pbid[mk]=0;Pnew[mk]=0; }
+  var _accum = function(d, R, P){
+    if (typeof ForecastEngine === 'undefined') return;
+    var arr = ForecastEngine.dealMonthly(d, _novoFcProbAdj(d));
+    for (var i=0;i<months.length;i++){ var m=months[i]; var idx=_novoFcMonthIdx(m); if(idx<0) continue; var o=arr[idx]; if(!o) continue; if(o.rec>0) R[m]+=o.rec; if(o.val>0) P[m]+=o.val; }
+  };
+  nonBid.forEach(function(d){ _accum(d, Rpipe, Ppipe); });          // pipe concreto + Diagnóstico
+  // Bid: imputa a data por etapa (Negociação→out/26, Proposta Enviada→jun/27), igual ao /forecast.
+  bid.forEach(function(d){ var rd=NOVO_BID_IMPUTE[d.stage]; _accum(rd ? _novoDealWithDate(d, rd) : d, Rbid, Pbid); });
+  won.forEach(function(d){ _accum(d, Rwon, Pwon); });                // Ganho/Implantação (faturamento manual)
+  // Topo de funil (novos negócios) = cohorts BDR (Real) × conversão MQL (Probabilizada).
+  if (typeof ForecastEngine !== 'undefined') {
+    var mqlConv = _novoFcMqlConv();
+    ForecastEngine.bdrCohorts().forEach(function(c){
+      for (var i=0;i<months.length;i++){ var m=months[i]; var mo=parseInt(m.substring(5,7),10)-1, y=parseInt(m.substring(0,4),10);
+        var diff=(y-c.revStart.y)*12+(mo-c.revStart.mo); if(diff<0) continue;
+        Rnew[m]+=c.rec; Pnew[m]+=c.rec*mqlConv; }
+    });
   }
 
-  // #2: janela fixa começando em Jan/2026 (sem trim) — alinha o N06B ao /forecast.
-
-  var dataA=[], dataB=[], cWon=[], cPipe=[], cBid=[], cNew=[];
+  var dataReal=[], dataProb=[], cWon=[], cPipe=[], cBid=[], cNew=[];
   months.forEach(function(m){
-    var a=A[m]||0, bw=Bw[m]||0, bp=Bp[m]||0, bb=Bb[m]||0, bn=Bn[m]||0, tot=bw+bp+bb+bn;
-    dataA.push(isDeals ? Math.round(a*10)/10 : Math.round(a));
-    dataB.push(isDeals ? Math.round(tot*10)/10 : Math.round(tot));
-    cWon.push(bw); cPipe.push(bp); cBid.push(bb); cNew.push(bn);
+    var real=(Rwon[m]||0)+(Rpipe[m]||0)+(Rbid[m]||0)+(Rnew[m]||0);
+    var prob=(Pwon[m]||0)+(Ppipe[m]||0)+(Pbid[m]||0)+(Pnew[m]||0);
+    dataReal.push(Math.round(real)); dataProb.push(Math.round(prob));
+    cWon.push(Rwon[m]||0); cPipe.push(Rpipe[m]||0); cBid.push(Rbid[m]||0); cNew.push(Rnew[m]||0);
   });
-  var yMax=null;
-  if (!isDeals){ var mx=0; for (var z=0;z<dataB.length;z++){ if(dataB[z]>mx)mx=dataB[z]; if(dataA[z]>mx)mx=dataA[z]; } yMax=mx; }
-  var fmt=function(v){ return isDeals ? (Math.round(v*10)/10) : _revShort(v); };
+  var yMax=0; for (var z=0;z<dataReal.length;z++){ if(dataReal[z]>yMax)yMax=dataReal[z]; if(dataProb[z]>yMax)yMax=dataProb[z]; }
   var L=NOVO_LANG==='en';
 
   _novoMkChart('chart-novo-piperev12b', { type:'line', plugins:[ChartDataLabels],
     data:{ labels:months.map(_mlbl), datasets:[
-      { label:(L?'Total forecast (Cintia rules)':'Forecast total (regras Cintia)'), data:dataB, borderColor:'rgba(63,185,80,.95)', backgroundColor:'rgba(63,185,80,.14)', pointRadius:3, pointHoverRadius:5, borderWidth:2, tension:0.35, fill:true, order:1 },
-      { label:(L?'Current pipe (frozen)':'Pipe atual (parado no tempo)'), data:dataA, borderColor:'rgba(88,166,255,.95)', backgroundColor:'transparent', borderDash:[5,4], pointRadius:2, pointHoverRadius:4, borderWidth:2, tension:0.35, fill:false, order:2 }
+      { label:(L?'Real revenue':'Receita real'), data:dataReal, borderColor:'rgba(63,185,80,.95)', backgroundColor:'rgba(63,185,80,.14)', pointRadius:3, pointHoverRadius:5, borderWidth:2, tension:0.35, fill:true, order:1 },
+      { label:(L?'Weighted revenue':'Receita probabilizada'), data:dataProb, borderColor:'rgba(88,166,255,.95)', backgroundColor:'transparent', pointRadius:2, pointHoverRadius:4, borderWidth:2, tension:0.35, fill:false, order:2 }
     ]},
     options:{ responsive:true, layout:{padding:{top:28}}, plugins:{
       legend:{display:true, labels:{color:th.cText2, font:{family:NOVO_FONT,size:11}, usePointStyle:true}},
-      datalabels:{ display:function(ctx){ return ctx.datasetIndex===0; }, anchor:'end', align:'top', color:th.cText, font:{family:NOVO_FONT,size:9,weight:'bold'}, formatter:function(v){ return v>0?fmt(v):''; } },
+      datalabels:{ display:function(ctx){ return ctx.datasetIndex===0; }, anchor:'end', align:'top', color:th.cText, font:{family:NOVO_FONT,size:9,weight:'bold'}, formatter:function(v){ return v>0?_revShort(v):''; } },
       tooltip:{ mode:'index', intersect:false, callbacks:{
-        label:function(c){ var v=c.parsed.y; return c.dataset.label+': '+(isDeals ? (Math.round(v*10)/10)+' deals' : 'R$ '+Math.round(v).toLocaleString('pt-BR')); },
+        label:function(c){ return c.dataset.label+': R$ '+Math.round(c.parsed.y).toLocaleString('pt-BR'); },
         afterBody:function(items){ if(!items.length) return ''; var i=items[0].dataIndex;
-          var lbW=L?'won/onboarding':'ganho/implantação', lbP=L?'open pipeline (rules)':'pipeline (regras)', lbB='bid', lbN=L?'new business':'novos negócios';
-          if (isDeals) return ['', (L?'Breakdown (green):':'Quebra (verde):'), '• '+lbW+': '+(Math.round(cWon[i]*10)/10), '• '+lbP+': '+(Math.round(cPipe[i]*10)/10), '• '+lbB+': '+(Math.round(cBid[i]*10)/10)];
-          return ['', (L?'Breakdown (green):':'Quebra (verde):'), '• '+lbW+': '+_revShort(cWon[i]), '• '+lbP+': '+_revShort(cPipe[i]), '• '+lbB+': '+_revShort(cBid[i]), '• '+lbN+': +'+_revShort(cNew[i])];
+          var lbW=L?'won/onboarding':'ganho/implantação', lbP=L?'open pipeline':'pipeline', lbB='bid', lbN=L?'new business':'novos negócios';
+          return ['', (L?'Real breakdown:':'Quebra (real):'), '• '+lbW+': '+_revShort(cWon[i]), '• '+lbP+': '+_revShort(cPipe[i]), '• '+lbB+': '+_revShort(cBid[i]), '• '+lbN+': +'+_revShort(cNew[i])];
         }
       } } },
-      scales:{ x:{grid:{display:false},ticks:{color:th.cText2,font:{family:NOVO_FONT}}}, y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},callback:function(v){return isDeals?v:_revShort(v);}}, suggestedMax:yMax} },
+      scales:{ x:{grid:{display:false},ticks:{color:th.cText2,font:{family:NOVO_FONT}}}, y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},callback:function(v){return _revShort(v);}}, suggestedMax:yMax} },
       onClick:function(){ _novoOpenN06BForecastModal(); } } });
 }
 
@@ -4930,8 +4909,6 @@ function novoRender() {
 
       // N06B | Cópia do N14/N06 (Pipeline 12-Month) — toggles independentes
       '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header" style="flex-wrap:wrap;gap:.5rem"><h3>' + _titleWithPipeRevCoverage(t('t_piperev12b')) + '</h3>' + _infoBtn(t('tip_piperev12b'),'piperev12b') +
-        (_novoPipeRevMetricB === 'revenue' ? _subTabs('novo-piperev-value-tabs-b', _novoPipeRevValueModeB, [{mode:'raw',label:(NOVO_LANG==='en'?'Real':'Real'),fn:'novoSwitchPipeRevValueB'},{mode:'weighted',label:(NOVO_LANG==='en'?'Probability-weighted':'Probabilizado'),fn:'novoSwitchPipeRevValueB'}]) : '')+
-        _subTabs('novo-piperev-metric-tabs-b', _novoPipeRevMetricB, [{mode:'revenue',label:t('lbl_revenue'),fn:'novoSwitchPipeRevMetricB'},{mode:'deals',label:t('tab_deals'),fn:'novoSwitchPipeRevMetricB'}])+
       '</div><canvas id="chart-novo-piperev12b" style="max-height:300px"></canvas></div>' +
 
       // N15/N16 removidos a pedido; N16 foi unido ao N14 via toggle Receita | Deals.
