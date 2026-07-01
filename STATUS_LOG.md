@@ -1547,3 +1547,26 @@ Registro curto, uma linha por interação (a cada alteração).
 - **A validar visualmente:** os totais do `forecast.html` agora incluem a originação BDR — a soma do rodapé passa a ser maior que a soma das linhas de deals visíveis (a originação não é um deal). Avaliar se quer uma linha visível "Originação BDR (projeção)" para reconciliar o olho, ou gatilho por ausência de filtro.
 - **Cohorts BDR com gate por etapa (2026-07-01):** a originação BDR só é somada aos totais do `forecast.html` quando **não há filtro de etapa** OU quando **Reunião Agendada** está entre as etapas filtradas (`stageFilter.size === 0 || stageFilter.has('Reunião Agendada')`). Para tornar a condição alcançável, adicionei o checkbox **Reunião Agendada** ao filtro de etapa (e ao `STAGE_DD_LIST`); deals de Reunião Agendada já apareciam por padrão (sem filtro), agora são filtráveis.
 - **Help ('?') do forecast.html reescrito (2026-07-01):** agora explica todas as regras por etapa, fiel ao forecast-engine.js — Real × Probabilizada, probabilidade C06 ao vivo (+ Reunião Agendada na tabela), ajuste ±10% do AE, receita por etapa (MQL/Reunião, Diagnóstico, Cotação/Consultoria/Negociação com início por modelo, Proposta/Standby/demais, Ganho/Implantação com faturamento real sem cutoff), modelos de cobrança, originação BDR (com o gate por etapa) e dedup Fee × Corretagem.
+
+### CRO Dashboard | C07 Probabilidade de Ganho por Etapa (Vendas × Bid) (2026-07-01)
+
+> A pedido: gráfico na área de análise de conversão mostrando a probabilidade de ganho em cada etapa, separada por pipeline de Vendas e de Bid.
+
+- **Novo gráfico C07** (`chart-novo-winprob`, card após o C06): barra agrupada, uma barra por pipeline (Vendas teal, Bid roxo) por etapa. `prob(etapa) = deals que chegaram à Implantação ÷ deals que entraram na etapa`, no funil histórico daquele pipeline (mesma lógica do C06/_novoFunnelDerivedProb, só que por pipeline em vez de combinado). Tooltip mostra o n (amostra) por barra.
+- **Builder** `buildNovoWinProb()` + helper `_novoWinProbPipe(pipe)`; usa `_novoFunnelData[pipe].stages` e `_FUNNEL_STAGES[pipe]`. Chamado no render (quando o funil já carregou) e no fim do `novoLoadFunnel`.
+- **Registros:** código C07 em NOVO_CARD_CODES, `winprob:'funnel'` em NOVO_FILT_FIELD, ficha do 'i' em NOVO_HELP_CHARTS.
+- **Validação:** `_check-inline-js` 0 erros; `_smoke-render` novoRender OK (280 deals); teste da fórmula reproduz as probabilidades esperadas (RA 2,2% · Diag 4,6% · Cot 14,1% · Cons 21% · Neg 42%). Rota /novo 200. **Não deployado.**
+- **Pendência menor:** título e tooltip do card em PT literal (não passam por t()/i18n); localizar para EN depois.
+
+### Probabilidade | C07 por ganho absoluto + probabilidade por pipeline como padrão nos forecasts (2026-07-01)
+
+> A pedido: (1) C07 = probabilidade de FECHAMENTO usa ganho absoluto (não "chegou à Implantação"); conversão de etapa (C06) continua sendo avanço. (2) Todos os painéis de forecast + CRO Dashboard passam a usar como padrão a probabilidade de etapa POR PIPELINE do C07; o ajuste ±10% do AE segue igual.
+
+- **C07 (dashboard.html):** numerador trocado de Implantação → **Ganho absoluto** (`_novoWinProbPipe`); textos do card e da ficha atualizados (C06 = avanço, C07 = fechamento).
+- **Probabilidade por pipeline como padrão:**
+  - forecast.html e forecast-stage.html: `_fcFunnelDerivedProb` agora retorna `{ vendas, bid }` (ganho absoluto ÷ entraram, por pipeline, amostra mín. 20). Novo `_fcStageProbFor(stage, pipeline)` (override manual → funil do pipeline → padrão fixo). `calcProbInfo`, `_fcMqlConv` e o campo `prob_etapa` passam a resolver por pipeline. Cache de sessão renomeado p/ `fc_funnel_prob_pipe`.
+  - dashboard.html: novo `_novoFunnelDerivedProbPipe()` + `NOVO_FUNNEL_PROB_PIPE` + `_novoStageProbFor(stage, pipeline)`; os 8 usos por deal de `NOVO_STAGE_PROB[d.stage]` passaram a `_novoStageProbFor(d.stage, d.pipeline)`. `NOVO_STAGE_PROB` e o editor de Configurações ficaram intactos (display/override manual).
+  - Fallback de amostra pequena = **padrão fixo** (STAGE_PROB_DEFAULT), conforme decidido. Diagnóstico fixo 6% e ±10% do AE inalterados.
+- **Impacto esperado:** como Ganho < "chegou à Implantação", as probabilidades caem e a receita probabilizada de todos os forecasts diminui (mais conservador/correto). Bid fica mais volátil por etapa (amostra menor → mais fallback).
+- **Validação:** `_check-inline-js` 0 erros nos 3 arquivos; `_smoke-render` novoRender OK (280 deals); teste da fórmula do C07 reproduz as probabilidades esperadas. **Não deployado.**
+- **Pendências menores:** título/tooltip do C07 e do label do painel forecast-stage não passam por i18n (PT literal); editor de Configurações mostra o padrão fixo, não o valor por pipeline (o C07 é a referência por pipeline).

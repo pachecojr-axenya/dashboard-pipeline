@@ -596,6 +596,32 @@ function _novoFunnelDerivedProb() {
   order.forEach(function(s) { var c = _novoFunnelCombinedCount(s); if (c >= NOVO_FC_PROB_MIN_SAMPLE) { var p = finalC/c; if (p>1) p=1; if (p<0) p=0; out[s]=p; } });
   return out;
 }
+// C07 | probabilidade de GANHO por etapa, POR PIPELINE (ganho absoluto ÷ entraram na etapa,
+// no funil de cada pipeline; amostra mínima → cai no padrão fixo). É o PADRÃO das telas de
+// forecast/coverage: cada deal usa a prob. do SEU pipeline via _novoStageProbFor().
+function _novoFunnelDerivedProbPipe() {
+  if (!_novoFunnelData) return null;
+  function forPipe(pd) {
+    if (!pd || !pd.stages) return {};
+    var cnt = {}; pd.stages.forEach(function(s) { cnt[s.stage] = s.count || 0; });
+    var ganho = cnt['Ganho'] || 0; if (ganho <= 0) return {};
+    var order = ['Reunião Agendada', 'Cotação', 'Proposta Enviada', 'Consultoria', 'Negociação'];
+    var out = {};
+    order.forEach(function(s) { var c = cnt[s] || 0; if (c >= NOVO_FC_PROB_MIN_SAMPLE) { var p = ganho / c; if (p > 1) p = 1; if (p < 0) p = 0; out[s] = p; } });
+    return out;
+  }
+  return { vendas: forPipe(_novoFunnelData.vendas), bid: forPipe(_novoFunnelData.bid) };
+}
+var NOVO_FUNNEL_PROB_PIPE = null;
+// Prob. de etapa efetiva de um deal: override manual (Configurações) vence; senão a prob.
+// de ganho do funil DO PIPELINE do deal (C07); senão o padrão fixo (escolha do usuário).
+function _novoStageProbFor(stage, pipeline) {
+  if (_novoStageProbCfg.manual && _novoStageProbCfg.values && _novoStageProbCfg.values[stage] != null) return _novoStageProbCfg.values[stage];
+  var pk = pipeline === 'Bid' ? 'bid' : 'vendas';
+  var fp = NOVO_FUNNEL_PROB_PIPE && NOVO_FUNNEL_PROB_PIPE[pk];
+  if (fp && fp[stage] != null) return fp[stage];
+  return NOVO_STAGE_PROB_DEFAULT[stage];
+}
 function _novoApplyStageProb() {
   var base = {};
   Object.keys(NOVO_STAGE_PROB_DEFAULT).forEach(function(k) { base[k] = NOVO_STAGE_PROB_DEFAULT[k]; });
@@ -607,6 +633,7 @@ function _novoApplyStageProb() {
     if (d) Object.keys(d).forEach(function(k) { base[k] = d[k]; });
   }
   NOVO_STAGE_PROB = base;
+  NOVO_FUNNEL_PROB_PIPE = _novoStageProbCfg.manual ? null : _novoFunnelDerivedProbPipe();
 }
 var NOVO_STAGE_PROB = {};
 _novoApplyStageProb();
@@ -938,7 +965,7 @@ var NOVO_I18N = {
     meet_occurred_tip:'Dos rastreados, os que também entraram em Diagnóstico (reunião ocorreu / avançou).',
     meet_noshow_tip:'Rastreados que não chegaram a Diagnóstico (reunião não ocorreu / no-show).',
     meet_rate_tip:'Occurred ÷ Tracked.',
-    kpi2_stale_label:'Deals Estagnados', kpi2_stale_tip:'Deals abertos sem atividade registrada há mais de 30 dias (via notes_last_updated | última atividade/nota).',
+    kpi2_stale_label:'Deals Estagnados', kpi2_stale_tip:'Deals abertos sem atividade registrada há mais de 30 dias (via notes_last_updated | última atividade/nota). O card e o modal mostram também o % que os estagnados representam dos deals ativos (mesma base do P09 Pipeline Ativo).',
     kpi2_complete_label:'🟡 Completude', kpi2_complete_tip:'% dos deals em Proposta Enviada, Consultoria ou Negociação com os 10 campos preenchidos: colaboradores, vidas, 1ª fatura, ARR, modelo de remuneração, agenciamento, vitalício, probabilidade, quarter e data prevista de receita.',
     stale_deals:'Negócios Estagnados', stale_deals_tip:'Negócios abertos sem atividade registrada há mais de 30 dias.',
     stale_vidas:'Vidas Estagnadas', stale_vidas_tip:'Soma do campo vidas dos negócios estagnados.',
@@ -1054,7 +1081,7 @@ var NOVO_I18N = {
     meet_occurred_tip:'Of those tracked, the ones that also entered Diagnosis (meeting occurred / advanced).',
     meet_noshow_tip:'Tracked deals that never reached Diagnosis (meeting did not occur / no-show).',
     meet_rate_tip:'Occurred ÷ Tracked.',
-    kpi2_stale_label:'Stale Deals', kpi2_stale_tip:'Open deals with no logged activity for more than 30 days (via notes_last_updated | last activity/note).',
+    kpi2_stale_label:'Stale Deals', kpi2_stale_tip:'Open deals with no logged activity for more than 30 days (via notes_last_updated | last activity/note). The card and modal also show the % of active deals that stale deals represent (same base as P09 Active Pipeline).',
     kpi2_complete_label:'🟡 Data Completeness', kpi2_complete_tip:'% of deals in Proposta Enviada, Consultoria or Negociação with all 10 fields filled: collaborators, lives, first invoice, ARR, comp model, agency, lifetime, probability, quarter and expected revenue date.',
     stale_deals:'Stale Deals', stale_deals_tip:'Open deals with no logged activity for more than 30 days.',
     stale_vidas:'Stale Lives', stale_vidas_tip:'Sum of the lives field across stale deals.',
@@ -1199,6 +1226,15 @@ var NOVO_HELP_CHARTS = [
       ['pipeline', 'Filtra deals dos pipelines Vendas (782758156) e Bid (894130090).'],
       ['hs_object_id', 'Identificador do deal | garante contagem única por etapa.'],
       ['dealname', 'Nome do deal exibido no drill-down ao clicar em uma barra do funil.'],
+    ],
+  },
+  {
+    key: 'winprob',
+    title: 'Probabilidade de Ganho por Etapa',
+    desc: 'Para cada etapa, a chance de fechamento (ganho) de um deal ali, separada por pipeline (Vendas e Bid). Cálculo = ganhos absolutos ÷ deals que entraram na etapa, no funil histórico de cada pipeline. É diferente do C06: o C06 mede o AVANÇO entre etapas (quantos foram para a próxima); o C07 mede o FECHAMENTO (quantos viraram Ganho absoluto). O tamanho da amostra (n) aparece no tooltip: n pequeno = número instável. Fonte: GET /api/funnel-stages.',
+    fields: [
+      ['dealstage (propertiesWithHistory)', 'Quantos deals passaram por cada etapa e quantos chegaram à Implantação.'],
+      ['pipeline', 'Separa Vendas (782758156) de Bid (894130090).'],
     ],
   },
   {
@@ -1485,7 +1521,7 @@ var NOVO_CARD_CODES = {
   'kpi-active-deals':'P01', 'kpi-pipe-vidas':'P02', 'kpi-pipe-weighted':'P03', 'kpi-pipe-reunioes':'P04',
   'ae':'C01','stage':'C02','conc':'C00',
   'sizedonut':'C03','stageval':'C04',
-  'segment':'C05','funnel-conv':'C06',
+  'segment':'C05','funnel-conv':'C06','winprob':'C07',
   'kpi-revenue-mtd':'P06','kpi-won-annual':'P07',
   'kpi-weighted-pipe':'P00',
   'kpi-won-vidas':'P08','kpi-lost-vidas':'P09','kpi-weighted-vidas':'P05',
@@ -1506,7 +1542,7 @@ var NOVO_CARD_CODES = {
 var NOVO_FILT_FIELD = {
   'kpi-active-deals':'none', 'kpi-pipe-vidas':'none', 'kpi-pipe-weighted':'none', 'kpi-pipe-reunioes':'none',
   'ae':'none','stage':'none','conc':'create','sizedonut':'none','stageval':'none','segment':'none',
-  'funnel-conv':'funnel',
+  'funnel-conv':'funnel','winprob':'funnel',
   'kpi-revenue-mtd':'won','kpi-won-annual':'close','kpi-weighted-pipe':'none',
   'kpi-won-vidas':'close','kpi-lost-vidas':'close','kpi-weighted-vidas':'none',
   'kpi2-winrate':'close','kpi2-bdr':'close','kpi2-ae':'close','kpi2-meeting':'create','kpi2-stale':'none','kpi2-complete':'create',
@@ -1632,7 +1668,7 @@ var _nd = function(v) { if (!v) return '—'; var p = v.split('-'); return p.len
 var _nr = function(v) { return v != null ? Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—'; };
 
 function _calcProbInfo(d) {
-  var sp = NOVO_STAGE_PROB[d.stage];
+  var sp = _novoStageProbFor(d.stage, d.pipeline);
   if (sp == null) return { sp: null, cp: null, final: null };
   var cp = d.probabilidade;
   if (cp == null) return { sp: sp, cp: null, final: sp };
@@ -2154,7 +2190,7 @@ function _novoKpiStatsHtml(deals) {
 }
 // P03 (Pipeline Ponderado): ponderado mensal/anual + cenário Implantação=Ganho + nº de abertos.
 function _novoP03StatsHtml() {
-  function prob(d){ return d.probabilidade != null ? d.probabilidade : (NOVO_STAGE_PROB[d.stage] || 0); }
+  function prob(d){ return d.probabilidade != null ? d.probabilidade : (_novoStageProbFor(d.stage, d.pipeline) || 0); }
   var openDeals = _novoCurrentActivePipeline();
   var implDeals = (_novoDeals || []).filter(function(d){ return d.stage === 'Implantação'; });
   var wYr   = openDeals.reduce(function(s,d){ return s + _annualRev(d)*prob(d); }, 0);
@@ -2213,7 +2249,7 @@ var _novoWVAll        = [];   // todos os deals abertos do drill
 var _novoWVStageList  = [];   // etapas, na ordem dos chips
 var _novoWVStageCount = {};   // contagem por etapa (conjunto total)
 var _novoWVSel        = null;  // Set de etapas selecionadas; null/vazio => todas
-function _novoWVProb(d) { return d.probabilidade != null ? d.probabilidade : (NOVO_STAGE_PROB[d.stage] || 0); }
+function _novoWVProb(d) { return d.probabilidade != null ? d.probabilidade : (_novoStageProbFor(d.stage, d.pipeline) || 0); }
 function _novoWVStatsHtml(deals) {
   var count  = deals.length;
   var vidas  = deals.reduce(function(s,d){ return s + (d.vidas||0); }, 0);
@@ -2321,9 +2357,11 @@ function _novoStaleStatsHtml(deals, totalOpen) {
   var vidas = deals.reduce(function(s,d){ return s + (d.vidas||0); }, 0);
   var avg   = count ? Math.round(vidas / count) : null;
   function c(label, val, tip){ return '<div class="kpi-sec"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.3rem"><span class="kpi-sec-label">'+label+'</span>'+_infoBtn(tip)+'</div><div class="kpi-sec-value">'+val+'</div></div>'; }
-  return '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.6rem;margin-bottom:1.1rem">'+
+  var _pctStale = (totalOpen && totalOpen > 0) ? (Math.round(count / totalOpen * 1000) / 10).toFixed(1).replace('.', ',') + '%' : '—';
+  return '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:.6rem;margin-bottom:1.1rem">'+
     c(t('stale_deals'), count.toLocaleString('pt-BR'), t('stale_deals_tip'))+
     c(NOVO_LANG === 'en' ? 'Open Considered' : 'Abertos considerados', (totalOpen != null ? totalOpen : count).toLocaleString('pt-BR'), NOVO_LANG === 'en' ? 'Same base as P09 Active Pipeline.' : 'Mesma base do P09 Pipeline Ativo.')+
+    c(NOVO_LANG === 'en' ? '% of Active' : '% dos Ativos', _pctStale, NOVO_LANG === 'en' ? 'Stale deals ÷ active deals.' : 'Deals estagnados ÷ deals ativos.')+
     c(t('stale_vidas'), vidas.toLocaleString('pt-BR'), t('stale_vidas_tip'))+
     c(t('stale_avg'),   (avg != null ? avg.toLocaleString('pt-BR') : '—'), t('stale_avg_tip'))+
   '</div>';
@@ -2785,7 +2823,7 @@ function buildNovoSegment() {
   var defs = [['Pequeno (<50)',function(v){return v<50;}],['Médio (50–200)',function(v){return v>=50&&v<200;}],['Grande (200–1000)',function(v){return v>=200&&v<1000;}],['Enterprise (1000+)',function(v){return v>=1000;}]];
   var sums = defs.map(function(){return 0;}), by = defs.map(function(){return [];});
   open.forEach(function(d){ var vidas=d.vidas||0, rev=_annualRev(d);
-    if(isW){ var p=d.probabilidade!=null?d.probabilidade:(NOVO_STAGE_PROB[d.stage]||0); rev=rev*p; }
+    if(isW){ var p=d.probabilidade!=null?d.probabilidade:(_novoStageProbFor(d.stage, d.pipeline)||0); rev=rev*p; }
     for(var i=0;i<defs.length;i++){ if(defs[i][1](vidas)){ sums[i]+=rev; by[i].push(d); break; } } });
   // Buckets de segmento (predicado por deal) para o filtro do modal.
   var segBuckets = defs.map(function(x){ var fn=x[1]; return [x[0], function(d){ return fn(d.vidas||0); }]; });
@@ -3172,7 +3210,7 @@ function _novoCovComplete(d) {
 function _novoCovProb(d) {
   if (_novoIsWon(d)) return 1;
   var info = (typeof _calcProbInfo === 'function') ? _calcProbInfo(d) : null;
-  var p = (info && info.final != null) ? info.final : NOVO_STAGE_PROB[d.stage];
+  var p = (info && info.final != null) ? info.final : _novoStageProbFor(d.stage, d.pipeline);
   return (p != null && !isNaN(p)) ? p : 0;
 }
 // Série mensal do coverage. Escopo negócio novo; por deal completo, aloca receita
@@ -4009,7 +4047,7 @@ function buildNovoFinancial() {
   var wonMtd=hasPeriodFilter ? won : won.filter(function(d){return d.close_date&&d.close_date.substring(0,7)===yyyymm;});
   var wonYtd=hasPeriodFilter ? won : won.filter(function(d){return d.close_date&&d.close_date.substring(0,4)===yyyy;});
   var rawPipe=open.reduce(function(s,d){return s+_annualRev(d);},0);
-  var wPipe=open.reduce(function(s,d){var p=d.probabilidade!=null?d.probabilidade:(NOVO_STAGE_PROB[d.stage]||0);return s+_annualRev(d)*p;},0);
+  var wPipe=open.reduce(function(s,d){var p=d.probabilidade!=null?d.probabilidade:(_novoStageProbFor(d.stage, d.pipeline)||0);return s+_annualRev(d)*p;},0);
   var mtdRev=wonMtd.reduce(function(s,d){return s+_annualRev(d)/12;},0);
   var ytdArr=wonYtd.reduce(function(s,d){return s+_annualRev(d);},0);
   var monthlyPot=open.reduce(function(s,d){return s+_annualRev(d)/12;},0);
@@ -4154,7 +4192,7 @@ function _buildPipelineAtivoRow() {
   // Board View, garantindo que os dois painéis mostrem exatamente o mesmo número.
   var activeWeighted = sharedWeightedPipelineARR(activeDeals);
   var activeWeightedVidas = activeDeals.reduce(function(s, d) {
-    var prob = d.probabilidade != null ? d.probabilidade : (NOVO_STAGE_PROB[d.stage] || 0);
+    var prob = d.probabilidade != null ? d.probabilidade : (_novoStageProbFor(d.stage, d.pipeline) || 0);
     return s + (d.vidas || 0) * prob;
   }, 0);
 
@@ -4267,7 +4305,7 @@ function _buildKpiRow() {
   var wonAnnual = wonYtdDeals.reduce(function(s, d) { return s + _annualRev(d); }, 0);
 
   var weightedPipe = openDeals.reduce(function(s, d) {
-    var prob = d.probabilidade != null ? d.probabilidade : (NOVO_STAGE_PROB[d.stage] || 0);
+    var prob = d.probabilidade != null ? d.probabilidade : (_novoStageProbFor(d.stage, d.pipeline) || 0);
     return s + _annualRev(d) * prob;
   }, 0);
 
@@ -4447,7 +4485,7 @@ function _buildKpiSecRow() {
       key: 'kpi2-stale', na: false,
       label: t('kpi2_stale_label'),
       value: staleDeals.length.toLocaleString('pt-BR'),
-      sub: staleDeals.length + ' / ' + openDeals.length + ' ' + (NOVO_LANG === 'en' ? 'active deals' : 'deals ativos'),
+      sub: staleDeals.length + ' / ' + openDeals.length + ' ' + (NOVO_LANG === 'en' ? 'active deals' : 'deals ativos') + ' (' + (openDeals.length ? (Math.round(staleDeals.length / openDeals.length * 1000) / 10).toFixed(1).replace('.', ',') : '0') + '%)',
       color: staleDeals.length > 10 ? 'var(--yellow)' : 'var(--text)',
       tip: t('kpi2_stale_tip'),
     },
@@ -4656,6 +4694,7 @@ function novoRender() {
         _subTabs('novo-seg-tabs', _novoSegMode, [{mode:'raw',label:t('lbl_raw'),fn:'novoSwitchSegMode'},{mode:'weighted',label:t('lbl_weighted'),fn:'novoSwitchSegMode'}]),
         'chart-novo-segment', 320, 'segment') +
       _novoFunnelHorizCard() +
+      _card('Probabilidade de Ganho por Etapa', 'Chance de fechamento (ganho) de um deal em cada etapa, por pipeline (Vendas e Bid). = ganhos absolutos ÷ deals que entraram na etapa, no funil histórico de cada pipeline. Diferente do C06 (avanço entre etapas): aqui o numerador é sempre o Ganho absoluto. n (no tooltip) = tamanho da amostra; n pequeno = número instável.', '', 'chart-novo-winprob', 320, 'winprob') +
 
       // ── Seção: Risco e Concentração ───────────────────────────────────────
       _sectionHdr('Risco e Concentração') +
@@ -4727,6 +4766,7 @@ function novoRender() {
     if (!_novoFunnelLoading) novoLoadFunnel();
   } else if (_novoFunnelData) {
     buildNovoFunnelHorizChart();
+    buildNovoWinProb();
   } else if (!_novoFunnelLoading) {
     novoLoadFunnel();
   }
@@ -4966,6 +5006,7 @@ function novoLoadFunnel() {
         if (JSON.stringify(NOVO_STAGE_PROB) !== _pb) { novoRender(); return; }
       }
       buildNovoFunnelHorizChart();
+      buildNovoWinProb();
       // S04 depende do histórico de etapas — atualiza a linha de KPIs secundários agora que chegou.
       var _kw = document.getElementById('novo-kpisec-wrap');
       if (_kw) _kw.innerHTML = _buildKpiSecRow();
@@ -4979,6 +5020,49 @@ function novoLoadFunnel() {
       var el = document.getElementById('funnel-horiz-chart-area');
       if (el) el.innerHTML = '<p style="color:var(--red);padding:1rem;font-size:.85rem">Erro: ' + _ne(err.message) + '</p>';
     });
+}
+
+// C07 | Probabilidade de FECHAMENTO (ganho) por etapa, POR PIPELINE (Vendas × Bid).
+// prob(etapa) = GANHOS ABSOLUTOS ÷ deals que entraram na etapa, no funil histórico
+// daquele pipeline. Diferente do C06 (avanço para a próxima etapa): aqui o numerador
+// é sempre o Ganho absoluto, não "chegou à Implantação".
+function _novoWinProbPipe(pipe) {
+  var d = _novoFunnelData;
+  if (!d || !d[pipe] || !d[pipe].stages) return null;
+  var cnt = {};
+  d[pipe].stages.forEach(function(s) { cnt[s.stage] = s.count || 0; });
+  var finalC = cnt['Ganho'] || 0;
+  if (finalC <= 0) return null;
+  var out = {};
+  (_FUNNEL_STAGES[pipe] || []).forEach(function(s) {
+    if (s === 'Implantação') return;   // é o alvo, não etapa de origem
+    var c = cnt[s] || 0;
+    out[s] = c > 0 ? { prob: Math.min(1, finalC / c), n: c } : null;
+  });
+  return out;
+}
+function buildNovoWinProb() {
+  if (!document.getElementById('chart-novo-winprob')) return;
+  var th = _novoTheme();
+  var vend = _novoWinProbPipe('vendas') || {};
+  var bid  = _novoWinProbPipe('bid') || {};
+  var labels = ['Reunião Agendada', 'Diagnóstico', 'Cotação', 'Proposta Enviada', 'Consultoria', 'Negociação'];
+  var pct = function(o, s) { return (o[s] && o[s].prob != null) ? Math.round(o[s].prob * 1000) / 10 : null; };
+  var vData = labels.map(function(s) { return pct(vend, s); });
+  var bData = labels.map(function(s) { return pct(bid, s); });
+  var vN = labels.map(function(s) { return vend[s] ? vend[s].n : null; });
+  var bN = labels.map(function(s) { return bid[s] ? bid[s].n : null; });
+  _novoMkChart('chart-novo-winprob', { type: 'bar', plugins: [ChartDataLabels],
+    data: { labels: labels, datasets: [
+      { label: t('vendas'), data: vData, backgroundColor: 'rgba(58,184,183,.8)', hoverBackgroundColor: 'rgba(58,184,183,1)', borderRadius: 4 },
+      { label: t('bid'),    data: bData, backgroundColor: 'rgba(147,112,219,.8)', hoverBackgroundColor: 'rgba(147,112,219,1)', borderRadius: 4 },
+    ] },
+    options: { responsive: true, layout: { padding: { top: 24 } },
+      plugins: { legend: { display: true, labels: { color: th.cText2, font: { family: NOVO_FONT, size: 11 } } },
+        datalabels: { anchor: 'end', align: 'end', color: th.cText, font: { family: NOVO_FONT, size: 10, weight: 'bold' }, formatter: function(v) { return v == null ? '' : v.toFixed(1).replace('.', ',') + '%'; } },
+        tooltip: { callbacks: { label: function(c) { var n = (c.datasetIndex === 0 ? vN : bN)[c.dataIndex]; return c.dataset.label + ': ' + (c.parsed.y == null ? '—' : c.parsed.y.toFixed(1).replace('.', ',') + '%') + (n != null ? ' (n=' + n + ')' : ''); } } } },
+      scales: { x: { grid: { display: false }, ticks: { color: th.cText, font: { family: NOVO_FONT, size: 10 } } },
+        y: { grid: { color: th.cGrid }, beginAtZero: true, max: 100, ticks: { color: th.cText2, font: { family: NOVO_FONT }, callback: function(v) { return v + '%'; } } } } } });
 }
 
 function buildNovoFunnelHorizChart() {

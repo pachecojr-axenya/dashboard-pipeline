@@ -2287,22 +2287,39 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
     // ÷ deals que entraram na etapa (combinado Vendas+Bid, amostra mínima 20). Mesma regra
     // do CRO (_novoFunnelDerivedProb). Carregada em 2º plano no load(); cache de 1h na sessão.
     const FC_PROB_MIN_SAMPLE = 20;
+    // FC_FUNNEL_PROB agora é POR PIPELINE (C07): { vendas:{stage:prob}, bid:{stage:prob} }.
     let FC_FUNNEL_PROB = (() => {
-      try { const c = JSON.parse(sessionStorage.getItem('fc_funnel_prob') || 'null'); if (c && c.values && c.ts && (Date.now() - c.ts) < 3600000) return c.values; } catch { }
+      try { const c = JSON.parse(sessionStorage.getItem('fc_funnel_prob_pipe') || 'null'); if (c && c.values && c.ts && (Date.now() - c.ts) < 3600000) return c.values; } catch { }
       return null;
     })();
     let STAGE_PROB = {};
-    // Precedência: default < funil ao vivo < override manual de Configurações.
-    function _fcApplyStageProb() { STAGE_PROB = { ...STAGE_PROB_DEFAULT, ...(FC_FUNNEL_PROB || {}), ...FC_STAGE_PROB_SAVED }; }
+    // STAGE_PROB = mapa FLAT de fallback (padrão fixo + override manual das Configurações).
+    // A probabilidade por pipeline (C07) é aplicada por deal via _fcStageProbFor().
+    function _fcApplyStageProb() { STAGE_PROB = { ...STAGE_PROB_DEFAULT, ...FC_STAGE_PROB_SAVED }; }
     _fcApplyStageProb();
+    // Probabilidade de etapa efetiva de um deal: override manual (Configurações) vence;
+    // senão a prob. de ganho do funil DO PIPELINE do deal (C07); senão o padrão fixo.
+    function _fcStageProbFor(stage, pipeline) {
+      if (FC_STAGE_PROB_SAVED[stage] != null) return STAGE_PROB[stage];
+      const pk = pipeline === 'Bid' ? 'bid' : 'vendas';
+      const fp = FC_FUNNEL_PROB && FC_FUNNEL_PROB[pk];
+      if (fp && fp[stage] != null) return fp[stage];
+      return STAGE_PROB_DEFAULT[stage];
+    }
+    // Prob. de ganho por etapa, POR PIPELINE (C07): ganhos absolutos ÷ entraram na etapa,
+    // no funil daquele pipeline. Amostra < FC_PROB_MIN_SAMPLE → omite (cai no padrão fixo).
     function _fcFunnelDerivedProb(fd) {
       if (!fd) return null;
-      const cnt = stage => { let t = 0; [(fd.vendas || {}).stages, (fd.bid || {}).stages].forEach(arr => (arr || []).forEach(s => { if (s.stage === stage) t += (s.count || 0); })); return t; };
-      const finalC = cnt('Implantação'); if (finalC <= 0) return null;
-      const order = ['Reunião Agendada', 'Cotação', 'Proposta Enviada', 'Consultoria', 'Negociação'];  // Diagnóstico fica fixo em 6% (não deriva do funil)
-      const out = {};
-      order.forEach(s => { const c = cnt(s); if (c >= FC_PROB_MIN_SAMPLE) { let p = finalC / c; if (p > 1) p = 1; if (p < 0) p = 0; out[s] = p; } });
-      return out;
+      const forPipe = pd => {
+        if (!pd || !pd.stages) return {};
+        const cnt = {}; pd.stages.forEach(s => { cnt[s.stage] = s.count || 0; });
+        const ganho = cnt['Ganho'] || 0; if (ganho <= 0) return {};
+        const order = ['Reunião Agendada', 'Cotação', 'Proposta Enviada', 'Consultoria', 'Negociação'];  // Diagnóstico fixo em 6%
+        const out = {};
+        order.forEach(s => { const c = cnt[s] || 0; if (c >= FC_PROB_MIN_SAMPLE) { let p = ganho / c; if (p > 1) p = 1; if (p < 0) p = 0; out[s] = p; } });
+        return out;
+      };
+      return { vendas: forPipe(fd.vendas), bid: forPipe(fd.bid) };
     }
     async function _fcLoadFunnelProb() {
       try {
@@ -2312,7 +2329,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
         const d = _fcFunnelDerivedProb(j);
         if (!d || !Object.keys(d).length) return;
         FC_FUNNEL_PROB = d;
-        try { sessionStorage.setItem('fc_funnel_prob', JSON.stringify({ ts: Date.now(), values: d })); } catch { }
+        try { sessionStorage.setItem('fc_funnel_prob_pipe', JSON.stringify({ ts: Date.now(), values: d })); } catch { }
         _fcApplyStageProb();
         if (typeof applyAndRender === 'function') applyAndRender();
       } catch { /* mantém defaults/cache */ }
@@ -2459,7 +2476,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       // Diagnóstico: probabilidade SEMPRE fixa em 6% — não deriva do funil nem sofre
       // ajuste ±10% da probabilidade informada pelo AE.
       if (deal.stage === 'Diagnóstico') return { sp: 0.06, cp: deal.probabilidade, final: 0.06, modStr: 'Diagnóstico: fixa em 6% (sem ajuste do AE)' };
-      const sp = STAGE_PROB[deal.stage];
+      const sp = _fcStageProbFor(deal.stage, deal.pipeline);
       if (sp == null) return { sp: null, cp: null, final: null, modStr: '' };
       const cp = deal.probabilidade;
       if (cp == null) return { sp, cp, final: sp, modStr: 'AE não informou (usando P. Etapa)' };
@@ -2469,7 +2486,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
     }
     // Conversão do MQL puxada AO VIVO do funil (Reunião Agendada → Implantação).
     // Usada na projeção de originação dos BDRs (antes usava o win rate global S01).
-    function _fcMqlConv() { const p = STAGE_PROB['Reunião Agendada']; return (p != null ? p : (FC_WIN_RATE || 0)); }
+    function _fcMqlConv() { const p = _fcStageProbFor('Reunião Agendada', 'Vendas'); return (p != null ? p : (FC_WIN_RATE || 0)); }
 
     // ── DEDUP Fee por vida × Corretagem ───────────────────────────────────────
     // Alguns negócios são duplicados (um para Fee por vida, outro para Corretagem);
