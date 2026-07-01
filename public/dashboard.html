@@ -2882,14 +2882,21 @@ function _novoChartExtTip(context) {
 }
 var _novoSizeDistMode = 'revenue'; // 'revenue' | 'vidas'
 function novoSwitchSizeDist(m){ _novoSizeDistMode=m; _setActive('novo-sizedonut-tabs',m); buildNovoSizeDonut(); }
+// C03 | dois donuts lado a lado: Por Receita e Por Vidas (contagem de deals ativos).
+function _novoSizeDonutCard() {
+  var L = NOVO_LANG === 'en';
+  var _col = function(lbl, cid){ return '<div style="flex:1;min-width:260px"><div style="text-align:center;font-size:.8rem;font-weight:600;color:var(--text2);margin-bottom:.3rem">'+lbl+'</div><canvas id="'+cid+'" style="max-height:300px"></canvas></div>'; };
+  return '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header"><h3>'+_titleWithCount(t('t_sizedonut'), _novoActiveChartDeals().length)+'</h3>'+_infoBtn(t('tip_sizedonut'),'sizedonut')+'</div>'+
+    '<div style="display:flex;flex-wrap:wrap;gap:1rem;align-items:flex-start">'+
+      _col((L?'By Revenue':'Por Receita'),'chart-novo-sizedonut-receita')+
+      _col((L?'By Lives':'Por Vidas'),'chart-novo-sizedonut-vidas')+
+    '</div></div>';
+}
 function buildNovoSizeDonut() {
-  buildSharedSizeDonut('chart-novo-sizedonut', _novoActiveChartDeals, {
-    modalTitle: t('t_sizedonut'),
-    noRevenue:  t('donut_no_revenue'),
-    noLives:    t('donut_no_lives'),
-    openDeals:  t('donut_open_deals'),
-    extTip:     _novoChartExtTip
-  });
+  if (!document.getElementById('chart-novo-sizedonut-receita')) return;
+  var o = { modalTitle: t('t_sizedonut'), noRevenue: t('donut_no_revenue'), noLives: t('donut_no_lives'), openDeals: t('donut_open_deals'), extTip: _novoChartExtTip };
+  buildSharedSizeDonut('chart-novo-sizedonut-receita', _novoActiveChartDeals, { bucketMode:'revenue', modalTitle:o.modalTitle, noRevenue:o.noRevenue, noLives:o.noLives, openDeals:o.openDeals, extTip:o.extTip });
+  buildSharedSizeDonut('chart-novo-sizedonut-vidas', _novoActiveChartDeals, { bucketMode:'vidas', modalTitle:o.modalTitle, noRevenue:o.noRevenue, noLives:o.noLives, openDeals:o.openDeals, extTip:o.extTip });
 }
 
 // C08 | Receita PREVISTA por bucket (dois donuts: bruta × ponderada), base visual do C03.
@@ -2927,14 +2934,15 @@ function buildNovoRevBuckets() {
   var metric = function(d){ return _novoDealFcRev(d, weighted); };
   var lbl = weighted ? (L?'weighted fc':'fc ponderada') : (L?'gross fc':'fc bruta');
   var mt  = weighted ? (L?'Weighted':'Ponderada') : (L?'Gross':'Bruta');
-  // nº de deals considerados = deals do pipeline ativo com receita prevista > 0 na janela.
+  // Considera SÓ deals com receita prevista > 0 → donut, modal ('Todos') e contagem batem.
+  var considered = function(){ return _novoActiveChartDeals().filter(function(d){ return _novoDealFcRev(d, false) > 0; }); };
   var _cc = document.getElementById('novo-revbkt-count');
-  if (_cc) { var _cd = _novoActiveChartDeals().filter(function(d){ return _novoDealFcRev(d, false) > 0; }).length; _cc.textContent = _cd.toLocaleString('pt-BR') + (L?' deals considered':' deals considerados'); }
-  buildSharedSizeDonut('chart-novo-revbkt-receita', _novoActiveChartDeals, {
+  if (_cc) { _cc.textContent = considered().length.toLocaleString('pt-BR') + (L?' deals considered':' deals considerados'); }
+  buildSharedSizeDonut('chart-novo-revbkt-receita', considered, {
     bucketMode:'revenue', valFmt:_revShort, extTip:_novoChartExtTip, metric:metric,
     openDeals:lbl, modalTitle:(L?'Forecast Revenue by Revenue Bucket | ':'Receita Prevista por Bucket de Receita | ')+mt
   });
-  buildSharedSizeDonut('chart-novo-revbkt-vidas', _novoActiveChartDeals, {
+  buildSharedSizeDonut('chart-novo-revbkt-vidas', considered, {
     bucketMode:'vidas', valFmt:_revShort, extTip:_novoChartExtTip, metric:metric,
     openDeals:lbl, modalTitle:(L?'Forecast Revenue by Lives Bucket | ':'Receita Prevista por Bucket de Vidas | ')+mt
   });
@@ -4819,9 +4827,7 @@ function novoRender() {
         'chart-novo-vidas-ae', 360, 'ae') +
       _card(_titleWithCount(t('t_stage'), activeCount), t('tip_stage'), '',
         'chart-novo-stage', 340, 'stage') +
-      _card(_titleWithCount(t('t_sizedonut'), activeCount), t('tip_sizedonut'),
-        _subTabs('novo-sizedonut-tabs', _novoSizeDistMode, [{mode:'revenue',label:t('lbl_revenue'),fn:'novoSwitchSizeDist'},{mode:'vidas',label:t('tab_vidas'),fn:'novoSwitchSizeDist'}]),
-        'chart-novo-sizedonut', 340, 'sizedonut') +
+      _novoSizeDonutCard() +
       _novoRevBucketsCard() +
       _card(_titleWithCount(t('t_stageval'), activeCount), t('tip_stageval'),
         _subTabs('novo-val-tabs', _novoValMode, [{mode:'raw',label:t('lbl_raw'),fn:'novoSwitchValMode'},{mode:'weighted',label:t('lbl_weighted'),fn:'novoSwitchValMode'}]),
