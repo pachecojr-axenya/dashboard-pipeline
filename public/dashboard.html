@@ -1005,7 +1005,7 @@ var NOVO_I18N = {
     t_sizewindow:'🟡 Distribuição por Tamanho',tip_sizewindow:'Deals ativos por faixa de receita. Sem filtro local de data.',
     t_vidaswindow:'🟡 Distribuição de Vidas',tip_vidaswindow:'Deals ativos por faixa de vidas. Sem filtro local de data.',
     t_winfactor:'Taxa de Ganho por AE',tip_winfactor:'Taxa de ganho ajustada por AE: deals ganhos ÷ (deals ganhos + deals perdidos).',
-    t_coverage:'🟡 Cobertura do Pipeline | Forecast vs Meta (negócio novo)',tip_coverage:'Cobertura de negócio novo (deals criados desde set/2025), horizonte de 18 meses: forecast mensal ÷ meta mensal (meta anual ÷ 12). Camadas: prêmio real (recorrente+pontual, motor compartilhado), Diagnóstico estimado por headcount (vidas × R$/vida × 6%) e topo de funil MQL agregado (vidas originadas × R$24 × win rate, +15m, onde a Reunião Agendada é absorvida). Rótulo × = cobertura total do mês. KPI de cobertura de pipe (prêmio aberto bruto) mede segurança (3–4× saudável).',
+    t_coverage:'🟡 Cobertura do Pipeline | Forecast vs Meta (negócio novo)',tip_coverage:'Cobertura de negócio novo (deals criados desde set/2025), horizonte de 18 meses: forecast mensal ÷ meta mensal (meta anual ÷ 12). Camadas: prêmio real (recorrente+pontual, motor compartilhado), Diagnóstico estimado por headcount (vidas × R$/vida × 6%) e topo de funil MQL agregado (vidas originadas × R$24 × win rate, +15m, onde a Reunião Agendada é absorvida). Rótulo × = cobertura total do mês. KPI de cobertura de pipe (prêmio aberto bruto) mede segurança (3–4× saudável). Ao lado do título aparece o nº de deals considerados (prêmio + Diagnóstico; o topo de funil MQL é agregado, não por deal). Por padrão o gráfico NÃO considera deals ganhos (Ganho/Implantação); marque o checkbox para incluí-los.',
     t_piperev12b:'🟡 Forecast Total (Regras da Cintia)',tip_piperev12b:'Reproduz a linha 7 do forecast da Cintia (todos os blocos) com deals vivos do HubSpot. Linha azul = visão ingênua para contraste. Detalhes no i.',
     t_piperev12:'🟡 Valor do Pipeline (Projeção Mensal)',tip_piperev12:'Receita ou quantidade de deals por mês da data prevista de receita. A contagem mostra deals ativos com data prevista sobre o total de ativos P09. Considera pipes Vendas + Bid.',
     t_segdoughnut:'🟡 Receita por Segmento (Donut)',tip_segdoughnut:'ARR estimado total por segmento de tamanho de cliente (baseado em vidas).',
@@ -1121,7 +1121,7 @@ var NOVO_I18N = {
     t_sizewindow:'🟡 Deal Size Distribution',tip_sizewindow:'Active deals by revenue band. No local date filter.',
     t_vidaswindow:'🟡 Vidas Distribution by Bucket',tip_vidaswindow:'Active deals by lives band. No local date filter.',
     t_winfactor:'Win Rate by AE',tip_winfactor:'Adjusted win rate by AE: won deals ÷ (won deals + lost deals).',
-    t_coverage:'🟡 Pipeline Coverage | Forecast vs Target (new business)',tip_coverage:'New-business coverage (deals created since Sep/2025), 18-month horizon: monthly forecast ÷ monthly target (annual target ÷ 12). Layers: real premium (recurring+one-time, shared engine), Diagnóstico estimated by headcount (lives × R$/life × 6%) and aggregate MQL top-of-funnel (originated lives × R$24 × win rate, +15m, where Reunião Agendada is absorbed). × label = total monthly coverage. A pipe-coverage KPI (raw open premium pipe) measures safety (3–4× healthy).',
+    t_coverage:'🟡 Pipeline Coverage | Forecast vs Target (new business)',tip_coverage:'New-business coverage (deals created since Sep/2025), 18-month horizon: monthly forecast ÷ monthly target (annual target ÷ 12). Layers: real premium (recurring+one-time, shared engine), Diagnóstico estimated by headcount (lives × R$/life × 6%) and aggregate MQL top-of-funnel (originated lives × R$24 × win rate, +15m, where Reunião Agendada is absorbed). × label = total monthly coverage. A pipe-coverage KPI (raw open premium pipe) measures safety (3–4× healthy). The number of deals considered is shown next to the title (premium + Diagnóstico; the MQL top-of-funnel is aggregate, not per-deal). By default the chart does NOT consider won deals (Ganho/Implantação); check the box to include them.',
     t_piperev12b:'🟡 Total Forecast (Cintia Rules)',tip_piperev12b:'Reproduces Cintia forecast row 7 (all blocks) with live HubSpot deals. Blue line = naive view for contrast. Details in the i.',
     t_piperev12:'🟡 Pipeline Value (Monthly Projection)',tip_piperev12:'Revenue or deal count by expected revenue month. Count shows active deals with expected revenue date over total active P09 deals. Considers Sales + Bid pipelines.',
     t_segdoughnut:'🟡 Revenue by Segment (Deal Size)',tip_segdoughnut:'Total estimated ARR by customer-size segment (based on lives).',
@@ -3216,9 +3216,11 @@ function _novoCovProb(d) {
 // Série mensal do coverage. Escopo negócio novo; por deal completo, aloca receita
 // recorrente/pontual por mês (calcReceitaMes) ponderada pela probabilidade; o pipe
 // de segurança soma o total BRUTO dos deals abertos (sem ponderar).
+var _novoCovInclWon = false;  // #8: por padrão o N05 NÃO considera deals ganhos; o checkbox inclui.
+function novoToggleCovWon(on) { _novoCovInclWon = !!on; buildNovoCoverage(); }
 function _novoCoverageData() {
   var months = _novoCovMonths();
-  var feed = (_novoDeals || []).filter(function(d){ return d.createdate && d.createdate >= NOVO_COV_START && d.stage !== 'Perdido'; });
+  var feed = (_novoDeals || []).filter(function(d){ return d.createdate && d.createdate >= NOVO_COV_START && d.stage !== 'Perdido' && (_novoCovInclWon || !_novoIsWon(d)); });
   var recProb = {}, ponProb = {}, diagProb = {}, pipeRaw = {}, dealsByMonth = {};
   months.forEach(function(m){ recProb[m]=0; ponProb[m]=0; diagProb[m]=0; pipeRaw[m]=0; dealsByMonth[m]=[]; });
   var completeN = 0, diagN = 0;
@@ -3273,6 +3275,8 @@ function buildNovoCoverage() {
   }
   var th = _novoTheme();
   var data = _novoCoverageData();
+  var _cc = document.getElementById('novo-cov-count');
+  if (_cc) _cc.textContent = data.includedN.toLocaleString('pt-BR') + (L ? ' deals considered' : ' deals considerados');
   var months = data.months;
   var recArr  = months.map(function(m){ return Math.round(data.recProb[m]); });
   var ponArr  = months.map(function(m){ return Math.round(data.ponProb[m]); });
@@ -3290,6 +3294,10 @@ function buildNovoCoverage() {
   var covCol = function(v){ return v>=1?'#3fb950':v>=0.8?'#e3b341':'#f85149'; };
 
   el.innerHTML =
+    '<label style="display:inline-flex;align-items:center;gap:.4rem;font-size:.75rem;color:var(--text2);cursor:pointer;margin-bottom:.7rem">'+
+      '<input type="checkbox" '+(_novoCovInclWon?'checked':'')+' onclick="novoToggleCovWon(this.checked)" style="cursor:pointer">'+
+      (L?'Include won deals (Ganho/Implantação)':'Considerar deals ganhos (Ganho/Implantação)')+
+    '</label>'+
     '<div style="margin-bottom:.85rem;font-size:.8rem;color:var(--text2);line-height:1.5">'+
       (L?'New-business coverage (deals created since Sep/2025) | monthly forecast ÷ monthly target (R$ ':'Cobertura de negócio novo (deals criados desde set/2025) | forecast mensal ÷ meta mensal (R$ ')+
       _ni(Math.round(metaMonth))+'). '+(L?('Next '+months.length+' months. Real premium + Diagnóstico (headcount est.) + aggregate MQL top-of-funnel (where Reunião Agendada is absorbed); × label = total coverage.'):('Próximos '+months.length+' meses. Prêmio real + Diagnóstico (est. por headcount) + topo de funil MQL agregado (onde a Reunião Agendada é absorvida); rótulo × = cobertura total.'))+
@@ -4726,7 +4734,7 @@ function novoRender() {
       _sectionHdr('Receita e Cobertura') +
 
       // N13 | Coverage Ratio (wide custom)
-      '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header"><h3>' + t('t_coverage') + '</h3>' + _infoBtn(t('tip_coverage'),'coverage') + '</div><div id="novo-coverage-body" style="padding:.25rem 0"></div></div>' +
+      '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header"><h3>' + t('t_coverage') + '<span id="novo-cov-count" style="font-size:.68rem;color:var(--text2);font-weight:600;margin-left:.4rem;white-space:nowrap"></span></h3>' + _infoBtn(t('tip_coverage'),'coverage') + '</div><div id="novo-coverage-body" style="padding:.25rem 0"></div></div>' +
 
       // N14 | Pipeline 12-Month (wide)
       '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header" style="flex-wrap:wrap;gap:.5rem"><h3>' + _titleWithPipeRevCoverage(t('t_piperev12')) + '</h3>' + _infoBtn(t('tip_piperev12'),'piperev12') +

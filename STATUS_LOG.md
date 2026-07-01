@@ -1570,3 +1570,12 @@ Registro curto, uma linha por interação (a cada alteração).
 - **Impacto esperado:** como Ganho < "chegou à Implantação", as probabilidades caem e a receita probabilizada de todos os forecasts diminui (mais conservador/correto). Bid fica mais volátil por etapa (amostra menor → mais fallback).
 - **Validação:** `_check-inline-js` 0 erros nos 3 arquivos; `_smoke-render` novoRender OK (280 deals); teste da fórmula do C07 reproduz as probabilidades esperadas. **Não deployado.**
 - **Pendências menores:** título/tooltip do C07 e do label do painel forecast-stage não passam por i18n (PT literal); editor de Configurações mostra o padrão fixo, não o valor por pipeline (o C07 é a referência por pipeline).
+
+### CRO | S05 %, N05 nº de deals + checkbox de ganhos, verificação N06B/N07 (2026-07-01)
+
+- **#3 S05:** card e modal mostram o % dos deals ativos que os estagnados representam; drawers PT/EN atualizados.
+- **#6 N05:** nº de deals considerados ao lado do título (`data.includedN`, prêmio + Diagnóstico; MQL é agregado). Drawer atualizado.
+- **#8 N05:** checkbox "Considerar deals ganhos" no corpo do gráfico. Por padrão o N05 passa a **excluir** Ganho/Implantação (`_novoCovInclWon=false`); marcado, inclui. Drawer atualizado.
+- **#7 N06B:** verificado — **já considera** deals ganhos (bloco 11 da Cintia: `won = _novoDeals.filter(_novoIsWon)`, sem cutoff; total = Bw+Bp+Bb+Bn). Sem mudança para não duplicar.
+- **#2 (live):** a probabilidade dos forecasts já é derivada AO VIVO do funil (C07 por pipeline), refetch a cada load; cache de sessão de 1h serve só o valor inicial até o fetch fresco chegar.
+- **Pendentes:** #1 (editor de Configurações por pipeline), #4 (C04 refletir forecast), #5 (dois donuts de receita prevista por bucket).
