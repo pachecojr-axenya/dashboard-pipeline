@@ -88,10 +88,12 @@ function buildSharedStageVal(canvasId, dataFn, modalTitle) {
   var th = _novoTheme(), open = dataFn();
   var agg = {}, by = {};
   NOVO_STAGE_ORDER.forEach(function(s){ agg[s]=0; by[s]=[]; });
-  open.forEach(function(d){ var s=_stageNorm(d.stage); if(!(s in agg)){agg[s]=0;by[s]=[];} var v=_annualRev(d);
+  open.forEach(function(d){ var s=_stageNorm(d.stage); if(!(s in agg)){agg[s]=0;by[s]=[];}
+    // Valor = TCV (régua 12m) onde disponível (CRO); senão ARR estimado (board mantém paridade).
+    var v=(typeof _novoDealTcv==='function')?_novoDealTcv(d):_annualRev(d);
     if(_novoValMode==='weighted'){
-      // Probabilidade por pipeline (C07) onde disponível (CRO); senão o mapa flat (paridade nos demais painéis).
-      var p=(typeof _novoStageProbFor==='function')?_novoStageProbFor(d.stage,d.pipeline):(NOVO_STAGE_PROB[d.stage]!=null?NOVO_STAGE_PROB[d.stage]:NOVO_STAGE_PROB[s]);
+      // Ponderado: probabilidade final (C07 por pipeline + ajuste do AE) onde disponível; senão o flat.
+      var p=(typeof _calcProbInfo==='function')?_calcProbInfo(d).final:((typeof _novoStageProbFor==='function')?_novoStageProbFor(d.stage,d.pipeline):(NOVO_STAGE_PROB[d.stage]!=null?NOVO_STAGE_PROB[d.stage]:NOVO_STAGE_PROB[s]));
       v=v*(p||0);
     }
     agg[s]+=v; by[s].push(d); });
