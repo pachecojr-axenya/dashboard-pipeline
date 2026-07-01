@@ -1074,7 +1074,7 @@ var NOVO_I18N = {
     t_vidaswindow:'🟡 Distribuição de Vidas',tip_vidaswindow:'Deals ativos por faixa de vidas. Sem filtro local de data.',
     t_winfactor:'Taxa de Ganho por AE',tip_winfactor:'Taxa de ganho ajustada por AE: deals ganhos ÷ (deals ganhos + deals perdidos).',
     t_coverage:'🟡 Cobertura do Pipeline | Forecast vs Meta (negócio novo)',tip_coverage:'Cobertura de negócio novo (deals criados desde set/2025), horizonte de 18 meses: forecast mensal ÷ meta mensal (meta anual ÷ 12). Camadas: prêmio real (recorrente+pontual, motor compartilhado), Diagnóstico estimado por headcount (vidas × R$/vida × 6%) e topo de funil MQL agregado (vidas originadas × R$24 × win rate, +15m, onde a Reunião Agendada é absorvida). Rótulo × = cobertura total do mês. KPI de cobertura de pipe (prêmio aberto bruto) mede segurança (3–4× saudável). Ao lado do título aparece o nº de deals considerados (prêmio + Diagnóstico; o topo de funil MQL é agregado, não por deal). Por padrão o gráfico NÃO considera deals ganhos (Ganho/Implantação); marque o checkbox para incluí-los.',
-    t_piperev12b:'Forecast Total (Regras da Cintia)',tip_piperev12b:'Forecast total mês a mês (Ganho/Implantação + pipeline + Bid + novos negócios), pelo MESMO motor do /forecast. Linha verde = Receita Real (bruta); linha azul = Receita Probabilizada (× probabilidade de fechamento). Detalhes no i.',
+    t_piperev12b:'Forecast Total',tip_piperev12b:'Forecast total mês a mês (Ganho/Implantação + pipeline + Bid + novos negócios), pelo MESMO motor do /forecast. Linha verde = Receita Real (bruta); linha azul = Receita Probabilizada (× probabilidade de fechamento). Detalhes no i.',
     t_piperev12:'🟡 Valor do Pipeline (Projeção Mensal)',tip_piperev12:'Receita ou quantidade de deals por mês da data prevista de receita. A contagem mostra deals ativos com data prevista sobre o total de ativos P09. Considera pipes Vendas + Bid.',
     t_segdoughnut:'🟡 Receita por Segmento (Donut)',tip_segdoughnut:'ARR estimado total por segmento de tamanho de cliente (baseado em vidas).',
     t_visibility:'🟡 Visibilidade de Receita | Timeline',tip_visibility:'Quantidade de deals com data prevista de receita por mês.',
@@ -1191,7 +1191,7 @@ var NOVO_I18N = {
     t_vidaswindow:'🟡 Vidas Distribution by Bucket',tip_vidaswindow:'Active deals by lives band. No local date filter.',
     t_winfactor:'Win Rate by AE',tip_winfactor:'Adjusted win rate by AE: won deals ÷ (won deals + lost deals).',
     t_coverage:'🟡 Pipeline Coverage | Forecast vs Target (new business)',tip_coverage:'New-business coverage (deals created since Sep/2025), 18-month horizon: monthly forecast ÷ monthly target (annual target ÷ 12). Layers: real premium (recurring+one-time, shared engine), Diagnóstico estimated by headcount (lives × R$/life × 6%) and aggregate MQL top-of-funnel (originated lives × R$24 × win rate, +15m, where Reunião Agendada is absorbed). × label = total monthly coverage. A pipe-coverage KPI (raw open premium pipe) measures safety (3–4× healthy). The number of deals considered is shown next to the title (premium + Diagnóstico; the MQL top-of-funnel is aggregate, not per-deal). By default the chart does NOT consider won deals (Ganho/Implantação); check the box to include them.',
-    t_piperev12b:'Total Forecast (Cintia Rules)',tip_piperev12b:'Month-by-month total forecast (won/onboarding + pipeline + Bid + new business), same engine as /forecast. Green line = Real revenue (gross); blue line = Weighted revenue (× close probability). Details in the i.',
+    t_piperev12b:'Total Forecast',tip_piperev12b:'Month-by-month total forecast (won/onboarding + pipeline + Bid + new business), same engine as /forecast. Green line = Real revenue (gross); blue line = Weighted revenue (× close probability). Details in the i.',
     t_piperev12:'🟡 Pipeline Value (Monthly Projection)',tip_piperev12:'Revenue or deal count by expected revenue month. Count shows active deals with expected revenue date over total active P09 deals. Considers Sales + Bid pipelines.',
     t_segdoughnut:'🟡 Revenue by Segment (Deal Size)',tip_segdoughnut:'Total estimated ARR by customer-size segment (based on lives).',
     t_visibility:'🟡 Revenue Visibility Timeline',tip_visibility:'Count of deals with expected revenue date by month.',
@@ -3760,47 +3760,38 @@ function _novoFcNewBizRev(month, weighted){
 // Documentação dinâmica (números calculados) injetada no modal de info do N06B.
 // Reflete as regras de forecasting da Cintia aplicadas só neste gráfico.
 function _novoForecastBMethodologyHtml() {
-  var active = (typeof _novoCurrentActivePipeline==='function') ? _novoCurrentActivePipeline() : [];
-  var nDiag=0, nConc=0, nBid=0;
-  for (var i=0;i<active.length;i++){ var s=active[i].stage, isBid=active[i].pipeline==='Bid';
-    if (isBid) nBid++;
-    else if (s==='Diagnóstico') nDiag++;
-    else if (s!=='Reunião Agendada' && s!=='Reunião Pré-RFP') nConc++;
-  }
-  var nWon=(_novoDeals||[]).filter(function(d){ return _novoIsWon(d); }).length;
-  var brl=function(v){ return 'R$ '+Math.round(v).toLocaleString('pt-BR'); };
-  var nbRows='';
-  ['2027-10','2027-11','2027-12'].forEach(function(m){ nbRows += '<tr><td style="text-align:left">'+_mlbl(m)+'</td><td>'+brl(_novoFcNewBizRev(m,true))+' /mês</td></tr>'; });
+  var considered = (_novoDeals||[]).filter(function(d){ return typeof _novoFcInForecastSet==='function' ? _novoFcInForecastSet(d) : true; });
+  var nWon=0,nDiag=0,nVend=0,nBid=0;
+  considered.forEach(function(d){
+    if (_novoIsWon(d)) nWon++;
+    else if (d.pipeline==='Bid') { if (NOVO_BID_IMPUTE[d.stage]) nBid++; }
+    else if (d.stage==='Diagnóstico') nDiag++;
+    else if (d.stage!=='Reunião Agendada' && d.stage!=='Reunião Pré-RFP') nVend++;
+  });
+  var box=function(color,titulo,corpo){ return '<div style="margin:0 0 .65rem;padding:.5rem .65rem;background:var(--card2);border-radius:6px;border-left:3px solid '+color+'">'+
+    '<div style="font-size:.61rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);font-weight:700;margin-bottom:.3rem">'+titulo+'</div>'+
+    '<div style="font-size:.78rem;color:var(--text);line-height:1.7">'+corpo+'</div></div>'; };
   return '<div style="margin:0 0 1.4rem;padding-top:1rem;border-top:1px solid var(--border)">'+
-    '<h3 style="font-size:.92rem;color:var(--text);margin:0 0 .4rem">Metodologia do forecast (N06B) | forecast total da Cintia (linha 7)</h3>'+
+    '<h3 style="font-size:.92rem;color:var(--text);margin:0 0 .4rem">Metodologia | Forecast Total</h3>'+
     '<p style="font-size:.8rem;line-height:1.6;color:var(--text2);margin:0 0 .6rem">'+
-      'A linha <b>verde "Forecast total"</b> reproduz a <b>linha 7 da planilha da Cintia</b> (soma dos blocos 8 a 14), mas com os <b>deals vivos do HubSpot</b> e os <b>cálculos dela</b>. A linha <b>azul</b> é a visão ingênua (pipeline aberto na <code>data_prevista</code> × prob da etapa), para contraste.'+
+      'Duas linhas, mês a mês, pelo <b>mesmo motor do painel Forecast Overall</b> (forecast-stage): '+
+      '<b style="color:var(--green)">Receita Real</b> = potencial cheio; <b style="color:var(--accent,#58a6ff)">Receita Probabilizada</b> = × probabilidade de fechamento. '+
+      'Conjunto de deals: negócio novo (criados desde <b>set/2025</b>) + Ganho/Implantação + pipeline de <b>Bid</b> (desde jan/2025). '+
+      'Dedup de gêmeos Fee×Corretagem (conta um só). Janela jan/2026 → dez/2027.'+
     '</p>'+
-    '<div style="margin:0 0 .65rem;padding:.5rem .65rem;background:var(--card2);border-radius:6px;border-left:3px solid var(--green)">'+
-      '<div style="font-size:.61rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);font-weight:700;margin-bottom:.3rem">Bloco recorrente | Negócio Ganho + Implantação (linha 11)</div>'+
-      '<div style="font-size:.78rem;color:var(--text);line-height:1.7">'+
-        'Receita <b>recorrente (ARR ÷ 12)</b> dos '+nWon+' deals ganhos/implantação, fixa a partir da vigência. Receita certa | sem probabilidade. <span style="color:var(--text2)">(É este bloco que faz o forecast acumular.)</span>'+
-      '</div>'+
-    '</div>'+
-    '<div style="margin:0 0 .65rem;padding:.5rem .65rem;background:var(--card2);border-radius:6px;border-left:3px solid var(--teal)">'+
-      '<div style="font-size:.61rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);font-weight:700;margin-bottom:.3rem">Pipeline aberto (linhas 8 a 10 + 12)</div>'+
-      '<div style="font-size:.78rem;color:var(--text);line-height:1.7">'+
-        '<b>Diagnóstico</b> ('+nDiag+' deals): vidas × R$/vida por porte × <b>6%</b>, a partir de <code>createdate</code> + meses por porte.<br>'+
-        '<span style="color:var(--text2)">Porte: até 200 vidas → R$ 36/vida e +9m | 200 a 5.000 → R$ 24 e +14m | acima de 5.000 → R$ 12 e +18m.</span><br>'+
-        '<b>Cotação | Consultoria | Negociação | etc</b> ('+nConc+' deals): 1ª fatura × probabilidade da etapa (mecânica de 1ª fatura: corretagem com/sem agenciamento), reconhecida na <b>vigência + '+NOVO_FC_VIG_OFFSET+' meses</b> (fallback data prevista).<br>'+
-        '<b>BID</b> ('+nBid+' deals): mesma mecânica de 1ª fatura × probabilidade, para o pipeline de Bid (linha 14). Pré-RFP zerado (não conta receita antes da RFP abrir).'+
-      '</div>'+
-    '</div>'+
-    '<div style="margin:0 0 .65rem;padding:.5rem .65rem;background:var(--card2);border-radius:6px;border-left:3px solid var(--yellow)">'+
-      '<div style="font-size:.61rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);font-weight:700;margin-bottom:.3rem">Novos negócios | topo de funil (linha 13 | aba MQL)</div>'+
-      '<div style="font-size:.78rem;color:var(--text);line-height:1.7">'+
-        'Vidas originadas/mês × <b>R$ '+NOVO_FC_VIDA_FEE+'/vida</b> × Win Rate <b>'+(_novoFcWinRate()*100).toFixed(1).replace('.',',')+'%</b> <span style="color:var(--text2)">(= taxa do S01, ganhos ÷ fechados)</span>, receita <b>'+NOVO_FC_TOPO_MESES+' meses</b> após a originação (recorrente).<br>'+
-        '<span style="color:var(--text2)">Originação (aba MQL): jul/26 = 162.667 vidas | ago/26 = 216.000 | set/26 = 285.600 | platô 367.200. Com +15m, entram como receita dentro da janela em out/nov/dez 2027.</span>'+
-      '</div>'+
-      '<table class="lb" style="width:100%;font-size:.78rem;margin-top:.45rem"><thead><tr><th style="text-align:left">Mês</th><th>Novos negócios (probabilizado)</th></tr></thead><tbody>'+nbRows+'</tbody></table>'+
-    '</div>'+
+    box('var(--green)','Negócio Ganho + Implantação · '+nWon+' deals',
+      'Receita <b>real digitada mês a mês</b> (faturamento manual) dos deals que já faturam; quem ainda não venceu usa a régua de previsibilidade. É o bloco que faz o forecast acumular.')+
+    box('var(--teal)','Pipeline de Vendas · '+(nDiag+nVend)+' deals',
+      '<b>Diagnóstico</b> ('+nDiag+'): vidas × R$/vida por porte × <b>6%</b>, a partir de <code>createdate</code> + meses por porte '+
+      '<span style="color:var(--text2)">(≤200 → R$36/+9m · ≤5.000 → R$24/+14m · acima → R$12/+18m)</span>.<br>'+
+      '<b>Cotação | Consultoria | Negociação | etc</b> ('+nVend+'): régua da 1ª fatura (corretagem com/sem agenciamento; fee por vida), início por modelo '+
+      '<span style="color:var(--text2)">(corretagem → vigência+2 · fee → data prevista+2 · senão data prevista)</span>, × probabilidade da etapa (funil por pipeline C07 + ajuste ±10% do AE).')+
+    box('var(--purple,#a371f7)','Bloco BID · '+nBid+' deals',
+      'Apenas Bid em <b>Negociação / Proposta Enviada</b>, com data de receita <b>imputada</b> (Negociação → out/2026, Proposta → jun/2027) e <b>probabilidade fixa de 0,5%</b> (premissa conservadora). Bid em outras etapas <b>não entra</b> na receita.')+
+    box('var(--yellow)','Novos negócios | topo de funil',
+      'Cohorts de originação dos BDRs × <b>R$ '+NOVO_FC_VIDA_FEE+'/vida</b> × conversão MQL (prob. de Reunião Agendada), receita <b>'+NOVO_FC_TOPO_MESES+' meses</b> após a originação. Bloco agregado (não é por deal).')+
     '<p style="font-size:.72rem;color:var(--muted);line-height:1.5;margin:0">'+
-      'Modo <b>Probabilizado</b>: aplica conversões (6% Diagnóstico, win rate do S01 no topo) e a probabilidade da etapa; o bloco Ganho/Implantação é sempre cheio (certo). Modo <b>Real</b>: potencial cheio (sem conversão). Snapshot vivo do HubSpot, então não bate na vírgula com a planilha (lista fixa de 22/06); o cenário por porte da planilha (D3) não é aplicado. Constantes editáveis no código.'+
+      'Snapshot vivo do HubSpot — pode não bater na vírgula com planilhas estáticas. <b>Real</b>: sem probabilidade (Ganho/Impl. e Bid entram pelo valor cheio). <b>Probabilizada</b>: × probabilidade (Diagnóstico 6%, Bid 0,5%, demais pelo funil da etapa).'+
     '</p>'+
   '</div>';
 }
@@ -4957,13 +4948,9 @@ function novoRender() {
       // N13 | Coverage Ratio (wide custom)
       '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header"><h3>' + t('t_coverage') + '<span id="novo-cov-count" style="font-size:.68rem;color:var(--text2);font-weight:600;margin-left:.4rem;white-space:nowrap"></span></h3>' + _infoBtn(t('tip_coverage'),'coverage') + '</div><div id="novo-coverage-body" style="padding:.25rem 0"></div></div>' +
 
-      // N14 | Pipeline 12-Month (wide)
-      '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header" style="flex-wrap:wrap;gap:.5rem"><h3>' + _titleWithPipeRevCoverage(t('t_piperev12')) + '</h3>' + _infoBtn(t('tip_piperev12'),'piperev12') +
-        (_novoPipeRevMetric === 'revenue' ? _subTabs('novo-piperev-value-tabs', _novoPipeRevValueMode, [{mode:'raw',label:(NOVO_LANG==='en'?'Real':'Real'),fn:'novoSwitchPipeRevValue'},{mode:'weighted',label:(NOVO_LANG==='en'?'Probability-weighted':'Probabilizado'),fn:'novoSwitchPipeRevValue'}]) : '')+
-        _subTabs('novo-piperev-metric-tabs', _novoPipeRevMetric, [{mode:'revenue',label:t('lbl_revenue'),fn:'novoSwitchPipeRevMetric'},{mode:'deals',label:t('tab_deals'),fn:'novoSwitchPipeRevMetric'}])+
-      '</div><canvas id="chart-novo-piperev12" style="max-height:300px"></canvas></div>' +
+      // N06 (Valor do Pipeline | Projeção Mensal) removido a pedido — redundante com o Forecast Total (N06B).
 
-      // N06B | Cópia do N14/N06 (Pipeline 12-Month) — toggles independentes
+      // N06B | Forecast Total (Real + Probabilizada), mesmo motor do Forecast Overall
       '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header" style="flex-wrap:wrap;gap:.5rem"><h3>' + t('t_piperev12b') + ' <span id="novo-piperev12b-count" style="font-size:.68rem;color:var(--text2);font-weight:600;margin-left:.35rem;white-space:nowrap"></span></h3>' + _infoBtn(t('tip_piperev12b'),'piperev12b') +
       '</div><canvas id="chart-novo-piperev12b" style="max-height:300px"></canvas></div>' +
 
@@ -5005,7 +4992,6 @@ function novoRender() {
   buildNovoWinRateSize();
   buildNovoWinFactor();
   buildNovoCoverage();
-  buildNovoPipeRev12();
   buildNovoPipeRev12B();
   buildNovoTimeInStage();
   buildNovoSpeedQualify();
