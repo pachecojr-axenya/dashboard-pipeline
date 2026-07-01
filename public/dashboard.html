@@ -4024,7 +4024,6 @@ function buildNovoPipeRev12B() {
     dataReal.push(Math.round(real)); dataProb.push(Math.round(prob));
     cWon.push(Rwon[m]||0); cPipe.push(Rpipe[m]||0); cBid.push(Rbid[m]||0); cNew.push(Rnew[m]||0);
   });
-  var yMax=0; for (var z=0;z<dataReal.length;z++){ if(dataReal[z]>yMax)yMax=dataReal[z]; if(dataProb[z]>yMax)yMax=dataProb[z]; }
   var L=NOVO_LANG==='en';
 
   _novoMkChart('chart-novo-piperev12b', { type:'line', plugins:[ChartDataLabels],
@@ -4042,7 +4041,7 @@ function buildNovoPipeRev12B() {
           return ['', (L?'Real breakdown:':'Quebra (real):'), '• '+lbW+': '+_revShort(cWon[i]), '• '+lbP+': '+_revShort(cPipe[i]), '• '+lbB+': '+_revShort(cBid[i]), '• '+lbN+': +'+_revShort(cNew[i])];
         }
       } } },
-      scales:{ x:{grid:{display:false},ticks:{color:th.cText2,font:{family:NOVO_FONT}}}, y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},callback:function(v){return _revShort(v);}}, suggestedMax:yMax} },
+      scales:{ x:{grid:{display:false},ticks:{color:th.cText2,font:{family:NOVO_FONT}}}, y:{grid:{color:th.cGrid},beginAtZero:true,grace:'8%',ticks:{color:th.cText2,font:{family:NOVO_FONT},callback:function(v){return _revShort(v);}}} },
       onClick:function(){ _novoOpenN06BForecastModal(); } } });
 }
 
