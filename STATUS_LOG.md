@@ -1579,3 +1579,4 @@ Registro curto, uma linha por interação (a cada alteração).
 - **#7 N06B:** verificado — **já considera** deals ganhos (bloco 11 da Cintia: `won = _novoDeals.filter(_novoIsWon)`, sem cutoff; total = Bw+Bp+Bb+Bn). Sem mudança para não duplicar.
 - **#2 (live):** a probabilidade dos forecasts já é derivada AO VIVO do funil (C07 por pipeline), refetch a cada load; cache de sessão de 1h serve só o valor inicial até o fetch fresco chegar.
 - **Pendentes:** #1 (editor de Configurações por pipeline), #4 (C04 refletir forecast), #5 (dois donuts de receita prevista por bucket).
+- **#4 C04:** `buildSharedStageVal` (shared-charts.js) passou a ponderar pela probabilidade POR PIPELINE (C07) via `_novoStageProbFor(d.stage,d.pipeline)`, com guard (`typeof===function`) que mantém o board no mapa flat (paridade). Drawer/tooltip PT/EN atualizados. Pendentes: #1 (editor por pipeline) e #5 (dois donuts).

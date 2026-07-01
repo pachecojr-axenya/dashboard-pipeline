@@ -87,7 +87,11 @@ function buildSharedStageVal(canvasId, dataFn, modalTitle) {
   var agg = {}, by = {};
   NOVO_STAGE_ORDER.forEach(function(s){ agg[s]=0; by[s]=[]; });
   open.forEach(function(d){ var s=_stageNorm(d.stage); if(!(s in agg)){agg[s]=0;by[s]=[];} var v=_annualRev(d);
-    if(_novoValMode==='weighted'){ var p=NOVO_STAGE_PROB[d.stage]; if(p==null)p=NOVO_STAGE_PROB[s]; v=v*(p||0); }
+    if(_novoValMode==='weighted'){
+      // Probabilidade por pipeline (C07) onde disponível (CRO); senão o mapa flat (paridade nos demais painéis).
+      var p=(typeof _novoStageProbFor==='function')?_novoStageProbFor(d.stage,d.pipeline):(NOVO_STAGE_PROB[d.stage]!=null?NOVO_STAGE_PROB[d.stage]:NOVO_STAGE_PROB[s]);
+      v=v*(p||0);
+    }
     agg[s]+=v; by[s].push(d); });
   var labels = NOVO_STAGE_ORDER.filter(function(s){ return agg[s] > 0; });
   var data = labels.map(function(s){ return Math.round(agg[s]); });
