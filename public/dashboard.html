@@ -251,6 +251,8 @@ table.lb tfoot td{font-weight:600;border-top:2px solid var(--border);position:st
 <script src="/premium.js?v=5"></script>
 <script src="/shared-charts.js?v=1"></script>
 <script src="/revenue-engine.js?v=1"></script>
+<script src="/faturamento-manual.js?v=1"></script>
+<script src="/forecast-engine.js?v=1"></script>
 </head>
 <body>
 
@@ -1967,9 +1969,16 @@ function novoLoadData() {
     })
     .then(function(data) {
       _novoDeals = data.deals || [];
-      _novoLoading = false;
-      if (btn) { btn.classList.remove('spinning'); btn.disabled = false; }
-      novoRender();
+      var _finish = function() {
+        _novoLoading = false;
+        if (btn) { btn.classList.remove('spinning'); btn.disabled = false; }
+        novoRender();
+      };
+      // Carrega a Receita Real digitada (faturamento manual) antes de renderizar, para o
+      // N06B espelhar o /forecast (bloco de Ganho/Implantação usa os valores digitados).
+      if (typeof FaturamentoManual !== 'undefined' && FaturamentoManual.load) {
+        FaturamentoManual.load().then(_finish, _finish);
+      } else { _finish(); }
     })
     .catch(function(err) {
       _novoLoading = false;
@@ -3950,6 +3959,37 @@ function _novoOpenN06BForecastModal() {
   openModal('Forecast N06B | ' + modeTag + ' | jan/26 → dez/31', h);
 }
 
+// ── Motor de forecast COMPARTILHADO (mesmo do /forecast e /forecast-stage) ───────
+// Configura o ForecastEngine + FaturamentoManual para o N06B espelhar EXATAMENTE o
+// /forecast (Regra primária nº 3 | fonte única de receita).
+var NOVO_VPV_TIERS = { s:36, m:24, l:12 };                 // R$/vida por porte (Diagnóstico)
+function _novoGetVpv(v){ if(!v || v<=200) return NOVO_VPV_TIERS.s; if(v<=4999) return NOVO_VPV_TIERS.m; return NOVO_VPV_TIERS.l; }
+var NOVO_MONTH_LABELS = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+// Janela Jan/2026–Dez/2027 (24m), idêntica ao /forecast; o N06B exibe só a fatia futura.
+var NOVO_FC_MONTHS = (function(){ var a=[]; for(var y=2026;y<=2027;y++){ for(var mo=0;mo<12;mo++){ a.push({ y:y, mo:mo, label:NOVO_MONTH_LABELS[mo]+' '+y, key:y*100+mo }); } } return a; })();
+function _novoParseRevDate(s){ if(!s) return null; var m=String(s).match(/^(\d{4})-(\d{2})/); return m?{ y:parseInt(m[1],10), mo:parseInt(m[2],10)-1 }:null; }
+function _novoAddMonthsYM(rs,n){ if(!rs) return null; var t=rs.mo+n; return { y:rs.y+Math.floor(t/12), mo:((t%12)+12)%12 }; }
+function _novoTodayStr(){ var d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function _novoCalcReceita(n,deal){ var r=(typeof calcReceitaMes==='function')?calcReceitaMes(n,deal):null; return r?r.total:null; }
+function _novoFcDealId(d){ return d.hs_id!=null ? String(d.hs_id) : ('n:'+((d.dealname||'').trim().toLowerCase())+'|m:'+(d.modelo_remuneracao||'')); }
+if (typeof ForecastEngine !== 'undefined') {
+  ForecastEngine.config({ MONTHS:NOVO_FC_MONTHS, getVpv:_novoGetVpv, parseRevenueDate:_novoParseRevDate, addMonths:_novoAddMonthsYM, todayStr:_novoTodayStr, calcReceita:_novoCalcReceita, monthLabels:NOVO_MONTH_LABELS });
+}
+if (typeof FaturamentoManual !== 'undefined') {
+  FaturamentoManual.config({ dealId: _novoFcDealId });
+}
+// probAdj por deal, idêntico ao /forecast: Ganho/Implantação = 100%; Diagnóstico fixo 6%;
+// demais = probabilidade da etapa (funil por pipeline) + ajuste do AE (_calcProbInfo).
+function _novoFcProbAdj(d){
+  if (_novoIsWon(d)) return 1;
+  if (d.stage==='Diagnóstico') return 0.06;
+  var p=_calcProbInfo(d).final; return p==null?0:p;
+}
+// Conversão MQL (Reunião Agendada) que probabiliza os cohorts BDR — igual ao _fcMqlConv.
+function _novoFcMqlConv(){ var p=_novoStageProbFor('Reunião Agendada','Vendas'); return p==null?0:p; }
+// Índice do mês 'YYYY-MM' dentro de NOVO_FC_MONTHS (-1 se fora da janela do engine).
+function _novoFcMonthIdx(ym){ var y=parseInt(ym.substring(0,4),10), mo=parseInt(ym.substring(5,7),10)-1, k=y*100+mo; for(var i=0;i<NOVO_FC_MONTHS.length;i++){ if(NOVO_FC_MONTHS[i].key===k) return i; } return -1; }
+
 function buildNovoPipeRev12B() {
   var open = _novoPipeRevDeals();   // linha azul (ingênua) + modal de clique
   var active = (typeof _novoCurrentActivePipeline==='function') ? _novoCurrentActivePipeline() : open;
@@ -3972,11 +4012,28 @@ function buildNovoPipeRev12B() {
     won.forEach(function(d){ var sw=_novoFcWonStartMonth(d); if(sw&&Bw[sw]!=null) Bw[sw]+=1; });
     // Novos negócios (topo de funil) são modelados em vidas/receita, não em contagem de deals.
   } else {
+    // Linha azul (ingênua): pipe aberto na data_prevista × prob, para contraste. Inalterada.
     open.forEach(function(d){ for (var i=0;i<months.length;i++){ var m=months[i]; var v=_novoPipeRevMonthValue(d, m, weighted); if(v>0) A[m]+=v; } });
-    nonBid.forEach(function(d){ for (var i2=0;i2<months.length;i2++){ var m2=months[i2]; var rv=_novoFcRuleMonthValue(d, m2, weighted); if(rv>0) Bp[m2]+=rv; } });
-    bid.forEach(function(d){ for (var i3=0;i3<months.length;i3++){ var m3=months[i3]; var bv=_novoFcBidMonthValue(d, m3, weighted); if(bv>0) Bb[m3]+=bv; } });
-    won.forEach(function(d){ for (var i4=0;i4<months.length;i4++){ var m4=months[i4]; var wv=_novoFcWonMonthValue(d, m4); if(wv>0) Bw[m4]+=wv; } });
-    for (var j=0;j<months.length;j++){ Bn[months[j]] = _novoFcNewBizRev(months[j], weighted); }
+    // Linha verde = forecast total via ForecastEngine (mesmo motor do /forecast).
+    // Cada deal: Real = rec; Probabilizado = rec × probAdj. Ganho usa faturamento manual.
+    var pick = function(o){ return weighted ? o.val : o.rec; };
+    var _accum = function(d, bucket){
+      if (typeof ForecastEngine === 'undefined') return;
+      var arr = ForecastEngine.dealMonthly(d, _novoFcProbAdj(d));
+      for (var i=0;i<months.length;i++){ var m=months[i]; var idx=_novoFcMonthIdx(m); if(idx<0) continue; var o=arr[idx]; if(!o) continue; var val=pick(o); if(val>0) bucket[m]+=val; }
+    };
+    nonBid.forEach(function(d){ _accum(d, Bp); });   // pipe concreto + Diagnóstico
+    bid.forEach(function(d){ _accum(d, Bb); });       // pipeline de Bid
+    won.forEach(function(d){ _accum(d, Bw); });       // Ganho/Implantação (faturamento manual)
+    // Topo de funil (novos negócios) = cohorts BDR × conversão MQL, igual ao /forecast.
+    if (typeof ForecastEngine !== 'undefined') {
+      var mqlConv = _novoFcMqlConv();
+      ForecastEngine.bdrCohorts().forEach(function(c){
+        for (var i=0;i<months.length;i++){ var m=months[i]; var mo=parseInt(m.substring(5,7),10)-1, y=parseInt(m.substring(0,4),10);
+          var diff=(y-c.revStart.y)*12+(mo-c.revStart.mo); if(diff<0) continue;
+          Bn[m] += weighted ? c.rec*mqlConv : c.rec; }
+      });
+    }
   }
 
   var firstNonZero=-1;
