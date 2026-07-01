@@ -1589,3 +1589,9 @@ Registro curto, uma linha por interação (a cada alteração).
 - **#5 C08 reformulado:** toggle agora é **Bruto | Ponderado** (métrica) e os **dois donuts são Por Receita e Por Vidas** (bucket). Bruto = Σ ARR; Ponderado = Σ ARR × prob. por pipeline (C07). Tooltips/ficha PT-EN atualizados.
 - **#2/#3 (verificado):** C06 e C07 já filtram por **createdate** — `/api/funnel-stages` filtra deals por data de criação (>= since), e o filtro global do painel dirige since/until (`_novoFunnelEffectiveSince/Until`); reload reconstrói C06+C07. Sem mudança.
 - **#4 (verificado):** C04 (`buildSharedStageVal`) e o forecast (N06B via `_calcProbInfo(d).final`) usam a MESMA probabilidade global por pipeline (`_novoStageProbFor` = override → C07 → padrão), com ±10% do AE e Diagnóstico 6%. Confirmado.
+
+### CRO | C08 receita casada com o forecast + dias no título; diagnóstico contagem Bid (2026-07-01)
+
+- **#1 C08 (bug de receita):** deixou de usar `_annualRev` (= arr_estimado / prêmio×12, que inflava corretagem → bruto 225,6M) e passou a usar a MESMA mecânica por deal do forecast (`_novoFcRuleMonthValue`/`_novoFcBidMonthValue`, regras da Cintia, janela de projeção; `weighted` interno). Agora bate com o forecast para os deals de pipe+bid.
+- **#2 C08:** nº de dias considerados (span da janela de projeção) ao lado do título.
+- **#3 (diagnóstico, sem mudança):** CRO ativo conta 17 Bid (Neg 2 + Proposta 3 + **Reunião Pré-RFP 11** + Consultoria 1); Forecast conta 7 (Neg 2 + Proposta 3 + Consultoria 1 + Standby 1). Diferença = o CRO inclui **Reunião Pré-RFP** (11) como ativo e exclui Standby; o Forecast exclui Pré-RFP (Cintia zera pré-RFP) e inclui Standby. Aguardando decisão de reconciliação.

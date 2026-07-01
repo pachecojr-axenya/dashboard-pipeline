@@ -2899,7 +2899,7 @@ function _novoRevBucketsCard() {
   var L = NOVO_LANG === 'en';
   var _col = function(lbl, cid){ return '<div style="flex:1;min-width:260px"><div style="text-align:center;font-size:.8rem;font-weight:600;color:var(--text2);margin-bottom:.3rem">'+lbl+'</div><canvas id="'+cid+'" style="max-height:300px"></canvas></div>'; };
   return '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header" style="flex-wrap:wrap;gap:.5rem">' +
-    '<h3>' + (L?'Forecast Revenue by Bucket':'Receita Prevista por Bucket') + '</h3>' +
+    '<h3>' + (L?'Forecast Revenue by Bucket':'Receita Prevista por Bucket') + '<span id="novo-revbkt-count" style="font-size:.68rem;color:var(--text2);font-weight:600;margin-left:.4rem;white-space:nowrap"></span></h3>' +
     _infoBtn(t('tip_revbkt'), 'revbkt') +
     _subTabs('novo-revbkt-tabs', _novoRevBktMode, [{mode:'bruto',label:(L?'Gross':'Bruto'),fn:'novoSwitchRevBkt'},{mode:'ponderado',label:(L?'Weighted':'Ponderado'),fn:'novoSwitchRevBkt'}]) +
     '</div>' +
@@ -2909,15 +2909,33 @@ function _novoRevBucketsCard() {
     '</div>' +
   '</div>';
 }
+// Receita prevista de um deal pela MESMA mecânica do forecast (regras da Cintia, N06B):
+// soma o valor mensal por deal na janela de projeção. weighted=false → bruto; true → ponderado
+// (usa _calcProbInfo internamente). Bid usa a régua de Bid (pré-RFP zerado).
+function _novoDealFcRev(d, weighted){
+  var months = _novoProjectionMonthsToDec27();
+  var fn = (d.pipeline === 'Bid') ? _novoFcBidMonthValue : _novoFcRuleMonthValue;
+  var s=0; for (var i=0;i<months.length;i++){ var v=fn(d, months[i], weighted); if(v>0) s+=v; } return s;
+}
 function buildNovoRevBuckets() {
   if (!document.getElementById('chart-novo-revbkt-receita')) return;
   var L = NOVO_LANG === 'en';
   var weighted = _novoRevBktMode === 'ponderado';
-  var metric = weighted
-    ? function(d){ var p=_novoStageProbFor(d.stage,d.pipeline); return _annualRev(d)*(p||0); }
-    : function(d){ return _annualRev(d); };
+  // Mesma base do forecast (N06B) por deal → os totais batem com o forecast.
+  var metric = function(d){ return _novoDealFcRev(d, weighted); };
   var lbl = weighted ? (L?'weighted fc':'fc ponderada') : (L?'gross fc':'fc bruta');
   var mt  = weighted ? (L?'Weighted':'Ponderada') : (L?'Gross':'Bruta');
+  // dias considerados = span da janela de projeção do forecast (mesma do N06B).
+  var _cc = document.getElementById('novo-revbkt-count');
+  if (_cc) {
+    var _ms = _novoProjectionMonthsToDec27();
+    if (_ms && _ms.length) {
+      var _p0 = _ms[0].split('-'), _p1 = _ms[_ms.length-1].split('-');
+      var _d0 = new Date(+_p0[0], +_p0[1]-1, 1), _d1 = new Date(+_p1[0], +_p1[1], 0);
+      var _dias = Math.round((_d1 - _d0) / 86400000) + 1;
+      _cc.textContent = _dias.toLocaleString('pt-BR') + (L?' days considered':' dias considerados');
+    }
+  }
   buildSharedSizeDonut('chart-novo-revbkt-receita', _novoActiveChartDeals, {
     bucketMode:'revenue', valFmt:_revShort, extTip:_novoChartExtTip, metric:metric,
     openDeals:lbl, modalTitle:(L?'Forecast Revenue by Revenue Bucket | ':'Receita Prevista por Bucket de Receita | ')+mt
