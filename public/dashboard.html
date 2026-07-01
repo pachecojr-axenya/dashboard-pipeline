@@ -352,16 +352,17 @@ table.lb tfoot td{font-weight:600;border-top:2px solid var(--border);position:st
     <div class="novo-prob-field" style="border-bottom:none;align-items:center"><label id="np-sb-label">Ativos incluem Standby</label><button class="impl-toggle" id="np-sb-toggle" onclick="novoToggleActiveStandby()" title="" style="margin-left:auto"><span class="sw"></span></button></div>
     <div style="height:1px;background:var(--border);margin:.25rem 0 .55rem"></div>
     <div class="novo-prob-field" style="border-bottom:none"><label id="np-meta-label">Meta Receita Ganha (Anual)</label><input type="text" id="np-meta" placeholder="ex: 6.000.000"><span class="novo-prob-pct">R$</span></div>
-    <div style="margin:.85rem 0 .35rem;padding-top:.65rem;border-top:1px solid var(--border)"><span style="font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text2);font-weight:700">Probabilidades</span></div>
+    <div style="margin:.85rem 0 .35rem;padding-top:.65rem;border-top:1px solid var(--border)"><span style="font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text2);font-weight:700">Probabilidades (C07 por pipeline)</span></div>
+    <div id="np-prob-pipe-tabs" class="tab-sub" style="margin:.15rem 0 .5rem"><button type="button" class="tab-sub-btn active" data-mode="vendas" onclick="novoSwitchProbPipe('vendas')">Vendas</button><button type="button" class="tab-sub-btn" data-mode="bid" onclick="novoSwitchProbPipe('bid')">Bid</button></div>
     <div id="np-prob-status" style="display:none;margin:.2rem 0 .45rem;font-size:.72rem;line-height:1.4"></div>
     <div id="np-prob-alert" style="display:none;margin:.3rem 0 .5rem;padding:.55rem .7rem;background:rgba(241,196,15,.12);border:1px solid rgba(241,196,15,.45);border-radius:7px;font-size:.74rem;color:var(--text);line-height:1.45">
       ⚠️ Você alterou as probabilidades padrão manualmente. O padrão calculado pelo funil (C06) não está sendo aplicado.
       <button onclick="novoResetStageProbToFunnel()" style="margin-top:.45rem;display:block;background:var(--teal);color:#fff;border:none;border-radius:6px;padding:.3rem .65rem;font-size:.72rem;cursor:pointer">Restaurar padrão do funil</button>
     </div>
-    <div class="novo-prob-field"><label>Reunião Agendada<span class="np-hint" id="np-hint-rag"></span></label><input type="text" id="np-rag" oninput="_npCheckYellow('np-rag','Reunião Agendada')"><span class="novo-prob-pct">%</span><button type="button" class="np-reset" onclick="_npResetField('np-rag','Reunião Agendada')" title="Restaurar valor do funil">↺</button></div>
-    <div class="novo-prob-field"><label>Diagnóstico<span class="np-hint" id="np-hint-dia"></span></label><input type="text" id="np-dia" oninput="_npCheckYellow('np-dia','Diagnóstico')"><span class="novo-prob-pct">%</span><button type="button" class="np-reset" onclick="_npResetField('np-dia','Diagnóstico')" title="Restaurar valor do funil">↺</button></div>
+    <div class="novo-prob-field" id="np-row-rag"><label>Reunião Agendada<span class="np-hint" id="np-hint-rag"></span></label><input type="text" id="np-rag" oninput="_npCheckYellow('np-rag','Reunião Agendada')"><span class="novo-prob-pct">%</span><button type="button" class="np-reset" onclick="_npResetField('np-rag','Reunião Agendada')" title="Restaurar valor do funil">↺</button></div>
+    <div class="novo-prob-field" id="np-row-dia"><label>Diagnóstico<span class="np-hint" id="np-hint-dia"></span></label><input type="text" id="np-dia" oninput="_npCheckYellow('np-dia','Diagnóstico')"><span class="novo-prob-pct">%</span><button type="button" class="np-reset" onclick="_npResetField('np-dia','Diagnóstico')" title="Restaurar valor do funil">↺</button></div>
     <div class="novo-prob-field"><label>Cotação<span class="np-hint" id="np-hint-cot"></span></label><input type="text" id="np-cot" oninput="_npCheckYellow('np-cot','Cotação')"><span class="novo-prob-pct">%</span><button type="button" class="np-reset" onclick="_npResetField('np-cot','Cotação')" title="Restaurar valor do funil">↺</button></div>
-    <div class="novo-prob-field"><label>Proposta Enviada <span style="opacity:.5;font-size:.8em">(BID)</span><span class="np-hint" id="np-hint-pro"></span></label><input type="text" id="np-pro" oninput="_npCheckYellow('np-pro','Proposta Enviada')"><span class="novo-prob-pct">%</span><button type="button" class="np-reset" onclick="_npResetField('np-pro','Proposta Enviada')" title="Restaurar valor do funil">↺</button></div>
+    <div class="novo-prob-field" id="np-row-pro"><label>Proposta Enviada <span style="opacity:.5;font-size:.8em">(BID)</span><span class="np-hint" id="np-hint-pro"></span></label><input type="text" id="np-pro" oninput="_npCheckYellow('np-pro','Proposta Enviada')"><span class="novo-prob-pct">%</span><button type="button" class="np-reset" onclick="_npResetField('np-pro','Proposta Enviada')" title="Restaurar valor do funil">↺</button></div>
     <div class="novo-prob-field"><label>Consultoria<span class="np-hint" id="np-hint-con"></span></label><input type="text" id="np-con" oninput="_npCheckYellow('np-con','Consultoria')"><span class="novo-prob-pct">%</span><button type="button" class="np-reset" onclick="_npResetField('np-con','Consultoria')" title="Restaurar valor do funil">↺</button></div>
     <div class="novo-prob-field"><label>Negociação<span class="np-hint" id="np-hint-neg"></span></label><input type="text" id="np-neg" oninput="_npCheckYellow('np-neg','Negociação')"><span class="novo-prob-pct">%</span><button type="button" class="np-reset" onclick="_npResetField('np-neg','Negociação')" title="Restaurar valor do funil">↺</button></div>
     <div class="novo-prob-field" style="border-bottom:none"><label>Implantação / Ganho<span class="np-hint" id="np-hint-imp"></span></label><input type="text" id="np-imp" oninput="_npCheckYellow('np-imp','Implantação')"><span class="novo-prob-pct">%</span><button type="button" class="np-reset" onclick="_npResetField('np-imp','Implantação')" title="Restaurar valor do funil">↺</button></div>
@@ -571,9 +572,12 @@ var NOVO_STAGE_PROB_DEFAULT = {
 // manual=false → usa as conversões derivadas do funil combinado (C06) como padrão.
 // manual=true  → usa os valores editados pelo usuário (e mostra alerta no drawer).
 var _novoStageProbCfg = (function() {
-  try { var r = localStorage.getItem('novo_stage_prob_cfg'); if (r) { var p = JSON.parse(r); if (p && typeof p === 'object') return { manual: !!p.manual, values: p.values || {} }; } } catch(e) {}
-  try { var old = localStorage.getItem('novo_stage_prob'); if (old) return { manual: true, values: JSON.parse(old) }; } catch(e) {}  // migra formato antigo → manual
-  return { manual: false, values: {} };
+  // values agora é POR PIPELINE: { vendas:{etapa:prob}, bid:{etapa:prob} }. Migra o formato
+  // antigo flat ({etapa:prob}) aplicando o mesmo override aos dois pipelines.
+  function norm(v){ if(!v||typeof v!=='object') return {vendas:{},bid:{}}; if(v.vendas||v.bid) return {vendas:v.vendas||{},bid:v.bid||{}}; return {vendas:v,bid:v}; }
+  try { var r = localStorage.getItem('novo_stage_prob_cfg'); if (r) { var p = JSON.parse(r); if (p && typeof p === 'object') return { manual: !!p.manual, values: norm(p.values) }; } } catch(e) {}
+  try { var old = localStorage.getItem('novo_stage_prob'); if (old) return { manual: true, values: norm(JSON.parse(old)) }; } catch(e) {}
+  return { manual: false, values: {vendas:{},bid:{}} };
 })();
 // Conversões derivadas do funil COMBINADO (Vendas+Bid): para cada etapa, a prob.
 // padrão = deals que chegaram à Implantação ÷ deals que entraram na etapa.
@@ -616,8 +620,11 @@ var NOVO_FUNNEL_PROB_PIPE = null;
 // Prob. de etapa efetiva de um deal: override manual (Configurações) vence; senão a prob.
 // de ganho do funil DO PIPELINE do deal (C07); senão o padrão fixo (escolha do usuário).
 function _novoStageProbFor(stage, pipeline) {
-  if (_novoStageProbCfg.manual && _novoStageProbCfg.values && _novoStageProbCfg.values[stage] != null) return _novoStageProbCfg.values[stage];
   var pk = pipeline === 'Bid' ? 'bid' : 'vendas';
+  if (_novoStageProbCfg.manual && _novoStageProbCfg.values) {
+    var ov = _novoStageProbCfg.values[pk];
+    if (ov && ov[stage] != null) return ov[stage];   // override manual POR PIPELINE
+  }
   var fp = NOVO_FUNNEL_PROB_PIPE && NOVO_FUNNEL_PROB_PIPE[pk];
   if (fp && fp[stage] != null) return fp[stage];
   return NOVO_STAGE_PROB_DEFAULT[stage];
@@ -626,8 +633,10 @@ function _novoApplyStageProb() {
   var base = {};
   Object.keys(NOVO_STAGE_PROB_DEFAULT).forEach(function(k) { base[k] = NOVO_STAGE_PROB_DEFAULT[k]; });
   if (_novoStageProbCfg.manual) {
+    // Mapa flat representativo (usado em displays sem pipeline): bid primeiro, vendas vence nas compartilhadas.
     var vals = _novoStageProbCfg.values || {};
-    Object.keys(vals).forEach(function(k) { base[k] = vals[k]; });
+    var _mrg = function(o){ if(o) Object.keys(o).forEach(function(k){ base[k]=o[k]; }); };
+    _mrg(vals.bid); _mrg(vals.vendas);
   } else {
     var d = _novoFunnelDerivedProb();
     if (d) Object.keys(d).forEach(function(k) { base[k] = d[k]; });
@@ -761,32 +770,81 @@ function _novoCoverageHelpHtml() {
   '</div>' + _novoCoverageMetaEditorHtml();
 }
 
+// ── Editor de probabilidade POR PIPELINE (aba Vendas/Bid) ────────────────────────
+var _npEditPipe = 'vendas';
+var _npEdit = null;   // buffer { vendas:{etapa:pct}, bid:{etapa:pct} } enquanto o editor está aberto
+var NP_PIPE_STAGES = {
+  vendas: ['Reunião Agendada','Diagnóstico','Cotação','Consultoria','Negociação','Implantação'],
+  bid:    ['Cotação','Proposta Enviada','Consultoria','Negociação','Implantação']
+};
+var NP_ID_BY_STAGE = { 'Reunião Agendada':'np-rag','Diagnóstico':'np-dia','Cotação':'np-cot','Proposta Enviada':'np-pro','Consultoria':'np-con','Negociação':'np-neg','Implantação':'np-imp' };
+var NP_ALL = [['np-rag','Reunião Agendada'],['np-dia','Diagnóstico'],['np-cot','Cotação'],['np-pro','Proposta Enviada'],['np-con','Consultoria'],['np-neg','Negociação'],['np-imp','Implantação']];
+// % efetivo de um par (pipe, etapa): override manual → C07 do pipeline → padrão fixo.
+function _npEffPct(pipe, stage) {
+  var ov = _novoStageProbCfg.manual && _novoStageProbCfg.values && _novoStageProbCfg.values[pipe];
+  if (ov && ov[stage] != null) return Math.round(ov[stage]*1000)/10;
+  var fp = NOVO_FUNNEL_PROB_PIPE && NOVO_FUNNEL_PROB_PIPE[pipe];
+  if (fp && fp[stage] != null) return Math.round(fp[stage]*1000)/10;
+  var d = NOVO_STAGE_PROB_DEFAULT[stage];
+  return d==null ? null : Math.round(d*1000)/10;
+}
+function _npFunnelCount(pipe, stage) {
+  var pd = _novoFunnelData && _novoFunnelData[pipe];
+  if (!pd || !pd.stages) return 0;
+  return pd.stages.reduce(function(a,s){ return s.stage===stage ? (s.count||0) : a; }, 0);
+}
 function novoOpenProbEditor() {
   setContentBlur(true);
   document.getElementById('np-meta').value = NOVO_META_MTD ? NOVO_META_MTD.toLocaleString('pt-BR') : '';
-  var _pairs = [['np-rag','Reunião Agendada'],['np-dia','Diagnóstico'],['np-cot','Cotação'],['np-pro','Proposta Enviada'],['np-con','Consultoria'],['np-neg','Negociação'],['np-imp','Implantação']];
-  _pairs.forEach(function(p){ var el=document.getElementById(p[0]); if(!el) return; var v=NOVO_STAGE_PROB[p[1]]; el.value = (v!=null) ? (v*100).toFixed(1).replace('.', ',') : ''; });
   _syncImplToggle();
   _syncActiveMeetingsToggle();
   _syncActiveStandbyToggle();
-  // Valores sugeridos pelo funil (C06, combinado) ao lado de cada etapa derivada, com amostra (n).
-  var _fd = _novoFunnelDerivedProb();
-  var _hint = function(id, key) { var el=document.getElementById(id); if(!el) return; el.textContent = (_fd && _fd[key]!=null) ? ('funil: '+(_fd[key]*100).toFixed(1).replace('.',',')+'% (n='+_novoFunnelCombinedCount(key)+')') : ''; };
-  _hint('np-hint-rag','Reunião Agendada'); _hint('np-hint-dia','Diagnóstico'); _hint('np-hint-cot','Cotação'); _hint('np-hint-pro','Proposta Enviada'); _hint('np-hint-con','Consultoria'); _hint('np-hint-neg','Negociação'); _hint('np-hint-imp','Implantação');
-  // Amarela os campos diferentes do padrão calculado pelo funil (override manual).
-  _pairs.forEach(function(p){ _npCheckYellow(p[0], p[1]); });
-  var _al = document.getElementById('np-prob-alert'); if (_al) _al.style.display = _novoStageProbCfg.manual ? 'block' : 'none';
-  // Status: deixa explícito se o padrão do funil já está aplicado ou se ainda está carregando.
-  var _st = document.getElementById('np-prob-status');
-  if (_st) {
-    if (_novoStageProbCfg.manual) { _st.style.display = 'none'; }
-    else if (_novoFunnelData) { _st.style.display='block'; _st.style.color='var(--green)'; _st.innerHTML='✓ Probabilidades calculadas pelo funil (C06, Vendas+Bid). Os valores abaixo já são os do funil.'; }
-    else { _st.style.display='block'; _st.style.color='var(--text2)'; _st.innerHTML='⏳ Funil ainda carregando — valores abaixo são provisórios (padrão fixo). Recalcula automaticamente quando o funil terminar.'; }
-  }
+  // Buffer por pipeline a partir dos valores efetivos (override manual ou C07 do funil).
+  _npEdit = { vendas:{}, bid:{} };
+  ['vendas','bid'].forEach(function(pk){ NP_PIPE_STAGES[pk].forEach(function(st){ _npEdit[pk][st] = _npEffPct(pk, st); }); });
+  _npEditPipe = 'vendas';
+  _npRenderPipe();
   var _ct = document.getElementById('np-cfg-title'); if (_ct) _ct.textContent = t('cfg_title');
   var _ml = document.getElementById('np-meta-label'); if (_ml) _ml.textContent = t('cfg_meta');
   document.getElementById('novo-prob-backdrop').classList.add('open');
   document.getElementById('novo-prob-drawer').classList.add('open');
+}
+// Lê os inputs visíveis do pipe atual para o buffer (preserva edições ao trocar de aba).
+function _npReadInputs() {
+  if (!_npEdit) return;
+  NP_PIPE_STAGES[_npEditPipe].forEach(function(st){
+    var el = document.getElementById(NP_ID_BY_STAGE[st]); if(!el) return;
+    var n = parseFloat((el.value||'').replace(',','.'));
+    _npEdit[_npEditPipe][st] = isNaN(n) ? null : n;
+  });
+}
+function _npRenderPipe() {
+  var inPipe = {}; NP_PIPE_STAGES[_npEditPipe].forEach(function(s){ inPipe[s]=true; });
+  var _rowShow = function(id, show){ var r=document.getElementById(id); if(r) r.style.display = show?'':'none'; };
+  _rowShow('np-row-rag', _npEditPipe==='vendas');
+  _rowShow('np-row-dia', _npEditPipe==='vendas');
+  _rowShow('np-row-pro', _npEditPipe==='bid');
+  NP_ALL.forEach(function(p){
+    var el=document.getElementById(p[0]); if(!el) return;
+    if (inPipe[p[1]]) { var v=_npEdit[_npEditPipe][p[1]]; el.value = (v!=null) ? String(v).replace('.',',') : ''; }
+    var hintEl=document.getElementById('np-hint-'+p[0].replace('np-',''));
+    if (hintEl) { var fp=NOVO_FUNNEL_PROB_PIPE&&NOVO_FUNNEL_PROB_PIPE[_npEditPipe]; hintEl.textContent = (inPipe[p[1]]&&fp&&fp[p[1]]!=null) ? ('C07: '+(fp[p[1]]*100).toFixed(1).replace('.',',')+'% (n='+_npFunnelCount(_npEditPipe,p[1])+')') : ''; }
+    if (inPipe[p[1]]) _npCheckYellow(p[0], p[1]);
+  });
+  var tabs=document.querySelectorAll('#np-prob-pipe-tabs .tab-sub-btn');
+  for(var i=0;i<tabs.length;i++){ tabs[i].classList.toggle('active', tabs[i].getAttribute('data-mode')===_npEditPipe); }
+  var _al=document.getElementById('np-prob-alert'); if(_al) _al.style.display=_novoStageProbCfg.manual?'block':'none';
+  var _st=document.getElementById('np-prob-status');
+  if(_st){
+    if(_novoStageProbCfg.manual){ _st.style.display='none'; }
+    else if(_novoFunnelData){ _st.style.display='block'; _st.style.color='var(--green)'; _st.innerHTML='✓ C07 ao vivo do funil ('+(_npEditPipe==='bid'?'Bid':'Vendas')+'). Os valores abaixo já são os do funil.'; }
+    else { _st.style.display='block'; _st.style.color='var(--text2)'; _st.innerHTML='⏳ Funil carregando — valores provisórios (padrão fixo).'; }
+  }
+}
+function novoSwitchProbPipe(pipe) {
+  _npReadInputs();
+  _npEditPipe = (pipe==='bid') ? 'bid' : 'vendas';
+  _npRenderPipe();
 }
 function novoCloseProbEditor() {
   document.getElementById('novo-prob-backdrop').classList.remove('open');
@@ -795,7 +853,7 @@ function novoCloseProbEditor() {
 }
 // Restaura o padrão automático (conversões do funil) e remove o override manual.
 function novoResetStageProbToFunnel() {
-  _novoStageProbCfg = { manual: false, values: {} };
+  _novoStageProbCfg = { manual: false, values: {vendas:{},bid:{}} };
   try { localStorage.setItem('novo_stage_prob_cfg', JSON.stringify(_novoStageProbCfg)); localStorage.removeItem('novo_stage_prob'); } catch(e) {}
   _novoApplyStageProb();
   _npUpdateSettingsDot();
@@ -805,8 +863,9 @@ function novoResetStageProbToFunnel() {
 // Valor de referência (padrão) de uma etapa, em %, para detectar alteração manual.
 // Usa o valor calculado pelo funil quando disponível; senão o default fixo.
 function _npFunnelDefaultPct(stageKey){
-  var fd=_novoFunnelDerivedProb();
-  var v=(fd && fd[stageKey]!=null) ? fd[stageKey] : NOVO_STAGE_PROB_DEFAULT[stageKey];
+  // referência = C07 do PIPELINE atualmente selecionado na aba; senão o padrão fixo.
+  var fp=NOVO_FUNNEL_PROB_PIPE && NOVO_FUNNEL_PROB_PIPE[_npEditPipe];
+  var v=(fp && fp[stageKey]!=null) ? fp[stageKey] : NOVO_STAGE_PROB_DEFAULT[stageKey];
   return (v==null) ? null : Math.round(v*1000)/10;
 }
 // Caixa do input fica amarela quando o valor difere do padrão (calculado pelo funil).
@@ -848,7 +907,7 @@ function novoOpenRulesModal(){
     '<div style="font-size:.85rem;line-height:1.6;color:var(--text)">'+
     '<p style="margin:0 0 .8rem;color:var(--text2)">Como o dashboard calcula a probabilidade de cada deal e o pipeline ponderado.</p>'+
     '<h4 style="margin:.2rem 0 .4rem">1 | Probabilidade por etapa (calculada pelo funil)</h4>'+
-    '<p style="margin:0 0 .5rem">Para cada etapa, a taxa = <b>deals que chegaram à Implantação ÷ deals que entraram na etapa</b>, no funil histórico combinado <b>Vendas + Bid</b> (gráfico C06). Etapas com menos de <b>20</b> deals na amostra usam o padrão fixo. <b>Ganho</b> = 100%; <b>Implantação/Ganho</b> = 100% (padrão fixo, não vem do funil).</p>'+
+    '<p style="margin:0 0 .5rem">Para cada etapa, a taxa = <b>ganhos absolutos ÷ deals que entraram na etapa</b>, no funil histórico <b>de cada pipeline</b> separadamente (gráfico C07). Cada deal usa a taxa do <b>seu</b> pipeline (Vendas ou Bid). Etapas com menos de <b>20</b> deals na amostra usam o padrão fixo. <b>Ganho</b> = 100%. A tabela abaixo mostra um resumo flat; os valores por pipeline estão no C07 e são editáveis nas abas Vendas/Bid em Configurações (⚙).</p>'+
     '<table class="lb" style="width:100%;font-size:.8rem;margin:.3rem 0 .9rem"><thead><tr><th style="text-align:left">Etapa</th><th>Prob. atual</th><th style="text-align:left">Fonte</th></tr></thead><tbody>'+rows+'</tbody></table>'+
     '<h4 style="margin:.2rem 0 .4rem">2 | Ajuste pela probabilidade do deal (HubSpot)</h4>'+
     '<p style="margin:0 0 .5rem">A probabilidade final de cada deal parte da taxa da etapa e é ajustada pela probabilidade própria do deal (campo do HubSpot):</p>'+
@@ -870,24 +929,30 @@ function novoCloseRulesDrawer(){
   setContentBlur(false);
 }
 function novoSaveProbEditor() {
-  var parseOr = function(id, key) { var n=parseFloat((document.getElementById(id).value||'').replace(',', '.')); if(!isNaN(n)) return n; var d=_npFunnelDefaultPct(key); return d==null?NaN:d; };
-  var v = { rag: parseOr('np-rag','Reunião Agendada'), dia: parseOr('np-dia','Diagnóstico'), cot: parseOr('np-cot','Cotação'),
-            pro: parseOr('np-pro','Proposta Enviada'), con: parseOr('np-con','Consultoria'), neg: parseOr('np-neg','Negociação'), imp: parseOr('np-imp','Implantação') };
-  var list = [v.rag, v.dia, v.cot, v.pro, v.con, v.neg, v.imp];
-  if (list.some(isNaN)) { alert('Preencha todos os campos com valores numéricos.'); return; }
-  if (list.some(function(n) { return n < 0 || n > 100; })) { alert('Probabilidades devem estar entre 0 e 100.'); return; }
-  // Override manual só se algum valor diferir do padrão calculado pelo funil; senão volta ao automático.
-  var pairs = [['Reunião Agendada',v.rag],['Diagnóstico',v.dia],['Cotação',v.cot],['Proposta Enviada',v.pro],['Consultoria',v.con],['Negociação',v.neg],['Implantação',v.imp]];
-  var changed = pairs.some(function(p){ var def=_npFunnelDefaultPct(p[0]); return (def==null) ? true : Math.abs(p[1]-def)>0.05; });
+  _npReadInputs();   // garante o pipe atualmente exibido no buffer
+  var bad=false, oob=false;
+  ['vendas','bid'].forEach(function(pk){ NP_PIPE_STAGES[pk].forEach(function(st){ var n=_npEdit[pk][st]; if(n==null||isNaN(n)) bad=true; else if(n<0||n>100) oob=true; }); });
+  if (bad) { alert('Preencha todos os campos com valores numéricos.'); return; }
+  if (oob) { alert('Probabilidades devem estar entre 0 e 100.'); return; }
+  // Override manual só se algum valor diferir do C07/padrão do seu pipeline; senão volta ao automático.
+  var changed=false, valsV={}, valsB={};
+  ['vendas','bid'].forEach(function(pk){
+    var fp=NOVO_FUNNEL_PROB_PIPE && NOVO_FUNNEL_PROB_PIPE[pk];
+    var target=(pk==='vendas')?valsV:valsB;
+    NP_PIPE_STAGES[pk].forEach(function(st){
+      var pct=_npEdit[pk][st];
+      var refFrac=(fp&&fp[st]!=null)?fp[st]:NOVO_STAGE_PROB_DEFAULT[st];
+      var refPct=(refFrac==null)?null:Math.round(refFrac*1000)/10;
+      if (refPct==null || Math.abs(pct-refPct)>0.05) changed=true;
+      target[st]=pct/100;
+    });
+  });
   if (changed) {
-    var stb = (NOVO_STAGE_PROB['Standby']!=null) ? NOVO_STAGE_PROB['Standby'] : (NOVO_STAGE_PROB_DEFAULT['Standby']||0.12);
-    _novoStageProbCfg = { manual: true, values: {
-      'Reunião Agendada': v.rag/100, 'Diagnóstico': v.dia/100, 'Cotação': v.cot/100,
-      'Proposta Enviada': v.pro/100, 'Consultoria': v.con/100, 'Negociação': v.neg/100,
-      'Implantação': v.imp/100, 'Ganho': 1.0, 'Standby': stb, 'Stand by': stb
-    } };
+    var stb=(NOVO_STAGE_PROB_DEFAULT['Standby']!=null)?NOVO_STAGE_PROB_DEFAULT['Standby']:0.12;
+    [valsV,valsB].forEach(function(o){ o['Ganho']=1.0; o['Standby']=stb; o['Stand by']=stb; });
+    _novoStageProbCfg = { manual:true, values:{ vendas:valsV, bid:valsB } };
   } else {
-    _novoStageProbCfg = { manual: false, values: {} };
+    _novoStageProbCfg = { manual:false, values:{vendas:{},bid:{}} };
   }
   try { localStorage.setItem('novo_stage_prob_cfg', JSON.stringify(_novoStageProbCfg)); localStorage.removeItem('novo_stage_prob'); } catch(e) {}
   _novoApplyStageProb();
