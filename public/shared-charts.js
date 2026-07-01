@@ -23,9 +23,11 @@ function buildSharedSizeDonut(canvasId, dataFn, opts) {
   var noLifeLabel = o.noLives    || 'Sem vidas';
   var openDealLbl = o.openDeals  || 'deals ativos';
   var extTip      = o.extTip     || null;
+  var _bktMetric  = o.metric     || null;   // deal→número; se ausente, métrica = contagem de deals
+  var _valFmt     = o.valFmt     || function(v){ return (v||0).toLocaleString('pt-BR'); };
 
   var th = _novoTheme(), open = dataFn();
-  var isRev = _novoSizeDistMode === 'revenue';
+  var isRev = (o.bucketMode || _novoSizeDistMode) === 'revenue';
   var labels, by;
   if (isRev) {
     var rdefs = [['< 50k',0,50000],['50–100k',50000,100000],['100–250k',100000,250000],
@@ -43,7 +45,7 @@ function buildSharedSizeDonut(canvasId, dataFn, opts) {
     labels = [noLifeLabel].concat(vdefs.map(function(x){return x[0];}));
     by = [semVidas].concat(vby);
   }
-  var counts = by.map(function(a){ return a.length; });
+  var counts = by.map(function(a){ return _bktMetric ? a.reduce(function(s,d){ return s+(_bktMetric(d)||0); },0) : a.length; });
   var DONUT_PALETTE = [[96,165,250],[45,212,191],[52,211,153],[251,191,36],[167,139,250],[251,113,133]];
   var bgBase = counts.map(function(_,i){ return i===0 ? [140,150,168] : DONUT_PALETTE[(i-1) % DONUT_PALETTE.length]; });
   function _donutBg(ctx){
@@ -62,13 +64,13 @@ function buildSharedSizeDonut(canvasId, dataFn, opts) {
     var area = chart.chartArea; if(!area) return;
     var ctx = chart.ctx, cx=(area.left+area.right)/2, cy=(area.top+area.bottom)/2;
     ctx.save(); ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.fillStyle=th.cText;  ctx.font='700 27px '+NOVO_FONT; ctx.fillText(_visTotal(chart).toLocaleString('pt-BR'), cx, cy-7);
+    ctx.fillStyle=th.cText;  ctx.font='700 '+(_bktMetric?'19px ':'27px ')+NOVO_FONT; ctx.fillText(_bktMetric ? _valFmt(_visTotal(chart)) : _visTotal(chart).toLocaleString('pt-BR'), cx, cy-7);
     ctx.fillStyle=th.cText2; ctx.font='600 10px '+NOVO_FONT; ctx.fillText(openDealLbl, cx, cy+15);
     ctx.restore();
   } };
   var tooltipCfg = extTip
-    ? { enabled:false, external:extTip, callbacks:{ title:function(it){return it.length?it[0].label:'';}, label:function(c){return c.parsed+' deals';}, footer:function(){return 'Clique para ver os deals';} } }
-    : { callbacks:{ title:function(it){return it.length?it[0].label:'';}, label:function(c){return c.parsed+' deals';}, footer:function(){return 'Clique para ver os deals';} } };
+    ? { enabled:false, external:extTip, callbacks:{ title:function(it){return it.length?it[0].label:'';}, label:function(c){return _bktMetric ? _valFmt(c.parsed) : (c.parsed+' deals');}, footer:function(){return 'Clique para ver os deals';} } }
+    : { callbacks:{ title:function(it){return it.length?it[0].label:'';}, label:function(c){return _bktMetric ? _valFmt(c.parsed) : (c.parsed+' deals');}, footer:function(){return 'Clique para ver os deals';} } };
   _novoMkChart(canvasId, { type:'doughnut', plugins:[ChartDataLabels, centerPlugin],
     data:{ labels:labels, datasets:[{ data:counts, backgroundColor:_donutBg, borderColor:'var(--card)', borderWidth:3, borderRadius:6, spacing:2, hoverOffset:10 }] },
     options:{ responsive:true, cutout:'68%', layout:{padding:6}, plugins:{

@@ -934,6 +934,7 @@ var NOVO_I18N = {
     vf_by_revenue:'Receita', vf_by_lives:'Vidas', vf_by_stage:'Etapa', vf_by_segment:'Segmento',
     t_stageval:'🟡 Valor do Pipeline por Etapa',
     tip_stageval:'Soma da receita anual estimada por etapa. "Ponderado" multiplica pela probabilidade de ganho da etapa POR PIPELINE (C07, ao vivo do funil; cada deal usa a taxa do seu pipeline), ajustável em ⚙. Inclui os pipelines Vendas + Bid.',
+    tip_revbkt:'Dois donuts: distribuição da RECEITA PREVISTA (ARR estimado) pelos buckets, alternando entre faixas de Receita e de Vidas (mesmas do C03). Esquerda = Bruta (Σ ARR); direita = Ponderada (Σ ARR × probabilidade de ganho por pipeline, C07). Base: pipeline ativo (Vendas + Bid).',
     t_segment:'Receita por Segmento',
     tip_segment:'Receita anual estimada (potencial) somada por segmento de tamanho do cliente (vidas). Inclui os pipelines Vendas + Bid.',
     // KPIs primários
@@ -1050,6 +1051,7 @@ var NOVO_I18N = {
     vf_by_revenue:'Revenue', vf_by_lives:'Lives', vf_by_stage:'Stage', vf_by_segment:'Segment',
     t_stageval:'🟡 Pipeline Value by Stage',
     tip_stageval:'Sum of estimated annual revenue per stage. "Weighted" multiplies by the stage win probability PER PIPELINE (C07, live from the funnel; each deal uses its own pipeline rate), editable in ⚙. Includes the Vendas + Bid pipelines.',
+    tip_revbkt:'Two donuts: distribution of FORECAST REVENUE (estimated ARR) across buckets, toggling between Revenue and Lives tiers (same as C03). Left = Gross (Σ ARR); right = Weighted (Σ ARR × per-pipeline win probability, C07). Base: active pipeline (Vendas + Bid).',
     t_segment:'Revenue by Segment',
     tip_segment:'Estimated annual revenue (potential) summed by customer-size segment (lives). Includes the Vendas + Bid pipelines.',
     // Primary KPIs
@@ -1199,12 +1201,22 @@ var NOVO_HELP_CHARTS = [
   {
     key: 'stageval',
     title: 'Valor do Pipeline por Etapa',
-    desc: 'Soma da receita anual estimada por etapa; "Ponderado" multiplica pela probabilidade da etapa.',
+    desc: 'Soma da receita anual estimada por etapa; "Ponderado" multiplica pela probabilidade de ganho da etapa por pipeline (C07).',
     fields: [
       ['dealstage', 'Agrupa o valor por etapa.'],
       ['arr_estimado', 'Receita anual somada (com fallback de primeira_fatura × 12).'],
       ['primeira_fatura', 'Fallback de receita.'],
-      ['probabilidade (config. ⚙)', 'No modo "Ponderado", peso por etapa do editor de probabilidades.'],
+      ['dealstage + pipeline', 'No modo "Ponderado", peso = probabilidade de ganho da etapa do pipeline do deal (C07), ajustável em ⚙.'],
+    ],
+  },
+  {
+    key: 'revbkt',
+    title: 'Receita Prevista por Bucket',
+    desc: 'Dois donuts com a distribuição da receita prevista (ARR estimado) pelos buckets de tamanho, alternável entre faixas de Receita e de Vidas (as mesmas do C03). Bruta = Σ ARR; Ponderada = Σ ARR × probabilidade de ganho por pipeline (C07). Base: pipeline ativo (Vendas + Bid).',
+    fields: [
+      ['arr_estimado', 'Receita anual do deal (fallback primeira_fatura × 12) distribuída no bucket.'],
+      ['vidas', 'Define o bucket no modo Vidas; a receita também depende da faixa PME/não-PME.'],
+      ['dealstage + pipeline', 'Peso da versão Ponderada = probabilidade de ganho da etapa do pipeline do deal (C07).'],
     ],
   },
   {
@@ -1521,7 +1533,7 @@ var NOVO_CARD_CODES = {
   'kpi-active-deals':'P01', 'kpi-pipe-vidas':'P02', 'kpi-pipe-weighted':'P03', 'kpi-pipe-reunioes':'P04',
   'ae':'C01','stage':'C02','conc':'C00',
   'sizedonut':'C03','stageval':'C04',
-  'segment':'C05','funnel-conv':'C06','winprob':'C07',
+  'segment':'C05','funnel-conv':'C06','winprob':'C07','revbkt':'C08',
   'kpi-revenue-mtd':'P06','kpi-won-annual':'P07',
   'kpi-weighted-pipe':'P00',
   'kpi-won-vidas':'P08','kpi-lost-vidas':'P09','kpi-weighted-vidas':'P05',
@@ -1542,7 +1554,7 @@ var NOVO_CARD_CODES = {
 var NOVO_FILT_FIELD = {
   'kpi-active-deals':'none', 'kpi-pipe-vidas':'none', 'kpi-pipe-weighted':'none', 'kpi-pipe-reunioes':'none',
   'ae':'none','stage':'none','conc':'create','sizedonut':'none','stageval':'none','segment':'none',
-  'funnel-conv':'funnel','winprob':'funnel',
+  'funnel-conv':'funnel','winprob':'funnel','revbkt':'none',
   'kpi-revenue-mtd':'won','kpi-won-annual':'close','kpi-weighted-pipe':'none',
   'kpi-won-vidas':'close','kpi-lost-vidas':'close','kpi-weighted-vidas':'none',
   'kpi2-winrate':'close','kpi2-bdr':'close','kpi2-ae':'close','kpi2-meeting':'create','kpi2-stale':'none','kpi2-complete':'create',
@@ -2810,6 +2822,41 @@ function buildNovoSizeDonut() {
     noLives:    t('donut_no_lives'),
     openDeals:  t('donut_open_deals'),
     extTip:     _novoChartExtTip
+  });
+}
+
+// C08 | Receita PREVISTA por bucket (dois donuts: bruta × ponderada), base visual do C03.
+// Bruta = Σ ARR estimado por bucket; Ponderada = Σ ARR × prob. de ganho por pipeline (C07).
+// Toggle de bucket: por faixa de Receita ou de Vidas (mesmas faixas do C03).
+var _novoRevBktMode = 'revenue'; // 'revenue' | 'vidas'
+function novoSwitchRevBkt(m){ _novoRevBktMode=m; _setActive('novo-revbkt-tabs',m); buildNovoRevBuckets(); }
+function _novoRevBucketsCard() {
+  var L = NOVO_LANG === 'en';
+  return '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header" style="flex-wrap:wrap;gap:.5rem">' +
+    '<h3>' + (L?'Forecast Revenue by Bucket':'Receita Prevista por Bucket') + '</h3>' +
+    _infoBtn(t('tip_revbkt'), 'revbkt') +
+    _subTabs('novo-revbkt-tabs', _novoRevBktMode, [{mode:'revenue',label:t('lbl_revenue'),fn:'novoSwitchRevBkt'},{mode:'vidas',label:t('tab_vidas'),fn:'novoSwitchRevBkt'}]) +
+    '</div>' +
+    '<div style="display:flex;flex-wrap:wrap;gap:1rem;align-items:flex-start">' +
+      '<div style="flex:1;min-width:260px"><div style="text-align:center;font-size:.8rem;font-weight:600;color:var(--text2);margin-bottom:.3rem">' + (L?'Gross':'Bruta') + '</div><canvas id="chart-novo-revbkt-gross" style="max-height:300px"></canvas></div>' +
+      '<div style="flex:1;min-width:260px"><div style="text-align:center;font-size:.8rem;font-weight:600;color:var(--text2);margin-bottom:.3rem">' + (L?'Weighted':'Ponderada') + '</div><canvas id="chart-novo-revbkt-weighted" style="max-height:300px"></canvas></div>' +
+    '</div>' +
+  '</div>';
+}
+function buildNovoRevBuckets() {
+  if (!document.getElementById('chart-novo-revbkt-gross')) return;
+  var L = NOVO_LANG === 'en';
+  buildSharedSizeDonut('chart-novo-revbkt-gross', _novoActiveChartDeals, {
+    bucketMode:_novoRevBktMode, valFmt:_revShort, extTip:_novoChartExtTip,
+    metric:function(d){ return _annualRev(d); },
+    openDeals:(L?'gross fc':'fc bruta'),
+    modalTitle:(L?'Forecast Revenue by Bucket | Gross':'Receita Prevista por Bucket | Bruta')
+  });
+  buildSharedSizeDonut('chart-novo-revbkt-weighted', _novoActiveChartDeals, {
+    bucketMode:_novoRevBktMode, valFmt:_revShort, extTip:_novoChartExtTip,
+    metric:function(d){ var p=_novoStageProbFor(d.stage,d.pipeline); return _annualRev(d)*(p||0); },
+    openDeals:(L?'weighted fc':'fc ponderada'),
+    modalTitle:(L?'Forecast Revenue by Bucket | Weighted':'Receita Prevista por Bucket | Ponderada')
   });
 }
 
@@ -4695,6 +4742,7 @@ function novoRender() {
       _card(_titleWithCount(t('t_sizedonut'), activeCount), t('tip_sizedonut'),
         _subTabs('novo-sizedonut-tabs', _novoSizeDistMode, [{mode:'revenue',label:t('lbl_revenue'),fn:'novoSwitchSizeDist'},{mode:'vidas',label:t('tab_vidas'),fn:'novoSwitchSizeDist'}]),
         'chart-novo-sizedonut', 340, 'sizedonut') +
+      _novoRevBucketsCard() +
       _card(_titleWithCount(t('t_stageval'), activeCount), t('tip_stageval'),
         _subTabs('novo-val-tabs', _novoValMode, [{mode:'raw',label:t('lbl_raw'),fn:'novoSwitchValMode'},{mode:'weighted',label:t('lbl_weighted'),fn:'novoSwitchValMode'}]),
         'chart-novo-stageval', 340, 'stageval') +
@@ -4767,6 +4815,7 @@ function novoRender() {
   buildNovoVidasAE();
   buildNovoStage();
   buildNovoSizeDonut();
+  buildNovoRevBuckets();
   buildNovoStageVal();
   buildNovoSegment();
   if (_novoFunnelData && (_novoFunnelData.since !== _novoFunnelEffectiveSince() || ((_novoFunnelData.until || null) !== _novoFunnelEffectiveUntil()))) {
