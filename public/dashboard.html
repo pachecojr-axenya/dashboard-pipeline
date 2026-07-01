@@ -3344,8 +3344,9 @@ function buildNovoWinFactor() {
 var NOVO_COV_START   = '2025-09-01';   // Decisão 5
 var NOVO_COV_HORIZON = 18;             // horizonte estendido p/ alcançar 2027 (Diagnóstico +9/14/18m, topo de funil +15m)
 function _novoCovMonths() {
-  var out = [], now = new Date();
-  for (var i=0;i<NOVO_COV_HORIZON;i++){ var d=new Date(now.getFullYear(), now.getMonth()+i, 1); out.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')); }
+  // #2: janela fixa Jan/2026 → Dez/2027 (24m), alinhada ao N06/N06B e ao /forecast.
+  var out = [];
+  for (var y=2026;y<=2027;y++){ for(var mo=0;mo<12;mo++){ out.push(y+'-'+String(mo+1).padStart(2,'0')); } }
   return out;
 }
 // Deal completo p/ o cálculo (§9): tem prêmio, modelo, agenciamento, vidas e data prevista.
@@ -3538,8 +3539,7 @@ function _titleWithPipeRevCoverage(title) {
 }
 function _novoProjectionMonthsToDec27() {
   var out = [];
-  var now = new Date();
-  var y = now.getFullYear(), m = now.getMonth();
+  var y = 2026, m = 0;                 // #2: janela fixa Jan/2026 → Dez/2027 (alinha N06/N06B ao /forecast)
   var endY = 2027, endM = 11;
   while (y < endY || (y === endY && m <= endM)) {
     out.push(y + '-' + String(m + 1).padStart(2,'0'));
@@ -3625,15 +3625,7 @@ function buildNovoPipeRev12() {
   });
   var th=_novoTheme();
   var data = months.map(function(m){return _novoPipeRevMetric === 'deals' ? totals[m] : Math.round(totals[m]);});
-  var firstNonZero = -1;
-  for (var mi=0; mi<months.length; mi++) {
-    var mv = _novoPipeRevMetric === 'deals' ? totals[months[mi]] : Math.round(totals[months[mi]]);
-    if (mv > 0) { firstNonZero = mi; break; }
-  }
-  if (firstNonZero > 0) {
-    months = months.slice(firstNonZero);
-    data = months.map(function(m){return _novoPipeRevMetric === 'deals' ? totals[m] : Math.round(totals[m]);});
-  }
+  // #2: janela fixa começando em Jan/2026 (sem trim de meses zerados) — alinha ao /forecast.
   var yMaxRevenue = _novoPipeRevMetric === 'revenue' ? Math.max.apply(null, months.map(function(m){ return Math.max(Math.round(rawTotals[m]||0), Math.round(weightedTotals[m]||0)); })) : null;
   _novoMkChart('chart-novo-piperev12', { type:'line', plugins:[ChartDataLabels],
     data:{ labels:months.map(_mlbl), datasets:[{ data:data, borderColor:'rgba(58,184,183,.95)', backgroundColor:'rgba(58,184,183,.15)', pointRadius:3, borderWidth:2, tension:0.35, fill:true }] },
@@ -3987,6 +3979,10 @@ function _novoFcProbAdj(d){
 }
 // Conversão MQL (Reunião Agendada) que probabiliza os cohorts BDR — igual ao _fcMqlConv.
 function _novoFcMqlConv(){ var p=_novoStageProbFor('Reunião Agendada','Vendas'); return p==null?0:p; }
+// Clone raso do deal com outra data de receita (para a imputação do Bid, sem mutar o global).
+function _novoDealWithDate(d, ymd){ var o={}; for(var k in d){ if(Object.prototype.hasOwnProperty.call(d,k)) o[k]=d[k]; } o.data_prevista_para_receita=ymd; return o; }
+// Imputação de data do Bid, idêntica ao /forecast (régua de receita fixa por etapa).
+var NOVO_BID_IMPUTE = { 'Negociação':'2026-10-01', 'Proposta Enviada':'2027-06-01' };
 // Índice do mês 'YYYY-MM' dentro de NOVO_FC_MONTHS (-1 se fora da janela do engine).
 function _novoFcMonthIdx(ym){ var y=parseInt(ym.substring(0,4),10), mo=parseInt(ym.substring(5,7),10)-1, k=y*100+mo; for(var i=0;i<NOVO_FC_MONTHS.length;i++){ if(NOVO_FC_MONTHS[i].key===k) return i; } return -1; }
 
@@ -4023,7 +4019,8 @@ function buildNovoPipeRev12B() {
       for (var i=0;i<months.length;i++){ var m=months[i]; var idx=_novoFcMonthIdx(m); if(idx<0) continue; var o=arr[idx]; if(!o) continue; var val=pick(o); if(val>0) bucket[m]+=val; }
     };
     nonBid.forEach(function(d){ _accum(d, Bp); });   // pipe concreto + Diagnóstico
-    bid.forEach(function(d){ _accum(d, Bb); });       // pipeline de Bid
+    // Bid: imputa a data por etapa (Negociação→out/26, Proposta Enviada→jun/27), igual ao /forecast.
+    bid.forEach(function(d){ var rd=NOVO_BID_IMPUTE[d.stage]; _accum(rd ? _novoDealWithDate(d, rd) : d, Bb); });
     won.forEach(function(d){ _accum(d, Bw); });       // Ganho/Implantação (faturamento manual)
     // Topo de funil (novos negócios) = cohorts BDR × conversão MQL, igual ao /forecast.
     if (typeof ForecastEngine !== 'undefined') {
@@ -4036,9 +4033,7 @@ function buildNovoPipeRev12B() {
     }
   }
 
-  var firstNonZero=-1;
-  for (var f=0; f<months.length; f++){ var mm=months[f]; if (((A[mm]||0)+(Bw[mm]||0)+(Bp[mm]||0)+(Bb[mm]||0)+(Bn[mm]||0))>0.0001){ firstNonZero=f; break; } }
-  if (firstNonZero>0) months = months.slice(firstNonZero);
+  // #2: janela fixa começando em Jan/2026 (sem trim) — alinha o N06B ao /forecast.
 
   var dataA=[], dataB=[], cWon=[], cPipe=[], cBid=[], cNew=[];
   months.forEach(function(m){
