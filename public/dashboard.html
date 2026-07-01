@@ -4027,10 +4027,11 @@ var NOVO_BID_IMPUTE = { 'Negociação':'2026-10-01', 'Proposta Enviada':'2027-06
 function _novoFcMonthIdx(ym){ var y=parseInt(ym.substring(0,4),10), mo=parseInt(ym.substring(5,7),10)-1, k=y*100+mo; for(var i=0;i<NOVO_FC_MONTHS.length;i++){ if(NOVO_FC_MONTHS[i].key===k) return i; } return -1; }
 
 function buildNovoPipeRev12B() {
-  var active = (typeof _novoCurrentActivePipeline==='function') ? _novoCurrentActivePipeline() : (_novoDeals||[]);
-  var won    = (_novoDeals||[]).filter(function(d){ return _novoIsWon(d); }); // Ganho/Implantação
-  // Mesmo conjunto do /forecast: negócio novo (createdate>=set/25) OU Ganho OU Bid desde jan/25.
-  var considered = active.concat(won).filter(_novoFcInForecastSet);
+  // Mesmo conjunto do /forecast: TODOS os deals que passam no filtro (negócio novo OU
+  // Ganho/Impl. OU Bid desde jan/25), SEM recorte por etapa — a probabilidade (sp nulo →
+  // deal não entra) e a régua cuidam das exclusões, igual ao Forecast Overall. Não usa
+  // _novoCurrentActivePipeline (que corta Standby/reuniões pelos toggles do dashboard).
+  var considered = (_novoDeals||[]).filter(_novoFcInForecastSet);
   // Dedup Fee×Corretagem: zera a receita do gêmeo excluído (igual ao /forecast).
   var excl = _novoFcRevExcluded(considered);
   var nonBid = considered.filter(function(d){ return d.pipeline!=='Bid' && !_novoIsWon(d); }); // pipe concreto + Diagnóstico
@@ -4079,7 +4080,7 @@ function buildNovoPipeRev12B() {
     ]},
     options:{ responsive:true, layout:{padding:{top:28}}, plugins:{
       legend:{display:true, labels:{color:th.cText2, font:{family:NOVO_FONT,size:11}, usePointStyle:true}},
-      datalabels:{ display:function(ctx){ return ctx.datasetIndex===0; }, anchor:'end', align:'top', color:th.cText, font:{family:NOVO_FONT,size:9,weight:'bold'}, formatter:function(v){ return v>0?_revShort(v):''; } },
+      datalabels:{ display:function(ctx){ var ch=ctx.chart; if(!ch.isDatasetVisible(ctx.datasetIndex)) return false; for(var i=0;i<ctx.datasetIndex;i++){ if(ch.isDatasetVisible(i)) return false; } return true; }, anchor:'end', align:'top', color:th.cText, font:{family:NOVO_FONT,size:9,weight:'bold'}, formatter:function(v){ return v>0?_revShort(v):''; } },
       tooltip:{ mode:'index', intersect:false, callbacks:{
         label:function(c){ return c.dataset.label+': R$ '+Math.round(c.parsed.y).toLocaleString('pt-BR'); },
         afterBody:function(items){ if(!items.length) return ''; var i=items[0].dataIndex;
