@@ -997,7 +997,7 @@ var NOVO_I18N = {
     tip_sizedonut:'Donut dos deals abertos por faixa, com toggle entre Receita e Vidas. O centro mostra o total de deals abertos no pipeline (atualiza ao ocultar fatias na legenda). A fatia cinza "Sem receita"/"Sem vidas" conta os deals sem aquela informação. Etapas contadas: Diagnóstico, Cotação, Proposta Enviada, Consultoria, Negociação e Stand by (Implantação entra quando o toggle "Implantação = Ganho" está desligado). Clique numa fatia para ver os deals. Pipelines Vendas + Bid.',
     donut_open_deals:'deals abertos', donut_no_revenue:'Sem receita', donut_no_lives:'Sem vidas', donut_stages_label:'Etapas',
     vf_by_revenue:'Receita', vf_by_lives:'Vidas', vf_by_stage:'Etapa', vf_by_segment:'Segmento',
-    t_stageval:'🟡 Valor do Pipeline por Etapa',
+    t_stageval:'Valor do Pipeline por Etapa (TCV)',
     tip_stageval:'Soma do TCV (valor do contrato em 12 meses pela régua real, incluindo a corretagem de entrada) por etapa. "Ponderado" multiplica pela probabilidade final de fechamento (C07 por pipeline + ajuste do AE). Mesma base do C08. Inclui Vendas + Bid.',
     tip_revbkt:'Dois donuts do TCV (valor do contrato em 12 meses pela régua real — inclui a corretagem de entrada; Diagnóstico = vidas × R$/vida × 12): esquerda por bucket de Receita, direita por bucket de Vidas (faixas do C03). Toggle alterna Bruto × Ponderado (× probabilidade de fechamento por pipeline, C07). Base: pipeline ativo (Vendas + Bid); só deals com TCV > 0.',
     t_segment:'Receita por Segmento',
@@ -1114,7 +1114,7 @@ var NOVO_I18N = {
     tip_sizedonut:'Donut of open deals by band, with a toggle between Revenue and Lives. The center shows the total open deals in the pipeline (updates when slices are hidden via the legend). The grey "No revenue"/"No lives" slice counts deals missing that info. Stages counted: Diagnóstico, Cotação, Proposta Enviada, Consultoria, Negociação and Stand by (Implantação is included when the "Implantação = Ganho" toggle is off). Click a slice to see the deals. Vendas + Bid pipelines.',
     donut_open_deals:'open deals', donut_no_revenue:'No revenue', donut_no_lives:'No lives', donut_stages_label:'Stages',
     vf_by_revenue:'Revenue', vf_by_lives:'Lives', vf_by_stage:'Stage', vf_by_segment:'Segment',
-    t_stageval:'🟡 Pipeline Value by Stage',
+    t_stageval:'Pipeline Value by Stage (TCV)',
     tip_stageval:'Sum of TCV (12-month contract value from the real régua, including the entry brokerage) per stage. "Weighted" multiplies by the final win probability (C07 per pipeline + AE adjustment). Same base as C08. Includes Vendas + Bid.',
     tip_revbkt:'Two donuts of TCV (12-month contract value from the real régua — includes the entry brokerage; Diagnóstico = lives × R$/life × 12): left by Revenue bucket, right by Lives bucket (C03 tiers). Toggle switches Gross × Weighted (× per-pipeline win probability, C07). Base: active pipeline (Vendas + Bid); only deals with TCV > 0.',
     t_segment:'Revenue by Segment',
@@ -4832,7 +4832,7 @@ function novoRender() {
         'chart-novo-stage', 340, 'stage') +
       _novoSizeDonutCard() +
       _novoRevBucketsCard() +
-      _card(_titleWithCount(t('t_stageval'), activeCount), t('tip_stageval'),
+      _card(_titleWithCount(t('t_stageval'), _novoActiveChartDeals().filter(function(d){ return _novoDealTcv(d) > 0; }).length), t('tip_stageval'),
         _subTabs('novo-val-tabs', _novoValMode, [{mode:'raw',label:t('lbl_raw'),fn:'novoSwitchValMode'},{mode:'weighted',label:t('lbl_weighted'),fn:'novoSwitchValMode'}]),
         'chart-novo-stageval', 340, 'stageval') +
       _card(_titleWithCount(t('t_segment'), activeCount), t('tip_segment'),
