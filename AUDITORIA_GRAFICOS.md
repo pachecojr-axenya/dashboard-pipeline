@@ -14,6 +14,18 @@ Análise dos gráficos que estavam marcados com 🟡 (não validados) em `public
 
 ---
 
+## Adendo | mudanças pós-auditoria (2026-07-01)
+
+> A tabela `novo-dashboard.html` abaixo usa a numeração **N01–N26 de 12/06**, que **não bate mais** com os códigos exibidos no dashboard atual (o card map do código foi reorganizado; ex.: hoje "Maturidade por Coorte" aparece como N01 no dashboard, "Cobertura" como N05, "Forecast Total" como N06B). Trate a tabela como histórico; o estado corrente é este adendo.
+
+- **Forecast Total (N06B) → 🟢 validado.** Religado no motor compartilhado (`forecast-engine.js`: `dealMonthly` + `bdrCohorts`, régua `calcReceitaMes`, faturamento manual). Bate **mês a mês**, em Receita Real e Probabilizada, com o painel **Forecast Overall** (`forecast-stage.html`) — filtro de deals (createdate≥set/25 · Ganho · Bid desde jan/25), dedup Fee×Corretagem, prob por etapa do funil (Diagnóstico 6%), bloco BID só Negociação/Proposta com prob fixa 0,5%. Marcador 🟡 removido do título.
+- **Maturidade por Coorte (N01 no código atual) → 🟢 validado.** Pisos alinhados ao tooltip (coortes com 2+ meses e 20+ deals); curva de desfecho por `close_date` ÷ tamanho, meses futuros nulos.
+- **C07 (Prob. de Ganho por Etapa):** eixo Y capado em 40%.
+- **Removidos:** **C05** (Receita por Segmento — redundante com o C08/TCV e usava `arr_estimado`) e **N06/N14** (Valor do Pipeline | Projeção Mensal — redundante com o Forecast Total).
+- **Pendente:** **N05 (Cobertura do Pipeline)** ainda usa o motor antigo (probabilizado apenas) — a religar no `ForecastEngine` com toggle R$ receita ↔ × coverage.
+
+---
+
 ## `novo-board.html`
 
 Os 4 KPIs do topo (após o alinhamento de definições de 2026-06-12) estão corretos: **ARR Ganho R$ 4,14M / 24 deals · Pipeline Aberto R$ 149,85M / 137 · Forecast Ponderado R$ 44,4M** → 🟢.

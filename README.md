@@ -108,6 +108,10 @@ Conceitos que vieram direto do CRO e que orientam o desenho dos gráficos:
   (ligado por padrão).
 - **Painéis modulares** (um HTML por painel) para poder agregar/duplicar em visões de apresentação no
   futuro.
+- **Fonte única de receita (forecast)** — o gráfico **Forecast Total** do CRO Dashboard usa o mesmo
+  motor por deal do painel Forecast (`forecast-engine.js`: régua `calcReceitaMes` + faturamento manual +
+  cohorts de BDR). Duas linhas fixas, **Receita Real** e **Receita Probabilizada**, que batem mês a mês
+  com o painel **Forecast Overall**. Regra de receita detalhada na Regra primária nº 3 do STATUS_LOG.
 
 ---
 
