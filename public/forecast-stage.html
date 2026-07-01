@@ -1763,6 +1763,8 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
 <link rel="stylesheet" href="/premium.css?v=5">
 <script src="/premium.js?v=5"></script>
 <script src="/revenue-engine.js?v=1"></script>
+<script src="/faturamento-manual.js?v=1"></script>
+<script src="/forecast-engine.js?v=1"></script>
 </head>
 
 <body>
@@ -2362,7 +2364,11 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
     let FC_WIN_RATE = 0;       // win rate global (S01) = ganhos ÷ (ganhos + perdidos) | usado na projeção de BDRs
     // Faturamento manual (painel Ganho): mapa global { "<dealId>": { manual?: bool, months?: {"YYYY-MM": valor} } }.
     // Deals em Ganho/Implantação que já começaram a faturar têm valor real mês a mês digitado à mão (≠ forecast).
-    let FC_MANUAL = {};
+    // Faturamento manual: estado e regras vivem em faturamento-manual.js (fonte única).
+    // Injeta o dealId desta página para bater com a dedup/render.
+    FaturamentoManual.config({ dealId: _fcDealId });
+    // Motor de receita mensal por deal + cohorts BDR: fonte única em forecast-engine.js.
+    ForecastEngine.config({ MONTHS: MONTHS, getVpv: getVpv, parseRevenueDate: parseRevenueDate, addMonths: _fcAddMonths, todayStr: _fcTodayStr, calcReceita: calcReceita, monthLabels: MONTH_LABELS });
     let stageFilter = new Set();
     let quarterFilter = new Set();
     let tierFilter = new Set();
@@ -2519,28 +2525,9 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
     // 4 antigos × 34k/mês + 8 novos (rampa: jul/26 3.333 · ago 10k · set 22.667 · out/26+ 34k),
     // jul/26 → jan/28. Cada coorte vira receita +15m da originação (vidas × R$24, recorrente),
     // probabilizada pelo win rate global (S01).
-    function _fcBdrNewVidasPer(ym) {
-      if (ym < '2026-07' || ym > '2028-01') return 0;
-      if (ym === '2026-07') return 3333;
-      if (ym === '2026-08') return 10000;
-      if (ym === '2026-09') return 22667;
-      return 34000;   // out/26 em diante
-    }
-    function _fcBdrCohorts() {
-      const OLD = 4, NEW = 8, VIDA_OLD = 34000, out = [];
-      let y = 2026, mo = 6;   // jul/2026
-      while (y < 2028 || (y === 2028 && mo <= 0)) {   // até jan/2028
-        const ym = y + '-' + String(mo + 1).padStart(2, '0');
-        const vNew = NEW * _fcBdrNewVidasPer(ym);
-        const vOld = OLD * VIDA_OLD;
-        const vidas = vOld + vNew;
-        const t = mo + 15;
-        const rs = { y: y + Math.floor(t / 12), mo: ((t % 12) + 12) % 12 };
-        out.push({ ymLabel: MONTH_LABELS[mo] + '/' + String(y).slice(2), vidasOld: vOld, vidasNew: vNew, vidas: vidas, rec: vidas * 24, revStart: rs, revLabel: MONTH_LABELS[rs.mo] + '/' + String(rs.y).slice(2) });
-        mo++; if (mo > 11) { mo = 0; y++; }
-      }
-      return out;
-    }
+    // Delegados à fonte única (forecast-engine.js).
+    function _fcBdrNewVidasPer(ym) { return ForecastEngine.bdrNewVidasPer(ym); }
+    function _fcBdrCohorts() { return ForecastEngine.bdrCohorts(); }
     function _fcBdrTableHtml(rows) {
       const wr = (_fcMqlConv() * 100).toFixed(1).replace('.', ',') + '%';
       let h = '<style>.bdr-proj{width:100%;border-collapse:collapse;font-size:.8rem;margin-top:.5rem}.bdr-proj th,.bdr-proj td{padding:.4rem .7rem;border-bottom:1px solid var(--border)}.bdr-proj th{color:var(--accent,#3ab8b7);font-weight:700;border-bottom:2px solid var(--accent,#3ab8b7)}.bdr-proj tbody tr:hover td{background:rgba(255,255,255,.04)}</style>';
@@ -2682,7 +2669,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       const d = currentDeals[di];
       if (!d) return;
       _billDealId = _fcDealId(d);
-      const e = FC_MANUAL[_billDealId] || {};
+      const e = FaturamentoManual.data()[_billDealId] || {};
       _billManual = (typeof e.manual === 'boolean') ? e.manual : _fcVencido(d);
 
       document.getElementById('bill-title').textContent = 'Faturamento manual — ' + (d.dealname || '');
@@ -2774,7 +2761,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
         });
         const j = await r.json();
         if (!r.ok || !j.success) throw new Error(j.error || ('HTTP ' + r.status));
-        if (j.data) FC_MANUAL = j.data;
+        if (j.data) FaturamentoManual.setData(j.data);
       } catch (e) { alert('Erro ao salvar faturamento: ' + e.message); return; }
       closeBillingEditor();
       applyAndRender();
@@ -3585,7 +3572,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
           document.getElementById('tw').innerHTML = `<div class="state err">Erro: ${esc(data.error || String(resp.status))}</div>`;
           return;
         }
-        try { if (manResp && manResp.ok) { const mj = await manResp.json(); if (mj && mj.success && mj.data) FC_MANUAL = mj.data; } } catch (e) { /* mantém {} */ }
+        try { if (manResp && manResp.ok) { const mj = await manResp.json(); if (mj && mj.success && mj.data) FaturamentoManual.setData(mj.data); } } catch (e) { /* mantém {} */ }
         // BID: o mês de início de receita é FIXO por etapa (regra do bloco BID), não a data
         // por-deal do HubSpot. Sobrescreve data_prevista_para_receita (e o quarter derivado)
         // para Negociação → out/2026 e Proposta Enviada → jun/2027. Vale no painel BID e no
@@ -3761,74 +3748,20 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
     // Deals em Ganho/Implantação que já começaram a faturar têm valor real mês a mês,
     // diferente do forecast. Gate: vencimento_da_1o_fatura preenchido e já vencido.
     const _todayISO = (function(){ const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })();
-    function _fcMonthKey(m) { return m.y + '-' + String(m.mo + 1).padStart(2, '0'); }
-    function _fcVencido(d) { const v = d.vencimento_primeira_fatura; return !!v && v <= _todayISO; }
-    function _fcManualElegivel(d) { return d.stage === 'Ganho' || d.stage === 'Implantação'; }
-    // Estado manual efetivo: override explícito (botão) vence o gate; senão decide pelo vencimento.
-    function _fcIsManual(d) {
-      if (!_fcManualElegivel(d)) return false;
-      const e = FC_MANUAL[_fcDealId(d)];
-      if (e && typeof e.manual === 'boolean') return e.manual;
-      return _fcVencido(d);
-    }
-    // Mapa de meses do deal manual ({} se ainda não preenchido); null se o deal não é manual.
-    function _fcManualMonths(d) {
-      if (!_fcIsManual(d)) return null;
-      const e = FC_MANUAL[_fcDealId(d)];
-      return (e && e.months) ? e.months : {};
-    }
+    // Delegado à fonte única (faturamento-manual.js). Mantém os nomes/assinaturas
+    // usados no arquivo; a regra e o estado vivem no módulo compartilhado.
+    function _fcMonthKey(m) { return FaturamentoManual.monthKey(m); }
+    function _fcVencido(d) { return FaturamentoManual.vencido(d, _todayISO); }
+    function _fcManualElegivel(d) { return FaturamentoManual.elegivel(d); }
+    function _fcIsManual(d) { return FaturamentoManual.isManual(d, _todayISO); }
+    function _fcManualMonths(d) { return FaturamentoManual.manualMonths(d, _todayISO); }
 
     // ── RENDER ────────────────────────────────────────────────────────────────
     // Receita mensal (real + ponderada) de UM deal, por MONTHS. FONTE ÚNICA usada pelo
     // render dos painéis E pelo Overall (garante que o Overall bata com cada painel).
     // Não aplica dedup (o chamador trata) nem acumula totais (puro).
-    function _fcDealMonthly(d, probAdj) {
-      // Faturamento manual: substitui integralmente o forecast pelos valores digitados à mão.
-      const _man = _fcManualMonths(d);
-      if (_man) {
-        return MONTHS.map(m => {
-          const v = _man[_fcMonthKey(m)];
-          if (v == null || isNaN(v)) return null;
-          const val = Number(v);
-          return { val: val, rec: val, probAdj: 1, n: null, manual: true };
-        });
-      }
-      if (d.stage === 'Diagnóstico') {
-        const vidas = d.vidas || d.colaboradores || 0;
-        if (!vidas) return MONTHS.map(() => null);
-        const delay = vidas <= 200 ? 9 : vidas <= 4999 ? 14 : 18;
-        let revStart = null;
-        if (d.createdate) { const cd = new Date(d.createdate + 'T00:00:00'); const totalMo = cd.getMonth() + delay; revStart = { y: cd.getFullYear() + Math.floor(totalMo / 12), mo: totalMo % 12 }; }
-        const now = new Date(); const nowRef = { y: now.getFullYear(), mo: now.getMonth() };
-        if (!revStart || revStart.y < nowRef.y || (revStart.y === nowRef.y && revStart.mo < nowRef.mo)) revStart = nowRef;
-        const rec = vidas * getVpv(vidas);
-        return MONTHS.map(m => { if (probAdj == null) return null; const diff = (m.y - revStart.y) * 12 + (m.mo - revStart.mo); if (diff < 0) return null; return { val: rec * probAdj, rec: rec, probAdj: probAdj, n: diff + 1 }; });
-      }
-      if (d.stage === 'Reunião Agendada') {
-        const vidas = d.vidas || d.colaboradores || 0;
-        if (!vidas) return MONTHS.map(() => null);
-        let revStart = null;
-        if (d.createdate) { const cd = new Date(d.createdate + 'T00:00:00'); const t = cd.getMonth() + 15; revStart = { y: cd.getFullYear() + Math.floor(t / 12), mo: ((t % 12) + 12) % 12 }; }
-        if (!revStart) return MONTHS.map(() => null);
-        const rec = vidas * 24;
-        return MONTHS.map(m => { if (probAdj == null) return null; const diff = (m.y - revStart.y) * 12 + (m.mo - revStart.mo); if (diff < 0) return null; return { val: rec * probAdj, rec: rec, probAdj: probAdj, n: diff + 1 }; });
-      }
-      // Cotação / Consultoria / Negociação: o início da receita depende do modelo de remuneração.
-      //   • Corretagem   → data de VIGÊNCIA + 2 meses; se a vigência já passou (ou está vazia),
-      //                    usa data PREVISTA de receita + 2 (vigência velha não serve de âncora).
-      //   • Fee por vida → data PREVISTA de receita + 2 meses
-      //   • sem modelo   → data prevista de receita (comportamento padrão)
-      let revStart;
-      if (['Cotação', 'Consultoria', 'Negociação'].indexOf(d.stage) !== -1) {
-        const modelo = (d.modelo_remuneracao || '').toLowerCase();
-        if (modelo.indexOf('corretagem') !== -1)   revStart = (d.vigencia && d.vigencia >= _fcTodayStr()) ? _fcAddMonths(parseRevenueDate(d.vigencia), 2) : _fcAddMonths(parseRevenueDate(d.data_prevista_para_receita), 2);
-        else if (modelo.indexOf('fee') !== -1)      revStart = _fcAddMonths(parseRevenueDate(d.data_prevista_para_receita), 2);
-        else                                        revStart = parseRevenueDate(d.data_prevista_para_receita);
-      } else {
-        revStart = parseRevenueDate(d.data_prevista_para_receita);
-      }
-      return MONTHS.map(m => { if (!revStart || probAdj == null) return null; const diff = (m.y - revStart.y) * 12 + (m.mo - revStart.mo); if (diff < 0 || diff > 23) return null; const n = diff + 1; const rec = calcReceita(n, d); if (rec == null) return null; return { val: rec * probAdj, rec: rec, probAdj: probAdj, n: n }; });
-    }
+    // Delegado à fonte única (forecast-engine.js). Mantém o nome/assinatura usados no render.
+    function _fcDealMonthly(d, probAdj) { return ForecastEngine.dealMonthly(d, probAdj); }
     function render(deals) {
       // Painel Ganho: agrupa em duas listas (Forecast x Em faturamento manual), forecast primeiro.
       if (FC_PANEL_STAGE === 'Ganho') {

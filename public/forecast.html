@@ -1742,6 +1742,8 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
 <link rel="stylesheet" href="/premium.css?v=5">
 <script src="/premium.js?v=5"></script>
 <script src="/revenue-engine.js?v=1"></script>
+<script src="/faturamento-manual.js?v=1"></script>
+<script src="/forecast-engine.js?v=1"></script>
 </head>
 
 <body>
@@ -1836,6 +1838,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
             <button type="button" class="fbtn" style="flex:1; justify-content:center; padding:0.2rem" onclick="selectAllStages()">Todas</button>
             <button type="button" class="fbtn" style="flex:1; justify-content:center; padding:0.2rem" onclick="selectNoStages()">Nenhuma</button>
           </div>
+          <label class="custom-cb"><input type="checkbox" data-stage="Reunião Agendada" onchange="onStageCheckbox(this)"><span class="cb-box"></span>Reunião Agendada</label>
           <label class="custom-cb"><input type="checkbox" data-stage="Diagnóstico" onchange="onStageCheckbox(this)"><span class="cb-box"></span>Diagnóstico</label>
           <label class="custom-cb"><input type="checkbox" data-stage="Cotação" onchange="onStageCheckbox(this)"><span class="cb-box"></span>Cotação</label>
           <label class="custom-cb"><input type="checkbox" data-stage="Proposta Enviada" onchange="onStageCheckbox(this)"><span class="cb-box"></span>Proposta Enviada</label>
@@ -1968,12 +1971,19 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       </div>
       <h3>Como funciona o cálculo</h3>
 
+      <!-- Real × Probabilizada -->
+      <section class="help-section">
+        <h3 class="help-h3">Receita Real × Probabilizada</h3>
+        <p class="help-p"><strong>Receita Real</strong> = o que se espera faturar de fato. Deals em Ganho/Implantação que já faturam usam o <strong>valor manual digitado</strong>; as demais etapas usam a régua estimada da etapa (abaixo).</p>
+        <p class="help-p"><strong>Receita Probabilizada</strong> = Receita Real × probabilidade de fechamento da etapa. Todas as telas de Forecast (esta e os painéis por etapa) usam estas duas séries como <strong>fonte única</strong>, então batem entre si.</p>
+      </section>
+
       <!-- Probabilidade por etapa -->
       <section class="help-section">
-        <h3 class="help-h3">Probabilidade por etapa</h3>
-        <p class="help-p">Cada etapa tem uma <strong>probabilidade de conversão padrão</strong>, configurável em Configurações. Ela representa a chance histórica de um deal nessa fase chegar ao fechamento.</p>
+        <h3 class="help-h3">Probabilidade por etapa (funil C06 ao vivo)</h3>
+        <p class="help-p">A probabilidade de cada etapa é <strong>calculada ao vivo do funil</strong>: deals que chegaram à Implantação ÷ deals que entraram na etapa (histórico combinado Vendas + Bid). Etapas com menos de 20 deals na amostra usam o valor padrão. <strong>Diagnóstico</strong> é fixo em 6% e <strong>Ganho/Implantação</strong> em 100%. Tudo sobrescrevível em Configurações.</p>
         <table class="help-table">
-          <thead><tr><th>Etapa</th><th>Padrão</th></tr></thead>
+          <thead><tr><th>Etapa</th><th>Prob. atual</th></tr></thead>
           <tbody id="help-stage-rows"></tbody>
         </table>
       </section>
@@ -1993,29 +2003,40 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
         </table>
       </section>
 
-      <!-- Receita — Diagnóstico -->
+      <!-- Receita por etapa -->
       <section class="help-section">
-        <h3 class="help-h3">Receita — Diagnóstico</h3>
-        <p class="help-p">Deals em Diagnóstico usam uma lógica própria baseada no número de vidas, pois ainda não há fatura definida.</p>
-        <p class="help-p"><strong>Receita recorrente</strong> = vidas × R$/vida (por faixa)</p>
+        <h3 class="help-h3">Receita por etapa (quando e quanto)</h3>
+
+        <p class="help-p" style="margin-top:.4rem;"><strong>Reunião Agendada (MQL)</strong></p>
+        <p class="help-p">Vidas (ou colaboradores, se não houver vidas) × <strong>R$ 24/vida</strong>. A receita começa <strong>15 meses</strong> após a criação do deal. Além dos deals, soma-se a projeção de originação BDR (ver abaixo).</p>
+
+        <p class="help-p" style="margin-top:.7rem;"><strong>Diagnóstico</strong></p>
+        <p class="help-p">Ainda sem fatura: vidas (ou colaboradores) × R$/vida por faixa. Início = criação + delay; se essa data já passou, começa no mês atual. 100% recorrente (estimado).</p>
         <table class="help-table">
           <thead><tr><th>Faixa</th><th>R$/vida</th><th>Delay até receita</th></tr></thead>
           <tbody>
-            <tr><td>Até 200 vidas</td><td>R$ 36</td><td>+ 9 meses do cadastro</td></tr>
-            <tr><td>201 – 4.999 vidas</td><td>R$ 24</td><td>+ 14 meses do cadastro</td></tr>
-            <tr><td>5.000+ vidas</td><td>R$ 12</td><td>+ 18 meses do cadastro</td></tr>
+            <tr><td>Até 200 vidas</td><td>R$ 36</td><td>+ 9 meses</td></tr>
+            <tr><td>201 – 4.999 vidas</td><td>R$ 24</td><td>+ 14 meses</td></tr>
+            <tr><td>5.000+ vidas</td><td>R$ 12</td><td>+ 18 meses</td></tr>
           </tbody>
         </table>
-        <p class="help-p" style="margin-top:.6rem;"><strong>Receita probabilizada</strong> = Receita recorrente × Probabilidade ajustada</p>
-        <p class="help-p">Se a data projetada (cadastro + delay) já ficou no passado, a receita é projetada a partir do mês atual.</p>
+
+        <p class="help-p" style="margin-top:.7rem;"><strong>Cotação · Consultoria · Negociação</strong></p>
+        <p class="help-p">Régua pelo modelo de cobrança (abaixo). Início da receita depende do modelo: <strong>Corretagem</strong> → vigência + 2 meses (se a vigência já passou ou está vazia, usa a data prevista + 2); <strong>Fee por vida</strong> → data prevista + 2 meses; <strong>sem modelo</strong> → data prevista.</p>
+
+        <p class="help-p" style="margin-top:.7rem;"><strong>Proposta Enviada · Standby · demais</strong></p>
+        <p class="help-p">Régua pelo modelo de cobrança, a partir da <em>data prevista para receita</em> do deal, por até 24 meses.</p>
+
+        <p class="help-p" style="margin-top:.7rem;"><strong>Ganho · Implantação (faturamento real)</strong></p>
+        <p class="help-p">Quando o deal já fatura (campo <em>Vencimento da 1ª Fatura</em> preenchido e vencido, ou marcado à mão no editor), a Receita Real usa os <strong>valores mensais digitados</strong>, que substituem a régua estimada. Deals ganhos entram no forecast <strong>mesmo criados antes de set/2025</strong> — receita real não é cortada por data de criação.</p>
       </section>
 
-      <!-- Receita — demais etapas -->
+      <!-- Modelos de cobrança -->
       <section class="help-section">
-        <h3 class="help-h3">Receita — demais etapas</h3>
-        <p class="help-p">Para todas as outras etapas, a receita mensal é calculada a partir da <strong>primeira fatura</strong> e do <strong>modelo de remuneração</strong>.</p>
+        <h3 class="help-h3">Modelos de cobrança (régua de receita)</h3>
+        <p class="help-p">Define quanto cada deal rende por mês a partir da <strong>primeira fatura</strong>.</p>
 
-        <p class="help-p" style="margin-top:.7rem;"><strong>Fee por vida</strong></p>
+        <p class="help-p" style="margin-top:.5rem;"><strong>Fee por vida</strong></p>
         <p class="help-p">Receita mensal = primeira fatura (valor fixo, todos os meses).</p>
 
         <p class="help-p" style="margin-top:.7rem;"><strong>Corretagem — sem agenciamento</strong></p>
@@ -2037,9 +2058,18 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
             <tr><td>200 ou mais</td><td>2º em diante</td><td>5% da primeira fatura</td></tr>
           </tbody>
         </table>
+      </section>
 
-        <p class="help-p" style="margin-top:.7rem;"><strong>Receita probabilizada</strong> = Receita mensal × Probabilidade ajustada</p>
-        <p class="help-p">A receita é projetada a partir da <em>data prevista para receita</em> cadastrada no deal, por até 24 meses.</p>
+      <!-- Originação BDR -->
+      <section class="help-section">
+        <h3 class="help-h3">Originação BDR (projeção de topo de funil)</h3>
+        <p class="help-p">4 BDRs antigos (34k vidas/mês) + 8 novos em rampa (jul/26 → jan/28). Cada mês de originação vira receita <strong>15 meses depois</strong> (vidas × R$ 24), probabilizada pela conversão Reunião Agendada → Implantação (ao vivo). Entra nos totais <strong>apenas quando não há filtro de etapa ou quando Reunião Agendada está entre as etapas filtradas</strong>.</p>
+      </section>
+
+      <!-- Dedup -->
+      <section class="help-section">
+        <h3 class="help-h3">Deals duplicados (Fee × Corretagem)</h3>
+        <p class="help-p">Quando o mesmo cliente tem dois negócios simultâneos (um Fee por vida e um Corretagem), só <strong>um</strong> conta no forecast, para não dobrar a receita. Mantém-se a <strong>etapa mais avançada</strong>; empate → <strong>menor TCV de 12 meses</strong>; novo empate → <strong>vigência mais distante</strong> (cenário conservador).</p>
       </section>
 
       <div style="height:1px;background:var(--border);margin:1.2rem 0 1rem;"></div>
@@ -2330,6 +2360,17 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
     function _fcDealId(d) {
       return d.hs_id != null ? String(d.hs_id) : ('n:' + _fcDedupKey(d.dealname) + '|m:' + (d.modelo_remuneracao || ''));
     }
+
+    // Faturamento manual (Receita Real) | fonte única em faturamento-manual.js.
+    // O dealId injetado bate com a dedup/render deste arquivo.
+    FaturamentoManual.config({ dealId: _fcDealId });
+    function _fcMonthKey(m) { return FaturamentoManual.monthKey(m); }
+    function _fcManualMonths(d) { return FaturamentoManual.manualMonths(d, _fcTodayStr()); }
+
+    // Motor de receita mensal por deal + cohorts BDR: fonte única em forecast-engine.js.
+    ForecastEngine.config({ MONTHS: MONTHS, getVpv: getVpv, parseRevenueDate: parseRevenueDate, addMonths: _fcAddMonths, todayStr: _fcTodayStr, calcReceita: calcReceita, monthLabels: MONTH_LABELS });
+    // Conversão MQL (Reunião Agendada → Implantação) usada para probabilizar os cohorts BDR.
+    function _fcMqlConv() { const p = STAGE_PROB['Reunião Agendada']; return (p != null ? p : 0); }
     // Rank de avanço da etapa (maior = mais avançado) — no dedup, mantém o gêmeo que mais avançou.
     function _fcStageRank(d) {
       const R = { 'Reunião Agendada': 0, 'Diagnóstico': 1, 'Cotação': 2, 'Proposta Enviada': 3, 'Consultoria': 4, 'Negociação': 5, 'Implantação': 6, 'Ganho': 7 };
@@ -2402,7 +2443,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
 
     // ── HELP MODAL ────────────────────────────────────────────────────────────
     function openHelpModal() {
-      const rows = ['Diagnóstico','Cotação','Proposta Enviada','Consultoria','Negociação','Implantação','Ganho','Standby'];
+      const rows = ['Reunião Agendada','Diagnóstico','Cotação','Proposta Enviada','Consultoria','Negociação','Implantação','Ganho','Standby'];
       const tbody = document.getElementById('help-stage-rows');
       if (tbody) {
         tbody.innerHTML = rows.map(s => {
@@ -3055,7 +3096,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
     }
 
     // ── STAGE FILTER ──────────────────────────────────────────────────────────
-    const STAGE_DD_LIST = ['Diagnóstico','Cotação','Proposta Enviada','Consultoria','Negociação','Implantação','Ganho','Standby'];
+    const STAGE_DD_LIST = ['Reunião Agendada','Diagnóstico','Cotação','Proposta Enviada','Consultoria','Negociação','Implantação','Ganho','Standby'];
 
     function toggleStageDd(e) {
       document.getElementById('stage-dd').classList.toggle('open');
@@ -3215,10 +3256,15 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
           document.getElementById('tw').innerHTML = `<div class="state err">Erro: ${esc(data.error || String(resp.status))}</div>`;
           return;
         }
+        // Store de faturamento manual (Receita Real dos deals em Ganho/Implantação já faturando).
+        await FaturamentoManual.load();
         // BID: régua de receita fixa por etapa (Negociação → out/2026, Proposta Enviada → jun/2027).
         data.deals.forEach(d => { if (d.pipeline !== 'Bid') return; const rd = ({ 'Negociação': '2026-10-01', 'Proposta Enviada': '2027-06-01' })[d.stage]; if (!rd) return; d.data_prevista_para_receita = rd; const _mo = parseInt(rd.substring(5, 7), 10) - 1; d.quarter = 'Q' + (Math.floor(_mo / 3) + 1) + ' ' + rd.substring(0, 4); });
         // Negócio novo (createdate >= set/2025); BID entra desde jan/2025 (pipeline longo).
+        // Realizado (Ganho/Implantação) fura o corte de createdate — é receita real e precisa
+        // bater com o painel /forecast-ganho (regra "realizado sem cutoff", igual ao forecast-stage).
         allDeals = data.deals.filter(d => (d.createdate && d.createdate >= '2025-09-01')
+          || d.stage === 'Ganho' || d.stage === 'Implantação'
           || (d.pipeline === 'Bid' && d.createdate && d.createdate >= '2025-01-01'));
         // Não resetamos os filtros aqui: ao atualizar, a tabela mantém os filtros
         // já aplicados (as funções build*Filter respeitam o estado atual via .has()).
@@ -3384,84 +3430,27 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       const mTotals = new Array(MONTHS.length).fill(0);
       const mRealTotals = new Array(MONTHS.length).fill(0);
 
+      // Motor por deal: fonte única (forecast-engine.js), idêntico ao painel /forecast-stage.
       const dealMonths = deals.map(d => {
         if (revExcl.has(_fcDealId(d))) return MONTHS.map(() => null);   // duplicata: sem receita contada
-        // ── Diagnóstico: receita recorrente baseada em createdate + delay ────────
-        if (d.stage === 'Diagnóstico') {
-          if (!d.vidas || d.vidas === 0) return MONTHS.map(() => null);
-          const vidas = d.vidas;
-          const delay = vidas < 200 ? 9 : vidas <= 4999 ? 14 : 18;
-          let revStart = null;
-          if (d.createdate) {
-            const cd = new Date(d.createdate + 'T00:00:00');
-            const totalMo = cd.getMonth() + delay;
-            revStart = { y: cd.getFullYear() + Math.floor(totalMo / 12), mo: totalMo % 12 };
-          }
-          // Se a data projetada ficou no passado, usa o mês atual
-          const now = new Date();
-          const nowRef = { y: now.getFullYear(), mo: now.getMonth() };
-          if (!revStart || revStart.y < nowRef.y || (revStart.y === nowRef.y && revStart.mo < nowRef.mo)) {
-            revStart = nowRef;
-          }
-          const probAdj = d.prob_ajustada;
-          const rec = vidas * getVpv(vidas);
-          return MONTHS.map((m, i) => {
-            if (probAdj == null) return null;
-            const diff = (m.y - revStart.y) * 12 + (m.mo - revStart.mo);
-            if (diff < 0) return null;
-            const val = rec * probAdj;
-            mTotals[i] += val;
-            mRealTotals[i] += rec;
-            return { val, rec, probAdj, n: diff + 1 };
-          });
-        }
-
-        // ── Reunião Agendada / MQL: vidas (ou colaboradores) × R$24, receita +15m da criação ──
-        if (d.stage === 'Reunião Agendada') {
-          const vidas = d.vidas || d.colaboradores || 0;
-          if (!vidas) return MONTHS.map(() => null);
-          let revStart = null;
-          if (d.createdate) { const cd = new Date(d.createdate + 'T00:00:00'); const t = cd.getMonth() + 15; revStart = { y: cd.getFullYear() + Math.floor(t / 12), mo: ((t % 12) + 12) % 12 }; }
-          if (!revStart) return MONTHS.map(() => null);
-          const probAdj = d.prob_ajustada;
-          const rec = vidas * 24;
-          return MONTHS.map((m, i) => {
-            if (probAdj == null) return null;
-            const diff = (m.y - revStart.y) * 12 + (m.mo - revStart.mo);
-            if (diff < 0) return null;
-            const val = rec * probAdj;
-            mTotals[i] += val;
-            mRealTotals[i] += rec;
-            return { val, rec, probAdj, n: diff + 1 };
-          });
-        }
-
-        // ── Demais etapas ─────────────────────────────────────────────────────────
-        // Cotação / Consultoria / Negociação: início da receita por modelo de remuneração.
-        //   Corretagem → vigência + 2 meses · Fee por vida → data prevista + 2 meses · sem modelo → data prevista.
-        let revStart;
-        if (['Cotação', 'Consultoria', 'Negociação'].indexOf(d.stage) !== -1) {
-          const modelo = (d.modelo_remuneracao || '').toLowerCase();
-          if (modelo.indexOf('corretagem') !== -1)   revStart = (d.vigencia && d.vigencia >= _fcTodayStr()) ? _fcAddMonths(parseRevenueDate(d.vigencia), 2) : _fcAddMonths(parseRevenueDate(d.data_prevista_para_receita), 2);
-          else if (modelo.indexOf('fee') !== -1)      revStart = _fcAddMonths(parseRevenueDate(d.data_prevista_para_receita), 2);
-          else                                        revStart = parseRevenueDate(d.data_prevista_para_receita);
-        } else {
-          revStart = parseRevenueDate(d.data_prevista_para_receita);
-        }
-        const probAdj = d.prob_ajustada;
-        return MONTHS.map((m, i) => {
-          if (!revStart || probAdj == null) return null;
-          const diff = (m.y - revStart.y) * 12 + (m.mo - revStart.mo);
-          if (diff < 0 || diff > 23) return null;
-          const n = diff + 1;
-          const rec = calcReceita(n, d);
-          if (rec == null) return null;
-          const val = rec * probAdj;
-          mTotals[i] += val;
-          mRealTotals[i] += rec;
-          return { val, rec, probAdj, n };
-        });
+        const arr = ForecastEngine.dealMonthly(d, d.prob_ajustada);
+        arr.forEach((mObj, i) => { if (mObj) { mTotals[i] += mObj.val; mRealTotals[i] += mObj.rec; } });
+        return arr;
       });
+
+      // Projeção de originação BDR (topo de funil, agregado) somada aos totais mensais,
+      // igual ao painel MQL/Reunião Agendada: Real += rec, Probabilizada += rec × conversão MQL.
+      // Só entra quando não há filtro de etapa OU quando Reunião Agendada está entre as filtradas
+      // (é originação de topo de funil; não faz sentido em recortes de outras etapas).
+      const _bdrVisivel = stageFilter.size === 0 || stageFilter.has('Reunião Agendada');
+      if (_bdrVisivel) {
+        ForecastEngine.bdrCohorts().forEach(c => MONTHS.forEach((m, i) => {
+          const diff = (m.y - c.revStart.y) * 12 + (m.mo - c.revStart.mo);
+          if (diff < 0) return;
+          mRealTotals[i] += c.rec;
+          mTotals[i] += c.rec * _fcMqlConv();
+        }));
+      }
 
       const INFO = [
         {
