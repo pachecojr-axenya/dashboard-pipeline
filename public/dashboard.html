@@ -4021,8 +4021,10 @@ function _novoFcRevExcluded(list){
 }
 // Clone raso do deal com outra data de receita (para a imputação do Bid, sem mutar o global).
 function _novoDealWithDate(d, ymd){ var o={}; for(var k in d){ if(Object.prototype.hasOwnProperty.call(d,k)) o[k]=d[k]; } o.data_prevista_para_receita=ymd; return o; }
-// Imputação de data do Bid, idêntica ao /forecast (régua de receita fixa por etapa).
+// Imputação de data do Bid, idêntica ao forecast-stage (régua de receita fixa por etapa).
 var NOVO_BID_IMPUTE = { 'Negociação':'2026-10-01', 'Proposta Enviada':'2027-06-01' };
+// Probabilidade fixa do bloco BID (= FC_BID_PROB do forecast-stage): ~0,5% conservador.
+var NOVO_BID_PROB = 0.005;
 // Índice do mês 'YYYY-MM' dentro de NOVO_FC_MONTHS (-1 se fora da janela do engine).
 function _novoFcMonthIdx(ym){ var y=parseInt(ym.substring(0,4),10), mo=parseInt(ym.substring(5,7),10)-1, k=y*100+mo; for(var i=0;i<NOVO_FC_MONTHS.length;i++){ if(NOVO_FC_MONTHS[i].key===k) return i; } return -1; }
 
@@ -4044,15 +4046,18 @@ function buildNovoPipeRev12B() {
   // (won/impl + pipe + bid + novos negócios) via ForecastEngine — mesmo motor do /forecast.
   var Rwon={},Rpipe={},Rbid={},Rnew={}, Pwon={},Ppipe={},Pbid={},Pnew={};
   for (var k=0;k<months.length;k++){ var mk=months[k]; Rwon[mk]=0;Rpipe[mk]=0;Rbid[mk]=0;Rnew[mk]=0; Pwon[mk]=0;Ppipe[mk]=0;Pbid[mk]=0;Pnew[mk]=0; }
-  var _accum = function(d, R, P){
+  var _accum = function(d, R, P, probOverride){
     if (typeof ForecastEngine === 'undefined') return;
     if (excl.has(_novoFcDealId(d))) return;   // gêmeo Fee×Corretagem excluído: receita zerada
-    var arr = ForecastEngine.dealMonthly(d, _novoFcProbAdj(d));
+    var prob = (probOverride != null) ? probOverride : _novoFcProbAdj(d);
+    var arr = ForecastEngine.dealMonthly(d, prob);
     for (var i=0;i<months.length;i++){ var m=months[i]; var idx=_novoFcMonthIdx(m); if(idx<0) continue; var o=arr[idx]; if(!o) continue; if(o.rec>0) R[m]+=o.rec; if(o.val>0) P[m]+=o.val; }
   };
   nonBid.forEach(function(d){ _accum(d, Rpipe, Ppipe); });          // pipe concreto + Diagnóstico
-  // Bid: imputa a data por etapa (Negociação→out/26, Proposta Enviada→jun/27), igual ao /forecast.
-  bid.forEach(function(d){ var rd=NOVO_BID_IMPUTE[d.stage]; _accum(rd ? _novoDealWithDate(d, rd) : d, Rbid, Pbid); });
+  // Bloco BID (= forecast-stage Overall): SÓ Negociação/Proposta Enviada, com data imputada
+  // (Negociação→out/26, Proposta→jun/27) e probabilidade fixa 0,5% (premissa conservadora).
+  // Deals de Bid em outras etapas NÃO entram na receita (nem aqui, nem nos blocos de Vendas).
+  bid.forEach(function(d){ var rd=NOVO_BID_IMPUTE[d.stage]; if(!rd) return; _accum(_novoDealWithDate(d, rd), Rbid, Pbid, NOVO_BID_PROB); });
   wonC.forEach(function(d){ _accum(d, Rwon, Pwon); });               // Ganho/Implantação (faturamento manual)
   // Topo de funil (novos negócios) = cohorts BDR (Real) × conversão MQL (Probabilizada).
   if (typeof ForecastEngine !== 'undefined') {
