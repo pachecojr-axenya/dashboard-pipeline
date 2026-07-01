@@ -999,7 +999,7 @@ var NOVO_I18N = {
     vf_by_revenue:'Receita', vf_by_lives:'Vidas', vf_by_stage:'Etapa', vf_by_segment:'Segmento',
     t_stageval:'🟡 Valor do Pipeline por Etapa',
     tip_stageval:'Soma da receita anual estimada por etapa. "Ponderado" multiplica pela probabilidade de ganho da etapa POR PIPELINE (C07, ao vivo do funil; cada deal usa a taxa do seu pipeline), ajustável em ⚙. Inclui os pipelines Vendas + Bid.',
-    tip_revbkt:'Dois donuts: distribuição da RECEITA PREVISTA (ARR estimado) pelos buckets, alternando entre faixas de Receita e de Vidas (mesmas do C03). Esquerda = Bruta (Σ ARR); direita = Ponderada (Σ ARR × probabilidade de ganho por pipeline, C07). Base: pipeline ativo (Vendas + Bid).',
+    tip_revbkt:'Dois donuts da RECEITA PREVISTA (ARR estimado): esquerda por bucket de Receita, direita por bucket de Vidas (faixas do C03). O toggle alterna Bruto (Σ ARR) × Ponderado (Σ ARR × probabilidade de ganho por pipeline, C07). Base: pipeline ativo (Vendas + Bid).',
     t_segment:'Receita por Segmento',
     tip_segment:'Receita anual estimada (potencial) somada por segmento de tamanho do cliente (vidas). Inclui os pipelines Vendas + Bid.',
     // KPIs primários
@@ -1116,7 +1116,7 @@ var NOVO_I18N = {
     vf_by_revenue:'Revenue', vf_by_lives:'Lives', vf_by_stage:'Stage', vf_by_segment:'Segment',
     t_stageval:'🟡 Pipeline Value by Stage',
     tip_stageval:'Sum of estimated annual revenue per stage. "Weighted" multiplies by the stage win probability PER PIPELINE (C07, live from the funnel; each deal uses its own pipeline rate), editable in ⚙. Includes the Vendas + Bid pipelines.',
-    tip_revbkt:'Two donuts: distribution of FORECAST REVENUE (estimated ARR) across buckets, toggling between Revenue and Lives tiers (same as C03). Left = Gross (Σ ARR); right = Weighted (Σ ARR × per-pipeline win probability, C07). Base: active pipeline (Vendas + Bid).',
+    tip_revbkt:'Two donuts of FORECAST REVENUE (estimated ARR): left by Revenue bucket, right by Lives bucket (C03 tiers). The toggle switches Gross (Σ ARR) × Weighted (Σ ARR × per-pipeline win probability, C07). Base: active pipeline (Vendas + Bid).',
     t_segment:'Revenue by Segment',
     tip_segment:'Estimated annual revenue (potential) summed by customer-size segment (lives). Includes the Vendas + Bid pipelines.',
     // Primary KPIs
@@ -1277,7 +1277,7 @@ var NOVO_HELP_CHARTS = [
   {
     key: 'revbkt',
     title: 'Receita Prevista por Bucket',
-    desc: 'Dois donuts com a distribuição da receita prevista (ARR estimado) pelos buckets de tamanho, alternável entre faixas de Receita e de Vidas (as mesmas do C03). Bruta = Σ ARR; Ponderada = Σ ARR × probabilidade de ganho por pipeline (C07). Base: pipeline ativo (Vendas + Bid).',
+    desc: 'Dois donuts com a distribuição da receita prevista (ARR estimado): um por bucket de Receita e outro por bucket de Vidas (as mesmas faixas do C03). O toggle escolhe a métrica: Bruto = Σ ARR; Ponderado = Σ ARR × probabilidade de ganho por pipeline (C07). Base: pipeline ativo (Vendas + Bid).',
     fields: [
       ['arr_estimado', 'Receita anual do deal (fallback primeira_fatura × 12) distribuída no bucket.'],
       ['vidas', 'Define o bucket no modo Vidas; a receita também depende da faixa PME/não-PME.'],
@@ -2893,35 +2893,38 @@ function buildNovoSizeDonut() {
 // C08 | Receita PREVISTA por bucket (dois donuts: bruta × ponderada), base visual do C03.
 // Bruta = Σ ARR estimado por bucket; Ponderada = Σ ARR × prob. de ganho por pipeline (C07).
 // Toggle de bucket: por faixa de Receita ou de Vidas (mesmas faixas do C03).
-var _novoRevBktMode = 'revenue'; // 'revenue' | 'vidas'
+var _novoRevBktMode = 'bruto'; // 'bruto' | 'ponderado' (métrica dos dois donuts)
 function novoSwitchRevBkt(m){ _novoRevBktMode=m; _setActive('novo-revbkt-tabs',m); buildNovoRevBuckets(); }
 function _novoRevBucketsCard() {
   var L = NOVO_LANG === 'en';
+  var _col = function(lbl, cid){ return '<div style="flex:1;min-width:260px"><div style="text-align:center;font-size:.8rem;font-weight:600;color:var(--text2);margin-bottom:.3rem">'+lbl+'</div><canvas id="'+cid+'" style="max-height:300px"></canvas></div>'; };
   return '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header" style="flex-wrap:wrap;gap:.5rem">' +
     '<h3>' + (L?'Forecast Revenue by Bucket':'Receita Prevista por Bucket') + '</h3>' +
     _infoBtn(t('tip_revbkt'), 'revbkt') +
-    _subTabs('novo-revbkt-tabs', _novoRevBktMode, [{mode:'revenue',label:t('lbl_revenue'),fn:'novoSwitchRevBkt'},{mode:'vidas',label:t('tab_vidas'),fn:'novoSwitchRevBkt'}]) +
+    _subTabs('novo-revbkt-tabs', _novoRevBktMode, [{mode:'bruto',label:(L?'Gross':'Bruto'),fn:'novoSwitchRevBkt'},{mode:'ponderado',label:(L?'Weighted':'Ponderado'),fn:'novoSwitchRevBkt'}]) +
     '</div>' +
     '<div style="display:flex;flex-wrap:wrap;gap:1rem;align-items:flex-start">' +
-      '<div style="flex:1;min-width:260px"><div style="text-align:center;font-size:.8rem;font-weight:600;color:var(--text2);margin-bottom:.3rem">' + (L?'Gross':'Bruta') + '</div><canvas id="chart-novo-revbkt-gross" style="max-height:300px"></canvas></div>' +
-      '<div style="flex:1;min-width:260px"><div style="text-align:center;font-size:.8rem;font-weight:600;color:var(--text2);margin-bottom:.3rem">' + (L?'Weighted':'Ponderada') + '</div><canvas id="chart-novo-revbkt-weighted" style="max-height:300px"></canvas></div>' +
+      _col((L?'By Revenue':'Por Receita'), 'chart-novo-revbkt-receita') +
+      _col((L?'By Lives':'Por Vidas'), 'chart-novo-revbkt-vidas') +
     '</div>' +
   '</div>';
 }
 function buildNovoRevBuckets() {
-  if (!document.getElementById('chart-novo-revbkt-gross')) return;
+  if (!document.getElementById('chart-novo-revbkt-receita')) return;
   var L = NOVO_LANG === 'en';
-  buildSharedSizeDonut('chart-novo-revbkt-gross', _novoActiveChartDeals, {
-    bucketMode:_novoRevBktMode, valFmt:_revShort, extTip:_novoChartExtTip,
-    metric:function(d){ return _annualRev(d); },
-    openDeals:(L?'gross fc':'fc bruta'),
-    modalTitle:(L?'Forecast Revenue by Bucket | Gross':'Receita Prevista por Bucket | Bruta')
+  var weighted = _novoRevBktMode === 'ponderado';
+  var metric = weighted
+    ? function(d){ var p=_novoStageProbFor(d.stage,d.pipeline); return _annualRev(d)*(p||0); }
+    : function(d){ return _annualRev(d); };
+  var lbl = weighted ? (L?'weighted fc':'fc ponderada') : (L?'gross fc':'fc bruta');
+  var mt  = weighted ? (L?'Weighted':'Ponderada') : (L?'Gross':'Bruta');
+  buildSharedSizeDonut('chart-novo-revbkt-receita', _novoActiveChartDeals, {
+    bucketMode:'revenue', valFmt:_revShort, extTip:_novoChartExtTip, metric:metric,
+    openDeals:lbl, modalTitle:(L?'Forecast Revenue by Revenue Bucket | ':'Receita Prevista por Bucket de Receita | ')+mt
   });
-  buildSharedSizeDonut('chart-novo-revbkt-weighted', _novoActiveChartDeals, {
-    bucketMode:_novoRevBktMode, valFmt:_revShort, extTip:_novoChartExtTip,
-    metric:function(d){ var p=_novoStageProbFor(d.stage,d.pipeline); return _annualRev(d)*(p||0); },
-    openDeals:(L?'weighted fc':'fc ponderada'),
-    modalTitle:(L?'Forecast Revenue by Bucket | Weighted':'Receita Prevista por Bucket | Ponderada')
+  buildSharedSizeDonut('chart-novo-revbkt-vidas', _novoActiveChartDeals, {
+    bucketMode:'vidas', valFmt:_revShort, extTip:_novoChartExtTip, metric:metric,
+    openDeals:lbl, modalTitle:(L?'Forecast Revenue by Lives Bucket | ':'Receita Prevista por Bucket de Vidas | ')+mt
   });
 }
 
@@ -4815,7 +4818,7 @@ function novoRender() {
         _subTabs('novo-seg-tabs', _novoSegMode, [{mode:'raw',label:t('lbl_raw'),fn:'novoSwitchSegMode'},{mode:'weighted',label:t('lbl_weighted'),fn:'novoSwitchSegMode'}]),
         'chart-novo-segment', 320, 'segment') +
       _novoFunnelHorizCard() +
-      _card('Probabilidade de Ganho por Etapa', 'Chance de fechamento (ganho) de um deal em cada etapa, por pipeline (Vendas e Bid). = ganhos absolutos ÷ deals que entraram na etapa, no funil histórico de cada pipeline. Diferente do C06 (avanço entre etapas): aqui o numerador é sempre o Ganho absoluto. n (no tooltip) = tamanho da amostra; n pequeno = número instável.', '', 'chart-novo-winprob', 320, 'winprob') +
+      _novoWinProbCard() +
 
       // ── Seção: Risco e Concentração ───────────────────────────────────────
       _sectionHdr('Risco e Concentração') +
@@ -5163,8 +5166,25 @@ function _novoWinProbPipe(pipe) {
   });
   return out;
 }
+// Card do C07 com corpo próprio (para exibir spinner enquanto o funil carrega).
+function _novoWinProbCard() {
+  var tip = 'Chance de fechamento (ganho) de um deal em cada etapa, por pipeline (Vendas e Bid). = ganhos absolutos ÷ deals que entraram na etapa, no funil histórico de cada pipeline. Diferente do C06 (avanço entre etapas): aqui o numerador é sempre o Ganho absoluto. n (no tooltip) = tamanho da amostra; n pequeno = número instável.';
+  return '<div class="novo-card"><div class="novo-card-header"><h3>Probabilidade de Ganho por Etapa</h3>' + _infoBtn(tip, 'winprob') + '</div>' +
+    '<div id="novo-winprob-body" style="min-height:300px;position:relative"><canvas id="chart-novo-winprob" style="max-height:320px"></canvas></div></div>';
+}
+function _novoWinProbSpinner() {
+  var L = NOVO_LANG === 'en';
+  return '<div style="text-align:center;padding:3rem 0;color:var(--text2);font-size:.85rem">' +
+    '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="animation:hdr-spin .8s linear infinite;display:inline-block;margin-bottom:.5rem"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>' +
+    '<br>' + (L ? 'Loading funnel…' : 'Carregando funil…') + '</div>';
+}
 function buildNovoWinProb() {
-  if (!document.getElementById('chart-novo-winprob')) return;
+  var body = document.getElementById('novo-winprob-body');
+  if (!body) return;
+  // Sem dados do funil ainda → spinner (o C07 depende do funil, carregado em 2º plano).
+  if (!_novoFunnelData) { body.innerHTML = _novoWinProbSpinner(); return; }
+  // Garante o canvas (pode ter sido substituído pelo spinner).
+  if (!document.getElementById('chart-novo-winprob')) { body.innerHTML = '<canvas id="chart-novo-winprob" style="max-height:320px"></canvas>'; }
   var th = _novoTheme();
   var vend = _novoWinProbPipe('vendas') || {};
   var bid  = _novoWinProbPipe('bid') || {};
