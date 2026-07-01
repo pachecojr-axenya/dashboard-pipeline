@@ -2925,17 +2925,9 @@ function buildNovoRevBuckets() {
   var metric = function(d){ return _novoDealFcRev(d, weighted); };
   var lbl = weighted ? (L?'weighted fc':'fc ponderada') : (L?'gross fc':'fc bruta');
   var mt  = weighted ? (L?'Weighted':'Ponderada') : (L?'Gross':'Bruta');
-  // dias considerados = span da janela de projeção do forecast (mesma do N06B).
+  // nº de deals considerados = deals do pipeline ativo com receita prevista > 0 na janela.
   var _cc = document.getElementById('novo-revbkt-count');
-  if (_cc) {
-    var _ms = _novoProjectionMonthsToDec27();
-    if (_ms && _ms.length) {
-      var _p0 = _ms[0].split('-'), _p1 = _ms[_ms.length-1].split('-');
-      var _d0 = new Date(+_p0[0], +_p0[1]-1, 1), _d1 = new Date(+_p1[0], +_p1[1], 0);
-      var _dias = Math.round((_d1 - _d0) / 86400000) + 1;
-      _cc.textContent = _dias.toLocaleString('pt-BR') + (L?' days considered':' dias considerados');
-    }
-  }
+  if (_cc) { var _cd = _novoActiveChartDeals().filter(function(d){ return _novoDealFcRev(d, false) > 0; }).length; _cc.textContent = _cd.toLocaleString('pt-BR') + (L?' deals considered':' deals considerados'); }
   buildSharedSizeDonut('chart-novo-revbkt-receita', _novoActiveChartDeals, {
     bucketMode:'revenue', valFmt:_revShort, extTip:_novoChartExtTip, metric:metric,
     openDeals:lbl, modalTitle:(L?'Forecast Revenue by Revenue Bucket | ':'Receita Prevista por Bucket de Receita | ')+mt
