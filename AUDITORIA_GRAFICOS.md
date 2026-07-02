@@ -24,6 +24,7 @@ Análise dos gráficos que estavam marcados com 🟡 (não validados) em `public
 - **Removidos:** **C05** (Receita por Segmento — redundante com o C08/TCV e usava `arr_estimado`) e **N06/N14** (Valor do Pipeline | Projeção Mensal — redundante com o Forecast Total).
 - **Cobertura do Pipeline (N05) → 🟢 validado.** Religado no mesmo motor do N06B: consome a série única `_novoForecastSeries()` (extraída do N06B), então Receita Real e Probabilizada batem **mês a mês** com o Forecast Total por construção (verificado com dados de produção: idênticos nos 24 meses). Ganho/Implantação sempre incluídos; toggle **Cobertura (×) ↔ Receita (R$)** (× = forecast ÷ meta mensal, 1× = no alvo). KPI de pipe-segurança = pipe aberto real ÷ meta. Marcador 🟡 removido do título.
 - **Pendente:** o **modal** do N06B (`_novoOpenN06BForecastModal`) ainda usa o motor antigo (`calcReceitaMes` sem faturamento manual) e pode divergir do gráfico quando há faturamento manual — a religar no `ForecastEngine`.
+- **Tempo em Etapa (N07 no código atual) → validado (2026-07-02).** Cálculo replicado do relatório do HubSpot por engenharia reversa: mediana do tempo CUMULATIVO por deal, só períodos concluídos, timestamps completos, Vendas, criados ≥ set/2025. Réplica vs relatório do CRO: RA 14,9≈14,7 · Diag 24,9≈25,6 · Cot 20,1≈20 · Cons 21=21 · Neg 19,4=19,4. Marcador 🟡 removido do título.
 
 ---
 

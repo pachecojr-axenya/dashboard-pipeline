@@ -134,7 +134,9 @@ module.exports = async function handler(req, res) {
             historyByDeal[r.id] = hist
               .slice()
               .sort((a, b) => a.timestamp < b.timestamp ? -1 : 1)
-              .map(h => ({ stage_id: h.value, entered_date: h.timestamp.substring(0, 10) }));
+              // entered_ts (timestamp completo) preserva a hora — o N07 precisa de dias
+              // fracionários para bater com o relatório do HubSpot (ex.: 14,7d).
+              .map(h => ({ stage_id: h.value, entered_date: h.timestamp.substring(0, 10), entered_ts: h.timestamp }));
           }
           const ownerHist = r.propertiesWithHistory?.hubspot_owner_id;
           ownerChangesByDeal[r.id] = ownerHist ? Math.max(0, ownerHist.length - 1) : 0;
@@ -144,43 +146,52 @@ module.exports = async function handler(req, res) {
       }
     }
 
-    // 2.5: Média de tempo REAL em cada etapa (stage_medians para N07)
+    // 2.5: N07 | MEDIANA do tempo CUMULATIVO em cada etapa — replica o relatório do
+    // HubSpot ("tempo cumulativo na etapa", agregado por mediana): por deal, soma todos
+    // os períodos passados na etapa (timestamps completos, dias fracionários), contando
+    // APENAS períodos concluídos (o tempo em curso de quem está na etapa agora NÃO conta);
+    // depois mediana entre deals. Verificado contra o relatório em 2026-07-02:
+    // RA 14,9≈14,7 · Diag 24,9≈25,6 · Cot 20,1≈20 · Cons 21,0=21 · Neg 19,4=19,4.
+    // Escopo: pipeline Vendas, deals criados >= 2025-09-01 (piso fixo do N07).
     // Isolado em try-catch para não bloquear owner_changes se houver erro.
     let stageMedsByName = {};
     let _stageCtsOut = {};
     try {
-      const _avgArr = arr => {
+      const N07_MIN_CREATE = '2025-09-01';
+      const n07Since = since > N07_MIN_CREATE ? since : N07_MIN_CREATE;
+      const _medArr = arr => {
         if (!arr.length) return null;
-        return Math.round(arr.reduce((a, b) => a + b, 0) / arr.length * 10) / 10;
+        const s = arr.slice().sort((a, b) => a - b);
+        const m = Math.floor(s.length / 2);
+        return Math.round((s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2) * 10) / 10;
       };
-      const todayStr = new Date().toISOString().substring(0, 10);
-      const _stageDurs = {};
-      const _stageCts  = {};
+      const DAY = 86400000;
+      const _stageDurs = {};   // etapa -> [dias cumulativos por deal]
       hsIds.forEach(id => {
-        // Filtra por data de criação do deal (>= since), não por data de transição.
-        // Assim N07 reflete apenas o ciclo de deals abertos no período, igual ao HubSpot.
         const cd = dealCreateDate[id];
-        if (!cd || cd < since) return;
+        if (!cd || cd < n07Since) return;
         if (until && cd > until) return;
         const pipe = dealPipeline[id];
         if (pipe !== VENDAS_ID) return;   // N07: apenas Pipeline de Vendas
-        const stageMap = VENDAS_STAGE_MAP;
         const hist = historyByDeal[id] || [];
         if (!hist.length) return;
-        for (let i = 0; i < hist.length; i++) {
-          const stageName = stageMap[hist[i].stage_id];
+        const perStage = {};   // cumulativo do deal, só períodos concluídos
+        for (let i = 0; i + 1 < hist.length; i++) {
+          const stageName = VENDAS_STAGE_MAP[hist[i].stage_id];
           if (!stageName) continue;
-          const exitDate = i + 1 < hist.length ? hist[i + 1].entered_date : todayStr;
-          const days = Math.max(0, Math.round(
-            (new Date(exitDate + 'T00:00:00') - new Date(hist[i].entered_date + 'T00:00:00')) / 86400000
-          ));
-          if (!_stageDurs[stageName]) _stageDurs[stageName] = [];
-          _stageDurs[stageName].push(days);
+          const t0 = Date.parse(hist[i].entered_ts || hist[i].entered_date + 'T00:00:00');
+          const t1 = Date.parse(hist[i + 1].entered_ts || hist[i + 1].entered_date + 'T00:00:00');
+          if (isNaN(t0) || isNaN(t1)) continue;
+          perStage[stageName] = (perStage[stageName] || 0) + Math.max(0, (t1 - t0) / DAY);
         }
+        Object.keys(perStage).forEach(s => {
+          if (!_stageDurs[s]) _stageDurs[s] = [];
+          _stageDurs[s].push(perStage[s]);
+        });
       });
       Object.keys(_stageDurs).forEach(s => {
-        stageMedsByName[s] = _avgArr(_stageDurs[s]);
-        _stageCtsOut[s] = _stageDurs[s].length;
+        stageMedsByName[s] = _medArr(_stageDurs[s]);
+        _stageCtsOut[s] = _stageDurs[s].length;   // nº de DEALS (não transições)
       });
     } catch (e) {
       console.error('[funnel-stages] stage_medians error:', e.message);

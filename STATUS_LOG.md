@@ -1662,3 +1662,78 @@ Registro curto, uma linha por interação (a cada alteração).
 
 ### Código morto restante (limpeza futura)
 - `_novoCoverageTarget` (var órfã, ~linha 3000). A família `_novoFc*`/`_novoForecastCalcReceita` antiga **ainda é usada pelo modal do N06B** (`_novoOpenN06BForecastModal` + `_novoN06BWonDrilldown`), que segue no motor antigo — o modal pode divergir do gráfico quando há faturamento manual (o gráfico usa `ForecastEngine`/manual, o modal usa `calcReceitaMes` sem manual). Religar o modal no SSOT é o próximo passo natural.
+
+## CRO | Tooltips + drawers com pipelines/etapas/cálculo/probabilidade (2026-07-02)
+
+> A pedido: todo tooltip ('i') de todo gráfico/KPI deve declarar **quais pipelines e etapas** entram, e todo drawer deve ter pipes, etapas, cálculo e probabilidades. Rodada focada no **CRO Dashboard** (`dashboard.html`), a partir dos fatos extraídos dos builders vivos (não do que o título prometia). **Não deployado.**
+
+- **Escopo:** os 16 gráficos + KPIs efetivamente renderizados em `novoRender` (P01–P05, KPIs de período, S01–S05, C01–C08, N01/N02/N03/N04/N05/N06B/N07/N08/N09). HELP_CHARTS órfãos (conc, segment, piperev12, N-series removidos) foram deixados de lado. cs/cotação/board/ae/bdr/forecast ficam para rodadas futuras.
+- **Tooltips (i18n `tip_*`/`*_tip`, PT+EN com paridade):** cada tip passou a nomear pipeline(s) (Vendas 782758156 / Bid 894130090) e as etapas consideradas. **Correções de tips desatualizados vs. o código** (violavam a regra de não expor info errada): `kpi_active_tip` dizia "inclui ganhos, por data de criação" (a base ativa exclui ganhos e não filtra data); `tip_winratesize`/`tip_winfactor` diziam "vs abertos" (o cálculo é ganhos ÷ (ganhos+perdidos)); `tooltip_vidas_ae` listava etapas erradas (Cotação+); `kpi_pipe_reunioes_tip` implicava os dois pipes (é só Vendas). Também: separadores `—` trocados por `|`.
+- **Drawers (`NOVO_HELP_CHARTS`):** alinhadas as entradas stale — `ae` ("a partir de Cotação" → base ativa completa), `stage`, `sizedonut` ("via _novoIsOpen" → base ativa exclui Implantação sempre), `cohort`/`freshness`/`winratesize`/`winfactor` (marcadores e cálculo), `winprob` ("chegaram à Implantação" → Ganho absoluto; Implantação é o alvo; Y 40%), `kpi-pipe-reunioes` (só Vendas), e a entrada **`piperev12b`** que ainda falava "linha 7 da Cintia"/"linha azul ingênua"/toggles removidos → agora descreve as duas linhas + blocos (Ganho manual · Vendas régua · Bid 0,5% só Neg/Proposta · topo BDR) + prob (Diagnóstico 6%, funil C07 por pipeline + ±10% AE) + conjunto e janela.
+- **Fatos-base (dos builders):** base ativa `_novoIsActivePipelineDeal` exclui **sempre** Ganho/Perdido/Implantação/Standby (Standby e reuniões via toggle) — distinta de `_novoIsOpen` (usada pelo freshness), que inclui Implantação quando "Implantação=Ganho" está OFF. Prob por deal = `_calcProbInfo` (C07 por pipeline + ±10% AE); C07 é a prob-base por etapa (Ganho absoluto ÷ entraram, amostra ≥20).
+- **Validação:** `_check-inline-js` 0 erros; `_smoke-render` novoRender OK (1335 deals); paridade i18n **258 pt / 258 en**, zero divergência; `/novo` 200. Um erro de sintaxe (apóstrofo `''` num tip EN) foi introduzido e corrigido antes de fechar.
+- **Pendente:** tips em literal PT do C07 (`winprob`) seguem sem i18n (herdado); estender a mesma passada aos demais painéis (board/ae/bdr/48h/cs/cotação/forecast); sub-KPIs dos modais de drill (p02_*/p03_*/p05_*) não foram revisados nesta rodada.
+
+### CRO | N01 legenda isola coorte, N03/N04 escala 30%, N07/N08 médias verificadas (2026-07-02)
+
+- **N01 (Maturidade por Coorte):** clique na legenda agora ISOLA a linha (mostra só ela); clicar de novo na isolada restaura todas (`legend.onClick` custom via `setDatasetVisibility`). Antes era o padrão Chart.js (ocultar a clicada).
+- **N03/N04 (Taxa de Ganho por Tamanho / por AE):** eixo Y capado em **30%** (era 50). Verificado com dados de produção: máximos reais 12,8% (N03, bucket 1–50) e 5,5% (N04, Ágatta) — teto seguro.
+- **N07 (Tempo em Etapa):** verificado — o campo `stage_medians` do `/api/funnel-stages` calcula **MÉDIA** (nome é legado; `_avgArr` no servidor) e considera **apenas o pipeline de Vendas**. Fallback do cliente trocado de mediana → **média** de `dias_no_pipe`; `_novoMedian` órfã removida. Tooltips/drawer corrigidos (média; só Vendas no histórico; fallback Vendas+Bid). Dados reais: Reunião 24,9d · Diagnóstico 36,1d · Cotação 30,5d · Consultoria 33,9d · Negociação 28d · Implantação 43d — plausíveis, amostras 29–1101.
+- **N08 (Velocidade de Qualificação):** verificado — já mostra MÉDIA de dias (28d set/25 → 6d jun/26, n=31–103/mês; range 0–173d). Adicionada ressalva de **censura à direita** nos tips PT/EN: meses recentes subestimam porque só contam deals que JÁ chegaram a Diagnóstico.
+- **Validação:** `_check-inline-js` 0 erros; `_smoke-render` OK (1335 deals); `/novo` 200. **Não deployado.**
+
+### CRO | N01 sem emoji, N05 tooltip nos KPIs, N07 replicado do relatório do HubSpot 🟡→validado (2026-07-02)
+
+- **N01:** emoji 🟢 removido do título (`t_cohort` PT/EN + ficha do drawer).
+- **N05:** KPIs "Receita real (24m)" e "Receita probabilizada (24m)" ganharam tooltip nativo (hover, `_covKpi` com param `tip`): soma da receita mensal projetada nos 24 meses de calendário da janela (jan/2026 → dez/2027); cada deal contribui só com os meses da régua dentro da janela; **não é TCV nem ARR**.
+- **N07 | cálculo replicado do relatório do HubSpot.** Engenharia reversa dos números do CRO (RA 14,7 · Diag 25,6 · Cot 20 · Cons 21 · Neg 19,4): testadas 3 variantes contra o HubSpot ao vivo — a que bate é **MEDIANA do tempo CUMULATIVO por deal, contando apenas períodos CONCLUÍDOS** (o tempo em curso de quem está na etapa agora NÃO conta), com timestamps completos (dias fracionários), pipeline Vendas, deals criados ≥ 2025-09-01. Resultado da réplica: RA 14,9 · Diag 24,9 · Cot 20,1 · Cons 21 (exato) · Neg 19,4 (exato) — desvios ≈ defasagem de datas entre extrações.
+  - **Servidor (`api/funnel-stages.js`):** histórico agora carrega `entered_ts` (timestamp completo; `entered_date` mantido p/ C06). Bloco `stage_medians` reescrito: antes era MÉDIA por transição (nome era legado); agora mediana do cumulativo por deal, piso `createdate ≥ 2025-09-01` (respeita `since` mais apertado), `stage_counts` = nº de deals.
+  - **Cliente (`dashboard.html`):** fallback trocado para MEDIANA de `dias_no_pipe`; `_novoTimeInStageDeals` com piso set/2025; tooltip do gráfico "(mediana, cumulativo) | n=X deals"; tips PT/EN e ficha do drawer reescritos com a metodologia e a verificação. **🟡 removido do título** (validado numericamente contra o relatório do CRO).
+  - Nota: no modo histórico Proposta Enviada não aparece (etapa do Bid; N07 é só Vendas).
+- **Infra local:** havia um node antigo preso na porta 3002 servindo o handler cacheado — morto via `Get-NetTCPConnection` e servidor reiniciado (o `local-server.js` cacheia `require` dos handlers; mudou API = reiniciar).
+- **Validação:** `_check-inline-js` 0 erros; `node --check` funnel-stages OK; `_smoke-render` OK (1335 deals); paridade i18n 258/258; `/api/funnel-stages` devolvendo os números do Hub; `/novo` 200. **Deployado** (`vercel --prod --yes`, páginas 200 / APIs 401 confirmados; junto com a rodada de tooltips/drawers).
+
+### CRO | N08 religado na propriedade calculada do HubSpot (2026-07-02)
+
+> A pedido: o N08 passa a usar a propriedade `cumulative_time_negocio_criado_ate_diagnostico_formula` criada pelo CRO no HubSpot — média mês a mês (pelo mês de CRIAÇÃO do negócio), com censura explícita no tooltip. **Deployado** (`vercel --prod --yes`; páginas 200, APIs 401, conteúdo novo confirmado no HTML de produção).
+
+- **Propriedade (inspecionada via API):** fórmula `time_between(hs_v2_date_entered_1144746905, hs_v2_date_entered_1144746906)` = entrada em Reunião Agendada → entrada em Diagnóstico, em **milissegundos**; calculada; só existe para quem JÁ chegou a Diagnóstico (510+ deals de Vendas).
+- **`api/forecast-table.js`:** propriedade adicionada a `PROPERTIES`; novo campo `tempo_ate_diag_dias` (ms ÷ 86.400.000, 1 decimal; null = não chegou a Diagnóstico).
+- **`buildNovoSpeedQualify` reescrito:** fonte única = `tempo_ate_diag_dias` (não depende mais do funil histórico nem tem fallback por `dias_no_pipe`). Agrupa por mês de createdate (set/2025 → mês atual), média com 1 decimal. Tooltip do gráfico: "X dias até Diagnóstico (média | n deals)" + footer fixo "Criados recentemente que ainda não chegaram a Diagnóstico NÃO aparecem". Drill por mês mantido.
+- **Textos:** `tip_speedqualify` PT/EN e ficha do drawer reescritos (fonte = a fórmula do Hub, ms → dias, censura à direita explícita, como auditar). 🟡 removido do título (fonte agora é a própria propriedade do CRO, verificada com dados de produção).
+- **Validação (dados de produção):** 524/1335 deals com o campo; médias por mês de criação: set/25 21,5d · out 19,6 · nov 19,6 · dez 23,3 · jan/26 13,3 · fev 11,2 · mar 11,3 · abr 8,1 · mai 10,0 · jun 6,9 (n=30–106/mês) — coerentes com a derivação anterior via funil. `_check-inline-js` 0 erros; `node --check` forecast-table OK; `_smoke-render` OK; paridade i18n 258/258; `/novo` 200 (servidor local reiniciado para recarregar o handler).
+
+### CRO | N07/N08 tooltips e drawers alinhados ao comportamento real (2026-07-02)
+
+> A pedido: garantir tooltips e drawers do N07 e N08 atualizados. Auditoria fina achou 4 desalinhamentos. **Não deployado.**
+
+- **N07 tooltip da barra:** "(mediana, cumulativo)" → autoexplicativo: `Xd | mediana do tempo total na etapa | n deals`, com footer "Metade dos deals ficou menos que isso na etapa, metade ficou mais" (PT/EN).
+- **N07 contagem do título:** antes usava a base do FALLBACK (`_novoTimeInStageDeals`, Vendas+Bid) mesmo no modo histórico (só Vendas) — número não relacionado ao gráfico exibido. Agora span próprio (`novo-tis-count`) preenchido pelo builder: histórico → "histórico do funil | n por etapa no tooltip"; fallback → "N deals (fallback)". (Somar os n por etapa supercontaria: o mesmo deal passa por várias etapas.)
+- **N08 selo "Filtro de período usa":** `NOVO_FILT_FIELD['speedqualify']` corrigido `create` → `none` (o builder novo tem janela FIXA set/2025 → mês atual e ignora o filtro global); ficha do drawer explicita "o filtro global de período não se aplica a este gráfico".
+- **N07 ficha (campo createdate):** esclarecido que o piso set/2025 é fixo e o filtro global pode APERTAR a janela (dirige o Desde/Até do funil), nunca alargá-la.
+- **Validação:** `_check-inline-js` 0 erros; `_smoke-render` OK (1335 deals); paridade i18n 258/258.
+
+### Menu | CRO Dashboard 🟢 no menu; P04 mostra colaboradores (2026-07-02)
+
+- **Saúde do CRO no menu/dropdown:** `health:'y'` → `'g'` no bloco `PANELS` compartilhado, propagado aos **10 arquivos** que o carregam (dashboard, board, ae, bdr, 48h, cs, cotacao, forecast, forecast-stage, forecast-panel — o bdr tinha ficado de fora da primeira passada do sed e foi corrigido).
+- **P04 (Reuniões Agendadas):** subtítulo do card deixou de somar vidas e passa a somar **colaboradores** (`quantidade_de_colaboradores`). Chave i18n `vidas_potenciais` (usada só ali) substituída por `p04_colaboradores` (PT 'colaboradores' | EN 'employees'). Tooltip PT/EN e ficha do drawer atualizados (campo novo na tabela). Dados de produção: 98 deals em Reunião Agendada, 403.978 colaboradores (98/98 com o campo; antes: 20.250 vidas).
+- **Validação:** `_check-inline-js` 0 erros; `_smoke-render` OK; paridade i18n 258/258; nenhuma referência órfã a `vidas_potenciais`.
+- **Incidente no deploy (resolvido):** o `sed -i` usado para propagar o health corrompeu o `public/bdr.html` (multiplicou bytes NUL — o arquivo commitado JÁ tinha 3 NULs pré-existentes, o que fazia o grep tratá-lo como binário) e a versão corrompida chegou a ser deployada. Correção: `git checkout -- public/bdr.html` + reaplicação do health via Edit + redeploy. Lição: **não usar sed -i nos HTML deste repo** (o bdr.html tem NULs herdados); usar a ferramenta de Edit. Pendência de limpeza: remover os 3 bytes NUL do bdr.html num commit próprio.
+- **Deployado e verificado:** 8 rotas 200 e `health:'g'` do CRO confirmado no HTML de produção em todas (incl. /novo-bdr).
+
+### Todos os painéis | "i" e tags de identificação VISÍVEIS por padrão (2026-07-02)
+
+- Nos 6 painéis com o toggle "?" (dashboard, board, ae, bdr, cs, cotacao), o padrão dos botões "i" (tooltips) e das tags de código (C01/P01/N01…) passou de OCULTO para **VISÍVEL**: o init de `_novoShowInfo`/`_boardShowInfo` mudou de `localStorage === '1'` para `!== '0'` — quem nunca mexeu vê tudo; quem desligar no "?" persiste '0' e continua respeitado. 48h e forecast/forecast-stage/forecast-panel não têm o mecanismo (os "i" já são sempre visíveis).
+- bdr.html editado via Edit (não sed | NULs herdados intactos: 3).
+- **Validação:** `_check-inline-js` 0 erros nos 6; `_smoke-render` OK; 6 rotas locais 200. **Deployado** junto com a rodada seguinte.
+
+## BDR Performance | KPIs reformulados (R01/R02/R03) + time de BDRs canônico (2026-07-02)
+
+> A pedido do CRO: os 5 KPIs antigos (Vidas Pipe Ativo/Ganhas/Perdidas/Reuniões/Ponderadas) saem; entram 3, todos com tooltip ("i" com data-tip): **R01** Deals Originados no Mês | BDRs · **R02** Colaboradores Originados no Mês | BDRs · **R03** Reunião Agendada há +30 dias. Grid do kpi-row 5→3 colunas.
+
+- **Time de BDRs (regra de negócio):** o time é EXATAMENTE os 13 nomes do drawer de Configurações (`window.BDR_LIST` em `settings-modal.js`): Anderson Souza, Cintia Rodrigues, Gabriele Almeida, Priscilla Feliciello, Leticia Romão, Allan Valença, Bruna Reis, Emanuelle Braga, Felipe Andrade, Giovana Nunes, Marcelli Netto, Thauan Pontes, Yokyko Muramoto. Novos helpers `_teamBdrName`/`_isTeamBdr`: normalização NFD (tolera acentos: Cíntia→Cintia) + `BDR_HS_ALIAS` para grafias do HubSpot que diferem do drawer (verificadas nos dados): 'Gabriele de Almeida Silva'→Gabriele Almeida · 'Bruna Cristina Dos Reis Silva'→Bruna Reis · 'Giovana Rocha'→Giovana Nunes (⚠ suposição: única Giovana nos dados; sobrenome difere do drawer — confirmar com o CRO). 'Cintia Minamoto' e demais owners fora da lista NÃO contam.
+- **R01:** deals com entrada em Reunião Agendada (`data_reuniao_agendada` = BDR_ORIG_DATE, não createdate) no mês corrente E sdr do time. Mês fixo | não segue o filtro de período.
+- **R02:** Σ `colaboradores` dos mesmos deals do R01.
+- **R03:** deals com estágio ATUAL = Reunião Agendada e entrada na etapa há mais de 30 dias; todas as origens (BDR e AE); sem a data de entrada → fora. Amarelo quando > 0.
+- Todos com tooltip explicativo no "i" e drill (clique abre o modal com os deals). `bdrKpiOpen` reescrito; `BDR_CARD_CODES` atualizado (kpi-* antigos removidos).
+- **Validação (dados de produção, 2026-07-02):** R01 = 5 deals em jul/26 (Cintia 2 · Gabriele 1 · Giovana 1 · Priscilla 1) · R02 = 984 colaboradores · R03 = 46 de 98 em RA (0 sem data). Matching: 672/979 deals com sdr são do time. `_check-inline-js` 0 erros; `_smoke-render` OK (1335 deals); NULs herdados intactos (3); `/novo-bdr` 200.

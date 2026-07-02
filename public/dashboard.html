@@ -975,15 +975,15 @@ var NOVO_LANG = (function(){ try { return localStorage.getItem('novo_lang') || '
 var NOVO_I18N = {
   pt: {
     active_deals:'deals ativos', vendas:'Vendas', bid:'Bid', updated_at:'Atualizado às',
-    kpi_active_label:'Deals Ativos', kpi_active_tip:'Número de negócios ativos no período (exclui Perdido | inclui abertos, Reunião Agendada e ganhos), por data de criação. Pipelines Vendas + Bid.',
+    kpi_active_label:'Deals Ativos', kpi_active_tip:'Contagem de negócios ativos AGORA (sem filtro de data), nos pipelines Vendas + Bid. Base ativa: exclui Ganho, Perdido, Implantação e Standby; inclui Reunião Agendada (Vendas) e Reunião Pré-RFP (Bid) pelo toggle de Configurações (padrão ligado), mais Diagnóstico, Cotação, Proposta Enviada, Consultoria e Negociação. O subtítulo separa Vendas × Bid.',
     loading:'Buscando dados no HubSpot…', error_prefix:'Erro ao buscar dados: ', retry:'Tentar novamente',
     no_data:'Sem dados', of_total:'do total',
     title_vidas_ae:'Vidas e Deals por AE | Ativos', tab_vidas:'Vidas', tab_deals:'Deals',
-    tooltip_vidas_ae:'Deals no pipe de Vendas e Bid nas etapas: Cotação, Proposta Enviada, Consultoria, Negociação, Standby, Implantação.',
+    tooltip_vidas_ae:'Soma de vidas (modo Vidas) ou contagem de deals (modo Deals) por Account Executive, nos pipelines Vendas + Bid. Base ativa: exclui Ganho, Perdido, Implantação e Standby; inclui Reunião Agendada/Pré-RFP (toggle), Diagnóstico, Cotação, Proposta Enviada, Consultoria e Negociação. Mostra apenas os AEs do time (Juliana, Ágatta, Guilherme, André, Rafael, Fausto).',
     lbl_revenue:'Receita', lbl_raw:'Bruto', lbl_weighted:'Ponderado', lbl_won:'Ganho', lbl_lost:'Perdido', lbl_all_outcomes:'Todos', cohort_x:'Meses desde a criação',
     flt_all:'Tudo', flt_cur_month:'Mês atual', flt_last_month:'Mês passado', flt_cur_week:'Semana atual', flt_last_week:'Semana passada', flt_last3mo:'Últimos 3 meses', flt_cur_year:'Este ano', flt_quarter:'Trimestre…', flt_apply:'Aplicar', flt_reset:'Limpar', flt_label:'Filtro', flt_month_from:'Mês inicial', flt_month_to:'Mês final',
     t_stage:'Pipeline Ativo por Etapa',
-    tip_stage:'Deals abertos (exclui Ganhos) por etapa do pipeline, três barras lado a lado: nº de deals e vidas (eixo esquerdo) e ARR estimado somado (eixo direito). Cada série tem escala própria; o valor exato aparece no tooltip de cada barra. Clique numa barra para ver os deals. Inclui os pipelines Vendas + Bid.',
+    tip_stage:'Deals da base ativa por etapa, três barras lado a lado: nº de deals e vidas (eixo esquerdo) e ARR estimado somado (eixo direito). Cada série tem escala própria; o valor exato aparece no tooltip de cada barra. Clique numa barra para ver os deals. Pipelines Vendas + Bid; etapas exibidas: Reunião Agendada/Pré-RFP (toggle), Diagnóstico, Cotação, Proposta Enviada, Consultoria, Negociação e Standby (toggle) | exclui Ganho, Perdido e Implantação.',
     t_funnel:'🟡 Funil do Pipeline (alcance cumulativo)',
     tip_funnel:'Para cada etapa, quantos deals abertos estão nela ou em etapas seguintes | formato de funil. Clique para ver os deals. Inclui os pipelines Vendas + Bid.',
     t_conc:'🟡 Risco de Concentração Ativo (Top 10)',
@@ -994,25 +994,25 @@ var NOVO_I18N = {
     t_vidasdist:'🟡 Distribuição por Vidas',
     tip_vidasdist:'Deals abertos agrupados por faixa de quantidade de vidas. Inclui os pipelines Vendas + Bid.',
     t_sizedonut:'Distribuição por Tamanho',
-    tip_sizedonut:'Donut dos deals abertos por faixa, com toggle entre Receita e Vidas. O centro mostra o total de deals abertos no pipeline (atualiza ao ocultar fatias na legenda). A fatia cinza "Sem receita"/"Sem vidas" conta os deals sem aquela informação. Etapas contadas: Diagnóstico, Cotação, Proposta Enviada, Consultoria, Negociação e Stand by (Implantação entra quando o toggle "Implantação = Ganho" está desligado). Clique numa fatia para ver os deals. Pipelines Vendas + Bid.',
+    tip_sizedonut:'Donut dos deals da base ativa por faixa, com toggle entre Receita e Vidas. O centro mostra o total de deals abertos no pipeline (atualiza ao ocultar fatias na legenda). A fatia cinza "Sem receita"/"Sem vidas" conta os deals sem aquela informação. Métrica = contagem de deals. Pipelines Vendas + Bid; etapas: Reunião Agendada/Pré-RFP (toggle), Diagnóstico, Cotação, Proposta Enviada, Consultoria, Negociação e Standby (toggle) | exclui Ganho, Perdido e Implantação. Clique numa fatia para ver os deals.',
     donut_open_deals:'deals abertos', donut_no_revenue:'Sem receita', donut_no_lives:'Sem vidas', donut_stages_label:'Etapas',
     vf_by_revenue:'Receita', vf_by_lives:'Vidas', vf_by_stage:'Etapa', vf_by_segment:'Segmento',
     t_stageval:'Valor do Pipeline por Etapa (TCV)',
-    tip_stageval:'Soma do TCV (valor do contrato em 12 meses pela régua real, incluindo a corretagem de entrada) por etapa. "Ponderado" multiplica pela probabilidade final de fechamento (C07 por pipeline + ajuste do AE). Mesma base do C08. Inclui Vendas + Bid.',
-    tip_revbkt:'Dois donuts do TCV (valor do contrato em 12 meses pela régua real — inclui a corretagem de entrada; Diagnóstico = vidas × R$/vida × 12): esquerda por bucket de Receita, direita por bucket de Vidas (faixas do C03). Toggle alterna Bruto × Ponderado (× probabilidade de fechamento por pipeline, C07). Base: pipeline ativo (Vendas + Bid); só deals com TCV > 0.',
+    tip_stageval:'Soma do TCV (valor do contrato em 12 meses pela régua real, incluindo a corretagem de entrada) por etapa. "Ponderado" multiplica pela probabilidade final de fechamento (C07 por pipeline + ajuste ±10% do AE). Mesma base do C08. Pipelines Vendas + Bid; base ativa: Reunião Agendada/Pré-RFP (toggle), Diagnóstico, Cotação, Proposta Enviada, Consultoria, Negociação e Standby (toggle) | exclui Ganho, Perdido e Implantação. Diagnóstico: vidas × R$/vida × 12.',
+    tip_revbkt:'Dois donuts do TCV (valor do contrato em 12 meses pela régua real — inclui a corretagem de entrada; Diagnóstico = vidas × R$/vida × 12): esquerda por bucket de Receita, direita por bucket de Vidas (faixas do C03). Toggle alterna Bruto × Ponderado (× probabilidade de fechamento por pipeline C07 + ajuste ±10% do AE). Pipelines Vendas + Bid; base ativa (Reunião Agendada/Pré-RFP-toggle, Diagnóstico, Cotação, Proposta Enviada, Consultoria, Negociação, Standby-toggle | exclui Ganho, Perdido e Implantação); só deals com TCV > 0.',
     t_segment:'Receita por Segmento',
     tip_segment:'Receita anual estimada (potencial) somada por segmento de tamanho do cliente (vidas). Inclui os pipelines Vendas + Bid.',
     // KPIs primários
-    kpi_mtd_label:'Receita Ganha MTD', kpi_mtd_tip:'Sem filtro: receita dos deals ganhos no mês atual (ARR ÷ 12). Com filtro ativo: receita dos deals ganhos dentro da janela selecionada. Data considerada: entrada em "Ganho" (Vendas) | se o deal pulou o Ganho e foi direto p/ Implantação, usa a entrada em "Implantação" (Vendas). Meta em Configurações (⚙) só no MTD sem filtro.',
+    kpi_mtd_label:'Receita Ganha MTD', kpi_mtd_tip:'Receita dos deals ganhos, nos pipelines Vendas + Bid. Ganho = etapa Ganho, ou Implantação quando o toggle "Implantação = Ganho" está ligado (padrão). Sem filtro: mês atual (Σ ARR ÷ 12); com filtro ativo: janela selecionada. Data considerada: entrada em "Ganho" (Vendas) | se pulou o Ganho direto p/ Implantação, entrada em "Implantação" (Vendas) | fallback closedate (ex.: Bid, sem essas datas de etapa). Meta em Configurações (⚙) só no MTD sem filtro.',
     kpi_mtd_of_goal:'da meta', kpi_mtd_goal:'Meta:',
-    kpi_won_label:'Receita Ganha', kpi_won_tip:'Sem filtro: soma do ARR estimado (ou 1ª fatura × 12) de todos os negócios ganhos all-time. Com filtro ativo: mesma soma para negócios ganhos dentro da janela selecionada, por close_date.',
+    kpi_won_label:'Receita Ganha', kpi_won_tip:'Soma do ARR estimado (ou 1ª fatura × 12) dos negócios ganhos, nos pipelines Vendas + Bid. Ganho = etapa Ganho + Implantação (quando o toggle "Implantação = Ganho" está ligado). Sem filtro: all-time; com filtro ativo: ganhos por close_date na janela selecionada.',
     kpi_wpipe_label:'🟡 Pipeline Ponderado/ano (Pipe Ativo)', kpi_wpipe_tip:'Soma de (ARR × probabilidade) dos mesmos deals do Pipeline Ativo (P09): exclui Ganho, Perdido, Implantação e Standby; inclui Reunião Agendada. Sem filtro de data.',
-    kpi_won_vidas_label:'Vidas Ganhas', kpi_won_vidas_tip:'Soma de vidas dos negócios ganhos: sem filtro, todos os ganhos all-time; com filtro ativo, ganhos com close_date na janela selecionada.',
-    kpi_lost_vidas_label:'Vidas Perdidas', kpi_lost_vidas_tip:'Soma de vidas dos deals perdidos no período considerado por close_date.',
-    kpi_wvidas_label:'Vidas Ponderadas', kpi_wvidas_tip:'Soma de (vidas × probabilidade) dos mesmos deals do Pipeline Ativo (P09): exclui Ganho, Perdido, Implantação e Standby; inclui Reunião Agendada. Sem filtro de data.',
-    kpi_pipe_vidas_label:'Vidas | Pipe Ativo', kpi_pipe_vidas_tip:'Soma de vidas de todos os deals ativos no momento (exclui Ganho, Perdido, Implantação e Standby). Sem filtro de data.',
-    kpi_pipe_weighted_label:'Receita Ponderada | Pipe Ativo', kpi_pipe_weighted_tip:'ARR estimado ponderado por probabilidade, sobre todos os deals ativos (exclui Ganho, Perdido, Implantação e Standby). Sem filtro de data.',
-    kpi_pipe_reunioes_label:'Reuniões Agendadas | Pipe Ativo', kpi_pipe_reunioes_tip:'Número de negócios em Reunião Agendada no momento. Sem filtro de data — reflete o estado atual do pipeline.',
+    kpi_won_vidas_label:'Vidas Ganhas', kpi_won_vidas_tip:'Soma do campo vidas dos negócios ganhos (etapas Ganho + Implantação, quando o toggle "Implantação = Ganho" está ligado), nos pipelines Vendas + Bid. Sem filtro: all-time; com filtro ativo: ganhos por close_date na janela.',
+    kpi_lost_vidas_label:'Vidas Perdidas', kpi_lost_vidas_tip:'Soma do campo vidas dos deals no estágio Perdido (etapa do pipeline de Vendas; requer a API com includeLost). Sem filtro: all-time; com filtro ativo: perdidos por close_date na janela.',
+    kpi_wvidas_label:'Vidas Ponderadas', kpi_wvidas_tip:'Σ (vidas × probabilidade) sobre a base ativa, nos pipelines Vendas + Bid: exclui Ganho, Perdido, Implantação e Standby; inclui Reunião Agendada/Pré-RFP (toggle), Diagnóstico, Cotação, Proposta Enviada, Consultoria e Negociação. Probabilidade = valor custom do AE, senão a probabilidade da etapa por pipeline (C07 do funil, com fallback no padrão fixo). Sem filtro de data.',
+    kpi_pipe_vidas_label:'Vidas | Pipe Ativo', kpi_pipe_vidas_tip:'Soma do campo vidas da base ativa, nos pipelines Vendas + Bid: exclui Ganho, Perdido, Implantação e Standby; inclui Reunião Agendada/Pré-RFP (toggle), Diagnóstico, Cotação, Proposta Enviada, Consultoria e Negociação. Sem filtro de data.',
+    kpi_pipe_weighted_label:'Receita Ponderada | Pipe Ativo', kpi_pipe_weighted_tip:'Σ (ARR estimado × probabilidade) sobre a base ativa, nos pipelines Vendas + Bid: exclui Ganho, Perdido, Implantação e Standby; inclui Reunião Agendada/Pré-RFP (toggle), Diagnóstico, Cotação, Proposta Enviada, Consultoria e Negociação. Probabilidade = valor custom do AE, senão o padrão da etapa (mapa NOVO_STAGE_PROB, mesma fonte do Board); ARR usa 1ª fatura × 12 como fallback. Sem filtro de data.',
+    kpi_pipe_reunioes_label:'Reuniões Agendadas | Pipe Ativo', kpi_pipe_reunioes_tip:'Contagem de negócios em Reunião Agendada AGORA, apenas no pipeline de Vendas (essa etapa só existe em Vendas; a Reunião Pré-RFP do Bid NÃO entra aqui). Sem filtro de data | reflete o estado atual. O subtítulo soma o número de colaboradores (quantidade_de_colaboradores) desses negócios.',
     section_pipe_ativo:'Pipeline Ativo', section_pipe_ativo_sub:'sem filtro de data',
     section_periodo:'Período Selecionado', section_periodo_sub:'filtrado pela janela de datas',
     tbl_won_date:'Data usada | Origem',
@@ -1021,9 +1021,9 @@ var NOVO_I18N = {
     kpi_lost_excl:'Deals perdidos excluídos da API', kpi_wvidas_sub:'vidas abertas × probabilidade',
     kpi_deals_with_vidas:'com vidas',
     // KPIs secundários
-    kpi2_winrate_label:'Taxa de Ganho', kpi2_winrate_tip:'Deals ganhos ÷ (deals ganhos + deals perdidos). Sem filtro: base all-time (todos os fechados); com filtro ativo: close_date na janela selecionada.',
-    kpi2_bdr_label:'Conversão BDR', kpi2_bdr_tip:'Deals BDR ganhos ÷ (ganhos + perdidos) BDR. BDR = deals com o campo BDR (interno: sdr) preenchido. O card mostra também quantos ganhos totais entram na base.',
-    kpi2_ae_label:'Conversão AE', kpi2_ae_tip:'Deals AE ganhos ÷ (ganhos + perdidos) AE. AE = deals sem o campo BDR preenchido (origem AE direta). O card mostra também quantos ganhos totais entram na base.',
+    kpi2_winrate_label:'Taxa de Ganho', kpi2_winrate_tip:'Deals ganhos ÷ (ganhos + perdidos), por contagem de deals, nos pipelines Vendas + Bid. Ganho = etapas Ganho + Implantação (toggle); perdido = etapa Perdido. Abertos não entram na conta. Sem filtro: base all-time (todos os fechados); com filtro ativo: fechados por close_date na janela.',
+    kpi2_bdr_label:'Conversão BDR', kpi2_bdr_tip:'Deals BDR ganhos ÷ (ganhos + perdidos) BDR, nos pipelines Vendas + Bid. BDR = deals com o campo BDR (interno: sdr) preenchido. Ganho = Ganho + Implantação (toggle); perdido = Perdido; por close_date na janela (all-time sem filtro). O card mostra também os ganhos totais na base.',
+    kpi2_ae_label:'Conversão AE', kpi2_ae_tip:'Deals AE ganhos ÷ (ganhos + perdidos) AE, nos pipelines Vendas + Bid. AE = deals sem o campo BDR preenchido (origem AE direta). Ganho = Ganho + Implantação (toggle); perdido = Perdido; por close_date na janela (all-time sem filtro). O card mostra também os ganhos totais na base.',
     kpi2_meeting_label:'Taxa de Reunião', kpi2_meeting_tip:'Deals criados em Reunião Agendada (pipeline Vendas) que avançaram para Diagnóstico ÷ total rastreado. Fonte: histórico de etapas (/api/funnel-stages). Quando o filtro global está ativo, restringe pelos deals com createdate dentro da janela.',
     kpi2_meetings:'reuniões', kpi2_meeting_loading:'Carregando histórico de etapas…',
     meet_tracked:'Tracked', meet_occurred:'Occurred', meet_noshow:'No-show', meet_rate:'Rate', meet_result:'Resultado',
@@ -1031,7 +1031,7 @@ var NOVO_I18N = {
     meet_occurred_tip:'Dos rastreados, os que também entraram em Diagnóstico (reunião ocorreu / avançou).',
     meet_noshow_tip:'Rastreados que não chegaram a Diagnóstico (reunião não ocorreu / no-show).',
     meet_rate_tip:'Occurred ÷ Tracked.',
-    kpi2_stale_label:'Deals Estagnados', kpi2_stale_tip:'Deals abertos sem atividade registrada há mais de 30 dias (via notes_last_updated | última atividade/nota). O card e o modal mostram também o % que os estagnados representam dos deals ativos (mesma base do P09 Pipeline Ativo).',
+    kpi2_stale_label:'Deals Estagnados', kpi2_stale_tip:'Deals da base ativa (pipelines Vendas + Bid: exclui Ganho, Perdido, Implantação e Standby; inclui Reunião Agendada/Pré-RFP-toggle, Diagnóstico, Cotação, Proposta Enviada, Consultoria e Negociação) sem atividade registrada há mais de 30 dias (via notes_last_updated | última atividade/nota). Sem filtro de data. O card e o modal mostram também o % que os estagnados representam da base ativa.',
     kpi2_complete_label:'🟡 Completude', kpi2_complete_tip:'% dos deals em Proposta Enviada, Consultoria ou Negociação com os 10 campos preenchidos: colaboradores, vidas, 1ª fatura, ARR, modelo de remuneração, agenciamento, vitalício, probabilidade, quarter e data prevista de receita.',
     stale_deals:'Negócios Estagnados', stale_deals_tip:'Negócios abertos sem atividade registrada há mais de 30 dias.',
     stale_vidas:'Vidas Estagnadas', stale_vidas_tip:'Soma do campo vidas dos negócios estagnados.',
@@ -1052,7 +1052,7 @@ var NOVO_I18N = {
     p05_open_vidas:'Vidas em Negócios Abertos', p05_open_vidas_tip:'Soma do campo vidas de todos os negócios abertos.',
     p05_avg_age:'Idade Média', p05_avg_age_tip:'Tempo médio no funil | média de dias_no_pipe dos negócios abertos.',
     p08_filter_label:'Filtrar por etapa:', p08_all_stages:'Todas',
-    unit_days:'dias', vidas_potenciais:'vidas potenciais',
+    unit_days:'dias', p04_colaboradores:'colaboradores',
     lost_reason_label:'Motivo de Perdido:', lost_reason_all:'Todos os motivos', lost_reason_none:'(sem motivo)',
     tbl_deal:'Deal', tbl_ae:'AE', tbl_pipe:'Pipe', tbl_stage:'Etapa', tbl_close:'Fechamento', tbl_days:'Dias',
     tbl_collab:'Colab.', tbl_lives:'Vidas', tbl_first_inv:'1\xaa Fatura (R$)', tbl_arr:'ARR Est. (R$)', tbl_model:'Modelo',
@@ -1064,43 +1064,43 @@ var NOVO_I18N = {
     t_waterfall:'🟡 Fluxo Semanal | Criados · Ganhos · Perdidos',tip_waterfall:'Por semana (segunda a domingo): nº de deals criados, ganhos e perdidos, mais a linha de Δ líquido (criados − ganhos − perdidos = variação do pipeline aberto na semana). Últimas 13 semanas. Clique numa barra para ver os deals daquela semana. ⚠ Ganhos aparecem baixos porque o pipeline retém poucos deals ganhos.',
     t_netflow:'🟡 Fluxo Líquido de Vidas (Mensal)',tip_netflow:'Vidas de deals criados vs vidas de deals ganhos por mês. Saldo = crescimento do pipeline.',
     t_stageprog:'🟡 Progressão por Etapa (Deals)',tip_stageprog:'Taxa de conversão de uma etapa para a próxima derivada do funil cumulativo atual.',
-    t_cohort:'🟢 Maturidade por Coorte (Curva de Desfecho)',tip_cohort:'Cada linha é uma coorte (mês de criação). Mostra o % do total da coorte que atingiu o desfecho escolhido por mês desde a criação. Todos = Ganho ou Perdido. Só inclui coortes com 2+ meses de maturidade e pelo menos 20 deals. Alterne entre Deals e Vidas.',
-    t_freshness:'Frescor de Engajamento (Deals Abertos)',tip_freshness:'Deals abertos por faixa de dias desde a última atividade (notes_last_updated) | identifica deals sem engajamento recente. O modal permite filtrar por faixa de engajamento.',
+    t_cohort:'Maturidade por Coorte (Curva de Desfecho)',tip_cohort:'Cada linha é uma coorte (mês de criação), nos pipelines Vendas + Bid (sem filtro por etapa). Mostra o % do total da coorte que atingiu o desfecho por mês desde a criação: "Todos" = chegou a Ganho/Implantação (toggle) OU Perdido; "Ganho" = só Ganho/Implantação. Desfecho por close_date real (não usa probabilidade). Só coortes com 2+ meses de maturidade e ≥20 deals; deals criados a partir de set/2025. Alterne entre Deals e Vidas.',
+    t_freshness:'Frescor de Engajamento (Deals Abertos)',tip_freshness:'Deals abertos por faixa de dias desde a última atividade (notes_last_updated) | identifica deals sem engajamento recente. Pipelines Vendas + Bid; abertos = exclui Ganho e Perdido (Implantação conta como aberto só quando o toggle "Implantação = Ganho" está desligado; Standby e reuniões conforme os toggles). Sem filtro de data. O modal permite filtrar por faixa de engajamento.',
     t_passthru:'🟡 Taxa de Passagem por Etapa',tip_passthru:'% de deals que passam de cada etapa para a seguinte (baseado no funil cumulativo).',
-    t_winratesize:'Taxa de Ganho por Tamanho do Deal',tip_winratesize:'Deals ganhos vs abertos por faixa de vidas | mostra onde a conversão é maior. Buckets sem dados são ocultados.',
+    t_winratesize:'Taxa de Ganho por Tamanho do Deal',tip_winratesize:'Por faixa de vidas, ganhos ÷ (ganhos + perdidos) | mostra onde a conversão é maior. Pipelines Vendas + Bid. Ganho = etapas Ganho + Implantação (toggle); perdido = etapa Perdido; ambos por close_date (janela do filtro, ou all-time). Abertos não entram. Buckets sem ganhos são ocultados.',
     t_sizewindow:'🟡 Distribuição por Tamanho',tip_sizewindow:'Deals ativos por faixa de receita. Sem filtro local de data.',
     t_vidaswindow:'🟡 Distribuição de Vidas',tip_vidaswindow:'Deals ativos por faixa de vidas. Sem filtro local de data.',
-    t_winfactor:'Taxa de Ganho por AE',tip_winfactor:'Taxa de ganho ajustada por AE: deals ganhos ÷ (deals ganhos + deals perdidos).',
+    t_winfactor:'Taxa de Ganho por AE',tip_winfactor:'Por AE, deals ganhos ÷ (ganhos + perdidos) | taxa de ganho ajustada (só sobre deals fechados). Pipelines Vendas + Bid. Ganho = etapas Ganho + Implantação (toggle); perdido = etapa Perdido; por close_date (janela do filtro, ou all-time). Abertos não entram. Agrupa por dono do deal (ae); ignora deals sem AE.',
     t_coverage:'Cobertura do Pipeline | Forecast vs Meta',tip_coverage:'Mesmo motor do Forecast Total (N06B) e do Forecast Overall (fonte única de receita): Receita Real e Probabilizada batem mês a mês. Toggle Cobertura (×) ↔ Receita (R$): em Cobertura, cada linha é forecast mensal ÷ meta mensal (meta anual ÷ 12), 1× = no alvo; em Receita, os R$ com a linha de meta. Conjunto = negócio novo (createdate ≥ set/2025) + Ganho/Implantação + Bid (desde jan/2025), Ganho/Implantação SEMPRE incluídos; dedup Fee×Corretagem; bloco BID só Negociação/Proposta a 0,5%; topo de funil = cohorts BDR × conversão MQL. Janela jan/2026 → dez/2027. KPI Cobertura de pipe (segurança) = pipe aberto PONDERADO ÷ meta do período (3–4× saudável; a bruta aparece ao lado como contexto), exclui ganhos. Clique num mês para o detalhamento por deal.',
-    t_piperev12b:'Forecast Total',tip_piperev12b:'Forecast total mês a mês (Ganho/Implantação + pipeline + Bid + novos negócios), pelo MESMO motor do /forecast. Linha verde = Receita Real (bruta); linha azul = Receita Probabilizada (× probabilidade de fechamento). Detalhes no i.',
+    t_piperev12b:'Forecast Total',tip_piperev12b:'Forecast total mês a mês pelo MESMO motor do /forecast (fonte única de receita). Linha verde = Receita Real (bruta); linha azul = Receita Probabilizada (× probabilidade de fechamento). Pipelines Vendas + Bid. Blocos: Ganho/Implantação (faturamento manual, valor cheio) + pipeline de Vendas (Diagnóstico e Cotação/Consultoria/Negociação pela régua; prob do funil C07 por pipeline + ±10% do AE; Diagnóstico fixo 6%) + Bid só em Negociação/Proposta Enviada (data imputada, prob fixa 0,5%) + topo de funil (cohorts BDR × conversão MQL). Conjunto: negócio novo (createdate ≥ set/2025) + Ganho/Implantação + Bid (desde jan/2025); dedup Fee×Corretagem. Janela jan/2026 → dez/2027. Detalhes no i.',
     t_piperev12:'🟡 Valor do Pipeline (Projeção Mensal)',tip_piperev12:'Receita ou quantidade de deals por mês da data prevista de receita. A contagem mostra deals ativos com data prevista sobre o total de ativos P09. Considera pipes Vendas + Bid.',
     t_segdoughnut:'🟡 Receita por Segmento (Donut)',tip_segdoughnut:'ARR estimado total por segmento de tamanho de cliente (baseado em vidas).',
     t_visibility:'🟡 Visibilidade de Receita | Timeline',tip_visibility:'Quantidade de deals com data prevista de receita por mês.',
-    t_timeinstage:'🟡 Tempo em Etapa | Histórico',tip_timeinstage:'Média de dias por etapa — fonte: histórico de transições via funil histórico (mais preciso). Fallback: dias_no_pipe se funil não carregado.',
-    t_speedqualify:'🟡 Velocidade de Qualificação (Dias até Diagnóstico)',tip_speedqualify:'Dias médios entre a criação do deal e a entrada histórica em Diagnóstico, agrupados por mês de criação. Fonte: histórico de etapas via /api/funnel-stages. Fallback: dias_no_pipe dos deals ativos em Diagnóstico.',
+    t_timeinstage:'Tempo em Etapa | Histórico',tip_timeinstage:'MEDIANA do tempo CUMULATIVO em cada etapa | igual ao relatório do HubSpot: por deal, soma todos os períodos passados na etapa (com hora), contando apenas períodos CONCLUÍDOS — o tempo em curso de quem está na etapa agora não conta; depois a mediana entre os deals. Apenas pipeline de Vendas, deals criados de set/2025 até hoje. Etapas exibidas: Reunião Agendada, Diagnóstico, Cotação, Consultoria, Negociação, Standby e Implantação (Ganho e Perdido não entram). ⚠ Fallback quando o funil não está carregado: mediana de dias_no_pipe (idade TOTAL do deal, Vendas + Bid) agrupada pela etapa ATUAL — superestima. Sem probabilidade.',
+    t_speedqualify:'Velocidade de Qualificação (Dias até Diagnóstico)',tip_speedqualify:'MÉDIA de dias que o negócio demorou para chegar a Diagnóstico, agrupada pelo mês de CRIAÇÃO do negócio (set/2025 → mês atual). Fonte: propriedade calculada do HubSpot cumulative_time_negocio_criado_ate_diagnostico_formula = time_between(entrada em Reunião Agendada, entrada em Diagnóstico), convertida de ms para dias. Pipeline de Vendas. ⚠ Negócios criados recentemente que ainda NÃO chegaram a Diagnóstico não aparecem (a propriedade só existe para quem chegou) — meses recentes tendem a subestimar a média. Sem probabilidade.',
     t_timetomeeting:'🟡 Reunião Ocorreu | Cobertura do Campo',tip_timetomeeting:'Campo a_reuniao_ocorreu_ já disponível na API como reuniao_ocorreu. Mostra cobertura Sim/Não/sem preenchimento; tempo real até reunião ainda requer uma data da reunião.',
-    t_reassign:'Impacto de Reatribuição de Deals',tip_reassign:'Deals agrupados por número de mudanças de proprietário (0 / 1 / 2+): barras = contagem de deals; linha = win rate (ganhos ÷ fechados). Fonte: histórico de hubspot_owner_id via /api/funnel-stages. Carregue o funil histórico para ativar.',
+    t_reassign:'Impacto de Reatribuição de Deals',tip_reassign:'Deals agrupados por número de mudanças de proprietário (0 / 1 / 2+): barras = contagem de deals; linha = win rate = ganhos ÷ (ganhos + perdidos) do grupo (abertos fora do denominador). Ganho = Ganho + Implantação (toggle); perdido = Perdido. Pipelines Vendas + Bid, sem filtro por etapa. Fonte: histórico de hubspot_owner_id via /api/funnel-stages | carregue o funil histórico para ativar. ⚠ Não controla confundidores (deals reatribuídos tendem a ser mais velhos/maiores).',
     t_financial:'🟡 Resultados Financeiros e Estimativas',tip_financial:'Métricas financeiras: receita ganha MTD/YTD, pipeline bruto, pipeline ponderado.',
     t_wonmonthly:'🟡 Deals Ganhos | Receita Axenya (Mensal)',tip_wonmonthly:'ARR ÷ 12 de deals ganhos por mês de fechamento. Usa a mesma base fechada de P02/S01/S02/S03: ano atual sem filtro, ou período selecionado com filtro.',
     t_weightedrevstage:'🟡 Receita Axenya Ponderada por Etapa',tip_weightedrevstage:'ARR × probabilidade por etapa | mesma base ativa do P09.',
     t_receivables:'🟡 Timeline de Recebíveis Estimados',tip_receivables:'ARR ÷ 12 dos deals abertos por mês da data prevista de receita.',
     t_risktriage:'🟡 Triagem de Risco | Top 20 Deals',tip_risktriage:'Top 20 deals mais arriscados: vidas, ARR, tempo em aberto, etapa inicial.',
     lbl_all_time:'Todo período',lbl_last90:'Últ. 90d',lbl_last30:'Últ. 30d',
-    fnl_title:'Funil de Conversão Histórico', fnl_tip:'Quantos deals únicos entraram em cada etapa dos pipelines Vendas e Bid desde a data selecionada | taxas de conversão entre etapas adjacentes.', fnl_both:'Ambos', fnl_since:'Desde', fnl_custom:'Personalizar', fnl_load:'Carregar', fnl_loading_sub:'Pode levar 15–30s para pipelines com 1.000+ deals', cfg_title:'Configurações', cfg_meta:'Meta Receita Ganha (Anual)', active_meetings_label:'Ativos incluem Reunião Agendada e Pré-RFP', active_meetings_tip:'Quando ligado, Pipeline Ativo, P08 e gráficos C01/C02/C05/C07/C08 incluem as reuniões de topo de funil dos dois pipes: Reunião Agendada (Vendas) e Reunião Pré-RFP (Bid). Quando desligado, as duas ficam fora de negócios ativos.',
+    fnl_title:'Funil de Conversão Histórico', fnl_tip:'Quantos deals únicos entraram em cada etapa desde a data "Desde" | taxas de conversão entre etapas adjacentes (mede AVANÇO, não fechamento). Toggle Ambos/Vendas/Bid: Vendas = Reunião Agendada → Diagnóstico → Cotação → Consultoria → Negociação → Implantação; Bid = Cotação → Proposta Enviada → Consultoria → Negociação → Implantação; Ambos combina os dois. Fonte: histórico de etapas (/api/funnel-stages).', fnl_both:'Ambos', fnl_since:'Desde', fnl_custom:'Personalizar', fnl_load:'Carregar', fnl_loading_sub:'Pode levar 15–30s para pipelines com 1.000+ deals', cfg_title:'Configurações', cfg_meta:'Meta Receita Ganha (Anual)', active_meetings_label:'Ativos incluem Reunião Agendada e Pré-RFP', active_meetings_tip:'Quando ligado, Pipeline Ativo, P08 e gráficos C01/C02/C05/C07/C08 incluem as reuniões de topo de funil dos dois pipes: Reunião Agendada (Vendas) e Reunião Pré-RFP (Bid). Quando desligado, as duas ficam fora de negócios ativos.',
     active_standby_label:'Ativos incluem Standby', active_standby_tip:'Quando ligado, Pipeline Ativo (P09) e os gráficos de pipeline ativo passam a incluir deals em Standby. Quando desligado (padrão), Standby fica fora de negócios ativos.',
     lbl_set_target:'Definir Meta',lbl_days:'Dias',lbl_risk_score:'Score de Risco',lbl_no_funnel:'Carregue o funil histórico primeiro.',
   },
   en: {
     active_deals:'active deals', vendas:'Sales', bid:'Bid', updated_at:'Updated at',
-    kpi_active_label:'Active Deals', kpi_active_tip:'Number of active deals in the period (excludes Lost | includes open, Meeting Scheduled and won), by creation date. Sales + Bid pipelines.',
+    kpi_active_label:'Active Deals', kpi_active_tip:'Count of deals active RIGHT NOW (no date filter), in the Vendas + Bid pipelines. Active base: excludes Ganho, Perdido, Implantação and Standby; includes Reunião Agendada (Vendas) and Reunião Pré-RFP (Bid) via the Settings toggle (on by default), plus Diagnóstico, Cotação, Proposta Enviada, Consultoria and Negociação. The subtitle splits Vendas × Bid.',
     loading:'Fetching data from HubSpot…', error_prefix:'Error fetching data: ', retry:'Try again',
     no_data:'No data', of_total:'of total',
     title_vidas_ae:'Lives & Deals by AE | Active', tab_vidas:'Lives', tab_deals:'Deals',
-    tooltip_vidas_ae:'Deals in the Vendas and Bid pipelines at stages: Quote, Sent Proposal, Consulting, Negotiation, Standby, Implementation.',
+    tooltip_vidas_ae:'Sum of lives (Lives mode) or deal count (Deals mode) by Account Executive, in the Vendas + Bid pipelines. Active base: excludes Ganho, Perdido, Implantação and Standby; includes Reunião Agendada/Pré-RFP (toggle), Diagnóstico, Cotação, Proposta Enviada, Consultoria and Negociação. Shows only the core AEs (Juliana, Ágatta, Guilherme, André, Rafael, Fausto).',
     lbl_revenue:'Revenue', lbl_raw:'Raw', lbl_weighted:'Weighted', lbl_won:'Won', lbl_lost:'Lost', lbl_all_outcomes:'All', cohort_x:'Months since creation',
     flt_all:'All', flt_cur_month:'Current Month', flt_last_month:'Last Month', flt_cur_week:'Current Week', flt_last_week:'Last Week', flt_last3mo:'Last 3 mo', flt_cur_year:'This year', flt_quarter:'Quarter…', flt_apply:'Apply', flt_reset:'Reset', flt_label:'Filter', flt_month_from:'From month', flt_month_to:'To month',
     t_stage:'Active Pipeline by Stage',
-    tip_stage:'Open deals (excludes Won) by pipeline stage, three bars side by side: deal count and lives (left axis) and summed estimated ARR (right axis). Each series has its own scale; the exact value shows in each bar tooltip. Click a bar to see the deals. Includes the Vendas + Bid pipelines.',
+    tip_stage:'Active-base deals by stage, three bars side by side: deal count and lives (left axis) and summed estimated ARR (right axis). Each series has its own scale; the exact value shows in each bar tooltip. Click a bar to see the deals. Vendas + Bid pipelines; stages shown: Reunião Agendada/Pré-RFP (toggle), Diagnóstico, Cotação, Proposta Enviada, Consultoria, Negociação and Standby (toggle) | excludes Ganho, Perdido and Implantação.',
     t_funnel:'🟡 Pipeline Funnel (cumulative reach)',
     tip_funnel:'For each stage, how many open deals are at that stage or beyond | funnel shape. Click to see the deals. Includes the Vendas + Bid pipelines.',
     t_conc:'🟡 Active Concentration Risk (Top 10)',
@@ -1111,25 +1111,25 @@ var NOVO_I18N = {
     t_vidasdist:'🟡 Lives Distribution',
     tip_vidasdist:'Open deals grouped by number-of-lives band. Includes the Vendas + Bid pipelines.',
     t_sizedonut:'Size Distribution',
-    tip_sizedonut:'Donut of open deals by band, with a toggle between Revenue and Lives. The center shows the total open deals in the pipeline (updates when slices are hidden via the legend). The grey "No revenue"/"No lives" slice counts deals missing that info. Stages counted: Diagnóstico, Cotação, Proposta Enviada, Consultoria, Negociação and Stand by (Implantação is included when the "Implantação = Ganho" toggle is off). Click a slice to see the deals. Vendas + Bid pipelines.',
+    tip_sizedonut:'Donut of active-base deals by band, with a toggle between Revenue and Lives. The center shows the total open deals (updates when slices are hidden via the legend). The grey "No revenue"/"No lives" slice counts deals missing that info. Metric = deal count. Vendas + Bid pipelines; stages: Reunião Agendada/Pré-RFP (toggle), Diagnóstico, Cotação, Proposta Enviada, Consultoria, Negociação and Standby (toggle) | excludes Ganho, Perdido and Implantação. Click a slice to see the deals.',
     donut_open_deals:'open deals', donut_no_revenue:'No revenue', donut_no_lives:'No lives', donut_stages_label:'Stages',
     vf_by_revenue:'Revenue', vf_by_lives:'Lives', vf_by_stage:'Stage', vf_by_segment:'Segment',
     t_stageval:'Pipeline Value by Stage (TCV)',
-    tip_stageval:'Sum of TCV (12-month contract value from the real régua, including the entry brokerage) per stage. "Weighted" multiplies by the final win probability (C07 per pipeline + AE adjustment). Same base as C08. Includes Vendas + Bid.',
-    tip_revbkt:'Two donuts of TCV (12-month contract value from the real régua — includes the entry brokerage; Diagnóstico = lives × R$/life × 12): left by Revenue bucket, right by Lives bucket (C03 tiers). Toggle switches Gross × Weighted (× per-pipeline win probability, C07). Base: active pipeline (Vendas + Bid); only deals with TCV > 0.',
+    tip_stageval:'Sum of TCV (12-month contract value from the real régua, including the entry brokerage) per stage. "Weighted" multiplies by the final win probability (C07 per pipeline + AE ±10% adjustment). Same base as C08. Vendas + Bid pipelines; active base: Reunião Agendada/Pré-RFP (toggle), Diagnóstico, Cotação, Proposta Enviada, Consultoria, Negociação and Standby (toggle) | excludes Ganho, Perdido and Implantação. Diagnóstico: lives × R$/life × 12.',
+    tip_revbkt:'Two donuts of TCV (12-month contract value from the real régua — includes the entry brokerage; Diagnóstico = lives × R$/life × 12): left by Revenue bucket, right by Lives bucket (C03 tiers). Toggle switches Gross × Weighted (× per-pipeline win probability C07 + AE ±10% adjustment). Vendas + Bid pipelines; active base (Reunião Agendada/Pré-RFP-toggle, Diagnóstico, Cotação, Proposta Enviada, Consultoria, Negociação, Standby-toggle | excludes Ganho, Perdido and Implantação); only deals with TCV > 0.',
     t_segment:'Revenue by Segment',
     tip_segment:'Estimated annual revenue (potential) summed by customer-size segment (lives). Includes the Vendas + Bid pipelines.',
     // Primary KPIs
-    kpi_mtd_label:'Won Revenue MTD', kpi_mtd_tip:'Without a filter: revenue from deals won in the current month (ARR ÷ 12). With an active filter: revenue from won deals inside the selected range. Date used: entry into "Ganho" (Sales) | if the deal skipped Ganho straight to Implantação, uses the "Implantação" (Sales) entry. Target in Settings (⚙) only applies to unfiltered MTD.',
+    kpi_mtd_label:'Won Revenue MTD', kpi_mtd_tip:'Revenue from won deals, in the Vendas + Bid pipelines. Won = the Ganho stage, or Implantação when the "Implantação = Ganho" toggle is on (default). Without a filter: current month (Σ ARR ÷ 12); with an active filter: the selected range. Date used: entry into "Ganho" (Vendas) | if it skipped Ganho straight to Implantação, the "Implantação" (Vendas) entry | fallback closedate (e.g. Bid, which lacks those stage dates). Target in Settings (⚙) only applies to unfiltered MTD.',
     kpi_mtd_of_goal:'of goal', kpi_mtd_goal:'Goal:',
-    kpi_won_label:'Won Revenue', kpi_won_tip:'Without a filter: sum of estimated ARR (or 1st invoice × 12) from all won deals all-time. With an active filter: same sum for won deals inside the selected range, by close_date.',
+    kpi_won_label:'Won Revenue', kpi_won_tip:'Sum of estimated ARR (or 1st invoice × 12) from won deals, in the Vendas + Bid pipelines. Won = the Ganho stage + Implantação (when the "Implantação = Ganho" toggle is on). Without a filter: all-time; with an active filter: won deals by close_date inside the selected range.',
     kpi_wpipe_label:'🟡 Weighted Pipeline/yr (Active Pipe)', kpi_wpipe_tip:'Sum of (ARR × probability) from the same deals as Active Pipeline (P09): excludes Won, Lost, Implantação and Standby; includes Reunião Agendada. No date filter.',
-    kpi_won_vidas_label:'Won Lives', kpi_won_vidas_tip:'Sum of lives from won deals: without a filter, all won deals all-time; with an active filter, won deals with close_date inside the selected range.',
-    kpi_lost_vidas_label:'Lost Lives', kpi_lost_vidas_tip:'Sum of lives from lost deals in the considered period by close_date.',
-    kpi_wvidas_label:'Weighted Lives', kpi_wvidas_tip:'Sum of (lives × probability) from the same deals as Active Pipeline (P09): excludes Won, Lost, Implantação and Standby; includes Reunião Agendada. No date filter.',
-    kpi_pipe_vidas_label:'Lives | Active Pipeline', kpi_pipe_vidas_tip:'Sum of lives across all currently active deals (excludes Won, Lost, Implantação and Standby). No date filter.',
-    kpi_pipe_weighted_label:'Weighted Revenue | Active Pipeline', kpi_pipe_weighted_tip:'Estimated ARR weighted by probability across all active deals (excludes Won, Lost, Implantação and Standby). No date filter.',
-    kpi_pipe_reunioes_label:'Scheduled Meetings | Active Pipeline', kpi_pipe_reunioes_tip:'Number of deals in Reunião Agendada right now. No date filter — reflects current pipeline state.',
+    kpi_won_vidas_label:'Won Lives', kpi_won_vidas_tip:'Sum of the lives field from won deals (Ganho + Implantação stages, when the "Implantação = Ganho" toggle is on), in the Vendas + Bid pipelines. Without a filter: all-time; with an active filter: won deals by close_date inside the range.',
+    kpi_lost_vidas_label:'Lost Lives', kpi_lost_vidas_tip:'Sum of the lives field from deals in the Perdido stage (a Vendas pipeline stage; requires the API with includeLost). Without a filter: all-time; with an active filter: lost deals by close_date inside the range.',
+    kpi_wvidas_label:'Weighted Lives', kpi_wvidas_tip:'Σ (lives × probability) over the active base, in the Vendas + Bid pipelines: excludes Ganho, Perdido, Implantação and Standby; includes Reunião Agendada/Pré-RFP (toggle), Diagnóstico, Cotação, Proposta Enviada, Consultoria and Negociação. Probability = AE custom, else the per-pipeline stage probability (funnel C07, with the fixed default as fallback). No date filter.',
+    kpi_pipe_vidas_label:'Lives | Active Pipeline', kpi_pipe_vidas_tip:'Sum of the lives field across the active base, in the Vendas + Bid pipelines: excludes Ganho, Perdido, Implantação and Standby; includes Reunião Agendada/Pré-RFP (toggle), Diagnóstico, Cotação, Proposta Enviada, Consultoria and Negociação. No date filter.',
+    kpi_pipe_weighted_label:'Weighted Revenue | Active Pipeline', kpi_pipe_weighted_tip:'Σ (estimated ARR × probability) over the active base, in the Vendas + Bid pipelines: excludes Ganho, Perdido, Implantação and Standby; includes Reunião Agendada/Pré-RFP (toggle), Diagnóstico, Cotação, Proposta Enviada, Consultoria and Negociação. Probability = the AE custom value, else the stage default (NOVO_STAGE_PROB map, same source as the Board); ARR falls back to 1st invoice × 12. No date filter.',
+    kpi_pipe_reunioes_label:'Scheduled Meetings | Active Pipeline', kpi_pipe_reunioes_tip:'Count of deals in Reunião Agendada RIGHT NOW, only in the Vendas pipeline (this stage exists only in Vendas; the Bid Reunião Pré-RFP is NOT included here). No date filter | reflects current state. The subtitle sums the employee count (quantidade_de_colaboradores) of those deals.',
     section_pipe_ativo:'Active Pipeline', section_pipe_ativo_sub:'no date filter',
     section_periodo:'Selected Period', section_periodo_sub:'filtered by date range',
     tbl_won_date:'Date used | Source',
@@ -1138,9 +1138,9 @@ var NOVO_I18N = {
     kpi_lost_excl:'Lost deals excluded from API', kpi_wvidas_sub:'open lives × probability',
     kpi_deals_with_vidas:'with lives',
     // Secondary KPIs
-    kpi2_winrate_label:'Win Rate', kpi2_winrate_tip:'Won deals ÷ (won + lost deals). Without a filter: all-time base (every closed deal); with an active filter: close_date inside the selected range.',
-    kpi2_bdr_label:'BDR Conversion', kpi2_bdr_tip:'Won BDR deals ÷ (won + lost) BDR deals. BDR = deals with the BDR field (internal: sdr) set. The card also shows how many total won deals are in the base.',
-    kpi2_ae_label:'AE Conversion', kpi2_ae_tip:'Won AE deals ÷ (won + lost) AE deals. AE = deals without the BDR field set (direct AE origin). The card also shows how many total won deals are in the base.',
+    kpi2_winrate_label:'Win Rate', kpi2_winrate_tip:'Won deals ÷ (won + lost), by deal count, in the Vendas + Bid pipelines. Won = Ganho + Implantação stages (toggle); lost = the Perdido stage. Open deals are not counted. Without a filter: all-time base (every closed deal); with an active filter: closed deals by close_date inside the range.',
+    kpi2_bdr_label:'BDR Conversion', kpi2_bdr_tip:'Won BDR deals ÷ (won + lost) BDR deals, in the Vendas + Bid pipelines. BDR = deals with the BDR field (internal: sdr) set. Won = Ganho + Implantação (toggle); lost = Perdido; by close_date inside the range (all-time without a filter). The card also shows total won deals in the base.',
+    kpi2_ae_label:'AE Conversion', kpi2_ae_tip:'Won AE deals ÷ (won + lost) AE deals, in the Vendas + Bid pipelines. AE = deals without the BDR field set (direct AE origin). Won = Ganho + Implantação (toggle); lost = Perdido; by close_date inside the range (all-time without a filter). The card also shows total won deals in the base.',
     kpi2_meeting_label:'Meeting Rate', kpi2_meeting_tip:'Deals created in Scheduled Meeting (Vendas pipeline) that advanced to Diagnosis ÷ total tracked. Source: stage history (/api/funnel-stages). When the global filter is active, restricts to deals with createdate inside the selected range.',
     kpi2_meetings:'meetings', kpi2_meeting_loading:'Loading stage history…',
     meet_tracked:'Tracked', meet_occurred:'Occurred', meet_noshow:'No-show', meet_rate:'Rate', meet_result:'Result',
@@ -1148,7 +1148,7 @@ var NOVO_I18N = {
     meet_occurred_tip:'Of those tracked, the ones that also entered Diagnosis (meeting occurred / advanced).',
     meet_noshow_tip:'Tracked deals that never reached Diagnosis (meeting did not occur / no-show).',
     meet_rate_tip:'Occurred ÷ Tracked.',
-    kpi2_stale_label:'Stale Deals', kpi2_stale_tip:'Open deals with no logged activity for more than 30 days (via notes_last_updated | last activity/note). The card and modal also show the % of active deals that stale deals represent (same base as P09 Active Pipeline).',
+    kpi2_stale_label:'Stale Deals', kpi2_stale_tip:'Active-base deals (Vendas + Bid pipelines: excludes Ganho, Perdido, Implantação and Standby; includes Reunião Agendada/Pré-RFP-toggle, Diagnóstico, Cotação, Proposta Enviada, Consultoria and Negociação) with no logged activity for more than 30 days (via notes_last_updated | last activity/note). No date filter. The card and modal also show the % of the active base that stale deals represent.',
     kpi2_complete_label:'🟡 Data Completeness', kpi2_complete_tip:'% of deals in Proposta Enviada, Consultoria or Negociação with all 10 fields filled: collaborators, lives, first invoice, ARR, comp model, agency, lifetime, probability, quarter and expected revenue date.',
     stale_deals:'Stale Deals', stale_deals_tip:'Open deals with no logged activity for more than 30 days.',
     stale_vidas:'Stale Lives', stale_vidas_tip:'Sum of the lives field across stale deals.',
@@ -1169,7 +1169,7 @@ var NOVO_I18N = {
     p05_open_vidas:'Lives in Open Deals', p05_open_vidas_tip:'Sum of the lives field across all open deals.',
     p05_avg_age:'Average Age', p05_avg_age_tip:'Average time in funnel | mean of dias_no_pipe across open deals.',
     p08_filter_label:'Filter by stage:', p08_all_stages:'All',
-    unit_days:'days', vidas_potenciais:'potential lives',
+    unit_days:'days', p04_colaboradores:'employees',
     lost_reason_label:'Lost Reason:', lost_reason_all:'All reasons', lost_reason_none:'(no reason)',
     tbl_deal:'Deal', tbl_ae:'AE', tbl_pipe:'Pipe', tbl_stage:'Stage', tbl_close:'Close Date', tbl_days:'Days',
     tbl_collab:'Empl.', tbl_lives:'Lives', tbl_first_inv:'1st Invoice (R$)', tbl_arr:'Est. ARR (R$)', tbl_model:'Model',
@@ -1181,29 +1181,29 @@ var NOVO_I18N = {
     t_waterfall:'🟡 Weekly Flow | Created · Won · Lost',tip_waterfall:'Per week (Monday–Sunday): number of deals created, won and lost, plus the net Δ line (created − won − lost = open-pipeline change for the week). Last 13 weeks. Click a bar to see that week\'s deals. ⚠ Won looks low because the pipeline retains few won deals.',
     t_netflow:'🟡 Net Pipeline Flow (Lives)',tip_netflow:'Lives from newly created deals vs lives from won deals per month. Net = pipeline growth.',
     t_stageprog:'🟡 Stage Progression (Deals)',tip_stageprog:'Stage-to-stage conversion rates derived from the current open-deal funnel.',
-    t_cohort:'🟢 Cohort Maturity (Outcome Curve)',tip_cohort:'Each line is a cohort (creation month). Shows the % of the cohort that reached the chosen outcome by months since creation. All = Won or Lost. Only cohorts with 2+ months maturity and at least 20 deals are included. Toggle Deals vs Lives.',
-    t_freshness:'Engagement Freshness (Open Deals)',tip_freshness:'Distribution of open deals by days since last activity (notes_last_updated) | identifies deals without recent engagement. The modal can filter by engagement bucket.',
+    t_cohort:'Cohort Maturity (Outcome Curve)',tip_cohort:'Each line is a cohort (creation month), across the Vendas + Bid pipelines (no stage filter). Shows the % of the cohort that reached the outcome by months since creation: "All" = reached Ganho/Implantação (toggle) OR Perdido; "Won" = only Ganho/Implantação. Outcome by real close_date (no probability). Only cohorts with 2+ months maturity and ≥20 deals; deals created from Sep/2025. Toggle Deals vs Lives.',
+    t_freshness:'Engagement Freshness (Open Deals)',tip_freshness:'Distribution of open deals by days since last activity (notes_last_updated) | identifies deals without recent engagement. Vendas + Bid pipelines; open = excludes Ganho and Perdido (Implantação counts as open only when the "Implantação = Ganho" toggle is off; Standby and meetings follow their toggles). No date filter. The modal can filter by engagement bucket.',
     t_passthru:'🟡 Stage Pass-Through Rate',tip_passthru:'% of deals passing from each stage to the next (cumulative funnel ratios).',
-    t_winratesize:'Win Rate by Deal Size',tip_winratesize:'Won vs open deals by lives bucket | shows where conversion is strongest. Empty buckets are hidden.',
+    t_winratesize:'Win Rate by Deal Size',tip_winratesize:'Per lives bucket, won ÷ (won + lost) | shows where conversion is strongest. Vendas + Bid pipelines. Won = Ganho + Implantação stages (toggle); lost = the Perdido stage; both by close_date (filter window, or all-time). Open deals are not counted. Buckets with no wins are hidden.',
     t_sizewindow:'🟡 Deal Size Distribution',tip_sizewindow:'Active deals by revenue band. No local date filter.',
     t_vidaswindow:'🟡 Vidas Distribution by Bucket',tip_vidaswindow:'Active deals by lives band. No local date filter.',
-    t_winfactor:'Win Rate by AE',tip_winfactor:'Adjusted win rate by AE: won deals ÷ (won deals + lost deals).',
+    t_winfactor:'Win Rate by AE',tip_winfactor:'Per AE, won ÷ (won + lost) | adjusted win rate (over closed deals only). Vendas + Bid pipelines. Won = Ganho + Implantação stages (toggle); lost = the Perdido stage; by close_date (filter window, or all-time). Open deals are not counted. Grouped by deal owner (ae); deals without an AE are ignored.',
     t_coverage:'Pipeline Coverage | Forecast vs Target',tip_coverage:'Same engine as Forecast Total (N06B) and Forecast Overall (single source of revenue): Real and Weighted revenue match month by month. Toggle Coverage (×) ↔ Revenue (R$): in Coverage, each line is monthly forecast ÷ monthly target (annual target ÷ 12), 1× = on target; in Revenue, the R$ values with the target line. Deal set = new business (createdate ≥ Sep/2025) + Won/Onboarding + Bid (since Jan/2025), Won/Onboarding ALWAYS included; Fee×Brokerage dedup; BID block only Negociação/Proposta at 0.5%; top-of-funnel = BDR cohorts × MQL conversion. Window Jan/2026 → Dec/2027. Pipe-coverage KPI (safety) = WEIGHTED open pipe ÷ period target (3–4× healthy; the raw reading is shown beside it), excludes won. Click a month for the per-deal breakdown.',
-    t_piperev12b:'Total Forecast',tip_piperev12b:'Month-by-month total forecast (won/onboarding + pipeline + Bid + new business), same engine as /forecast. Green line = Real revenue (gross); blue line = Weighted revenue (× close probability). Details in the i.',
+    t_piperev12b:'Total Forecast',tip_piperev12b:'Month-by-month total forecast, same engine as /forecast (single source of revenue). Green line = Real revenue (gross); blue line = Weighted revenue (× close probability). Vendas + Bid pipelines. Blocks: Ganho/Implantação (manual billing, full value) + Vendas pipeline (Diagnóstico and Cotação/Consultoria/Negociação via the régua; funnel C07 per-pipeline probability + AE ±10%; Diagnóstico fixed at 6%) + Bid only in Negociação/Proposta Enviada (imputed date, fixed 0.5% probability) + top of funnel (BDR cohorts × MQL conversion). Deal set: new business (createdate ≥ Sep/2025) + Ganho/Implantação + Bid (since Jan/2025); Fee×Brokerage dedup. Window Jan/2026 → Dec/2027. Details in the i.',
     t_piperev12:'🟡 Pipeline Value (Monthly Projection)',tip_piperev12:'Revenue or deal count by expected revenue month. Count shows active deals with expected revenue date over total active P09 deals. Considers Sales + Bid pipelines.',
     t_segdoughnut:'🟡 Revenue by Segment (Deal Size)',tip_segdoughnut:'Total estimated ARR by customer-size segment (based on lives).',
     t_visibility:'🟡 Revenue Visibility Timeline',tip_visibility:'Count of deals with expected revenue date by month.',
-    t_timeinstage:'🟡 Time in Stage | Historical',tip_timeinstage:'Average days per stage — source: stage transition history via historical funnel (most accurate). Fallback: dias_no_pipe if funnel not loaded.',
-    t_speedqualify:'🟡 Speed to Qualify (Days to Diagnóstico)',tip_speedqualify:'Average days from deal creation to first entry into Diagnóstico, by creation month. Source: stage history via /api/funnel-stages. Fallback: dias_no_pipe for open Diagnóstico deals.',
+    t_timeinstage:'Time in Stage | Historical',tip_timeinstage:'MEDIAN of the CUMULATIVE time in each stage | same as the HubSpot report: per deal, sums every period spent in the stage (with time of day), counting only COMPLETED periods — ongoing time of deals currently in the stage does not count; then the median across deals. Vendas pipeline only, deals created from Sep/2025 to today. Stages shown: Reunião Agendada, Diagnóstico, Cotação, Consultoria, Negociação, Standby and Implantação (Ganho and Perdido excluded). ⚠ Fallback when the funnel is not loaded: median of dias_no_pipe (total deal age, Vendas + Bid) grouped by the CURRENT stage — overstates. No probability.',
+    t_speedqualify:'Speed to Qualify (Days to Diagnóstico)',tip_speedqualify:'AVERAGE days a deal took to reach Diagnóstico, grouped by the deal CREATION month (Sep/2025 → current month). Source: HubSpot calculated property cumulative_time_negocio_criado_ate_diagnostico_formula = time_between(entry into Reunião Agendada, entry into Diagnóstico), converted from ms to days. Vendas pipeline. ⚠ Recently created deals that have NOT yet reached Diagnóstico do not appear (the property only exists once they arrive) — recent months tend to understate the average. No probability.',
     t_timetomeeting:'🟡 Meeting Occurred | Field Coverage',tip_timetomeeting:'Field a_reuniao_ocorreu_ is available in the API as reuniao_ocorreu. Shows Yes/No/empty coverage; actual time to meeting still requires a meeting date field.',
-    t_reassign:'Deal Reassignment Impact',tip_reassign:'Deals grouped by number of owner changes (0 / 1 / 2+): bars = deal count; line = win rate (won ÷ closed). Source: hubspot_owner_id history via /api/funnel-stages. Load the historical funnel to activate.',
+    t_reassign:'Deal Reassignment Impact',tip_reassign:'Deals grouped by number of owner changes (0 / 1 / 2+): bars = deal count; line = win rate = won ÷ (won + lost) of the group (open deals excluded from the denominator). Won = Ganho + Implantação (toggle); lost = Perdido. Vendas + Bid pipelines, no stage filter. Source: hubspot_owner_id history via /api/funnel-stages | load the historical funnel to activate. ⚠ Does not control for confounders (reassigned deals tend to be older/larger).',
     t_financial:'🟡 Financial Results & Revenue Estimates',tip_financial:'Key financial metrics: won revenue MTD/YTD, raw pipeline, weighted pipeline.',
     t_wonmonthly:'🟡 Won Deals | Axenya Revenue (Monthly)',tip_wonmonthly:'ARR ÷ 12 from won deals by close month. Uses the same closed base as P02/S01/S02/S03: current year without filter, or selected period with filter.',
     t_weightedrevstage:'🟡 Weighted Axenya Revenue by Stage',tip_weightedrevstage:'ARR × stage probability per stage | same active base as P09.',
     t_receivables:'🟡 Estimated Receivables Timeline',tip_receivables:'ARR ÷ 12 of open deals grouped by expected revenue month.',
     t_risktriage:'🟡 Deal Risk Triage (Top 20)',tip_risktriage:'Top 20 riskiest deals by computed score: lives, ARR, time open, early stage.',
     lbl_all_time:'All time',lbl_last90:'Last 90d',lbl_last30:'Last 30d',
-    fnl_title:'Historical Conversion Funnel', fnl_tip:'How many unique deals entered each stage of the Sales and Bid pipelines since the selected date | conversion rates between adjacent stages.', fnl_both:'Both', fnl_since:'Since', fnl_custom:'Custom', fnl_load:'Load', fnl_loading_sub:'May take 15–30s for pipelines with 1,000+ deals', cfg_title:'Settings', cfg_meta:'Won Revenue Target (Annual)', active_meetings_label:'Active includes Scheduled Meeting & Pré-RFP', active_meetings_tip:'When on, Active Pipeline, P08 and charts C01/C02/C05/C07/C08 include both top-of-funnel meeting stages: Reunião Agendada (Sales) and Reunião Pré-RFP (Bid). When off, both are excluded from active deals.',
+    fnl_title:'Historical Conversion Funnel', fnl_tip:'How many unique deals entered each stage since the "Since" date | conversion rates between adjacent stages (measures ADVANCE, not close). Toggle Both/Vendas/Bid: Vendas = Reunião Agendada → Diagnóstico → Cotação → Consultoria → Negociação → Implantação; Bid = Cotação → Proposta Enviada → Consultoria → Negociação → Implantação; Both combines the two. Source: stage history (/api/funnel-stages).', fnl_both:'Both', fnl_since:'Since', fnl_custom:'Custom', fnl_load:'Load', fnl_loading_sub:'May take 15–30s for pipelines with 1,000+ deals', cfg_title:'Settings', cfg_meta:'Won Revenue Target (Annual)', active_meetings_label:'Active includes Scheduled Meeting & Pré-RFP', active_meetings_tip:'When on, Active Pipeline, P08 and charts C01/C02/C05/C07/C08 include both top-of-funnel meeting stages: Reunião Agendada (Sales) and Reunião Pré-RFP (Bid). When off, both are excluded from active deals.',
     active_standby_label:'Active includes Standby', active_standby_tip:'When on, Active Pipeline (P09) and active-pipeline charts include deals in Standby. When off (default), Standby is excluded from active deals.',
     lbl_set_target:'Set Target',lbl_days:'Days',lbl_risk_score:'Risk Score',lbl_no_funnel:'Load the historical funnel first.',
   }
@@ -1223,22 +1223,23 @@ var NOVO_HELP_CHARTS = [
   {
     key: 'ae',
     title: 'Vidas e Deals por AE (Ativos)',
-    desc: 'Soma de vidas (ou contagem de deals) por Account Executive nos pipelines Vendas e Bid, nas etapas ativas a partir de Cotação.',
+    desc: 'Soma de vidas (ou contagem de deals) por Account Executive, sobre a base ativa dos pipelines Vendas e Bid: exclui Ganho, Perdido, Implantação e Standby; inclui Reunião Agendada/Pré-RFP (toggle de Configurações), Diagnóstico, Cotação, Proposta Enviada, Consultoria e Negociação. Mostra apenas os AEs do time (Juliana, Ágatta, Guilherme, André, Rafael, Fausto). Sem filtro de data. Não usa probabilidade.',
     fields: [
       ['vidas', 'Somado por AE no modo "Vidas". No modo "Deals" conta 1 por deal.'],
-      ['hubspot_owner_id', 'Define o AE; resolvido para o nome via API de owners.'],
-      ['dealstage', 'Filtra Cotação+/ativas e nomeia a etapa (via STAGE_MAP).'],
+      ['hubspot_owner_id', 'Define o AE; resolvido para o nome via API de owners. Só os 6 AEs do time entram.'],
+      ['dealstage', 'Define a base ativa (exclui Ganho/Perdido/Implantação/Standby; reuniões via toggle) e nomeia a etapa (via STAGE_MAP).'],
       ['pipeline', 'Restringe a Vendas (782758156) e Bid (894130090).'],
     ],
   },
   {
     key: 'stage',
     title: 'Pipeline Aberto por Etapa',
-    desc: 'Nº de deals abertos (exclui Ganhos) ou soma de vidas, por etapa do pipeline.',
+    desc: 'Por etapa da base ativa: nº de deals, soma de vidas e ARR estimado somado (três barras, eixos independentes). Pipelines Vendas + Bid; etapas: Reunião Agendada/Pré-RFP (toggle), Diagnóstico, Cotação, Proposta Enviada, Consultoria, Negociação e Standby (toggle) | exclui Ganho, Perdido e Implantação. Sem filtro de data. Não usa probabilidade.',
     fields: [
-      ['dealstage', 'Agrupa os deals por etapa (exclui Ganho e Implantação).'],
-      ['pipeline', 'Restringe a Vendas e Bid.'],
+      ['dealstage', 'Agrupa os deals por etapa (base ativa: exclui Ganho, Perdido e Implantação; Standby e reuniões via toggle).'],
+      ['pipeline', 'Restringe a Vendas (782758156) e Bid (894130090).'],
       ['vidas', 'Somado por etapa no modo "Vidas".'],
+      ['arr_estimado', 'Barra de ARR por etapa (fallback: primeira_fatura × 12).'],
     ],
   },
   {
@@ -1255,12 +1256,13 @@ var NOVO_HELP_CHARTS = [
   {
     key: 'sizedonut',
     title: 'Distribuição por Tamanho (Donut)',
-    desc: 'Donut da distribuição dos deals abertos por faixa, com toggle Receita | Vidas. O centro mostra o total de deals abertos no pipeline; a fatia cinza é a contagem de deals sem aquela informação (sem receita ou sem vidas). Clique numa fatia para ver os deals.',
+    desc: 'Donut da distribuição dos deals da base ativa por faixa, com toggle Receita | Vidas. Métrica = contagem de deals. O centro mostra o total de deals abertos no pipeline; a fatia cinza é a contagem de deals sem aquela informação (sem receita ou sem vidas). Pipelines Vendas + Bid; base ativa (Reunião Agendada/Pré-RFP-toggle, Diagnóstico, Cotação, Proposta Enviada, Consultoria, Negociação, Standby-toggle | exclui Ganho, Perdido e Implantação). Sem filtro de data. Não usa probabilidade. Clique numa fatia para ver os deals.',
     fields: [
-      ['dealstage', 'Considera apenas deals abertos (via _novoIsOpen).'],
+      ['dealstage', 'Define a base ativa (exclui Ganho, Perdido e Implantação; Standby e reuniões via toggle).'],
       ['arr_estimado', 'Faixa no modo Receita (com fallback 1ª fatura × 12).'],
       ['primeira_fatura', 'Fallback da receita quando não há ARR.'],
       ['vidas', 'Faixa no modo Vidas.'],
+      ['pipeline', 'Restringe a Vendas (782758156) e Bid (894130090).'],
     ],
   },
   {
@@ -1310,8 +1312,8 @@ var NOVO_HELP_CHARTS = [
     title: 'Probabilidade de Ganho por Etapa',
     desc: 'Para cada etapa, a chance de fechamento (ganho) de um deal ali, separada por pipeline (Vendas e Bid). Cálculo = ganhos absolutos ÷ deals que entraram na etapa, no funil histórico de cada pipeline. É diferente do C06: o C06 mede o AVANÇO entre etapas (quantos foram para a próxima); o C07 mede o FECHAMENTO (quantos viraram Ganho absoluto). O tamanho da amostra (n) aparece no tooltip: n pequeno = número instável. Fonte: GET /api/funnel-stages.',
     fields: [
-      ['dealstage (propertiesWithHistory)', 'Quantos deals passaram por cada etapa e quantos chegaram à Implantação.'],
-      ['pipeline', 'Separa Vendas (782758156) de Bid (894130090).'],
+      ['dealstage (propertiesWithHistory)', 'Quantos deals entraram em cada etapa (Reunião Agendada, Diagnóstico, Cotação, Proposta Enviada, Consultoria, Negociação) e quantos viraram Ganho absoluto. Implantação não é exibida (é o alvo). Sem ajuste do AE; eixo Y até 40%.'],
+      ['pipeline', 'Dois datasets separados: Vendas (782758156) e Bid (894130090), nunca combinados.'],
     ],
   },
   {
@@ -1336,10 +1338,11 @@ var NOVO_HELP_CHARTS = [
   {
     key: 'kpi-pipe-reunioes',
     title: 'Reuniões Agendadas | Pipeline Ativo',
-    desc: 'Número de negócios em Reunião Agendada no momento. Sem filtro de data — reflete o estado atual. Pipelines Vendas + Bid.',
+    desc: 'Número de negócios em Reunião Agendada no momento. Sem filtro de data | reflete o estado atual. Apenas o pipeline de Vendas: a etapa Reunião Agendada só existe em Vendas; a Reunião Pré-RFP do Bid NÃO entra aqui. O subtítulo do card soma o número de colaboradores desses negócios. Não usa probabilidade.',
     fields: [
-      ['dealstage', 'Filtra exatamente a etapa Reunião Agendada.'],
-      ['pipeline', 'Restringe a Vendas (782758156) e Bid (894130090).'],
+      ['dealstage', 'Filtra exatamente a etapa Reunião Agendada (pipeline Vendas).'],
+      ['pipeline', 'Efetivamente só Vendas (782758156); a etapa não existe no Bid (894130090).'],
+      ['quantidade_de_colaboradores', 'Somado no subtítulo do card (colaboradores dos negócios em Reunião Agendada).'],
     ],
   },
   {
@@ -1506,27 +1509,27 @@ var NOVO_HELP_CHARTS = [
   { key:'stageprog', title:'🟡 Progressão por Etapa | Deals (N03)',
     desc:'% de deals que avançam de cada etapa para a próxima, calculado no funil cumulativo atual.',
     fields:[['dealstage','Determina posição no funil.'],['pipeline','Restringe a Vendas e Bid.']] },
-  { key:'cohort', title:'🟡 Maturidade por Coorte | Curva de Desfecho (N06)',
-    desc:'Curva por coorte (mês de criação): % do total da coorte que atingiu o desfecho (Perdido ou Ganho) por mês desde a criação. Pisos: coorte com 2+ meses e n≥20.',
-    fields:[['createdate','Define a coorte (mês) e a idade.'],['closedate','Mês em que o deal atingiu o desfecho.'],['dealstage','Separa Perdido vs Ganho.'],['vidas','Peso no modo Vidas.']] },
-  { key:'freshness', title:'Frescor de Engajamento | Deals Abertos (N07)',
-    desc:'Deals abertos distribuídos por faixa de dias desde a última atividade (notes_last_updated). Identifica pipeline sem engajamento recente.',
-    fields:[['notes_last_updated','Data da última atividade/nota.'],['dealstage','Filtra deals abertos (exclui Ganho).']] },
+  { key:'cohort', title:'Maturidade por Coorte | Curva de Desfecho (N01)',
+    desc:'Curva por coorte (mês de criação), nos pipelines Vendas + Bid (sem filtro por etapa): % do total da coorte que atingiu o desfecho por mês desde a criação. Desfecho "Todos" = chegou a Ganho/Implantação (toggle "Implantação = Ganho") OU Perdido; "Ganho" = só Ganho/Implantação. Usa close_date real (não usa probabilidade). Pisos: coorte com 2+ meses de maturidade e n≥20; deals criados a partir de set/2025. Toggle Deals × Vidas.',
+    fields:[['createdate','Define a coorte (mês) e a idade; recorte set/2025+.'],['closedate','Mês em que o deal atingiu o desfecho.'],['dealstage','Define o desfecho: Ganho/Implantação (ganho) vs Perdido.'],['vidas','Peso no modo Vidas.']] },
+  { key:'freshness', title:'Frescor de Engajamento | Deals Abertos (N02)',
+    desc:'Deals abertos distribuídos por faixa de dias desde a última atividade (notes_last_updated): ≤7 / 8–14 / 15–30 / 31–60 / 61–90 / 91–180 / 180d+. Identifica pipeline sem engajamento recente. Pipelines Vendas + Bid; abertos = exclui Ganho e Perdido (Implantação conta como aberto só com o toggle "Implantação = Ganho" desligado; Standby e reuniões conforme os toggles). Sem filtro de data. Não usa probabilidade.',
+    fields:[['notes_last_updated','Data da última atividade/nota (base de dias_sem_atividade).'],['dealstage','Filtra deals abertos (exclui Ganho e Perdido; Implantação/Standby/reuniões conforme toggles).'],['pipeline','Vendas (782758156) e Bid (894130090).']] },
   { key:'passthru', title:'🟡 Taxa de Passagem por Etapa (N08)',
     desc:'% de deals da etapa N−1 que chegam à etapa N, calculado sobre o funil cumulativo de deals abertos.',
     fields:[['dealstage','Determina posição no funil.'],['pipeline','Restringe a Vendas e Bid.']] },
-  { key:'winratesize', title:'🟡 Taxa de Ganho por Tamanho do Deal (N09)',
-    desc:'Para cada faixa de vidas, % de deals que estão em Ganho vs abertos. Indica onde a conversão é maior.',
-    fields:[['vidas','Define a faixa de tamanho.'],['dealstage','Separa Ganho vs abertos.']] },
+  { key:'winratesize', title:'Taxa de Ganho por Tamanho do Deal (N03)',
+    desc:'Para cada faixa de vidas (0 / 1–50 / 51–200 / 201–500 / 501–1K / 1K+): ganhos ÷ (ganhos + perdidos). Indica onde a conversão é maior. Pipelines Vendas + Bid. Ganho = Ganho + Implantação (toggle); perdido = Perdido; ambos por close_date (janela do filtro, ou all-time). Abertos NÃO entram no denominador. Buckets sem ganhos são ocultados. Não usa probabilidade.',
+    fields:[['vidas','Define a faixa de tamanho.'],['dealstage','Separa ganho (Ganho/Implantação) vs perdido (Perdido).'],['closedate','Janela dos fechados (com filtro) ou all-time.']] },
   { key:'sizewindow', title:'🟡 Distribuição por Tamanho | Janela de Criação (N10)',
     desc:'Deals abertos por faixa de receita ARR, filtrados pela janela de data de criação selecionada.',
     fields:[['arr_estimado','Base da faixa de receita.'],['primeira_fatura','Fallback.'],['createdate','Filtra por janela temporal.']] },
   { key:'vidaswindow', title:'🟡 Distribuição de Vidas | Janela de Criação (N11)',
     desc:'Deals abertos por faixa de vidas, filtrados pela janela de data de criação selecionada.',
     fields:[['vidas','Define a faixa.'],['createdate','Filtra por janela temporal.']] },
-  { key:'winfactor', title:'🟡 Análise de Fatores de Ganho / AE (N12)',
-    desc:'Taxa de fechamento estimada por AE: deals em Ganho ÷ (Ganho + abertos) por owner.',
-    fields:[['hubspot_owner_id','Dono do deal (AE).'],['dealstage','Separa Ganho vs abertos.']] },
+  { key:'winfactor', title:'Taxa de Ganho por AE (N04)',
+    desc:'Taxa de ganho ajustada por AE: deals ganhos ÷ (ganhos + perdidos) por owner (só sobre fechados). Pipelines Vendas + Bid. Ganho = Ganho + Implantação (toggle); perdido = Perdido; por close_date (janela do filtro, ou all-time). Abertos NÃO entram. Agrupa por dono do deal; ignora deals sem AE. Não usa probabilidade.',
+    fields:[['hubspot_owner_id','Dono do deal (AE); deals sem AE ficam de fora.'],['dealstage','Separa ganho (Ganho/Implantação) vs perdido (Perdido).'],['closedate','Janela dos fechados (com filtro) ou all-time.']] },
   { key:'coverage', title:'Cobertura do Pipeline | Forecast vs Meta (N05)',
     desc:'Mostra, mês a mês, o quanto o forecast de receita cobre a meta — e onde o pipe está descoberto (risco). Consome a MESMA série do Forecast Total (N06B) via ForecastEngine (fonte única de receita): Receita Real e Probabilizada batem mês a mês. Toggle Cobertura (×) ↔ Receita (R$): em Cobertura, cada linha é forecast ÷ meta mensal (1× = no alvo); em Receita, os R$ com a linha de meta. A linha de Receita Real vem oculta por padrão (clique na legenda para exibi-la); a Probabilizada é a leitura padrão. Conjunto = negócio novo (createdate ≥ set/2025) + Ganho/Implantação (sempre) + Bid (desde jan/2025); dedup Fee×Corretagem; BID só Negociação/Proposta a 0,5%; topo de funil = cohorts BDR × conversão MQL. Janela jan/2026 → dez/2027.',
     formula:'cobertura(mês) = forecast_mensal ÷ (meta_anual ÷ 12); forecast = Ganho/Impl (faturamento manual) + pipe Vendas + BID (0,5%) + topo de funil (cohorts BDR), pela régua calcReceitaMes × probabilidade da etapa (funil C07 por pipeline). Mesma série do N06B.',
@@ -1534,21 +1537,21 @@ var NOVO_HELP_CHARTS = [
   { key:'piperev12', title:'🟡 Valor do Pipeline | Projeção Mensal (N14)',
     desc:'Receita ou quantidade de deals por mês da data prevista de receita. Considera deals abertos com data prevista: Diagnóstico, Cotação, Proposta Enviada, Consultoria, Negociação e Standby; Reunião Agendada entra se o toggle de Ativos estiver ligado; Implantação entra apenas se Implantação = Ganho estiver desligado.',
     fields:[['data_prevista_para_receita','Mês de alocação do deal.'],['arr_estimado','Receita real mensal = ARR ÷ 12.'],['probabilidade_de_fechamento_ / hs_deal_stage_probability','Receita probabilizada = Receita real mensal × probabilidade final.'],['dealstage','Define se o deal entra como aberto e qual probabilidade padrão é usada.']] },
-  { key:'piperev12b', title:'🟡 Forecast Total | Regras da Cintia (N06B)',
-    desc:'Reproduz a linha 7 do forecast da Cintia (soma dos blocos: Negócio Ganho/Implantação recorrente + Cotação/Consultoria/Negociação + Diagnóstico + BID + Topo de funil), com os deals vivos do HubSpot e os cálculos dela. Linha azul = visão ingênua (data prevista × prob) para contraste. Toggles Real/Probabilizado e Receita/Deals.',
-    fields:[['data_prevista_para_receita','Mês de alocação do deal.'],['arr_estimado','Receita real mensal = ARR ÷ 12.'],['probabilidade_de_fechamento_ / hs_deal_stage_probability','Receita probabilizada = Receita real mensal × probabilidade final.'],['dealstage','Define se o deal entra como aberto e qual probabilidade padrão é usada.']] },
+  { key:'piperev12b', title:'Forecast Total (N06B)',
+    desc:'Forecast total mês a mês, pelo MESMO motor do painel Forecast Overall (fonte única de receita). Duas linhas: Receita Real (verde, bruta) e Receita Probabilizada (azul, × probabilidade de fechamento). Pipelines Vendas + Bid. Blocos: Ganho/Implantação (faturamento manual, valor cheio) + pipeline de Vendas (Diagnóstico fixo 6% + Cotação/Consultoria/Negociação pela régua, prob do funil C07 por pipeline + ±10% do AE) + Bid só em Negociação/Proposta Enviada (data imputada out/2026 e jun/2027, prob fixa 0,5%) + topo de funil (cohorts BDR × conversão MQL). Conjunto: negócio novo (createdate ≥ set/2025) + Ganho/Implantação + Bid (desde jan/2025); dedup Fee×Corretagem. Janela jan/2026 → dez/2027. Detalhamento por bloco na Metodologia abaixo.',
+    fields:[['primeira_fatura + modelo_remuneracao','Régua da receita (calcReceitaMes) do pipeline de Vendas.'],['vidas','Diagnóstico = vidas × R$/vida por porte × 6%; porte também define o início da receita.'],['dealstage + pipeline','Bloco e probabilidade: Diagnóstico 6%; Cotação/Consultoria/Negociação pela prob do funil C07 do pipeline (+ ±10% do AE); Bid só Negociação/Proposta a 0,5%; Ganho/Implantação via faturamento manual.'],['data_prevista_para_receita','Início da receita da régua (n=1).'],['createdate','Recorte de negócio novo (≥ 2025-09-01) e início do Diagnóstico (+9/14/18m por porte).']] },
   { key:'segdoughnut', title:'🟡 Receita por Segmento | Donut (N15)',
     desc:'ARR estimado total distribuído por segmento de tamanho (Pequeno/Médio/Grande/Enterprise) baseado em vidas.',
     fields:[['vidas','Define o segmento.'],['arr_estimado','ARR somado por segmento.']] },
   { key:'visibility', title:'🟡 Visibilidade de Receita | Timeline (N16)',
     desc:'Quantidade de deals com data prevista de receita por mês | concentração de fechamentos esperados.',
     fields:[['data_prevista_para_receita','Agrupa deals por mês de expectativa.']] },
-  { key:'timeinstage', title:'🟡 Tempo em Etapa | Análise de Gargalo (N07)',
-    desc:'Média de dias que os deals ficam em cada etapa do pipeline, calculada a partir do histórico real de transições (via /api/funnel-stages). Para cada deal, mede o tempo de entrada em uma etapa até a entrada na etapa seguinte (ou hoje, se ainda estiver na etapa). Inclui todos os deals que já passaram pela etapa desde set/2025 — não apenas os ativos hoje. Metodologia idêntica ao HubSpot Time in Stage.\n\nEtapas Ganho e Perdido não são exibidas (negócios encerrados não refletem gargalos operacionais).\n\nFallback (quando o funil histórico ainda não foi carregado): usa dias_no_pipe (tempo total desde a criação do deal até hoje), agrupados pela etapa atual — este valor é sistematicamente mais alto porque acumula tempo em todas as etapas anteriores, não apenas na etapa corrente. Carregue o funil histórico para obter os valores precisos.',
-    fields:[['dealstage','Histórico de transições de etapa via propertiesWithHistory — base para o cálculo de tempo por etapa.'],['createdate','Referência de data para filtrar por janela (set/2025+).'],['dias_no_pipe','Usado apenas no fallback: dias desde a criação até hoje.']] },
-  { key:'speedqualify', title:'🟡 Velocidade de Qualificação | Dias até Diagnóstico (N08)',
-    desc:'Média de dias entre a criação do deal e sua primeira entrada na etapa Diagnóstico. **Agrupamento: pelo mês de CRIAÇÃO do deal (createdate)** — ou seja, uma barra para "maio/25" representa todos os deals criados em maio, independente de quando eles chegaram ao Diagnóstico. Janela: set/2025 ao mês atual.\n\nFonte primária: /api/funnel-stages (histórico via propertiesWithHistory). Para cada deal que passou por Diagnóstico, calcula entered_date − createdate em dias. Inclui todos os deals que já passaram pela etapa — não só os ativos hoje.\n\nFallback (quando o funil histórico não foi carregado): usa apenas deals atualmente em Diagnóstico, com dias_no_pipe como proxy — menos preciso, pois dias_no_pipe acumula até hoje.\n\nComo auditar: no HubSpot, abra um deal do mês X → Timeline → evento "mudou para Diagnóstico" → subtraia o createdate. Esse valor deve bater com a barra do mês de criação. A propriedade hs_date_entered_1144746906 armazena a data de entrada em Diagnóstico diretamente.',
-    fields:[['createdate','Base do agrupamento: mês em que o deal foi criado (não o mês em que entrou no Diagnóstico).'],['hs_date_entered_1144746906','Data de entrada em Diagnóstico (pipeline Vendas). Diferença entered_date − createdate = dias plotados.'],['dias_no_pipe','Usado apenas no fallback.']] },
+  { key:'timeinstage', title:'Tempo em Etapa | Análise de Gargalo (N07)',
+    desc:'MEDIANA do tempo CUMULATIVO que os deals ficam em cada etapa — replica o relatório do HubSpot ("tempo cumulativo na etapa", agregado por mediana). Por deal: soma TODOS os períodos passados na etapa (timestamps com hora, dias fracionários), contando apenas períodos CONCLUÍDOS (o tempo em curso de quem está na etapa agora NÃO conta); depois a mediana entre os deals. Escopo: pipeline de Vendas (782758156), deals criados de set/2025 até hoje. Verificado contra o relatório do CRO em 2026-07-02 (RA 14,9≈14,7 · Diag 24,9≈25,6 · Cot 20,1≈20 · Cons 21=21 · Neg 19,4=19,4 | desvios ≈ defasagem de datas entre as extrações). Ganho e Perdido não são exibidas (negócios encerrados não refletem gargalos operacionais). Sem probabilidade.\n\nFallback (quando o funil histórico ainda não foi carregado): MEDIANA de dias_no_pipe (tempo total desde a criação até hoje, pipelines Vendas + Bid, criados ≥ set/2025), agrupada pela etapa atual — valor sistematicamente mais alto porque acumula tempo em todas as etapas anteriores. Carregue o funil histórico para obter os valores precisos.',
+    fields:[['dealstage','Histórico de transições via propertiesWithHistory (timestamp completo) — base do tempo cumulativo por etapa (só Vendas no modo histórico).'],['createdate','Piso fixo: deals criados ≥ 2025-09-01. O filtro global de período pode APERTAR a janela (dirige o "Desde"/"Até" do funil), nunca alargá-la.'],['dias_no_pipe','Usado apenas no fallback: dias desde a criação até hoje (Vendas + Bid).']] },
+  { key:'speedqualify', title:'Velocidade de Qualificação | Dias até Diagnóstico (N08)',
+    desc:'MÉDIA de dias que o negócio demorou para chegar à etapa Diagnóstico (pipeline de Vendas). **Agrupamento: pelo mês de CRIAÇÃO do deal (createdate)** — uma barra para "maio/26" representa todos os deals criados em maio, independente de quando chegaram ao Diagnóstico. Janela FIXA: set/2025 ao mês atual (o filtro global de período não se aplica a este gráfico).\n\nFonte: propriedade CALCULADA no HubSpot cumulative_time_negocio_criado_ate_diagnostico_formula = time_between(entrada em Reunião Agendada, entrada em Diagnóstico), em milissegundos; o servidor converte para dias (campo tempo_ate_diag_dias). Como os deals nascem em Reunião Agendada, a entrada nela ≈ criação do negócio.\n\n⚠ A propriedade só existe para deals que JÁ chegaram a Diagnóstico: negócios criados recentemente que ainda não chegaram NÃO aparecem no gráfico — meses recentes tendem a subestimar a média (censura à direita).\n\nComo auditar: no HubSpot, abra um deal → a propriedade "Cumulative time: negócio criado até Diagnóstico (fórmula)" ÷ 86.400.000 = dias plotados; a média dos deals do mês X deve bater com a barra.',
+    fields:[['createdate','Base do agrupamento: mês em que o deal foi criado (não o mês em que entrou no Diagnóstico). Janela set/2025+.'],['cumulative_time_negocio_criado_ate_diagnostico_formula','Fórmula do HubSpot: time_between(entrada em Reunião Agendada, entrada em Diagnóstico), em ms → dias. Nula = ainda não chegou a Diagnóstico (deal fora do gráfico).']] },
   { key:'timetomeeting', title:'🟡 Reunião Ocorreu | Cobertura do Campo (N19)',
     desc:'Campo a_reuniao_ocorreu_ já está disponível na API como reuniao_ocorreu. O card mostra cobertura Sim/Não/sem preenchimento; tempo real até reunião ainda requer uma data de reunião.',
     fields:[['a_reuniao_ocorreu_','Campo booleano de reunião, retornado como reuniao_ocorreu.'],['createdate','Pode ser usado para coortes futuras quando houver data da reunião.']] },
@@ -1625,7 +1628,7 @@ var NOVO_FILT_FIELD = {
   'kpi2-winrate':'close','kpi2-bdr':'close','kpi2-ae':'close','kpi2-meeting':'create','kpi2-stale':'none','kpi2-complete':'create',
   'waterfall':'both','netflow':'both','stageprog':'create','cohort':'both','freshness':'none','passthru':'create',
   'winratesize':'both','sizewindow':'create','vidaswindow':'create','winfactor':'both','coverage':'none',
-  'piperev12':'prev','piperev12b':'prev','segdoughnut':'create','visibility':'prev','timeinstage':'create','speedqualify':'create',
+  'piperev12':'prev','piperev12b':'prev','segdoughnut':'create','visibility':'prev','timeinstage':'create','speedqualify':'none',
   'timetomeeting':'none','reassign':'both','financial':'both','wonmonthly':'close',
   'weightedrevstage':'create','receivables':'prev','risktriage':'none',
 };
@@ -1697,7 +1700,8 @@ function _openHelpDrawer(headerTitle, charts, extraHtml) {
 }
 // Botão "?" do topo: alterna a exibição dos identificadores (tags) e dos "i" de
 // info em todos os cards/gráficos. Clicar de novo oculta.
-var _novoShowInfo = (function(){ try { return localStorage.getItem('novo_show_info') === '1'; } catch(e) { return false; } })();
+// Padrão VISÍVEL: os "i" e as tags só somem se o usuário desligar no "?" (persistido como '0').
+var _novoShowInfo = (function(){ try { return localStorage.getItem('novo_show_info') !== '0'; } catch(e) { return true; } })();
 function novoToggleInfo() {
   _novoShowInfo = !_novoShowInfo;
   document.body.classList.toggle('novo-info-on', _novoShowInfo);
@@ -2721,7 +2725,8 @@ function _novoIsCoreAE(ae) { if (!ae || ae === '-') return false; var f = ae.tri
 function _novoC01CoreDeals() { return _novoC01Deals().filter(function(d){ return _novoIsCoreAE(d.ae); }); }
 function _novoActiveChartDeals() { return _novoCurrentActivePipeline(); }
 function _novoFreshnessDeals() { return _novoOpenRaw().filter(function(d){ return d.dias_sem_atividade != null; }); }
-function _novoTimeInStageDeals() { return (_novoDeals||[]).filter(function(d){ return d.dias_no_pipe != null && _novoInWin(d.createdate); }); }
+// N07: piso fixo de criação em set/2025 (mesmo recorte do relatório do HubSpot).
+function _novoTimeInStageDeals() { return (_novoDeals||[]).filter(function(d){ return d.dias_no_pipe != null && d.createdate && d.createdate >= '2025-09-01' && _novoInWin(d.createdate); }); }
 function _novoEngagementBuckets() {
   return [
     ['≤7d', function(d){ var age=d.dias_sem_atividade; return age!=null&&age<=7; }],
@@ -3193,7 +3198,13 @@ function buildNovoCohortMaturity() {
   var outLbl = _novoCohortOutcome==='won' ? t('lbl_won') : t('lbl_all_outcomes');
   _novoMkChart('chart-novo-cohort', { type:'line', plugins:[ChartDataLabels],
     data:{ labels:labels, datasets:datasets },
-    options:{ responsive:true, plugins:{ legend:{display:true,labels:{color:th.cText2,font:{family:NOVO_FONT,size:10},boxWidth:18,usePointStyle:true}},
+    options:{ responsive:true, plugins:{ legend:{display:true,labels:{color:th.cText2,font:{family:NOVO_FONT,size:10},boxWidth:18,usePointStyle:true},
+      // N01: clicar numa coorte ISOLA a linha (mostra só ela); clicar de novo na isolada restaura todas.
+      onClick:function(e,item,legend){ var ch=legend.chart, idx=item.datasetIndex, n=ch.data.datasets.length, visCount=0, i;
+        for(i=0;i<n;i++){ if(ch.isDatasetVisible(i)) visCount++; }
+        if(ch.isDatasetVisible(idx) && visCount===1){ for(i=0;i<n;i++) ch.setDatasetVisibility(i,true); }
+        else { for(i=0;i<n;i++) ch.setDatasetVisibility(i,i===idx); }
+        ch.update(); }},
       datalabels:{ display:false },
       tooltip:{ callbacks:{ label:function(c){ return c.dataset.label+': '+(c.parsed.y==null?'—':c.parsed.y+'%'); } } } },
       scales:{ x:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}},title:{display:true,text:t('cohort_x'),color:th.cText2,font:{family:NOVO_FONT,size:10}}},
@@ -3267,7 +3278,7 @@ function buildNovoWinRateSize() {
     options:{ responsive:true, layout:{padding:{top:28}}, plugins:{ legend:{display:false},
       datalabels:{ anchor:'end', align:'end', color:th.cText, font:{family:NOVO_FONT,size:11,weight:'bold'}, formatter:function(v){return v?v+'%':'';} },
       tooltip:{ callbacks:{ label:function(c){ var i=visibleIdx[c.dataIndex]; return [c.parsed.y+'% taxa de ganho', wonC[i]+' ganhos / '+(wonC[i]+lostC[i])+' fechados']; } } } },
-      scales:{ x:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}}, y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT}},max:50} },
+      scales:{ x:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}}, y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT}},max:30} },
       onClick:function(e,el){ var pi=(el&&el.length)?visibleIdx[el[0].index]:null;
         var sizeBuckets=buckets.map(function(b){ return [b[0], function(d){ return b[1](d.vidas||0); }]; });
         novoOpenDealsBucketFilterModal('Taxa de Ganho por Tamanho | Ganhos', wonForModal, NOVO_LANG==='en'?'Lives bucket':'Faixa de vidas', sizeBuckets, pi); } } });
@@ -3329,7 +3340,7 @@ function buildNovoWinFactor() {
     options:{ indexAxis:'y', responsive:true, layout:{padding:{right:55}}, plugins:{ legend:{display:false},
       datalabels:{ anchor:'end', align:'right', color:th.cText, font:{family:NOVO_FONT,size:10,weight:'bold'}, formatter:function(v){return v+'%';} },
       tooltip:{ callbacks:{ label:function(c){ var ae=aes[c.dataIndex]; var m=aeMap[ae]; return [c.parsed.x+'% taxa de ganho', m.won+' ganhos / '+(m.won+m.lost)+' fechados']; } } } },
-      scales:{ x:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT}},max:50}, y:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}} },
+      scales:{ x:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT}},max:30}, y:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}} },
       onClick:function(e,el){ var pi=(el&&el.length)?el[0].index:null; novoOpenDealsBucketFilterModal('Taxa de Ganho por AE | Ganhos', _novoWon(), 'AE', buckets, pi); } } });
 }
 
@@ -3387,8 +3398,10 @@ function buildNovoCoverage() {
         : (L?('Real and weighted revenue in R$; dashed line = monthly target (R$ '+_ni(Math.round(metaMonth))+').'):('Receita real e probabilizada em R$; linha tracejada = meta mensal (R$ '+_ni(Math.round(metaMonth))+').')))+
     '</div>'+
     '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.6rem;margin-bottom:1rem">'+
-      _covKpi((L?'Real revenue (':'Receita real (')+months.length+'m)', _revShort(sumReal), L?'full potential, unweighted':'potencial cheio, sem ponderar', 'var(--green)') +
-      _covKpi((L?'Weighted revenue (':'Receita probabilizada (')+months.length+'m)', _revShort(sumProb), L?'× stage probability':'× probabilidade da etapa', 'rgba(88,166,255,.95)') +
+      _covKpi((L?'Real revenue (':'Receita real (')+months.length+'m)', _revShort(sumReal), L?'full potential, unweighted':'potencial cheio, sem ponderar', 'var(--green)',
+        (L?'Sum of the monthly projected revenue across the '+months.length+' calendar months of the window (Jan/2026 to Dec/2027). Each deal only contributes the months of its revenue ruler that fall inside the window. Not TCV nor ARR.':'Soma da receita mensal projetada nos '+months.length+' meses de calendário da janela (jan/2026 a dez/2027). Cada deal contribui apenas com os meses da régua que caem dentro da janela. Não é TCV nem ARR.')) +
+      _covKpi((L?'Weighted revenue (':'Receita probabilizada (')+months.length+'m)', _revShort(sumProb), L?'× stage probability':'× probabilidade da etapa', 'rgba(88,166,255,.95)',
+        (L?'Sum of the monthly projected revenue across the '+months.length+' calendar months of the window (Jan/2026 to Dec/2027), weighted by stage probability. Not TCV nor ARR.':'Soma da receita mensal projetada nos '+months.length+' meses de calendário da janela (jan/2026 a dez/2027), ponderada pela probabilidade da etapa. Não é TCV nem ARR.')) +
       _covKpi(L?'Pipe coverage (safety)':'Cobertura de pipe (segurança)', covPipeProb+'×', (L?'weighted open pipe ÷ target (3–4× healthy) · raw ':'pipe aberto ponderado ÷ meta (3–4× saudável) · bruto ')+covPipeRaw+'×', pipeCol) +
     '</div>'+
     '<canvas id="novo-coverage-chart" style="max-height:260px"></canvas>'+
@@ -3448,8 +3461,8 @@ function _novoOpenCoverageDrill(month, s, metaMonth) {
   body += '</tbody></table>';
   openModal((L?'Coverage':'Cobertura')+' | '+_mlbl(month)+' ('+rows.length+' '+(L?'items':'itens')+')', head + body);
 }
-function _covKpi(lbl,val,sub,col) {
-  return '<div style="background:var(--card2);border-radius:8px;padding:.7rem .85rem">'+
+function _covKpi(lbl,val,sub,col,tip) {
+  return '<div style="background:var(--card2);border-radius:8px;padding:.7rem .85rem"'+(tip?' title="'+_ne(tip)+'"':'')+'>'+
     '<div style="font-size:.62rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em">'+lbl+'</div>'+
     '<div style="font-size:1.15rem;font-weight:800;color:'+col+';margin:.15rem 0">'+val+'</div>'+
     '<div style="font-size:.65rem;color:var(--muted)">'+sub+'</div></div>';
@@ -4072,12 +4085,6 @@ function buildNovoVisibility() {
 }
 
 // ── N17: Time in Stage (Bottleneck Analysis) ──────────────────────────────────
-function _novoMedian(arr){
-  if(!arr||!arr.length) return 0;
-  var a=arr.slice().sort(function(x,y){return x-y;});
-  var n=a.length, mid=Math.floor(n/2);
-  return n%2 ? a[mid] : Math.round((a[mid-1]+a[mid])/2);
-}
 function buildNovoTimeInStage() {
   var allDeals = _novoTimeInStageDeals();
   var byStage={}, byStageDeals={};
@@ -4087,14 +4094,16 @@ function buildNovoTimeInStage() {
   var funCts  = _novoFunnelData && _novoFunnelData.stage_counts;
   var stages, meds, tipCounts;
   if (funMeds) {
-    // Accurate: use real stage-transition medians from funnel history
+    // Preciso: MEDIANA do tempo CUMULATIVO por etapa (períodos concluídos, timestamps
+    // completos, só Vendas, criados >= set/2025) — replica o relatório do HubSpot.
+    // Ver api/funnel-stages.js (stage_medians).
     stages = _histOrder.filter(function(s){ return funMeds[s] != null; });
     meds = stages.map(function(s){ return funMeds[s]; });
     tipCounts = stages.map(function(s){ return (funCts && funCts[s]) || 0; });
   } else {
-    // Fallback: group by current stage, use dias_no_pipe (total pipeline age — imprecise)
+    // Fallback: agrupa pela etapa ATUAL e usa a MEDIANA de dias_no_pipe (idade total | impreciso).
     stages = _histOrder.filter(function(s){ return byStage[s] && byStage[s].length > 0; });
-    meds = stages.map(function(s){ return _novoMedian(byStage[s]); });
+    meds = stages.map(function(s){ var a=byStage[s].slice().sort(function(x,y){return x-y;}); var m=Math.floor(a.length/2); return a.length%2 ? a[m] : Math.round((a[m-1]+a[m])/2); });
     tipCounts = stages.map(function(s){ return (byStage[s]||[]).length; });
   }
   var th=_novoTheme();
@@ -4102,49 +4111,51 @@ function buildNovoTimeInStage() {
   var canvas=document.getElementById('chart-novo-timeinstage');
   if(canvas) canvas.style.height=Math.max(stages.length*36+48,180)+'px';
   var _usingFunnel = !!funMeds;
+  // Contagem do título segue a fonte ativa: no histórico, o n por etapa está no tooltip
+  // (somar etapas supercontaria — o mesmo deal passa por várias); no fallback, nº de deals.
+  var _tisEl = document.getElementById('novo-tis-count');
+  if (_tisEl) _tisEl.textContent = _usingFunnel
+    ? (NOVO_LANG==='en' ? 'funnel history | n per stage in the tooltip' : 'histórico do funil | n por etapa no tooltip')
+    : allDeals.length.toLocaleString('pt-BR') + (NOVO_LANG==='en' ? ' deals (fallback)' : ' deals (fallback)');
   _novoMkChart('chart-novo-timeinstage', { type:'bar', plugins:[ChartDataLabels],
     data:{ labels:stages, datasets:[{ data:meds, backgroundColor:colors, borderRadius:4 }] },
     options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, layout:{padding:{right:55}}, plugins:{ legend:{display:false},
       datalabels:{ anchor:'end', align:'right', color:th.cText, font:{family:NOVO_FONT,size:11,weight:'bold'}, formatter:function(v){return v+'d';} },
       tooltip:{ callbacks:{ label:function(c){
         var n=tipCounts[c.dataIndex];
-        return c.parsed.x+'d ('+(NOVO_LANG==='en'?'avg':'média')+') | n='+n+(_usingFunnel?' transições':' deals');
-      } } } },
+        return c.parsed.x+'d | '+(NOVO_LANG==='en'?'median of total time in the stage':'mediana do tempo total na etapa')+' | '+n+' deals';
+      }, footer:function(){ return NOVO_LANG==='en'?'Half the deals stayed less than this, half stayed more':'Metade dos deals ficou menos que isso na etapa, metade ficou mais'; } } } },
       scales:{ x:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT}}}, y:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT},autoSkip:false}} },
       onClick:function(e,el){ if(!el.length)return; var s=stages[el[0].index]; novoOpenDealsStageFilterModal(NOVO_LANG==='en'?'Time in Stage':'Tempo em Etapa', allDeals, s); } } });
 }
 
 // ── N18: Speed to Qualify (Days to Diagnóstico) ───────────────────────────────
+// Fonte: propriedade calculada do HubSpot cumulative_time_negocio_criado_ate_diagnostico_formula
+// (time_between(entrada em Reunião Agendada, entrada em Diagnóstico), ms → dias no servidor,
+// campo tempo_ate_diag_dias). Só existe para deals que JÁ chegaram a Diagnóstico — criados
+// recentemente que ainda não chegaram NÃO aparecem (censura à direita).
 function buildNovoSpeedQualify() {
-  var byId = {};
-  (_novoDeals||[]).forEach(function(d){ if(d.hs_id) byId[String(d.hs_id)] = d; });
-  var diagEntries = [];
-  if (_novoFunnelData && _novoFunnelData.vendas && _novoFunnelData.vendas.stages) {
-    _novoFunnelData.vendas.stages.forEach(function(s){
-      if (s.stage === 'Diagnóstico') (s.deals||[]).forEach(function(x){ var src=byId[String(x.hs_id)]; if(src&&src.createdate&&x.entered_date){ var days=Math.max(0,Math.round((new Date(x.entered_date+'T00:00:00')-new Date(src.createdate+'T00:00:00'))/86400000)); diagEntries.push({deal:src,days:days,entered:x.entered_date}); } });
-    });
-  }
-  var diaEntries = diagEntries.length
-    ? diagEntries
-    : _novoOpen().filter(function(d){ return d.stage==='Diagnóstico' && d.createdate && d.dias_no_pipe!=null; }).map(function(d){ return {deal:d,days:d.dias_no_pipe,entered:null}; });
+  var entries = (_novoDeals||[]).filter(function(d){ return d.tempo_ate_diag_dias != null && d.createdate; });
   var sqEl=document.getElementById('novo-sq-count');
-  if(sqEl) sqEl.textContent=diaEntries.length.toLocaleString('pt-BR')+' deals';
+  if(sqEl) sqEl.textContent=entries.length.toLocaleString('pt-BR')+' deals';
   var byMonth={};
-  diaEntries.forEach(function(x){ var m=x.deal.createdate.substring(0,7); if(!byMonth[m])byMonth[m]=[]; byMonth[m].push(x); });
-  // N08: considera apenas meses de set/2025 até o mês atual.
+  entries.forEach(function(d){ var m=d.createdate.substring(0,7); if(!byMonth[m])byMonth[m]=[]; byMonth[m].push(d); });
+  // N08: considera apenas meses de criação de set/2025 até o mês atual.
   var _sqNow=new Date(); var _sqNowYM=_sqNow.getFullYear()+'-'+String(_sqNow.getMonth()+1).padStart(2,'0');
   var months=Object.keys(byMonth).sort().filter(function(m){ return m>='2025-09' && m<=_sqNowYM; });
-  var avgs=months.map(function(m){ var arr=byMonth[m]; return Math.round(arr.reduce(function(s,x){return s+x.days;},0)/arr.length); });
+  var avgs=months.map(function(m){ var arr=byMonth[m]; return Math.round(arr.reduce(function(s,d){return s+d.tempo_ate_diag_dias;},0)/arr.length*10)/10; });
   var th=_novoTheme();
+  var censNote = NOVO_LANG==='en' ? 'Recently created deals not yet in Diagnóstico are NOT shown' : 'Criados recentemente que ainda não chegaram a Diagnóstico NÃO aparecem';
   _novoMkChart('chart-novo-speedqualify', { type:'bar', plugins:[ChartDataLabels],
     data:{ labels:months.map(_mlbl), datasets:[{ data:avgs, backgroundColor:'rgba(99,102,241,.75)', borderRadius:4 }] },
     options:{ responsive:true, layout:{padding:{top:28}}, plugins:{ legend:{display:false},
       datalabels:{ anchor:'end', align:'end', color:th.cText, font:{family:NOVO_FONT,size:10,weight:'bold'}, formatter:function(v){return v+'d';} },
-      tooltip:{ callbacks:{ label:function(c){return c.parsed.y+' dias até Diagnóstico ('+byMonth[months[c.dataIndex]].length+' deals)';} } } },
+      tooltip:{ callbacks:{ label:function(c){return c.parsed.y+(NOVO_LANG==='en'?' days to Diagnóstico (avg | ':' dias até Diagnóstico (média | ')+byMonth[months[c.dataIndex]].length+' deals)';},
+        footer:function(){ return censNote; } } } },
       scales:{ x:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}}, y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT}}} },
       onClick:function(e,el){ if(!el.length)return; var m=months[el[0].index];
         var sqCats=months.map(_mlbl);
-        var sqBy={}; months.forEach(function(mm){ sqBy[_mlbl(mm)]=byMonth[mm].map(function(x){return x.deal;}); });
+        var sqBy={}; months.forEach(function(mm){ sqBy[_mlbl(mm)]=byMonth[mm]; });
         novoOpenDealsLabelFilterModal('Speed to Qualify', NOVO_LANG==='en'?'Month':'Mês', sqCats, sqBy, _mlbl(m)); } } });
 }
 
@@ -4360,7 +4371,7 @@ function _buildPipelineAtivoRow() {
   }, 0);
 
   var pipeReunioesDeals = deals.filter(function(d) { return d.stage === 'Reunião Agendada'; });
-  var pipeReunioesVidas = pipeReunioesDeals.reduce(function(s, d) { return s + (d.vidas || 0); }, 0);
+  var pipeReunioesColabs = pipeReunioesDeals.reduce(function(s, d) { return s + (d.colaboradores || 0); }, 0);
 
   function fmtN(v) { return v != null && !isNaN(v) ? Math.round(v).toLocaleString('pt-BR') : '—'; }
 
@@ -4399,7 +4410,7 @@ function _buildPipelineAtivoRow() {
       key: 'kpi-pipe-reunioes',
       label: t('kpi_pipe_reunioes_label'),
       value: pipeReunioesDeals.length.toLocaleString('pt-BR'),
-      sub: pipeReunioesVidas.toLocaleString('pt-BR') + ' ' + t('vidas_potenciais'),
+      sub: pipeReunioesColabs.toLocaleString('pt-BR') + ' ' + t('p04_colaboradores'),
       color: 'var(--blue)',
       tip: t('kpi_pipe_reunioes_tip'),
     },
@@ -4899,7 +4910,7 @@ function novoRender() {
       _sectionHdr('Análise de Tempo') +
 
       // N17 | Time in Stage
-      _card(_titleWithCount(t('t_timeinstage'), _novoTimeInStageDeals().length), t('tip_timeinstage'), '', 'chart-novo-timeinstage', 300, 'timeinstage') +
+      _card(t('t_timeinstage') + ' <span id="novo-tis-count" style="font-size:.68rem;color:var(--text2);font-weight:600;margin-left:.35rem;white-space:nowrap"></span>', t('tip_timeinstage'), '', 'chart-novo-timeinstage', 300, 'timeinstage') +
 
       // N18 | Speed to Qualify
       _card(t('t_speedqualify') + ' <span id="novo-sq-count" style="font-size:.68rem;color:var(--text2);font-weight:600;margin-left:.35rem;white-space:nowrap"></span>', t('tip_speedqualify'), '', 'chart-novo-speedqualify', 300, 'speedqualify') +
@@ -5196,7 +5207,7 @@ function _novoWinProbPipe(pipe) {
 }
 // Card do C07 com corpo próprio (para exibir spinner enquanto o funil carrega).
 function _novoWinProbCard() {
-  var tip = 'Chance de fechamento (ganho) de um deal em cada etapa, por pipeline (Vendas e Bid). = ganhos absolutos ÷ deals que entraram na etapa, no funil histórico de cada pipeline. Diferente do C06 (avanço entre etapas): aqui o numerador é sempre o Ganho absoluto. n (no tooltip) = tamanho da amostra; n pequeno = número instável.';
+  var tip = 'Chance de fechamento (ganho) de um deal em cada etapa, por pipeline (Vendas e Bid). = ganhos absolutos ÷ deals que entraram na etapa, no funil histórico de cada pipeline. Etapas: Reunião Agendada, Diagnóstico, Cotação, Proposta Enviada, Consultoria e Negociação (Implantação fica de fora | é o alvo). Diferente do C06 (avanço entre etapas): aqui o numerador é sempre o Ganho absoluto. Sem ajuste do AE (é a prob-base por etapa que alimenta os forecasts). Eixo Y até 40%. n (no tooltip) = tamanho da amostra; n pequeno = número instável.';
   return '<div class="novo-card"><div class="novo-card-header"><h3>Probabilidade de Ganho por Etapa</h3>' + _infoBtn(tip, 'winprob') + '</div>' +
     '<div id="novo-winprob-body" style="min-height:300px;position:relative"><canvas id="chart-novo-winprob" style="max-height:320px"></canvas></div></div>';
 }
@@ -5574,7 +5585,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <script>
 (function(){
   var PANELS=[
-    {label:'CRO Dashboard',url:'/novo',file:'dashboard.html',health:'y',icon:'<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>'},
+    {label:'CRO Dashboard',url:'/novo',file:'dashboard.html',health:'g',icon:'<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>'},
     {label:'Board View',url:'/novo-board',file:'board.html',health:'y',icon:'<path d="M2 20h20M4 20V10l8-6 8 6v10"/><path d="M10 20v-6h4v6"/>'},
     {label:'AE Performance',url:'/novo-ae',file:'ae.html',health:'y',icon:'<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>'},
     {label:'BDR Performance',url:'/novo-bdr',file:'bdr.html',health:'y',icon:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'},

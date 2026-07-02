@@ -161,7 +161,7 @@ var NOVO_LANG=(function(){ try{return localStorage.getItem('novo_lang')||'pt';}c
 function novoToggleLang(){ NOVO_LANG=NOVO_LANG==='pt'?'en':'pt'; try{localStorage.setItem('novo_lang',NOVO_LANG);}catch(e){} (function(_e){if(_e)_e.textContent=NOVO_LANG.toUpperCase();})(document.getElementById('novo-lang-label')); if(_novoDeals) novoRender(); }
 
 var CS_CARD_CODES={'kpi-customers':'CS01','kpi-arr':'CS02','kpi-lives':'CS03','kpi-product':'CS04','cs-produto':'CS05','cs-modelo':'CS06','cs-vidas-prod':'CS07','cs-concentration':'CS08'};
-var _novoShowInfo=(function(){try{return localStorage.getItem('cs_show_info')==='1';}catch(e){return false;}})();
+var _novoShowInfo=(function(){try{return localStorage.getItem('cs_show_info')!=='0';}catch(e){return true;}})();
 function _codeTag(key){var c=CS_CARD_CODES[key]||'';return c?'<span class="novo-code-tag">'+c+'</span>':'';}
 function novoToggleInfo(){_novoShowInfo=!_novoShowInfo;document.body.classList.toggle('novo-info-on',_novoShowInfo);var b=document.getElementById('btn-info-toggle');if(b)b.classList.toggle('highlighted',_novoShowInfo);try{localStorage.setItem('cs_show_info',_novoShowInfo?'1':'0');}catch(e){}}
 
@@ -366,7 +366,7 @@ function buildCSConcentration(){
 <script>
 (function(){
   var PANELS=[
-    {label:'CRO Dashboard',url:'/novo',file:'dashboard.html',health:'y',icon:'<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>'},
+    {label:'CRO Dashboard',url:'/novo',file:'dashboard.html',health:'g',icon:'<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>'},
     {label:'Board View',url:'/novo-board',file:'board.html',health:'y',icon:'<path d="M2 20h20M4 20V10l8-6 8 6v10"/><path d="M10 20v-6h4v6"/>'},
     {label:'AE Performance',url:'/novo-ae',file:'ae.html',health:'y',icon:'<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>'},
     {label:'BDR Performance',url:'/novo-bdr',file:'bdr.html',health:'y',icon:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'},

@@ -74,6 +74,9 @@ const PROPERTIES = [
   'notes_last_updated',   // data da última atividade/nota | ~1144 deals
   'vigencia',             // data de vigência | usado na coluna "Vigência" do forecast novo
   'vencimento_da_1o_fatura', // data de vencimento da 1ª fatura | gate do faturamento manual (painel Ganho)
+  // N08 | fórmula calculada no HubSpot: time_between(entrada em Reunião Agendada, entrada em
+  // Diagnóstico), em MILISSEGUNDOS. Só existe para deals que JÁ chegaram a Diagnóstico.
+  'cumulative_time_negocio_criado_ate_diagnostico_formula',
 ];
 
 // Tempo médio por etapa (AE Deal Velocity): entrada/saída v2 de cada etapa do pipeline Vendas.
@@ -324,6 +327,8 @@ module.exports = async function handler(req, res) {
           // usado pelo painel BDR no lugar de createdate (que é distorcido por importações em massa).
           data_reuniao_agendada: p.hs_v2_date_entered_1144746905 ? p.hs_v2_date_entered_1144746905.substring(0, 10) : null,
           reuniao_ocorreu: p.a_reuniao_ocorreu_ || null,
+          // N08 | ms → dias (1 decimal). null = ainda não chegou a Diagnóstico.
+          tempo_ate_diag_dias: (function(){ var v = parseFloat(p.cumulative_time_negocio_criado_ate_diagnostico_formula); return (!isNaN(v) && v >= 0) ? Math.round(v / 86400000 * 10) / 10 : null; })(),
           premio_mensal: p.premio_mensal ? parseFloat(p.premio_mensal) : null,
           vigencia: p.vigencia ? p.vigencia.substring(0, 10) : null,
           vencimento_primeira_fatura: p.vencimento_da_1o_fatura ? p.vencimento_da_1o_fatura.substring(0, 10) : null,
