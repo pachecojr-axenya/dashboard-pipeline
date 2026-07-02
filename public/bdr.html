@@ -182,7 +182,7 @@ body.nav-docked #view-novo{margin-left:280px}
 
 <div class="novo-help-backdrop" id="novo-help-backdrop" onclick="novoCloseHelp()"></div>
 <div class="novo-help-drawer" id="novo-help-drawer">
-  <div class="novo-help-hdr"><h3>Campos do HubSpot</h3><button class="hdr-btn" onclick="novoCloseHelp()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+  <div class="novo-help-hdr"><h3 id="novo-help-title">Campos do HubSpot</h3><button class="hdr-btn" onclick="novoCloseHelp()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
   <div class="novo-help-body" id="novo-help-body"></div>
 </div>
 
@@ -249,25 +249,107 @@ var _novoShowInfo=(function(){try{return localStorage.getItem('bdr_show_info')!=
 function _codeTag(key){var c=BDR_CARD_CODES[key]||'';return c?'<span class="novo-code-tag">'+c+'</span>':'';}
 function novoToggleInfo(){_novoShowInfo=!_novoShowInfo;document.body.classList.toggle('novo-info-on',_novoShowInfo);var b=document.getElementById('btn-info-toggle');if(b)b.classList.toggle('highlighted',_novoShowInfo);try{localStorage.setItem('bdr_show_info',_novoShowInfo?'1':'0');}catch(e){}}
 
+// Fichas por gráfico/KPI (padrão do CRO Dashboard): key = mesmo key passado ao _infoBtn.
+// Clique no "i" abre a ficha do gráfico; o "?" do header abre todas.
+// Time de BDRs = os 13 nomes do drawer de Configurações (window.BDR_LIST), com grafias do
+// HubSpot mapeadas (BDR_HS_ALIAS). Filtro de período do painel (AxFilter) = data de ENTRADA
+// em Reunião Agendada (data_reuniao_agendada), salvo indicação na ficha.
 var BDR_HELP_CHARTS=[
-  {key:'bdr-origin-bdr',title:'Originação por BDR',fields:[['data_reuniao_agendada','Data de entrada em Reunião Agendada (hs_v2_date_entered). Define o mês/período da originação.'],['sdr','BDR preenchido = origem BDR.']]},
-  {key:'bdr-weekly-origin',title:'Weekly Origination',fields:[['data_reuniao_agendada','Semana de entrada em Reunião Agendada.'],['sdr','Segmento BDR.']]},
-  {key:'bdr-leads-origin',title:'Novos Leads por Mês | BDR vs AE',fields:[['data_reuniao_agendada','Mês de entrada em Reunião Agendada.'],['sdr','Preenchido = BDR; vazio = AE.']]},
-  {key:'bdr-new-deals',title:'Novos Deals por Mês',fields:[['data_reuniao_agendada','Mês de entrada em Reunião Agendada.'],['sdr','BDR preenchido = origem BDR.']]},
-  {key:'bdr-new-vidas',title:'Novas Vidas por Mês',fields:[['data_reuniao_agendada','Mês de entrada em Reunião Agendada.'],['vidas','Qtde de vidas.'],['sdr','Segmento BDR.']]},
-  {key:'bdr-net-flow',title:'Net Flow de Deals',fields:[['data_reuniao_agendada','Entrada em Reunião Agendada.'],['close_date','Saída por ganho/perda.'],['stage','Ganho/Implantação conforme toggle; Perdido para perdas.']]},
-  {key:'bdr-net-vidas',title:'Net Flow de Vidas',fields:[['data_reuniao_agendada','Entrada em Reunião Agendada.'],['vidas','Vidas do deal.'],['stage','Won = saída.']]},
-  {key:'bdr-avg-vidas',title:'Vidas Médias por Mês',fields:[['data_reuniao_agendada','Mês de entrada em Reunião Agendada.'],['vidas','Média mensal.']]},
-  {key:'bdr-colabs',title:'BDR vs Não BDR',fields:[['data_reuniao_agendada','Base: deals que entraram em Reunião Agendada no período.'],['sdr','Campo BDR; preenchido = origem BDR.']]},
-  {key:'bdr-stage-entry',title:'Etapa de Entrada',fields:[['stage','Etapa atual.'],['data_reuniao_agendada','Entrada em Reunião Agendada.']]},
-  {key:'bdr-size-dist',title:'Distribuição de Porte',fields:[['data_reuniao_agendada','Base: deals que entraram em Reunião Agendada no período.'],['colaboradores','Dimensão padrão. Faixas: <50, 50-200, 200-500, 500+.'],['vidas','Dimensão alternativa (toggle).']]},
+  {key:'kpi-orig-deals',title:'Deals Originados no Mês | BDRs (R01)',
+    desc:'Nº de deals originados no MÊS CORRENTE apenas pelo time de BDRs (os 13 nomes do drawer de Configurações). Originado = data de ENTRADA na etapa Reunião Agendada (pipeline Vendas), não a data de criação. Deals sem essa data não contam. Mês corrente fixo | NÃO segue o filtro de período. Clique no card para ver os deals.',
+    formula:'R01 = COUNT(deals com sdr no time E data_reuniao_agendada no mês corrente)',
+    fields:[['sdr','Origem BDR; comparado (com tolerância de acento/grafia) aos 13 nomes do drawer.'],['hs_v2_date_entered_1144746905','Data de entrada em Reunião Agendada (exposta como data_reuniao_agendada). Define o mês da originação.']]},
+  {key:'kpi-orig-colabs',title:'Colaboradores Originados no Mês | BDRs (R02)',
+    desc:'Soma do campo colaboradores dos MESMOS deals do R01: originados no mês corrente pelo time de BDRs. Deals sem o campo contam 0. Mês corrente fixo | NÃO segue o filtro de período.',
+    formula:'R02 = Σ quantidade_de_colaboradores dos deals do R01',
+    fields:[['quantidade_de_colaboradores','Somado por deal (0 quando vazio).'],['sdr','Origem BDR (time do drawer).'],['hs_v2_date_entered_1144746905','Mês da originação (data_reuniao_agendada).']]},
+  {key:'kpi-ra-stale',title:'Reunião Agendada há +30 dias (R03)',
+    desc:'Deals cujo estágio ATUAL é Reunião Agendada e que entraram na etapa há mais de 30 dias — reuniões marcadas paradas sem avanço. APENAS deals originados pelo time de BDRs. Sem a data de entrada registrada → fora. NÃO segue o filtro de período. Amarelo quando > 0.',
+    formula:'R03 = COUNT(deals do time com dealstage = Reunião Agendada E data_reuniao_agendada ≤ hoje − 30 dias)',
+    fields:[['dealstage','Estágio atual = Reunião Agendada (Vendas).'],['hs_v2_date_entered_1144746905','Data de entrada na etapa; hoje − entrada > 30 dias.'],['sdr','Origem BDR (time do drawer).']]},
+  {key:'origin-bdr',title:'Originação por BDR (R12)',
+    desc:'Deals (ou vidas, ou colaboradores) originados por cada BDR do TIME (13 do drawer; rótulo usa o nome canônico). Originação = entrada em Reunião Agendada; o filtro de período usa essa data. No modo Deals, a cor da barra indica o atingimento da meta do BDR (verde ≥100% · amarelo ≥85% · laranja ≥70% · vermelho abaixo; metas editáveis no drawer de Configurações). Clique numa barra para ver os deals.',
+    fields:[['sdr','Define o BDR; grafias do HubSpot mapeadas ao drawer (ex.: Gabriele de Almeida Silva → Gabriele Almeida).'],['hs_v2_date_entered_1144746905','Data da originação (data_reuniao_agendada) | dimensão do filtro de período.'],['vidas','Somado no modo Vidas.'],['quantidade_de_colaboradores','Somado no modo Colaboradores.']]},
+  {key:'weekly-origin',title:'Weekly Origination por BDR (R13)',
+    desc:'Geração semanal do time de BDRs: barras empilhadas por BDR (Top 6 do período + "Outros"), últimas 13 semanas (segunda a domingo), pela semana de ENTRADA em Reunião Agendada. Alterna Deals | Vidas | Colaboradores. Filtro de período pela mesma data.',
+    fields:[['sdr','Define o BDR (time do drawer).'],['hs_v2_date_entered_1144746905','Semana da originação (data_reuniao_agendada).'],['vidas','Peso no modo Vidas.'],['quantidade_de_colaboradores','Peso no modo Colaboradores.']]},
+  {key:'leads-origin',title:'Novos Leads por Mês | BDRs (R14)',
+    desc:'Deals (ou vidas, ou colaboradores) por mês de ENTRADA em Reunião Agendada, APENAS originados pelo time de BDRs — AEs não entram. Últimos 12 meses. Modo Colaboradores = soma do campo colaboradores dos deals do mês. Clique numa barra para ver os deals do mês.',
+    fields:[['sdr','Origem BDR (time do drawer); sdr vazio (origem AE) fica de fora.'],['hs_v2_date_entered_1144746905','Mês da originação (data_reuniao_agendada) | dimensão do filtro de período.'],['vidas','Peso no modo Vidas.'],['quantidade_de_colaboradores','Peso no modo Colaboradores.']]},
+  {key:'handoff',title:'BDR → AE Handoff Matrix (R15)',
+    desc:'Quantos deals cada BDR passou para cada AE. Linhas = AEs (executivos; excluídos Anderson, Gabriel e membros do time de BDRs que aparecem como owner), colunas = os 13 BDRs do time; célula = nº de deals do par, cor por volume. Considera deals que entraram em Reunião Agendada no período (o filtro usa essa data), com BDR e AE preenchidos. Clique numa célula para ver os deals do par.',
+    fields:[['sdr','BDR da coluna (time do drawer, nome canônico).'],['hubspot_owner_id','AE da linha (responsável atual do deal).'],['hs_v2_date_entered_1144746905','Janela do período (data_reuniao_agendada).']]},
+  {key:'net-flow',title:'Fluxo de Pipeline | Deals (R07)',
+    desc:'Entradas vs saídas por mês: entrada = deals com origem BDR que entraram em Reunião Agendada no mês; saída = ganhos e perdidos (por close_date); linha Net = entrada − saídas. ⚠ Origem BDR aqui = campo sdr preenchido (qualquer owner no campo, não restrito aos 13 do drawer). Ganho = etapa Ganho (+ Implantação conforme o toggle global "Implantação = Ganho").',
+    fields:[['sdr','Origem BDR = campo preenchido (sem restrição ao time).'],['hs_v2_date_entered_1144746905','Mês de entrada (data_reuniao_agendada).'],['closedate','Mês de saída (ganhos/perdidos).'],['dealstage','Separa Ganho/Implantação (toggle) vs Perdido.']]},
+  {key:'net-vidas',title:'Fluxo de Pipeline | Vidas (R08)',
+    desc:'Mesma mecânica do R07, somando o campo vidas: vidas entradas (entrada em Reunião Agendada) vs vidas ganhas/perdidas (close_date); linha Net Vidas. ⚠ Origem BDR = campo sdr preenchido (não restrito ao time).',
+    fields:[['vidas','Somado nas duas direções.'],['sdr','Origem BDR = campo preenchido.'],['hs_v2_date_entered_1144746905','Mês de entrada.'],['closedate','Mês de saída.'],['dealstage','Ganho/Implantação (toggle) vs Perdido.']]},
+  {key:'avg-vidas',title:'Vidas Médias por Deal (R09)',
+    desc:'Média mensal do campo vidas dos deals que entraram em Reunião Agendada no mês. ⚠ TODAS as origens (BDR e AE) — não filtra por sdr. Deals sem vidas ficam fora da média do mês.',
+    formula:'média(mês) = Σ vidas ÷ nº de deals com vidas, por mês de entrada em Reunião Agendada',
+    fields:[['vidas','Base da média (deals sem o campo ficam fora).'],['hs_v2_date_entered_1144746905','Mês de entrada (data_reuniao_agendada).']]},
+  {key:'colabs',title:'Origem BDR vs Não BDR (R10)',
+    desc:'Donut: entre os deals que entraram em Reunião Agendada no período, quantos têm o campo sdr preenchido (origem BDR) vs vazio (origem AE/direta). ⚠ Usa o campo sdr cru (qualquer owner), não restrito ao time do drawer. O centro mostra o total de reuniões agendadas do período.',
+    fields:[['sdr','Preenchido = origem BDR; vazio = origem AE.'],['hs_v2_date_entered_1144746905','Base: entradas em Reunião Agendada no período.']]},
+  {key:'size-dist',title:'Distribuição de Porte (R11)',
+    desc:'Deals por faixa de porte (< 50 / 50–200 / 200–500 / 500+), APENAS originados pelo time de BDRs. O toggle define o campo da faixa: Colaboradores usa quantidade_de_colaboradores; Vidas usa vidas (nunca misturam). Filtro de período pela entrada em Reunião Agendada.',
+    fields:[['quantidade_de_colaboradores','Faixa no modo Colaboradores (padrão).'],['vidas','Faixa no modo Vidas.'],['sdr','Origem BDR (time do drawer).'],['hs_v2_date_entered_1144746905','Janela do período.']]},
 ];
-function novoHelp(){ var html='<table class="lb" style="font-size:.78rem"><thead><tr><th style="text-align:left">Gráfico</th><th style="text-align:left">Campo</th><th style="text-align:left">Descrição</th></tr></thead><tbody>'; BDR_HELP_CHARTS.forEach(function(c){ c.fields.forEach(function(f,i){ html+='<tr><td style="text-align:left;white-space:nowrap">'+(i===0?'<strong>'+c.title+'</strong>':'')+'</td><td style="text-align:left;font-family:monospace;color:var(--teal);white-space:nowrap">'+f[0]+'</td><td style="text-align:left;color:var(--text2)">'+f[1]+'</td></tr>'; }); }); html+='</tbody></table>'; document.getElementById('novo-help-body').innerHTML=html; document.getElementById('novo-help-backdrop').classList.add('open'); document.getElementById('novo-help-drawer').classList.add('open'); }
+// Tabela de detalhe comum (colunas do modal de deals aberto ao clicar em barras/células).
+var BDR_HELP_DETAIL=[
+  ['dealname','Nome do deal (link para o HubSpot via hs_object_id).'],
+  ['sdr','Coluna "BDR".'],
+  ['hubspot_owner_id','Coluna "AE".'],
+  ['pipeline','Coluna "Pipe".'],
+  ['dealstage','Coluna "Etapa".'],
+  ['vidas','Coluna "Vidas".'],
+  ['quantidade_de_colaboradores','Coluna "Colabs".'],
+  ['arr_estimado','Coluna "ARR" (fallback: primeira_fatura × 12).'],
+  ['createdate','Coluna "Criado".'],
+  ['hs_v2_date_entered_1144746905','Coluna "Reun. Ag." (data_reuniao_agendada).'],
+  ['closedate','Coluna "Fechado".'],
+];
+function _bdrHelpRow(name,desc){ return '<tr><td style="text-align:left;font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--teal);white-space:nowrap;font-weight:600">'+name+'</td><td style="text-align:left;color:var(--text2);font-weight:400">'+desc+'</td></tr>'; }
+function _bdrHelpSection(c){
+  var code=BDR_CARD_CODES[c.key]||'';
+  var codeTag=code?'<span style="font-size:.66rem;background:var(--card2);color:var(--teal);padding:.05rem .28rem;border-radius:3px;font-weight:700;letter-spacing:.05em;font-family:ui-monospace,Menlo,monospace;margin-left:.4rem;vertical-align:middle">'+code+'</span>':'';
+  var formulaHtml=c.formula?'<div style="margin:0 0 .65rem;padding:.5rem .65rem;background:var(--card2);border-radius:6px;border-left:3px solid var(--teal)"><div style="font-size:.61rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);font-weight:700;margin-bottom:.22rem">Fórmula</div><code style="font-size:.75rem;color:var(--text);font-family:ui-monospace,Menlo,Consolas,monospace;line-height:1.5">'+c.formula+'</code></div>':'';
+  return '<div style="margin-bottom:1.5rem">'+
+    '<h3 style="font-size:.92rem;color:var(--text);margin:0 0 .25rem">'+c.title+codeTag+'</h3>'+
+    (c.desc?'<p style="font-size:.8rem;line-height:1.6;color:var(--text2);margin:0 0 .5rem">'+c.desc+'</p>':'')+
+    formulaHtml+
+    '<table class="lb" style="width:100%;font-size:.78rem"><thead><tr><th style="text-align:left">Campo HubSpot (interno)</th><th style="text-align:left">Como é usado</th></tr></thead><tbody>'+
+    c.fields.map(function(f){return _bdrHelpRow(f[0],f[1]);}).join('')+'</tbody></table></div>';
+}
+function _bdrOpenHelp(headerTitle,charts){
+  var detailRows=BDR_HELP_DETAIL.map(function(f){return _bdrHelpRow(f[0],f[1]);}).join('');
+  var html=
+    '<p style="font-size:.78rem;color:var(--muted);margin:0 0 1.1rem">Fonte: <code style="color:var(--text2)">GET /api/forecast-table?includeLost=true</code> (deals dos pipelines Vendas + Bid). Time de BDRs = os 13 nomes do drawer de Configurações. Filtro de período do painel = data de entrada em Reunião Agendada.</p>'+
+    charts.map(_bdrHelpSection).join('')+
+    '<div style="margin-top:.5rem;padding-top:1rem;border-top:1px solid var(--border)">'+
+      '<h3 style="font-size:.92rem;color:var(--text);margin:0 0 .25rem">Tabela de detalhe (comum a todos)</h3>'+
+      '<p style="font-size:.8rem;line-height:1.6;color:var(--text2);margin:0 0 .5rem">Colunas exibidas ao clicar em qualquer barra/célula.</p>'+
+      '<table class="lb" style="width:100%;font-size:.78rem"><tbody>'+detailRows+'</tbody></table>'+
+    '</div>';
+  var ttl=document.getElementById('novo-help-title');
+  if(ttl) ttl.textContent=headerTitle;
+  document.getElementById('novo-help-body').innerHTML=html;
+  document.getElementById('novo-help-backdrop').classList.add('open');
+  document.getElementById('novo-help-drawer').classList.add('open');
+}
+function bdrHelpChart(key){
+  var c=BDR_HELP_CHARTS.filter(function(x){return x.key===key;});
+  if(!c.length) return;
+  _bdrOpenHelp('Campos do HubSpot | '+c[0].title.replace(/ \(R\d+\)$/,''),c);
+}
+function novoHelp(){ _bdrOpenHelp('Campos do HubSpot por gráfico',BDR_HELP_CHARTS); }
 function novoCloseHelp(){ document.getElementById('novo-help-backdrop').classList.remove('open'); document.getElementById('novo-help-drawer').classList.remove('open'); }
 document.addEventListener('mouseover',function(e){ var btn=e.target.closest('.novo-info-btn'); if(!btn)return; var tip=document.getElementById('novo-tip'); tip.querySelector('.nt-text').textContent=btn.getAttribute('data-tip')||''; tip.querySelector('.nt-code').textContent=btn.getAttribute('data-code')||''; tip.classList.add('nt-show'); });
 document.addEventListener('mouseout',function(e){ if(!e.target.closest('.novo-info-btn')) document.getElementById('novo-tip').classList.remove('nt-show'); });
 document.addEventListener('mousemove',function(e){ var tip=document.getElementById('novo-tip'); if(!tip.classList.contains('nt-show'))return; var r=tip.getBoundingClientRect(); var x=e.clientX+14; var y=e.clientY+14; if(x+r.width>window.innerWidth-8) x=e.clientX-r.width-10; if(y+r.height>window.innerHeight-8) y=e.clientY-r.height-10; tip.style.left=x+'px'; tip.style.top=y+'px'; });
-function _infoBtn(tip,code){ return _codeTag(code)+'<button class="novo-info-btn" data-tip="'+_ne(tip)+'" data-code="'+(BDR_CARD_CODES[code]||code||'')+'" aria-label="info">i</button>'; }
+// Hover no "i" = tooltip; CLIQUE no "i" = drawer com a ficha completa (padrão do CRO).
+function _infoBtn(tip,code){ var hasHelp=BDR_HELP_CHARTS.some(function(x){return x.key===code;}); return _codeTag(code)+'<button class="novo-info-btn" data-tip="'+_ne(tip)+'" data-code="'+(BDR_CARD_CODES[code]||code||'')+'"'+(hasHelp?' onclick="event.stopPropagation();bdrHelpChart(\''+code+'\')"':'')+' aria-label="Campos do HubSpot">i</button>'; }
 window.addEventListener('scroll',function(){ document.getElementById('novo-hdr').classList.toggle('scrolled',window.scrollY>10); },{passive:true});
 
 var _ne=function(s){ return (s==null?'—':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); };

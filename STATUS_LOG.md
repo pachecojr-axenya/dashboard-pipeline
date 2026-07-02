@@ -1764,3 +1764,12 @@ Registro curto, uma linha por interação (a cada alteração).
 - **Facet modal:** `_fBdr` agora resolve para o nome canônico do time (fallback no nome cru); helper `_teamBdrByName(string)` extraído para reuso.
 - **Incidente evitado:** o script Node da reescrita comeu a `\` do regex (`/s+/`) — pego na revalidação e corrigido via Edit.
 - **Validação:** dados de produção: R12 = 665 deals do time (13/13 BDRs com originação); R15 = 607 pares com os 6 AEs core (Rafael 119 · André 117 · Juliana 113 · Guilherme 108 · Fausto 102 · Ágatta 47); R14 mensal abr 85 · mai 266 · jun 98 · jul 5. `_check-inline-js` 0 erros; `_smoke-render` OK; NULs = 3; `/novo-bdr` 200.
+
+### BDR Performance | drawer de fichas por gráfico (padrão CRO) no clique do "i" (2026-07-02)
+
+> A pedido: replicar no painel BDR o comportamento do CRO — hover no "i" = tooltip; CLIQUE no "i" = drawer lateral com a ficha completa (desc + fórmula + campos do HubSpot).
+
+- **`BDR_HELP_CHARTS` reescrito:** 12 fichas com keys = os keys reais dos cards (R01/R02/R03 + origin-bdr/weekly-origin/leads-origin/handoff/net-flow/net-vidas/avg-vidas/colabs/size-dist). O array antigo tinha keys órfãs (`bdr-origin-bdr`, `bdr-stage-entry`, `bdr-new-deals`…) que não batiam com nenhum card e entradas desatualizadas ("BDR vs AE").
+- **Conteúdo fiel aos builders:** cada ficha declara escopo (time do drawer × campo sdr cru), a data-dimensão (entrada em Reunião Agendada = `hs_v2_date_entered_1144746905`), fórmula quando aplicável e a tabela campo→uso. Fichas de R07/R08/R10 explicitam com ⚠ que usam o campo `sdr` CRU (qualquer owner, não restrito aos 13) e a do R09 que considera TODAS as origens — documentado o real, não o ideal.
+- **Novo aparato:** `_bdrHelpRow`/`_bdrHelpSection`/`_bdrOpenHelp`/`bdrHelpChart` (espelho do CRO), `BDR_HELP_DETAIL` (colunas do modal de deals), `novo-help-title` dinâmico no header do drawer. `_infoBtn` ganhou onclick quando a key tem ficha. Botão "?" do header agora abre TODAS as fichas (antes era uma tabela achatada de 3 colunas).
+- **Validação:** 12/12 fichas com code em `BDR_CARD_CODES`; `_check-inline-js` 0 erros; `_smoke-render` OK (1335 deals); NULs = 3; `/novo-bdr` 200.
