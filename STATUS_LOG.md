@@ -1774,6 +1774,21 @@ Registro curto, uma linha por interação (a cada alteração).
 - **Novo aparato:** `_bdrHelpRow`/`_bdrHelpSection`/`_bdrOpenHelp`/`bdrHelpChart` (espelho do CRO), `BDR_HELP_DETAIL` (colunas do modal de deals), `novo-help-title` dinâmico no header do drawer. `_infoBtn` ganhou onclick quando a key tem ficha. Botão "?" do header agora abre TODAS as fichas (antes era uma tabela achatada de 3 colunas).
 - **Validação:** 12/12 fichas com code em `BDR_CARD_CODES`; `_check-inline-js` 0 erros; `_smoke-render` OK (1335 deals); NULs = 3; `/novo-bdr` 200.
 
+### BDR Performance | metas MENSAIS por BDR (modal global) + R07–R10/R14 reformulados (2026-07-02)
+
+> Rodada grande a pedido do CRO. **API alterada** (`api/bdr-metas.js`) — servidor local da 3002 reiniciado 2× nesta rodada (⚠ sessões paralelas: revalidar se estavam usando a porta nesse intervalo).
+
+- **Metas mensais (novo):** botão **"Metas"** no card R12 abre modal com tabela mês × BDR (12 colunas do ano, seletor ‹ano›; linhas = 13 BDRs do drawer), edição GLOBAL. `api/bdr-metas.js` migrado de /tmp (efêmero!) para **Upstash KV** (Regra do projeto), chave `bdr:metas` = `{metas (flat legado), monthly: {"YYYY-MM": {nome: meta}}}`; POST faz merge por mês; validação de formato; fallback `os.tmpdir()` no dev (o /tmp hardcoded nem existia no Windows — dava ENOENT). GET/POST/validação testados no local. Grafias dos DEFAULTS corrigidas p/ casar com a BDR_LIST (Letícia→Leticia, Emmanuelle→Emanuelle — divergência herdada que quebraria o fallback flat).
+- **Atingimento por janela (R12):** `_bdrGoalFor(nome)` = Σ metas mensais dos meses da janela do filtro (meses sem meta mensal usam a meta flat); sem filtro = Σ das metas mensais cadastradas (sem cor quando não há nenhuma). Lookup antigo por primeiro nome removido (nomes já são canônicos). Drawer de Configurações intacto (settings-modal.js é módulo compartilhado — não tocado); as metas flat dele viram o fallback.
+- **R14:** título → **"Monthly Origination (por BDR)"**; empilhado por BDR (Top 6 + Outros, desenho do R13), 12 meses por entrada em RA, só time. Drill por segmento (BDR) ou mês.
+- **R07:** restrito ao time (`_isTeamBdr` em entrada e saídas); rótulos (datalabels) visíveis por padrão em cada segmento.
+- **R08:** métrica trocada de vidas → **COLABORADORES**; título "Net Flow de Colaboradores"; só time; rótulos visíveis.
+- **R09:** métrica trocada de vidas → **colaboradores médios/deal**; só time; números pt-BR (ponto milhar, vírgula decimal, 1 decimal) nos datalabels, tooltip e eixo Y; título "Colaboradores Médios por Deal".
+- **R10:** donut refeito — **uma fatia por BDR do time** (era BDR vs não-BDR); centro = total do time; % nas fatias ≥4%; título "Share de Originação por BDR"; drill por fatia.
+- **Datas BR nos modais:** `_fmtBR` (dd/mm/aaaa) nas colunas Criado/Reun. Ag./Fechado de todas as tabelas de deals do painel.
+- **i18n PT/EN + 6 fichas do drawer** (R07/R08/R09/R10/R12/R14) reescritas para o comportamento novo (avisos ⚠ de sdr-cru removidos onde deixaram de valer; fórmula da meta por janela documentada na ficha do R12).
+- **Validação:** `_check-inline-js` 0 erros; `node --check` bdr-metas OK; `_smoke-render` OK (1335 deals); NULs = 3; POST/GET/validação do bdr-metas testados no local; `/novo-bdr` 200.
+
 ## AE Performance | Drawer sem metas BDR, probabilidades do funil (SSOT), réguas A09/A17, datas por Reunião Agendada, drill A15 com texto do declínio (2026-07-02)
 
 > A pedido: 6 mudanças no painel AE (`public/ae.html`). Uma mudança de API aditiva (`api/forecast-table.js`: campo novo no payload — contrato preservado). **Não deployado.**
