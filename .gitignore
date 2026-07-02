@@ -25,3 +25,7 @@ lib/credentials.json
 
 .vercel
 _local_trash/
+
+# Dumps de trabalho do reconstruct-snapshot (raiz). Os snapshots servidos pela
+# API ficam em api/_snapshots/ e DEVEM ser versionados — por isso o anchor "/".
+/_snapshots/

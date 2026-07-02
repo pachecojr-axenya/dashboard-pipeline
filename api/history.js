@@ -5,11 +5,25 @@
  *
  * GET /api/history?action=snapshot&tab=Mai+2026
  *   → retorna os deals daquele snapshot como array de objetos
+ *
+ * GET /api/history?action=local
+ *   → lista os snapshots reconstruídos embutidos (dias sem cron)
+ *
+ * GET /api/history?action=local&tab=12+Jun+2026+(reconstruído)
+ *   → retorna os deals do snapshot reconstruído (mesmo formato de ?action=snapshot)
  */
 
 const { listMonthlyTabs, readSnapshot } = require('../lib/sheets');
 const { setCORSHeaders }                 = require('./_helpers');
 const { verifyRequest }                  = require('../lib/auth');
+
+// Snapshots reconstruídos do pipe (dias em que o cron diário não rodou).
+// Dados embutidos via require() para o bundler da Vercel os incluir; servidos
+// pela rota autenticada abaixo (action=local), nunca como arquivo estático.
+// Para adicionar um novo: gere com scripts/reconstruct-snapshot.js e registre aqui.
+const LOCAL_SNAPSHOTS = {
+  '12 Jun 2026 (reconstruído)': require('../lib/snapshots/2026-06-12.json'),
+};
 
 module.exports = async function handler(req, res) {
   setCORSHeaders(req, res);
@@ -25,6 +39,15 @@ module.exports = async function handler(req, res) {
     if (action === 'tabs') {
       const tabs = await listMonthlyTabs();
       return res.status(200).json({ success: true, tabs });
+    }
+
+    if (action === 'local') {
+      if (!tab) {
+        return res.status(200).json({ success: true, tabs: Object.keys(LOCAL_SNAPSHOTS) });
+      }
+      const snap = LOCAL_SNAPSHOTS[tab];
+      if (!snap) return res.status(404).json({ success: false, error: 'Snapshot reconstruído não encontrado' });
+      return res.status(200).json({ success: true, tab, deals: snap.deals, attrition: snap.attrition || [] });
     }
 
     if (action === 'snapshot' && tab) {
