@@ -2,57 +2,43 @@
 /**
  * GET /api/snapshot
  *
- * Roda diariamente às 23:59 BRT via Vercel Cron (ou manualmente por usuário autenticado).
+ * Roda diariamente às 23:59 BRT via Vercel Cron (ou manualmente: usuário autenticado
+ * ou ?secret=SNAPSHOT_SECRET).
  *
- * Sempre:   grava linha de big numbers na aba "Historico" da planilha.
- * Fim de mês: também cria aba "Mmm AAAA" com fotografia completa de todos os deals.
+ * Fotografia = registro BRUTO de todos os deals (Vendas + Bid, TODAS as etapas,
+ * inclusive Ganho e Perdido) como estão no HubSpot. NENHUM cálculo — os cálculos
+ * são feitos no dashboard sobre a foto (regra do projeto, 2026-07-02).
+ * Formato: 35 colunas de lib/snapshot-format.js (mesmo das abas "Jun 2026" e
+ * "2026-06-05".."2026-06-26").
+ *
+ * O que cada execução faz:
+ *   - Sempre: linha de batimento (só CONTAGENS por etapa/pipeline) na aba "Historico Diario".
+ *   - Sexta-feira (BRT): grava a foto semanal na aba "YYYY-MM-DD".
+ *   - Último dia do mês (BRT): grava a foto mensal na aba "Mmm AAAA".
+ *   - Autocorreção: se a foto da última sexta ou do mês anterior não existir (cron
+ *     falhou na noite certa), grava agora — a coluna "Capturada em" registra o atraso.
+ *   - ?tab=Nome (só usuário autenticado): força uma foto com nome de aba específico.
+ *
+ * Abas nunca são sobrescritas: se a aba já tem conteúdo, a gravação é pulada.
  */
 
 const { hubspotPost, fetchOwners, STAGE_MAP } = require('../lib/hubspot');
-const { appendDailyRow, writeMonthlySnapshot } = require('../lib/sheets');
-const { setCORSHeaders, getHubspotToken }       = require('./_helpers');
-const { verifyRequest }                          = require('../lib/auth');
+const { writeMonthlySnapshot, listTabs, readRange, appendRow } = require('../lib/sheets');
+const { setCORSHeaders, getHubspotToken } = require('./_helpers');
+const { verifyRequest } = require('../lib/auth');
+const { PIPELINE_VENDAS, PIPELINE_BID, PROPERTIES, HEADERS, buildRow } = require('../lib/snapshot-format');
 
-const PIPELINE_VENDAS = '782758156';
-const PIPELINE_BID    = '894130090';
-const PIPELINE_LABELS = { [PIPELINE_VENDAS]: 'Vendas', [PIPELINE_BID]: 'Bid' };
+const MONTHS_PT = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 
-const ACTIVE_STAGE_IDS = [
-  '1144746908', '1144746909', '1144746910', '1288611084', '1144844314', // Vendas
-  '1363560722', '1349620555', '1349620556', '1353387279',               // Bid
-  '1353387280', '1353457025', '1373066362',                              // Bid cont.
+const COUNT_HEADERS = [
+  'Data', 'Total Deals',
+  'Reunião Agendada', 'Diagnóstico', 'Cotação', 'Proposta Enviada', 'Consultoria',
+  'Negociação', 'Standby', 'Implantação', 'Ganho', 'Perdido', 'Outras Etapas',
+  'Pipeline Vendas', 'Pipeline Bid',
 ];
 
-const PROPERTIES = [
-  'dealname', 'dealstage', 'pipeline', 'hubspot_owner_id',
-  'produto', 'quantidade_de_colaboradores', 'vidas',
-  'primeira_fatura', 'arr_estimado', 'modelo_de_remuneracao',
-  'possui_agenciamento', 'possui_vitalicio',
-  'probabilidade_de_fechamento_', 'hs_deal_stage_probability',
-  'qual_quarter_de_fechamento', 'data_prevista_para_receita',
-  'hs_is_closed_lost', 'hs_object_id', 'createdate',
-];
+// ── Datas (o cron roda 02:59 UTC = 23:59 BRT do dia anterior) ────────────────
 
-const STAGE_PROB = {
-  'Cotação': 0.18579, 'Proposta Enviada': 0.285, 'Consultoria': 0.284954,
-  'Negociação': 0.493, 'Implantação': 0.8, 'Ganho': 1.0,
-  'Standby': 0.12, 'Stand by': 0.12,
-};
-
-const MONTHS_PT  = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-const MONTHS_SHORT = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-
-const SNAPSHOT_BASE_HEADERS = [
-  'Deal', 'URL HubSpot', 'Pipeline', 'Etapa', 'Executivo',
-  'Produto', 'Vidas', 'Colaboradores',
-  '1ª Fatura (R$)', 'ARR Estimado (R$)',
-  'Modelo', 'Agenciamento', 'Vitalício',
-  'Probabilidade (%)', 'Quarter', 'Data Prevista', 'Dias no Pipe',
-];
-
-// ── Helpers de data ──────────────────────────────────────────────────────────
-
-// O cron roda às 02:59 UTC = 23:59 BRT (UTC-3). Subtrai 3h para obter a data correta.
 function getBRTDate() {
   return new Date(Date.now() - 3 * 60 * 60 * 1000);
 }
@@ -73,88 +59,65 @@ function monthTabName(d) {
   return `${MONTHS_PT[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
 }
 
-// ── Helpers de normalização ──────────────────────────────────────────────────
-
-function normalizeProb(val) {
-  const n = parseFloat(val);
-  if (isNaN(n) || n < 0) return null;
-  return n > 1 ? n / 100 : n;
+// Última sexta-feira ANTERIOR à data (exclusiva: se d é sexta, retorna a sexta passada)
+function previousFriday(d) {
+  const daysBack = ((d.getUTCDay() - 5) + 7) % 7 || 7;
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - daysBack));
 }
 
-function normalizeBool(val) {
-  const v = (val || '').toString().trim().toLowerCase();
-  if (v === 'true' || v === 'sim') return true;
-  if (v === 'false' || v === 'não' || v === 'nao') return false;
-  return null;
+// Último dia do mês ANTERIOR
+function previousMonthEnd(d) {
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 0));
 }
 
-function fmtDate(d) {
-  if (!d) return '';
-  const parts = String(d).substring(0, 10).split('-');
-  return parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : d;
-}
+// ── Captura ──────────────────────────────────────────────────────────────────
 
-function fmtQuarter(q) {
-  if (!q) return '';
-  if (q === 'true')  return 'Q1';
-  if (q === 'false') return 'Q2';
-  const s = q.toString().trim().toLowerCase();
-  if (s === 'sem informação' || s === 'sem informacao') return '';
-  return q;
-}
-
-// Gera array de 24 meses a partir do mês do snapshot (0-indexed)
-function generateMonths(year, mo) {
-  return Array.from({ length: 24 }, (_, i) => {
-    const total = mo + i;
-    return { y: year + Math.floor(total / 12), mo: total % 12 };
-  });
-}
-
-function monthLabel(m) {
-  return `${MONTHS_SHORT[m.mo]}/${String(m.y).slice(2)}`;
-}
-
-function buildSnapshotHeaders(months) {
-  return [
-    ...SNAPSHOT_BASE_HEADERS,
-    ...months.map(m => `${monthLabel(m)} Real (R$)`),
-    ...months.map(m => `${monthLabel(m)} Prob (R$)`),
-  ];
-}
-
-// Data prevista para receita → { y, mo } 0-indexed
-function parseRevDate(str) {
-  if (!str) return null;
-  const match = str.match(/^(\d{4})-(\d{2})/);
-  if (!match) return null;
-  return { y: parseInt(match[1]), mo: parseInt(match[2]) - 1 };
-}
-
-function calcARR(p) {
-  const a = parseFloat(p.arr_estimado);
-  if (!isNaN(a) && a > 0) return a;
-  const pf = parseFloat(p.primeira_fatura);
-  return (!isNaN(pf) && pf > 0) ? pf * 12 : 0;
-}
-
-// Receita bruta mensal — mesma lógica do frontend (n = número do mês, 1-based)
-function calcReceita(n, p) {
-  const pf    = parseFloat(p.primeira_fatura);
-  const vidas = parseInt(p.vidas) || 0;
-  const mod   = p.modelo_de_remuneracao;
-  const agenc = normalizeBool(p.possui_agenciamento);
-  if (!pf || isNaN(pf) || !mod) return null;
-  if (mod === 'Fee por vida') return pf;
-  if (mod === 'Corretagem') {
-    if (agenc === true) {
-      return vidas < 200
-        ? (n <= 3 ? pf : pf * 0.02)
-        : (n === 1 ? pf * 0.95 : pf * 0.05);
-    }
-    return vidas < 200 ? pf * 0.02 : pf * 0.05;
+async function fetchAllDeals(token) {
+  let all = [], after = 0, hasMore = true;
+  while (hasMore) {
+    const resp = await hubspotPost(token, '/crm/v3/objects/deals/search', {
+      filterGroups: [{
+        filters: [{ propertyName: 'pipeline', operator: 'IN', values: [PIPELINE_VENDAS, PIPELINE_BID] }],
+      }],
+      properties: PROPERTIES,
+      limit: 200,
+      after,
+    });
+    all = all.concat(resp.results || []);
+    hasMore = resp.paging?.next?.after != null;
+    after = resp.paging?.next?.after || 0;
   }
-  return null;
+  return all;
+}
+
+function countsRow(deals, today) {
+  const byStage = {};
+  const byPipe = { [PIPELINE_VENDAS]: 0, [PIPELINE_BID]: 0 };
+  for (const d of deals) {
+    const label = STAGE_MAP[d.properties.dealstage] || d.properties.dealstage || '—';
+    byStage[label] = (byStage[label] || 0) + 1;
+    if (d.properties.pipeline in byPipe) byPipe[d.properties.pipeline]++;
+  }
+  const named = ['Reunião Agendada', 'Diagnóstico', 'Cotação', 'Proposta Enviada', 'Consultoria',
+    'Negociação', 'Standby', 'Stand by', 'Implantação', 'Ganho', 'Perdido'];
+  const outras = Object.keys(byStage).filter(s => !named.includes(s))
+    .reduce((s, k) => s + byStage[k], 0);
+  return [
+    today, deals.length,
+    byStage['Reunião Agendada'] || 0,
+    byStage['Diagnóstico'] || 0,
+    byStage['Cotação'] || 0,
+    byStage['Proposta Enviada'] || 0,
+    byStage['Consultoria'] || 0,
+    byStage['Negociação'] || 0,
+    (byStage['Standby'] || 0) + (byStage['Stand by'] || 0),
+    byStage['Implantação'] || 0,
+    byStage['Ganho'] || 0,
+    byStage['Perdido'] || 0,
+    outras,
+    byPipe[PIPELINE_VENDAS],
+    byPipe[PIPELINE_BID],
+  ];
 }
 
 // ── Handler ──────────────────────────────────────────────────────────────────
@@ -180,139 +143,62 @@ module.exports = async function handler(req, res) {
   catch (e) { return res.status(503).json({ success: false, error: e.message }); }
 
   try {
-    const brtDate  = getBRTDate();
-    const today    = dateStr(brtDate);
-    // ?tab=Mai+2026 força snapshot mensal com nome específico (só usuário autenticado, não cron)
-    const forceTab = isUser && (req.query?.tab || new URL(`http://x${req.url}`).searchParams.get('tab'));
-    const lastDay  = forceTab ? true : isLastDayOfMonth(brtDate);
+    const brtDate    = getBRTDate();
+    const today      = dateStr(brtDate);
+    const capturedAt = new Date().toISOString();
+    const forceTab   = isUser && (req.query?.tab || new URL(`http://x${req.url}`).searchParams.get('tab'));
 
-    // ── Busca todos os deals ativos ──────────────────────────────────────────
-    let all = [], after = 0, hasMore = true;
-    while (hasMore) {
-      const resp = await hubspotPost(hsToken, '/crm/v3/objects/deals/search', {
-        filterGroups: [{
-          filters: [
-            { propertyName: 'pipeline',  operator: 'IN', values: [PIPELINE_VENDAS, PIPELINE_BID] },
-            { propertyName: 'dealstage', operator: 'IN', values: ACTIVE_STAGE_IDS },
-          ],
-        }],
-        properties: PROPERTIES,
-        limit: 200,
-        after,
-      });
-      all     = all.concat(resp.results || []);
-      hasMore = resp.paging?.next?.after != null;
-      after   = resp.paging?.next?.after || 0;
-    }
-
-    const deals    = all.filter(r => r.properties.hs_is_closed_lost !== 'true');
+    // ── Foto bruta de todos os deals ─────────────────────────────────────────
+    const deals    = await fetchAllDeals(hsToken);
     const ownerMap = await fetchOwners(hsToken);
+    const rows     = deals.map(d => buildRow(d, ownerMap, STAGE_MAP, capturedAt));
 
-    // ── Big numbers (diário) ─────────────────────────────────────────────────
-    let arrTotal = 0, arrPonderado = 0;
-    const stageCounts    = {};
-    const pipelineCounts = { [PIPELINE_VENDAS]: 0, [PIPELINE_BID]: 0 };
+    const tabs   = await listTabs();
+    const tabHasContent = async name => {
+      if (!tabs.includes(name)) return false;
+      const v = await readRange(`'${name}'!A2:A2`);
+      return v.length > 0;
+    };
+    const writeTab = async name => {
+      if (await tabHasContent(name)) return 'já existia';
+      for (let i = 0; i < rows.length; i += 400) {
+        await writeMonthlySnapshot(name, HEADERS, rows.slice(i, i + 400));
+      }
+      return 'gravada (' + rows.length + ' deals)';
+    };
 
-    for (const d of deals) {
-      const p         = d.properties;
-      const stageName = STAGE_MAP[p.dealstage] || p.dealstage || '—';
-      const arr       = calcARR(p);
-      const prob      = normalizeProb(p.probabilidade_de_fechamento_)
-        ?? normalizeProb(p.hs_deal_stage_probability)
-        ?? STAGE_PROB[stageName] ?? 0;
+    const actions = {};
 
-      arrTotal     += arr;
-      arrPonderado += arr * prob;
-      stageCounts[stageName]    = (stageCounts[stageName] || 0) + 1;
-      if (p.pipeline in pipelineCounts) pipelineCounts[p.pipeline]++;
+    // ── Batimento diário (só contagens) ──────────────────────────────────────
+    await appendRow('Historico Diario', COUNT_HEADERS, countsRow(deals, today));
+    actions.batimento = today;
+
+    // ── Foto semanal (sexta) + autocorreção da sexta perdida ─────────────────
+    if (brtDate.getUTCDay() === 5) {
+      actions['semanal ' + today] = await writeTab(today);
+    } else {
+      const lastFri = dateStr(previousFriday(brtDate));
+      if (!(await tabHasContent(lastFri))) {
+        actions['semanal ' + lastFri + ' (atrasada)'] = await writeTab(lastFri);
+      }
     }
 
-    const dailyRow = [
-      today, deals.length,
-      Math.round(arrTotal), Math.round(arrPonderado), Math.round(arrPonderado / 12),
-      stageCounts['Cotação']          || 0,
-      stageCounts['Proposta Enviada'] || 0,
-      stageCounts['Consultoria']      || 0,
-      stageCounts['Negociação']       || 0,
-      stageCounts['Implantação']      || 0,
-      stageCounts['Ganho']            || 0,
-      (stageCounts['Standby'] || 0) + (stageCounts['Stand by'] || 0),
-      pipelineCounts[PIPELINE_VENDAS],
-      pipelineCounts[PIPELINE_BID],
-    ];
-
-    await appendDailyRow(dailyRow);
-
-    // ── Fotografia mensal (só no último dia do mês) ──────────────────────────
-    let monthTab = null;
-    if (lastDay) {
-      monthTab = forceTab || monthTabName(brtDate);
-
-      // 24 meses a partir do mês do snapshot
-      const months          = generateMonths(brtDate.getUTCFullYear(), brtDate.getUTCMonth());
-      const snapshotHeaders = buildSnapshotHeaders(months);
-
-      const dealRows = deals.map(d => {
-        const p    = d.properties;
-        const prob = normalizeProb(p.probabilidade_de_fechamento_)
-          ?? normalizeProb(p.hs_deal_stage_probability);
-        const arr  = calcARR(p);
-        const dias = p.createdate
-          ? Math.floor((Date.now() - new Date(p.createdate).getTime()) / 86400000)
-          : '';
-        const ag  = normalizeBool(p.possui_agenciamento);
-        const vit = normalizeBool(p.possui_vitalicio);
-        const revStart = parseRevDate(p.data_prevista_para_receita);
-
-        const baseRow = [
-          (p.dealname || '').replace(/\s*-\s*Novo\(a\)\s*Deal\s*$/gi, '').trim(),
-          `https://app.hubspot.com/contacts/44715285/deal/${d.id}`,
-          PIPELINE_LABELS[p.pipeline] || p.pipeline || '-',
-          STAGE_MAP[p.dealstage] || p.dealstage || '-',
-          ownerMap[p.hubspot_owner_id] || '-',
-          p.produto || '',
-          p.vidas                        ? parseInt(p.vidas)                       : '',
-          p.quantidade_de_colaboradores  ? parseInt(p.quantidade_de_colaboradores) : '',
-          p.primeira_fatura              ? parseFloat(p.primeira_fatura)           : '',
-          arr || '',
-          p.modelo_de_remuneracao || '',
-          ag  === true ? 'Sim' : (ag  === false ? 'Não' : ''),
-          vit === true ? 'Sim' : (vit === false ? 'Não' : ''),
-          prob != null ? parseFloat((prob * 100).toFixed(1)) : '',
-          fmtQuarter(p.qual_quarter_de_fechamento),
-          fmtDate(p.data_prevista_para_receita),
-          dias,
-        ];
-
-        // Receita real por mês (24 colunas)
-        const realCols = months.map(m => {
-          if (!revStart) return '';
-          const diff = (m.y - revStart.y) * 12 + (m.mo - revStart.mo);
-          if (diff < 0 || diff > 23) return '';
-          const rec = calcReceita(diff + 1, p);
-          return rec != null ? Math.round(rec) : '';
-        });
-
-        // Receita probabilizada por mês (24 colunas)
-        const probCols = months.map((m, i) => {
-          const rec = realCols[i];
-          return (rec !== '' && prob != null) ? Math.round(rec * prob) : '';
-        });
-
-        return [...baseRow, ...realCols, ...probCols];
-      });
-
-      await writeMonthlySnapshot(monthTab, snapshotHeaders, dealRows);
+    // ── Foto mensal (último dia) + autocorreção do mês perdido ───────────────
+    if (isLastDayOfMonth(brtDate)) {
+      actions['mensal ' + monthTabName(brtDate)] = await writeTab(monthTabName(brtDate));
+    } else {
+      const prevMonth = monthTabName(previousMonthEnd(brtDate));
+      if (!(await tabHasContent(prevMonth))) {
+        actions['mensal ' + prevMonth + ' (atrasada)'] = await writeTab(prevMonth);
+      }
     }
 
-    return res.status(200).json({
-      success:          true,
-      date:             today,
-      deals:            deals.length,
-      arr_total:        Math.round(arrTotal),
-      arr_ponderado:    Math.round(arrPonderado),
-      monthly_snapshot: monthTab,
-    });
+    // ── Foto forçada (?tab=..., só usuário autenticado) ──────────────────────
+    if (forceTab) {
+      actions['forçada ' + forceTab] = await writeTab(forceTab);
+    }
+
+    return res.status(200).json({ success: true, date: today, deals: deals.length, actions });
 
   } catch (e) {
     console.error('[snapshot]', e.message);
