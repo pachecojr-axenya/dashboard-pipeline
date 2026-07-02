@@ -22,7 +22,8 @@ Análise dos gráficos que estavam marcados com 🟡 (não validados) em `public
 - **Maturidade por Coorte (N01 no código atual) → 🟢 validado.** Pisos alinhados ao tooltip (coortes com 2+ meses e 20+ deals); curva de desfecho por `close_date` ÷ tamanho, meses futuros nulos.
 - **C07 (Prob. de Ganho por Etapa):** eixo Y capado em 40%.
 - **Removidos:** **C05** (Receita por Segmento — redundante com o C08/TCV e usava `arr_estimado`) e **N06/N14** (Valor do Pipeline | Projeção Mensal — redundante com o Forecast Total).
-- **Pendente:** **N05 (Cobertura do Pipeline)** ainda usa o motor antigo (probabilizado apenas) — a religar no `ForecastEngine` com toggle R$ receita ↔ × coverage.
+- **Cobertura do Pipeline (N05) → 🟢 validado.** Religado no mesmo motor do N06B: consome a série única `_novoForecastSeries()` (extraída do N06B), então Receita Real e Probabilizada batem **mês a mês** com o Forecast Total por construção (verificado com dados de produção: idênticos nos 24 meses). Ganho/Implantação sempre incluídos; toggle **Cobertura (×) ↔ Receita (R$)** (× = forecast ÷ meta mensal, 1× = no alvo). KPI de pipe-segurança = pipe aberto real ÷ meta. Marcador 🟡 removido do título.
+- **Pendente:** o **modal** do N06B (`_novoOpenN06BForecastModal`) ainda usa o motor antigo (`calcReceitaMes` sem faturamento manual) e pode divergir do gráfico quando há faturamento manual — a religar no `ForecastEngine`.
 
 ---
 

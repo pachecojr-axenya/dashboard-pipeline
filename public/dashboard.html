@@ -719,7 +719,7 @@ function _novoCoverageMetaEditorHtml() {
       '<input id="novo-cov-meta" type="text" inputmode="numeric" value="'+_novoMetaFmt()+'" placeholder="6.000.000" onchange="novoSetMetaFromInput(this)" '+
         'style="flex:1;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:.45rem .6rem;font-size:.9rem;font-family:inherit">'+
     '</div>'+
-    '<p style="font-size:.72rem;color:var(--muted);margin:.45rem 0 0;line-height:1.5">'+(isEn?'Mirrored with Settings (gear ⚙). Annual value, used directly for pipeline coverage; P01 monthly target = annual ÷ 12.':'Espelhada com o modal de Configurações (⚙). Valor anual, usado direto na cobertura do pipeline; meta mensal do P01 = anual ÷ 12.')+'</p>'+
+    '<p style="font-size:.72rem;color:var(--muted);margin:.45rem 0 0;line-height:1.5">'+(isEn?'Mirrored with Settings (gear ⚙). Annual value; coverage and P01 use the monthly target = annual ÷ 12.':'Espelhada com o modal de Configurações (⚙). Valor anual; a cobertura e o P01 usam a meta mensal = anual ÷ 12.')+'</p>'+
   '</div>';
 }
 // Bloco visual de ajuda do N05 (injetado no drawer do "i"): explica as camadas e o
@@ -741,31 +741,29 @@ function _novoCoverageHelpHtml() {
   var sec = function(t){ return '<div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);font-weight:700;margin:.2rem 0 .35rem">'+t+'</div>'; };
 
   var layers =
-    _covLayer('rgba(58,184,183,.9)', (L?'Recurring (real premium)':'Recorrente (prêmio real)'),
-      (L?'Fee per life = full monthly bill; brokerage = recurring tail (2% PME / 5% non-PME). Weighted by stage probability.':'Fee por vida = mensalidade cheia; corretagem = cauda recorrente (2% PME / 5% não-PME). Ponderado pela probabilidade da etapa.')) +
-    _covLayer('rgba(58,184,183,.38)', (L?'One-time (real premium)':'Pontual (prêmio real)'),
-      (L?'Entry-brokerage spike in the first months. Does not recur next year.':'Pico de corretagem de entrada nos primeiros meses. Não recorre no ano seguinte.')) +
-    _covLayer('rgba(210,153,34,.85)', (L?'Diagnóstico (estimated)':'Diagnóstico (estimado)'),
-      (L?'No premium yet → headcount: lives × R$/life (36 ≤200 / 24 ≤5.000 / 12 >5.000) × 6%, starting createdate + 9/14/18 months.':'Ainda sem prêmio → estimativa por vidas: vidas × R$/vida (36 ≤200 / 24 ≤5.000 / 12 >5.000) × 6%, a partir da data de criação + 9/14/18 meses.')) +
-    _covLayer('rgba(147,112,219,.7)', (L?'MQL top-of-funnel (aggregate, est.)':'Topo de funil MQL (agregado, est.)'),
-      (L?'Future origination where Reunião Agendada is absorbed: originated lives × R$24 × win rate, +15 months. Aggregate — no per-deal drill.':'Originação futura onde a Reunião Agendada é absorvida: vidas originadas × R$24 × taxa de ganho, +15 meses. Agregado — sem detalhamento por deal.'));
+    _covLayer('rgba(63,185,80,.95)', (L?'Real revenue (green line)':'Receita Real (linha verde)'),
+      (L?'Full monthly potential, unweighted. Won/onboarding via manual billing; open pipeline, BID and top-of-funnel via the revenue ruler.':'Potencial mensal cheio, sem ponderar. Ganho/implantação via faturamento manual; pipe aberto, BID e topo de funil pela régua de receita.')) +
+    _covLayer('rgba(88,166,255,.95)', (L?'Weighted revenue (blue line)':'Receita Probabilizada (linha azul)'),
+      (L?'Real revenue × stage probability (funnel C07 per pipeline + AE ±10%). BID at a fixed 0.5%; top-of-funnel × MQL conversion.':'Receita real × probabilidade da etapa (funil C07 por pipeline + ±10% do AE). BID a 0,5% fixo; topo de funil × conversão MQL.')) +
+    _covLayer('rgba(227,179,65,.95)', (L?'Target (dashed)':'Meta (tracejada)'),
+      (L?'Monthly target = annual target ÷ 12. In Coverage mode it becomes the 1× reference line.':'Meta mensal = meta anual ÷ 12. No modo Cobertura vira a linha de referência 1×.'));
 
   var readings =
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin:.1rem 0 .9rem">'+
-      _covCard((L?'Main coverage (×)':'Cobertura principal (×)'),
-        (L?'Forecast ÷ monthly target. ≈1× = on target; <1× = projected miss (the × on each bar).':'Forecast ÷ meta mensal. ≈1× = no alvo; <1× = furo projetado (é o × em cada barra).')) +
+      _covCard((L?'Coverage (×)':'Cobertura (×)'),
+        (L?'Each line = forecast ÷ monthly target. ≈1× = on target; <1× = projected miss (the × on each point).':'Cada linha = forecast ÷ meta mensal. ≈1× = no alvo; <1× = furo projetado (é o × em cada ponto).')) +
       _covCard((L?'Pipe coverage (safety)':'Cobertura de pipe (segurança)'),
-        (L?'Open premium pipe (raw, unweighted) ÷ target. 3–4× = healthy cushion. The KPI on top.':'Pipe de prêmio aberto (bruto, sem ponderar) ÷ meta. 3–4× = colchão saudável. É o KPI do topo.')) +
+        (L?'Open pipe (real, unweighted = pipe + BID + new business) ÷ target. 3–4× = healthy cushion. The KPI on top.':'Pipe aberto (real, sem ponderar = pipe + BID + novos negócios) ÷ meta. 3–4× = colchão saudável. É o KPI do topo.')) +
     '</div>';
 
   var scope =
     '<div style="font-size:.75rem;color:var(--text2);line-height:1.5;background:var(--card2);border-radius:6px;padding:.55rem .65rem;margin-bottom:.9rem;border-left:3px solid var(--teal)">'+
       '<b style="color:var(--text)">'+(L?'How to read':'Como ler')+':</b> '+
-      (L?'each bar stacks the 4 layers for that month; the dashed line is the monthly target (annual ÷ 12); the × on top is total coverage that month. Horizon of 18 months to reach 2027, when Diagnóstico (+9/14/18m) and top-of-funnel (+15m) revenue lands.':'cada barra empilha as 4 camadas do mês; a linha tracejada é a meta mensal (anual ÷ 12); o × no topo é a cobertura total daquele mês. Horizonte de 18 meses para alcançar 2027, quando a receita de Diagnóstico (+9/14/18m) e topo de funil (+15m) cai.')+
+      (L?'same engine and series as Forecast Total (N06B) / Forecast Overall — the numbers match month by month. Toggle Coverage (×) ↔ Revenue (R$). Deal set: new business (createdate ≥ Sep/2025) + Won/Onboarding (always) + Bid (since Jan/2025), Fee×Brokerage dedup. Window Jan/2026 → Dec/2027. Click a month for the per-deal breakdown.':'mesmo motor e série do Forecast Total (N06B) / Forecast Overall — os números batem mês a mês. Toggle Cobertura (×) ↔ Receita (R$). Conjunto: negócio novo (createdate ≥ set/2025) + Ganho/Implantação (sempre) + Bid (desde jan/2025), dedup Fee×Corretagem. Janela jan/2026 → dez/2027. Clique num mês para o detalhamento por deal.')+
     '</div>';
 
   return '<div style="margin:.25rem 0 1rem">'+
-    sec(L?'How each month is built':'Como cada mês é montado') + layers +
+    sec(L?'The three lines':'As três linhas') + layers +
     '<div style="height:.7rem"></div>' +
     sec(L?'The two readings':'As duas leituras') + readings +
     scope +
@@ -1073,7 +1071,7 @@ var NOVO_I18N = {
     t_sizewindow:'🟡 Distribuição por Tamanho',tip_sizewindow:'Deals ativos por faixa de receita. Sem filtro local de data.',
     t_vidaswindow:'🟡 Distribuição de Vidas',tip_vidaswindow:'Deals ativos por faixa de vidas. Sem filtro local de data.',
     t_winfactor:'Taxa de Ganho por AE',tip_winfactor:'Taxa de ganho ajustada por AE: deals ganhos ÷ (deals ganhos + deals perdidos).',
-    t_coverage:'🟡 Cobertura do Pipeline | Forecast vs Meta (negócio novo)',tip_coverage:'Cobertura de negócio novo (deals criados desde set/2025), horizonte de 18 meses: forecast mensal ÷ meta mensal (meta anual ÷ 12). Camadas: prêmio real (recorrente+pontual, motor compartilhado), Diagnóstico estimado por headcount (vidas × R$/vida × 6%) e topo de funil MQL agregado (vidas originadas × R$24 × win rate, +15m, onde a Reunião Agendada é absorvida). Rótulo × = cobertura total do mês. KPI de cobertura de pipe (prêmio aberto bruto) mede segurança (3–4× saudável). Ao lado do título aparece o nº de deals considerados (prêmio + Diagnóstico; o topo de funil MQL é agregado, não por deal). Por padrão o gráfico NÃO considera deals ganhos (Ganho/Implantação); marque o checkbox para incluí-los.',
+    t_coverage:'🟢 Cobertura do Pipeline | Forecast vs Meta',tip_coverage:'Mesmo motor do Forecast Total (N06B) e do Forecast Overall (fonte única de receita): Receita Real e Probabilizada batem mês a mês. Toggle Cobertura (×) ↔ Receita (R$): em Cobertura, cada linha é forecast mensal ÷ meta mensal (meta anual ÷ 12), 1× = no alvo; em Receita, os R$ com a linha de meta. Conjunto = negócio novo (createdate ≥ set/2025) + Ganho/Implantação + Bid (desde jan/2025), Ganho/Implantação SEMPRE incluídos; dedup Fee×Corretagem; bloco BID só Negociação/Proposta a 0,5%; topo de funil = cohorts BDR × conversão MQL. Janela jan/2026 → dez/2027. KPI Cobertura de pipe (segurança) = pipe aberto real ÷ meta (3–4× saudável). Clique num mês para o detalhamento por deal.',
     t_piperev12b:'Forecast Total',tip_piperev12b:'Forecast total mês a mês (Ganho/Implantação + pipeline + Bid + novos negócios), pelo MESMO motor do /forecast. Linha verde = Receita Real (bruta); linha azul = Receita Probabilizada (× probabilidade de fechamento). Detalhes no i.',
     t_piperev12:'🟡 Valor do Pipeline (Projeção Mensal)',tip_piperev12:'Receita ou quantidade de deals por mês da data prevista de receita. A contagem mostra deals ativos com data prevista sobre o total de ativos P09. Considera pipes Vendas + Bid.',
     t_segdoughnut:'🟡 Receita por Segmento (Donut)',tip_segdoughnut:'ARR estimado total por segmento de tamanho de cliente (baseado em vidas).',
@@ -1190,7 +1188,7 @@ var NOVO_I18N = {
     t_sizewindow:'🟡 Deal Size Distribution',tip_sizewindow:'Active deals by revenue band. No local date filter.',
     t_vidaswindow:'🟡 Vidas Distribution by Bucket',tip_vidaswindow:'Active deals by lives band. No local date filter.',
     t_winfactor:'Win Rate by AE',tip_winfactor:'Adjusted win rate by AE: won deals ÷ (won deals + lost deals).',
-    t_coverage:'🟡 Pipeline Coverage | Forecast vs Target (new business)',tip_coverage:'New-business coverage (deals created since Sep/2025), 18-month horizon: monthly forecast ÷ monthly target (annual target ÷ 12). Layers: real premium (recurring+one-time, shared engine), Diagnóstico estimated by headcount (lives × R$/life × 6%) and aggregate MQL top-of-funnel (originated lives × R$24 × win rate, +15m, where Reunião Agendada is absorbed). × label = total monthly coverage. A pipe-coverage KPI (raw open premium pipe) measures safety (3–4× healthy). The number of deals considered is shown next to the title (premium + Diagnóstico; the MQL top-of-funnel is aggregate, not per-deal). By default the chart does NOT consider won deals (Ganho/Implantação); check the box to include them.',
+    t_coverage:'🟢 Pipeline Coverage | Forecast vs Target',tip_coverage:'Same engine as Forecast Total (N06B) and Forecast Overall (single source of revenue): Real and Weighted revenue match month by month. Toggle Coverage (×) ↔ Revenue (R$): in Coverage, each line is monthly forecast ÷ monthly target (annual target ÷ 12), 1× = on target; in Revenue, the R$ values with the target line. Deal set = new business (createdate ≥ Sep/2025) + Won/Onboarding + Bid (since Jan/2025), Won/Onboarding ALWAYS included; Fee×Brokerage dedup; BID block only Negociação/Proposta at 0.5%; top-of-funnel = BDR cohorts × MQL conversion. Window Jan/2026 → Dec/2027. Pipe-coverage KPI (safety) = raw open pipe (real) ÷ target (3–4× healthy). Click a month for the per-deal breakdown.',
     t_piperev12b:'Total Forecast',tip_piperev12b:'Month-by-month total forecast (won/onboarding + pipeline + Bid + new business), same engine as /forecast. Green line = Real revenue (gross); blue line = Weighted revenue (× close probability). Details in the i.',
     t_piperev12:'🟡 Pipeline Value (Monthly Projection)',tip_piperev12:'Revenue or deal count by expected revenue month. Count shows active deals with expected revenue date over total active P09 deals. Considers Sales + Bid pipelines.',
     t_segdoughnut:'🟡 Revenue by Segment (Deal Size)',tip_segdoughnut:'Total estimated ARR by customer-size segment (based on lives).',
@@ -1529,10 +1527,10 @@ var NOVO_HELP_CHARTS = [
   { key:'winfactor', title:'🟡 Análise de Fatores de Ganho / AE (N12)',
     desc:'Taxa de fechamento estimada por AE: deals em Ganho ÷ (Ganho + abertos) por owner.',
     fields:[['hubspot_owner_id','Dono do deal (AE).'],['dealstage','Separa Ganho vs abertos.']] },
-  { key:'coverage', title:'🟡 Cobertura do Pipeline | Forecast vs Meta (N05)',
-    desc:'Mostra, mês a mês, o quanto o forecast de receita cobre a meta — e onde o pipe está descoberto (risco). Escopo: negócio novo (deals criados desde set/2025), próximos 18 meses. Veja as camadas e os cálculos abaixo.',
-    formula:'cobertura(mês) = Σ[(recorrente+pontual)×prob + Diag(vidas×R$/vida×6%)] + MQL(vidas×R$24×taxa_ganho) ÷ (meta_anual ÷ 12)',
-    fields:[['primeira_fatura','Base da receita (calcReceitaMes).'],['modelo_remuneracao','Fee por vida vs Corretagem.'],['possui_agenciamento','Define o pico pontual de entrada na corretagem.'],['vidas','Faixa PME (<200) × não-PME (≥200) p/ o % de corretagem.'],['data_prevista_para_receita','Mês de início da receita (n=1).'],['dealstage','Probabilidade da etapa (C06); Ganho/Implantação = 100%.'],['createdate','Recorte de negócio novo (≥ 2025-09-01).']] },
+  { key:'coverage', title:'🟢 Cobertura do Pipeline | Forecast vs Meta (N05)',
+    desc:'Mostra, mês a mês, o quanto o forecast de receita cobre a meta — e onde o pipe está descoberto (risco). Consome a MESMA série do Forecast Total (N06B) via ForecastEngine (fonte única de receita): Receita Real e Probabilizada batem mês a mês. Toggle Cobertura (×) ↔ Receita (R$): em Cobertura, cada linha é forecast ÷ meta mensal (1× = no alvo); em Receita, os R$ com a linha de meta. Conjunto = negócio novo (createdate ≥ set/2025) + Ganho/Implantação (sempre) + Bid (desde jan/2025); dedup Fee×Corretagem; BID só Negociação/Proposta a 0,5%; topo de funil = cohorts BDR × conversão MQL. Janela jan/2026 → dez/2027.',
+    formula:'cobertura(mês) = forecast_mensal ÷ (meta_anual ÷ 12); forecast = Ganho/Impl (faturamento manual) + pipe Vendas + BID (0,5%) + topo de funil (cohorts BDR), pela régua calcReceitaMes × probabilidade da etapa (funil C07 por pipeline). Mesma série do N06B.',
+    fields:[['primeira_fatura','Base da receita (régua calcReceitaMes).'],['modelo_remuneracao','Fee por vida vs Corretagem (define a régua).'],['possui_agenciamento','Define o pico pontual de entrada na corretagem.'],['vidas','Diagnóstico (headcount) e faixa PME (<200) × não-PME (≥200) p/ o % de corretagem.'],['data_prevista_para_receita','Mês de início da receita (n=1).'],['dealstage','Probabilidade da etapa (funil C07 por pipeline) + régua por bloco; Ganho/Impl via faturamento manual.'],['createdate','Recorte de negócio novo (≥ 2025-09-01) e início do Diagnóstico (+9/14/18m).']] },
   { key:'piperev12', title:'🟡 Valor do Pipeline | Projeção Mensal (N14)',
     desc:'Receita ou quantidade de deals por mês da data prevista de receita. Considera deals abertos com data prevista: Diagnóstico, Cotação, Proposta Enviada, Consultoria, Negociação e Standby; Reunião Agendada entra se o toggle de Ativos estiver ligado; Implantação entra apenas se Implantação = Ganho estiver desligado.',
     fields:[['data_prevista_para_receita','Mês de alocação do deal.'],['arr_estimado','Receita real mensal = ARR ÷ 12.'],['probabilidade_de_fechamento_ / hs_deal_stage_probability','Receita probabilizada = Receita real mensal × probabilidade final.'],['dealstage','Define se o deal entra como aberto e qual probabilidade padrão é usada.']] },
@@ -3335,82 +3333,13 @@ function buildNovoWinFactor() {
       onClick:function(e,el){ var pi=(el&&el.length)?el[0].index:null; novoOpenDealsBucketFilterModal('Taxa de Ganho por AE | Ganhos', _novoWon(), 'AE', buckets, pi); } } });
 }
 
-// ── N05: Pipeline Coverage v1 (forecast de negócio novo ÷ meta, mês a mês) ──────
-// Spec: docs/coverage-pipeline-v1-spec.md. Escopo v1 = negócio novo (createdate >=
-// 2025-09-01, Decisão 5), próximos 6 meses (Decisão 6). Receita por deal vem do motor
-// compartilhado calcReceitaMes (recorrente × pontual, §3.1). Probabilidade = etapa
-// (C06/override) com ajuste ±10% do AE (_calcProbInfo); Ganho/Implantação = 100%.
-// Diagnóstico (sem prêmio) ainda fora do cálculo — entra em fase posterior (§10).
-var NOVO_COV_START   = '2025-09-01';   // Decisão 5
-var NOVO_COV_HORIZON = 18;             // horizonte estendido p/ alcançar 2027 (Diagnóstico +9/14/18m, topo de funil +15m)
-function _novoCovMonths() {
-  // #2: janela fixa Jan/2026 → Dez/2027 (24m), alinhada ao N06/N06B e ao /forecast.
-  var out = [];
-  for (var y=2026;y<=2027;y++){ for(var mo=0;mo<12;mo++){ out.push(y+'-'+String(mo+1).padStart(2,'0')); } }
-  return out;
-}
-// Deal completo p/ o cálculo (§9): tem prêmio, modelo, agenciamento, vidas e data prevista.
-function _novoCovComplete(d) {
-  return !!(d.primeira_fatura && d.modelo_remuneracao && d.possui_agenciamento != null && d.vidas != null && d.data_prevista_para_receita);
-}
-// Probabilidade do deal: Ganho/Implantação = 100%; demais = prob da etapa (C06/override)
-// com ajuste ±10% do AE (_calcProbInfo). §5.
-function _novoCovProb(d) {
-  if (_novoIsWon(d)) return 1;
-  var info = (typeof _calcProbInfo === 'function') ? _calcProbInfo(d) : null;
-  var p = (info && info.final != null) ? info.final : _novoStageProbFor(d.stage, d.pipeline);
-  return (p != null && !isNaN(p)) ? p : 0;
-}
-// Série mensal do coverage. Escopo negócio novo; por deal completo, aloca receita
-// recorrente/pontual por mês (calcReceitaMes) ponderada pela probabilidade; o pipe
-// de segurança soma o total BRUTO dos deals abertos (sem ponderar).
-var _novoCovInclWon = false;  // #8: por padrão o N05 NÃO considera deals ganhos; o checkbox inclui.
-function novoToggleCovWon(on) { _novoCovInclWon = !!on; buildNovoCoverage(); }
-function _novoCoverageData() {
-  var months = _novoCovMonths();
-  var feed = (_novoDeals || []).filter(function(d){ return d.createdate && d.createdate >= NOVO_COV_START && d.stage !== 'Perdido' && (_novoCovInclWon || !_novoIsWon(d)); });
-  var recProb = {}, ponProb = {}, diagProb = {}, pipeRaw = {}, dealsByMonth = {};
-  months.forEach(function(m){ recProb[m]=0; ponProb[m]=0; diagProb[m]=0; pipeRaw[m]=0; dealsByMonth[m]=[]; });
-  var completeN = 0, diagN = 0;
-  feed.forEach(function(d){
-    // Diagnóstico: estimativa por headcount (regra da Cintia, já implementada em
-    // _novoFcRuleMonthValue): vidas × R$/vida × 6%, início em createdate + 9/14/18m.
-    // 100% recorrente (não há corretagem de entrada), marcada como "estimado".
-    if (d.stage === 'Diagnóstico') {
-      if (!d.createdate || (d.vidas||0) <= 0) return;       // sem base p/ estimar → fora
-      var any = false;
-      months.forEach(function(m){
-        var rv = _novoFcRuleMonthValue(d, m, true);          // já inclui o 6% de conversão
-        if (rv > 0) { diagProb[m] += rv; any = true; dealsByMonth[m].push({ d:d, n:null, p:NOVO_FC_DIAG_CONV, r:{total:rv,recorrente:rv,pontual:0}, diag:true }); }
-      });
-      if (any) diagN++;
-      return;
-    }
-    // Demais etapas: caminho de prêmio real (calcReceitaMes), exige dados completos.
-    if (!_novoCovComplete(d)) return;
-    completeN++;
-    var start = d.data_prevista_para_receita.substring(0,7);
-    var sy = parseInt(start.substring(0,4),10), sm = parseInt(start.substring(5,7),10)-1;
-    var p = _novoCovProb(d);
-    var open = !_novoIsWon(d);   // feed já exclui Perdido
-    months.forEach(function(m){
-      var my = parseInt(m.substring(0,4),10), mm = parseInt(m.substring(5,7),10)-1;
-      var n = (my-sy)*12 + (mm-sm) + 1;
-      if (n < 1) return;                       // deal ainda não gera receita nesse mês
-      var r = calcReceitaMes(n, d); if (!r) return;
-      recProb[m] += r.recorrente * p;
-      ponProb[m] += r.pontual * p;
-      if (open) pipeRaw[m] += r.total;         // segurança: pipe aberto bruto (só prêmio real)
-      dealsByMonth[m].push({ d:d, n:n, p:p, r:r });
-    });
-  });
-  // Topo de funil (MQL): originação futura agregada (não por deal). Onde a Reunião Agendada
-  // é absorvida no modelo da Cintia. Receita = Σ vidas originadas × R$24 × win rate, +15m.
-  var mqlProb = {};
-  months.forEach(function(m){ mqlProb[m] = (typeof _novoFcNewBizRev === 'function') ? _novoFcNewBizRev(m, true) : 0; });
-  return { months:months, recProb:recProb, ponProb:ponProb, diagProb:diagProb, mqlProb:mqlProb, pipeRaw:pipeRaw, dealsByMonth:dealsByMonth,
-           feedN:feed.length, completeN:completeN, diagN:diagN, includedN:completeN+diagN, excludedN:feed.length-completeN-diagN };
-}
+// ── N05: Cobertura do Pipeline (SSOT) | mesmo motor do N06B / Forecast Overall ───
+// Religado no ForecastEngine (Regra primária nº 3 | fonte única de receita): consome a
+// MESMA série mensal do N06B (_novoForecastSeries), então Receita Real e Probabilizada
+// batem mês a mês com o Forecast Total. Toggle: Cobertura (× meta) ↔ Receita (R$).
+// Ganho/Implantação SEMPRE incluídos (igual ao N06B); janela jan/2026 → dez/2027.
+var _novoCovMode = 'coverage';   // 'coverage' (× meta) | 'receita' (R$)
+function novoSwitchCovMode(m) { _novoCovMode = (m === 'receita' ? 'receita' : 'coverage'); buildNovoCoverage(); _initTabSubs(); }
 function buildNovoCoverage() {
   var el = document.getElementById('novo-coverage-body');
   if (!el) return;
@@ -3422,111 +3351,103 @@ function buildNovoCoverage() {
     return;
   }
   var th = _novoTheme();
-  var data = _novoCoverageData();
+  var s = _novoForecastSeries();                 // MESMA série do N06B (SSOT) → bate mês a mês
+  var months = s.months, real = s.real, prob = s.prob;
   var _cc = document.getElementById('novo-cov-count');
-  if (_cc) _cc.textContent = data.includedN.toLocaleString('pt-BR') + (L ? ' deals considered' : ' deals considerados');
-  var months = data.months;
-  var recArr  = months.map(function(m){ return Math.round(data.recProb[m]); });
-  var ponArr  = months.map(function(m){ return Math.round(data.ponProb[m]); });
-  var diagArr = months.map(function(m){ return Math.round(data.diagProb[m]); });
-  var mqlArr  = months.map(function(m){ return Math.round(data.mqlProb[m]||0); });
-  var totArr  = months.map(function(m){ return data.recProb[m]+data.ponProb[m]+data.diagProb[m]+(data.mqlProb[m]||0); });
-  var covArr  = totArr.map(function(v){ return Math.round(v/metaMonth*100)/100; });
-  var sumRec  = recArr.reduce(function(s,v){ return s+v; },0);
-  var sumPon  = ponArr.reduce(function(s,v){ return s+v; },0);
-  var sumDiag = diagArr.reduce(function(s,v){ return s+v; },0);
-  var sumMql  = mqlArr.reduce(function(s,v){ return s+v; },0);
-  var sumPipe = months.reduce(function(s,m){ return s+data.pipeRaw[m]; },0);
-  var covPipe = Math.round(sumPipe/(metaMonth*months.length)*100)/100;
+  if (_cc) _cc.textContent = s.contribN.toLocaleString('pt-BR') + (L ? ' deals in forecast' : ' deals no forecast');
+
+  var sumReal = real.reduce(function(a,b){ return a+b; }, 0);
+  var sumProb = prob.reduce(function(a,b){ return a+b; }, 0);
+  var sumWon  = s.cWon.reduce(function(a,b){ return a+b; }, 0);
+  var sumOpenReal = sumReal - sumWon;            // pipe aberto bruto (real, sem ponderar) = pipe + bid + novos
+  var covPipe = Math.round(sumOpenReal/(metaMonth*months.length)*100)/100;
   var pipeCol = covPipe>=3?'var(--green)':covPipe>=2?'var(--yellow)':'var(--red)';
   var covCol = function(v){ return v>=1?'#3fb950':v>=0.8?'#e3b341':'#f85149'; };
 
+  var isCov = _novoCovMode !== 'receita';
+  var realDisp = isCov ? real.map(function(v){ return Math.round(v/metaMonth*100)/100; }) : real.map(function(v){ return Math.round(v); });
+  var probDisp = isCov ? prob.map(function(v){ return Math.round(v/metaMonth*100)/100; }) : prob.map(function(v){ return Math.round(v); });
+  var _dlLabel = function(v){ return v>0 ? (isCov ? v+'×' : _revShort(v)) : ''; };
+  var _firstVisible = function(ctx){ var ch=ctx.chart; if(!ch.isDatasetVisible(ctx.datasetIndex)) return false; for(var i=0;i<ctx.datasetIndex;i++){ if(ch.isDatasetVisible(i)) return false; } return true; };
+
   el.innerHTML =
-    '<label style="display:inline-flex;align-items:center;gap:.4rem;font-size:.75rem;color:var(--text2);cursor:pointer;margin-bottom:.7rem">'+
-      '<input type="checkbox" '+(_novoCovInclWon?'checked':'')+' onclick="novoToggleCovWon(this.checked)" style="cursor:pointer">'+
-      (L?'Include won deals (Ganho/Implantação)':'Considerar deals ganhos (Ganho/Implantação)')+
-    '</label>'+
+    '<div id="novo-cov-mode-tabs" class="tab-sub" style="margin-bottom:.85rem">'+
+      '<button type="button" class="tab-sub-btn'+(isCov?' active':'')+'" data-mode="coverage" onclick="novoSwitchCovMode(\'coverage\')">'+(L?'Coverage (×)':'Cobertura (×)')+'</button>'+
+      '<button type="button" class="tab-sub-btn'+(!isCov?' active':'')+'" data-mode="receita" onclick="novoSwitchCovMode(\'receita\')">'+(L?'Revenue (R$)':'Receita (R$)')+'</button>'+
+    '</div>'+
     '<div style="margin-bottom:.85rem;font-size:.8rem;color:var(--text2);line-height:1.5">'+
-      (L?'New-business coverage (deals created since Sep/2025) | monthly forecast ÷ monthly target (R$ ':'Cobertura de negócio novo (deals criados desde set/2025) | forecast mensal ÷ meta mensal (R$ ')+
-      _ni(Math.round(metaMonth))+'). '+(L?('Next '+months.length+' months. Real premium + Diagnóstico (headcount est.) + aggregate MQL top-of-funnel (where Reunião Agendada is absorbed); × label = total coverage.'):('Próximos '+months.length+' meses. Prêmio real + Diagnóstico (est. por headcount) + topo de funil MQL agregado (onde a Reunião Agendada é absorvida); rótulo × = cobertura total.'))+
+      (L?'Same engine as Forecast Total (N06B) / Forecast Overall — values match month by month. ':'Mesmo motor do Forecast Total (N06B) / Forecast Overall — os valores batem mês a mês. ')+
+      (isCov
+        ? (L?('Monthly forecast ÷ monthly target (R$ '+_ni(Math.round(metaMonth))+'). 1× = on target.'):('Forecast mensal ÷ meta mensal (R$ '+_ni(Math.round(metaMonth))+'). 1× = no alvo.'))
+        : (L?('Real and weighted revenue in R$; dashed line = monthly target (R$ '+_ni(Math.round(metaMonth))+').'):('Receita real e probabilizada em R$; linha tracejada = meta mensal (R$ '+_ni(Math.round(metaMonth))+').')))+
     '</div>'+
     '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.6rem;margin-bottom:1rem">'+
-      _covKpi((L?'Recurring projected (':'Recorrente projetada (')+months.length+'m)', _revShort(sumRec+sumDiag+sumMql), L?'incl. Diagnóstico + top-of-funnel est.':'inclui Diagnóstico + topo de funil est.', 'var(--teal)') +
-      _covKpi((L?'One-time projected (':'Pontual projetada (')+months.length+'m)', _revShort(sumPon), L?'entry brokerage, non-recurring':'corretagem de entrada, não recorre', 'var(--text)') +
-      _covKpi(L?'Pipe coverage (safety)':'Cobertura de pipe (segurança)', covPipe+'×', L?'open premium pipe raw ÷ target (3–4× healthy)':'pipe de prêmio aberto bruto ÷ meta (3–4× saudável)', pipeCol) +
+      _covKpi((L?'Real revenue (':'Receita real (')+months.length+'m)', _revShort(sumReal), L?'full potential, unweighted':'potencial cheio, sem ponderar', 'var(--green)') +
+      _covKpi((L?'Weighted revenue (':'Receita probabilizada (')+months.length+'m)', _revShort(sumProb), L?'× stage probability':'× probabilidade da etapa', 'rgba(88,166,255,.95)') +
+      _covKpi(L?'Pipe coverage (safety)':'Cobertura de pipe (segurança)', covPipe+'×', L?'open pipe (real) ÷ target (3–4× healthy)':'pipe aberto (real) ÷ meta (3–4× saudável)', pipeCol) +
     '</div>'+
-    '<canvas id="novo-coverage-chart" style="max-height:250px"></canvas>'+
+    '<canvas id="novo-coverage-chart" style="max-height:260px"></canvas>'+
     '<div style="margin-top:.85rem;font-size:.72rem;color:var(--muted);line-height:1.5">'+
-      (L?'Coverage: ':'Cobertura: ')+data.completeN+' '+(L?'deals with real premium':'deals com prêmio real')+
-      ' + '+data.diagN+' '+(L?'Diagnóstico estimated':'Diagnóstico estimado')+
-      ' + '+(L?'aggregate MQL top-of-funnel (no per-deal drill)':'topo de funil MQL agregado (sem detalhamento por deal)')+
-      (data.excludedN>0 ? (' | '+data.excludedN+' '+(L?'deals still excluded (incomplete data or revenue beyond horizon)':'deals ainda fora (dados incompletos ou receita além do horizonte)')) : '')+
+      (L?'Won/onboarding always included (matches N06B). Click any month for the deal-level breakdown; top-of-funnel (BDR cohorts) is aggregate.':'Ganho/implantação sempre incluídos (bate com o N06B). Clique em qualquer mês para o detalhamento por deal; o topo de funil (cohorts BDR) é agregado.')+
     '</div>';
 
-  _novoMkChart('novo-coverage-chart', { type:'bar', plugins:[ChartDataLabels],
+  var refData = isCov ? months.map(function(){ return 1; }) : months.map(function(){ return Math.round(metaMonth); });
+  _novoMkChart('novo-coverage-chart', { type:'line', plugins:[ChartDataLabels],
     data:{ labels:months.map(_mlbl), datasets:[
-      { label:(L?'Recurring':'Recorrente'), data:recArr, backgroundColor:'rgba(58,184,183,.9)', stack:'s', borderRadius:3, order:3, datalabels:{display:false} },
-      { label:(L?'Diagnóstico (est.)':'Diagnóstico (est.)'), data:diagArr, backgroundColor:'rgba(210,153,34,.55)', stack:'s', borderRadius:3, order:3, datalabels:{display:false} },
-      { label:(L?'Top-of-funnel MQL (agg. est.)':'Topo de funil MQL (agreg. est.)'), data:mqlArr, backgroundColor:'rgba(147,112,219,.5)', stack:'s', borderRadius:3, order:3, datalabels:{display:false} },
-      { label:(L?'One-time':'Pontual'), data:ponArr, backgroundColor:'rgba(58,184,183,.38)', stack:'s', borderRadius:3, order:3,
-        datalabels:{ display:function(c){ return totArr[c.dataIndex] > 0; }, anchor:'end', align:'top',
-          color:function(c){ return covCol(covArr[c.dataIndex]); }, font:{family:NOVO_FONT,size:11,weight:'bold'},
-          formatter:function(v,c){ return covArr[c.dataIndex]+'×'; } } },
-      { type:'line', label:(L?'Target / mo':'Meta / mês'), data:months.map(function(){ return Math.round(metaMonth); }),
-        borderColor:'rgba(227,179,65,.95)', backgroundColor:'transparent', borderDash:[5,4], pointRadius:0, borderWidth:2, tension:0, fill:false, order:1, datalabels:{display:false} }
+      { label:(L?'Real revenue':'Receita real'), data:realDisp, borderColor:'rgba(63,185,80,.95)', backgroundColor:'rgba(63,185,80,.14)', pointRadius:3, pointHoverRadius:5, borderWidth:2, tension:0.35, fill:!isCov, order:2,
+        datalabels:{ display:_firstVisible, anchor:'end', align:'top', color:function(c){ return isCov?covCol(realDisp[c.dataIndex]):th.cText; }, font:{family:NOVO_FONT,size:9,weight:'bold'}, formatter:_dlLabel } },
+      { label:(L?'Weighted revenue':'Receita probabilizada'), data:probDisp, borderColor:'rgba(88,166,255,.95)', backgroundColor:'transparent', pointRadius:2, pointHoverRadius:4, borderWidth:2, tension:0.35, fill:false, order:3,
+        datalabels:{ display:_firstVisible, anchor:'end', align:'top', color:function(c){ return isCov?covCol(probDisp[c.dataIndex]):th.cText; }, font:{family:NOVO_FONT,size:9,weight:'bold'}, formatter:_dlLabel } },
+      { label:(isCov?(L?'Target (1×)':'Meta (1×)'):(L?'Target / mo':'Meta / mês')), data:refData, borderColor:'rgba(227,179,65,.95)', backgroundColor:'transparent', borderDash:[5,4], pointRadius:0, borderWidth:2, tension:0, fill:false, order:1, datalabels:{display:false} }
     ]},
     options:{ responsive:true, maintainAspectRatio:false, layout:{padding:{top:26}}, plugins:{
       legend:{display:true, labels:{color:th.cText2, font:{family:NOVO_FONT,size:10}, usePointStyle:true, padding:8}},
-      tooltip:{ callbacks:{ label:function(c){
-        var m=months[c.dataIndex];
-        if (c.dataset.type==='line') return (L?'Target: ':'Meta: ')+_revShort(metaMonth);
-        return c.dataset.label+': '+_revShort(c.parsed.y);
-      }, footer:function(items){
-        if(!items.length) return '';
-        var i=items[0].dataIndex;
-        return (L?'Total: ':'Total: ')+_revShort(totArr[i])+' | '+(L?'coverage ':'cobertura ')+covArr[i]+'× | '+(L?'click for deals':'clique p/ ver deals');
-      } } }
+      tooltip:{ mode:'index', intersect:false, callbacks:{ label:function(c){
+        if (c.dataset.borderDash) return isCov ? (L?'Target: 1×':'Meta: 1×') : ((L?'Target: ':'Meta: ')+_revShort(metaMonth));
+        var raw = c.datasetIndex===0 ? real[c.dataIndex] : prob[c.dataIndex];
+        return c.dataset.label+': '+(isCov ? ((Math.round(raw/metaMonth*100)/100)+'× ('+_revShort(raw)+')') : ('R$ '+Math.round(raw).toLocaleString('pt-BR')));
+      }, footer:function(items){ return items.length ? (L?'click for deals':'clique p/ ver deals') : ''; } } }
     },
-    scales:{ x:{stacked:true, grid:{display:false}, ticks:{color:th.cText2, font:{family:NOVO_FONT}}},
-      y:{stacked:true, grid:{color:th.cGrid}, ticks:{color:th.cText2, font:{family:NOVO_FONT}, callback:function(v){return _revShort(v);}}, beginAtZero:true} },
-    onClick:function(e,el){ if(!el.length) return; _novoOpenCoverageDrill(months[el[0].index], data); } }});
+    scales:{ x:{grid:{display:false}, ticks:{color:th.cText2, font:{family:NOVO_FONT}}},
+      y:{grid:{color:th.cGrid}, beginAtZero:true, grace:'8%', ticks:{color:th.cText2, font:{family:NOVO_FONT}, callback:function(v){return isCov?(v+'×'):_revShort(v);}}} },
+    onClick:function(e,el){ if(!el.length) return; _novoOpenCoverageDrill(months[el[0].index], s, metaMonth); } }});
 }
-// Drill-down (memória de cálculo): deals que compõem o mês, com régua por deal.
-function _novoOpenCoverageDrill(month, data) {
-  var rows = (data.dealsByMonth[month]||[]).slice().sort(function(a,b){ return (b.r.total*b.p)-(a.r.total*a.p); });
+// Drill-down (memória de cálculo): itens que compõem o mês, com receita real e probabilizada
+// por deal (mesma quebra do N06B). O topo de funil (cohorts BDR) entra como linha agregada.
+function _novoOpenCoverageDrill(month, s, metaMonth) {
   var L = NOVO_LANG === 'en';
-  var mql = (data.mqlProb && data.mqlProb[month]) || 0;
-  var mqlNote = mql>0 ? '<p style="font-size:.8rem;color:var(--text2);padding:.5rem .65rem;background:var(--card2);border-radius:6px;border-left:3px solid rgba(147,112,219,.8);margin-bottom:.75rem">'+(L?'Aggregate MQL top-of-funnel this month: ':'Topo de funil MQL agregado neste mês: ')+'<b>'+_revShort(mql)+'</b> '+(L?'(estimated, not per-deal — no drill).':'(estimado, não por deal — sem detalhamento).')+'</p>' : '';
-  if (!rows.length) { openModal('Coverage | '+_mlbl(month), mqlNote || ('<p style="color:var(--text2);padding:1rem 0">'+(L?'No deals.':'Nenhum deal.')+'</p>')); return; }
+  var rows = (s.byMonth[month]||[]).slice().sort(function(a,b){ return (b.prob||0)-(a.prob||0) || (b.real||0)-(a.real||0); });
+  var mi = s.months.indexOf(month);
+  var mReal = mi>=0 ? s.real[mi] : 0, mProb = mi>=0 ? s.prob[mi] : 0;
+  var cov  = metaMonth>0 ? Math.round(mReal/metaMonth*100)/100 : 0;
+  var covP = metaMonth>0 ? Math.round(mProb/metaMonth*100)/100 : 0;
+  var blockLbl = { won:(L?'Won/onboarding':'Ganho/impl.'), pipe:'Pipeline', bid:'BID', new:(L?'New business':'Novos negócios') };
+  var head = '<div style="display:flex;gap:1.2rem;flex-wrap:wrap;margin-bottom:.85rem;font-size:.82rem;line-height:1.5">'+
+    '<span>'+(L?'Real: ':'Real: ')+'<b style="color:var(--green)">'+_revShort(mReal)+'</b> ('+cov+'×)</span>'+
+    '<span>'+(L?'Weighted: ':'Probabilizada: ')+'<b style="color:rgba(88,166,255,.95)">'+_revShort(mProb)+'</b> ('+covP+'×)</span>'+
+    '<span style="color:var(--text2)">'+(L?'Target/mo: ':'Meta/mês: ')+_revShort(metaMonth)+'</span></div>';
+  if (!rows.length) { openModal((L?'Coverage':'Cobertura')+' | '+_mlbl(month), head+'<p style="color:var(--text2);padding:1rem 0">'+(L?'No deals.':'Nenhum deal.')+'</p>'); return; }
   var body = '<table class="lb" style="font-size:.78rem"><thead><tr>'+
-    '<th style="text-align:left">Deal</th><th style="text-align:left">Etapa</th><th>Modelo</th><th>Mês contrato (n)</th><th>Vidas</th><th>Prêmio</th><th>Prob.</th><th>Recorrente</th><th>Pontual</th><th>Receita ponderada</th></tr></thead><tbody>';
+    '<th style="text-align:left">Deal</th><th style="text-align:left">Etapa</th><th>'+(L?'Block':'Bloco')+'</th><th>'+(L?'Contract mo (n)':'Mês contrato (n)')+'</th><th>Prob.</th><th>'+(L?'Real revenue':'Receita real')+'</th><th>'+(L?'Weighted revenue':'Receita probabilizada')+'</th></tr></thead><tbody>';
   rows.forEach(function(x){
+    if (x.agg) {
+      body += '<tr><td style="text-align:left" colspan="4">'+_ne(x.label)+'</td><td>—</td><td>'+_revShort(x.real)+'</td><td>'+_revShort(x.prob)+'</td></tr>';
+      return;
+    }
     var d=x.d, hsUrl=d.hs_id?'https://app.hubspot.com/contacts/44715285/deal/'+d.hs_id:'#';
     var name=d.hs_id?'<a href="'+hsUrl+'" target="_blank" rel="noopener" style="color:var(--teal);text-decoration:none">'+_ne(d.dealname)+'</a>':_ne(d.dealname);
-    var modeloCell = x.diag ? 'Diagnóstico (est.)' : (_ne(d.modelo_remuneracao||'—')+(d.possui_agenciamento?' +ag':''));
-    var premioCell = x.diag ? ('R$'+_novoFcDiagFee(d.vidas||0)+'/vida') : _revShort(d.primeira_fatura||0);
-    var wRev = x.diag ? x.r.total : (x.r.total*x.p);   // diag já vem ponderado (×6%)
     body += '<tr><td style="text-align:left;max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+name+'</td>'+
-      '<td style="text-align:left;white-space:nowrap">'+_ne(d.stage)+'</td><td>'+modeloCell+'</td><td>'+(x.n!=null?x.n:'—')+'</td>'+
-      '<td>'+_ni(d.vidas)+'</td><td>'+premioCell+'</td><td>'+Math.round(x.p*100)+'%</td>'+
-      '<td>'+_revShort(x.r.recorrente)+'</td><td>'+_revShort(x.r.pontual)+'</td><td>'+_revShort(wRev)+'</td></tr>';
+      '<td style="text-align:left;white-space:nowrap">'+_ne(d.stage)+'</td><td>'+(blockLbl[x.block]||x.block||'—')+'</td><td>'+(x.n!=null?x.n:'—')+'</td>'+
+      '<td>'+Math.round((x.p||0)*100)+'%</td><td>'+_revShort(x.real)+'</td><td>'+_revShort(x.prob)+'</td></tr>';
   });
   body += '</tbody></table>';
-  openModal('Coverage | '+_mlbl(month)+' ('+rows.length+' deals)', mqlNote + body);
+  openModal((L?'Coverage':'Cobertura')+' | '+_mlbl(month)+' ('+rows.length+' '+(L?'items':'itens')+')', head + body);
 }
 function _covKpi(lbl,val,sub,col) {
   return '<div style="background:var(--card2);border-radius:8px;padding:.7rem .85rem">'+
     '<div style="font-size:.62rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em">'+lbl+'</div>'+
     '<div style="font-size:1.15rem;font-weight:800;color:'+col+';margin:.15rem 0">'+val+'</div>'+
     '<div style="font-size:.65rem;color:var(--muted)">'+sub+'</div></div>';
-}
-function novoSaveCovTarget() {
-  var inp = document.getElementById('novo-cov-input');
-  if (!inp) return;
-  var raw = inp.value.replace(/\./g,'').replace(',','.').replace(/[^\d.]/g,'');
-  var v = parseFloat(raw);
-  if (!isNaN(v) && v>0) { _novoCoverageTarget = v; try{localStorage.setItem('novo_cov_target', v);}catch(e){} }
-  buildNovoCoverage();
 }
 
 // ── N14: Pipeline Value by Stage (12-Month Projection) ────────────────────────
@@ -4019,41 +3940,43 @@ var NOVO_BID_PROB = 0.005;
 // Índice do mês 'YYYY-MM' dentro de NOVO_FC_MONTHS (-1 se fora da janela do engine).
 function _novoFcMonthIdx(ym){ var y=parseInt(ym.substring(0,4),10), mo=parseInt(ym.substring(5,7),10)-1, k=y*100+mo; for(var i=0;i<NOVO_FC_MONTHS.length;i++){ if(NOVO_FC_MONTHS[i].key===k) return i; } return -1; }
 
-function buildNovoPipeRev12B() {
-  // Mesmo conjunto do /forecast: TODOS os deals que passam no filtro (negócio novo OU
-  // Ganho/Impl. OU Bid desde jan/25), SEM recorte por etapa — a probabilidade (sp nulo →
-  // deal não entra) e a régua cuidam das exclusões, igual ao Forecast Overall. Não usa
-  // _novoCurrentActivePipeline (que corta Standby/reuniões pelos toggles do dashboard).
-  var considered = (_novoDeals||[]).filter(_novoFcInForecastSet);
-  // Dedup Fee×Corretagem: zera a receita do gêmeo excluído (igual ao /forecast).
-  var excl = _novoFcRevExcluded(considered);
-  var nonBid = considered.filter(function(d){ return d.pipeline!=='Bid' && !_novoIsWon(d); }); // pipe concreto + Diagnóstico
-  var bid    = considered.filter(function(d){ return d.pipeline==='Bid'  && !_novoIsWon(d); }); // pipeline de Bid (data imputada)
-  var wonC   = considered.filter(function(d){ return _novoIsWon(d); });                          // Ganho/Implantação
+// ── Série mensal do forecast (SSOT) — consumida por N06B e N05 (Cobertura) ───────
+// Mesmo conjunto e motor do /forecast e do /forecast-stage (Regra primária nº 3):
+// TODOS os deals que passam no filtro (negócio novo OU Ganho/Impl. OU Bid desde jan/25),
+// SEM recorte por etapa — a probabilidade (sp nulo → deal não entra) e a régua cuidam das
+// exclusões. Retorna as duas séries (real/prob), o breakdown por bloco e o detalhe por mês
+// (byMonth, p/ o drill). Garante que N06B e N05 mostrem EXATAMENTE os mesmos números.
+function _novoForecastSeries() {
   var months = _novoProjectionMonthsToDec27();
-  var th = _novoTheme();
-
-  // Duas linhas: Receita Real (bruta) e Receita Probabilizada, ambas do forecast total
-  // (won/impl + pipe + bid + novos negócios) via ForecastEngine — mesmo motor do /forecast.
-  var Rwon={},Rpipe={},Rbid={},Rnew={}, Pwon={},Ppipe={},Pbid={},Pnew={};
-  for (var k=0;k<months.length;k++){ var mk=months[k]; Rwon[mk]=0;Rpipe[mk]=0;Rbid[mk]=0;Rnew[mk]=0; Pwon[mk]=0;Ppipe[mk]=0;Pbid[mk]=0;Pnew[mk]=0; }
-  var _contrib = {};   // deals que efetivamente geram receita (para a contagem do título)
-  var _accum = function(d, R, P, probOverride){
+  var considered = (_novoDeals||[]).filter(_novoFcInForecastSet);
+  var excl = _novoFcRevExcluded(considered);                                                     // dedup Fee×Corretagem
+  var nonBid = considered.filter(function(d){ return d.pipeline!=='Bid' && !_novoIsWon(d); });   // pipe concreto + Diagnóstico
+  var bid    = considered.filter(function(d){ return d.pipeline==='Bid'  && !_novoIsWon(d); });   // pipeline de Bid (data imputada)
+  var wonC   = considered.filter(function(d){ return _novoIsWon(d); });                            // Ganho/Implantação
+  var Rwon={},Rpipe={},Rbid={},Rnew={}, Pwon={},Ppipe={},Pbid={},Pnew={}, byMonth={};
+  for (var k=0;k<months.length;k++){ var mk=months[k]; Rwon[mk]=0;Rpipe[mk]=0;Rbid[mk]=0;Rnew[mk]=0; Pwon[mk]=0;Ppipe[mk]=0;Pbid[mk]=0;Pnew[mk]=0; byMonth[mk]=[]; }
+  var _contrib = {};                                                 // deals que efetivamente geram receita (contagem do título)
+  var _accum = function(d, R, P, probOverride, block){
     if (typeof ForecastEngine === 'undefined') return;
-    if (excl.has(_novoFcDealId(d))) return;   // gêmeo Fee×Corretagem excluído: receita zerada
+    if (excl.has(_novoFcDealId(d))) return;                          // gêmeo Fee×Corretagem excluído: receita zerada
     var prob = (probOverride != null) ? probOverride : _novoFcProbAdj(d);
     var arr = ForecastEngine.dealMonthly(d, prob);
     var any = false;
-    for (var i=0;i<months.length;i++){ var m=months[i]; var idx=_novoFcMonthIdx(m); if(idx<0) continue; var o=arr[idx]; if(!o) continue; if(o.rec>0){ R[m]+=o.rec; any=true; } if(o.val>0) P[m]+=o.val; }
+    for (var i=0;i<months.length;i++){
+      var m=months[i]; var idx=_novoFcMonthIdx(m); if(idx<0) continue; var o=arr[idx]; if(!o) continue;
+      var rr=o.rec>0?o.rec:0, vv=o.val>0?o.val:0;
+      if(rr>0){ R[m]+=rr; any=true; } if(vv>0) P[m]+=vv;
+      if(rr>0||vv>0) byMonth[m].push({ d:d, real:rr, prob:vv, p:(o.probAdj!=null?o.probAdj:prob), n:o.n, block:block });
+    }
     if (any) _contrib[_novoFcDealId(d)] = true;
   };
-  nonBid.forEach(function(d){ _accum(d, Rpipe, Ppipe); });          // pipe concreto + Diagnóstico
+  nonBid.forEach(function(d){ _accum(d, Rpipe, Ppipe, null, 'pipe'); });          // pipe concreto + Diagnóstico
   // Bloco BID (= forecast-stage Overall): SÓ Negociação/Proposta Enviada, com data imputada
   // (Negociação→out/26, Proposta→jun/27) e probabilidade fixa 0,5% (premissa conservadora).
   // Deals de Bid em outras etapas NÃO entram na receita (nem aqui, nem nos blocos de Vendas).
-  bid.forEach(function(d){ var rd=NOVO_BID_IMPUTE[d.stage]; if(!rd) return; _accum(_novoDealWithDate(d, rd), Rbid, Pbid, NOVO_BID_PROB); });
-  wonC.forEach(function(d){ _accum(d, Rwon, Pwon); });               // Ganho/Implantação (faturamento manual)
-  // Topo de funil (novos negócios) = cohorts BDR (Real) × conversão MQL (Probabilizada).
+  bid.forEach(function(d){ var rd=NOVO_BID_IMPUTE[d.stage]; if(!rd) return; _accum(_novoDealWithDate(d, rd), Rbid, Pbid, NOVO_BID_PROB, 'bid'); });
+  wonC.forEach(function(d){ _accum(d, Rwon, Pwon, null, 'won'); });               // Ganho/Implantação (faturamento manual)
+  // Topo de funil (novos negócios) = cohorts BDR (Real) × conversão MQL (Probabilizada). Agregado (não por deal).
   if (typeof ForecastEngine !== 'undefined') {
     var mqlConv = _novoFcMqlConv();
     ForecastEngine.bdrCohorts().forEach(function(c){
@@ -4061,18 +3984,27 @@ function buildNovoPipeRev12B() {
         var diff=(y-c.revStart.y)*12+(mo-c.revStart.mo); if(diff<0) continue;
         Rnew[m]+=c.rec; Pnew[m]+=c.rec*mqlConv; }
     });
+    months.forEach(function(m){ if((Rnew[m]||0)>0||(Pnew[m]||0)>0) byMonth[m].push({ agg:true, label:(NOVO_LANG==='en'?'Top-of-funnel (BDR cohorts)':'Topo de funil (cohorts BDR)'), real:Rnew[m]||0, prob:Pnew[m]||0, block:'new' }); });
   }
-
-  var dataReal=[], dataProb=[], cWon=[], cPipe=[], cBid=[], cNew=[];
+  var real=[], prob=[], cWon=[], cPipe=[], cBid=[], cNew=[];
   months.forEach(function(m){
-    var real=(Rwon[m]||0)+(Rpipe[m]||0)+(Rbid[m]||0)+(Rnew[m]||0);
-    var prob=(Pwon[m]||0)+(Ppipe[m]||0)+(Pbid[m]||0)+(Pnew[m]||0);
-    dataReal.push(Math.round(real)); dataProb.push(Math.round(prob));
+    real.push((Rwon[m]||0)+(Rpipe[m]||0)+(Rbid[m]||0)+(Rnew[m]||0));
+    prob.push((Pwon[m]||0)+(Ppipe[m]||0)+(Pbid[m]||0)+(Pnew[m]||0));
     cWon.push(Rwon[m]||0); cPipe.push(Rpipe[m]||0); cBid.push(Rbid[m]||0); cNew.push(Rnew[m]||0);
   });
+  return { months:months, real:real, prob:prob, cWon:cWon, cPipe:cPipe, cBid:cBid, cNew:cNew, byMonth:byMonth, contribN:Object.keys(_contrib).length };
+}
+
+function buildNovoPipeRev12B() {
+  var s = _novoForecastSeries();
+  var months = s.months;
+  var th = _novoTheme();
+  var dataReal = s.real.map(function(v){ return Math.round(v); });
+  var dataProb = s.prob.map(function(v){ return Math.round(v); });
+  var cWon=s.cWon, cPipe=s.cPipe, cBid=s.cBid, cNew=s.cNew;
   var L=NOVO_LANG==='en';
   var _pc = document.getElementById('novo-piperev12b-count');
-  if (_pc) _pc.textContent = Object.keys(_contrib).length.toLocaleString('pt-BR') + (L?' deals in forecast':' deals no forecast');
+  if (_pc) _pc.textContent = s.contribN.toLocaleString('pt-BR') + (L?' deals in forecast':' deals no forecast');
 
   _novoMkChart('chart-novo-piperev12b', { type:'line', plugins:[ChartDataLabels],
     data:{ labels:months.map(_mlbl), datasets:[
