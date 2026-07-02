@@ -68,6 +68,7 @@ const PROPERTIES = [
   'hs_v2_date_entered_1144844314', // Vendas | Ganho
   'hs_v2_date_entered_1288611084', // Vendas | Implantação
   'motivo_do_declinio_ou_perdido',
+  'motivo_de_declinio_perdido___descricao', // texto aberto | justificativa do declínio (drill A15 do painel AE)
   'a_reuniao_ocorreu_',
   // Campos adicionais (preenchidos no portal, confirmados via /api/forecast-table):
   'premio_mensal',        // prêmio mensal real (vs proxy ARR/12) | ~224 deals
@@ -339,6 +340,7 @@ module.exports = async function handler(req, res) {
           campos_faltantes: camposFaltantes,
           dados_completos: camposFaltantes.length === 0,
           lost_reason: p.motivo_do_declinio_ou_perdido || null,
+          lost_reason_desc: p.motivo_de_declinio_perdido___descricao || null,
           createdate: p.createdate ? p.createdate.substring(0, 10) : null,
           dias_no_pipe: p.createdate
             ? Math.floor((Date.now() - new Date(p.createdate).getTime()) / 86400000)
