@@ -1749,3 +1749,18 @@ Registro curto, uma linha por interação (a cada alteração).
 - **R03:** deals com estágio ATUAL = Reunião Agendada e entrada na etapa há mais de 30 dias; todas as origens (BDR e AE); sem a data de entrada → fora. Amarelo quando > 0.
 - Todos com tooltip explicativo no "i" e drill (clique abre o modal com os deals). `bdrKpiOpen` reescrito; `BDR_CARD_CODES` atualizado (kpi-* antigos removidos).
 - **Validação (dados de produção, 2026-07-02):** R01 = 5 deals em jul/26 (Cintia 2 · Gabriele 1 · Giovana 1 · Priscilla 1) · R02 = 984 colaboradores · R03 = 46 de 98 em RA (0 sem data). Matching: 672/979 deals com sdr são do time. `_check-inline-js` 0 erros; `_smoke-render` OK (1335 deals); NULs herdados intactos (3); `/novo-bdr` 200.
+
+### BDR Performance | gráficos R11–R15 restritos ao time; handoff invertido (2026-07-02)
+
+> A pedido do CRO, continuação da reformulação: todos os gráficos de originação passam a considerar APENAS o time de BDRs (13 do drawer) e a data de ENTRADA em Reunião Agendada.
+
+- **R03:** agora conta só deals originados pelo time (`_isTeamBdr`); tooltip/sub/drill atualizados.
+- **R12 (Originação por BDR):** base `_isTeamBdr`; rótulos = nome canônico do drawer (`_teamBdrName`); "(Top 15)" removido do título (13 BDRs, ninguém é cortado); tooltip reescrito.
+- **R13 (Weekly):** base `_isTeamBdr` + rótulos canônicos; a semana já era pela entrada em RA.
+- **R14 (Novos Leads por Mês):** série de AE REMOVIDA — só o time de BDRs, uma série; título "Novos Leads por Mês | BDRs"; modo Colaboradores = Σ campo colaboradores (antes contava "originadores distintos"); mês pela entrada em RA (já era); drill por mês.
+- **R15 (Handoff):** título "BDR → AE Handoff Matrix" (sem "Quality"); eixos INVERTIDOS: linhas = AEs (Top 8), colunas = BDRs do time (todos os 13, sem slice); executivos excluem Anderson, Gabriel (a pedido) + aurilia/gabriele (já excluídos) + qualquer BDR do time que apareça como owner (Yokyko/Bruna tinham 1 deal próprio); `bdrHandoffCell(ai,bi)` ajustado. Descoberta: os 3 bytes NUL do bdr.html NÃO são corrupção — são o separador da chave da célula do handoff (`b+'\0'+a`), design intencional (documentado no código). O bloco foi reescrito via script Node preservando-os (Edit tool não expressa NUL).
+- **R11 (Distribuição de Porte):** base `_isTeamBdr`; verificado que o toggle Colaboradores JÁ usa quantidade_de_colaboradores (e Vidas usa vidas — nunca misturam); tooltip PT/EN reescrito; count do card = deals do time.
+- **Item 6 (janela temporal):** verificado — NENHUM gráfico do painel usa createdate como janela: todos os de originação usam `_origDeals()` (AxFilter sobre `data_reuniao_agendada`); ganhos/perdidos por close_date (saídas). Sem mudança necessária.
+- **Facet modal:** `_fBdr` agora resolve para o nome canônico do time (fallback no nome cru); helper `_teamBdrByName(string)` extraído para reuso.
+- **Incidente evitado:** o script Node da reescrita comeu a `\` do regex (`/s+/`) — pego na revalidação e corrigido via Edit.
+- **Validação:** dados de produção: R12 = 665 deals do time (13/13 BDRs com originação); R15 = 607 pares com os 6 AEs core (Rafael 119 · André 117 · Juliana 113 · Guilherme 108 · Fausto 102 · Ágatta 47); R14 mensal abr 85 · mai 266 · jun 98 · jul 5. `_check-inline-js` 0 erros; `_smoke-render` OK; NULs = 3; `/novo-bdr` 200.

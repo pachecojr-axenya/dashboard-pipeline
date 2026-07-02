@@ -227,7 +227,7 @@ var NOVO_I18N={
     bdr_avg_vidas:'Vidas Médias por Deal ao Longo do Tempo',bdr_avg_vidas_tip:'Média de vidas por deal, por mês de entrada em Reunião Agendada.',
     bdr_colabs:'Origem BDR vs Não BDR',bdr_colabs_tip:'% de deals com campo sdr preenchido, entre os que entraram em Reunião Agendada no período.',
     bdr_stage_entry:'Etapa de Entrada dos Deals',bdr_stage_entry_tip:'Não exibido: requer histórico de etapa inicial; etapa atual não representa entrada.',
-    bdr_size_dist:'Distribuição de Porte',bdr_size_dist_tip:'Deals por faixa de colaboradores (ou vidas, via toggle), por data de entrada em Reunião Agendada quando o filtro está ativo.',
+    bdr_size_dist:'Distribuição de Porte',bdr_size_dist_tip:'Deals por faixa de porte, APENAS originados pelo time de BDRs (drawer de Configurações). Toggle define o campo da faixa: Colaboradores usa quantidade_de_colaboradores; Vidas usa vidas (nunca misturam). Filtro de período pela data de ENTRADA em Reunião Agendada.',
   },
   en:{loading:'Fetching data…',error_prefix:'Error: ',retry:'Try again',updated_at:'Updated at',
     bdr_note:'BDR = HubSpot field <code>sdr</code> filled. Origination uses the Meeting Scheduled stage-entry date (<code>hs_v2_date_entered</code>); outcomes use close_date; open-pipeline snapshots do not use the period filter.',
@@ -238,7 +238,7 @@ var NOVO_I18N={
     bdr_avg_vidas:'Avg Lives per Deal Over Time',bdr_avg_vidas_tip:'Avg lives per deal, by Meeting Scheduled entry month.',
     bdr_colabs:'BDR vs Non-BDR Origin',bdr_colabs_tip:'% of deals with sdr field filled, among those that entered Meeting Scheduled in the period.',
     bdr_stage_entry:'Deal Entry Stage Distribution',bdr_stage_entry_tip:'Not rendered: requires stage-history entry data; current stage is not entry stage.',
-    bdr_size_dist:'Deal Size Distribution',bdr_size_dist_tip:'Deals by employee-count range (or lives, via toggle), by Meeting Scheduled entry date when the filter is active.',
+    bdr_size_dist:'Deal Size Distribution',bdr_size_dist_tip:'Deals by size range, ONLY originated by the BDR team (Settings drawer). The toggle picks the range field: Colaboradores uses quantidade_de_colaboradores; Vidas uses vidas (never mixed). Period filter by the Reunião Agendada entry date.',
   }
 };
 function t(k){ return (NOVO_I18N[NOVO_LANG]||NOVO_I18N.pt)[k]||(NOVO_I18N.pt[k])||k; }
@@ -301,13 +301,15 @@ var BDR_HS_ALIAS={
   'giovana rocha':'Giovana Nunes',
 };
 function _bdrNorm(s){ return (s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim(); }
-function _teamBdrName(d){
-  var s=_bdrName(d); if(!s) return null;
+// Resolve uma string de nome (sdr OU ae) para o nome canônico do time, ou null.
+function _teamBdrByName(s){
+  if(!s) return null;
   var n=_bdrNorm(BDR_HS_ALIAS[_bdrNorm(s)]||s);
   var list=window.BDR_LIST||[];
   for(var i=0;i<list.length;i++){ if(_bdrNorm(list[i].name)===n) return list[i].name; }
   return null;
 }
+function _teamBdrName(d){ return _teamBdrByName(_bdrName(d)); }
 function _isTeamBdr(d){ return !!_teamBdrName(d); }
 // Toggle segmentado (Apple-style), portado do painel AE.
 function _subTabs(id,current,opts){ return '<div id="'+id+'" class="tab-sub">'+opts.map(function(o){ return '<button class="tab-sub-btn'+(current===o.mode?' active':'')+'" data-mode="'+o.mode+'" onclick="'+o.fn+'(\''+o.mode+'\')">'+o.label+'</button>'; }).join('')+'</div>'; }
@@ -346,7 +348,7 @@ function _novoMkChart(id,cfg){ var ctx=document.getElementById(id); if(!ctx)retu
 function _novoDealsRows(deals){ return deals.map(function(d){ var hsUrl=d.hs_id?'https://app.hubspot.com/contacts/44715285/deal/'+d.hs_id:'#'; var nameCell=d.hs_id?'<a href="'+hsUrl+'" target="_blank" rel="noopener" style="color:var(--teal);text-decoration:none">'+_ne(d.dealname)+'</a>':_ne(d.dealname); return '<tr><td style="text-align:left;min-width:150px;max-width:210px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+nameCell+'</td><td style="text-align:left;white-space:nowrap">'+_ne(d.sdr||'—')+'</td><td style="text-align:left;white-space:nowrap">'+_ne(d.ae)+'</td><td>'+_ne(d.pipeline)+'</td><td style="white-space:nowrap">'+_ne(d.stage)+'</td><td>'+_ni(d.vidas)+'</td><td>'+(d.colaboradores!=null?d.colaboradores:'—')+'</td><td>'+_revShort(_annualRev(d))+'</td><td style="white-space:nowrap">'+(d.createdate||'—')+'</td><td style="white-space:nowrap">'+(d.data_reuniao_agendada||'—')+'</td><td style="white-space:nowrap">'+(d.close_date||'—')+'</td></tr>'; }).join(''); }
 function novoOpenDealsModal(title,deals){ if(!deals||!deals.length){ openModal(title,'<p style="color:var(--text2);padding:1rem 0">Nenhum deal.</p>'); return; } var html='<table class="lb"><thead><tr><th style="text-align:left">Deal</th><th style="text-align:left">BDR</th><th style="text-align:left">AE</th><th>Pipe</th><th>Etapa</th><th>Vidas</th><th>Colabs</th><th>ARR</th><th>Criado</th><th>Reun. Ag.</th><th>Fechado</th></tr></thead><tbody>'+_novoDealsRows(deals)+'</tbody></table>'; openModal(title+' ('+deals.length+')',html); }
 // Modal de deals com filtros (chips) no topo, baseados na dimensão do gráfico clicado.
-function _fBdr(d){ return _bdrName(d)||'(sem BDR)'; }
+function _fBdr(d){ return _teamBdrName(d)||_bdrName(d)||'(sem BDR)'; }
 function _fOrigem(d){ return _isBdr(d)?'BDR':'AE'; }
 function _fDesfecho(d){ return _novoIsWon(d)?'Ganho':(d.stage==='Perdido'?'Perdido':'Aberto'); }
 function _fMes(d){ return _origDate(d)?_mlbl(_oym(d)):'(sem reunião agend.)'; }
@@ -412,6 +414,7 @@ function novoRender(){
   var months=_getMonths(12);
   var created=_origDeals();
   var createdBdr=created.filter(_isBdr).length;
+  var createdTeam=created.filter(_isTeamBdr).length;
   // ── KPIs (R01/R02/R03): originação do MÊS CORRENTE pelo time de BDRs + reuniões paradas ──
   // "Originado" = data de ENTRADA em Reunião Agendada (BDR_ORIG_DATE), não createdate.
   // Time de BDRs = exatamente os nomes do drawer de Configurações (window.BDR_LIST).
@@ -421,10 +424,10 @@ function novoRender(){
   var origMonthColabs=origMonthDeals.reduce(function(s,d){ return s+(d.colaboradores||0); },0);
   var _cut=new Date(); _cut.setDate(_cut.getDate()-30);
   var cutStr=_cut.getFullYear()+'-'+String(_cut.getMonth()+1).padStart(2,'0')+'-'+String(_cut.getDate()).padStart(2,'0');
-  var raStale=deals.filter(function(d){ return d.stage==='Reunião Agendada' && _origDate(d) && _origDate(d)<=cutStr; });
+  var raStale=deals.filter(function(d){ return _isTeamBdr(d) && d.stage==='Reunião Agendada' && _origDate(d) && _origDate(d)<=cutStr; });
   var tipOrigDeals='Nº de deals originados no mês corrente ('+_mlbl(nowYM)+') APENAS pelo time de BDRs (os 13 nomes do drawer de Configurações; grafias do HubSpot mapeadas para o drawer). Originado = data de ENTRADA na etapa Reunião Agendada, não a data de criação. Deals sem essa data não contam. Mês corrente fixo | não segue o filtro de período. Clique para ver os deals.';
   var tipOrigColabs='Soma do campo colaboradores (quantidade_de_colaboradores no HubSpot) dos MESMOS deals do KPI R01: originados no mês corrente ('+_mlbl(nowYM)+') pelo time de BDRs (drawer de Configurações). Deals sem o campo contam 0. Mês corrente fixo | não segue o filtro de período. Clique para ver os deals.';
-  var tipRaStale='Deals cujo estágio ATUAL é Reunião Agendada e que ENTRARAM na etapa há mais de 30 dias — reuniões marcadas paradas sem avanço. Todas as origens (BDR e AE), pipelines Vendas + Bid. Deals em Reunião Agendada sem a data de entrada registrada ficam de fora. Não segue o filtro de período. Clique para ver os deals.';
+  var tipRaStale='Deals cujo estágio ATUAL é Reunião Agendada e que ENTRARAM na etapa há mais de 30 dias — reuniões marcadas paradas sem avanço. APENAS deals originados pelo time de BDRs (os 13 nomes do drawer de Configurações). Deals em Reunião Agendada sem a data de entrada registrada ficam de fora. Não segue o filtro de período. Clique para ver os deals.';
 
   var kpi=function(lbl,val,sub,col,key,kind,tip){ return '<div class="kpi-card'+(kind?' kpi-click':'')+'" '+(kind?'onclick="bdrKpiOpen(\''+kind+'\')"':'')+'><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.35rem"><div class="kpi-label">'+lbl+'</div>'+(tip?_infoBtn(tip,key):_codeTag(key))+'</div><div class="kpi-value" style="color:'+(col||'var(--text)')+'">'+val+'</div><div class="kpi-sub">'+sub+'</div></div>'; };
   var c=function(title,tip,id,h,tabs,noEmoji){ return '<div class="novo-card"><div class="novo-card-header"><h3>'+(noEmoji?'':'🟡 ')+title+'</h3>'+_infoBtn(tip,id)+(tabs||'')+'</div><canvas id="chart-bdr-'+id+'" style="max-height:'+(h||340)+'px"></canvas></div>'; };
@@ -435,22 +438,22 @@ function novoRender(){
     '<div class="kpi-row">'+
       kpi('Deals Originados no Mês | BDRs',_ni(origMonthDeals.length),'entrada em Reunião Agendada em '+_mlbl(nowYM)+' | só time de BDRs','var(--teal)','kpi-orig-deals','origMonth',tipOrigDeals)+
       kpi('Colaboradores Originados no Mês | BDRs',_ni(origMonthColabs),origMonthDeals.length+' deals originados em '+_mlbl(nowYM),'var(--teal)','kpi-orig-colabs','origColabs',tipOrigColabs)+
-      kpi('Reunião Agendada há +30 dias',_ni(raStale.length),'paradas na etapa | todas as origens',raStale.length>0?'var(--yellow)':'var(--text)','kpi-ra-stale','raStale',tipRaStale)+
+      kpi('Reunião Agendada há +30 dias',_ni(raStale.length),'paradas na etapa | só time de BDRs',raStale.length>0?'var(--yellow)':'var(--text)','kpi-ra-stale','raStale',tipRaStale)+
     '</div>'+
     '<div class="novo-cards">'+
       '<div class="section-hdr"><h2>Originação</h2></div>'+
-      cWide('Originação por BDR (Top 15)'+_cntSpan(createdBdr),'Quantos deals (ou vidas) foram originados por cada BDR (campo HubSpot sdr), Top 15 por volume. Considera a data de entrada em Reunião Agendada no período. Clique numa barra para ver os deals.','origin-bdr',320,_subTabs('bdr-origin-tabs',_bdrOriginMode,[{mode:'deals',label:'Deals',fn:'bdrSwitchOrigin'},{mode:'vidas',label:'Vidas',fn:'bdrSwitchOrigin'},{mode:'colaboradores',label:'Colaboradores',fn:'bdrSwitchOrigin'}]),true)+
-      cWide('Weekly Origination (por BDR)'+_cntSpan(createdBdr),'Geração semanal por BDR (campo sdr): barras verticais empilhadas por BDR (Top 6 + Outros), últimas 13 semanas por data de entrada em Reunião Agendada. Alterna Deals | Vidas | Colaboradores.','weekly-origin',320,_subTabs('bdr-weekly-tabs',_bdrWeeklyMode,[{mode:'deals',label:'Deals',fn:'bdrSwitchWeekly'},{mode:'vidas',label:'Vidas',fn:'bdrSwitchWeekly'},{mode:'colaboradores',label:'Colaboradores',fn:'bdrSwitchWeekly'}]),true)+
-      cWide('Novos Leads por Mês | BDR vs AE'+_cntSpan(created.length),'Deals (ou vidas) por mês de entrada em Reunião Agendada, empilhados em dois grupos: origem BDR (campo sdr preenchido) vs origem AE (sdr vazio). Modo Vidas: total de vidas no mês. Modo Colaboradores: nº de BDRs e AEs distintos que originaram ao menos 1 deal no mês.','leads-origin',300,_subTabs('bdr-leads-tabs',_bdrLeadsMode,[{mode:'deals',label:'Deals',fn:'bdrSwitchLeads'},{mode:'vidas',label:'Vidas',fn:'bdrSwitchLeads'},{mode:'colaboradores',label:'Colaboradores',fn:'bdrSwitchLeads'}]),true)+
+      cWide('Originação por BDR'+_cntSpan(createdTeam),'Quantos deals (ou vidas, ou colaboradores) foram originados por cada BDR do TIME (os 13 nomes do drawer de Configurações; grafias do HubSpot mapeadas para o drawer). Originação = data de ENTRADA em Reunião Agendada (não createdate); o filtro de período usa essa data. Cor da barra (modo Deals) = atingimento da meta do BDR. Clique numa barra para ver os deals.','origin-bdr',320,_subTabs('bdr-origin-tabs',_bdrOriginMode,[{mode:'deals',label:'Deals',fn:'bdrSwitchOrigin'},{mode:'vidas',label:'Vidas',fn:'bdrSwitchOrigin'},{mode:'colaboradores',label:'Colaboradores',fn:'bdrSwitchOrigin'}]),true)+
+      cWide('Weekly Origination (por BDR)'+_cntSpan(createdTeam),'Geração semanal APENAS do time de BDRs (drawer de Configurações): barras empilhadas por BDR (Top 6 + Outros), últimas 13 semanas pela data de ENTRADA em Reunião Agendada (não createdate); o filtro de período usa essa data. Alterna Deals | Vidas | Colaboradores.','weekly-origin',320,_subTabs('bdr-weekly-tabs',_bdrWeeklyMode,[{mode:'deals',label:'Deals',fn:'bdrSwitchWeekly'},{mode:'vidas',label:'Vidas',fn:'bdrSwitchWeekly'},{mode:'colaboradores',label:'Colaboradores',fn:'bdrSwitchWeekly'}]),true)+
+      cWide('Novos Leads por Mês | BDRs'+_cntSpan(createdTeam),'Deals (ou vidas, ou colaboradores) por mês de ENTRADA em Reunião Agendada (não createdate), APENAS originados pelo time de BDRs (drawer de Configurações). AEs não entram. Modo Colaboradores: soma do campo colaboradores dos deals do mês. O filtro de período usa a data de entrada em Reunião Agendada. Clique numa barra para ver os deals do mês.','leads-origin',300,_subTabs('bdr-leads-tabs',_bdrLeadsMode,[{mode:'deals',label:'Deals',fn:'bdrSwitchLeads'},{mode:'vidas',label:'Vidas',fn:'bdrSwitchLeads'},{mode:'colaboradores',label:'Colaboradores',fn:'bdrSwitchLeads'}]),true)+
       '<div class="section-hdr"><h2>Handoff BDR → AE</h2></div>'+
-      '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header"><h3>BDR→AE Handoff Quality Matrix</h3>'+_infoBtn('Cruza a quantidade de deals passados de cada BDR (campo sdr) para cada AE (responsável). Linhas = BDR (Top 12), colunas = AE (Top 8); célula = nº de deals, cor por volume. Considera deals que entraram em Reunião Agendada no período, com BDR e AE preenchidos. Clique numa célula para ver os deals do par.','handoff')+'</div><div id="bdr-handoff-matrix" style="overflow-x:auto;margin-top:.5rem"></div></div>'+
+      '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header"><h3>BDR → AE Handoff Matrix</h3>'+_infoBtn('Cruza a quantidade de deals passados de cada BDR para cada AE. Linhas = AEs (executivos; Anderson e Gabriel excluídos a pedido), colunas = BDRs do TIME (drawer de Configurações); célula = nº de deals, cor por volume. Considera deals que entraram em Reunião Agendada no período (o filtro usa essa data), com BDR e AE preenchidos. Clique numa célula para ver os deals do par.','handoff')+'</div><div id="bdr-handoff-matrix" style="overflow-x:auto;margin-top:.5rem"></div></div>'+
       '<div class="section-hdr"><h2>Fluxo de Pipeline</h2></div>'+
       cWide(t('bdr_net_flow')+_cntSpan(createdBdr),t('bdr_net_flow_tip'),'net-flow',300,null,true)+
       cWide(t('bdr_net_vidas')+_cntSpan(createdBdr),t('bdr_net_vidas_tip'),'net-vidas',300,null,true)+
       '<div class="section-hdr"><h2>Qualidade</h2></div>'+
       cWide(t('bdr_avg_vidas')+_cntSpan(created.length),t('bdr_avg_vidas_tip'),'avg-vidas',280,null,true)+
       c(t('bdr_colabs')+_cntSpan(deals.length),t('bdr_colabs_tip'),'colabs',300,null,true)+
-      c(t('bdr_size_dist')+_cntSpan(created.length),t('bdr_size_dist_tip'),'size-dist',300,_subTabs('bdr-size-tabs',_bdrSizeMode,[{mode:'colaboradores',label:'Colaboradores',fn:'bdrSwitchSize'},{mode:'vidas',label:'Vidas',fn:'bdrSwitchSize'}]),true)+
+      c(t('bdr_size_dist')+_cntSpan(createdTeam),t('bdr_size_dist_tip'),'size-dist',300,_subTabs('bdr-size-tabs',_bdrSizeMode,[{mode:'colaboradores',label:'Colaboradores',fn:'bdrSwitchSize'},{mode:'vidas',label:'Vidas',fn:'bdrSwitchSize'}]),true)+
     '</div>';
 
   buildBdrOrigin();
@@ -475,18 +478,19 @@ function bdrKpiOpen(kind){
   if(kind==='raStale'){
     var _cut=new Date(); _cut.setDate(_cut.getDate()-30);
     var cutStr=_cut.getFullYear()+'-'+String(_cut.getMonth()+1).padStart(2,'0')+'-'+String(_cut.getDate()).padStart(2,'0');
-    return novoOpenDealsModal('Reunião Agendada há +30 dias', deals.filter(function(d){ return d.stage==='Reunião Agendada' && _origDate(d) && _origDate(d)<=cutStr; }));
+    return novoOpenDealsModal('Reunião Agendada há +30 dias | BDRs', deals.filter(function(d){ return _isTeamBdr(d) && d.stage==='Reunião Agendada' && _origDate(d) && _origDate(d)<=cutStr; }));
   }
 }
 
 function buildBdrOrigin(){
-  var th=_novoTheme(), created=_origDeals().filter(_isBdr);
+  // R12: APENAS o time de BDRs (13 nomes do drawer, via _isTeamBdr); rótulo = nome canônico.
+  var th=_novoTheme(), created=_origDeals().filter(_isTeamBdr);
   var colab=_bdrOriginMode==='colaboradores';
   var vidas=_bdrOriginMode==='vidas';
   // Pre-compute all three aggregations for rich tooltip
   var aggDeals={}, aggVidas={}, aggColab={};
   created.forEach(function(d){
-    var b=_bdrName(d)||'(sem BDR)';
+    var b=_teamBdrName(d);
     aggDeals[b]=(aggDeals[b]||0)+1;
     aggVidas[b]=(aggVidas[b]||0)+(d.vidas||0);
     aggColab[b]=(aggColab[b]||0)+(d.colaboradores||0);
@@ -559,16 +563,17 @@ function buildBdrOrigin(){
 
 // R13 | Weekly Origination: barras verticais empilhadas por BDR (Top 6 + Outros), 13 semanas.
 function buildBdrWeekly(){
-  var th=_novoTheme(), weeks=_getWeeks(13), created=_origDeals().filter(_isBdr);
+  // R13: APENAS o time de BDRs; semana da ENTRADA em Reunião Agendada (_origDate), não createdate.
+  var th=_novoTheme(), weeks=_getWeeks(13), created=_origDeals().filter(_isTeamBdr);
   var colab=_bdrWeeklyMode==='colaboradores';
   var vidas=_bdrWeeklyMode==='vidas';
   var inc=function(d){ return vidas?(d.vidas||0):colab?(d.colaboradores||0):1; };
   var tot={};
-  created.forEach(function(d){ var b=_bdrName(d)||'(sem BDR)'; tot[b]=(tot[b]||0)+inc(d); });
+  created.forEach(function(d){ var b=_teamBdrName(d); tot[b]=(tot[b]||0)+inc(d); });
   var top=Object.keys(tot).sort(function(a,b){return tot[b]-tot[a];}).slice(0,6);
   var groups=top.concat(['Outros']);
   var colors=['rgba(88,166,255,.8)','rgba(63,185,80,.75)','rgba(58,184,183,.8)','rgba(210,153,34,.85)','rgba(147,112,219,.8)','rgba(248,81,73,.7)','rgba(140,140,150,.5)'];
-  var gOf=function(d){ var b=_bdrName(d)||'(sem BDR)'; return top.indexOf(b)>=0?b:'Outros'; };
+  var gOf=function(d){ var b=_teamBdrName(d); return top.indexOf(b)>=0?b:'Outros'; };
   var datasets=groups.map(function(g,i){
     return {label:g,data:weeks.map(function(w){ return created.filter(function(d){return _weekKey(_origDate(d))===w&&gOf(d)===g;}).reduce(function(s,d){return s+inc(d);},0); }),backgroundColor:colors[i%colors.length],stack:'s',borderRadius:2};
   });
@@ -580,51 +585,48 @@ function buildBdrWeekly(){
       onClick:function(e,el){ if(!el.length)return; var ds=datasets[el[0].datasetIndex]; var pre=(ds&&ds.label!=='Outros')?ds.label:null; bdrOpenFacetModal('Weekly Origination por BDR', created, 'bdr', pre); }}});
 }
 
-// R14 | Novos Leads por Mês: empilhado em 2 grupos (origem BDR vs AE).
+// R14 | Novos Leads por Mês: APENAS deals originados pelo time de BDRs (AEs removidos a pedido
+// do CRO, 2026-07-02). Mês = ENTRADA em Reunião Agendada (_oym), não createdate.
 function buildBdrLeadsOrigin(){
-  var th=_novoTheme(), months=_getMonths(12), created=_origDeals();
+  var th=_novoTheme(), months=_getMonths(12), created=_origDeals().filter(_isTeamBdr);
   var colab=_bdrLeadsMode==='colaboradores';
   var vidas=_bdrLeadsMode==='vidas';
-  var _v=function(d){ return vidas?(d.vidas||0):1; };
-  var seriesBdr, seriesAe;
-  if(colab){
-    seriesBdr=months.map(function(m){ return created.filter(function(d){return _oym(d)===m&&_isBdr(d);}).reduce(function(s,d){return s+(d.colaboradores||0);},0); });
-    seriesAe =months.map(function(m){ return created.filter(function(d){return _oym(d)===m&&!_isBdr(d);}).reduce(function(s,d){return s+(d.colaboradores||0);},0); });
-  } else {
-    seriesBdr=months.map(function(m){ return created.filter(function(d){return _oym(d)===m&&_isBdr(d);}).reduce(function(s,d){return s+_v(d);},0); });
-    seriesAe =months.map(function(m){ return created.filter(function(d){return _oym(d)===m&&!_isBdr(d);}).reduce(function(s,d){return s+_v(d);},0); });
-  }
+  var inc=function(d){ return colab?(d.colaboradores||0):vidas?(d.vidas||0):1; };
+  var series=months.map(function(m){ return created.filter(function(d){return _oym(d)===m;}).reduce(function(s,d){return s+inc(d);},0); });
   _novoMkChart('chart-bdr-leads-origin',{type:'bar',plugins:[ChartDataLabels],
     data:{labels:months.map(_mlbl),datasets:[
-      {label:'BDR',data:seriesBdr,backgroundColor:'rgba(147,112,219,.8)',stack:'s',borderRadius:2},
-      {label:'AE',data:seriesAe,backgroundColor:'rgba(88,166,255,.8)',stack:'s',borderRadius:2}
+      {label:'BDRs',data:series,backgroundColor:'rgba(147,112,219,.8)',borderRadius:2}
     ]},
-    options:{responsive:true,layout:{padding:{top:26}},plugins:{legend:{display:true,labels:{color:th.cText2,font:{family:NOVO_FONT,size:10},padding:8}},datalabels:{display:function(c){return c.datasetIndex===c.chart.data.datasets.length-1;},anchor:'end',align:'top',color:th.cText,font:{family:NOVO_FONT,size:10,weight:'bold'},formatter:function(v,c){var t=0;c.chart.data.datasets.forEach(function(ds){t+=(ds.data[c.dataIndex]||0);});return t?_ni(t):'';}},
-      tooltip:{callbacks:{label:function(c){return c.dataset.label+': '+_ni(c.parsed.y)+(colab?' colaboradores':vidas?' vidas':' deals');}}}},
-      scales:{x:{grid:{display:false},ticks:{color:th.cText2,font:{family:NOVO_FONT}},stacked:true},y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0},stacked:true}},
-      onClick:function(e,el){ if(!el.length)return; var pre=el[0].datasetIndex===0?'BDR':'AE'; bdrOpenFacetModal('Novos Leads | BDR vs AE', created, 'origem', pre); }}});
+    options:{responsive:true,layout:{padding:{top:26}},plugins:{legend:{display:false},datalabels:{anchor:'end',align:'top',color:th.cText,font:{family:NOVO_FONT,size:10,weight:'bold'},formatter:function(v){return v?_ni(v):'';}},
+      tooltip:{callbacks:{label:function(c){return _ni(c.parsed.y)+(colab?' colaboradores':vidas?' vidas':' deals');}}}},
+      scales:{x:{grid:{display:false},ticks:{color:th.cText2,font:{family:NOVO_FONT}}},y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0}}},
+      onClick:function(e,el){ if(!el.length)return; var m=months[el[0].index]; bdrOpenFacetModal('Novos Leads | BDRs', created, 'mes', _mlbl(m)); }}});
 }
 
-// R15 | Matriz de handoff BDR → AE: nº de deals passados de cada BDR para cada AE.
+// R15 | Matriz de handoff BDR → AE: linhas = AEs (executivos), colunas = BDRs do time.
+// Só o time de BDRs (drawer); executivos excluem Anderson e Gabriel (a pedido do CRO, 2026-07-02).
+// A chave da célula usa NUL como separador de propósito (nomes nunca contêm NUL).
 var _bdrHandoff=null;
-function bdrHandoffCell(bi,ai){ if(!_bdrHandoff)return; var b=_bdrHandoff.bdrs[bi], a=_bdrHandoff.aes[ai]; novoOpenDealsModal('Handoff | '+b+' → '+a, _bdrHandoff.deals.filter(function(d){return _bdrName(d)===b&&d.ae===a;})); }
+function bdrHandoffCell(ai,bi){ if(!_bdrHandoff)return; var a=_bdrHandoff.aes[ai], b=_bdrHandoff.bdrs[bi]; novoOpenDealsModal('Handoff | '+b+' → '+a, _bdrHandoff.deals.filter(function(d){return _teamBdrName(d)===b&&d.ae===a;})); }
 function buildBdrHandoff(){
   var el=document.getElementById('bdr-handoff-matrix'); if(!el)return;
-  var EXCL_AE=['aurilia','gabriele'];
-  var deals=_origDeals().filter(function(d){ return _isBdr(d)&&d.ae&&d.ae!=='-'&&EXCL_AE.indexOf(d.ae.trim().split(/\s+/)[0].toLowerCase())<0; });
+  var EXCL_AE=['aurilia','gabriele','anderson','gabriel'];
+  // Linhas = executivos: exclui Anderson/Gabriel (a pedido) e qualquer membro do time de BDRs
+  // que apareça como owner do deal (ex.: Yokyko/Bruna com 1 deal próprio).
+  var deals=_origDeals().filter(function(d){ return _isTeamBdr(d)&&d.ae&&d.ae!=='-'&&EXCL_AE.indexOf(d.ae.trim().split(/\s+/)[0].toLowerCase())<0&&!_teamBdrByName(d.ae); });
   var bdrTot={}, aeTot={}, cell={};
-  deals.forEach(function(d){ var b=_bdrName(d), a=d.ae; bdrTot[b]=(bdrTot[b]||0)+1; aeTot[a]=(aeTot[a]||0)+1; var k=b+' '+a; cell[k]=(cell[k]||0)+1; });
-  var bdrs=Object.keys(bdrTot).sort(function(x,y){return bdrTot[y]-bdrTot[x];}).slice(0,12);
+  deals.forEach(function(d){ var b=_teamBdrName(d), a=d.ae; bdrTot[b]=(bdrTot[b]||0)+1; aeTot[a]=(aeTot[a]||0)+1; var k=b+' '+a; cell[k]=(cell[k]||0)+1; });
+  var bdrs=Object.keys(bdrTot).sort(function(x,y){return bdrTot[y]-bdrTot[x];});
   var aes=Object.keys(aeTot).sort(function(x,y){return aeTot[y]-aeTot[x];}).slice(0,8);
   _bdrHandoff={deals:deals,bdrs:bdrs,aes:aes};
   var maxCell=0; bdrs.forEach(function(b){ aes.forEach(function(a){ var v=cell[b+' '+a]||0; if(v>maxCell)maxCell=v; }); });
   var bg=function(v){ if(!v)return ''; var r=Math.min(1,v/(maxCell||1)); return 'background:rgba(58,184,183,'+(0.10+r*0.62).toFixed(2)+')'; };
   if(!deals.length){ el.innerHTML='<p style="color:var(--text2);padding:1rem 0">Nenhum deal com BDR e AE no período.</p>'; return; }
-  var html='<table class="lb" style="font-size:.78rem;width:100%"><thead><tr><th style="text-align:left">BDR \\ AE</th>'+aes.map(function(a){return '<th style="text-align:center">'+_ne(a.split(' ')[0])+'</th>';}).join('')+'<th style="text-align:center">Total</th></tr></thead><tbody>';
-  bdrs.forEach(function(b,bi){
-    html+='<tr><td style="text-align:left;white-space:nowrap;font-weight:600">'+_ne(b.split(' ')[0])+'</td>'+aes.map(function(a,ai){ var v=cell[b+' '+a]||0; return '<td style="text-align:center;'+(v?'cursor:pointer;':'')+bg(v)+'"'+(v?' onclick="bdrHandoffCell('+bi+','+ai+')"':'')+'>'+(v||'—')+'</td>'; }).join('')+'<td style="text-align:center;font-weight:700">'+bdrTot[b]+'</td></tr>';
+  var html='<table class="lb" style="font-size:.78rem;width:100%"><thead><tr><th style="text-align:left">AE \ BDR</th>'+bdrs.map(function(b){return '<th style="text-align:center">'+_ne(b.split(' ')[0])+'</th>';}).join('')+'<th style="text-align:center">Total</th></tr></thead><tbody>';
+  aes.forEach(function(a,ai){
+    html+='<tr><td style="text-align:left;white-space:nowrap;font-weight:600">'+_ne(a.split(' ')[0])+'</td>'+bdrs.map(function(b,bi){ var v=cell[b+' '+a]||0; return '<td style="text-align:center;'+(v?'cursor:pointer;':'')+bg(v)+'"'+(v?' onclick="bdrHandoffCell('+ai+','+bi+')"':'')+'>'+(v||'—')+'</td>'; }).join('')+'<td style="text-align:center;font-weight:700">'+aeTot[a]+'</td></tr>';
   });
-  html+='</tbody><tfoot><tr><td style="text-align:left;font-weight:700">Total</td>'+aes.map(function(a){return '<td style="text-align:center;font-weight:700">'+aeTot[a]+'</td>';}).join('')+'<td style="text-align:center;font-weight:700">'+deals.length+'</td></tr></tfoot></table>';
+  html+='</tbody><tfoot><tr><td style="text-align:left;font-weight:700">Total</td>'+bdrs.map(function(b){return '<td style="text-align:center;font-weight:700">'+bdrTot[b]+'</td>';}).join('')+'<td style="text-align:center;font-weight:700">'+deals.length+'</td></tr></tfoot></table>';
   el.innerHTML=html;
 }
 
@@ -717,7 +719,9 @@ function buildBdrColabs(){
 }
 
 function buildBdrSizeDist(){
-  var th=_novoTheme(), all=_origDeals();
+  // R11: APENAS deals originados pelo time de BDRs. Modo Colaboradores usa o campo
+  // colaboradores; modo Vidas usa vidas (nunca misturar).
+  var th=_novoTheme(), all=_origDeals().filter(_isTeamBdr);
   var vidas=_bdrSizeMode==='vidas';
   var val=function(d){ return (vidas?d.vidas:d.colaboradores)||0; };
   var bands=['< 50','50–200','200–500','500+'];
