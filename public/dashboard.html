@@ -753,7 +753,7 @@ function _novoCoverageHelpHtml() {
       _covCard((L?'Coverage (×)':'Cobertura (×)'),
         (L?'Each line = forecast ÷ monthly target. ≈1× = on target; <1× = projected miss (the × on each point).':'Cada linha = forecast ÷ meta mensal. ≈1× = no alvo; <1× = furo projetado (é o × em cada ponto).')) +
       _covCard((L?'Pipe coverage (safety)':'Cobertura de pipe (segurança)'),
-        (L?'Open pipe (real, unweighted = pipe + BID + new business) ÷ target. 3–4× = healthy cushion. The KPI on top.':'Pipe aberto (real, sem ponderar = pipe + BID + novos negócios) ÷ meta. 3–4× = colchão saudável. É o KPI do topo.')) +
+        (L?'Weighted open pipe (pipe + BID + new business, × stage probability, excludes won) ÷ target. 3–4× = healthy cushion. The raw (unweighted) reading is shown beside it as context.':'Pipe aberto ponderado (pipe + BID + novos negócios, × probabilidade da etapa, exclui ganhos) ÷ meta. 3–4× = colchão saudável. A leitura bruta (sem ponderar) aparece ao lado como contexto.')) +
     '</div>';
 
   var scope =
@@ -1071,7 +1071,7 @@ var NOVO_I18N = {
     t_sizewindow:'🟡 Distribuição por Tamanho',tip_sizewindow:'Deals ativos por faixa de receita. Sem filtro local de data.',
     t_vidaswindow:'🟡 Distribuição de Vidas',tip_vidaswindow:'Deals ativos por faixa de vidas. Sem filtro local de data.',
     t_winfactor:'Taxa de Ganho por AE',tip_winfactor:'Taxa de ganho ajustada por AE: deals ganhos ÷ (deals ganhos + deals perdidos).',
-    t_coverage:'🟢 Cobertura do Pipeline | Forecast vs Meta',tip_coverage:'Mesmo motor do Forecast Total (N06B) e do Forecast Overall (fonte única de receita): Receita Real e Probabilizada batem mês a mês. Toggle Cobertura (×) ↔ Receita (R$): em Cobertura, cada linha é forecast mensal ÷ meta mensal (meta anual ÷ 12), 1× = no alvo; em Receita, os R$ com a linha de meta. Conjunto = negócio novo (createdate ≥ set/2025) + Ganho/Implantação + Bid (desde jan/2025), Ganho/Implantação SEMPRE incluídos; dedup Fee×Corretagem; bloco BID só Negociação/Proposta a 0,5%; topo de funil = cohorts BDR × conversão MQL. Janela jan/2026 → dez/2027. KPI Cobertura de pipe (segurança) = pipe aberto real ÷ meta (3–4× saudável). Clique num mês para o detalhamento por deal.',
+    t_coverage:'🟢 Cobertura do Pipeline | Forecast vs Meta',tip_coverage:'Mesmo motor do Forecast Total (N06B) e do Forecast Overall (fonte única de receita): Receita Real e Probabilizada batem mês a mês. Toggle Cobertura (×) ↔ Receita (R$): em Cobertura, cada linha é forecast mensal ÷ meta mensal (meta anual ÷ 12), 1× = no alvo; em Receita, os R$ com a linha de meta. Conjunto = negócio novo (createdate ≥ set/2025) + Ganho/Implantação + Bid (desde jan/2025), Ganho/Implantação SEMPRE incluídos; dedup Fee×Corretagem; bloco BID só Negociação/Proposta a 0,5%; topo de funil = cohorts BDR × conversão MQL. Janela jan/2026 → dez/2027. KPI Cobertura de pipe (segurança) = pipe aberto PONDERADO ÷ meta do período (3–4× saudável; a bruta aparece ao lado como contexto), exclui ganhos. Clique num mês para o detalhamento por deal.',
     t_piperev12b:'Forecast Total',tip_piperev12b:'Forecast total mês a mês (Ganho/Implantação + pipeline + Bid + novos negócios), pelo MESMO motor do /forecast. Linha verde = Receita Real (bruta); linha azul = Receita Probabilizada (× probabilidade de fechamento). Detalhes no i.',
     t_piperev12:'🟡 Valor do Pipeline (Projeção Mensal)',tip_piperev12:'Receita ou quantidade de deals por mês da data prevista de receita. A contagem mostra deals ativos com data prevista sobre o total de ativos P09. Considera pipes Vendas + Bid.',
     t_segdoughnut:'🟡 Receita por Segmento (Donut)',tip_segdoughnut:'ARR estimado total por segmento de tamanho de cliente (baseado em vidas).',
@@ -1188,7 +1188,7 @@ var NOVO_I18N = {
     t_sizewindow:'🟡 Deal Size Distribution',tip_sizewindow:'Active deals by revenue band. No local date filter.',
     t_vidaswindow:'🟡 Vidas Distribution by Bucket',tip_vidaswindow:'Active deals by lives band. No local date filter.',
     t_winfactor:'Win Rate by AE',tip_winfactor:'Adjusted win rate by AE: won deals ÷ (won deals + lost deals).',
-    t_coverage:'🟢 Pipeline Coverage | Forecast vs Target',tip_coverage:'Same engine as Forecast Total (N06B) and Forecast Overall (single source of revenue): Real and Weighted revenue match month by month. Toggle Coverage (×) ↔ Revenue (R$): in Coverage, each line is monthly forecast ÷ monthly target (annual target ÷ 12), 1× = on target; in Revenue, the R$ values with the target line. Deal set = new business (createdate ≥ Sep/2025) + Won/Onboarding + Bid (since Jan/2025), Won/Onboarding ALWAYS included; Fee×Brokerage dedup; BID block only Negociação/Proposta at 0.5%; top-of-funnel = BDR cohorts × MQL conversion. Window Jan/2026 → Dec/2027. Pipe-coverage KPI (safety) = raw open pipe (real) ÷ target (3–4× healthy). Click a month for the per-deal breakdown.',
+    t_coverage:'🟢 Pipeline Coverage | Forecast vs Target',tip_coverage:'Same engine as Forecast Total (N06B) and Forecast Overall (single source of revenue): Real and Weighted revenue match month by month. Toggle Coverage (×) ↔ Revenue (R$): in Coverage, each line is monthly forecast ÷ monthly target (annual target ÷ 12), 1× = on target; in Revenue, the R$ values with the target line. Deal set = new business (createdate ≥ Sep/2025) + Won/Onboarding + Bid (since Jan/2025), Won/Onboarding ALWAYS included; Fee×Brokerage dedup; BID block only Negociação/Proposta at 0.5%; top-of-funnel = BDR cohorts × MQL conversion. Window Jan/2026 → Dec/2027. Pipe-coverage KPI (safety) = WEIGHTED open pipe ÷ period target (3–4× healthy; the raw reading is shown beside it), excludes won. Click a month for the per-deal breakdown.',
     t_piperev12b:'Total Forecast',tip_piperev12b:'Month-by-month total forecast (won/onboarding + pipeline + Bid + new business), same engine as /forecast. Green line = Real revenue (gross); blue line = Weighted revenue (× close probability). Details in the i.',
     t_piperev12:'🟡 Pipeline Value (Monthly Projection)',tip_piperev12:'Revenue or deal count by expected revenue month. Count shows active deals with expected revenue date over total active P09 deals. Considers Sales + Bid pipelines.',
     t_segdoughnut:'🟡 Revenue by Segment (Deal Size)',tip_segdoughnut:'Total estimated ARR by customer-size segment (based on lives).',
@@ -3359,9 +3359,14 @@ function buildNovoCoverage() {
   var sumReal = real.reduce(function(a,b){ return a+b; }, 0);
   var sumProb = prob.reduce(function(a,b){ return a+b; }, 0);
   var sumWon  = s.cWon.reduce(function(a,b){ return a+b; }, 0);
-  var sumOpenReal = sumReal - sumWon;            // pipe aberto bruto (real, sem ponderar) = pipe + bid + novos
-  var covPipe = Math.round(sumOpenReal/(metaMonth*months.length)*100)/100;
-  var pipeCol = covPipe>=3?'var(--green)':covPipe>=2?'var(--yellow)':'var(--red)';
+  var sumWonP = s.cWonP.reduce(function(a,b){ return a+b; }, 0);
+  var denom   = metaMonth * months.length;       // meta do período inteiro (meta mensal × 24 = 2× meta anual)
+  // Cobertura de pipe = pipe ABERTO (pipe + BID + novos, exclui Ganho/Implantação) ÷ meta do período.
+  // Probabilizada (ponderada pela prob da etapa) é a leitura realista → é a exibida; a bruta (potencial
+  // cheio) fica como contexto. A régua "3–4× saudável" vale para a probabilizada.
+  var covPipeProb = Math.round(((sumProb - sumWonP)/denom)*100)/100;
+  var covPipeRaw  = Math.round(((sumReal - sumWon)/denom)*100)/100;
+  var pipeCol = covPipeProb>=3?'var(--green)':covPipeProb>=2?'var(--yellow)':'var(--red)';
   var covCol = function(v){ return v>=1?'#3fb950':v>=0.8?'#e3b341':'#f85149'; };
 
   var isCov = _novoCovMode !== 'receita';
@@ -3384,7 +3389,7 @@ function buildNovoCoverage() {
     '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.6rem;margin-bottom:1rem">'+
       _covKpi((L?'Real revenue (':'Receita real (')+months.length+'m)', _revShort(sumReal), L?'full potential, unweighted':'potencial cheio, sem ponderar', 'var(--green)') +
       _covKpi((L?'Weighted revenue (':'Receita probabilizada (')+months.length+'m)', _revShort(sumProb), L?'× stage probability':'× probabilidade da etapa', 'rgba(88,166,255,.95)') +
-      _covKpi(L?'Pipe coverage (safety)':'Cobertura de pipe (segurança)', covPipe+'×', L?'open pipe (real) ÷ target (3–4× healthy)':'pipe aberto (real) ÷ meta (3–4× saudável)', pipeCol) +
+      _covKpi(L?'Pipe coverage (safety)':'Cobertura de pipe (segurança)', covPipeProb+'×', (L?'weighted open pipe ÷ target (3–4× healthy) · raw ':'pipe aberto ponderado ÷ meta (3–4× saudável) · bruto ')+covPipeRaw+'×', pipeCol) +
     '</div>'+
     '<canvas id="novo-coverage-chart" style="max-height:260px"></canvas>'+
     '<div style="margin-top:.85rem;font-size:.72rem;color:var(--muted);line-height:1.5">'+
@@ -3986,13 +3991,15 @@ function _novoForecastSeries() {
     });
     months.forEach(function(m){ if((Rnew[m]||0)>0||(Pnew[m]||0)>0) byMonth[m].push({ agg:true, label:(NOVO_LANG==='en'?'Top-of-funnel (BDR cohorts)':'Topo de funil (cohorts BDR)'), real:Rnew[m]||0, prob:Pnew[m]||0, block:'new' }); });
   }
-  var real=[], prob=[], cWon=[], cPipe=[], cBid=[], cNew=[];
+  var real=[], prob=[], cWon=[], cPipe=[], cBid=[], cNew=[], cWonP=[], cPipeP=[], cBidP=[], cNewP=[];
   months.forEach(function(m){
     real.push((Rwon[m]||0)+(Rpipe[m]||0)+(Rbid[m]||0)+(Rnew[m]||0));
     prob.push((Pwon[m]||0)+(Ppipe[m]||0)+(Pbid[m]||0)+(Pnew[m]||0));
-    cWon.push(Rwon[m]||0); cPipe.push(Rpipe[m]||0); cBid.push(Rbid[m]||0); cNew.push(Rnew[m]||0);
+    cWon.push(Rwon[m]||0);  cPipe.push(Rpipe[m]||0);  cBid.push(Rbid[m]||0);  cNew.push(Rnew[m]||0);
+    cWonP.push(Pwon[m]||0); cPipeP.push(Ppipe[m]||0); cBidP.push(Pbid[m]||0); cNewP.push(Pnew[m]||0);
   });
-  return { months:months, real:real, prob:prob, cWon:cWon, cPipe:cPipe, cBid:cBid, cNew:cNew, byMonth:byMonth, contribN:Object.keys(_contrib).length };
+  return { months:months, real:real, prob:prob, cWon:cWon, cPipe:cPipe, cBid:cBid, cNew:cNew,
+           cWonP:cWonP, cPipeP:cPipeP, cBidP:cBidP, cNewP:cNewP, byMonth:byMonth, contribN:Object.keys(_contrib).length };
 }
 
 function buildNovoPipeRev12B() {
