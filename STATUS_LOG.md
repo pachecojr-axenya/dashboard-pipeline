@@ -1831,3 +1831,7 @@ Registro curto, uma linha por interação (a cada alteração).
 - **A12 (Idade Média):** verificado com dados de produção que a base (`_novoOpen`) JÁ exclui fechados — 252 deals na base, 0 Ganho/Perdido/Implantação. Nenhuma mudança de cálculo; tooltips PT/EN agora explicitam "apenas deals abertos | fechados ficam fora".
 - **Validação (dados de produção, harness):** parser do sorter OK em todos os formatos; S05/P04 com as colunas novas; A17 sem 🟡 no HTML renderizado; A11 = só os 6 AEs core (André, Fausto, Guilherme, Juliana, Rafael, Ágatta); A12 base 252/0 fechados. `_check-inline-js` 0 erros; i18n 24/24; `_smoke-render` OK; `/novo-ae` 200.
 - **Nota de coordenação:** a remoção da seção Metas no `settings-modal.js` (rodada BDR acima) torna o wrapper AE de ocultação um no-op inofensivo — mantido como defesa caso a seção volte; `novoOpenSettings`/`novoSaveProbs` seguem existindo e os wrappers do AE continuam válidos.
+
+### Menu | BDR Performance 🟢 (2026-07-02)
+
+- `health:'y'` → `'g'` do BDR Performance no bloco `PANELS`, propagado aos 10 arquivos via Edit (sem sed; NULs do bdr.html intactos = 3). Validado: 10/10 com 'g', 0 restantes com 'y', inline-js 0 erros. **Não commitado e não deployado** (a pedido — sessão paralela ativa).
