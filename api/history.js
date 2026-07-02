@@ -3,6 +3,11 @@
  * GET /api/history?action=tabs
  *   → lista as abas mensais disponíveis na planilha
  *
+ * GET /api/history?action=fotos
+ *   → lista as FOTOGRAFIAS brutas do pipe (abas semanais "YYYY-MM-DD" + mensais
+ *     "Mmm AAAA" a partir de Jun 2026, quando o formato bruto de 35 colunas começou),
+ *     ordenadas da mais recente para a mais antiga. Usado pelo modo Comparação do /forecast.
+ *
  * GET /api/history?action=snapshot&tab=Mai+2026
  *   → retorna os deals daquele snapshot como array de objetos
  *
@@ -13,7 +18,7 @@
  *   → retorna os deals do snapshot reconstruído (mesmo formato de ?action=snapshot)
  */
 
-const { listMonthlyTabs, readSnapshot } = require('../lib/sheets');
+const { listMonthlyTabs, readSnapshot, listTabs } = require('../lib/sheets');
 const { setCORSHeaders }                 = require('./_helpers');
 const { verifyRequest }                  = require('../lib/auth');
 
@@ -39,6 +44,28 @@ module.exports = async function handler(req, res) {
     if (action === 'tabs') {
       const tabs = await listMonthlyTabs();
       return res.status(200).json({ success: true, tabs });
+    }
+
+    if (action === 'fotos') {
+      const MESES = { jan: 0, fev: 1, mar: 2, abr: 3, mai: 4, jun: 5, jul: 6, ago: 7, set: 8, out: 9, nov: 10, dez: 11 };
+      const all = await listTabs();
+      const fotos = [];
+      all.forEach(t => {
+        if (/^\d{4}-\d{2}-\d{2}$/.test(t)) {
+          fotos.push({ tab: t, tipo: 'semanal', ord: t });
+          return;
+        }
+        const m = t.match(/^([A-Za-zÀ-ÿ]{3}) (\d{4})$/);
+        if (m) {
+          const mo = MESES[m[1].toLowerCase()];
+          if (mo == null) return;
+          const ord = m[2] + '-' + String(mo + 1).padStart(2, '0') + '-31';
+          // abas mensais anteriores a Jun 2026 estão no formato legado (colunas calculadas) — fora
+          if (ord >= '2026-06-01') fotos.push({ tab: t, tipo: 'mensal', ord });
+        }
+      });
+      fotos.sort((a, b) => b.ord.localeCompare(a.ord));
+      return res.status(200).json({ success: true, fotos });
     }
 
     if (action === 'local') {

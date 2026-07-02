@@ -1701,6 +1701,31 @@
         padding: .25rem 0 .5rem !important;
       }
     }
+
+    /* ── Modo Comparação (fotografia × agora) ─────────────────────────────── */
+    #comp-banner{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem 1.4rem;margin:.35rem 1.25rem .6rem;padding:.55rem .95rem;background:var(--card);border:1px solid var(--teal);border-radius:12px;font-size:.78rem;color:var(--text2)}
+    #comp-banner b{color:var(--text);font-weight:600}
+    #comp-banner .cb-title{color:var(--teal);font-weight:700}
+    #comp-banner .cb-x{margin-left:auto;background:none;border:1px solid var(--border);border-radius:8px;color:var(--text2);cursor:pointer;font-family:inherit;font-size:.72rem;padding:.25rem .6rem;transition:border-color .15s,color .15s}
+    #comp-banner .cb-x:hover{border-color:var(--teal);color:var(--text)}
+    .cmpb{display:inline-block;margin-left:.3rem;padding:.02rem .35rem;border-radius:6px;font-size:.62rem;font-weight:700;vertical-align:middle}
+    .cmpb-new{background:rgba(35,209,180,.16);color:var(--teal)}
+    .cmpb-up{background:rgba(63,185,80,.16);color:#3fb950}
+    .cmpb-down{background:rgba(248,81,73,.16);color:#f85149}
+    .cmp-old{color:var(--text2);font-size:.68rem}
+    td.dpos{color:#3fb950;font-weight:600}
+    td.dneg{color:#f85149;font-weight:600}
+    td.dzero{color:var(--text2)}
+    .cmp-old-modal{display:block;color:var(--text2);font-size:.7rem;margin-top:.15rem}
+    .cmp-exits{margin:1.1rem 0 .3rem;border-top:2px solid var(--border);padding-top:.85rem}
+    .cmp-exits h3{font-size:.85rem;color:var(--text);margin:0 0 .55rem}
+    .cmp-exits h3 span{color:var(--text2);font-weight:400;font-size:.72rem}
+    .cmp-exits table{border-collapse:collapse;font-size:.76rem}
+    .cmp-exits th{text-align:left;padding:.3rem .75rem;color:var(--text2);font-weight:600;border-bottom:1px solid var(--border);white-space:nowrap}
+    .cmp-exits td{padding:.32rem .75rem;border-bottom:1px solid var(--border);white-space:nowrap}
+    .cmp-exits td.r{text-align:right}
+    .cmp-exits .ex-lost{color:#f85149;font-weight:600}
+    .cmp-exits .ex-gone{color:var(--text2);font-weight:600}
   </style>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <style>
@@ -1729,6 +1754,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
     body.nav-docked #app-search,
     body.nav-docked #kpi-accordion,
     body.nav-docked #tw,
+    body.nav-docked #comp-banner,
     body.nav-docked #historico-panel{margin-left:280px;transition:margin-left .25s cubic-bezier(0.4,0,0.2,1)}
     @media(max-width:820px){
       body.nav-docked #app-header,
@@ -1736,6 +1762,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       body.nav-docked #app-search,
       body.nav-docked #kpi-accordion,
       body.nav-docked #tw,
+      body.nav-docked #comp-banner,
       body.nav-docked #historico-panel{margin-left:0}
     }
   </style>
@@ -1883,6 +1910,15 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
         </button>
         <div id="tier-menu" class="fdd-panel">
           <!-- dynamically populated -->
+        </div>
+      </div>
+      <div class="fdd-wrapper" id="comp-dd">
+        <button class="fdd-trigger" id="btn-comp" onclick="toggleCompMenu()" data-tooltip="Comparar com uma fotografia do pipe">
+          <span id="btn-comp-lbl">Comparação</span>
+          <span class="fdd-arr"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+        </button>
+        <div id="comp-menu" class="fdd-panel">
+          <div class="stage-dd-item" style="color:var(--text2)">Carregando fotos...</div>
         </div>
       </div>
       <div class="fdd-wrapper" id="completeness-dd">
@@ -2124,6 +2160,8 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
   </div>
 
   <div class="mob-sheet-overlay" id="mob-sheet-overlay" onclick="closeMobileSheet()"></div>
+
+  <div id="comp-banner" style="display:none;"></div>
 
   <div class="table-wrap" id="tw">
     <div class="state">Buscando dados do HubSpot...</div>
@@ -2517,7 +2555,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       const di = currentDealIndex;
       const d = currentDeals[di];
       if (!d) return;
-      const fields = currentInfo.filter(c => !c.sticky);
+      const fields = currentInfo.filter(c => !c.sticky && !/^comp_/.test(c.k));
       const total = currentDeals.length;
 
       let body = `<div class="deal-modal-head">
@@ -2534,8 +2572,30 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       </div>`;
 
       body += '<div class="deal-modal-list">';
+      const cmpOld = (compTab && d._cmp) ? d._cmp.old : null;
+      if (compTab && d._cmp) {
+        const stTxt = ({
+          novo: 'não existia na foto',
+          avancou: 'avançou de etapa',
+          regrediu: 'regrediu de etapa',
+          mudou: 'mudou de etapa',
+          igual: 'sem mudança de etapa',
+        })[d._cmp.st] || '';
+        body += `<div class="deal-row"><span class="dr-lbl">Comparação | foto ${esc(compMeta.tab)}</span><span class="dr-val">${esc(stTxt)}</span></div>`;
+        if (cmpOld) {
+          body += `<div class="deal-row"><span class="dr-lbl">Δ Receita Real (janela)</span><span class="dr-val ${d.comp_dreal > 0.5 ? 'dpos' : (d.comp_dreal < -0.5 ? 'dneg' : '')}">${fmtDeltaBRL(d.comp_dreal)}</span></div>`;
+          body += `<div class="deal-row"><span class="dr-lbl">Δ Receita Probabilizada (janela)</span><span class="dr-val ${d.comp_dprob > 0.5 ? 'dpos' : (d.comp_dprob < -0.5 ? 'dneg' : '')}">${fmtDeltaBRL(d.comp_dprob)}</span></div>`;
+        }
+      }
       fields.forEach(c => {
-        body += `<div class="deal-row"><span class="dr-lbl">${esc(c.lbl)}</span><span class="dr-val">${dealFieldValue(c, d[c.k])}</span></div>`;
+        let valHtml = dealFieldValue(c, d[c.k]);
+        if (cmpOld && Object.prototype.hasOwnProperty.call(cmpOld, c.k)) {
+          const ov = cmpOld[c.k];
+          if (String(ov ?? '') !== String(d[c.k] ?? '')) {
+            valHtml += `<span class="cmp-old-modal">na foto: ${dealFieldValue(c, ov)}</span>`;
+          }
+        }
+        body += `<div class="deal-row"><span class="dr-lbl">${esc(c.lbl)}</span><span class="dr-val">${valHtml}</span></div>`;
       });
       body += '</div>';
 
@@ -3187,6 +3247,293 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
     }
 
     // ── APPLY & RENDER ────────────────────────────────────────────────────────
+    // ── MODO COMPARAÇÃO | fotografia do pipe × agora ─────────────────────────
+    // A foto (aba da planilha de snapshots) guarda os DADOS BRUTOS dos deals na
+    // data; os cálculos de receita rodam AQUI, com o mesmo motor e as regras
+    // vigentes — o delta reflete mudança de dado, nunca mudança de regra.
+    let compTab = null;        // aba selecionada (null = desligado)
+    let compMap = null;        // Map hs_id → deal da foto (no shape do payload vivo)
+    let compMeta = null;       // { tab, capturedAt, count, reconstructed }
+    let compExcl = null;       // ids excluídos por dedup Fee×Corretagem NA FOTO
+    let compLostNow = null;    // Map hs_id → deal Perdido HOJE (classifica saídas)
+    const compCache = {};      // tab → { map, meta, excl }
+    let compFotoList = null;   // lista de abas de foto (lazy)
+
+    function toggleCompMenu() {
+      const wrap = document.getElementById('btn-comp')?.closest('.fdd-wrapper');
+      wrap?.classList.toggle('open');
+      if (wrap?.classList.contains('open') && compFotoList == null) compLoadList();
+    }
+
+    async function compLoadList() {
+      const menu = document.getElementById('comp-menu');
+      try {
+        const res = await fetch('/api/history?action=fotos', { credentials: 'same-origin' });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error || 'falha ao listar fotos');
+        compFotoList = data.fotos || [];
+      } catch (e) {
+        if (menu) menu.innerHTML = `<div class="stage-dd-item" style="color:#f85149">Erro: ${esc(e.message)}</div>`;
+        return;
+      }
+      compRenderMenu();
+    }
+
+    function compFotoLabel(f) {
+      if (f.tipo === 'semanal') {
+        const p = f.tab.split('-');
+        return `${p[2]}/${p[1]}/${p[0]}`;
+      }
+      return f.tab + ' | mensal';
+    }
+
+    function compRenderMenu() {
+      const menu = document.getElementById('comp-menu');
+      if (!menu) return;
+      let h = `<div class="stage-dd-item completeness-opt"${!compTab ? ' style="color:var(--teal); font-weight:700"' : ''} onclick="setCompTab(null); toggleCompMenu()">— Desligado</div>`;
+      if (!compFotoList.length) h += `<div class="stage-dd-item" style="color:var(--text2)">Nenhuma fotografia na planilha</div>`;
+      compFotoList.forEach(f => {
+        const on = compTab === f.tab ? ' style="color:var(--teal); font-weight:700"' : '';
+        h += `<div class="stage-dd-item completeness-opt"${on} onclick="setCompTab('${esc(f.tab)}'); toggleCompMenu()">${esc(compFotoLabel(f))}</div>`;
+      });
+      menu.innerHTML = h;
+    }
+
+    function compNormBool(v) {
+      const s = String(v == null ? '' : v).trim().toLowerCase();
+      if (s === 'true' || s === 'sim') return true;
+      if (s === 'false' || s === 'não' || s === 'nao') return false;
+      return null;
+    }
+    function compNormProb(v) {
+      const n = parseFloat(v);
+      if (isNaN(n) || n < 0) return null;
+      return n > 1 ? n / 100 : n;
+    }
+    function compNum(v) { const n = parseFloat(v); return (!isNaN(n) && n > 0) ? n : null; }
+
+    // Converte a linha bruta da foto (35 colunas) para o shape do payload vivo,
+    // com as MESMAS normalizações do /api/forecast-table + régua BID do load().
+    function compRowToDeal(row) {
+      const pf = compNum(row['1ª Fatura (R$)']);
+      const arrRaw = compNum(row['ARR Estimado (R$)']);
+      const d = {
+        hs_id: String(row['Deal ID'] || ''),
+        dealname: String(row['Deal'] || '').replace(/ - Novo\(a\) Deal$/i, '').replace(/ - New Deal$/i, '').trim(),
+        pipeline: row['Pipeline'] || '-',
+        stage: row['Etapa'] || '-',
+        ae: row['Executivo'] || '-',
+        produto: row['Produto'] || null,
+        colaboradores: row['Colaboradores'] ? parseInt(row['Colaboradores']) : null,
+        vidas: row['Vidas'] ? parseInt(row['Vidas']) : null,
+        fatura_atual: compNum(row['Fatura Plano Atual (R$)']),
+        primeira_fatura: pf,
+        arr_estimado: arrRaw != null ? arrRaw : (pf != null ? pf * 12 : null),
+        modelo_remuneracao: row['Modelo'] || null,
+        possui_agenciamento: compNormBool(row['Agenciamento']),
+        possui_vitalicio: compNormBool(row['Vitalício']),
+        probabilidade: compNormProb(row['Probabilidade (campo)']) ?? compNormProb(row['Probabilidade HS']),
+        quarter: row['Quarter'] || null,
+        data_prevista_para_receita: row['Data Prevista Receita'] ? String(row['Data Prevista Receita']).substring(0, 10) : null,
+        vigencia: row['Vigência'] ? String(row['Vigência']).substring(0, 10) : null,
+        premio_mensal: compNum(row['Prêmio Mensal (R$)']),
+        vencimento_primeira_fatura: row['Vencimento 1ª Fatura'] ? String(row['Vencimento 1ª Fatura']).substring(0, 10) : null,
+        createdate: row['Criado'] ? String(row['Criado']).substring(0, 10) : null,
+        close_date: row['Fechado'] ? String(row['Fechado']).substring(0, 10) : null,
+      };
+      if (d.pipeline === 'Bid') {
+        const rd = ({ 'Negociação': '2026-10-01', 'Proposta Enviada': '2027-06-01' })[d.stage];
+        if (rd) {
+          d.data_prevista_para_receita = rd;
+          const _mo = parseInt(rd.substring(5, 7), 10) - 1;
+          d.quarter = 'Q' + (Math.floor(_mo / 3) + 1) + ' ' + rd.substring(0, 4);
+        }
+      }
+      if (quarterEmpty(d.quarter) && d.data_prevista_para_receita) {
+        const q = parseRevenueDate(d.data_prevista_para_receita);
+        if (q) d.quarter = 'Q' + (Math.floor(q.mo / 3) + 1) + ' ' + q.y;
+      }
+      return d;
+    }
+
+    // Conjunto do forecast na foto: mesma regra de inclusão do load() + sem os já perdidos.
+    function compForecastSet(all) {
+      return all.filter(d => d.stage !== 'Perdido' && (
+        (d.createdate && d.createdate >= '2025-09-01')
+        || d.stage === 'Ganho' || d.stage === 'Implantação'
+        || (d.pipeline === 'Bid' && d.createdate && d.createdate >= '2025-01-01')));
+    }
+
+    // Receita projetada do deal na janela (soma dos meses), pelo motor compartilhado.
+    function compDealTotals(d, exclSet) {
+      if (exclSet && exclSet.has(_fcDealId(d))) return { real: 0, prob: 0 };
+      const pInfo = calcProbInfo(d);
+      const arr = ForecastEngine.dealMonthly(d, pInfo.final);
+      let real = 0, prob = 0;
+      arr.forEach(mObj => { if (mObj) { real += mObj.rec; prob += mObj.val; } });
+      return { real, prob };
+    }
+
+    async function setCompTab(tab) {
+      if (!tab) {
+        compTab = null; compMap = null; compMeta = null; compExcl = null;
+        updateCompBtnLabel(); applyAndRender(); return;
+      }
+      const lbl = document.getElementById('btn-comp-lbl');
+      if (lbl) lbl.textContent = 'Carregando...';
+      try {
+        if (!compCache[tab]) {
+          const res = await fetch('/api/history?action=snapshot&tab=' + encodeURIComponent(tab), { credentials: 'same-origin' });
+          const data = await res.json();
+          if (!data.success) throw new Error(data.error || 'falha ao carregar a foto');
+          if (!data.deals.length || data.deals[0]['Deal ID'] == null) {
+            throw new Error('aba em formato antigo | incompatível com a comparação');
+          }
+          const set = compForecastSet(data.deals.map(compRowToDeal));
+          const map = new Map();
+          set.forEach(d => map.set(String(d.hs_id), d));
+          const capturedAt = String(data.deals[0]['Capturada em'] || '');
+          compCache[tab] = {
+            map,
+            meta: { tab, capturedAt, count: set.length, reconstructed: /reconstru/i.test(capturedAt) },
+            excl: _fcRevExcluded(set),
+          };
+        }
+        if (!compLostNow) await compLoadLostNow();
+        compTab = tab;
+        compMap = compCache[tab].map;
+        compMeta = compCache[tab].meta;
+        compExcl = compCache[tab].excl;
+      } catch (e) {
+        alert('Erro ao carregar a fotografia: ' + e.message);
+        compTab = null; compMap = null; compMeta = null; compExcl = null;
+      }
+      updateCompBtnLabel();
+      if (compFotoList != null) compRenderMenu();
+      applyAndRender();
+    }
+
+    // Deals Perdidos HOJE (uma chamada por sessão) — classifica as saídas da foto.
+    async function compLoadLostNow() {
+      compLostNow = new Map();
+      try {
+        const res = await fetch('/api/forecast-table?includeLost=true', { credentials: 'same-origin' });
+        const data = await res.json();
+        if (data.success) data.deals.filter(d => d.stage === 'Perdido').forEach(d => compLostNow.set(String(d.hs_id), d));
+      } catch { /* sem classificação de perdidos; saídas ficam como "fora do pipe" */ }
+    }
+
+    function updateCompBtnLabel() {
+      const lbl = document.getElementById('btn-comp-lbl');
+      const btn = document.getElementById('btn-comp');
+      if (!lbl) return;
+      if (!compTab) { lbl.textContent = 'Comparação'; btn && btn.classList.remove('filter-active'); return; }
+      const f = (compFotoList || []).find(x => x.tab === compTab);
+      lbl.textContent = 'Foto: ' + (f ? compFotoLabel(f).split(' | ')[0] : compTab);
+      btn && btn.classList.add('filter-active');
+    }
+
+    // Anota cada deal visível com o par da foto, status de movimento e Δs de receita.
+    function compAugment(deals) {
+      const liveExcl = _fcRevExcluded((allDeals && allDeals.length) ? allDeals : deals);
+      deals.forEach(d => {
+        const old = compMap.get(String(d.hs_id || '')) || null;
+        const cur = compDealTotals(d, liveExcl);
+        let st;
+        if (!old) st = 'novo';
+        else {
+          const ro = _fcStageRank(old), rn = _fcStageRank(d);
+          st = rn > ro ? 'avancou' : (rn < ro ? 'regrediu' : (old.stage !== d.stage ? 'mudou' : 'igual'));
+        }
+        const oldT = old ? compDealTotals(old, compExcl) : { real: 0, prob: 0 };
+        d._cmp = { old, st, oldReal: oldT.real, oldProb: oldT.prob, curReal: cur.real, curProb: cur.prob };
+        d.comp_dreal = cur.real - oldT.real;
+        d.comp_dprob = cur.prob - oldT.prob;
+      });
+    }
+
+    // Saíram do pipe desde a foto: estavam na foto e não existem mais no payload vivo
+    // (foram Perdidos, deletados ou saíram do recorte). Ignora os filtros da UI.
+    function compExits() {
+      const liveIds = new Set(allDeals.map(d => String(d.hs_id)));
+      const out = [];
+      compMap.forEach((old, id) => {
+        if (liveIds.has(id)) return;
+        const lost = compLostNow ? (compLostNow.get(id) || null) : null;
+        const t = compDealTotals(old, compExcl);
+        out.push({ old, lost, real: t.real, prob: t.prob });
+      });
+      out.sort((a, b) => b.prob - a.prob);
+      return out;
+    }
+
+    function fmtDeltaBRL(v) {
+      if (!v || Math.abs(v) < 0.5) return '—';
+      return (v > 0 ? '+' : '−') + fmtBRL(Math.abs(v));
+    }
+
+    // Tooltip da célula de Etapa: o que mudou nos campos-chave desde a foto.
+    function compRowTip(d) {
+      const o = d._cmp && d._cmp.old;
+      if (!o) return 'Novo | não existia na foto de ' + compMeta.tab;
+      const p = [];
+      if (o.stage !== d.stage) p.push('Etapa: ' + o.stage + ' → ' + d.stage);
+      if ((o.vidas ?? null) !== (d.vidas ?? null)) p.push('Vidas: ' + (o.vidas ?? '—') + ' → ' + (d.vidas ?? '—'));
+      if ((o.primeira_fatura ?? null) !== (d.primeira_fatura ?? null)) p.push('1ª Fatura: ' + fmtBRL(o.primeira_fatura) + ' → ' + fmtBRL(d.primeira_fatura));
+      if ((o.probabilidade ?? null) !== (d.probabilidade ?? null)) p.push('Prob. AE: ' + fmtPct(o.probabilidade) + ' → ' + fmtPct(d.probabilidade));
+      if ((o.data_prevista_para_receita ?? null) !== (d.data_prevista_para_receita ?? null)) p.push('Dt. Receita: ' + fmtDate(o.data_prevista_para_receita) + ' → ' + fmtDate(d.data_prevista_para_receita));
+      if ((o.ae ?? null) !== (d.ae ?? null)) p.push('Executivo: ' + (o.ae || '—') + ' → ' + (d.ae || '—'));
+      return 'Foto ' + compMeta.tab + (p.length ? ' | ' + p.join(' | ') : ' | sem mudança nos campos-chave');
+    }
+
+    function renderCompBanner(deals) {
+      const el = document.getElementById('comp-banner');
+      if (!el) return;
+      if (!compTab || !compMap) { el.style.display = 'none'; el.innerHTML = ''; return; }
+      const novos = deals.filter(d => d._cmp && d._cmp.st === 'novo').length;
+      const avanc = deals.filter(d => d._cmp && d._cmp.st === 'avancou').length;
+      const regre = deals.filter(d => d._cmp && d._cmp.st === 'regrediu').length;
+      const dReal = deals.reduce((s, d) => s + (d.comp_dreal || 0), 0);
+      const dProb = deals.reduce((s, d) => s + (d.comp_dprob || 0), 0);
+      const exits = compExits();
+      const perdidos = exits.filter(e => e.lost).length;
+      const rec = compMeta.reconstructed ? ' <span style="opacity:.75">(reconstruída)</span>' : '';
+      el.innerHTML = `
+        <span class="cb-title">Comparando com a foto de ${esc(compMeta.tab)}${rec}</span>
+        <span data-tooltip="Deals do conjunto do forecast na foto (sem os já perdidos na data)">Foto: <b>${compMeta.count}</b> deals</span>
+        <span data-tooltip="Variação da Receita Real projetada na janela 2026–2027, deals visíveis com os filtros atuais">Δ Real: <b class="${dReal > 0.5 ? 'dpos' : (dReal < -0.5 ? 'dneg' : '')}">${fmtDeltaBRL(dReal)}</b></span>
+        <span data-tooltip="Variação da Receita Probabilizada projetada na janela, deals visíveis com os filtros atuais">Δ Probabilizada: <b class="${dProb > 0.5 ? 'dpos' : (dProb < -0.5 ? 'dneg' : '')}">${fmtDeltaBRL(dProb)}</b></span>
+        <span>Novos: <b>${novos}</b></span>
+        <span>Avançaram: <b>${avanc}</b> | Regrediram: <b>${regre}</b></span>
+        <span data-tooltip="Deals que estavam na foto e não estão mais no pipe (livro todo, ignora filtros)">Saíram: <b>${exits.length}</b>${exits.length ? ` (${perdidos} perdido${perdidos !== 1 ? 's' : ''})` : ''}</span>
+        <button class="cb-x" onclick="setCompTab(null)">✕ desligar</button>`;
+      el.style.display = '';
+    }
+
+    function compExitsHtml() {
+      const exits = compExits();
+      if (!exits.length) return '<div class="cmp-exits"><h3>Saíram do pipe desde a foto <span>| nenhum deal saiu</span></h3></div>';
+      let h = `<div class="cmp-exits"><h3>Saíram do pipe desde a foto de ${esc(compMeta.tab)} <span>| ${exits.length} deals | considera o livro todo, ignora os filtros acima</span></h3>`;
+      h += '<table><thead><tr><th>Deal</th><th>Situação agora</th><th>Etapa na foto</th><th>Executivo</th><th style="text-align:right">Vidas</th><th style="text-align:right">1ª Fatura</th><th style="text-align:right">Receita Prob. na foto</th><th>Motivo</th></tr></thead><tbody>';
+      exits.forEach(e => {
+        const url = `https://app.hubspot.com/contacts/${HUB_ID}/deal/${esc(e.old.hs_id)}`;
+        const sit = e.lost ? '<span class="ex-lost">Perdido</span>' : '<span class="ex-gone">Fora do pipe</span>';
+        const motivo = e.lost ? (e.lost.lost_reason || '—') : '—';
+        h += `<tr>
+          <td><a class="deal-link" href="${url}" target="_blank" rel="noopener">${esc(e.old.dealname || '—')}</a></td>
+          <td>${sit}</td>
+          <td>${esc(e.old.stage || '—')}</td>
+          <td>${esc(e.old.ae || '—')}</td>
+          <td class="r">${e.old.vidas != null ? fmtNum(e.old.vidas) : '—'}</td>
+          <td class="r">${e.old.primeira_fatura != null ? fmtBRL(e.old.primeira_fatura) : '—'}</td>
+          <td class="r">${fmtBRL(e.prob)}</td>
+          <td>${esc(motivo)}</td>
+        </tr>`;
+      });
+      h += '</tbody></table></div>';
+      return h;
+    }
+
     function applyAndRender() {
       updateMobFabBadge();
       let deals = allDeals;
@@ -3214,6 +3561,8 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
           prob_info: pInfo
         };
       });
+
+      if (compTab && compMap) compAugment(deals);
 
       if (sortKey) {
         deals = [...deals].sort((a, b) => {
@@ -3552,6 +3901,18 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
           tip: 'Data de Vigência do contrato (HubSpot)'
         },
       ];
+      if (compTab && compMap) {
+        INFO.splice(2, 0,
+          {
+            k: 'comp_dreal', lbl: 'Δ Real (R$)', w: 105, align: 'right', hideMobile: true,
+            tip: 'Variação da Receita Real projetada na janela 2026–2027 vs a foto de ' + compMeta.tab + ' | dados da foto recalculados pelo motor e regras de HOJE'
+          },
+          {
+            k: 'comp_dprob', lbl: 'Δ Prob. (R$)', w: 105, align: 'right', hideMobile: true,
+            tip: 'Variação da Receita Probabilizada projetada na janela 2026–2027 vs a foto de ' + compMeta.tab + ' | dados da foto recalculados pelo motor e regras de HOJE'
+          }
+        );
+      }
       currentInfo = INFO;
 
       // ── Build HTML ──────────────────────────────────────────────────────────
@@ -3619,6 +3980,27 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
 
           if (c.sticky) {
             h += `<td class="${sc}" data-col="${ci}"><a class="deal-link" href="javascript:void(0)" onclick="openDealModal(${di})" title="Ver detalhes de ${esc(v ?? '')}"><span class="dl-txt">${esc(v || '-')}</span><span class="ext-icon">›</span></a></td>`;
+            return;
+          }
+
+          // Modo comparação: etapa com de→para + badge, e colunas Δ de receita
+          if (compTab && d._cmp && c.k === 'stage') {
+            const cmp = d._cmp;
+            let badge = '';
+            if (cmp.st === 'novo') badge = '<span class="cmpb cmpb-new">novo</span>';
+            else if (cmp.st === 'avancou') badge = '<span class="cmpb cmpb-up">▲</span>';
+            else if (cmp.st === 'regrediu') badge = '<span class="cmpb cmpb-down">▼</span>';
+            const oldTxt = (cmp.old && cmp.old.stage !== d.stage) ? `<span class="cmp-old">${esc(cmp.old.stage)} →</span> ` : '';
+            h += `<td class="${sc}" data-col="${ci}" data-tip="${esc(compRowTip(d))}">${oldTxt}${esc(v || '-')}${badge}</td>`;
+            return;
+          }
+          if (compTab && d._cmp && (c.k === 'comp_dreal' || c.k === 'comp_dprob')) {
+            const val = d[c.k] || 0;
+            const cls = val > 0.5 ? 'dpos' : (val < -0.5 ? 'dneg' : 'dzero');
+            const oldV = c.k === 'comp_dreal' ? d._cmp.oldReal : d._cmp.oldProb;
+            const curV = c.k === 'comp_dreal' ? d._cmp.curReal : d._cmp.curProb;
+            const tip = `Foto ${compMeta.tab}: ${fmtBRL(oldV)} | Agora: ${fmtBRL(curV)} | janela ${MONTHS[0].label}–${MONTHS[MONTHS.length - 1].label}`;
+            h += `<td class="${sc} ${cls}" style="text-align:right" data-col="${ci}" data-tip="${esc(tip)}">${fmtDeltaBRL(val)}</td>`;
             return;
           }
 
@@ -3718,11 +4100,15 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       const effAdjTip = 'Probabilidade ajustada efetiva = Receita Probabilizada ÷ Receita Real (média ponderada da P. Ajust. usada para gerar o ARR/MRR probabilizado)';
 
       // Total row inside tfoot (sticky bottom)
+      const cmpSumReal = (compTab && compMap) ? deals.reduce((s, d) => s + (d.comp_dreal || 0), 0) : 0;
+      const cmpSumProb = (compTab && compMap) ? deals.reduce((s, d) => s + (d.comp_dprob || 0), 0) : 0;
       h += '<tfoot><tr class="total">';
       INFO.forEach((c, i) => {
         const sc = c.sticky ? ' s' : (c.sticky2 ? ' s2' : '');
         const mh = c.hideMobile ? ' m-hide' : '';
         if (i === 0) h += `<td class="${sc}">TOTAL</td>`;
+        else if (c.k === 'comp_dreal') h += `<td class="${mh} ${cmpSumReal > 0.5 ? 'dpos' : (cmpSumReal < -0.5 ? 'dneg' : 'dzero')}" style="text-align:right">${fmtDeltaBRL(cmpSumReal)}</td>`;
+        else if (c.k === 'comp_dprob') h += `<td class="${mh} ${cmpSumProb > 0.5 ? 'dpos' : (cmpSumProb < -0.5 ? 'dneg' : 'dzero')}" style="text-align:right">${fmtDeltaBRL(cmpSumProb)}</td>`;
         else if (c.k === 'vidas') h += `<td class="${mh}" style="text-align:right">${totalVidas > 0 ? fmtNum(totalVidas) : ''}</td>`;
         else if (c.k === 'fatura_atual') h += `<td class="${mh}" style="text-align:right">${totalFatAtu > 0 ? fmtBRL(totalFatAtu) : ''}</td>`;
         else if (c.k === 'primeira_fatura') h += `<td class="${mh}" style="text-align:right">${totalPrimFat > 0 ? fmtBRL(totalPrimFat) : ''}</td>`;
@@ -3744,8 +4130,11 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       });
       h += '</tr></tfoot></table>';
 
+      if (compTab && compMap) h += compExitsHtml();
+
       document.getElementById('tw').innerHTML = h;
       setupColumnHover();
+      renderCompBanner(deals);
     }
 
     // ── EXPORT ────────────────────────────────────────────────────────────────
