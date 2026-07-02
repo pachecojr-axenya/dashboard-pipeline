@@ -85,7 +85,7 @@ html[data-theme="light"] #novo-tip .nt-code{border-top-color:rgba(0,0,0,.1)}
 html[data-theme="light"] .tab-sub-btn.active{box-shadow:none}
 .tab-sub-thumb{position:absolute;top:3px;height:calc(100% - 6px);border-radius:99px;background:rgba(255,255,255,.14);pointer-events:none;z-index:0;transition:left .22s cubic-bezier(.4,0,.2,1),width .22s cubic-bezier(.4,0,.2,1)}
 html[data-theme="light"] .tab-sub-thumb{background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.15)}
-.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem;margin-bottom:.75rem}
+.kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:.75rem;margin-bottom:.75rem}
 .kpi-card{background:var(--card);border-radius:14px;padding:1.6rem 1.8rem;transition:box-shadow .18s}
 .kpi-card:hover{box-shadow:0 0 0 2px rgba(58,184,183,.35)}
 .kpi-click{cursor:pointer}
@@ -258,7 +258,7 @@ var NOVO_I18N={
 function t(k){ return (NOVO_I18N[NOVO_LANG]||NOVO_I18N.pt)[k]||(NOVO_I18N.pt[k])||k; }
 function novoToggleLang(){ NOVO_LANG=NOVO_LANG==='pt'?'en':'pt'; try{localStorage.setItem('novo_lang',NOVO_LANG);}catch(e){} (function(_e){if(_e)_e.textContent=NOVO_LANG.toUpperCase();})(document.getElementById('novo-lang-label')); if(_novoDeals) novoRender(); }
 
-var AE_CARD_CODES={'kpi-open-lives':'P02','kpi-won-lives':'P08','kpi-won-arr':'P07','vidas-ae':'C01','arr':'A07','wonrev':'A08','winrate':'A09','monthly-won':'A10','pipeline-stage':'A11','aging':'A12','age-dist':'A13','radar':'A14','loss-reason':'A15','meeting-rate':'A16','efficiency':'A17','meeting-ae':'A18','velocity-stage':'A19'};
+var AE_CARD_CODES={'kpi-open-lives':'P02','kpi-won-lives':'P08','kpi-won-arr':'P07','kpi-stale':'S05','kpi-meetings':'P04','vidas-ae':'C01','arr':'A07','wonrev':'A08','winrate':'A09','monthly-won':'A10','pipeline-stage':'A11','aging':'A12','age-dist':'A13','radar':'A14','loss-reason':'A15','meeting-rate':'A16','efficiency':'A17','meeting-ae':'A18','velocity-stage':'A19'};
 var _novoShowInfo=(function(){try{return localStorage.getItem('ae_show_info')!=='0';}catch(e){return true;}})();
 function _codeTag(key){var c=AE_CARD_CODES[key]||'';return c?'<span class="novo-code-tag">'+c+'</span>':'';}
 function novoToggleInfo(){_novoShowInfo=!_novoShowInfo;document.body.classList.toggle('novo-info-on',_novoShowInfo);var b=document.getElementById('btn-info-toggle');if(b)b.classList.toggle('highlighted',_novoShowInfo);try{localStorage.setItem('ae_show_info',_novoShowInfo?'1':'0');}catch(e){}}
@@ -477,6 +477,11 @@ function novoRender(){
   var activeVidas=activeDeals.reduce(function(s,d){return s+(d.vidas||0);},0);
   var wonVidas=won.reduce(function(s,d){return s+(d.vidas||0);},0);
   var wonArr=won.reduce(function(s,d){return s+_annualRev(d);},0);
+  // S05 | estagnados: base ativa sem atividade registrada há +30 dias (mesma regra do CRO).
+  var staleDeals=activeDeals.filter(function(d){return d.dias_sem_atividade!=null&&d.dias_sem_atividade>30;});
+  var stalePct=activeDeals.length?(Math.round(staleDeals.length/activeDeals.length*1000)/10).toFixed(1).replace('.',','):'0';
+  // P04 | reuniões agendadas: snapshot dos deals na etapa Reunião Agendada.
+  var raDeals=deals.filter(function(d){return d.stage==='Reunião Agendada';});
 
   var c=function(title,tip,id,h,tabs,noEmoji){ return '<div class="novo-card"><div class="novo-card-header"><h3>'+(noEmoji?'':'🟡 ')+title+'</h3>'+_infoBtn(tip,id)+(tabs||'')+'</div><canvas id="chart-ae-'+id+'" style="max-height:'+(h||340)+'px"></canvas></div>'; };
   var cWide=function(title,tip,id,h,tabs,noEmoji){ return '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header"><h3>'+(noEmoji?'':'🟡 ')+title+'</h3>'+_infoBtn(tip,id)+(tabs||'')+'</div><canvas id="chart-ae-'+id+'" style="max-height:'+(h||320)+'px"></canvas></div>'; };
@@ -487,6 +492,8 @@ function novoRender(){
       kpi('Vidas | Pipeline Ativo',_ni(activeVidas),activeDeals.length+' deals ativos','var(--teal)','kpi-open-lives','active',true)+
       kpi('Vidas Ganhas',_ni(wonVidas),won.length+' deals por close_date','var(--green)','kpi-won-lives','won',true)+
       kpi('Receita Ganha | Ano Atual',_fmtBig(wonArr),'receita anual por close_date','var(--green)','kpi-won-arr','won')+
+      kpi('Deals Estagnados',_ni(staleDeals.length),'+30 dias sem atividade | '+stalePct+'% dos '+activeDeals.length+' ativos',staleDeals.length>0?'var(--yellow)':'var(--green)','kpi-stale','stale',true)+
+      kpi('Reuniões Agendadas',_ni(raDeals.length),'deals na etapa | snapshot atual','var(--teal)','kpi-meetings','meetings',true)+
     '</div>'+
     '<div class="novo-cards">'+
       // Seção Leaderboard | C01 (mesclado A05+A06) + A07/A08
@@ -496,7 +503,7 @@ function novoRender(){
       cWide('Ganhos por AE'+_aeCntSpan(won.length),'Deals ganhos por AE (mesmos cálculos do B05 | Receita & Ganhos). Alterna entre Receita, Ganhos (contagem) e Vidas — o total bate com o B05.','wonrev',300,_subTabs('ae-wonrev-tabs',_aeWonMetric,[{mode:'revenue',label:'Receita',fn:'aeSwitchWonMetric'},{mode:'deals',label:'Ganhos',fn:'aeSwitchWonMetric'},{mode:'vidas',label:'Vidas',fn:'aeSwitchWonMetric'}]),true)+
       // Seção Conversão
       '<div class="section-hdr"><h2>Conversão & Win Rate</h2></div>'+
-      c(t('ae_winrate')+_aeCntSpan(won.length+lost.length),t('ae_winrate_tip'),'winrate',320)+
+      c(t('ae_winrate')+_aeCntSpan(won.length+lost.length),t('ae_winrate_tip'),'winrate',320,'',true)+
       c(t('ae_monthly_won')+_aeCntSpan(won.length),t('ae_monthly_won_tip'),'monthly-won',320,'',true)+
       cWide('AE Efficiency | Deals vs Win Rate','Gráfico de bolhas por AE: eixo X = total de deals (abertos + ganhos + perdidos), eixo Y = win rate ajustado (ganhos ÷ (ganhos + perdidos)). O tamanho da bolha reflete as vidas em pipeline aberto. Só AEs do time. Clique numa bolha para ver os deals do AE.','efficiency',360)+
       // Seção Reuniões
@@ -537,11 +544,40 @@ function novoRender(){
 }
 
 function aeKpiOpen(kind){
+  if(kind==='stale'){ _aeStaleModal(); return; }
+  if(kind==='meetings'){ _aeMeetingsModal(); return; }
   var won=_novoWon(), deals=[];
   var title='Deals';
   if(kind==='active'){title='Vidas | Pipeline Ativo';deals=_aeActivePipeline();}
   else if(kind==='won'){title='Ganhos no Período';deals=won;}
   novoOpenDealsModal(title,deals);
+}
+// S05 | drill dos estagnados: deals da base ativa com dias_sem_atividade > 30, com as datas
+// relevantes do KPI (última atividade + dias sem atividade), ordenado do mais estagnado.
+function _aeStaleModal(){
+  var deals=_aeActivePipeline().filter(function(d){return d.dias_sem_atividade!=null&&d.dias_sem_atividade>30;})
+    .sort(function(a,b){return (b.dias_sem_atividade||0)-(a.dias_sem_atividade||0);});
+  if(!deals.length){ openModal('Deals Estagnados','<p style="color:var(--text2);padding:1rem 0">Nenhum deal estagnado.</p>'); return; }
+  var rows=deals.map(function(d){
+    var hsUrl=d.hs_id?'https://app.hubspot.com/contacts/44715285/deal/'+d.hs_id:'#';
+    var nameCell=d.hs_id?'<a href="'+hsUrl+'" target="_blank" rel="noopener" style="color:var(--teal);text-decoration:none">'+_ne(d.dealname)+'</a>':_ne(d.dealname);
+    return '<tr><td style="text-align:left;min-width:150px;max-width:210px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+nameCell+'</td><td style="text-align:left;white-space:nowrap">'+_ne(d.ae)+'</td><td style="white-space:nowrap">'+_ne(d.stage)+'</td><td>'+_ni(d.vidas)+'</td><td style="white-space:nowrap">'+_nd(d.ultima_atividade)+'</td><td style="color:'+((d.dias_sem_atividade||0)>90?'var(--red)':'var(--yellow)')+';font-weight:700">'+_ni(d.dias_sem_atividade)+'</td></tr>';
+  }).join('');
+  openModal('Deals Estagnados | +30 dias sem atividade ('+deals.length+')','<table class="lb"><thead><tr><th style="text-align:left">Deal</th><th style="text-align:left">AE</th><th>Etapa</th><th>Vidas</th><th>Última atividade</th><th>Dias sem atividade</th></tr></thead><tbody>'+rows+'</tbody></table>');
+}
+// P04 | drill das reuniões agendadas: deals na etapa Reunião Agendada, com a data de entrada
+// na etapa (data_reuniao_agendada) e há quantos dias estão nela.
+function _aeMeetingsModal(){
+  var deals=_rawDeals().filter(function(d){return d.stage==='Reunião Agendada';})
+    .sort(function(a,b){return (b.data_reuniao_agendada||'')<(a.data_reuniao_agendada||'')?-1:1;});
+  if(!deals.length){ openModal('Reuniões Agendadas','<p style="color:var(--text2);padding:1rem 0">Nenhum deal na etapa.</p>'); return; }
+  var rows=deals.map(function(d){
+    var hsUrl=d.hs_id?'https://app.hubspot.com/contacts/44715285/deal/'+d.hs_id:'#';
+    var nameCell=d.hs_id?'<a href="'+hsUrl+'" target="_blank" rel="noopener" style="color:var(--teal);text-decoration:none">'+_ne(d.dealname)+'</a>':_ne(d.dealname);
+    var dias=_aeRaDays(d);
+    return '<tr><td style="text-align:left;min-width:150px;max-width:210px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+nameCell+'</td><td style="text-align:left;white-space:nowrap">'+_ne(d.ae)+'</td><td>'+_ni(d.vidas)+'</td><td>'+_ni(d.colaboradores!=null?d.colaboradores:d.quantidade_de_colaboradores)+'</td><td style="white-space:nowrap">'+_nd(d.data_reuniao_agendada)+'</td><td style="color:'+((dias||0)>30?'var(--yellow)':'var(--text)')+';font-weight:700">'+(dias!=null?_ni(dias):'—')+'</td></tr>';
+  }).join('');
+  openModal('Reuniões Agendadas | deals na etapa ('+deals.length+')','<table class="lb"><thead><tr><th style="text-align:left">Deal</th><th style="text-align:left">AE</th><th>Vidas</th><th>Colaboradores</th><th>Entrada em RA</th><th>Dias na etapa</th></tr></thead><tbody>'+rows+'</tbody></table>');
 }
 
 // ── Builders ──────────────────────────────────────────────────────────────────
@@ -630,8 +666,10 @@ function buildAEMonthlyWon(){
   _novoMkChart('chart-ae-monthly-won',{type:'bar',plugins:[ChartDataLabels],
     data:{labels:months.map(_mlbl),datasets:datasets},
     options:{responsive:true,layout:{padding:{top:24}},plugins:{legend:{display:true,labels:{color:th.cText2,font:{family:NOVO_FONT,size:10},padding:8}},
-      datalabels:{display:false},
-      tooltip:{callbacks:{label:function(c){return c.dataset.label+': '+c.parsed.y+' ganhos';}}}},
+      // Total do mês no topo da pilha: label só no último dataset (topo), somando os visíveis.
+      datalabels:{display:function(c){return c.datasetIndex===c.chart.data.datasets.length-1;},anchor:'end',align:'end',color:th.cText,font:{family:NOVO_FONT,size:11,weight:'bold'},formatter:function(v,c){var t=0;c.chart.data.datasets.forEach(function(ds,i){if(c.chart.isDatasetVisible(i))t+=(ds.data[c.dataIndex]||0);});return t||'';}},
+      // Tooltip em modo index: discrimina os ganhos de TODOS os executivos do mês.
+      tooltip:{mode:'index',filter:function(item){return item.parsed.y>0;},callbacks:{label:function(c){return c.dataset.label+': '+c.parsed.y+(c.parsed.y===1?' ganho':' ganhos');},footer:function(items){var t=0;items.forEach(function(it){t+=it.parsed.y;});return 'Total: '+t+(t===1?' ganho':' ganhos');}}}},
       scales:{x:{grid:{display:false},ticks:{color:th.cText2,font:{family:NOVO_FONT}},stacked:true},y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0},stacked:true}},
       onClick:function(e,el){ if(!el.length)return; var m=months[el[0].index]; var ae=aes[el[0].datasetIndex]; novoOpenDealsModal('Ganhos | '+ae+' | '+_mlbl(m), won.filter(function(d){return d.ae===ae&&d.close_date&&d.close_date.substring(0,7)===m;})); }}});
 }
@@ -684,7 +722,7 @@ function buildAEEfficiency(){
     data:{datasets:datasets},
     options:{responsive:true,layout:{padding:{top:18,right:18}},plugins:{legend:{display:true,position:'right',labels:{color:th.cText2,font:{family:NOVO_FONT,size:10},padding:6,usePointStyle:true}},
       datalabels:{display:true,color:th.cText,font:{family:NOVO_FONT,size:9,weight:'bold'},formatter:function(v,c){return (c.dataset.label||'').split(' ')[0];},anchor:'center',align:'center'},
-      tooltip:{callbacks:{label:function(c){return c.dataset.label+': '+c.parsed.x+' deals | win rate '+c.parsed.y+'% | '+(c.raw._v||0)+' vidas';}}}},
+      tooltip:{callbacks:{label:function(c){return c.dataset.label+': '+_ni(c.parsed.x)+' deals | '+_ni(c.raw._v||0)+' vidas | win rate '+c.parsed.y+'%';}}}},
       scales:{x:{title:{display:true,text:'Total de deals',color:th.cText2,font:{family:NOVO_FONT}},grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0},min:_xMin,max:_xMax},
         y:{title:{display:true,text:'Win rate (%)',color:th.cText2,font:{family:NOVO_FONT}},grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},callback:function(v){return v+'%';}},beginAtZero:true,grace:'10%'}},
       onClick:function(e,el){ if(!el.length)return; var ae=datasets[el[0].datasetIndex].label; novoOpenDealsModal('Deals | '+ae, all.filter(function(d){return d.ae===ae;})); }}});
