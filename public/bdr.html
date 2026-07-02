@@ -494,16 +494,29 @@ function _bdrFilterMonths(){
   while(cur<=end && out.length<60){ out.push(cur); var y=parseInt(cur.substring(0,4),10), m=parseInt(cur.substring(5,7),10); m++; if(m>12){m=1;y++;} cur=y+'-'+String(m).padStart(2,'0'); }
   return out;
 }
+// Meta flat de um BDR, tolerante a grafias antigas no localStorage/KV ('Letícia Romão',
+// 'Emmanuelle Braga') via normalização NFD + alias; fallback final = goal da BDR_LIST.
+var _BDR_FLAT_ALIAS={'emmanuelle braga':'emanuelle braga'};
+function _bdrFlatGoal(name){
+  var flat=window.BDR_METAS||{};
+  if(flat[name]!=null) return flat[name];
+  var target=_bdrNorm(name), keys=Object.keys(flat);
+  for(var i=0;i<keys.length;i++){ var k=_bdrNorm(keys[i]); k=_BDR_FLAT_ALIAS[k]||k; if(k===target) return flat[keys[i]]; }
+  var list=window.BDR_LIST||[];
+  for(var j=0;j<list.length;j++){ if(list[j].name===name) return list[j].goal; }
+  return null;
+}
 // Meta efetiva de um BDR para a janela atual: Σ metas mensais dos meses da janela
 // (fallback: meta flat legada por mês). Sem filtro: Σ das metas MENSAIS cadastradas
 // (sem fallback — all-time não tem janela p/ aplicar a meta flat); 0/null = sem cor.
 function _bdrGoalFor(name){
-  var mm=window.BDR_METAS_MONTHLY||{}, flat=(window.BDR_METAS||{})[name];
+  var mm=window.BDR_METAS_MONTHLY||{}, flat=_bdrFlatGoal(name);
   var months=_bdrFilterMonths();
   if(months===null){
     var tot=0, any=false;
     Object.keys(mm).forEach(function(ym){ var v=mm[ym]&&mm[ym][name]; if(v!=null){tot+=v;any=true;} });
-    return any?tot:null;
+    if(any) return tot;
+    return flat; // sem nenhuma meta mensal cadastrada: comportamento legado (meta flat)
   }
   var sum=0, has=false;
   months.forEach(function(ym){ var v=mm[ym]&&mm[ym][name]; if(v==null) v=flat; if(v!=null){sum+=v;has=true;} });
@@ -736,7 +749,7 @@ function buildBdrWeekly(){
   _novoMkChart('chart-bdr-weekly-origin',{type:'bar',plugins:[ChartDataLabels],
     data:{labels:weeks.map(_wlbl),datasets:datasets},
     options:{responsive:true,layout:{padding:{top:26}},plugins:{legend:{display:true,labels:{color:th.cText2,font:{family:NOVO_FONT,size:10},padding:8}},datalabels:{display:function(c){return c.datasetIndex===c.chart.data.datasets.length-1;},anchor:'end',align:'top',color:th.cText,font:{family:NOVO_FONT,size:10,weight:'bold'},formatter:function(v,c){var t=0;c.chart.data.datasets.forEach(function(ds){t+=(ds.data[c.dataIndex]||0);});return t?_ni(t):'';}},
-      tooltip:{callbacks:{label:function(c){return c.dataset.label+': '+_ni(c.parsed.y)+(colab?' colaboradores':vidas?' vidas':' deals');}}}},
+      tooltip:{mode:'index',intersect:false,filter:function(item){return item.parsed.y>0;},callbacks:{label:function(c){return c.dataset.label+': '+_ni(c.parsed.y)+(colab?' colaboradores':vidas?' vidas':' deals');}}}},
       scales:{x:{grid:{display:false},ticks:{color:th.cText2,font:{family:NOVO_FONT}},stacked:true},y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0},stacked:true}},
       onClick:function(e,el){ if(!el.length)return; var ds=datasets[el[0].datasetIndex]; var pre=(ds&&ds.label!=='Outros')?ds.label:null; bdrOpenFacetModal('Weekly Origination por BDR', created, 'bdr', pre); }}});
 }
@@ -761,7 +774,7 @@ function buildBdrLeadsOrigin(){
   _novoMkChart('chart-bdr-leads-origin',{type:'bar',plugins:[ChartDataLabels],
     data:{labels:months.map(_mlbl),datasets:datasets},
     options:{responsive:true,layout:{padding:{top:26}},plugins:{legend:{display:true,labels:{color:th.cText2,font:{family:NOVO_FONT,size:10},padding:8}},datalabels:{display:function(c){return c.datasetIndex===c.chart.data.datasets.length-1;},anchor:'end',align:'top',color:th.cText,font:{family:NOVO_FONT,size:10,weight:'bold'},formatter:function(v,c){var t=0;c.chart.data.datasets.forEach(function(ds){t+=(ds.data[c.dataIndex]||0);});return t?_ni(t):'';}},
-      tooltip:{callbacks:{label:function(c){return c.dataset.label+': '+_ni(c.parsed.y)+(colab?' colaboradores':vidas?' vidas':' deals');}}}},
+      tooltip:{mode:'index',intersect:false,filter:function(item){return item.parsed.y>0;},callbacks:{label:function(c){return c.dataset.label+': '+_ni(c.parsed.y)+(colab?' colaboradores':vidas?' vidas':' deals');}}}},
       scales:{x:{grid:{display:false},ticks:{color:th.cText2,font:{family:NOVO_FONT}},stacked:true},y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0},stacked:true}},
       onClick:function(e,el){ if(!el.length)return; var ds=datasets[el[0].datasetIndex]; var m=months[el[0].index]; bdrOpenFacetModal('Monthly Origination | BDRs', created, (ds&&ds.label!=='Outros')?'bdr':'mes', (ds&&ds.label!=='Outros')?ds.label:_mlbl(m)); }}});
 }
@@ -819,9 +832,12 @@ function buildBdrNewVidas(){
       scales:{x:{grid:{display:false},ticks:{color:th.cText2,font:{family:NOVO_FONT}}},y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT}}}}}});
 }
 
-// R07: APENAS o time de BDRs; rótulos (datalabels) visíveis por padrão.
+// R07: APENAS deals ORIGINADOS pelo time de BDRs (mesma base 665 do R12: sdr do time +
+// data de entrada em Reunião Agendada preenchida) — inclusive nas saídas (ganhos/perdidos).
+// Rótulos (datalabels) visíveis por padrão.
 function buildBdrNetFlow(){
-  var th=_novoTheme(), months=_getMonths(12), created=_origDeals().filter(_isTeamBdr), won=_novoWon().filter(_isTeamBdr), lost=_novoLost().filter(_isTeamBdr);
+  var _origTeam=function(d){ return _isTeamBdr(d)&&_origDate(d); };
+  var th=_novoTheme(), months=_getMonths(12), created=_origDeals().filter(_isTeamBdr), won=_novoWon().filter(_origTeam), lost=_novoLost().filter(_origTeam);
   var inflow=months.map(function(m){return created.filter(function(d){return _oym(d)===m;}).length;});
   var wonOut=months.map(function(m){return won.filter(function(d){return d.close_date&&d.close_date.substring(0,7)===m;}).length;});
   var lostOut=months.map(function(m){return lost.filter(function(d){return d.close_date&&d.close_date.substring(0,7)===m;}).length;});
@@ -836,13 +852,14 @@ function buildBdrNetFlow(){
     ]},
     options:{responsive:true,layout:{padding:{top:24,bottom:16}},plugins:{legend:{display:true,labels:{color:th.cText2,font:{family:NOVO_FONT,size:10},padding:8}},tooltip:{mode:'index',intersect:false}},
       scales:{x:{grid:{display:false},ticks:{color:th.cText2,font:{family:NOVO_FONT}},stacked:true},y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0},stacked:true}},
-      onClick:function(e,el){ if(!el.length)return; var idx=el[0].datasetIndex; var pre=idx===1?'Ganho':(idx===2?'Perdido':null); bdrOpenFacetModal('Fluxo de Pipeline | BDR', _rawDeals().filter(_isTeamBdr), 'desfecho', pre); }}});
+      onClick:function(e,el){ if(!el.length)return; var idx=el[0].datasetIndex; var pre=idx===1?'Ganho':(idx===2?'Perdido':null); bdrOpenFacetModal('Fluxo de Pipeline | BDR', _rawDeals().filter(_origTeam), 'desfecho', pre); }}});
 }
 
-// R08: APENAS o time de BDRs; métrica = COLABORADORES (não vidas, a pedido do CRO 2026-07-02);
-// rótulos (datalabels) visíveis por padrão.
+// R08: APENAS deals ORIGINADOS pelo time de BDRs (mesma base 665 do R12), inclusive nas
+// saídas; métrica = COLABORADORES (não vidas, a pedido do CRO 2026-07-02); rótulos visíveis.
 function buildBdrNetVidas(){
-  var th=_novoTheme(), months=_getMonths(12), created=_origDeals().filter(_isTeamBdr), won=_novoWon().filter(_isTeamBdr), lost=_novoLost().filter(_isTeamBdr);
+  var _origTeam=function(d){ return _isTeamBdr(d)&&_origDate(d); };
+  var th=_novoTheme(), months=_getMonths(12), created=_origDeals().filter(_isTeamBdr), won=_novoWon().filter(_origTeam), lost=_novoLost().filter(_origTeam);
   var colabOf=function(d){ return d.colaboradores||0; };
   var inflow=months.map(function(m){return created.filter(function(d){return _oym(d)===m;}).reduce(function(s,d){return s+colabOf(d);},0);});
   var wonOut=months.map(function(m){return won.filter(function(d){return d.close_date&&d.close_date.substring(0,7)===m;}).reduce(function(s,d){return s+colabOf(d);},0);});
@@ -858,7 +875,7 @@ function buildBdrNetVidas(){
     ]},
     options:{responsive:true,layout:{padding:{top:24,bottom:16}},plugins:{legend:{display:true,labels:{color:th.cText2,font:{family:NOVO_FONT,size:10},padding:8}},tooltip:{mode:'index',intersect:false}},
       scales:{x:{grid:{display:false},ticks:{color:th.cText2,font:{family:NOVO_FONT}},stacked:true},y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT}},stacked:true}},
-      onClick:function(e,el){ if(!el.length)return; var idx=el[0].datasetIndex; var pre=idx===1?'Ganho':(idx===2?'Perdido':null); bdrOpenFacetModal('Fluxo de Colaboradores | BDR', _rawDeals().filter(_isTeamBdr), 'desfecho', pre); }}});
+      onClick:function(e,el){ if(!el.length)return; var idx=el[0].datasetIndex; var pre=idx===1?'Ganho':(idx===2?'Perdido':null); bdrOpenFacetModal('Fluxo de Colaboradores | BDR', _rawDeals().filter(_origTeam), 'desfecho', pre); }}});
 }
 
 // R09: média de COLABORADORES por deal (não vidas, a pedido do CRO 2026-07-02), APENAS o

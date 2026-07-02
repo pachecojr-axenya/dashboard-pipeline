@@ -89,27 +89,10 @@
     + '.novo-prob-save-global{flex:1;padding:.5rem .3rem;border-radius:8px;border:none;background:var(--teal);color:#fff;cursor:pointer;font-size:.73rem;font-weight:600;font-family:inherit;line-height:1.25;transition:background .15s}'
     + '.novo-prob-save-global:hover{background:#2ea5a4}'
     + '.np-section-sep{font-size:.7rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text2);padding:.9rem 0 .4rem;border-bottom:1px solid var(--border);margin-bottom:.25rem}'
-    + '.np-bdr-row{display:flex;align-items:center;gap:.6rem;padding:.55rem 0;border-bottom:1px solid rgba(255,255,255,.05)}'
-    + '.np-bdr-name{flex:1;font-size:.82rem;color:var(--text)}'
-    + '.np-bdr-level{font-size:.68rem;font-weight:700;border-radius:99px;padding:.18rem .55rem;flex-shrink:0}'
-    + '.np-bdr-input{width:52px;text-align:right;background:var(--card2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:.28rem .4rem;font-size:.84rem;font-family:inherit}'
-    + '.np-bdr-input:focus{outline:none;border-color:var(--teal)}'
     + '.np-reset{background:none;border:none;color:var(--text2);cursor:pointer;font-size:.85rem;padding:0 .25rem;line-height:1;transition:color .12s;flex-shrink:0}'
     + '.np-reset:hover{color:var(--teal)}';
 
-  function _bdrRowHtml(b, idx, goals){
-    var bg = LEVEL_COLORS[b.level]||'rgba(255,255,255,.05)';
-    var tc = LEVEL_TEXT[b.level]||'var(--text2)';
-    var val = goals[b.name]!=null ? goals[b.name] : b.goal;
-    return '<div class="np-bdr-row">'
-      + '<span class="np-bdr-name">'+b.name+'</span>'
-      + '<span class="np-bdr-level" style="background:'+bg+';color:'+tc+'">'+b.level+'</span>'
-      + '<input type="number" class="np-bdr-input" id="np-bdr-'+idx+'" value="'+val+'" min="0" step="1">'
-      + '</div>';
-  }
-
-  function _buildHTML(goals){
-    var bdrRows = BDR_LIST.map(function(b,i){return _bdrRowHtml(b,i,goals);}).join('');
+  function _buildHTML(){
     return ''
       + '<div class="novo-prob-backdrop" id="novo-prob-backdrop" onclick="novoCloseSettings()"></div>'
       + '<div class="novo-prob-drawer" id="novo-prob-drawer">'
@@ -121,11 +104,9 @@
       + '    <div class="novo-prob-field" style="border-bottom:none;align-items:center"><label>Implantação = Ganho</label><button class="impl-toggle" id="np-impl-toggle" onclick="novoToggleImplWon()" style="margin-left:auto"><span class="sw"></span></button></div>'
       + '    <div class="novo-prob-field" style="border-bottom:none;align-items:center"><label>Ativos incluem Reunião Agendada</label><button class="impl-toggle" id="np-ra-toggle" onclick="novoToggleActiveMeetings()" style="margin-left:auto"><span class="sw"></span></button></div>'
       + '    <div class="novo-prob-field" style="border-bottom:none;align-items:center"><label>Ativos incluem Standby</label><button class="impl-toggle" id="np-sb-toggle" onclick="novoToggleActiveStandby()" style="margin-left:auto"><span class="sw"></span></button></div>'
-      // e: Metas separator + global notice
-      + '    <div class="np-section-sep">Metas</div>'
-      + '    <p style="font-size:.72rem;color:var(--text2);margin:.3rem 0 .5rem;line-height:1.4">Alterações salvas globalmente — visíveis para todos os usuários.</p>'
-      // f-r: BDR goals
-      + bdrRows
+      // Metas dos BDRs saíram do drawer (2026-07-02): editar pelo botão "Metas" do card
+      // R12 do painel BDR (modal mês × BDR, global). window.BDR_METAS segue carregado
+      // abaixo como fallback dos meses sem meta mensal.
       // s: Probabilidades separator
       + '    <div class="np-section-sep" style="margin-top:.75rem">Probabilidades</div>'
       // t: notice
@@ -146,7 +127,6 @@
       + '  <div class="novo-prob-drawer-ftr">'
       + '    <button class="novo-prob-cancel" onclick="novoCloseSettings()" title="Cancelar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>'
       + '    <button class="novo-prob-save-local" onclick="novoSaveProbs()" title="Salva probabilidades no seu navegador (local)">Salvar<br>Probabilidades</button>'
-      + '    <button class="novo-prob-save-global" onclick="novoSaveMetas()" title="Salva metas globalmente para todos os usuários">Salvar<br>Metas</button>'
       + '  </div>'
       + '</div>';
   }
@@ -154,8 +134,7 @@
   function inject(){
     if (document.getElementById('novo-prob-drawer')) return;
     var st=document.createElement('style'); st.textContent=CSS; document.head.appendChild(st);
-    var goals = loadBdrMetas();
-    var wrap=document.createElement('div'); wrap.innerHTML=_buildHTML(goals);
+    var wrap=document.createElement('div'); wrap.innerHTML=_buildHTML();
     while (wrap.firstChild) document.body.appendChild(wrap.firstChild);
   }
   if (document.readyState==='loading') document.addEventListener('DOMContentLoaded', inject); else inject();
@@ -186,25 +165,15 @@
     v('np-con', fmtPct(sp['Consultoria']||SP_DEFAULT['Consultoria']));
     v('np-neg', fmtPct(sp['Negociação']||SP_DEFAULT['Negociação']));
     v('np-imp', fmtPct(sp['Implantação']||SP_DEFAULT['Implantação']));
-    // BDR goals — seed from localStorage, then refresh from API
-    var goals = loadBdrMetas();
-    BDR_LIST.forEach(function(b,i){
-      var el=document.getElementById('np-bdr-'+i); if(el) el.value=(goals[b.name]!=null?goals[b.name]:b.goal);
-    });
     window._gsSync();
     if (typeof setContentBlur==='function') setContentBlur(true);
     document.getElementById('novo-prob-backdrop').classList.add('open');
     document.getElementById('novo-prob-drawer').classList.add('open');
-    // Fetch latest global metas from API (non-blocking)
+    // Atualiza window.BDR_METAS (fallback das metas mensais do painel BDR) — não há mais UI aqui.
     fetch('/api/bdr-metas', {credentials:'include'}).then(function(r){ return r.json(); }).then(function(data){
       if (data && data.success && data.metas) {
-        var g=data.metas;
-        window.BDR_METAS=g;
-        try { localStorage.setItem('bdr_metas', JSON.stringify(g)); } catch(e){}
-        BDR_LIST.forEach(function(b,i){
-          var el=document.getElementById('np-bdr-'+i);
-          if(el && g[b.name]!=null) el.value=g[b.name];
-        });
+        window.BDR_METAS=data.metas;
+        try { localStorage.setItem('bdr_metas', JSON.stringify(data.metas)); } catch(e){}
       }
     }).catch(function(){});
   };
@@ -238,40 +207,8 @@
     if (typeof novoRender==='function') novoRender();
   };
 
-  // Salva metas dos BDRs globalmente via API (todos os usuários)
-  window.novoSaveMetas = function(){
-    var goals={};
-    for (var i=0; i<BDR_LIST.length; i++){
-      var b=BDR_LIST[i];
-      var el=document.getElementById('np-bdr-'+i);
-      var val=el?parseInt(el.value):b.goal;
-      if(isNaN(val)||val<0){ alert('Meta inválida para '+b.name+'. Use um número inteiro ≥ 0.'); return; }
-      goals[b.name]=val;
-    }
-    // Atualiza local imediatamente
-    window.BDR_METAS=goals;
-    try { localStorage.setItem('bdr_metas', JSON.stringify(goals)); } catch(e){}
-    // POST para API (global)
-    fetch('/api/bdr-metas', {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({metas:goals}),
-      credentials:'include',
-    }).then(function(r){ return r.json(); }).then(function(data){
-      if(data && data.success && data.metas){
-        window.BDR_METAS=data.metas;
-        try { localStorage.setItem('bdr_metas', JSON.stringify(data.metas)); } catch(e){}
-      } else {
-        console.warn('[bdr-metas] save warning:', data && data.error);
-      }
-      window.novoCloseSettings();
-      if(typeof novoRender==='function') novoRender();
-    }).catch(function(){
-      // API indisponível — mantém salvo localmente
-      window.novoCloseSettings();
-      if(typeof novoRender==='function') novoRender();
-    });
-  };
+  // novoSaveMetas removido (2026-07-02): as metas dos BDRs agora são MENSAIS e editadas
+  // no modal "Metas" do card R12 do painel BDR (bdrOpenMetasModal → POST {monthly}).
 
   // Alias para compatibilidade (salva tudo localmente)
   window.novoSaveSettings = window.novoSaveProbs;
