@@ -2591,7 +2591,10 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
         let valHtml = dealFieldValue(c, d[c.k]);
         if (cmpOld && Object.prototype.hasOwnProperty.call(cmpOld, c.k)) {
           const ov = cmpOld[c.k];
-          if (String(ov ?? '') !== String(d[c.k] ?? '')) {
+          const changed = c.k === 'ae'
+            ? !compAeEq(ov, d[c.k])   // grafias de owner variam entre foto e vivo | mesma pessoa não é mudança
+            : String(ov ?? '') !== String(d[c.k] ?? '');
+          if (changed) {
             valHtml += `<span class="cmp-old-modal">na foto: ${dealFieldValue(c, ov)}</span>`;
           }
         }
@@ -3301,8 +3304,8 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
 
     function compNormBool(v) {
       const s = String(v == null ? '' : v).trim().toLowerCase();
-      if (s === 'true' || s === 'sim') return true;
-      if (s === 'false' || s === 'não' || s === 'nao') return false;
+      if (s === 'true' || s === 'sim' || s === 'yes') return true;
+      if (s === 'false' || s === 'não' || s === 'nao' || s === 'no') return false;
       return null;
     }
     function compNormProb(v) {
@@ -3310,24 +3313,42 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       if (isNaN(n) || n < 0) return null;
       return n > 1 ? n / 100 : n;
     }
+    // Espelho de `p.x ? parseFloat(p.x) : null` do /api/forecast-table ('' → null, '0' → 0)
+    function compParseNum(v) {
+      if (v === '' || v == null) return null;
+      const n = parseFloat(v);
+      return isNaN(n) ? null : n;
+    }
     function compNum(v) { const n = parseFloat(v); return (!isNaN(n) && n > 0) ? n : null; }
+
+    // Ids de etapa que a foto traz CRUS (o STAGE_MAP do snapshot não os conhece),
+    // com o MESMO rótulo que o /api/forecast-table dá a eles no payload vivo.
+    const COMP_STAGE_IDS = { '1349620551': 'Reunião Pré-RFP' };
 
     // Converte a linha bruta da foto (35 colunas) para o shape do payload vivo,
     // com as MESMAS normalizações do /api/forecast-table + régua BID do load().
     function compRowToDeal(row) {
       const pf = compNum(row['1ª Fatura (R$)']);
       const arrRaw = compNum(row['ARR Estimado (R$)']);
+      // Mesma regra do forecast-table: closed-lost força 'Perdido' (cobre o BID,
+      // cujo stage de perdido não é mapeado); ids crus conhecidos ganham o rótulo do payload.
+      let stage = String(row['Etapa'] || '-');
+      if (COMP_STAGE_IDS[stage]) stage = COMP_STAGE_IDS[stage];
+      if (String(row['Closed Lost'] || '').trim().toLowerCase() === 'true') stage = 'Perdido';
+      // Owner sem nome resolvido fica como id numérico na foto; o payload vivo mostra '-'
+      let ae = row['Executivo'] || '-';
+      if (/^\d+$/.test(ae)) ae = '-';
       const d = {
         hs_id: String(row['Deal ID'] || ''),
         dealname: String(row['Deal'] || '').replace(/ - Novo\(a\) Deal$/i, '').replace(/ - New Deal$/i, '').trim(),
         pipeline: row['Pipeline'] || '-',
-        stage: row['Etapa'] || '-',
-        ae: row['Executivo'] || '-',
+        stage,
+        ae,
         produto: row['Produto'] || null,
         colaboradores: row['Colaboradores'] ? parseInt(row['Colaboradores']) : null,
         vidas: row['Vidas'] ? parseInt(row['Vidas']) : null,
-        fatura_atual: compNum(row['Fatura Plano Atual (R$)']),
-        primeira_fatura: pf,
+        fatura_atual: compParseNum(row['Fatura Plano Atual (R$)']),
+        primeira_fatura: compParseNum(row['1ª Fatura (R$)']),
         arr_estimado: arrRaw != null ? arrRaw : (pf != null ? pf * 12 : null),
         modelo_remuneracao: row['Modelo'] || null,
         possui_agenciamento: compNormBool(row['Agenciamento']),
@@ -3336,7 +3357,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
         quarter: row['Quarter'] || null,
         data_prevista_para_receita: row['Data Prevista Receita'] ? String(row['Data Prevista Receita']).substring(0, 10) : null,
         vigencia: row['Vigência'] ? String(row['Vigência']).substring(0, 10) : null,
-        premio_mensal: compNum(row['Prêmio Mensal (R$)']),
+        premio_mensal: compParseNum(row['Prêmio Mensal (R$)']),
         vencimento_primeira_fatura: row['Vencimento 1ª Fatura'] ? String(row['Vencimento 1ª Fatura']).substring(0, 10) : null,
         createdate: row['Criado'] ? String(row['Criado']).substring(0, 10) : null,
         close_date: row['Fechado'] ? String(row['Fechado']).substring(0, 10) : null,
@@ -3349,16 +3370,34 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
           d.quarter = 'Q' + (Math.floor(_mo / 3) + 1) + ' ' + rd.substring(0, 4);
         }
       }
-      if (quarterEmpty(d.quarter) && d.data_prevista_para_receita) {
-        const q = parseRevenueDate(d.data_prevista_para_receita);
-        if (q) d.quarter = 'Q' + (Math.floor(q.mo / 3) + 1) + ' ' + q.y;
+      // Espelho exato do vivo: quarter "vazio" (sem ano, 'false', etc.) → deriva da
+      // data prevista; sem data → null (a foto guarda o valor cru, ex.: "Q4").
+      if (quarterEmpty(d.quarter)) {
+        const q = d.data_prevista_para_receita ? parseRevenueDate(d.data_prevista_para_receita) : null;
+        d.quarter = q ? ('Q' + (Math.floor(q.mo / 3) + 1) + ' ' + q.y) : null;
       }
       return d;
     }
 
-    // Conjunto do forecast na foto: mesma regra de inclusão do load() + sem os já perdidos.
+    // Owners: a foto grava o nome via cleanOwnerName (lib/hubspot: apelidos + trunca
+    // em 2 nomes); o payload vivo usa o nome completo do HubSpot. Mesma pessoa, grafias
+    // diferentes — igualdade tolerante para não acusar "troca de executivo" falsa.
+    function compAeNorm(s) {
+      return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+        .split(/\s+/).filter(t => t && !['de', 'da', 'do', 'das', 'dos', 'e'].includes(t)).join(' ');
+    }
+    function compAeEq(a, b) {
+      const na = compAeNorm(a), nb = compAeNorm(b);
+      if (na === nb) return true;
+      if (!na || !nb) return false;
+      return na.startsWith(nb) || nb.startsWith(na);
+    }
+
+    // Conjunto do forecast na foto: mesma regra de inclusão do load() + sem os já
+    // perdidos + sem etapas fora do universo do payload vivo (id numérico cru =
+    // etapa que o /api/forecast-table nem retorna — ex.: estágios extras do BID).
     function compForecastSet(all) {
-      return all.filter(d => d.stage !== 'Perdido' && (
+      return all.filter(d => d.stage !== 'Perdido' && !/^\d+$/.test(d.stage) && (
         (d.createdate && d.createdate >= '2025-09-01')
         || d.stage === 'Ganho' || d.stage === 'Implantação'
         || (d.pipeline === 'Bid' && d.createdate && d.createdate >= '2025-01-01')));
@@ -3478,11 +3517,12 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       if (!o) return 'Novo | não existia na foto de ' + compMeta.tab;
       const p = [];
       if (o.stage !== d.stage) p.push('Etapa: ' + o.stage + ' → ' + d.stage);
-      if ((o.vidas ?? null) !== (d.vidas ?? null)) p.push('Vidas: ' + (o.vidas ?? '—') + ' → ' + (d.vidas ?? '—'));
+      if ((o.vidas ?? null) !== (d.vidas ?? null)) p.push('Vidas: ' + (o.vidas != null ? fmtNum(o.vidas) : '—') + ' → ' + (d.vidas != null ? fmtNum(d.vidas) : '—'));
+      if ((o.colaboradores ?? null) !== (d.colaboradores ?? null)) p.push('Colaboradores: ' + (o.colaboradores != null ? fmtNum(o.colaboradores) : '—') + ' → ' + (d.colaboradores != null ? fmtNum(d.colaboradores) : '—'));
       if ((o.primeira_fatura ?? null) !== (d.primeira_fatura ?? null)) p.push('1ª Fatura: ' + fmtBRL(o.primeira_fatura) + ' → ' + fmtBRL(d.primeira_fatura));
       if ((o.probabilidade ?? null) !== (d.probabilidade ?? null)) p.push('Prob. AE: ' + fmtPct(o.probabilidade) + ' → ' + fmtPct(d.probabilidade));
       if ((o.data_prevista_para_receita ?? null) !== (d.data_prevista_para_receita ?? null)) p.push('Dt. Receita: ' + fmtDate(o.data_prevista_para_receita) + ' → ' + fmtDate(d.data_prevista_para_receita));
-      if ((o.ae ?? null) !== (d.ae ?? null)) p.push('Executivo: ' + (o.ae || '—') + ' → ' + (d.ae || '—'));
+      if (!compAeEq(o.ae, d.ae)) p.push('Executivo: ' + (o.ae || '—') + ' → ' + (d.ae || '—'));
       return 'Foto ' + compMeta.tab + (p.length ? ' | ' + p.join(' | ') : ' | sem mudança nos campos-chave');
     }
 
@@ -3495,14 +3535,19 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       const regre = deals.filter(d => d._cmp && d._cmp.st === 'regrediu').length;
       const dReal = deals.reduce((s, d) => s + (d.comp_dreal || 0), 0);
       const dProb = deals.reduce((s, d) => s + (d.comp_dprob || 0), 0);
+      const dVidas = deals.reduce((s, d) => s + ((d.vidas || 0) - (d._cmp && d._cmp.old ? (d._cmp.old.vidas || 0) : 0)), 0);
+      const dColab = deals.reduce((s, d) => s + ((d.colaboradores || 0) - (d._cmp && d._cmp.old ? (d._cmp.old.colaboradores || 0) : 0)), 0);
+      const fmtDeltaNum = v => (!v ? '0' : (v > 0 ? '+' : '−') + fmtNum(Math.abs(v)));
       const exits = compExits();
       const perdidos = exits.filter(e => e.lost).length;
       const rec = compMeta.reconstructed ? ' <span style="opacity:.75">(reconstruída)</span>' : '';
       el.innerHTML = `
-        <span class="cb-title">Comparando com a foto de ${esc(compMeta.tab)}${rec}</span>
+        <span class="cb-title" data-tooltip="Δ = agora − foto | receita da foto recalculada pelas regras de hoje">Comparando com a foto de ${esc(compMeta.tab)}${rec}</span>
         <span data-tooltip="Deals do conjunto do forecast na foto (sem os já perdidos na data)">Foto: <b>${compMeta.count}</b> deals</span>
-        <span data-tooltip="Variação da Receita Real projetada na janela 2026–2027, deals visíveis com os filtros atuais">Δ Real: <b class="${dReal > 0.5 ? 'dpos' : (dReal < -0.5 ? 'dneg' : '')}">${fmtDeltaBRL(dReal)}</b></span>
-        <span data-tooltip="Variação da Receita Probabilizada projetada na janela, deals visíveis com os filtros atuais">Δ Probabilizada: <b class="${dProb > 0.5 ? 'dpos' : (dProb < -0.5 ? 'dneg' : '')}">${fmtDeltaBRL(dProb)}</b></span>
+        <span data-tooltip="Δ = agora − foto | Receita Real projetada na janela 2026–2027, deals visíveis com os filtros atuais">Δ Real: <b class="${dReal > 0.5 ? 'dpos' : (dReal < -0.5 ? 'dneg' : '')}">${fmtDeltaBRL(dReal)}</b></span>
+        <span data-tooltip="Δ = agora − foto | Receita Probabilizada projetada na janela, deals visíveis com os filtros atuais">Δ Probabilizada: <b class="${dProb > 0.5 ? 'dpos' : (dProb < -0.5 ? 'dneg' : '')}">${fmtDeltaBRL(dProb)}</b></span>
+        <span data-tooltip="Δ = agora − foto | soma de Vidas dos deals visíveis (novos contam a partir de zero)">Δ Vidas: <b class="${dVidas > 0 ? 'dpos' : (dVidas < 0 ? 'dneg' : '')}">${fmtDeltaNum(dVidas)}</b></span>
+        <span data-tooltip="Δ = agora − foto | soma de Colaboradores dos deals visíveis (novos contam a partir de zero)">Δ Colaboradores: <b class="${dColab > 0 ? 'dpos' : (dColab < 0 ? 'dneg' : '')}">${fmtDeltaNum(dColab)}</b></span>
         <span>Novos: <b>${novos}</b></span>
         <span>Avançaram: <b>${avanc}</b> | Regrediram: <b>${regre}</b></span>
         <span data-tooltip="Deals que estavam na foto e não estão mais no pipe (livro todo, ignora filtros)">Saíram: <b>${exits.length}</b>${exits.length ? ` (${perdidos} perdido${perdidos !== 1 ? 's' : ''})` : ''}</span>
@@ -3514,7 +3559,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       const exits = compExits();
       if (!exits.length) return '<div class="cmp-exits"><h3>Saíram do pipe desde a foto <span>| nenhum deal saiu</span></h3></div>';
       let h = `<div class="cmp-exits"><h3>Saíram do pipe desde a foto de ${esc(compMeta.tab)} <span>| ${exits.length} deals | considera o livro todo, ignora os filtros acima</span></h3>`;
-      h += '<table><thead><tr><th>Deal</th><th>Situação agora</th><th>Etapa na foto</th><th>Executivo</th><th style="text-align:right">Vidas</th><th style="text-align:right">1ª Fatura</th><th style="text-align:right">Receita Prob. na foto</th><th>Motivo</th></tr></thead><tbody>';
+      h += '<table><thead><tr><th>Deal</th><th>Situação agora</th><th>Etapa na foto</th><th>Executivo</th><th style="text-align:right">Vidas</th><th style="text-align:right">Colab.</th><th style="text-align:right">1ª Fatura</th><th style="text-align:right">Receita Prob. na foto</th><th>Motivo</th></tr></thead><tbody>';
       exits.forEach(e => {
         const url = `https://app.hubspot.com/contacts/${HUB_ID}/deal/${esc(e.old.hs_id)}`;
         const sit = e.lost ? '<span class="ex-lost">Perdido</span>' : '<span class="ex-gone">Fora do pipe</span>';
@@ -3525,6 +3570,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
           <td>${esc(e.old.stage || '—')}</td>
           <td>${esc(e.old.ae || '—')}</td>
           <td class="r">${e.old.vidas != null ? fmtNum(e.old.vidas) : '—'}</td>
+          <td class="r">${e.old.colaboradores != null ? fmtNum(e.old.colaboradores) : '—'}</td>
           <td class="r">${e.old.primeira_fatura != null ? fmtBRL(e.old.primeira_fatura) : '—'}</td>
           <td class="r">${fmtBRL(e.prob)}</td>
           <td>${esc(motivo)}</td>
@@ -3904,12 +3950,12 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       if (compTab && compMap) {
         INFO.splice(2, 0,
           {
-            k: 'comp_dreal', lbl: 'Δ Real (R$)', w: 105, align: 'right', hideMobile: true,
-            tip: 'Variação da Receita Real projetada na janela 2026–2027 vs a foto de ' + compMeta.tab + ' | dados da foto recalculados pelo motor e regras de HOJE'
+            k: 'comp_dreal', lbl: 'Δ Receita Real', w: 115, align: 'right', hideMobile: true,
+            tip: 'Δ = agora − foto de ' + compMeta.tab + ' | soma da Receita Real projetada nos meses da tabela (2026–2027) | a receita da foto é recalculada pelo motor e regras de HOJE sobre os dados daquela data — o Δ reflete só mudança de dado'
           },
           {
-            k: 'comp_dprob', lbl: 'Δ Prob. (R$)', w: 105, align: 'right', hideMobile: true,
-            tip: 'Variação da Receita Probabilizada projetada na janela 2026–2027 vs a foto de ' + compMeta.tab + ' | dados da foto recalculados pelo motor e regras de HOJE'
+            k: 'comp_dprob', lbl: 'Δ Receita Prob.', w: 115, align: 'right', hideMobile: true,
+            tip: 'Δ = agora − foto de ' + compMeta.tab + ' | soma da Receita Probabilizada projetada nos meses da tabela (2026–2027) | a receita da foto é recalculada pelo motor e regras de HOJE sobre os dados daquela data — o Δ reflete só mudança de dado'
           }
         );
       }
@@ -3999,9 +4045,21 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
             const cls = val > 0.5 ? 'dpos' : (val < -0.5 ? 'dneg' : 'dzero');
             const oldV = c.k === 'comp_dreal' ? d._cmp.oldReal : d._cmp.oldProb;
             const curV = c.k === 'comp_dreal' ? d._cmp.curReal : d._cmp.curProb;
-            const tip = `Foto ${compMeta.tab}: ${fmtBRL(oldV)} | Agora: ${fmtBRL(curV)} | janela ${MONTHS[0].label}–${MONTHS[MONTHS.length - 1].label}`;
+            const tip = `Δ = agora − foto | Na foto (${compMeta.tab}): ${fmtBRL(oldV)} | Agora: ${fmtBRL(curV)} | soma dos meses ${MONTHS[0].label}–${MONTHS[MONTHS.length - 1].label}, regras de hoje nos dois lados`;
             h += `<td class="${sc} ${cls}" style="text-align:right" data-col="${ci}" data-tip="${esc(tip)}">${fmtDeltaBRL(val)}</td>`;
             return;
+          }
+
+          // Vidas e Colaboradores: quando mudaram desde a foto, mostra "antiga → atual"
+          if (compTab && d._cmp && d._cmp.old && (c.k === 'vidas' || c.k === 'colaboradores')) {
+            const oldV = d._cmp.old[c.k];
+            if ((oldV ?? null) !== (v ?? null)) {
+              const up = (v || 0) > (oldV || 0);
+              const lbl = c.k === 'vidas' ? 'Vidas' : 'Colaboradores';
+              const tip = `${lbl} | Na foto (${compMeta.tab}): ${oldV != null ? fmtNum(oldV) : '—'} | Agora: ${v != null ? fmtNum(v) : '—'}`;
+              h += `<td class="${sc}" style="text-align:right" data-col="${ci}" data-tip="${esc(tip)}"><span class="cmp-old">${oldV != null ? fmtNum(oldV) : '—'} →</span> <span class="${up ? 'dpos' : 'dneg'}">${v != null ? fmtNum(v) : '—'}</span></td>`;
+              return;
+            }
           }
 
           // Produto: chips, sem quebra de linha (white-space herdado da tabela = nowrap)
