@@ -2582,7 +2582,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
           igual: 'sem mudança de etapa',
         })[d._cmp.st] || '';
         body += `<div class="deal-row"><span class="dr-lbl">Comparação | foto ${esc(compMeta.tab)}</span><span class="dr-val">${esc(stTxt)}</span></div>`;
-        if (cmpOld) {
+        if (cmpOld && COMP_SHOW_REV_DELTAS) {
           body += `<div class="deal-row"><span class="dr-lbl">Δ Receita Real (janela)</span><span class="dr-val ${d.comp_dreal > 0.5 ? 'dpos' : (d.comp_dreal < -0.5 ? 'dneg' : '')}">${fmtDeltaBRL(d.comp_dreal)}</span></div>`;
           body += `<div class="deal-row"><span class="dr-lbl">Δ Receita Probabilizada (janela)</span><span class="dr-val ${d.comp_dprob > 0.5 ? 'dpos' : (d.comp_dprob < -0.5 ? 'dneg' : '')}">${fmtDeltaBRL(d.comp_dprob)}</span></div>`;
         }
@@ -3251,6 +3251,12 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
 
     // ── APPLY & RENDER ────────────────────────────────────────────────────────
     // ── MODO COMPARAÇÃO | fotografia do pipe × agora ─────────────────────────
+    // Δs de RECEITA (banner, colunas Δ Real/Δ Prob. e linhas do modal) DESLIGADOS a
+    // pedido do CRO (2026-07-03) até haver clareza sobre as causas dos deltas — ex.:
+    // mudança de etapa muda o INÍCIO da régua (fee → data prevista+2m em Cotação/
+    // Consultoria/Negociação), e overrides locais de probabilidade (Configurações)
+    // fazem o delta variar por navegador. Religar: COMP_SHOW_REV_DELTAS = true.
+    const COMP_SHOW_REV_DELTAS = false;
     // A foto (aba da planilha de snapshots) guarda os DADOS BRUTOS dos deals na
     // data; os cálculos de receita rodam AQUI, com o mesmo motor e as regras
     // vigentes — o delta reflete mudança de dado, nunca mudança de regra.
@@ -3578,8 +3584,8 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       el.innerHTML = `
         <span class="cb-title" data-tooltip="Δ = agora − foto | receita da foto recalculada pelas regras de hoje">Comparando com a foto de ${esc(compMeta.tab)}${rec}</span>
         <span data-tooltip="Deals do conjunto do forecast na foto (sem os já perdidos na data)">Foto: <b>${compMeta.count}</b> deals</span>
-        <span data-tooltip="Δ = agora − foto | Receita Real projetada na janela 2026–2027, deals visíveis com os filtros atuais">Δ Real: <b class="${dReal > 0.5 ? 'dpos' : (dReal < -0.5 ? 'dneg' : '')}">${fmtDeltaBRL(dReal)}</b></span>
-        <span data-tooltip="Δ = agora − foto | Receita Probabilizada projetada na janela, deals visíveis com os filtros atuais">Δ Probabilizada: <b class="${dProb > 0.5 ? 'dpos' : (dProb < -0.5 ? 'dneg' : '')}">${fmtDeltaBRL(dProb)}</b></span>
+        ${COMP_SHOW_REV_DELTAS ? `<span data-tooltip="Δ = agora − foto | Receita Real projetada na janela 2026–2027, deals visíveis com os filtros atuais">Δ Real: <b class="${dReal > 0.5 ? 'dpos' : (dReal < -0.5 ? 'dneg' : '')}">${fmtDeltaBRL(dReal)}</b></span>
+        <span data-tooltip="Δ = agora − foto | Receita Probabilizada projetada na janela, deals visíveis com os filtros atuais">Δ Probabilizada: <b class="${dProb > 0.5 ? 'dpos' : (dProb < -0.5 ? 'dneg' : '')}">${fmtDeltaBRL(dProb)}</b></span>` : ''}
         <span data-tooltip="Δ = agora − foto | soma de Vidas dos deals visíveis (novos contam a partir de zero)">Δ Vidas: <b class="${dVidas > 0 ? 'dpos' : (dVidas < 0 ? 'dneg' : '')}">${fmtDeltaNum(dVidas)}</b></span>
         <span data-tooltip="Δ = agora − foto | soma de Colaboradores dos deals visíveis (novos contam a partir de zero)">Δ Colaboradores: <b class="${dColab > 0 ? 'dpos' : (dColab < 0 ? 'dneg' : '')}">${fmtDeltaNum(dColab)}</b></span>
         <span>Novos: <b>${novos}</b></span>
@@ -3988,7 +3994,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
           tip: 'Data de Vigência do contrato (HubSpot)'
         },
       ];
-      if (compTab && compMap) {
+      if (COMP_SHOW_REV_DELTAS && compTab && compMap) {
         INFO.splice(2, 0,
           {
             k: 'comp_dreal', lbl: 'Δ Receita Real', w: 115, align: 'right', hideMobile: true,
