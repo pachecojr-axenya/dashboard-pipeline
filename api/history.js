@@ -19,8 +19,7 @@
  */
 
 const { listMonthlyTabs, readSnapshot, listTabs } = require('../lib/sheets');
-const { setCORSHeaders }                 = require('./_helpers');
-const { verifyRequest }                  = require('../lib/auth');
+const { setCORSHeaders, requireAuth }    = require('./_helpers');
 
 // Snapshots reconstruídos do pipe (dias em que o cron diário não rodou).
 // Dados embutidos via require() para o bundler da Vercel os incluir; servidos
@@ -34,7 +33,9 @@ module.exports = async function handler(req, res) {
   setCORSHeaders(req, res);
   if (req.method === 'OPTIONS') return res.status(204).end();
   if (req.method !== 'GET') return res.status(405).json({ success: false, error: 'Método não permitido' });
-  if (!verifyRequest(req)) return res.status(401).json({ success: false, error: 'Não autorizado' });
+  // requireAuth (mesmo gate dos demais endpoints): respeita LOCAL_DEV_BYPASS no dev;
+  // em produção exige a sessão JWT, como antes.
+  if (!requireAuth(req, res)) return;
 
   const params = new URL(`http://x${req.url}`).searchParams;
   const action = params.get('action');
