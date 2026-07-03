@@ -1320,11 +1320,38 @@
     }
     .deal-row {
       display: flex; align-items: baseline; justify-content: space-between;
-      gap: .8rem; padding: .5rem .25rem; border-radius: 6px;
+      gap: .8rem; padding: .5rem .25rem; border-radius: 8px;
       border-bottom: 1px solid var(--border);
-      transition: background .12s;
+      transition: background .14s, transform .14s cubic-bezier(0.4,0,0.2,1), box-shadow .14s;
     }
-    .deal-row:hover { background: var(--hover); }
+    /* Hover destacado: o campo se "descola do fundo" (leve zoom + sombra) e o dado ganha peso */
+    .deal-row:hover {
+      background: var(--card2, var(--hover));
+      transform: scale(1.045);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, .32);
+      border-bottom-color: transparent;
+      position: relative; z-index: 3;
+    }
+    .deal-row:hover .dr-lbl { color: var(--text); }
+    .deal-row:hover .dr-val { color: var(--text); font-weight: 700; }
+    /* Cabeçalho de seção dentro do modal (ocupa as 2 colunas da grade) */
+    .deal-sec {
+      grid-column: 1 / -1; margin-top: 1rem; margin-bottom: .1rem;
+      padding: .1rem .25rem .35rem; font-size: .7rem; font-weight: 700;
+      letter-spacing: .05em; text-transform: uppercase; color: var(--text2);
+      border-bottom: 1px solid var(--border);
+    }
+    /* Trilha de etapas + histórico de proprietários (ocupam as 2 colunas) */
+    .deal-trail, .deal-owner-hist { grid-column: 1 / -1; padding: .2rem .1rem 0; }
+    .deal-trail .dt-row, .deal-owner-hist .oh-row {
+      display: flex; align-items: baseline; justify-content: space-between; gap: .8rem;
+      padding: .34rem .25rem; border-bottom: 1px solid var(--border); font-size: .82rem;
+    }
+    .deal-trail .dt-stage { color: var(--text); font-weight: 600; }
+    .deal-trail .dt-date { color: var(--text2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .deal-owner-hist .oh-name { color: var(--text); font-weight: 600; }
+    .deal-owner-hist .oh-meta { color: var(--text2); font-size: .76rem; white-space: nowrap; }
+    .deal-owner-hist .oh-cur { background: rgba(45, 212, 191, .09); border-radius: 6px; }
     .deal-row .dr-lbl {
       color: var(--text2); font-size: .8rem; font-weight: 500;
       flex-shrink: 0;
@@ -1726,6 +1753,11 @@
     .cmp-exits td.r{text-align:right}
     .cmp-exits .ex-lost{color:#f85149;font-weight:600}
     .cmp-exits .ex-gone{color:var(--text2);font-weight:600}
+    /* Top 5 perdidos por vidas | mais relevantes */
+    .cmp-exits tr.ex-top td{background:rgba(248,81,73,.10)}
+    .cmp-exits tr.ex-top td:first-child{border-left:3px solid #f85149}
+    .cmp-exits tr.ex-top td:first-child .deal-link{font-weight:700}
+    .cmp-exits .ex-rank{display:inline-block;min-width:1.15rem;margin-right:.35rem;color:#f85149;font-weight:700;font-size:.72rem}
   </style>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <style>
@@ -2514,7 +2546,14 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
     }
 
     // ── DEAL INFO MODAL ───────────────────────────────────────────────────────
+    // Só o primeiro nome (executivo no modal) | evita nome completo comprido no card.
+    function _firstName(full) {
+      var s = (full == null ? '' : String(full)).trim();
+      if (!s || s === '-' || s === '—') return '—';
+      return s.split(/\s+/)[0];
+    }
     function dealFieldValue(c, v) {
+      if (c.k === 'ae') return v ? esc(_firstName(v)) : '<span style="color:var(--text2)">—</span>';
       if (c.k === 'produto') {
         return v
           ? String(v).split(';').filter(Boolean).map(s => `<span class="chip">${esc(s.trim())}</span>`).join(' ')
@@ -2551,6 +2590,80 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       if (box) box.scrollTop = 0;
     }
 
+    // Rastreamento do deal no modal | campos do payload de forecast-table + histórico de owners (lazy).
+    const _ownerHistCache = {};
+    function _dealModalExtras(d) {
+      const muted = '<span style="color:var(--text2)">—</span>';
+      const row = (lbl, val) => `<div class="deal-row"><span class="dr-lbl">${esc(lbl)}</span><span class="dr-val">${val}</span></div>`;
+      const dt = v => v ? esc(fmtDate(v)) : muted;
+      // Dias na etapa atual: entrada na etapa atual (cobre os 2 pipelines) → hoje; fallback stage_days.
+      let curDays = null;
+      const entAtual = d.stage_entered && d.stage_entered[d.stage];
+      if (entAtual) { const ms = Date.now() - Date.parse(entAtual); if (!isNaN(ms)) curDays = Math.max(0, Math.floor(ms / 86400000)); }
+      else if (d.stage_days && d.stage_days[d.stage] != null) curDays = d.stage_days[d.stage];
+      const dsa = d.dias_sem_atividade;
+      const dsaHtml = dsa != null
+        ? `<span style="color:${dsa > 90 ? '#f85149' : (dsa > 30 ? '#d29922' : 'var(--text)')}">${fmtNum(dsa)} dias</span>`
+        : muted;
+      // sdr resolvido no servidor (inclui owners arquivados). Guarda o caso residual de id cru.
+      const bdrHtml = d.sdr
+        ? (/^\d+$/.test(String(d.sdr))
+            ? `<span style="color:var(--text2)" title="Owner não resolvido (possível usuário desativado)">ID ${esc(d.sdr)}</span>`
+            : esc(d.sdr))
+        : muted;
+
+      let h = '<div class="deal-sec">Rastreamento</div>';
+      h += row('Criação', dt(d.createdate));
+      h += row('Origem', d.origem ? esc(d.origem) : muted);
+      h += row('BDR', bdrHtml);
+      h += row('Dias na etapa atual', curDays != null ? fmtNum(curDays) + ' dias' : muted);
+      h += row('Última atividade', dt(d.ultima_atividade));
+      h += row('Dias sem atividade', dsaHtml);
+
+      // Trilha de etapas | linha do tempo por data de entrada (todas as etapas por onde passou).
+      const trail = d.stage_entered
+        ? Object.keys(d.stage_entered).map(k => ({ stage: k, date: d.stage_entered[k] }))
+            .filter(x => x.date).sort((a, b) => a.date < b.date ? -1 : (a.date > b.date ? 1 : 0))
+        : [];
+      if (trail.length) {
+        h += '<div class="deal-sec">Trilha de etapas</div>';
+        h += '<div class="deal-trail">' + trail.map(t =>
+          `<div class="dt-row"><span class="dt-stage">${esc(t.stage)}</span><span class="dt-date">${esc(fmtDate(t.date))}</span></div>`
+        ).join('') + '</div>';
+      }
+
+      // Histórico de proprietários | preenchido sob demanda (chamada por deal em /api/history).
+      h += '<div class="deal-sec">Histórico de proprietários</div>';
+      h += `<div class="deal-owner-hist" id="dm-owner-hist" data-deal="${esc(d.hs_id)}"><span style="color:var(--text2)">Carregando…</span></div>`;
+      return h;
+    }
+
+    function _renderOwnerHist(el, data) {
+      if (!el) return;
+      if (!data || !data.success) { el.innerHTML = '<span style="color:var(--text2)">indisponível</span>'; return; }
+      const cur = data.current, prev = data.previous || [];
+      let h = '';
+      if (cur) h += `<div class="oh-row oh-cur"><span class="oh-name">${esc(cur.owner)}</span><span class="oh-meta">atual | desde ${esc(fmtDate(cur.date))}</span></div>`;
+      if (prev.length) prev.forEach(p => { h += `<div class="oh-row"><span class="oh-name">${esc(p.owner)}</span><span class="oh-meta">assumiu ${esc(fmtDate(p.date))}</span></div>`; });
+      else h += '<div class="oh-row"><span style="color:var(--text2)">sem reatribuições anteriores</span></div>';
+      el.innerHTML = h;
+    }
+
+    function _fillOwnerHistory(id) {
+      const el = document.getElementById('dm-owner-hist');
+      if (!el || !id) return;
+      if (_ownerHistCache[id]) { _renderOwnerHist(el, _ownerHistCache[id]); return; }
+      fetch('/api/history?action=owner-history&id=' + encodeURIComponent(id), { credentials: 'same-origin' })
+        .then(r => r.json())
+        .then(data => {
+          _ownerHistCache[id] = data;
+          const cur = currentDeals[currentDealIndex];
+          const elNow = document.getElementById('dm-owner-hist');
+          if (elNow && cur && String(cur.hs_id) === String(id)) _renderOwnerHist(elNow, data);
+        })
+        .catch(() => { const elNow = document.getElementById('dm-owner-hist'); if (elNow) elNow.innerHTML = '<span style="color:var(--text2)">indisponível</span>'; });
+    }
+
     function renderDealModal() {
       const di = currentDealIndex;
       const d = currentDeals[di];
@@ -2561,7 +2674,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       let body = `<div class="deal-modal-head">
         <div style="min-width:0;">
           <div class="deal-modal-title">${esc(d.dealname || '—')}</div>
-          <div class="deal-modal-sub">${esc(d.stage || '—')}${d.ae ? ' · ' + esc(d.ae) : ''}</div>
+          <div class="deal-modal-sub">${esc(d.stage || '—')}${d.ae ? ' | ' + esc(_firstName(d.ae)) : ''}</div>
         </div>
         <div class="deal-modal-nav">
           <button class="dm-nav-btn" onclick="navDealModal(-1)" title="Deal anterior (←)">‹</button>
@@ -2600,6 +2713,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
         }
         body += `<div class="deal-row"><span class="dr-lbl">${esc(c.lbl)}</span><span class="dr-val">${valHtml}</span></div>`;
       });
+      body += _dealModalExtras(d);
       body += '</div>';
 
       const url = `https://app.hubspot.com/contacts/${HUB_ID}/deal/${esc(d.hs_id)}`;
@@ -2611,6 +2725,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       </div>`;
 
       document.getElementById('deal-modal-box').innerHTML = body;
+      _fillOwnerHistory(d.hs_id);
     }
 
     function closeDealModal() {
@@ -3502,14 +3617,24 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
     // vale aqui também (a pedido do CRO, 2026-07-03) — o nome do owner na foto pode ter
     // grafia diferente do vivo, então o match usa compAeEq. Demais filtros são ignorados
     // (etapa/quarter/etc. descrevem o estado VIVO, que o deal que saiu não tem mais).
+    // Busca e filtros da UI valem para os perdidos também (a pedido, 2026-07-03). Como o deal
+    // que saiu não tem mais estado VIVO, os filtros são avaliados sobre os dados da FOTO (old).
     function compExits() {
       const liveIds = new Set(allDeals.map(d => String(d.hs_id)));
       const aeSel = (aeFilter && aeFilter.size > 0) ? [...aeFilter] : null;
       if (aeSel && aeSel.includes('__NONE__')) return [];
+      if (pipelineFilter.has('__NONE__') || stageFilter.has('__NONE__') || quarterFilter.has('__NONE__') || tierFilter.has('__NONE__') || modeloFilter.has('__NONE__')) return [];
+      const q = searchQuery ? searchQuery.toLowerCase() : '';
       const out = [];
       compMap.forEach((old, id) => {
         if (liveIds.has(id)) return;
         if (aeSel && !aeSel.some(a => compAeEq(a, old.ae))) return;
+        if (pipelineFilter.size > 0 && !pipelineFilter.has(old.pipeline)) return;
+        if (stageFilter.size > 0 && !stageFilter.has(old.stage)) return;
+        if (quarterFilter.size > 0 && !quarterFilter.has(old.quarter)) return;
+        if (tierFilter.size > 0 && !tierFilter.has(getTier(old.vidas))) return;
+        if (modeloFilter.size > 0 && !modeloFilter.has(old.modelo_remuneracao || '__NULL__')) return;
+        if (q && !(old.dealname || '').toLowerCase().includes(q)) return;
         const lost = compLostNow ? (compLostNow.get(id) || null) : null;
         const t = compDealTotals(old, compExcl);
         out.push({ old, lost, real: t.real, prob: t.prob });
@@ -3518,10 +3643,11 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
     }
 
     // Ordenação da tabela de saídas: clique no cabeçalho alterna asc/desc.
-    let compExitsSort = { k: 'prob', dir: -1 };   // padrão: Receita Prob. desc (comportamento original)
+    let compExitsSort = { k: 'vidas', dir: -1 };   // padrão: Vidas desc (perdidos mais relevantes no topo)
     const COMP_EXIT_COLS = {
       deal:   { lbl: 'Deal',                  get: e => e.old.dealname || '' },
       sit:    { lbl: 'Situação agora',        get: e => e.lost ? 'Perdido' : 'Fora do pipe' },
+      perdido:{ lbl: 'Perdido em',            get: e => (e.lost && e.lost.close_date) || '' },
       stage:  { lbl: 'Etapa na foto',         get: e => e.old.stage || '' },
       ae:     { lbl: 'Executivo',             get: e => e.old.ae || '' },
       vidas:  { lbl: 'Vidas',                 get: e => e.old.vidas != null ? e.old.vidas : -1, num: true },
@@ -3590,30 +3716,38 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
         <span data-tooltip="Δ = agora − foto | soma de Colaboradores dos deals visíveis (novos contam a partir de zero)">Δ Colaboradores: <b class="${dColab > 0 ? 'dpos' : (dColab < 0 ? 'dneg' : '')}">${fmtDeltaNum(dColab)}</b></span>
         <span>Novos: <b>${novos}</b></span>
         <span>Avançaram: <b>${avanc}</b> | Regrediram: <b>${regre}</b></span>
-        <span data-tooltip="Deals que estavam na foto e não estão mais no pipe. O filtro de Executivo se aplica; os demais filtros são ignorados">Saíram: <b>${exits.length}</b>${exits.length ? ` (${perdidos} perdido${perdidos !== 1 ? 's' : ''})` : ''}</span>
+        <span data-tooltip="Deals que estavam na foto e não estão mais no pipe. Busca e filtros da UI se aplicam (avaliados sobre os dados da foto)">Saíram: <b>${exits.length}</b>${exits.length ? ` (${perdidos} perdido${perdidos !== 1 ? 's' : ''})` : ''}</span>
         <button class="cb-x" onclick="setCompTab(null)">✕ desligar</button>`;
       el.style.display = '';
     }
 
     function compExitsHtml() {
       const exits = compExits();
-      const aeOn = aeFilter && aeFilter.size > 0;
-      const scopeTxt = aeOn ? 'filtro de Executivo aplicado | demais filtros ignorados' : 'considera o livro todo | só o filtro de Executivo se aplica aqui';
-      if (!exits.length) return `<div class="cmp-exits" id="cmp-exits-box"><h3>Saíram do pipe desde a foto <span>| nenhum deal saiu${aeOn ? ' (com o filtro de Executivo atual)' : ''}</span></h3></div>`;
-      let h = `<div class="cmp-exits" id="cmp-exits-box"><h3>Saíram do pipe desde a foto de ${esc(compMeta.tab)} <span>| ${exits.length} deals | ${scopeTxt} | clique num cabeçalho para ordenar</span></h3>`;
+      const anyFilter = (aeFilter && aeFilter.size > 0) || pipelineFilter.size > 0 || stageFilter.size > 0 || quarterFilter.size > 0 || tierFilter.size > 0 || modeloFilter.size > 0 || !!searchQuery;
+      const scopeTxt = anyFilter ? 'busca e filtros aplicados (sobre os dados da foto)' : 'considera o livro todo | busca e filtros se aplicam aqui';
+      if (!exits.length) return `<div class="cmp-exits" id="cmp-exits-box"><h3>Saíram do pipe desde a foto <span>| nenhum deal saiu${anyFilter ? ' (com os filtros atuais)' : ''}</span></h3></div>`;
+      // Top 5 mais relevantes = maiores por Vidas, independente da ordenação de coluna escolhida.
+      const top5 = new Set(exits.slice().sort((a, b) => (b.old.vidas || 0) - (a.old.vidas || 0)).slice(0, 5).map(e => String(e.old.hs_id)));
+      let h = `<div class="cmp-exits" id="cmp-exits-box"><h3>Saíram do pipe desde a foto de ${esc(compMeta.tab)} <span>| ${exits.length} deals | ${scopeTxt} | top 5 por vidas destacados | clique num cabeçalho para ordenar</span></h3>`;
       const th = (k, right) => {
         const c = COMP_EXIT_COLS[k];
         const arr = compExitsSort.k === k ? (compExitsSort.dir > 0 ? ' ▲' : ' ▼') : '';
         return `<th style="cursor:pointer;${right ? 'text-align:right' : ''}" onclick="compExitsSortBy('${k}')" data-tooltip="Ordenar por ${c.lbl}">${c.lbl}${arr}</th>`;
       };
-      h += '<table><thead><tr>' + th('deal') + th('sit') + th('stage') + th('ae') + th('vidas', 1) + th('colab', 1) + th('fatura', 1) + th('prob', 1) + th('motivo') + '</tr></thead><tbody>';
+      h += '<table><thead><tr>' + th('deal') + th('sit') + th('perdido') + th('stage') + th('ae') + th('vidas', 1) + th('colab', 1) + th('fatura', 1) + th('prob', 1) + th('motivo') + '</tr></thead><tbody>';
+      let rank = 0;
+      const vidasRank = exits.slice().sort((a, b) => (b.old.vidas || 0) - (a.old.vidas || 0)).map(e => String(e.old.hs_id));
       exits.forEach(e => {
         const url = `https://app.hubspot.com/contacts/${HUB_ID}/deal/${esc(e.old.hs_id)}`;
         const sit = e.lost ? '<span class="ex-lost">Perdido</span>' : '<span class="ex-gone">Fora do pipe</span>';
         const motivo = e.lost ? (e.lost.lost_reason || '—') : '—';
-        h += `<tr>
-          <td><a class="deal-link" href="${url}" target="_blank" rel="noopener">${esc(e.old.dealname || '—')}</a></td>
+        const isTop = top5.has(String(e.old.hs_id));
+        const rk = isTop ? (vidasRank.indexOf(String(e.old.hs_id)) + 1) : 0;
+        const perdidoEm = (e.lost && e.lost.close_date) ? fmtDate(e.lost.close_date) : '—';
+        h += `<tr class="${isTop ? 'ex-top' : ''}">
+          <td><a class="deal-link" href="${url}" target="_blank" rel="noopener">${isTop ? `<span class="ex-rank">${rk}º</span>` : ''}${esc(e.old.dealname || '—')}</a></td>
           <td>${sit}</td>
+          <td>${esc(perdidoEm)}</td>
           <td>${esc(e.old.stage || '—')}</td>
           <td>${esc(e.old.ae || '—')}</td>
           <td class="r">${e.old.vidas != null ? fmtNum(e.old.vidas) : '—'}</td>

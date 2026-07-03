@@ -19,7 +19,42 @@
  */
 
 const { listMonthlyTabs, readSnapshot, listTabs } = require('../lib/sheets');
-const { setCORSHeaders, requireAuth }    = require('./_helpers');
+const { setCORSHeaders, requireAuth, getHubspotToken } = require('./_helpers');
+
+// ── Histórico de proprietários de um deal (action=owner-history&id=X) ────────
+// Lazy, por deal (chamado quando o modal do /forecast abre). Não entra no payload
+// compartilhado de /api/forecast-table para não pesar em todos os painéis.
+async function hubGet(token, url) {
+  const res = await fetch('https://api.hubapi.com' + url, {
+    headers: { 'Authorization': 'Bearer ' + token },
+    signal: AbortSignal.timeout(20000),
+  });
+  if (res.status >= 400) throw new Error('HubSpot API error (HTTP ' + res.status + ')');
+  return res.json();
+}
+function histDateStr(ts) {
+  if (ts == null) return null;
+  if (/^\d+$/.test(String(ts))) { const d = new Date(Number(ts)); return isNaN(d) ? null : d.toISOString().substring(0, 10); }
+  return String(ts).substring(0, 10);
+}
+// Mapa id→nome de TODOS os owners (ativos + arquivados). O GET individual não retorna
+// arquivados, então usamos a listagem em lote com archived=true (mesma correção do forecast-table).
+async function fetchOwnersMap(token) {
+  const map = {};
+  for (const archived of ['false', 'true']) {
+    let after, hasMore = true;
+    while (hasMore) {
+      const r = await hubGet(token, '/crm/v3/owners?limit=200&archived=' + archived + (after ? '&after=' + after : ''));
+      (r.results || []).forEach(o => {
+        const name = (((o.firstName || '') + ' ' + (o.lastName || '')).trim()) || o.email || ('ID ' + o.id);
+        if (!map[o.id]) map[o.id] = name;
+      });
+      hasMore = r.paging && r.paging.next && r.paging.next.after != null;
+      after = r.paging && r.paging.next ? r.paging.next.after : undefined;
+    }
+  }
+  return map;
+}
 
 // Snapshots reconstruídos do pipe (dias em que o cron diário não rodou).
 // Dados embutidos via require() para o bundler da Vercel os incluir; servidos
@@ -90,6 +125,28 @@ module.exports = async function handler(req, res) {
         return obj;
       });
       return res.status(200).json({ success: true, tab, deals });
+    }
+
+    if (action === 'owner-history') {
+      const id = params.get('id');
+      if (!id) return res.status(400).json({ success: false, error: 'informe ?id=<dealId>' });
+      let token;
+      try { token = getHubspotToken(); } catch (e) { return res.status(503).json({ success: false, error: e.message }); }
+      const [deal, owners] = await Promise.all([
+        hubGet(token, '/crm/v3/objects/deals/' + encodeURIComponent(id) + '?propertiesWithHistory=hubspot_owner_id'),
+        fetchOwnersMap(token),
+      ]);
+      const raw = (deal.propertiesWithHistory && deal.propertiesWithHistory.hubspot_owner_id) || [];
+      const timeline = raw.map(h => ({   // HubSpot devolve mais recente primeiro
+        ownerId: h.value || null,
+        owner: h.value ? (owners[h.value] || ('ID ' + h.value)) : '—',
+        date: histDateStr(h.timestamp),
+        source: h.sourceType || null,
+      }));
+      // Colapsa trocas consecutivas para o mesmo dono → períodos distintos de posse.
+      // current = dono atual (topo); previous = proprietários antigos, do mais recente ao mais antigo.
+      const dedup = timeline.filter((e, i) => i === 0 || e.ownerId !== timeline[i - 1].ownerId);
+      return res.status(200).json({ success: true, id, current: dedup[0] || null, history: timeline, previous: dedup.slice(1) });
     }
 
     return res.status(400).json({ success: false, error: 'action inválido. Use ?action=tabs ou ?action=snapshot&tab=...' });

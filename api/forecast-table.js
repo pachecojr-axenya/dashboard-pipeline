@@ -55,6 +55,7 @@ const STAGE_PROB = {
 
 const PROPERTIES = [
   'dealname', 'dealstage', 'pipeline', 'hubspot_owner_id', 'sdr',
+  'origem__originacao_', // origem/originação do deal (drill do modal no /forecast)
   'produto', 'quantidade_de_colaboradores', 'vidas',
   'valor_da_fatura_do_plano_de_saude_atual', 'primeira_fatura',
   'arr_estimado', 'modelo_de_remuneracao',
@@ -91,6 +92,25 @@ const STAGE_DUR = [
   ['Implantação',      '1288611084'],
 ];
 STAGE_DUR.forEach(function(pair){ PROPERTIES.push('hs_v2_date_entered_' + pair[1], 'hs_v2_date_exited_' + pair[1]); });
+
+// Trilha de etapas (modal do /forecast): data de entrada em TODAS as etapas por onde o deal
+// passou, dos dois pipelines. Usa a variante v2 (a v1 hs_date_entered_* vem vazia neste portal).
+const ALL_STAGE_IDS = Object.keys(STAGE_MAP);
+ALL_STAGE_IDS.forEach(function(id){ PROPERTIES.push('hs_v2_date_entered_' + id); });
+function computeStageEntered(p) {
+  const out = {};
+  ALL_STAGE_IDS.forEach(function(id){
+    const v = p['hs_v2_date_entered_' + id];
+    if (!v) return;
+    const name = STAGE_MAP[id];
+    if (!name) return;
+    const dt = String(v).substring(0, 10);
+    // Cotação/Consultoria/etc. existem nos dois pipelines com ids distintos; um deal só tem
+    // valor no id do seu pipeline. Se houver dois, mantém a entrada MAIS ANTIGA.
+    if (!out[name] || dt < out[name]) out[name] = dt;
+  });
+  return out;
+}
 function computeStageDays(p) {
   const now = Date.now();
   const out = {};
@@ -203,16 +223,20 @@ async function hubspotGet(token, url) {
 
 async function fetchOwners(token) {
   const map = {};
-  let after, hasMore = true;
-  while (hasMore) {
-    const url = '/crm/v3/owners?limit=200' + (after ? '&after=' + after : '');
-    const r = await hubspotGet(token, url);
-    (r.results || []).forEach(o => {
-      const name = `${o.firstName || ''} ${o.lastName || ''}`.trim() || o.email || String(o.id);
-      map[o.id] = name;
-    });
-    hasMore = r.paging?.next?.after != null;
-    after = r.paging?.next?.after;
+  // Inclui owners ARQUIVADOS (usuários desativados): ~13% dos BDRs (campo sdr) apontavam para
+  // owners que o endpoint padrão não retorna, e apareciam como id cru na UI. archived=true resolve.
+  for (const archived of ['false', 'true']) {
+    let after, hasMore = true;
+    while (hasMore) {
+      const url = '/crm/v3/owners?limit=200&archived=' + archived + (after ? '&after=' + after : '');
+      const r = await hubspotGet(token, url);
+      (r.results || []).forEach(o => {
+        const name = `${o.firstName || ''} ${o.lastName || ''}`.trim() || o.email || String(o.id);
+        if (!map[o.id]) map[o.id] = name;   // owner ativo tem precedência sobre arquivado de mesmo id
+      });
+      hasMore = r.paging?.next?.after != null;
+      after = r.paging?.next?.after;
+    }
   }
   return map;
 }
@@ -346,6 +370,8 @@ module.exports = async function handler(req, res) {
             ? Math.floor((Date.now() - new Date(p.createdate).getTime()) / 86400000)
             : null,
           stage_days: computeStageDays(p),
+          origem: p.origem__originacao_ || null,
+          stage_entered: computeStageEntered(p),
         };
       });
 
