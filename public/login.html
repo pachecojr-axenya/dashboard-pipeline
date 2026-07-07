@@ -251,6 +251,22 @@ const statusMsg = document.getElementById('status-msg');
 const card = document.getElementById('login-card');
 const btn = document.getElementById('btn-google');
 
+function loginNextUrl() {
+  const params = new URLSearchParams(window.location.search || '');
+  const fromQuery = params.get('next');
+  let fromStorage = '';
+  try { fromStorage = localStorage.getItem('axenya_login_next') || ''; } catch {}
+  const next = fromQuery || fromStorage || '/dashboard';
+  if (!next || next[0] !== '/' || next.startsWith('//') || next.indexOf('://') >= 0) return '/dashboard';
+  return next;
+}
+
+function consumeLoginNext() {
+  const next = loginNextUrl();
+  try { localStorage.removeItem('axenya_login_next'); } catch {}
+  return next;
+}
+
 // Check if already logged in — cookie HttpOnly não é visível ao JS, então perguntamos ao backend
 (async function checkExistingSession() {
   try {
@@ -259,7 +275,7 @@ const btn = document.getElementById('btn-google');
       const data = await res.json();
       if (data && data.success) {
         try { localStorage.setItem(USER_KEY, JSON.stringify(data.user)); } catch {}
-        window.location.href = '/dashboard';
+        window.location.href = consumeLoginNext();
       }
     }
   } catch { /* offline/no session — continua no login */ }
@@ -285,7 +301,7 @@ async function handleCredentialResponse(response) {
     if (data.success) {
       try { localStorage.setItem(USER_KEY, JSON.stringify(data.user)); } catch {}
       statusMsg.textContent = 'Redirecionando...';
-      window.location.href = '/dashboard';
+      window.location.href = consumeLoginNext();
     } else {
       errorMsg.textContent = data.error || 'Erro ao autenticar';
       card.classList.add('shake');
