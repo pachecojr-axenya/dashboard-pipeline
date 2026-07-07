@@ -2028,3 +2028,14 @@ Registro curto, uma linha por interação (a cada alteração).
 - **`_novoHelpSection` (aditivo):** passou a renderizar um bloco opcional `note` como callout "Ressalva" (borda `--yellow`), no mesmo padrão dos blocos Fórmula/Filtro. Nenhuma ficha existente muda (só quem tiver `note`).
 - **C08 (`revbkt`) + C03 (`sizedonut`):** ganharam `note` explicando os dois medidores de receita e que "Sem receita" = "sem arr_estimado/primeira_fatura preenchidos", não "sem valor"; TCV somado permanece correto. Sem hardcode de % exato na ficha (só magnitude qualitativa) para não envelhecer.
 - **Validação:** `new Function` nos 2 scripts inline = 0 erros; rota `/novo` = 200; HTML servido confirma o renderizador `noteHtml` e as duas notas. Cálculo dos gráficos inalterado.
+
+### BDR No-Show | persona/indústria via Contact/Company + higiene do campo reunião (2026-07-07)
+
+> Mudança de API aditiva em `api/forecast-table.js` ativada apenas por `?includeContext=true` + front em `public/bdr-no-show.*`. Demais painéis seguem chamando o endpoint sem associações.
+
+- **Persona corrigida:** a quebra de persona agora vem do **cargo do contato associado** (`contact.jobtitle`), classificado em **senioridade** e **área** (DP, RH, Benefícios, SST, Financeiro, Compras, Jurídico, Saúde). Sem cargo, mostra explicitamente `Contato sem cargo no payload`; não usa texto do deal para inferir.
+- **Indústria corrigida:** a quebra de indústria agora vem da **company associada** (`company.industry`). Sem `industry`, mostra `Company sem segmento no payload`; não usa proxy textual.
+- **API `forecast-table.js`:** novo parâmetro `includeContext=true` busca associações deal→contact e deal→company via HubSpot v4 batch/read, depois batch/read de Contact (`jobtitle`) e Company (`industry`, name, domain, employees). Contrato é aditivo: `contact_jobtitle`, `persona_source`, `company_name`, `company_industry`, `company_segment`, etc.
+- **Classificação de no-show refinada:** propriedades e atividades primeiro; texto só como suporte final. `a_reuniao_ocorreu_ = Não` é no-show confirmado; reunião passada com campo vazio vira bucket separado **Campo pendente | reunião passou**, não no-show confirmado automático.
+- **Storytelling visual:** cards com `i` e memória de cálculo por métrica, linha temporal semanal (agendadas × no-show confirmado × campo pendente), cards de leitura executiva e tabela específica de higiene do campo reunião.
+- **Escopo preservado:** universo continua sendo deals com `data_reuniao_agendada` entre set/25 e hoje; rota continua `/novo-bdr/no-show`; API sem login continua 401 em produção.

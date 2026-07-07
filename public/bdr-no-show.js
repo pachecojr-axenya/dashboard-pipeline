@@ -4,7 +4,7 @@
   var CONFIG = {
     analysisStart: '2025-09-01',
     slaBusinessDays: 2,
-    noShowTerms: ['no show', 'no-show', 'noshow', 'não compareceu', 'nao compareceu', 'não veio', 'nao veio', 'faltou', 'ausente', 'remarcar', 'remarcou', 'remarcado'],
+    noShowTerms: ['no show', 'no-show', 'noshow', 'não compareceu', 'nao compareceu', 'não veio', 'nao veio', 'faltou', 'ausente'],
     rescheduleTerms: ['remarc', 'reagend', 'nova reunião', 'nova reuniao', 'novo horário', 'novo horario'],
     recoveryTerms: ['diagnóstico', 'diagnostico', 'cotação', 'cotacao', 'consultoria', 'negociação', 'negociacao', 'implantação', 'implantacao', 'ganho'],
     lostNoShowTerms: ['no show', 'no-show', 'noshow', 'não compareceu', 'nao compareceu', 'faltou', 'ausente', 'sumiu', 'sem retorno'],
@@ -64,17 +64,74 @@
     return '3.000+';
   }
 
+  function norm(v) {
+    return lower(v).normalize ? lower(v).normalize('NFD').replace(/[\u0300-\u036f]/g, '') : lower(v);
+  }
+
+  function firstFilled(values) {
+    for (var i = 0; i < values.length; i += 1) {
+      if (values[i] != null && String(values[i]).trim() !== '') return values[i];
+    }
+    return null;
+  }
+
+  function seniorityFromTitle(title) {
+    var t = norm(title);
+    if (!t) return 'Senioridade não informada';
+    if (/\b(ceo|cfo|chro|coo|cto|c-level|presidente|socio|socia|owner)\b/.test(t)) return 'C-Level | Sócio';
+    if (/\b(diretor|diretora|director|vp|vice presidente|superintendente)\b/.test(t)) return 'Diretoria | VP';
+    if (/\b(head|gerente|manager|gestor|gestora|coordenador|coordenadora|coord|supervisor|supervisora)\b/.test(t)) return 'Gestão | Coordenação';
+    if (/\b(especialista|senior|sr|consultor|consultora|business partner|bp)\b/.test(t)) return 'Especialista | Sênior';
+    if (/\b(analista|assistente|auxiliar|estagiario|estagiaria|trainee|junior|jr)\b/.test(t)) return 'Operacional | Analista';
+    return 'Senioridade não classificada';
+  }
+
+  function areaFromTitle(title) {
+    var t = norm(title);
+    if (!t) return 'Área não informada';
+    if (/\b(dp|departamento pessoal|pessoal|folha|payroll|admissao|admissões|demissao|demissoes)\b/.test(t)) return 'DP | Folha';
+    if (/beneficio|beneficios|benefit|benefits|remuneracao|remuneração|total rewards|compensacao|compensação/.test(t)) return 'Benefícios | Remuneração';
+    if (/\b(sst|sesmt|seguranca do trabalho|segurança do trabalho|saude ocupacional|saúde ocupacional|medicina do trabalho|medico do trabalho|médico do trabalho)\b/.test(t)) return 'SST | Saúde Ocupacional';
+    if (/\b(rh|recursos humanos|people|gente|talentos|talent|human resources|hr)\b/.test(t)) return 'RH | People';
+    if (/\b(financeiro|financas|finanças|controller|controladoria|cfo|tesouraria)\b/.test(t)) return 'Financeiro';
+    if (/\b(compras|suprimentos|procurement|supply)\b/.test(t)) return 'Compras | Suprimentos';
+    if (/\b(juridico|jurídico|legal|compliance)\b/.test(t)) return 'Jurídico | Compliance';
+    if (/\b(saude|saúde|medico|médico|enfermagem|enfermeir)\b/.test(t)) return 'Saúde | Médico';
+    return 'Área não classificada';
+  }
+
   function personaFromPayload(deal) {
-    return deal.persona || deal.observatorio_axenya_persona || deal.buyer_persona || deal.jobtitle || 'Não informado no payload';
+    var title = firstFilled([deal.contact_jobtitle, deal.jobtitle]);
+    if (title) return seniorityFromTitle(title) + ' | ' + areaFromTitle(title);
+    return deal.persona || deal.observatorio_axenya_persona || deal.buyer_persona || 'Contato sem cargo no payload';
+  }
+
+  function personaSourceFromPayload(deal) {
+    var title = firstFilled([deal.contact_jobtitle, deal.jobtitle]);
+    if (title) return 'Cargo do contato | ' + title;
+    return 'Sem cargo associado ao contato';
   }
 
   function industryFromPayload(deal) {
-    return deal.segmento || deal.industry || deal.industria || deal.setor || deal.company_segment || 'Não informado no payload';
+    return firstFilled([deal.company_industry, deal.company_segment, deal.industry]) || 'Company sem segmento no payload';
+  }
+
+  function industrySourceFromPayload(deal) {
+    if (firstFilled([deal.company_industry, deal.company_segment, deal.industry])) return 'Company.industry | ' + (deal.company_name || 'empresa associada');
+    return deal.company_name ? 'Company associada sem industry' : 'Sem company associada no payload';
+  }
+
+  function normalizeMeetingOccurred(v) {
+    var raw = norm(v);
+    if (!raw) return null;
+    if (['sim', 'true', 'yes', 'ocorreu', 'realizada', 'realizado'].indexOf(raw) >= 0) return true;
+    if (['nao', 'não', 'false', 'no', 'nao ocorreu', 'não ocorreu', 'nao realizada', 'não realizada'].indexOf(raw) >= 0) return false;
+    return null;
   }
 
   function isMeetingDone(deal) {
-    var raw = lower(deal.reuniao_ocorreu);
-    if (['sim', 'true', 'yes', 'ocorreu', 'realizada', 'realizado'].indexOf(raw) >= 0) return true;
+    var explicit = normalizeMeetingOccurred(deal.reuniao_ocorreu);
+    if (explicit === true) return true;
     if (CONFIG.stagesAfterMeeting.indexOf(deal.stage) >= 0) return true;
     if (deal.stage_entered) {
       for (var i = 0; i < CONFIG.stagesAfterMeeting.length; i += 1) if (deal.stage_entered[CONFIG.stagesAfterMeeting[i]]) return true;
@@ -86,14 +143,24 @@
     return [deal.dealname, deal.stage, deal.reuniao_ocorreu, deal.lost_reason, deal.lost_reason_desc, deal.origem, deal.produto].join(' ');
   }
 
-  function classifyRecovery(deal, meetingDate, occurred, text) {
+  function meetingFieldStatus(explicit, pastMeeting) {
+    if (explicit === true) return 'Campo Sim';
+    if (explicit === false) return 'Campo Não';
+    if (pastMeeting) return 'Campo pendente | reunião passou';
+    return 'Campo pendente | reunião futura';
+  }
+
+  function classifyRecovery(deal, meetingDate, occurred, explicit, text) {
     var explicitNoShow = containsAny(text, CONFIG.noShowTerms) || containsAny(text, CONFIG.lostNoShowTerms);
+    var pastMeeting = !!(meetingDate && meetingDate < today());
+    if (explicit === false && occurred && deal.stage !== 'Perdido') return 'Recuperado';
     if (explicitNoShow && occurred && deal.stage !== 'Perdido') return 'Recuperado';
     if (occurred) return 'Realizada';
     if (deal.stage === 'Perdido') return containsAny(text, CONFIG.lostNoShowTerms) ? 'Perdido por no-show' : 'Perdido sem evidência no-show';
     if (containsAny(text, CONFIG.rescheduleTerms)) return 'Reagendada';
+    if (explicit === false) return 'No-show confirmado';
     if (containsAny(text, CONFIG.noShowTerms)) return 'No-show aberto';
-    if (meetingDate && meetingDate < today()) return 'No-show aberto';
+    if (pastMeeting && explicit == null) return 'Campo pendente | reunião passou';
     return 'Agendada futura';
   }
 
@@ -108,12 +175,14 @@
 
   function normalizeDeal(deal) {
     var meetingDate = parseDate(deal.data_reuniao_agendada);
+    var explicitOccurred = normalizeMeetingOccurred(deal.reuniao_ocorreu);
     var occurred = isMeetingDone(deal);
     var text = evidenceText(deal);
     var noShowEvidence = containsAny(text, CONFIG.noShowTerms) || containsAny(text, CONFIG.lostNoShowTerms);
     var pastMeeting = !!(meetingDate && meetingDate < today());
-    var status = classifyRecovery(deal, meetingDate, occurred, text);
-    var noShow = status === 'Perdido por no-show' || status === 'No-show aberto' || status === 'Reagendada' || status === 'Recuperado' || noShowEvidence || (!occurred && pastMeeting && deal.stage !== 'Perdido');
+    var status = classifyRecovery(deal, meetingDate, occurred, explicitOccurred, text);
+    var fieldStatus = meetingFieldStatus(explicitOccurred, pastMeeting);
+    var noShow = status === 'Perdido por no-show' || status === 'No-show confirmado' || status === 'No-show aberto' || status === 'Recuperado' || noShowEvidence || explicitOccurred === false;
     var lastActivityDate = parseDate(deal.ultima_atividade || deal.close_date || deal.createdate);
     var bd = meetingDate ? businessDaysBetween(meetingDate, today()) : null;
     var recovered = noShow && (occurred || CONFIG.stagesAfterMeeting.indexOf(deal.stage) >= 0) && deal.stage !== 'Perdido';
@@ -133,7 +202,14 @@
       porte: vidasRange(deal.vidas || deal.colaboradores),
       persona: personaFromPayload(deal),
       segment: industryFromPayload(deal),
+      personaSource: personaSourceFromPayload(deal),
+      segmentSource: industrySourceFromPayload(deal),
       occurred: occurred,
+      explicitOccurred: explicitOccurred,
+      meetingFieldFilled: explicitOccurred !== null,
+      meetingFieldStatus: fieldStatus,
+      pastMeeting: pastMeeting,
+      fieldPendingPast: pastMeeting && explicitOccurred === null,
       noShow: noShow,
       rescheduled: rescheduled,
       recovered: recovered,
@@ -205,7 +281,10 @@
     html += '<div class="filter"><label>AE</label><select id="f-ae">' + optionHtml(uniqueValues('ae'), f.ae) + '</select></div>';
     html += '<div class="filter"><label>Fase</label><select id="f-stage">' + optionHtml(uniqueValues('stage'), f.stage) + '</select></div>';
     html += '<div class="filter"><label>Origem</label><select id="f-origem">' + optionHtml(uniqueValues('origem'), f.origem) + '</select></div>';
+    html += '<div class="filter"><label>Indústria | Company</label><select id="f-segment">' + optionHtml(uniqueValues('segment'), f.segment) + '</select></div>';
+    html += '<div class="filter"><label>Persona | Cargo contato</label><select id="f-persona">' + optionHtml(uniqueValues('persona'), f.persona) + '</select></div>';
     html += '<div class="filter"><label>Porte | vidas</label><select id="f-porte">' + optionHtml(uniqueValues('porte'), f.porte) + '</select></div>';
+    html += '<div class="filter"><label>Campo reunião ocorreu</label><select id="f-field">' + optionHtml(uniqueValues('meetingFieldStatus'), f.meetingFieldStatus) + '</select></div>';
     html += '<div class="filter"><label>Status operacional</label><select id="f-status">' + optionHtml(uniqueValues('status'), f.status) + '</select></div>';
     html += '<div class="filter"><label>Motivo perda</label><select id="f-lost">' + optionHtml(uniqueValues('lostReason'), f.lostReason) + '</select></div>';
     html += '<div class="filter filter-actions"><button class="btn primary" id="apply-filters">Aplicar</button><button class="btn" id="clear-filters">Limpar</button></div>';
@@ -225,7 +304,10 @@
       ae: $('f-ae').value,
       stage: $('f-stage').value,
       origem: $('f-origem').value,
+      segment: $('f-segment').value,
+      persona: $('f-persona').value,
       porte: $('f-porte').value,
+      meetingFieldStatus: $('f-field').value,
       status: $('f-status').value,
       lostReason: $('f-lost').value
     };
@@ -244,7 +326,10 @@
       if (f.ae && r.ae !== f.ae) return false;
       if (f.stage && r.stage !== f.stage) return false;
       if (f.origem && r.origem !== f.origem) return false;
+      if (f.segment && r.segment !== f.segment) return false;
+      if (f.persona && r.persona !== f.persona) return false;
       if (f.porte && r.porte !== f.porte) return false;
+      if (f.meetingFieldStatus && r.meetingFieldStatus !== f.meetingFieldStatus) return false;
       if (f.status && r.status !== f.status) return false;
       if (f.lostReason && r.lostReason !== f.lostReason) return false;
       return true;
@@ -260,11 +345,17 @@
   function rate(num, den) { return den ? num / den : 0; }
   function metrics(rows) {
     var scheduled = rows.filter(function (r) { return r.meetingDate; });
+    var past = rows.filter(function (r) { return r.pastMeeting; });
     var noShows = rows.filter(function (r) { return r.noShow; });
     var recovered = noShows.filter(function (r) { return r.recovered; });
     var lost = noShows.filter(function (r) { return r.status === 'Perdido por no-show'; });
     var out = {
       scheduled: scheduled.length,
+      pastMeetings: past.length,
+      fieldFilledPast: past.filter(function (r) { return r.meetingFieldFilled; }).length,
+      fieldMissingPast: past.filter(function (r) { return r.fieldPendingPast; }).length,
+      fieldYes: past.filter(function (r) { return r.explicitOccurred === true; }).length,
+      fieldNo: past.filter(function (r) { return r.explicitOccurred === false; }).length,
       occurred: rows.filter(function (r) { return r.occurred; }).length,
       noShows: noShows.length,
       noShowRate: rate(noShows.length, scheduled.length),
@@ -277,41 +368,57 @@
       pipelineLost: lost.reduce(function (s, r) { return s + (r.arr || 0); }, 0)
     };
     out.rescheduleRate = rate(out.rescheduled, scheduled.length);
+    out.fieldCoverage = rate(out.fieldFilledPast, past.length);
     return out;
   }
 
-  function kpi(label, value, sub, cls) {
-    return '<div class="kpi ' + (cls || '') + '"><div class="label">' + esc(label) + '</div><div class="value">' + value + '</div><div class="sub">' + esc(sub || '') + '</div></div>';
+  function infoBtn(key) {
+    return '<button type="button" class="calc-btn" data-help="' + esc(key) + '" aria-label="Ver memória de cálculo">i</button>';
+  }
+
+  function kpi(label, value, sub, cls, key) {
+    return '<div class="kpi ' + (cls || '') + '"><div class="label"><span>' + esc(label) + '</span>' + (key ? infoBtn(key) : '') + '</div><div class="value">' + value + '</div><div class="sub">' + esc(sub || '') + '</div></div>';
   }
 
   function renderKpis(m) {
     return '<div class="kpis">' +
-      kpi('Agendadas', fmtInt(m.scheduled), 'Com data_reuniao_agendada', 'teal') +
-      kpi('Realizadas', fmtInt(m.occurred), 'Campo reunião ocorreu ou etapa posterior', 'good') +
-      kpi('No-shows', fmtInt(m.noShows), 'Evidência textual ou reunião passada não realizada', 'bad') +
-      kpi('Taxa no-show', fmtPct(m.noShowRate), 'No-shows / agendadas', m.noShowRate > 0.25 ? 'bad' : 'warn') +
-      kpi('Reagendadas', fmtInt(m.rescheduled), 'Depende de evidência textual disponível', 'warn') +
-      kpi('Taxa reagendamento', fmtPct(m.rescheduleRate), 'Reagendadas / agendadas', 'warn') +
-      kpi('Recuperados', fmtInt(m.recovered), 'No-show que avançou ou foi realizado', 'good') +
-      kpi('Taxa recuperação', fmtPct(m.recoveryRate), 'Recuperados / no-shows', 'good') +
-      kpi('Dentro SLA', fmtInt(m.withinSla), 'Até ' + CONFIG.slaBusinessDays + ' dias úteis', 'good') +
-      kpi('Fora SLA', fmtInt(m.outsideSla), 'No-show ainda sem recuperação', m.outsideSla ? 'bad' : 'good') +
-      kpi('Pipeline em risco', fmtMoney(m.pipelineRisk), 'ARR estimado em no-shows abertos', 'bad') +
-      kpi('Pipeline perdido', fmtMoney(m.pipelineLost), 'ARR estimado perdido por no-show', 'bad') +
+      kpi('Agendadas', fmtInt(m.scheduled), 'Deals com data_reuniao_agendada', 'teal', 'scheduled') +
+      kpi('Reuniões passadas', fmtInt(m.pastMeetings), 'Data da reunião menor que hoje', 'teal', 'past') +
+      kpi('Campo preenchido', fmtPct(m.fieldCoverage), fmtInt(m.fieldFilledPast) + ' de ' + fmtInt(m.pastMeetings) + ' passadas', m.fieldCoverage < 0.8 ? 'warn' : 'good', 'fieldCoverage') +
+      kpi('Campo pendente', fmtInt(m.fieldMissingPast), 'Reunião passou e a_reuniao_ocorreu_ está vazio', m.fieldMissingPast ? 'bad' : 'good', 'fieldMissing') +
+      kpi('Realizadas', fmtInt(m.occurred), 'Campo Sim ou etapa posterior', 'good', 'occurred') +
+      kpi('Campo Não', fmtInt(m.fieldNo), 'No-show confirmado por propriedade', m.fieldNo ? 'bad' : 'good', 'fieldNo') +
+      kpi('No-show confirmado', fmtInt(m.noShows), 'Campo Não ou evidência final de ausência', 'bad', 'noShow') +
+      kpi('Taxa no-show', fmtPct(m.noShowRate), 'No-show confirmado / agendadas', m.noShowRate > 0.25 ? 'bad' : 'warn', 'noShowRate') +
+      kpi('Reagendadas', fmtInt(m.rescheduled), 'Fallback textual de remarcação', 'warn', 'rescheduled') +
+      kpi('Recuperados', fmtInt(m.recovered), 'No-show que avançou ou foi realizado', 'good', 'recovered') +
+      kpi('Fora SLA', fmtInt(m.outsideSla), 'No-show aberto sem recuperação', m.outsideSla ? 'bad' : 'good', 'outsideSla') +
+      kpi('Pipeline em risco', fmtMoney(m.pipelineRisk), 'ARR estimado em no-shows abertos', 'bad', 'pipelineRisk') +
+      kpi('Pipeline perdido', fmtMoney(m.pipelineLost), 'ARR estimado perdido por no-show', 'bad', 'pipelineLost') +
       '</div>';
+  }
+
+  function svgPoints(values, max, width, height, pad) {
+    if (!values.length) return '';
+    if (values.length === 1) return pad + ',' + (height - pad - Math.round(values[0] / max * (height - pad * 2)));
+    return values.map(function (v, i) {
+      var x = pad + Math.round(i / (values.length - 1) * (width - pad * 2));
+      var y = height - pad - Math.round(v / max * (height - pad * 2));
+      return x + ',' + y;
+    }).join(' ');
   }
 
   function renderTrend(rows) {
     var g = group(rows.filter(function (r) { return r.meetingDate; }), 'week');
     var keys = Object.keys(g).sort().slice(-16);
-    var max = 1;
-    keys.forEach(function (k) { var n = g[k].filter(function (r) { return r.noShow; }).length; if (n > max) max = n; });
-    var bars = keys.map(function (k) {
-      var n = g[k].filter(function (r) { return r.noShow; }).length;
-      var h = Math.max(2, Math.round(n / max * 170));
-      return '<div class="bar-wrap"><div class="bar" style="height:' + h + 'px"><small>' + fmtInt(n) + '</small></div><div class="bar-label">' + esc(k.replace('-', ' ')) + '</div></div>';
-    }).join('');
-    return '<div class="card span-8"><h2>Tendência no-show por semana</h2><div class="desc">Volume semanal de no-shows detectados no período filtrado</div><div class="trend"><div class="bars">' + (bars || '<div class="muted">Sem semanas com reunião no filtro atual</div>') + '</div></div></div>';
+    var scheduled = keys.map(function (k) { return g[k].length; });
+    var noShows = keys.map(function (k) { return g[k].filter(function (r) { return r.noShow; }).length; });
+    var pending = keys.map(function (k) { return g[k].filter(function (r) { return r.fieldPendingPast; }).length; });
+    var max = Math.max(1, scheduled.concat(noShows).concat(pending).reduce(function (m, n) { return Math.max(m, n); }, 0));
+    var w = 760, h = 240, p = 34;
+    var labels = keys.map(function (k, i) { var x = p + Math.round(i / Math.max(1, keys.length - 1) * (w - p * 2)); return '<text x="' + x + '" y="232" text-anchor="middle">' + esc(k.replace('-', ' ')) + '</text>'; }).join('');
+    var svg = keys.length ? '<svg class="line-svg" viewBox="0 0 ' + w + ' ' + h + '" role="img" aria-label="Linha temporal semanal"><line x1="' + p + '" y1="20" x2="' + p + '" y2="210"/><line x1="' + p + '" y1="210" x2="730" y2="210"/><text x="8" y="24">' + fmtInt(max) + '</text><text x="18" y="214">0</text><polyline class="ln scheduled" points="' + svgPoints(scheduled, max, w, h, p) + '"/><polyline class="ln no-show" points="' + svgPoints(noShows, max, w, h, p) + '"/><polyline class="ln pending" points="' + svgPoints(pending, max, w, h, p) + '"/>' + labels + '</svg>' : '<div class="muted">Sem semanas com reunião no filtro atual</div>';
+    return '<div class="card span-8"><div class="card-title"><div><h2>Linha temporal semanal</h2><div class="desc">Agendadas, no-show confirmado e campo pendente por semana</div></div>' + infoBtn('timeline') + '</div><div class="line-legend"><span><i class="scheduled"></i>Agendadas</span><span><i class="no-show"></i>No-show confirmado</span><span><i class="pending"></i>Campo pendente</span></div><div class="trend line-chart">' + svg + '</div></div>';
   }
 
   function rankRows(rows, key, mode) {
@@ -333,12 +440,53 @@
     return '<div class="card span-4"><h2>' + esc(title) + '</h2><div class="desc">Ordena por quantidade e desempata por taxa | n = reuniões agendadas</div>' + (list || '<div class="muted">Sem dados no filtro atual</div>') + '</div>';
   }
 
+  var CALC_HELP = {
+    scheduled: ['Agendadas', 'COUNT(deals com data_reuniao_agendada no período)', 'Campo: hs_v2_date_entered_1144746905 normalizado como data_reuniao_agendada.'],
+    past: ['Reuniões passadas', 'COUNT(data_reuniao_agendada < hoje)', 'Se a reunião ainda é futura, não entra nos buckets de higiene do campo.'],
+    fieldCoverage: ['Campo preenchido', 'Reuniões passadas com a_reuniao_ocorreu_ Sim ou Não ÷ reuniões passadas', 'Propriedade primeiro. Não usa texto para preencher o campo.'],
+    fieldMissing: ['Campo pendente', 'COUNT(reunião passada E a_reuniao_ocorreu_ vazio)', 'Este bucket é higiene de CRM. Não é classificado como no-show confirmado sem outra evidência.'],
+    occurred: ['Realizadas', 'a_reuniao_ocorreu_ = Sim OU deal avançou para etapa posterior', 'Etapas posteriores: Diagnóstico, Cotação, Consultoria, Negociação, Implantação ou Ganho.'],
+    fieldNo: ['Campo Não', 'COUNT(a_reuniao_ocorreu_ = Não em reuniões passadas)', 'É a fonte mais forte de no-show confirmado.'],
+    noShow: ['No-show confirmado', 'Campo Não OU evidência final de ausência em motivo/status', 'Texto só entra como suporte final: motivo de perda, descrição e status com termos de ausência.'],
+    noShowRate: ['Taxa no-show', 'No-show confirmado ÷ reuniões agendadas', 'Não mistura campo pendente com no-show confirmado.'],
+    rescheduled: ['Reagendadas', 'No-show com evidência textual de remarcação', 'Limitação: histórico real de mudança de data ainda não vem no payload.'],
+    recovered: ['Recuperados', 'No-show confirmado que ocorreu ou avançou depois', 'Usa a propriedade e a trilha de etapas como evidência de recuperação.'],
+    outsideSla: ['Fora SLA', 'No-show aberto sem recuperação com mais de ' + CONFIG.slaBusinessDays + ' dias úteis', 'Dias úteis entre data_reuniao_agendada e hoje.'],
+    pipelineRisk: ['Pipeline em risco', 'SUM(ARR estimado) de no-shows abertos', 'ARR = arr_estimado, fallback primeira_fatura × 12, fallback premio_mensal × 12.'],
+    pipelineLost: ['Pipeline perdido', 'SUM(ARR estimado) de perdidos com evidência de no-show', 'Usa motivo do declínio e descrição como suporte textual.'],
+    timeline: ['Linha temporal semanal', 'Por semana: agendadas, no-show confirmado e campo pendente', 'Ajuda a separar problema operacional de reunião de problema de preenchimento.']
+  };
+
+  function openHelp(key) {
+    var h = CALC_HELP[key];
+    if (!h) return;
+    $('help-title').textContent = h[0];
+    $('help-body').innerHTML = '<div class="help-block"><b>Fórmula</b><code>' + esc(h[1]) + '</code></div><div class="help-block"><b>Premissa</b><p>' + esc(h[2]) + '</p></div><div class="help-block"><b>Fonte</b><p>GET /api/forecast-table?includeLost=true&includeContext=true | Deal, Contact e Company associados.</p></div>';
+    $('help-backdrop').classList.add('open');
+    $('help-drawer').classList.add('open');
+  }
+
+  function closeHelp() {
+    $('help-backdrop').classList.remove('open');
+    $('help-drawer').classList.remove('open');
+  }
+
+  function renderStory(rows, m) {
+    var bdrRows = rankRows(rows, 'bdr', 'rate');
+    var top = bdrRows[0];
+    return '<div class="story-grid">' +
+      '<div class="story-card"><b>Leitura executiva</b><span>' + fmtInt(m.noShows) + ' no-shows confirmados e ' + fmtInt(m.fieldMissingPast) + ' reuniões passadas sem campo preenchido. O painel separa performance real de higiene de CRM.</span></div>' +
+      '<div class="story-card"><b>Onde cobrar primeiro</b><span>' + (top ? esc(top.name) + ' concentra ' + fmtInt(top.noShows) + ' no-shows confirmados no filtro atual.' : 'Sem concentração relevante no filtro atual.') + '</span></div>' +
+      '<div class="story-card"><b>Regra de classificação</b><span>Propriedades e atividades vêm primeiro. Texto só fecha casos ambíguos de no-show, remarcação ou perda.</span></div>' +
+      '</div>';
+  }
+
   function renderLegend() {
     return '<div class="legend-grid">' +
       '<div class="legend-card"><b>Universo</b><span>Conta somente deals com data_reuniao_agendada entre set/25 e hoje. Deals sem reunião agendada ficam fora da análise.</span></div>' +
-      '<div class="legend-card"><b>No-show</b><span>Reunião passada sem evidência de realizada, ou motivo/status com termos de ausência. Taxa = no-shows / agendadas.</span></div>' +
+      '<div class="legend-card"><b>No-show confirmado</b><span>Primeiro usa a_reuniao_ocorreu_ = Não. Texto só entra como suporte final quando o campo não resolve.</span></div>' +
       '<div class="legend-card"><b>Status operacional</b><span>No-show aberto = precisa ação. Reagendada = há evidência textual de remarcação. Recuperado = avançou ou ocorreu depois do no-show.</span></div>' +
-      '<div class="legend-card"><b>Segmento e persona</b><span>Sem inferência por texto. Só mostra campos presentes no payload; caso contrário aparece como não informado.</span></div>' +
+      '<div class="legend-card"><b>Persona e indústria</b><span>Persona = cargo do contato classificado em senioridade e área. Indústria = industry da company associada.</span></div>' +
       '</div>';
   }
 
@@ -362,9 +510,17 @@
     var body = arr.map(function (r) {
       var slaLabel = r.businessDays == null ? 'SLA desconhecido' : (r.outsideSla ? 'Fora SLA' : 'Dentro SLA');
       var slaClass = r.businessDays == null ? 'warn' : (r.outsideSla ? 'bad' : 'good');
-      return '<tr><td><a class="deal-link" href="' + hubspotUrl(r.id) + '" target="_blank" rel="noopener">' + esc(r.name) + '</a></td><td>' + esc(r.bdr) + '</td><td>' + esc(r.ae) + '</td><td>' + esc(r.meetingIso) + '</td><td>' + esc(r.status) + '</td><td class="right">' + esc(r.businessDays == null ? '—' : r.businessDays) + '</td><td><span class="pill ' + slaClass + '">' + slaLabel + '</span></td><td class="right">' + fmtMoney(r.arr) + '</td><td class="right">' + fmtInt(r.risk) + '</td></tr>';
+      return '<tr><td><a class="deal-link" href="' + hubspotUrl(r.id) + '" target="_blank" rel="noopener">' + esc(r.name) + '</a></td><td>' + esc(r.bdr) + '</td><td>' + esc(r.ae) + '</td><td>' + esc(r.meetingIso) + '</td><td>' + esc(r.meetingFieldStatus) + '</td><td>' + esc(r.status) + '</td><td class="right">' + esc(r.businessDays == null ? '—' : r.businessDays) + '</td><td><span class="pill ' + slaClass + '">' + slaLabel + '</span></td><td class="right">' + fmtMoney(r.arr) + '</td><td class="right">' + fmtInt(r.risk) + '</td></tr>';
     }).join('');
-    return '<div class="card span-12"><h2>Tabela operacional de recuperação</h2><div class="desc">No-shows abertos priorizados por risco | limitado a 100 linhas</div><div class="table-wrap"><table><thead><tr><th>Deal</th><th>BDR</th><th>AE</th><th>Reunião</th><th>Status</th><th class="right">Dias úteis</th><th>SLA</th><th class="right">Pipeline</th><th class="right">Risco</th></tr></thead><tbody>' + (body || '<tr><td colspan="9" class="muted">Nenhum no-show aberto no filtro atual</td></tr>') + '</tbody></table></div></div>';
+    return '<div class="card span-12"><h2>Tabela operacional de recuperação</h2><div class="desc">No-shows confirmados priorizados por risco | limitado a 100 linhas</div><div class="table-wrap"><table><thead><tr><th>Deal</th><th>BDR</th><th>AE</th><th>Reunião</th><th>Campo</th><th>Status</th><th class="right">Dias úteis</th><th>SLA</th><th class="right">Pipeline</th><th class="right">Risco</th></tr></thead><tbody>' + (body || '<tr><td colspan="10" class="muted">Nenhum no-show aberto no filtro atual</td></tr>') + '</tbody></table></div></div>';
+  }
+
+  function renderFieldTable(rows) {
+    var arr = rows.filter(function (r) { return r.fieldPendingPast; }).sort(function (a, b) { return (b.businessDays || 0) - (a.businessDays || 0); }).slice(0, 100);
+    var body = arr.map(function (r) {
+      return '<tr><td><a class="deal-link" href="' + hubspotUrl(r.id) + '" target="_blank" rel="noopener">' + esc(r.name) + '</a></td><td>' + esc(r.bdr) + '</td><td>' + esc(r.ae) + '</td><td>' + esc(r.meetingIso) + '</td><td class="right">' + esc(r.businessDays == null ? '—' : r.businessDays) + '</td><td>' + esc(r.lastActivity) + '</td><td>' + esc(r.stage) + '</td><td>' + esc(r.persona) + '<div class="muted">' + esc(r.personaSource) + '</div></td><td>' + esc(r.segment) + '<div class="muted">' + esc(r.segmentSource) + '</div></td></tr>';
+    }).join('');
+    return '<div class="card span-12"><h2>Reunião passou | campo sem preenchimento</h2><div class="desc">Fila de higiene de CRM: a data da reunião passou, mas a_reuniao_ocorreu_ ainda não está Sim ou Não</div><div class="table-wrap"><table><thead><tr><th>Deal</th><th>BDR</th><th>AE</th><th>Reunião</th><th class="right">Dias úteis</th><th>Última atividade</th><th>Etapa</th><th>Persona</th><th>Indústria</th></tr></thead><tbody>' + (body || '<tr><td colspan="9" class="muted">Nenhuma reunião passada com campo pendente no filtro atual</td></tr>') + '</tbody></table></div></div>';
   }
 
   function renderLostTable(rows) {
@@ -387,16 +543,20 @@
       return;
     }
     var rows = state.filtered;
-    var html = renderKpis(metrics(rows));
+    var m = metrics(rows);
+    var html = renderStory(rows, m);
+    html += renderKpis(m);
     html += renderLegend();
-    html += '<div class="grid">' + renderTrend(rows) + renderRank('Ranking por volume de no-show', rows, 'rate') + renderRank('Ranking por fora do prazo', rows, 'outside') + renderBreak('Quebra por origem', rows, 'origem') + renderBreak('Quebra por indústria', rows, 'segment') + renderBreak('Quebra por persona', rows, 'persona') + renderBreak('Quebra por porte | vidas', rows, 'porte') + renderRecoveryTable(rows) + renderLostTable(rows) + '</div>';
+    html += '<div class="grid">' + renderTrend(rows) + renderRank('Ranking por volume de no-show', rows, 'rate') + renderRank('Ranking por fora do prazo', rows, 'outside') + renderBreak('Quebra por origem', rows, 'origem') + renderBreak('Quebra por indústria', rows, 'segment') + renderBreak('Quebra por persona', rows, 'persona') + renderBreak('Quebra por porte | vidas', rows, 'porte') + renderFieldTable(rows) + renderRecoveryTable(rows) + renderLostTable(rows) + '</div>';
     $('content').innerHTML = html;
+    var helps = $('content').querySelectorAll('[data-help]');
+    for (var i = 0; i < helps.length; i += 1) helps[i].onclick = function (ev) { ev.stopPropagation(); openHelp(this.getAttribute('data-help')); };
     showContent();
   }
 
   function load() {
-    showState('loading', 'Carregando dados', 'Buscando /api/forecast-table?includeLost=true');
-    fetch('/api/forecast-table?includeLost=true', { credentials: 'same-origin' })
+    showState('loading', 'Carregando dados', 'Buscando /api/forecast-table?includeLost=true&includeContext=true');
+    fetch('/api/forecast-table?includeLost=true&includeContext=true', { credentials: 'same-origin' })
       .then(function (res) {
         if (res.status === 401) {
           try { localStorage.setItem('axenya_login_next', '/novo-bdr/no-show'); } catch (e) {}
@@ -422,6 +582,6 @@
     try { localStorage.setItem('axenya_theme', n); } catch (e) {}
   }
 
-  window.NoShowBDR = { load: load, toggleTheme: toggleTheme, config: CONFIG, vidasRange: vidasRange };
+  window.NoShowBDR = { load: load, toggleTheme: toggleTheme, closeHelp: closeHelp, config: CONFIG, vidasRange: vidasRange };
   document.addEventListener('DOMContentLoaded', load);
 }());

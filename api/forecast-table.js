@@ -81,6 +81,20 @@ const PROPERTIES = [
   'cumulative_time_negocio_criado_ate_diagnostico_formula',
 ];
 
+const CONTACT_PROPERTIES = [
+  'jobtitle',
+  'createdate',
+  'hs_object_id',
+];
+
+const COMPANY_PROPERTIES = [
+  'name',
+  'domain',
+  'industry',
+  'numberofemployees',
+  'hs_object_id',
+];
+
 // Tempo médio por etapa (AE Deal Velocity): entrada/saída v2 de cada etapa do pipeline Vendas.
 // stage_days[etapa] = (saída || hoje) - entrada, em dias. Usado pela tabela A19 do painel AE.
 const STAGE_DUR = [
@@ -274,6 +288,81 @@ async function fetchDeals(token, includeLost) {
   return all;
 }
 
+function pickPrimaryAssociation(toList) {
+  const list = Array.isArray(toList) ? toList : [];
+  if (!list.length) return null;
+  const primary = list.find(item => {
+    const types = item.associationTypes || [];
+    return types.some(t => String(t.label || '').toLowerCase() === 'primary');
+  });
+  return String((primary || list[0]).toObjectId || '');
+}
+
+async function fetchDealAssociationMap(token, dealIds, toType, errors) {
+  const map = {};
+  for (let i = 0; i < dealIds.length; i += 100) {
+    const batch = dealIds.slice(i, i + 100);
+    try {
+      const resp = await hubspotPost(token, `/crm/v4/associations/deals/${toType}/batch/read`, {
+        inputs: batch.map(id => ({ id: String(id) }))
+      });
+      (resp.results || []).forEach(r => {
+        const dealId = String(r.from?.id || '');
+        const assocId = pickPrimaryAssociation(r.to);
+        if (dealId && assocId) map[dealId] = assocId;
+      });
+    } catch (e) {
+      console.error(`[forecast-table] association ${toType} unavailable:`, e.message);
+      if (errors) errors.push(`association:${toType}`);
+    }
+  }
+  return map;
+}
+
+async function batchReadObjects(token, objectType, ids, properties, errors) {
+  const uniqueIds = [...new Set((ids || []).filter(Boolean).map(String))];
+  const map = {};
+  for (let i = 0; i < uniqueIds.length; i += 100) {
+    const chunk = uniqueIds.slice(i, i + 100);
+    try {
+      const resp = await hubspotPost(token, `/crm/v3/objects/${objectType}/batch/read`, {
+        properties,
+        inputs: chunk.map(id => ({ id: String(id) }))
+      });
+      (resp.results || []).forEach(r => { map[String(r.id)] = r.properties || {}; });
+    } catch (e) {
+      console.error(`[forecast-table] batch read ${objectType} unavailable:`, e.message);
+      if (errors) errors.push(`batch:${objectType}`);
+    }
+  }
+  return map;
+}
+
+async function fetchDealContext(token, rawDeals) {
+  const errors = [];
+  const dealIds = rawDeals.map(r => String(r.id || r.properties?.hs_object_id || '')).filter(Boolean);
+  const [dealContact, dealCompany] = await Promise.all([
+    fetchDealAssociationMap(token, dealIds, 'contacts', errors),
+    fetchDealAssociationMap(token, dealIds, 'companies', errors),
+  ]);
+  const [contacts, companies] = await Promise.all([
+    batchReadObjects(token, 'contacts', Object.values(dealContact), CONTACT_PROPERTIES, errors),
+    batchReadObjects(token, 'companies', Object.values(dealCompany), COMPANY_PROPERTIES, errors),
+  ]);
+  const out = {};
+  dealIds.forEach(dealId => {
+    const contactId = dealContact[dealId];
+    const companyId = dealCompany[dealId];
+    out[dealId] = {
+      contact_id: contactId || null,
+      contact: contactId ? (contacts[contactId] || {}) : {},
+      company_id: companyId || null,
+      company: companyId ? (companies[companyId] || {}) : {},
+    };
+  });
+  return { byDeal: out, errors, contacts: Object.keys(contacts).length, companies: Object.keys(companies).length };
+}
+
 module.exports = async function handler(req, res) {
   setCORSHeaders(req, res);
   if (!methodCheck(req, res, ['GET'])) return;
@@ -287,14 +376,20 @@ module.exports = async function handler(req, res) {
   }
 
   const includeLost = !!(req.query && String(req.query.includeLost) === 'true');
+  const includeContext = !!(req.query && (String(req.query.includeContext) === 'true' || String(req.query.includeAssociations) === 'true'));
 
   try {
     const [rawDeals, ownerMap] = await Promise.all([fetchDeals(token, includeLost), fetchOwners(token)]);
+    const contextResult = includeContext ? await fetchDealContext(token, rawDeals) : { byDeal: {}, errors: [], contacts: 0, companies: 0 };
+    const dealContext = contextResult.byDeal || {};
 
     const deals = rawDeals
       .filter(r => includeLost || r.properties.hs_is_closed_lost !== 'true')
       .map(r => {
         const p = r.properties;
+        const ctx = dealContext[String(r.id || p.hs_object_id || '')] || {};
+        const contact = ctx.contact || {};
+        const company = ctx.company || {};
         // closed-lost → 'Perdido' mesmo quando o stage id do BID não está mapeado.
         const stageName = p.hs_is_closed_lost === 'true'
           ? 'Perdido'
@@ -372,6 +467,15 @@ module.exports = async function handler(req, res) {
           stage_days: computeStageDays(p),
           origem: p.origem__originacao_ || null,
           stage_entered: computeStageEntered(p),
+          contact_id: ctx.contact_id || null,
+          contact_jobtitle: contact.jobtitle || null,
+          persona_source: contact.jobtitle ? 'contact.jobtitle' : null,
+          company_id: ctx.company_id || null,
+          company_name: company.name || null,
+          company_industry: company.industry || null,
+          company_domain: company.domain || null,
+          company_employees: company.numberofemployees ? parseInt(company.numberofemployees) : null,
+          company_segment: company.industry || null,
         };
       });
 
@@ -380,6 +484,7 @@ module.exports = async function handler(req, res) {
       deals,
       total: deals.length,
       pipelines: { vendas: deals.filter(d => d.pipeline === 'Vendas').length, bid: deals.filter(d => d.pipeline === 'Bid').length },
+      context: includeContext ? { requested: true, errors_count: contextResult.errors.length, contacts: contextResult.contacts, companies: contextResult.companies } : { requested: false },
       timestamp: new Date().toISOString(),
     });
   } catch (e) {
