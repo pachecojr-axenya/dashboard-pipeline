@@ -1950,6 +1950,12 @@ Registro curto, uma linha por interação (a cada alteração).
 - **Δs de receita desligados a pedido do CRO:** flag `COMP_SHOW_REV_DELTAS = false` oculta as 3 superfícies — Δ Real/Δ Probabilizada do banner, colunas "Δ Receita Real/Prob." da tabela e as 2 linhas do modal do deal. Δ Vidas/Δ Colaboradores, Novos/Avançaram/Saíram e a tabela de saídas permanecem. Religar = trocar a flag.
 - **Validação:** `_check-inline-js` 0 erros; `/forecast` 200 local. **Não commitado/deployado.**
 
+### BDR No-Show | subpágina estática aditiva (2026-07-07)
+
+- Criada rota `/dashboard/bdr/no-show` (alias `/novo-bdr-no-show`) servindo `public/bdr-no-show.html` + lógica separada em `public/bdr-no-show.js`; front consome somente `/api/forecast-table?includeLost=true`, sem HubSpot direto e sem novas dependências.
+- Entregues cards executivos, tendência semanal, rankings por BDR, quebras por origem/segmento/persona/porte, tabela de recuperação, tabela de perdidos por no-show, filtros e estados loading/empty/error. Memória de cálculo explicita os proxies atuais (`data_reuniao_agendada`, `a_reuniao_ocorreu_`, progressão de etapa e evidência textual de reagendamento).
+- Navegação compartilhada (`premium.js`) ganhou item "No Show BDR" e current path para `/dashboard/bdr/no-show`; rewrites adicionados em `vercel.json` e `scripts/local-server.js`. Validação local: `node --check` em `public/bdr-no-show.js`, `public/premium.js`, `scripts/local-server.js`; `vercel.json` parse OK; rota local `/dashboard/bdr/no-show` respondeu 200.
+
 ### Forecast | modal do deal enriquecido + perdidos da Comparação com busca/filtros/top5 (2026-07-03)
 
 > A pedido do CRO após o forecast quinzenal. Front (`public/forecast.html`) + 2 mudanças de API ADITIVAS (`api/forecast-table.js`, `api/history.js` — contrato preservado). Servidor local reiniciado 2× para recarregar handlers. **Não commitado/deployado.**
