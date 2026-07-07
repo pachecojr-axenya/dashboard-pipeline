@@ -5,8 +5,6 @@
     { "source": "/novo", "destination": "/dashboard.html" },
     { "source": "/novo-ae", "destination": "/ae.html" },
     { "source": "/novo-bdr", "destination": "/bdr.html" },
-    { "source": "/dashboard/bdr/no-show", "destination": "/bdr-no-show.html" },
-    { "source": "/novo-bdr-no-show", "destination": "/bdr-no-show.html" },
     { "source": "/novo-board", "destination": "/board.html" },
     { "source": "/novo-48h", "destination": "/48h.html" },
     { "source": "/novo-cs", "destination": "/cs.html" },

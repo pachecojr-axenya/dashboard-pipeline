@@ -78,11 +78,11 @@ body.nav-docked #view-novo{margin-left:280px}
 .placeholder-card .ph-title{font-size:.88rem;font-weight:600;color:var(--text2)}
 .placeholder-card .ph-body{font-size:.75rem;color:var(--muted);max-width:320px;line-height:1.6}
 .placeholder-card .ph-field{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.7rem;color:var(--teal);background:rgba(58,184,183,.08);padding:.15rem .4rem;border-radius:3px;margin:.1rem;display:inline-block}
-.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem;margin-bottom:.75rem}
-.kpi-card{background:var(--card);border-radius:14px;padding:1.6rem 1.8rem;transition:box-shadow .18s}
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.75rem;margin-bottom:.75rem}
+.kpi-card{background:var(--card);border-radius:14px;padding:clamp(1rem,.6rem+1.3vw,1.6rem) clamp(1.05rem,.5rem+1.6vw,1.8rem);transition:box-shadow .18s}
 .kpi-click{cursor:pointer}
 .kpi-label{font-size:.66rem;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;line-height:1}
-.kpi-value{font-size:2rem;font-weight:800;line-height:1.1;margin:.35rem 0 .25rem}
+.kpi-value{font-size:clamp(1.35rem,.95rem+1.3vw,2rem);font-weight:800;line-height:1.1;margin:.35rem 0 .25rem}
 .kpi-sub{font-size:.7rem;color:var(--muted);line-height:1.35}
 </style>
 <link rel="stylesheet" href="/premium.css?v=5">

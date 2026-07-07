@@ -88,13 +88,17 @@ html[data-theme="light"] #novo-tip .nt-code{border-top-color:rgba(0,0,0,.1)}
 html[data-theme="light"] .tab-sub-btn.active{box-shadow:none}
 .tab-sub-thumb{position:absolute;top:3px;height:calc(100% - 6px);border-radius:99px;background:rgba(255,255,255,.14);pointer-events:none;z-index:0;transition:left .22s cubic-bezier(.4,0,.2,1),width .22s cubic-bezier(.4,0,.2,1)}
 html[data-theme="light"] .tab-sub-thumb{background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.15)}
-.kpi-row{display:grid;grid-template-columns:repeat(6,1fr);gap:.75rem;margin-bottom:.75rem}
-.kpi-card{background:var(--card);border-radius:14px;padding:1.6rem 1.8rem;transition:box-shadow .18s}
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.75rem;margin-bottom:.75rem}
+.kpi-card{background:var(--card);border-radius:14px;padding:clamp(1rem,.6rem+1.3vw,1.6rem) clamp(1.05rem,.5rem+1.6vw,1.8rem);transition:box-shadow .18s}
 .kpi-card:hover{box-shadow:0 0 0 2px rgba(58,184,183,.35)}
 .kpi-click{cursor:pointer}
 .kpi-label{font-size:.66rem;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;line-height:1}
-.kpi-value{font-size:2rem;font-weight:800;line-height:1.1;margin:.35rem 0 .25rem}
+.kpi-value{font-size:clamp(1.35rem,.95rem+1.3vw,2rem);font-weight:800;line-height:1.1;margin:.35rem 0 .25rem}
 .kpi-sub{font-size:.7rem;color:var(--muted);line-height:1.35}
+.stage-chip{background:var(--card2);border:1px solid var(--border);border-radius:99px;color:var(--text2);padding:.34rem .82rem;cursor:pointer;font-size:.72rem;font-weight:700;font-family:inherit;transition:border-color .15s,color .15s,background .15s,box-shadow .15s;display:inline-flex;align-items:center;gap:.35rem}
+.stage-chip:hover{border-color:var(--teal);color:var(--text);box-shadow:0 0 0 2px rgba(58,184,183,.1)}
+.stage-chip.active{background:rgba(58,184,183,.16);border-color:var(--teal);color:var(--teal);box-shadow:inset 0 0 0 1px rgba(58,184,183,.12)}
+.stage-chip .chip-count{font-size:.62rem;opacity:.7;font-weight:500}
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:2000;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s linear;backdrop-filter:blur(5px)}
 .modal-overlay.open{opacity:1;pointer-events:auto}
 .modal{background:var(--card);border:1px solid var(--border);border-radius:14px;width:90vw;max-width:960px;max-height:85vh;display:flex;flex-direction:column;transform:translateY(20px);transition:transform .28s cubic-bezier(0.4,0,0.2,1)}
@@ -312,6 +316,7 @@ var AE_HELP_CHARTS=[
   {key:'arr',title:'Receita do Forecast por AE (A07)',
     desc:'MESMO motor e conjunto do Forecast Overall e do N06B do CRO (ForecastEngine | Regra primária nº 3): negócio novo (criados desde set/25) + Ganho/Implantação (faturamento manual digitado) + Bid em Negociação/Proposta Enviada (data imputada e prob fixa 0,5%), com dedup Fee×Corretagem (o gêmeo de maior TCV sai). A métrica NÃO é ARR nem TCV: é a SOMA das receitas mensais projetadas pela régua (calcReceitaMes) na janela jan/2026 → dez/2027, agregada por AE. SÓ executivos do time — deals de outros owners ficam fora do gráfico; barras zeradas são ocultadas. Probabilizado = cada mês × probAdj do deal (Diagnóstico fixo 6%; demais = prob do funil C07 por pipeline, fallback nos defaults do /forecast, com ajuste ±10% do AE). Topo de funil (cohorts BDR) fica FORA por não ter AE. Não segue o filtro de período do painel.',
     formula:'Receita(AE) = Σ deals do AE no conjunto do forecast [ Σ meses jan/26→dez/27 da régua ] | Probabilizada = Σ (mês × probAdj)',
+    stages:['Vendas | negócio novo: deals criados desde 01/set/2025, em qualquer etapa aberta do funil (Reunião Agendada, Diagnóstico, Cotação, Consultoria, Negociação, Standby, Implantação) | receita projetada pela régua conforme etapa e modelo.','Ganho e Implantação: entram pela receita REAL (faturamento manual digitado), sem corte de createdate.','Bid: apenas as etapas Negociação e Proposta Enviada (criados desde 01/jan/2025), com probabilidade fixa de 0,5%.','Fora do cálculo: owners que não são do time, topo de funil de BDR (cohorts, sem AE) e o gêmeo de maior TCV no dedup Fee×Corretagem.'],
     fields:[['createdate','Conjunto do forecast (≥ 2025-09-01; Bid ≥ 2025-01-01) e início da régua de Diagnóstico/RA.'],['dealstage','Bloco do deal (Ganho/Impl. | pipe Vendas | BID Neg/Proposta).'],['pipeline','Vendas × Bid (Bid: só Negociação/Proposta, prob 0,5%).'],['modelo_de_remuneracao','Régua da receita (Fee por vida | Corretagem).'],['primeira_fatura','Base da receita mensal na régua.'],['vidas | quantidade_de_colaboradores','Base de Diagnóstico (headcount × R$/vida) e Reunião Agendada (× R$24, +15m).'],['data_prevista_para_receita','Início da régua (Cotação+ | com deslocamentos por modelo).'],['vigencia','Início alternativo no modelo Corretagem.'],['probabilidade','Ajuste ±10% sobre a prob da etapa.'],['dealname','Chave do dedup Fee×Corretagem.']]},
   {key:'wonrev',title:'Ganhos por AE (A08)',
     desc:'Deals GANHOS por AE (etapa Ganho + Implantação conforme o toggle "Implantação = Ganho"). Alterna a métrica: Receita (ARR estimado; fallback primeira_fatura × 12), Ganhos (contagem) ou Vidas. O filtro de período usa close_date. Clique numa barra para ver os deals.',
@@ -370,10 +375,12 @@ function _aeHelpSection(c){
   var code=AE_CARD_CODES[c.key]||'';
   var codeTag=code?'<span style="font-size:.66rem;background:var(--card2);color:var(--teal);padding:.05rem .28rem;border-radius:3px;font-weight:700;letter-spacing:.05em;font-family:ui-monospace,Menlo,monospace;margin-left:.4rem;vertical-align:middle">'+code+'</span>':'';
   var formulaHtml=c.formula?'<div style="margin:0 0 .65rem;padding:.5rem .65rem;background:var(--card2);border-radius:6px;border-left:3px solid var(--teal)"><div style="font-size:.61rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);font-weight:700;margin-bottom:.22rem">Fórmula</div><code style="font-size:.75rem;color:var(--text);font-family:ui-monospace,Menlo,Consolas,monospace;line-height:1.5">'+c.formula+'</code></div>':'';
+  var stagesHtml=(c.stages&&c.stages.length)?'<div style="margin:0 0 .65rem;padding:.5rem .65rem;background:var(--card2);border-radius:6px;border-left:3px solid var(--teal)"><div style="font-size:.61rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);font-weight:700;margin-bottom:.3rem">Etapas consideradas</div><ul style="margin:0;padding-left:1.05rem;font-size:.75rem;color:var(--text);line-height:1.55">'+c.stages.map(function(s){return '<li style="margin-bottom:.22rem">'+s+'</li>';}).join('')+'</ul></div>':'';
   return '<div style="margin-bottom:1.5rem">'+
     '<h3 style="font-size:.92rem;color:var(--text);margin:0 0 .25rem">'+c.title+codeTag+'</h3>'+
     (c.desc?'<p style="font-size:.8rem;line-height:1.6;color:var(--text2);margin:0 0 .5rem">'+c.desc+'</p>':'')+
     formulaHtml+
+    stagesHtml+
     '<table class="lb" style="width:100%;font-size:.78rem"><thead><tr><th style="text-align:left">Campo HubSpot (interno)</th><th style="text-align:left">Como é usado</th></tr></thead><tbody>'+
     c.fields.map(function(f){return _aeHelpRow(f[0],f[1]);}).join('')+'</tbody></table></div>';
 }
@@ -442,7 +449,7 @@ function _novoTheme(){ var isLight=document.documentElement.getAttribute('data-t
 var _novoCharts={};
 function _novoMkChart(id,cfg){ var ctx=document.getElementById(id); if(!ctx)return; if(_novoCharts[id]) _novoCharts[id].destroy(); _novoCharts[id]=new Chart(ctx,cfg); }
 function _novoDealsRows(deals){ return deals.map(function(d){ var hsUrl=d.hs_id?'https://app.hubspot.com/contacts/44715285/deal/'+d.hs_id:'#'; var nameCell=d.hs_id?'<a href="'+hsUrl+'" target="_blank" rel="noopener" style="color:var(--teal);text-decoration:none">'+_ne(d.dealname)+'</a>':_ne(d.dealname); return '<tr><td style="text-align:left;min-width:150px;max-width:210px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+nameCell+'</td><td style="text-align:left;white-space:nowrap">'+_ne(d.ae)+'</td><td>'+_ne(d.pipeline)+'</td><td style="white-space:nowrap">'+_ne(d.stage)+'</td><td>'+_ni(d.vidas)+'</td><td>'+_revShort(_annualRev(d))+'</td><td style="white-space:nowrap">'+_nd(d.data_reuniao_agendada)+'</td><td style="white-space:nowrap">'+_nd(d.close_date)+'</td><td style="text-align:left">'+_ne(d.lost_reason||'')+'</td></tr>'; }).join(''); }
-function novoOpenDealsModal(title,deals){ if(!deals||!deals.length){ openModal(title,'<p style="color:var(--text2);padding:1rem 0">Nenhum deal.</p>'); return; } var html='<table class="lb"><thead><tr><th style="text-align:left">Deal</th><th style="text-align:left">AE</th><th>Pipe</th><th>Etapa</th><th>Vidas</th><th>ARR</th><th>Reunião Ag.</th><th>Fechado</th><th style="text-align:left">Motivo perda</th></tr></thead><tbody>'+_novoDealsRows(deals)+'</tbody></table>'; openModal(title+' ('+deals.length+')',html); }
+function novoOpenDealsModal(title,deals){ if(!deals||!deals.length){ openModal(title,'<p style="color:var(--text2);padding:1rem 0">Nenhum deal.</p>'); return; } var totV=deals.reduce(function(s,d){return s+(d.vidas||0);},0), totA=deals.reduce(function(s,d){return s+_annualRev(d);},0); var foot='<tfoot><tr style="border-top:2px solid var(--border)"><td colspan="4" style="text-align:left;font-weight:700">Total</td><td style="font-weight:700">'+_ni(totV)+'</td><td style="font-weight:700">'+_revShort(totA)+'</td><td></td><td></td><td></td></tr></tfoot>'; var html='<table class="lb"><thead><tr><th style="text-align:left">Deal</th><th style="text-align:left">AE</th><th>Pipe</th><th>Etapa</th><th>Vidas</th><th>ARR</th><th>Reunião Ag.</th><th>Fechado</th><th style="text-align:left">Motivo perda</th></tr></thead><tbody>'+_novoDealsRows(deals)+'</tbody>'+foot+'</table>'; openModal(title+' ('+deals.length+')',html); }
 
 // ── Data loading ──────────────────────────────────────────────────────────────
 var _novoDeals=null;
@@ -907,12 +914,16 @@ function buildAEWinRate(){
   });
   var order=aes.map(function(_,i){return i;}).filter(function(i){return rates[i]>0;}).sort(function(a,b){return rates[b]-rates[a];});
   var sa=order.map(function(i){return aes[i];}), sr=order.map(function(i){return rates[i];});
+  // Piso de 20% (mantém a leitura quando as taxas são baixas); acima disso o eixo acompanha
+  // o maior valor (arredonda pra cima em 5, +5 de folga p/ o rótulo) — barras nunca cortadas.
+  var _maxR=sr.length?Math.max.apply(null,sr):0;
+  var _yMax=_maxR>20?Math.ceil(_maxR/5)*5+5:20;
   _novoMkChart('chart-ae-winrate',{type:'bar',plugins:[ChartDataLabels],
     data:{labels:sa,datasets:[{data:sr,backgroundColor:sr.map(function(r){return r>=40?'rgba(63,185,80,.75)':r>=20?'rgba(210,153,34,.8)':'rgba(248,81,73,.65)';}),borderRadius:4}]},
     options:{responsive:true,layout:{padding:{top:28}},plugins:{legend:{display:false},
       datalabels:{anchor:'end',align:'end',color:th.cText,font:{family:NOVO_FONT,size:11,weight:'bold'},formatter:function(v){return v+'%';}},
       tooltip:{callbacks:{label:function(c){var ae=sa[c.dataIndex]; var w=won.filter(function(d){return d.ae===ae;}).length; var l=lost.filter(function(d){return d.ae===ae;}).length; return [c.parsed.y+'% taxa ajustada','Ganhos: '+w+' / Fechados: '+(w+l)]; }}}},
-      scales:{x:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}},y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT}},max:20}},
+      scales:{x:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}},y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},callback:function(v){return v+'%';}},min:0,max:_yMax}},
       onClick:function(e,el){ if(!el.length)return; var ae=sa[el[0].index]; novoOpenDealsModal('Fechados | '+ae, all.filter(function(d){return d.ae===ae;})); }}});
 }
 
@@ -938,6 +949,22 @@ function buildAEMonthlyWon(){
       onClick:function(e,el){ if(!el.length)return; var m=months[el[0].index]; var ae=aes[el[0].datasetIndex]; novoOpenDealsModal('Ganhos | '+ae+' | '+_mlbl(m), won.filter(function(d){return d.ae===ae&&d.close_date&&d.close_date.substring(0,7)===m;})); }}});
 }
 
+// A11 | modal com filtros superiores de Executivo E Etapa (cross-filter), sobre o pipeline ativo.
+var _aePsAll=[], _aePsAe=null, _aePsStage=null;
+function aePsFilter(dim,val){ if(dim==='ae') _aePsAe=(val==='__all'?null:val); else _aePsStage=(val==='__all'?null:val); _aePsRender(); }
+function _aePsChipRow(lbl,dim,cur,counts,total){ var keys=Object.keys(counts).sort(function(a,b){return counts[b]-counts[a];}); return '<div style="margin-bottom:.5rem;display:flex;gap:.45rem;flex-wrap:wrap;align-items:center"><span style="font-size:.68rem;color:var(--text2);font-weight:700;margin-right:.2rem">'+lbl+'</span>'+
+  '<button class="stage-chip'+(!cur?' active':'')+'" onclick="aePsFilter(\''+dim+'\',\'__all\')">'+(NOVO_LANG==='en'?'All':'Todos')+' <span class="chip-count">'+total+'</span></button>'+
+  keys.map(function(k){return '<button class="stage-chip'+(cur===k?' active':'')+'" onclick="aePsFilter(\''+dim+'\',\''+String(k).replace(/'/g,"\\'")+'\')">'+_ne(k)+' <span class="chip-count">'+counts[k]+'</span></button>';}).join('')+'</div>'; }
+function _aePsRender(){
+  var byStage=_aePsStage?_aePsAll.filter(function(d){return _stageNorm(d.stage)===_aePsStage;}):_aePsAll;
+  var byAe=_aePsAe?_aePsAll.filter(function(d){return _aeKey(d)===_aePsAe;}):_aePsAll;
+  var list=_aePsAll.filter(function(d){return (!_aePsAe||_aeKey(d)===_aePsAe)&&(!_aePsStage||_stageNorm(d.stage)===_aePsStage);});
+  var aeCounts={}; byStage.forEach(function(d){var k=_aeKey(d);aeCounts[k]=(aeCounts[k]||0)+1;});
+  var stCounts={}; byAe.forEach(function(d){var s=_stageNorm(d.stage);stCounts[s]=(stCounts[s]||0)+1;});
+  var ch=document.getElementById('ae-ps-chips'); if(ch)ch.innerHTML=_aePsChipRow('Executivo','ae',_aePsAe,aeCounts,byStage.length)+_aePsChipRow('Etapa','stage',_aePsStage,stCounts,byAe.length);
+  var tb=document.getElementById('ae-ps-table'); if(tb)tb.innerHTML='<table class="lb"><thead><tr><th style="text-align:left">Deal</th><th style="text-align:left">AE</th><th>Pipe</th><th>Etapa</th><th>Vidas</th><th>ARR</th><th>Reunião Ag.</th><th>Fechado</th><th style="text-align:left">Motivo perda</th></tr></thead><tbody>'+_novoDealsRows(list)+'</tbody></table>';
+}
+function _aePipeStageModal(preAe,preStage){ _aePsAll=_aeActivePipeline().filter(function(d){return _isCoreAE(d.ae);}); _aePsAe=preAe||null; _aePsStage=preStage||null; openModal('Pipeline por Executivo e Etapa ('+_aePsAll.length+')','<div id="ae-ps-chips"></div><div id="ae-ps-table"></div>'); _aePsRender(); }
 function buildAEPipelineStage(){
   // Base = pipeline ativo (honra os toggles globais: Reunião Agendada e Standby entram
   // ou saem conforme a configuração; Implantação/Ganho/Perdido sempre fora).
@@ -963,7 +990,7 @@ function buildAEPipelineStage(){
       datalabels:{display:function(c){return c.dataset.data[c.dataIndex]>=8;},color:'#fff',font:{family:NOVO_FONT,size:10,weight:'bold'},formatter:function(v){return v?Math.round(v)+'%':'';}},
       tooltip:{callbacks:{label:function(c){ var ae=aes[c.dataIndex]; return c.dataset.label+': '+(Math.round(c.parsed.x*10)/10)+'% ('+cnt(ae,c.dataset.label)+' de '+tot(ae)+')'; }}}},
       scales:{x:{min:0,max:100,grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},callback:function(v){return v+'%';}},stacked:true},y:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}},stacked:true}},
-      onClick:function(e,el){ if(!el.length)return; var ae=aes[el[0].index]; var s=stages[el[0].datasetIndex]; novoOpenDealsModal('Pipeline | '+ae+' | '+s, open.filter(function(d){return d.ae===ae&&_stageNorm(d.stage)===s;})); }}});
+      onClick:function(e,el){ if(!el.length)return; var ae=aes[el[0].index]; var s=stages[el[0].datasetIndex]; _aePipeStageModal(ae,s); }}});
 }
 
 function buildAEEfficiency(){
@@ -1007,19 +1034,22 @@ function buildAEMeetingByAE(){
   var cls=function(ae,k){ return all.filter(function(d){return d.ae===ae&&_aeMeetingClass(d)===k;}).length; };
   var _maeCnt=document.getElementById('ae-mae-count');
   if(_maeCnt) _maeCnt.textContent=all.length.toLocaleString('pt-BR')+' deals';
+  var occ=aes.map(function(ae){ var s=cls(ae,'sim'), n=cls(ae,'nao'); var den=s+n; return den>0?Math.round(s/den*100):null; });
   var datasets=[
-    {label:'Sim',data:aes.map(function(ae){return cls(ae,'sim');}),backgroundColor:'rgba(63,185,80,.8)',stack:'s',borderRadius:2},
-    {label:'Não',data:aes.map(function(ae){return cls(ae,'nao');}),backgroundColor:'rgba(248,81,73,.7)',stack:'s',borderRadius:2},
-    {label:'Sem preenchimento',data:aes.map(function(ae){return cls(ae,'vazio');}),backgroundColor:'rgba(140,140,150,.5)',stack:'s',borderRadius:2}
+    {label:'Sim',data:aes.map(function(ae){return cls(ae,'sim');}),backgroundColor:'rgba(63,185,80,.8)',stack:'s',borderRadius:2,order:2},
+    {label:'Não',data:aes.map(function(ae){return cls(ae,'nao');}),backgroundColor:'rgba(248,81,73,.7)',stack:'s',borderRadius:2,order:2},
+    {label:'Sem preenchimento',data:aes.map(function(ae){return cls(ae,'vazio');}),backgroundColor:'rgba(140,140,150,.5)',stack:'s',borderRadius:2,order:2},
+    {label:'Occurrence Rate',type:'line',data:occ,yAxisID:'y2',borderColor:'rgba(58,184,183,1)',backgroundColor:'rgba(58,184,183,1)',borderWidth:2,tension:.3,pointRadius:3,spanGaps:true,fill:false,order:1,datalabels:{display:false}}
   ];
   _novoMkChart('chart-ae-meeting-ae',{type:'bar',plugins:[ChartDataLabels],
     data:{labels:aes,datasets:datasets},
     options:{responsive:true,layout:{padding:{top:24}},plugins:{legend:{display:true,labels:{color:th.cText2,font:{family:NOVO_FONT,size:10},padding:8}},
-      datalabels:{display:false},
-      // Hover em qualquer ponto da barra mostra TODAS as fatias do AE juntas.
-      tooltip:{mode:'index',callbacks:{label:function(c){return c.dataset.label+': '+c.parsed.y+' deals';},footer:function(items){var t=0;items.forEach(function(it){t+=it.parsed.y||0;});return 'Total: '+t+' deals';}}}},
-      scales:{x:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}},stacked:true},y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0},stacked:true,title:{display:true,text:'Deals | entrada em Reunião Agendada',color:th.cText2,font:{family:NOVO_FONT}}}},
-      onClick:function(e,el){ if(!el.length)return; var ae=aes[el[0].index]; var k=['sim','nao','vazio'][el[0].datasetIndex]; novoOpenDealsModal('Reunião '+datasets[el[0].datasetIndex].label+' | '+ae, all.filter(function(d){return d.ae===ae&&_aeMeetingClass(d)===k;})); }}});
+      // Total de deals considerados no topo de cada barra (soma das 3 fatias visíveis).
+      datalabels:{display:function(c){return c.datasetIndex===2;},anchor:'end',align:'end',color:th.cText,font:{family:NOVO_FONT,size:10,weight:'bold'},formatter:function(v,c){var t=0;[0,1,2].forEach(function(i){if(c.chart.isDatasetVisible(i))t+=(c.chart.data.datasets[i].data[c.dataIndex]||0);});return t||'';}},
+      // Hover em qualquer ponto da barra mostra TODAS as fatias do AE + a Occurrence Rate.
+      tooltip:{mode:'index',callbacks:{label:function(c){ if(c.dataset.label==='Occurrence Rate') return 'Occurrence Rate: '+(c.parsed.y==null?'—':c.parsed.y+'%'); return c.dataset.label+': '+c.parsed.y+' deals'; },footer:function(items){var t=0;items.forEach(function(it){if(it.dataset.label!=='Occurrence Rate')t+=it.parsed.y||0;});return 'Total: '+t+' deals';}}}},
+      scales:{x:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}},stacked:true},y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0},stacked:true,title:{display:true,text:'Deals | entrada em Reunião Agendada',color:th.cText2,font:{family:NOVO_FONT}}},y2:{position:'right',grid:{display:false},min:0,max:100,ticks:{color:th.cText2,font:{family:NOVO_FONT},callback:function(v){return v+'%';}},title:{display:true,text:'Occurrence Rate',color:th.cText2,font:{family:NOVO_FONT}}}},
+      onClick:function(e,el){ if(!el.length)return; var ae=aes[el[0].index]; _aeMeetingByAeModal(ae); }}});
 }
 
 var _AE_VEL_STAGES=['Reunião Agendada','Diagnóstico','Cotação','Consultoria','Negociação','Implantação'];
@@ -1043,18 +1073,26 @@ function buildAEVelocityStage(){
   el.innerHTML=html;
 }
 
-// A12 | drill com a coluna "Dias no pipe" (dias desde a entrada em Reunião Agendada).
-function _aeAgingModal(title,deals){
-  var list=deals.slice().sort(function(a,b){return (_aeRaDays(b)||0)-(_aeRaDays(a)||0);});
-  if(!list.length){ openModal(title,'<p style="color:var(--text2);padding:1rem 0">Nenhum deal.</p>'); return; }
-  var rows=list.map(function(d){
-    var hsUrl=d.hs_id?'https://app.hubspot.com/contacts/44715285/deal/'+d.hs_id:'#';
-    var nameCell=d.hs_id?'<a href="'+hsUrl+'" target="_blank" rel="noopener" style="color:var(--teal);text-decoration:none">'+_ne(d.dealname)+'</a>':_ne(d.dealname);
-    var dias=_aeRaDays(d);
-    return '<tr><td style="text-align:left;min-width:150px;max-width:210px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+nameCell+'</td><td>'+_ne(d.pipeline)+'</td><td style="white-space:nowrap">'+_ne(d.stage)+'</td><td>'+_ni(d.vidas)+'</td><td>'+_revShort(_annualRev(d))+'</td><td style="white-space:nowrap">'+_nd(d.data_reuniao_agendada)+'</td><td style="color:'+((dias||0)>60?'var(--red)':(dias||0)>30?'var(--yellow)':'var(--text)')+';font-weight:700">'+(dias!=null?_ni(dias):'—')+'</td></tr>';
-  }).join('');
-  openModal(title+' ('+list.length+')','<table class="lb"><thead><tr><th style="text-align:left">Deal</th><th>Pipe</th><th>Etapa</th><th>Vidas</th><th>ARR</th><th>Reunião Ag.</th><th>Dias no pipe</th></tr></thead><tbody>'+rows+'</tbody></table>');
+// A12 | modal com filtros de Executivo E Etapa + rodapé (Σ vidas, Σ ARR, média de dias no pipe).
+function _aeAgingRow(d){ var hsUrl=d.hs_id?'https://app.hubspot.com/contacts/44715285/deal/'+d.hs_id:'#'; var nameCell=d.hs_id?'<a href="'+hsUrl+'" target="_blank" rel="noopener" style="color:var(--teal);text-decoration:none">'+_ne(d.dealname)+'</a>':_ne(d.dealname); var dias=_aeRaDays(d); return '<tr><td style="text-align:left;min-width:150px;max-width:210px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+nameCell+'</td><td>'+_ne(d.pipeline)+'</td><td style="white-space:nowrap">'+_ne(d.stage)+'</td><td>'+_ni(d.vidas)+'</td><td>'+_revShort(_annualRev(d))+'</td><td style="white-space:nowrap">'+_nd(d.data_reuniao_agendada)+'</td><td style="color:'+((dias||0)>60?'var(--red)':(dias||0)>30?'var(--yellow)':'var(--text)')+';font-weight:700">'+(dias!=null?_ni(dias):'—')+'</td></tr>'; }
+var _aeAgAll=[], _aeAgAe=null, _aeAgStage=null;
+function aeAgFilter(dim,val){ if(dim==='ae') _aeAgAe=(val==='__all'?null:val); else _aeAgStage=(val==='__all'?null:val); _aeAgRender(); }
+function _aeAgChipRow(lbl,dim,cur,counts,total){ var keys=Object.keys(counts).sort(function(a,b){return counts[b]-counts[a];}); return '<div style="margin-bottom:.5rem;display:flex;gap:.45rem;flex-wrap:wrap;align-items:center"><span style="font-size:.68rem;color:var(--text2);font-weight:700;margin-right:.2rem">'+lbl+'</span>'+
+  '<button class="stage-chip'+(!cur?' active':'')+'" onclick="aeAgFilter(\''+dim+'\',\'__all\')">'+(NOVO_LANG==='en'?'All':'Todos')+' <span class="chip-count">'+total+'</span></button>'+
+  keys.map(function(k){return '<button class="stage-chip'+(cur===k?' active':'')+'" onclick="aeAgFilter(\''+dim+'\',\''+String(k).replace(/'/g,"\\'")+'\')">'+_ne(k)+' <span class="chip-count">'+counts[k]+'</span></button>';}).join('')+'</div>'; }
+function _aeAgRender(){
+  var byStage=_aeAgStage?_aeAgAll.filter(function(d){return _stageNorm(d.stage)===_aeAgStage;}):_aeAgAll;
+  var byAe=_aeAgAe?_aeAgAll.filter(function(d){return _aeKey(d)===_aeAgAe;}):_aeAgAll;
+  var list=_aeAgAll.filter(function(d){return (!_aeAgAe||_aeKey(d)===_aeAgAe)&&(!_aeAgStage||_stageNorm(d.stage)===_aeAgStage);}).sort(function(a,b){return (_aeRaDays(b)||0)-(_aeRaDays(a)||0);});
+  var aeCounts={}; byStage.forEach(function(d){var k=_aeKey(d);aeCounts[k]=(aeCounts[k]||0)+1;});
+  var stCounts={}; byAe.forEach(function(d){var s=_stageNorm(d.stage);stCounts[s]=(stCounts[s]||0)+1;});
+  var ch=document.getElementById('ae-ag-chips'); if(ch)ch.innerHTML=_aeAgChipRow('Executivo','ae',_aeAgAe,aeCounts,byStage.length)+_aeAgChipRow('Etapa','stage',_aeAgStage,stCounts,byAe.length);
+  var totV=list.reduce(function(s,d){return s+(d.vidas||0);},0), totA=list.reduce(function(s,d){return s+_annualRev(d);},0);
+  var diasArr=list.map(_aeRaDays).filter(function(x){return x!=null;}); var avgD=diasArr.length?Math.round(diasArr.reduce(function(s,x){return s+x;},0)/diasArr.length):null;
+  var foot=list.length?'<tfoot><tr style="border-top:2px solid var(--border)"><td colspan="3" style="text-align:left;font-weight:700">Total ('+list.length+')</td><td style="font-weight:700">'+_ni(totV)+'</td><td style="font-weight:700">'+_revShort(totA)+'</td><td></td><td style="font-weight:700">'+(avgD!=null?_ni(avgD)+'d':'—')+'</td></tr></tfoot>':'';
+  var tb=document.getElementById('ae-ag-table'); if(tb)tb.innerHTML=list.length?'<table class="lb"><thead><tr><th style="text-align:left">Deal</th><th>Pipe</th><th>Etapa</th><th>Vidas</th><th>ARR</th><th>Reunião Ag.</th><th>Dias no pipe</th></tr></thead><tbody>'+list.map(_aeAgingRow).join('')+'</tbody>'+foot+'</table>':'<p style="color:var(--text2);padding:1rem 0">Nenhum deal.</p>';
 }
+function _aeAgingModal(preAe){ _aeAgAll=_novoOpen().filter(function(d){return _isCoreAE(d.ae)&&_aeRaDays(d)!=null;}); _aeAgAe=preAe||null; _aeAgStage=null; openModal('Idade dos Deals por Executivo e Etapa ('+_aeAgAll.length+')','<div id="ae-ag-chips"></div><div id="ae-ag-table"></div>'); _aeAgRender(); }
 function buildAEAging(){
   var th=_novoTheme(), open=_novoOpen();
   var aes=_getAEs().filter(_isCoreAE);
@@ -1067,7 +1105,7 @@ function buildAEAging(){
       datalabels:{anchor:'end',align:'right',color:th.cText,font:{family:NOVO_FONT,size:11,weight:'bold'},formatter:function(v){return v+'d';}},
       tooltip:{callbacks:{label:function(c){return c.parsed.x+' dias médios';},afterLabel:function(c){ var ae=sa[c.dataIndex]; return open.filter(function(d){return d.ae===ae;}).length+' deals';}}}},
       scales:{x:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT}}},y:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}}},
-      onClick:function(e,el){ if(!el.length)return; var ae=sa[el[0].index]; _aeAgingModal('Pipeline | '+ae, open.filter(function(d){return d.ae===ae&&_aeRaDays(d)!=null;})); }}});
+      onClick:function(e,el){ if(!el.length)return; var ae=sa[el[0].index]; _aeAgingModal(ae); }}});
 }
 
 var _AE_AGE_BUCKETS=[['0-30',0,30],['31-60',31,60],['61-90',61,90],['91-120',91,120],['121-180',121,180],['+180',181,Infinity]];
@@ -1135,6 +1173,28 @@ function _aeMeetingClass(d){ var v=((d.reuniao_ocorreu==null?'':d.reuniao_ocorre
 // Base COMUM de A16 e A18 (mesma contagem nos dois): deals do time de executivos com entrada
 // em Reunião Agendada, e o FILTRO DE PERÍODO do painel aplica sobre data_reuniao_agendada.
 function _aeMeetingBase(){ return _rawDeals().filter(function(d){ return d.data_reuniao_agendada && _isCoreAE(d.ae) && _inWinStrict(d.data_reuniao_agendada); }); }
+// Linhas dos modais de reunião (A14/A16): inclui a coluna "Reunião Ocorreu" (a_reuniao_ocorreu_).
+function _aeMeetingRows(deals){ return deals.map(function(d){ var hsUrl=d.hs_id?'https://app.hubspot.com/contacts/44715285/deal/'+d.hs_id:'#'; var nameCell=d.hs_id?'<a href="'+hsUrl+'" target="_blank" rel="noopener" style="color:var(--teal);text-decoration:none">'+_ne(d.dealname)+'</a>':_ne(d.dealname); var mc=_aeMeetingClass(d); var mLbl=mc==='sim'?'Sim':mc==='nao'?'Não':'—'; var mCol=mc==='sim'?'var(--green)':mc==='nao'?'var(--red)':'var(--muted)'; return '<tr><td style="text-align:left;min-width:150px;max-width:210px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+nameCell+'</td><td style="text-align:left;white-space:nowrap">'+_ne(d.ae)+'</td><td>'+_ne(d.pipeline)+'</td><td style="white-space:nowrap">'+_ne(d.stage)+'</td><td>'+_ni(d.vidas)+'</td><td>'+_revShort(_annualRev(d))+'</td><td style="white-space:nowrap">'+_nd(d.data_reuniao_agendada)+'</td><td style="white-space:nowrap;color:'+mCol+';font-weight:600">'+mLbl+'</td></tr>'; }).join(''); }
+function _aeMeetingHead(){ return '<thead><tr><th style="text-align:left">Deal</th><th style="text-align:left">AE</th><th>Pipe</th><th>Etapa</th><th>Vidas</th><th>ARR</th><th>Reunião Ag.</th><th>Reunião Ocorreu</th></tr></thead>'; }
+// A16 | drill de um mês: lista com a coluna "Reunião Ocorreu".
+function _aeMeetingListModal(title,deals){ if(!deals||!deals.length){ openModal(title,'<p style="color:var(--text2);padding:1rem 0">Nenhum deal.</p>'); return; } openModal(title+' ('+deals.length+')','<table class="lb">'+_aeMeetingHead()+'<tbody>'+_aeMeetingRows(deals)+'</tbody></table>'); }
+// A14 | modal com filtro de executivo + KPIs de reunião (totais | realizadas | taxa) + lista.
+var _aeMtgFltAll=[], _aeMtgFltSel=null;
+function _aeMtgKpis(list){ var s=list.filter(function(d){return _aeMeetingClass(d)==='sim';}).length; var n=list.filter(function(d){return _aeMeetingClass(d)==='nao';}).length; var den=s+n; var rate=den>0?(Math.round(s/den*1000)/10).toFixed(1).replace('.',','):null; return '<div class="kpi-row" style="grid-template-columns:repeat(3,1fr);margin-bottom:1rem">'+
+  '<div class="kpi-card"><div class="kpi-label">Reuniões (entraram em RA)</div><div class="kpi-value">'+_ni(list.length)+'</div></div>'+
+  '<div class="kpi-card"><div class="kpi-label">Reuniões realizadas</div><div class="kpi-value" style="color:var(--green)">'+_ni(s)+'</div><div class="kpi-sub">reunião ocorreu = Sim</div></div>'+
+  '<div class="kpi-card"><div class="kpi-label">Taxa de reunião realizada</div><div class="kpi-value" style="color:var(--teal)">'+(rate==null?'—':rate+'%')+'</div><div class="kpi-sub">Sim ÷ (Sim + Não)</div></div>'+
+'</div>'; }
+function aeMtgFilter(ae){ _aeMtgFltSel = ae==='__all'?null:ae; var counts={}; _aeMtgFltAll.forEach(function(d){ var k=_aeKey(d); counts[k]=(counts[k]||0)+1; }); var aes=Object.keys(counts).sort(function(a,b){return counts[b]-counts[a];}); var chips='<div style="margin-bottom:1rem;display:flex;gap:.45rem;flex-wrap:wrap">'+
+  '<button class="stage-chip'+(!_aeMtgFltSel?' active':'')+'" onclick="aeMtgFilter(\'__all\')">'+(NOVO_LANG==='en'?'All':'Todos')+' <span class="chip-count">'+_aeMtgFltAll.length+'</span></button>'+
+  aes.map(function(a){ return '<button class="stage-chip'+(_aeMtgFltSel===a?' active':'')+'" onclick="aeMtgFilter(\''+String(a).replace(/'/g,"\\'")+'\')">'+_ne(a)+' <span class="chip-count">'+counts[a]+'</span></button>'; }).join('')+
+  '</div>';
+  var list=_aeMtgFltSel?_aeMtgFltAll.filter(function(d){return _aeKey(d)===_aeMtgFltSel;}):_aeMtgFltAll;
+  var ch=document.getElementById('ae-mtg-chips'); if(ch)ch.innerHTML=chips;
+  var kp=document.getElementById('ae-mtg-kpis'); if(kp)kp.innerHTML=_aeMtgKpis(list);
+  var tb=document.getElementById('ae-mtg-table'); if(tb)tb.innerHTML='<table class="lb">'+_aeMeetingHead()+'<tbody>'+_aeMeetingRows(list)+'</tbody></table>';
+}
+function _aeMeetingByAeModal(preAe){ _aeMtgFltAll=_aeMeetingBase(); _aeMtgFltSel=null; openModal('Reuniões por AE | efetividade ('+_aeMtgFltAll.length+')','<div id="ae-mtg-chips"></div><div id="ae-mtg-kpis"></div><div id="ae-mtg-table"></div>'); aeMtgFilter(preAe||'__all'); }
 function buildAEMeetingRate(){
   var th=_novoTheme(), deals=_aeMeetingBase();
   var byMonth={};
@@ -1160,7 +1220,7 @@ function buildAEMeetingRate(){
       scales:{x:{grid:{display:false},ticks:{color:th.cText2,font:{family:NOVO_FONT}},stacked:true},
         y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0},stacked:true,title:{display:true,text:'Deals | entrada em Reunião Agendada',color:th.cText2,font:{family:NOVO_FONT}}},
         y2:{position:'right',grid:{display:false},min:0,max:100,ticks:{color:th.cText2,font:{family:NOVO_FONT},callback:function(v){return v+'%';}},title:{display:true,text:'Occurrence Rate',color:th.cText2,font:{family:NOVO_FONT}}}},
-      onClick:function(e,el){ if(!el.length)return; var m=months[el[0].index]; novoOpenDealsModal('Reunião Agendada | '+_mlbl(m), deals.filter(function(d){return String(d.data_reuniao_agendada).substring(0,7)===m;})); }}});
+      onClick:function(e,el){ if(!el.length)return; var m=months[el[0].index]; _aeMeetingListModal('Reunião Agendada | '+_mlbl(m), deals.filter(function(d){return String(d.data_reuniao_agendada).substring(0,7)===m;})); }}});
 }
 
 function buildAERadar(){

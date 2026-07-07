@@ -30,6 +30,8 @@ Análise dos gráficos que estavam marcados com 🟡 (não validados) em `public
 
 ## `novo-board.html`
 
+> **Adendo (2026-07-07):** alinhamento às premissas globais do CRO. **C03** (Distribuição por Tamanho) foi **substituído pelo C08** (TCV do Pipe por Bucket, dois donuts Bruto×Ponderado). **C04** (Valor do Pipeline por Etapa) agora usa **TCV pela régua** + probabilidade final global (C07 por pipeline + ±10% do AE), idêntico ao C04 do CRO. **B14/B15/B16** ponderam com a mesma probabilidade global (`_calcProbInfo`), mantendo `arr_estimado` como base de receita. **B11** (Entrada vs Saída) passou a contar a entrada pela **data de entrada em Reunião Agendada** (`data_reuniao_agendada`), não `createdate` — some o pico artificial de importação de Mai/26 no `createdate`. A probabilidade agora vem do arquivo compartilhado `prob-engine.js` (o CRO ainda mantém a cópia inline; reconciliar). **B12** (ARR Bridge) inalterado.
+
 Os 4 KPIs do topo (após o alinhamento de definições de 2026-06-12) estão corretos: **ARR Ganho R$ 4,14M / 24 deals · Pipeline Aberto R$ 149,85M / 137 · Forecast Ponderado R$ 44,4M** → 🟢.
 
 | Gráfico | Cor | Diagnóstico |

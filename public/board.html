@@ -63,12 +63,12 @@ html[data-theme="light"] #novo-tip{background:rgba(246,248,250,.82)}
 #novo-tip .nt-text{font-size:.73rem;color:var(--text);font-weight:400;line-height:1.5}
 #novo-tip .nt-code{font-size:.62rem;font-weight:700;color:var(--teal);font-family:ui-monospace,Menlo,Consolas,monospace;margin-top:.3rem;padding-top:.28rem;border-top:1px solid rgba(255,255,255,.12);letter-spacing:.07em}
 html[data-theme="light"] #novo-tip .nt-code{border-top-color:rgba(0,0,0,.1)}
-.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem;margin-bottom:.75rem}
-.kpi-card{background:var(--card);border-radius:14px;padding:1.6rem 1.8rem;transition:box-shadow .18s}
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.75rem;margin-bottom:.75rem}
+.kpi-card{background:var(--card);border-radius:14px;padding:clamp(1rem,.6rem+1.3vw,1.6rem) clamp(1.05rem,.5rem+1.6vw,1.8rem);transition:box-shadow .18s}
 .kpi-card:hover{box-shadow:0 0 0 2px rgba(58,184,183,.35)}
 .kpi-click{cursor:pointer}
 .kpi-label{font-size:.66rem;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;line-height:1}
-.kpi-value{font-size:2rem;font-weight:800;line-height:1.1;margin:.35rem 0 .25rem}
+.kpi-value{font-size:clamp(1.35rem,.95rem+1.3vw,2rem);font-weight:800;line-height:1.1;margin:.35rem 0 .25rem}
 .kpi-sub{font-size:.7rem;color:var(--muted);line-height:1.35}
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:2000;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s linear;backdrop-filter:blur(5px)}
 .modal-overlay.open{opacity:1;pointer-events:auto}
@@ -138,6 +138,8 @@ body.nav-docked #view-novo{margin-left:280px}
 <script src="/filter-bar.js?v=1"></script>
 <script src="/settings-modal.js?v=1"></script>
 <script src="/shared-charts.js?v=1"></script>
+<script src="/revenue-engine.js?v=1"></script>
+<script src="/prob-engine.js?v=1"></script>
 </head>
 <body>
 
@@ -218,11 +220,12 @@ var NOVO_LANG=(function(){ try{return localStorage.getItem('novo_lang')||'pt';}c
 var NOVO_I18N={
   pt:{loading:'Buscando dados…',error_prefix:'Erro: ',retry:'Tentar novamente',updated_at:'Atualizado às',
     bd_rev_trend:'Receita & Ganhos | Mensal',bd_rev_trend_tip:'Por mês de fechamento: barras = nº de deals ganhos, linha = receita ARR. O toggle alterna para Porte Médio (vidas médias). Meses sem receita são ocultados.',
-    bd_pipe_stage:'Valor do Pipeline Aberto por Etapa (ARR)',bd_pipe_stage_tip:'Snapshot atual: soma do ARR estimado de deals abertos por etapa. Não usa filtro de período.',
+    bd_pipe_stage:'Valor do Pipeline por Etapa (TCV)',bd_pipe_stage_tip:'Soma do TCV (contrato de 12 meses pela régua real, inclui a corretagem de entrada) por etapa. Toggle Receita (bruto) / Ponderado (× probabilidade final: C07 por pipeline + ajuste ±10% do AE) | idêntico ao C04 do CRO. Diagnóstico: vidas × R$/vida × 12. Não usa filtro de período.',
     bd_conversion:'Conversão Ajustada (Ganhos vs Perdidos)',bd_conversion_tip:'Ganhos ÷ (ganhos + perdidos), usando close_date no período selecionado. Esta é a taxa ajustada pedida pelo CRO.',
     bd_deal_bench:'Distribuição por Tamanho',bd_deal_bench_tip:'Donut de deals do pipeline ativo por faixa, com toggle entre Receita e Vidas. O centro mostra o total de deals ativos. A fatia cinza conta deals sem aquela informação. Clique numa fatia para ver os deals.',
+    bd_revbkt:'TCV do Pipe por Bucket',bd_revbkt_tip:'Dois donuts do pipeline ativo por faixa (Por Receita e Por Vidas). Métrica = TCV pela régua real de 12 meses (inclui a corretagem de entrada; Diagnóstico = vidas × R$/vida × 12). Bruto = Σ TCV por faixa; Ponderado = Σ TCV × probabilidade final (C07 por pipeline + ajuste ±10% do AE), a mesma premissa global do CRO. Só considera deals com TCV > 0. Clique numa fatia para ver os deals.',
     bd_concentration:'Concentração de Receita do Pipeline Aberto',bd_concentration_tip:'% do ARR aberto atual representado pelos top deals. Não usa filtro de período.',
-    bd_entry_exit:'Entrada vs Saída de Deals por Mês',bd_entry_exit_tip:'Entradas por createdate; saídas por close_date, separando ganhos e perdidos.',
+    bd_entry_exit:'Entrada vs Saída de Deals por Mês',bd_entry_exit_tip:'Entradas pela data de entrada na etapa Reunião Agendada (evento real do BDR, só pipeline Vendas); saídas por close_date, separando ganhos e perdidos.',
     bd_arr_bridge:'ARR Bridge (Variação Mensal)',bd_arr_bridge_tip:'Variação mensal do ARR ganho, por close_date.',
     bd_won_size:'Porte Médio dos Deals Ganhos (Vidas)',bd_won_size_tip:'Vidas médias de deals ganhos por mês de fechamento. Filtro usa close_date.',
     bd_forecast:'Cenários de Forecast (Data Prevista)',bd_forecast_tip:'Pipeline aberto alocado pela data_prevista_para_receita quando há filtro ativo; sem filtro, snapshot do pipeline aberto atual.',
@@ -230,11 +233,12 @@ var NOVO_I18N={
   },
   en:{loading:'Fetching data…',error_prefix:'Error: ',retry:'Try again',updated_at:'Updated at',
     bd_rev_trend:'Revenue & Wins | Monthly',bd_rev_trend_tip:'By close month: bars = number of won deals, line = ARR revenue. Toggle switches to Avg Deal Size (lives). Months without revenue are hidden.',
-    bd_pipe_stage:'Open Pipeline Value by Stage (ARR)',bd_pipe_stage_tip:'Current snapshot: estimated ARR from open deals per stage. Does not use the period filter.',
+    bd_pipe_stage:'Pipeline Value by Stage (TCV)',bd_pipe_stage_tip:'Sum of TCV (12-month contract from the real régua, includes the entry brokerage) per stage. Toggle Revenue (gross) / Weighted (× final probability: C07 per pipeline + AE ±10% adjustment) | identical to the CRO C04. Diagnosis: lives × R$/life × 12. Does not use the period filter.',
     bd_conversion:'Adjusted Conversion (Won vs Lost)',bd_conversion_tip:'Won ÷ (won + lost), using close_date inside the selected period. This is the adjusted conversion requested by the CRO.',
     bd_deal_bench:'Size Distribution',bd_deal_bench_tip:'Donut of active pipeline deals by band, with a toggle between Revenue and Lives. The center shows the total active deals. The grey slice counts deals missing that info. Click a slice to see the deals.',
+    bd_revbkt:'Pipe TCV by Bucket',bd_revbkt_tip:'Two donuts of the active pipeline by band (By Revenue and By Lives). Metric = 12-month TCV from the real régua (includes the entry brokerage; Diagnosis = lives × R$/life × 12). Gross = Σ TCV per band; Weighted = Σ TCV × final probability (C07 per pipeline + AE ±10% adjustment), the same global premise as the CRO. Only counts deals with TCV > 0. Click a slice to see the deals.',
     bd_concentration:'Open Pipeline Revenue Concentration',bd_concentration_tip:'% of current open ARR represented by top deals. Does not use the period filter.',
-    bd_entry_exit:'Deal Inflow vs Outflow by Month',bd_entry_exit_tip:'Inflow by createdate; outflow by close_date, split into won and lost.',
+    bd_entry_exit:'Deal Inflow vs Outflow by Month',bd_entry_exit_tip:'Inflow by the date the deal entered the Scheduled Meeting stage (real BDR event, Vendas pipeline only); outflow by close_date, split into won and lost.',
     bd_arr_bridge:'ARR Bridge (Monthly Variation)',bd_arr_bridge_tip:'Monthly delta in won ARR, by close_date.',
     bd_won_size:'Avg Won Deal Size (Lives)',bd_won_size_tip:'Average lives from won deals by close month. Filter uses close_date.',
     bd_forecast:'Forecast Scenarios (Expected Date)',bd_forecast_tip:'Open pipeline allocated by data_prevista_para_receita when a filter is active; without a filter, current open pipeline snapshot.',
@@ -246,7 +250,7 @@ function novoToggleLang(){ NOVO_LANG=NOVO_LANG==='pt'?'en':'pt'; try{localStorag
 
 var BOARD_CARD_CODES={
   'kpi-won-arr':'P07','kpi-open-pipe':'B02','kpi-adjusted-conv':'B03','kpi-forecast':'P03',
-  'rev-trend':'B05','pipe-stage':'C04','deal-bench':'C03',
+  'rev-trend':'B05','pipe-stage':'C04','deal-bench':'C08',
   'top-ae':'B15','watchlist':'B16',
   'entry-exit':'B11','arr-bridge':'B12','forecast':'B14'
 };
@@ -278,12 +282,12 @@ var BOARD_HELP_CHARTS=[
   {key:'rev-trend',title:'Receita & Ganhos | Mensal',
     desc:'Por mês de fechamento (close_date): barras = nº de deals ganhos, linha teal = receita ARR, linha lilás = vidas totais. Todas as séries são mostráveis/ocultáveis pela legenda. Meses sem ganhos são ocultados.',
     fields:[['close_date','Agrupa por mês de fechamento.'],['stage','Define ganho (Ganho + Implantação conforme toggle).'],['arr_estimado','Receita ARR (linha teal; fallback 1ª fatura × 12).'],['vidas','Vidas totais ganhas no mês (linha lilás).']]},
-  {key:'pipe-stage',title:'Valor do Pipeline Aberto por Etapa (ARR)',
-    desc:'Snapshot atual: soma do ARR estimado de deals abertos por etapa. Não usa filtro de período.',
-    fields:[['stage','Etapa atual dos deals abertos. Snapshot atual, sem filtro de período.'],['arr_estimado','ARR estimado atual.'],['primeira_fatura','Fallback de ARR.']]},
-  {key:'deal-bench',title:'Distribuição por Tamanho',
-    desc:'Donut de deals do pipeline ativo por faixa, alternando entre Receita (ARR) e Vidas. O centro mostra o total de deals ativos. Não usa filtro de período.',
-    fields:[['arr_estimado','Define a faixa no modo Receita (fallback 1ª fatura × 12).'],['vidas','Define a faixa no modo Vidas.'],['stage','Pipeline ativo (exclui Ganho/Perdido/Standby/Implantação; Reunião Agendada conforme toggle).']]},
+  {key:'pipe-stage',title:'Valor do Pipeline por Etapa (TCV)',
+    desc:'Soma do TCV (contrato de 12 meses pela régua real, inclui a corretagem de entrada) por etapa; toggle Receita (bruto) / Ponderado. Ponderado = TCV × probabilidade final (C07 por pipeline + ±10% do AE), idêntico ao C04 do CRO. Diagnóstico: vidas × R$/vida × 12. Não usa filtro de período.',
+    fields:[['primeira_fatura','Base da régua de receita (TCV 12m via revenue-engine).'],['modelo_de_remuneracao','Define a régua (Fee por vida × Corretagem).'],['possui_agenciamento','Afeta a régua de corretagem.'],['vidas','Diagnóstico: vidas × R$/vida × 12.'],['probabilidade','Ajuste ±10% do AE sobre a prob. da etapa (modo Ponderado).'],['stage','Etapa e prob. do funil por pipeline (C07).']]},
+  {key:'deal-bench',title:'TCV do Pipe por Bucket',
+    desc:'Dois donuts do pipeline ativo por faixa (Por Receita e Por Vidas). Métrica = TCV pela régua real de 12 meses. Bruto = Σ TCV por faixa; Ponderado = Σ TCV × probabilidade final (C07 por pipeline + ±10% do AE). Só considera deals com TCV > 0. Não usa filtro de período.',
+    fields:[['primeira_fatura','Base da régua de receita (TCV 12m via revenue-engine).'],['modelo_de_remuneracao','Define a régua (Fee por vida × Corretagem).'],['possui_agenciamento','Afeta a régua de corretagem.'],['vidas','Diagnóstico: vidas × R$/vida × 12; e define a faixa no modo Vidas.'],['probabilidade','Ajuste ±10% do AE sobre a prob. da etapa (modo Ponderado).'],['stage','Pipeline ativo e prob. da etapa (C07 por pipeline).']]},
   {key:'top-ae',title:'Top 5 AEs by Weighted Open Pipeline',
     desc:'Top 5 AEs por Receita Ponderada (Σ ARR × probabilidade) do pipeline ativo — quem carrega o forecast. Não usa filtro de período.',
     fields:[['hubspot_owner_id','Agrupa por AE.'],['arr_estimado','ARR estimado (fallback 1ª fatura × 12).'],['probabilidade','Peso; fallback prob. da etapa.'],['vidas','Vidas somadas por AE.'],['stage','Pipeline ativo (exclui Ganho/Perdido/Standby/Implantação; Reunião conforme toggle).']]},
@@ -291,8 +295,8 @@ var BOARD_HELP_CHARTS=[
     desc:'Top 10 deals abertos por Receita Ponderada (ARR × probabilidade). Lista de acompanhamento da diretoria. Não usa filtro de período.',
     fields:[['arr_estimado','ARR estimado (fallback 1ª fatura × 12).'],['probabilidade','Peso; fallback prob. da etapa.'],['vidas','Vidas do deal.'],['dias_no_pipe','Idade do deal no pipeline.'],['stage','Etapa atual.']]},
   {key:'entry-exit',title:'Entrada vs Saída de Deals por Mês',
-    desc:'Entradas por createdate; saídas por close_date, separando ganhos e perdidos.',
-    fields:[['createdate','Entrada no pipeline.'],['close_date','Saída por ganho/perda.'],['stage','Separa ganhos e perdidos.']]},
+    desc:'Entradas pela data de entrada na etapa Reunião Agendada (evento real do BDR, só pipeline Vendas); saídas por close_date, separando ganhos e perdidos. Deals sem Reunião Agendada (ex.: Bid) não entram na série de entrada.',
+    fields:[['data_reuniao_agendada','Entrada = data em que o deal entrou na etapa Reunião Agendada (hs_v2_date_entered, Vendas).'],['close_date','Saída por ganho/perda.'],['stage','Separa ganhos e perdidos.']]},
   {key:'arr-bridge',title:'ARR Bridge (Variação Mensal)',
     desc:'Variação mensal do ARR ganho, por close_date.',
     fields:[['close_date','Mês do ganho.'],['arr_estimado','ARR ganho no mês.']]},
@@ -312,14 +316,14 @@ var BOARD_FILT_LABEL={
   pt:{
     create:'Data de criação | <code>createdate</code>',
     close:'Data de fechamento | <code>close_date</code>',
-    both:'Criação (<code>createdate</code>) para entradas e fechamento (<code>close_date</code>) para ganhos/perdidos',
+    both:'Entrada na etapa Reunião Agendada (<code>data_reuniao_agendada</code>) para entradas e fechamento (<code>close_date</code>) para ganhos/perdidos',
     prev:'Data prevista de receita | <code>data_prevista_para_receita</code>',
     none:'Não filtra por período | considera todos os deals',
   },
   en:{
     create:'Creation date | <code>createdate</code>',
     close:'Close date | <code>close_date</code>',
-    both:'Creation (<code>createdate</code>) for inflow and close (<code>close_date</code>) for won/lost',
+    both:'Entry into Scheduled Meeting stage (<code>data_reuniao_agendada</code>) for inflow and close (<code>close_date</code>) for won/lost',
     prev:'Expected revenue date | <code>data_prevista_para_receita</code>',
     none:'Not filtered by period | considers all deals',
   }
@@ -420,6 +424,39 @@ function _novoIsOpen(d){ return !_novoIsWon(d)&&d.stage!=='Perdido'&&(_novoActiv
 var NOVO_STAGE_ORDER=['Diagnóstico','Cotação','Proposta Enviada','Consultoria','Negociação','Standby','Implantação'];
 var NOVO_STAGE_PROB_DEFAULT={'Cotação':0.33,'Proposta Enviada':0.285,'Consultoria':0.611,'Negociação':0.42,'Implantação':0.581,'Ganho':1.0,'Standby':0.12,'Stand by':0.12,'Diagnóstico':0.06};
 var NOVO_STAGE_PROB=(function(){try{var raw=localStorage.getItem('novo_stage_prob');if(raw){var parsed=JSON.parse(raw);var merged={};Object.keys(NOVO_STAGE_PROB_DEFAULT).forEach(function(k){merged[k]=NOVO_STAGE_PROB_DEFAULT[k];});Object.keys(parsed).forEach(function(k){merged[k]=parsed[k];});return merged;}}catch(e){}var copy={};Object.keys(NOVO_STAGE_PROB_DEFAULT).forEach(function(k){copy[k]=NOVO_STAGE_PROB_DEFAULT[k];});return copy;})();
+// ── TCV pela régua real (fonte única revenue-engine.js) | idêntico ao C04/C08 do CRO ──
+// Diagnóstico: vidas × R$/vida × 12. Demais: soma dos 12 primeiros meses da régua.
+var NOVO_TCV_MESES=12;
+function _novoFcDiagFee(v){ return v<=200?36:(v<=5000?24:12); }
+function _novoDealTcv(d){
+  if(d.stage==='Diagnóstico'){ var v=d.vidas||0; return v>0?v*_novoFcDiagFee(v)*NOVO_TCV_MESES:0; }
+  if(typeof calcReceitaMes!=='function')return 0;
+  var s=0; for(var n=1;n<=NOVO_TCV_MESES;n++){ var r=calcReceitaMes(n,d); if(r)s+=r.total; } return s;
+}
+// ── Probabilidade: FONTE ÚNICA compartilhada (prob-engine.js) | premissas globais do CRO ──
+// C07 por pipeline (funil) + ajuste ±10% do AE + override manual. Mesma chave 'novo_stage_prob_cfg'.
+// Definir _novoDealTcv/_calcProbInfo/_novoStageProbFor aqui faz o shared-charts.js (C04) usá-las
+// automaticamente (guards typeof). _novoFunnelData é carregado silenciosamente (ver _boardLoadFunnel).
+var _novoStageProbCfg=(window.ProbEngine?ProbEngine.loadCfg():{manual:false,values:{vendas:{},bid:{}}});
+var _novoFunnelData=null, NOVO_FUNNEL_PROB_PIPE=null;
+function _probCtx(){ return {cfg:_novoStageProbCfg,funnelProbPipe:NOVO_FUNNEL_PROB_PIPE}; }
+function _novoStageProbFor(stage,pipeline){ return ProbEngine.stageProbFor(stage,pipeline,_probCtx()); }
+function _calcProbInfo(d){ return ProbEngine.calcProbInfo(d,_probCtx()); }
+// Carrega o funil (C07) em silêncio, uma vez, e re-renderiza para aplicar as probabilidades
+// derivadas por pipeline. Override manual dispensa o funil. Indicador "carregando" na linha de status.
+var _boardFunnelLoading=false;
+var BOARD_FUNNEL_SINCE='2025-01-01'; // janela histórica do funil (base desde jan/25)
+function _boardLoadFunnel(){
+  if(!window.ProbEngine||_novoStageProbCfg.manual||_novoFunnelData)return;
+  fetch('/api/funnel-stages?since='+encodeURIComponent(BOARD_FUNNEL_SINCE))
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      _boardFunnelLoading=false;
+      if(data&&data.success){ _novoFunnelData=data; NOVO_FUNNEL_PROB_PIPE=ProbEngine.funnelDerivedProbPipe(_novoFunnelData); }
+      if(_novoDeals) novoRender();
+    })
+    .catch(function(){ _boardFunnelLoading=false; if(_novoDeals) novoRender(); });
+}
 function _novoOpen(){ return _rawDeals().filter(_novoIsOpen); }
 function _novoWon(){ return _dealsByDate('close_date').filter(_novoIsWon); }
 function _novoLost(){ return _dealsByDate('close_date').filter(function(d){ return d.stage==='Perdido'; }); }
@@ -439,7 +476,9 @@ function novoLoadData(){
   fetch('/api/forecast-table?includeLost=true').then(function(r){ if(!r.ok) return r.text().then(function(txt){ throw new Error(txt||('HTTP '+r.status)); }); return r.json(); }).then(function(data){
     _novoDeals=Array.isArray(data)?data:(data.deals||[]);window._novoDealsRaw=_novoDeals;
     if(btn) btn.classList.remove('spinning');
+    if(window.ProbEngine && !_novoStageProbCfg.manual && !_novoFunnelData) _boardFunnelLoading=true;
     novoRender();
+    _boardLoadFunnel();
   }).catch(function(err){
     if(btn) btn.classList.remove('spinning');
     document.getElementById('novo-content').innerHTML='<div style="text-align:center;padding:3rem 0;color:var(--red)">'+t('error_prefix')+_ne(String(err))+'<br><br><button onclick="novoLoadData()" style="background:var(--teal);color:#fff;border:none;border-radius:8px;padding:.5rem 1.2rem;cursor:pointer">'+t('retry')+'</button></div>';
@@ -472,7 +511,7 @@ function novoRender(){
   var _activePipe=_croActivePipeline();
 
   document.getElementById('novo-content').innerHTML=(window.AxFilter?AxFilter.barHtml():'')+
-    '<div style="font-size:.78rem;color:var(--text2);margin-bottom:1rem">'+t('updated_at')+' '+ts+' | '+deals.length+' deals totais | '+open.length+' abertos atuais | '+won.length+' ganhos no período | '+lost.length+' perdidos no período</div>'+
+    '<div style="font-size:.78rem;color:var(--text2);margin-bottom:1rem">'+t('updated_at')+' '+ts+' | '+deals.length+' deals totais | '+open.length+' abertos atuais | '+won.length+' ganhos no período | '+lost.length+' perdidos no período'+(_boardFunnelLoading?' | <span style="opacity:.75"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="animation:hdr-spin .8s linear infinite;display:inline-block;vertical-align:-1px;margin-right:.25rem"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>'+(NOVO_LANG==='en'?'loading probabilities…':'carregando probabilidades…')+'</span>':'')+'</div>'+
     '<div class="kpi-row">'+
       kpi('ARR Ganho no Período',_fmtBig(totalWon),won.length+' deals por close_date','var(--green)','kpi-won-arr','won','Receita ganha (ARR) — all-time sem filtro, ou no período por close_date.')+
       kpi('Pipeline Aberto Atual (ARR)',_fmtBig(totalPipe),open.length+' deals abertos','var(--teal)','kpi-open-pipe','open','ARR do pipeline aberto atual.')+
@@ -483,7 +522,7 @@ function novoRender(){
       '<div class="section-hdr"><h2>Receita</h2></div>'+
       cWide(t('bd_rev_trend'),t('bd_rev_trend_tip'),'rev-trend',300,won.length,null,true)+
       '<div class="section-hdr"><h2>Pipeline &amp; Porte</h2></div>'+
-      c(t('bd_deal_bench'),t('bd_deal_bench_tip'),'deal-bench',300,_activePipe.length,_subTabs('bd-sizedonut-tabs',_novoSizeDistMode,[{mode:'revenue',label:'Receita',fn:'novoSwitchSizeDist'},{mode:'vidas',label:'Vidas',fn:'novoSwitchSizeDist'}]),true)+
+      _bdRevBucketsCard()+
       c(t('bd_pipe_stage'),t('bd_pipe_stage_tip'),'pipe-stage',320,_activePipe.length,_subTabs('bd-val-tabs',_novoValMode,[{mode:'raw',label:'Receita',fn:'novoSwitchValMode'},{mode:'weighted',label:'Ponderado',fn:'novoSwitchValMode'}]),true)+
       '<div class="section-hdr"><h2>Ranking &amp; Watchlist</h2></div>'+
       cTbl('Top 5 AEs by Weighted Open Pipeline','Top 5 AEs por Receita Ponderada do pipeline ativo (quem carrega o forecast). Σ ARR × probabilidade por AE. Não usa filtro de período.','top-ae',_activePipe.length)+
@@ -496,7 +535,7 @@ function novoRender(){
 
   buildBdRevTrend();
   buildBdPipeStage();
-  buildBdSizeDonut();
+  buildBdRevBuckets();
   buildBdTopAE();
   buildBdWatchlist();
   buildBdEntryExit();
@@ -518,7 +557,7 @@ var _crNd=function(v){ if(!v)return '—'; var p=String(v).slice(0,10).split('-'
 var _crNr=function(v){ return v!=null?Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}):'—'; };
 var _crNp=function(v){ return v!=null?(v*100).toFixed(1)+'%':'—'; };
 var _crNb=function(v){ return v===true?'Sim':v===false?'Não':'—'; };
-function _croCalcProbInfo(d){ var sp=NOVO_STAGE_PROB[d.stage]; if(sp==null)return{sp:null,cp:null,final:null}; var cp=d.probabilidade; if(cp==null)return{sp:sp,cp:null,final:sp}; if(cp<=sp-0.3)return{sp:sp,cp:cp,final:sp*0.9}; if(cp>=sp+0.3)return{sp:sp,cp:cp,final:sp*1.1}; return{sp:sp,cp:cp,final:sp}; }
+function _croCalcProbInfo(d){ return _calcProbInfo(d); } // fonte única (prob-engine.js): C07 por pipeline + ±10% AE
 function _croIsActivePipelineDeal(d){ var s=_stageNorm(d.stage); if(d.stage==='Ganho'||d.stage==='Perdido'||(s==='Standby'&&!_novoActiveStandby)||d.stage==='Implantação')return false; if(!_novoActiveMeetings&&d.stage==='Reunião Agendada')return false; return true; }
 function _croActivePipeline(){ return _rawDeals().filter(_croIsActivePipelineDeal); }
 function _croDealsRows(deals){ return deals.map(function(d){ var hsUrl='https://app.hubspot.com/contacts/44715285/deal/'+d.hs_id; var nameCell=d.hs_id?'<a href="'+hsUrl+'" target="_blank" rel="noopener" style="color:var(--teal);text-decoration:none">'+_ne(d.dealname)+'</a>':_ne(d.dealname); var pi=_croCalcProbInfo(d); return '<tr>'+
@@ -571,16 +610,40 @@ function _novoSfRender(){ var counts={}; _novoSfAll.forEach(function(d){ var s=d
 function novoSfPick(i){ _novoSfSel=(i==='__all')?null:_novoSfStages[i]; _novoSfRender(); }
 function novoOpenDealsStageFilterModal(title,deals){ _novoSfAll=deals||[]; var counts={}; _novoSfAll.forEach(function(d){ var s=d.stage||'—'; counts[s]=(counts[s]||0)+1; }); _novoSfStages=Object.keys(counts).sort(function(a,b){ return counts[b]-counts[a]; }); _novoSfSel=null; openModal(title,'<div id="novo-sf-chips"></div><div id="novo-sf-table"></div>'); _novoSfRender(); }
 
-// ── C03 portado: Distribuição por Tamanho (donut, toggle Receita/Vidas) | item 4 ─
-var _novoSizeDistMode='revenue';
-function novoSwitchSizeDist(m){ _novoSizeDistMode=m; _setActive('bd-sizedonut-tabs',m); buildBdSizeDonut(); }
-function buildBdSizeDonut(){
-  buildSharedSizeDonut('chart-bd-deal-bench', _croActivePipeline, {
-    modalTitle: NOVO_LANG==='en'?'Size Distribution':'Distribuição por Tamanho',
-    noRevenue:  NOVO_LANG==='en'?'No revenue':'Sem receita',
-    noLives:    NOVO_LANG==='en'?'No lives':'Sem vidas',
-    openDeals:  NOVO_LANG==='en'?'active deals':'deals ativos'
-  });
+// ── C08 portado do CRO: TCV do Pipe por Bucket (dois donuts: Bruto × Ponderado) ──
+// Substitui o antigo C03 (Distribuição por Tamanho). Bruto = Σ TCV por bucket;
+// Ponderado = Σ TCV × prob. final (C07 por pipeline + ±10% AE). Base = pipeline ativo.
+var _novoSizeDistMode='revenue'; // mantido: é o fallback de bucketMode do shared donut
+var _novoRevBktMode='bruto';     // 'bruto' | 'ponderado' (métrica dos dois donuts)
+function novoSwitchRevBkt(m){ _novoRevBktMode=m; _setActive('bd-revbkt-tabs',m); buildBdRevBuckets(); }
+function _bdRevBucketsCard(){
+  var L=NOVO_LANG==='en';
+  var _col=function(lbl,cid){ return '<div style="flex:1;min-width:260px"><div style="text-align:center;font-size:.8rem;font-weight:600;color:var(--text2);margin-bottom:.3rem">'+lbl+'</div><canvas id="'+cid+'" style="max-height:300px"></canvas></div>'; };
+  return '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header" style="flex-wrap:wrap;gap:.5rem">'+
+    '<h3>🟡 '+(L?'Pipe TCV by Bucket':'TCV do Pipe por Bucket')+'<span id="bd-revbkt-count" style="font-size:.68rem;color:var(--text2);font-weight:600;margin-left:.4rem;white-space:nowrap"></span></h3>'+
+    _infoBtn(t('bd_revbkt_tip'),'deal-bench')+
+    _subTabs('bd-revbkt-tabs',_novoRevBktMode,[{mode:'bruto',label:(L?'Gross':'Bruto'),fn:'novoSwitchRevBkt'},{mode:'ponderado',label:(L?'Weighted':'Ponderado'),fn:'novoSwitchRevBkt'}])+
+    '</div>'+
+    '<div style="display:flex;flex-wrap:wrap;gap:1rem;align-items:flex-start">'+
+      _col((L?'By Revenue':'Por Receita'),'chart-bd-revbkt-receita')+
+      _col((L?'By Lives':'Por Vidas'),'chart-bd-revbkt-vidas')+
+    '</div>'+
+  '</div>';
+}
+function buildBdRevBuckets(){
+  if(!document.getElementById('chart-bd-revbkt-receita'))return;
+  var L=NOVO_LANG==='en';
+  var weighted=_novoRevBktMode==='ponderado';
+  var metric=weighted
+    ? function(d){ var p=_calcProbInfo(d).final; return _novoDealTcv(d)*(p==null?0:p); }
+    : function(d){ return _novoDealTcv(d); };
+  var lbl=weighted?(L?'weighted TCV':'TCV ponderado'):(L?'gross TCV':'TCV bruto');
+  var mt=weighted?(L?'Weighted':'Ponderado'):(L?'Gross':'Bruto');
+  var considered=function(){ return _croActivePipeline().filter(function(d){ return _novoDealTcv(d)>0; }); };
+  var _cc=document.getElementById('bd-revbkt-count');
+  if(_cc){ _cc.textContent=considered().length.toLocaleString('pt-BR')+(L?' deals considered':' deals considerados'); }
+  buildSharedSizeDonut('chart-bd-revbkt-receita',considered,{ bucketMode:'revenue',valFmt:_revShort,metric:metric,openDeals:lbl,modalTitle:(L?'Forecast Revenue by Revenue Bucket | ':'Receita Prevista por Bucket de Receita | ')+mt });
+  buildSharedSizeDonut('chart-bd-revbkt-vidas',considered,{ bucketMode:'vidas',valFmt:_revShort,metric:metric,openDeals:lbl,modalTitle:(L?'Forecast Revenue by Lives Bucket | ':'Receita Prevista por Bucket de Vidas | ')+mt });
 }
 
 // B15 | Top 5 AEs por Receita Ponderada do pipeline ativo (quem carrega o forecast)
@@ -590,7 +653,7 @@ function buildBdTopAE(){
   deals.forEach(function(d){
     var ae=(!d.ae||d.ae==='-')?'(sem AE)':d.ae;
     if(!agg[ae])agg[ae]={ae:ae,n:0,vidas:0,arr:0,weighted:0};
-    var p=d.probabilidade!=null?d.probabilidade:(NOVO_STAGE_PROB[d.stage]||0);
+    var p=_calcProbInfo(d).final||0; // prob. global (C07 por pipeline + ±10% AE)
     agg[ae].n++; agg[ae].vidas+=(d.vidas||0); agg[ae].arr+=_annualRev(d); agg[ae].weighted+=_annualRev(d)*p;
   });
   var rows=Object.keys(agg).map(function(k){return agg[k];}).sort(function(a,b){return b.weighted-a.weighted;}).slice(0,5);
@@ -605,7 +668,7 @@ function buildBdTopAE(){
 // B16 | Top 10 deals abertos por Receita Ponderada — BoD Watchlist
 function buildBdWatchlist(){
   var el=document.getElementById('tbl-bd-watchlist'); if(!el)return;
-  var arr=_croActivePipeline().map(function(d){ var p=d.probabilidade!=null?d.probabilidade:(NOVO_STAGE_PROB[d.stage]||0); return {d:d,p:p,w:_annualRev(d)*p}; });
+  var arr=_croActivePipeline().map(function(d){ var p=_calcProbInfo(d).final||0; return {d:d,p:p,w:_annualRev(d)*p}; });
   arr.sort(function(a,b){return b.w-a.w;});
   var rows=arr.slice(0,10);
   if(!rows.length){ el.innerHTML='<p style="color:var(--text2);padding:1rem 0">Nenhum deal ativo.</p>'; return; }
@@ -694,12 +757,15 @@ function buildBdPipeStage(){
 
 function buildBdEntryExit(){
   var th=_novoTheme(), months=_getMonths(12), all=_rawDeals(), won=_novoWon(), lost=_novoLost();
-  var inflow=months.map(function(m){return all.filter(function(d){return d.createdate&&_inWinStrict(d.createdate)&&d.createdate.substring(0,7)===m;}).length;});
+  // Entrada = data em que o deal ENTROU na etapa Reunião Agendada (evento real do BDR),
+  // não createdate (distorcido por importações em massa). Só Vendas tem essa etapa; deals
+  // sem esse campo (ex.: Bid, sem Reunião Agendada) não entram nesta série.
+  var inflow=months.map(function(m){return all.filter(function(d){return d.data_reuniao_agendada&&_inWinStrict(d.data_reuniao_agendada)&&d.data_reuniao_agendada.substring(0,7)===m;}).length;});
   var wonOut=months.map(function(m){return won.filter(function(d){return d.close_date&&d.close_date.substring(0,7)===m;}).length;});
   var lostOut=months.map(function(m){return lost.filter(function(d){return d.close_date&&d.close_date.substring(0,7)===m;}).length;});
   _novoMkChart('chart-bd-entry-exit',{type:'line',plugins:[ChartDataLabels],
     data:{labels:months.map(_mlbl),datasets:[
-      {label:'Entrada (criados)',data:inflow,borderColor:'rgba(58,184,183,.95)',backgroundColor:'rgba(58,184,183,.12)',pointRadius:3,borderWidth:2,tension:0.35,fill:false},
+      {label:NOVO_LANG==='en'?'Inflow (meeting scheduled)':'Entrada (reunião agendada)',data:inflow,borderColor:'rgba(58,184,183,.95)',backgroundColor:'rgba(58,184,183,.12)',pointRadius:3,borderWidth:2,tension:0.35,fill:false},
       {label:'Saída (perdidos)',data:lostOut,borderColor:'rgba(248,81,73,.9)',backgroundColor:'rgba(248,81,73,.12)',pointRadius:3,borderWidth:2,tension:0.35,fill:false},
       {label:'Saída (ganhos)',data:wonOut,borderColor:'rgba(63,185,80,.9)',backgroundColor:'rgba(63,185,80,.12)',pointRadius:3,borderWidth:2,tension:0.35,fill:false}
     ]},
@@ -722,7 +788,7 @@ function buildBdArrBridge(){
 function buildBdForecast(){
   var th=_novoTheme(), open=_novoForecastOpen();
   var totalOpen=open.reduce(function(s,d){return s+_annualRev(d);},0);
-  var weighted=open.reduce(function(s,d){ var p=d.probabilidade!=null?d.probabilidade:(NOVO_STAGE_PROB[_stageNorm(d.stage)]||0); return s+_annualRev(d)*p; },0);
+  var weighted=open.reduce(function(s,d){ var p=_calcProbInfo(d).final||0; return s+_annualRev(d)*p; },0);
   var optimistic=totalOpen*0.8;
   var conservative=totalOpen*0.5;
   var labels=['Ponderado (prob)','Otimista (80%)','Conservador (50%)'];

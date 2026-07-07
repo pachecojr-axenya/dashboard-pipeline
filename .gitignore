@@ -1,34 +1,9 @@
-node_modules/
-.vercel/
+.vercel
 .env
+.env.*
 .env.local
-.env.production
-PASSWORDS_FIRST_RUN.txt
-
-# Backup do Electron original (manter local, não versionar)
-src_electron_backup/
-
-# Nunca versionar secrets ou credenciais em plaintext
-*.key
-*.pem
-*.p12
-gcp-*.json
-service-account*.json
-.vercel
-
-# Hashes de senha legados (FIXME S01 — remover do tracking com git rm --cached)
+_local_trash
 lib/credentials.json
-.env*.local
-.env.local2
-
-.vercel
-
-.vercel
-_local_trash/
-
-# Dumps de trabalho do reconstruct-snapshot (raiz). Os snapshots servidos pela
-# API ficam em api/_snapshots/ e DEVEM ser versionados — por isso o anchor "/".
-/_snapshots/
-
-# Config local do Claude Code (pessoal)
-.claude/settings.local.json
+node_modules
+.claude
+npm-debug.log*

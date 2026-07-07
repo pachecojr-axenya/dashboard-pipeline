@@ -70,7 +70,10 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
 .novo-card{background:var(--card);border-radius:10px;padding:1.25rem 1.5rem}
 .novo-card-header{display:flex;align-items:center;gap:.6rem;margin-bottom:1rem;flex-wrap:wrap}
 .novo-card-header h3{font-size:.88rem;font-weight:600;color:var(--text);margin:0;flex:1}
+.novo-code-tag{display:none;align-items:center;font-size:.6rem;font-weight:700;letter-spacing:.04em;font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--teal);background:rgba(58,184,183,.14);border:1px solid rgba(58,184,183,.32);border-radius:5px;padding:.05rem .32rem;line-height:1.35;flex-shrink:0}
 .novo-info-btn{width:16px;height:16px;border-radius:50%;border:1.5px solid var(--text2);background:none;color:var(--text2);font-size:.62rem;font-style:normal;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;position:relative;flex-shrink:0;padding:0;line-height:1}
+body:not(.novo-info-on) .novo-card .novo-info-btn{display:none}
+body.novo-info-on .novo-code-tag{display:inline-flex}
 #novo-tip{position:fixed;z-index:9999;background:rgba(23,31,46,.78);backdrop-filter:blur(14px) saturate(1.5);border-radius:6px;padding:.45rem .7rem;width:278px;pointer-events:none;display:none;box-shadow:0 6px 20px rgba(0,0,0,.3)}
 html[data-theme="light"] #novo-tip{background:rgba(246,248,250,.82)}
 #novo-tip.nt-show{display:block}
@@ -83,11 +86,11 @@ html[data-theme="light"] .tab-sub-thumb{background:#fff;box-shadow:0 1px 4px rgb
 .tab-sub-btn{background:transparent;border:none;border-radius:99px;color:var(--text2);padding:.3rem .9rem;cursor:pointer;font-size:.75rem;font-weight:500;transition:color .18s;position:relative;z-index:1}
 .tab-sub-btn.active{color:var(--text);font-weight:600}
 .novo-card-header .tab-sub{margin-bottom:0}
-.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem;margin-bottom:.75rem}
-.kpi-card{background:var(--card);border-radius:14px;padding:1.6rem 1.8rem;position:relative;transition:box-shadow .18s}
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.75rem;margin-bottom:.75rem}
+.kpi-card{background:var(--card);border-radius:14px;padding:clamp(1rem,.6rem+1.3vw,1.6rem) clamp(1.05rem,.5rem+1.6vw,1.8rem);position:relative;transition:box-shadow .18s}
 .kpi-card:hover{box-shadow:0 0 0 2px rgba(58,184,183,.35)}
 .kpi-label{font-size:.66rem;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;line-height:1}
-.kpi-value{font-size:2rem;font-weight:800;line-height:1.1;margin:.35rem 0 .25rem}
+.kpi-value{font-size:clamp(1.35rem,.95rem+1.3vw,2rem);font-weight:800;line-height:1.1;margin:.35rem 0 .25rem}
 .kpi-sub{font-size:.7rem;color:var(--muted);line-height:1.35}
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:2000;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s linear;backdrop-filter:blur(5px)}
 .modal-overlay.open{opacity:1;pointer-events:auto}
@@ -156,6 +159,7 @@ body.nav-docked #view-novo{margin-left:280px}
       <div class="panel-switcher" id="panel-switcher"><button class="panel-switch-btn" type="button" onclick="togglePanelMenu(event)" aria-haspopup="true" aria-expanded="false"><h1>Last 48h</h1><svg class="panel-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button><div class="panel-dd" id="panel-dd" role="menu"></div><div id="h48-subtitle" style="font-size:.78rem;color:var(--text2)"></div></div>
     </div>
     <div class="hdr-actions">
+      <button class="hdr-btn" id="btn-info-toggle" onclick="novoToggleInfo()" data-tooltip="Mostrar/ocultar IDs e auditoria" style="font-size:.9rem;font-weight:800">?</button>
       <button class="hdr-btn" onclick="novoHelp()" data-tooltip="Campos do HubSpot"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></button>
       <button class="hdr-btn" onclick="novoOpenSettings()" data-tooltip="Configurações"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
       <button class="hdr-btn highlighted" id="btn-refresh" onclick="_novoDeals=null;novoLoadData();" data-tooltip="Atualizar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></button>
@@ -243,21 +247,75 @@ var NOVO_I18N={
 function t(k){ return (NOVO_I18N[NOVO_LANG]||NOVO_I18N.pt)[k] || (NOVO_I18N.pt[k]) || k; }
 function novoToggleLang(){ NOVO_LANG=NOVO_LANG==='pt'?'en':'pt'; try{localStorage.setItem('novo_lang',NOVO_LANG);}catch(e){} (function(_e){if(_e)_e.textContent=NOVO_LANG.toUpperCase();})(document.getElementById('novo-lang-label')); if(_novoDeals) novoRender(); }
 
-// ── Help drawer ───────────────────────────────────────────────────────────────
+// ── Códigos de identificação dos cards (tags) + toggle "?" (padrão dos demais painéis) ──
+var H48_CARD_CODES={'kpi-new-deals':'H01','kpi-new-vidas':'H02','kpi-won':'H03','kpi-active':'H04','h48-by-ae':'H05','h48-vidas-ae':'H06','h48-by-stage':'H07','h48-won-table':'H08','h48-new-table':'H09'};
+var _novoShowInfo=(function(){try{return localStorage.getItem('h48_show_info')!=='0';}catch(e){return true;}})();
+function _codeTag(key){var c=H48_CARD_CODES[key]||'';return c?'<span class="novo-code-tag">'+c+'</span>':'';}
+function novoToggleInfo(){_novoShowInfo=!_novoShowInfo;document.body.classList.toggle('novo-info-on',_novoShowInfo);var b=document.getElementById('btn-info-toggle');if(b)b.classList.toggle('highlighted',_novoShowInfo);try{localStorage.setItem('h48_show_info',_novoShowInfo?'1':'0');}catch(e){}}
+
+// ── Help | fichas por gráfico (padrão CRO): hover no "i" = tooltip; CLIQUE = drawer ───────
 var H48_HELP=[
-  {key:'h48-by-ae',title:()=>t('h48_by_ae'),desc:'Deals criados nas últimas 48h por responsável.',fields:[['createdate','Data de criação do deal.'],['ae','Responsável (AE) pelo deal.']]},
-  {key:'h48-vidas-ae',title:()=>t('h48_vidas_ae'),desc:'Vidas dos deals criados nas últimas 48h por AE.',fields:[['createdate','Data de criação.'],['ae','Responsável.'],['vidas','Quantidade de vidas.']]},
-  {key:'h48-by-stage',title:()=>t('h48_by_stage'),desc:'Distribuição por etapa dos deals criados nas últimas 48h.',fields:[['stage','Etapa atual do deal.'],['createdate','Data de criação.']]},
-  {key:'h48-won-table',title:()=>t('h48_won_table'),desc:'Deals recém-ganhos com base na data de fechamento.',fields:[['stage','Deve ser Ganho.'],['close_date','Data de fechamento (close_date).']]},
+  {key:'kpi-new-deals',title:'Novos Deals | 48h (H01)',
+    desc:'Contagem de deals criados na janela fixa das últimas 48h (createdate ≥ agora − 48h). Este painel NÃO usa o filtro global de período; a janela é sempre relativa ao momento do carregamento.',
+    fields:[['createdate','Data de criação do deal | define a janela de 48h.']]},
+  {key:'kpi-new-vidas',title:'Vidas Novas | 48h (H02)',
+    desc:'Soma das vidas dos deals criados nas últimas 48h. Deals sem vidas preenchidas somam zero (e aparecem no alerta de "sem vidas").',
+    fields:[['createdate','Janela de 48h.'],['vidas','Somadas entre os novos deals.']]},
+  {key:'kpi-won',title:'Deals Ganhos | 48h (H03)',
+    desc:'Deals ganhos por close_date nas últimas 48h. Implantação conta como ganho quando o toggle global "Implantação = Ganho" está ligado.',
+    fields:[['dealstage','Ganho (+ Implantação conforme toggle).'],['close_date','Data de fechamento | janela de 48h.']]},
+  {key:'kpi-active',title:'Deals Abertos Total (H04)',
+    desc:'Snapshot atual do pipeline ATIVO (todos os deals abertos, não só os das últimas 48h). Exclui Ganho, Perdido e Implantação; Reunião Agendada e Standby entram/saem conforme os toggles globais do drawer de Configurações.',
+    fields:[['dealstage','Base ativa (exclui Ganho/Perdido/Implantação; RA/Standby por toggle).']]},
+  {key:'h48-by-ae',title:'Originação por AE | janela fixa (H05)',
+    desc:'Deals criados na janela fixa das últimas 48h, agrupados por responsável (AE). Usa createdate e NÃO usa o filtro global. Clique numa barra para ver os deals do AE.',
+    fields:[['createdate','Janela de 48h.'],['hubspot_owner_id','Responsável (coluna "AE").']]},
+  {key:'h48-vidas-ae',title:'Vidas Novas por AE | janela fixa (H06)',
+    desc:'Vidas dos deals criados na janela fixa das últimas 48h, por AE. Usa createdate e NÃO usa o filtro global. Clique numa barra para ver os deals do AE.',
+    fields:[['createdate','Janela de 48h.'],['hubspot_owner_id','Responsável.'],['vidas','Somadas por AE.']]},
+  {key:'h48-by-stage',title:'Etapa Atual dos Novos Deals (H07)',
+    desc:'Distribuição por etapa ATUAL dos deals criados nas últimas 48h. Não é a etapa histórica de entrada | é onde o deal está agora. Clique numa fatia para ver os deals da etapa.',
+    fields:[['createdate','Janela de 48h.'],['dealstage','Etapa atual do deal.']]},
+  {key:'h48-won-table',title:'Deals Ganhos Recentemente (H08)',
+    desc:'Deals ganhos na janela fixa das últimas 48h, por close_date. Implantação conta como ganho quando o toggle global está ligado.',
+    fields:[['dealstage','Ganho (+ Implantação conforme toggle).'],['close_date','Data de fechamento | janela de 48h.'],['vidas','Coluna "Vidas".'],['arr_estimado','Coluna "ARR" (fallback primeira_fatura × 12).']]},
+  {key:'h48-new-table',title:'Todos os Novos Deals | 48h (H09)',
+    desc:'Lista completa dos deals criados na janela fixa das últimas 48h, ordenada do mais recente para o mais antigo. Mesma base do gráfico de Originação por AE (H05).',
+    fields:[['createdate','Janela de 48h e ordenação.'],['hubspot_owner_id','Coluna "AE".'],['pipeline','Coluna "Pipeline".'],['dealstage','Coluna "Etapa".'],['vidas','Coluna "Vidas".'],['arr_estimado','Coluna "ARR" (fallback primeira_fatura × 12).']]},
 ];
-function novoHelp(){ document.getElementById('novo-help-title').textContent='Campos do HubSpot por gráfico'; var html='<table class="lb" style="font-size:.78rem"><thead><tr><th style="text-align:left">Gráfico</th><th style="text-align:left">Campo HubSpot</th><th style="text-align:left">Descrição</th></tr></thead><tbody>'; H48_HELP.forEach(function(c){ c.fields.forEach(function(f,i){ html+='<tr><td style="text-align:left;white-space:nowrap">'+(i===0?'<strong>'+c.title()+'</strong>':'')+'</td><td style="text-align:left;font-family:ui-monospace,monospace;color:var(--teal);white-space:nowrap">'+f[0]+'</td><td style="text-align:left;color:var(--text2)">'+f[1]+'</td></tr>'; }); }); html+='</tbody></table>'; document.getElementById('novo-help-body').innerHTML=html; document.getElementById('novo-help-backdrop').classList.add('open'); document.getElementById('novo-help-drawer').classList.add('open'); }
+function _h48HelpRow(name,desc){ return '<tr><td style="text-align:left;font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--teal);white-space:nowrap;font-weight:600">'+name+'</td><td style="text-align:left;color:var(--text2);font-weight:400">'+desc+'</td></tr>'; }
+function _h48HelpSection(c){
+  var code=H48_CARD_CODES[c.key]||'';
+  var codeTag=code?'<span style="font-size:.66rem;background:var(--card2);color:var(--teal);padding:.05rem .28rem;border-radius:3px;font-weight:700;letter-spacing:.05em;font-family:ui-monospace,Menlo,monospace;margin-left:.4rem;vertical-align:middle">'+code+'</span>':'';
+  return '<div style="margin-bottom:1.5rem">'+
+    '<h3 style="font-size:.92rem;color:var(--text);margin:0 0 .25rem">'+c.title+codeTag+'</h3>'+
+    (c.desc?'<p style="font-size:.8rem;line-height:1.6;color:var(--text2);margin:0 0 .5rem">'+c.desc+'</p>':'')+
+    '<table class="lb" style="width:100%;font-size:.78rem"><thead><tr><th style="text-align:left">Campo HubSpot (interno)</th><th style="text-align:left">Como é usado</th></tr></thead><tbody>'+
+    c.fields.map(function(f){return _h48HelpRow(f[0],f[1]);}).join('')+'</tbody></table></div>';
+}
+function _h48OpenHelp(headerTitle,charts){
+  var html='<p style="font-size:.78rem;color:var(--muted);margin:0 0 1.1rem">Fonte: <code style="color:var(--text2)">GET /api/forecast-table</code> (deals dos pipelines Vendas + Bid). Janela FIXA das últimas 48h (createdate para novos deals, close_date para ganhos) | este painel NÃO responde ao filtro global de período.</p>'+
+    charts.map(_h48HelpSection).join('');
+  var ttl=document.getElementById('novo-help-title');
+  if(ttl) ttl.textContent=headerTitle;
+  document.getElementById('novo-help-body').innerHTML=html;
+  document.getElementById('novo-help-backdrop').classList.add('open');
+  document.getElementById('novo-help-drawer').classList.add('open');
+}
+function h48HelpChart(key){
+  var c=H48_HELP.filter(function(x){return x.key===key;});
+  if(!c.length) return;
+  _h48OpenHelp('Campos do HubSpot | '+c[0].title.replace(/ \([A-Z]\d+\)$/,''),c);
+}
+function novoHelp(){ _h48OpenHelp('Campos do HubSpot por gráfico',H48_HELP); }
 function novoCloseHelp(){ document.getElementById('novo-help-backdrop').classList.remove('open'); document.getElementById('novo-help-drawer').classList.remove('open'); }
 
 // ── Info tooltip ──────────────────────────────────────────────────────────────
 document.addEventListener('mouseover',function(e){ var btn=e.target.closest('.novo-info-btn'); if(!btn)return; var tip=document.getElementById('novo-tip'); tip.querySelector('.nt-text').textContent=btn.getAttribute('data-tip')||''; tip.querySelector('.nt-code').textContent=btn.getAttribute('data-code')||''; tip.classList.add('nt-show'); });
 document.addEventListener('mouseout',function(e){ if(!e.target.closest('.novo-info-btn')) document.getElementById('novo-tip').classList.remove('nt-show'); });
 document.addEventListener('mousemove',function(e){ var tip=document.getElementById('novo-tip'); if(!tip.classList.contains('nt-show'))return; var r=tip.getBoundingClientRect(); var x=e.clientX+14; var y=e.clientY+14; if(x+r.width>window.innerWidth-8) x=e.clientX-r.width-10; if(y+r.height>window.innerHeight-8) y=e.clientY-r.height-10; tip.style.left=x+'px'; tip.style.top=y+'px'; });
-function _infoBtn(tip,code){ return '<button class="novo-info-btn" data-tip="'+_ne(tip)+'" data-code="'+(code||'')+'" aria-label="info">i</button>'; }
+// Hover no "i" = tooltip; CLIQUE no "i" = drawer com a ficha completa (padrão do CRO).
+function _infoBtn(tip,key){ var hasHelp=H48_HELP.some(function(x){return x.key===key;}); return _codeTag(key)+'<button class="novo-info-btn" data-tip="'+_ne(tip)+'" data-code="'+(H48_CARD_CODES[key]||key||'')+'"'+(hasHelp?' onclick="event.stopPropagation();h48HelpChart(\''+key+'\')"':'')+' aria-label="Campos do HubSpot">i</button>'; }
 
 // ── Scroll header ─────────────────────────────────────────────────────────────
 window.addEventListener('scroll',function(){ document.getElementById('novo-hdr').classList.toggle('scrolled',window.scrollY>10); },{ passive:true });
@@ -320,25 +378,25 @@ function novoRender(){
   var ts=new Date().toLocaleTimeString('pt-BR',{timeZone:'America/Sao_Paulo',hour:'2-digit',minute:'2-digit'});
   document.getElementById('h48-subtitle').textContent=t('updated_at')+' '+ts+' | '+t('h48_window')+': '+cutoffISO+' → '+now.toISOString().slice(0,10)+' | filtro global não aplicado';
 
-  var kpi=function(lbl,val,sub,col){
-    return '<div class="kpi-card"><div class="kpi-label">'+lbl+'</div><div class="kpi-value" style="color:'+(col||'var(--text)')+'">'+val+'</div><div class="kpi-sub">'+sub+'</div></div>';
+  var kpi=function(lbl,val,sub,col,key){
+    return '<div class="kpi-card"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.35rem"><div class="kpi-label">'+lbl+'</div>'+_codeTag(key)+'</div><div class="kpi-value" style="color:'+(col||'var(--text)')+'">'+val+'</div><div class="kpi-sub">'+sub+'</div></div>';
   };
 
   document.getElementById('novo-content').innerHTML=
     '<div style="font-size:.78rem;color:var(--text2);margin-bottom:1rem">Painel de janela fixa: usa createdate para novos deals e close_date para ganhos. Não responde ao filtro global.</div>'+
     '<div class="kpi-row">'+
-      kpi(t('h48_new_deals'),newDeals.length,'deals criados na janela fixa','var(--teal)')+
-      kpi(t('h48_new_vidas'),_ni(newVidas),'vidas dos novos deals','var(--teal)')+
-      kpi(t('h48_won'),wonDeals.length,'ganhos por close_date','var(--green)')+
-      kpi('Deals Abertos Total',_novoOpen().length,'snapshot atual','var(--text)')+
+      kpi(t('h48_new_deals'),newDeals.length,'deals criados na janela fixa','var(--teal)','kpi-new-deals')+
+      kpi(t('h48_new_vidas'),_ni(newVidas),'vidas dos novos deals','var(--teal)','kpi-new-vidas')+
+      kpi(t('h48_won'),wonDeals.length,'ganhos por close_date','var(--green)','kpi-won')+
+      kpi('Deals Abertos Total',_novoOpen().length,'snapshot atual','var(--text)','kpi-active')+
     '</div>'+
     '<div id="h48-alerts" style="margin-bottom:1.25rem"></div>'+
     '<div class="novo-cards">'+
-      '<div class="novo-card"><div class="novo-card-header"><h3>'+t('h48_by_ae')+'</h3>'+_infoBtn(t('h48_by_ae_tip'),'createdate, ae')+'</div><canvas id="chart-h48-ae" style="max-height:320px"></canvas></div>'+
-      '<div class="novo-card"><div class="novo-card-header"><h3>'+t('h48_vidas_ae')+'</h3>'+_infoBtn(t('h48_vidas_ae_tip'),'vidas, ae, createdate')+'</div><canvas id="chart-h48-vidas-ae" style="max-height:320px"></canvas></div>'+
-      '<div class="novo-card"><div class="novo-card-header"><h3>'+t('h48_by_stage')+'</h3>'+_infoBtn(t('h48_by_stage_tip'),'stage, createdate')+'</div><canvas id="chart-h48-stage" style="max-height:300px"></canvas></div>'+
-      '<div class="novo-card"><div class="novo-card-header"><h3>'+t('h48_won_table')+'</h3>'+_infoBtn(t('h48_won_table_tip'),'stage, close_date')+'</div><div id="h48-won-body"></div></div>'+
-      '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header"><h3>'+t('h48_new_table')+'</h3><span style="font-size:.75rem;color:var(--teal);font-weight:600">'+newDeals.length+' deals</span></div><div id="h48-new-table"></div></div>'+
+      '<div class="novo-card"><div class="novo-card-header"><h3>'+t('h48_by_ae')+'</h3>'+_infoBtn(t('h48_by_ae_tip'),'h48-by-ae')+'</div><canvas id="chart-h48-ae" style="max-height:320px"></canvas></div>'+
+      '<div class="novo-card"><div class="novo-card-header"><h3>'+t('h48_vidas_ae')+'</h3>'+_infoBtn(t('h48_vidas_ae_tip'),'h48-vidas-ae')+'</div><canvas id="chart-h48-vidas-ae" style="max-height:320px"></canvas></div>'+
+      '<div class="novo-card"><div class="novo-card-header"><h3>'+t('h48_by_stage')+'</h3>'+_infoBtn(t('h48_by_stage_tip'),'h48-by-stage')+'</div><canvas id="chart-h48-stage" style="max-height:300px"></canvas></div>'+
+      '<div class="novo-card"><div class="novo-card-header"><h3>'+t('h48_won_table')+'</h3>'+_infoBtn(t('h48_won_table_tip'),'h48-won-table')+'</div><div id="h48-won-body"></div></div>'+
+      '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header"><h3>'+t('h48_new_table')+'</h3>'+_infoBtn(NOVO_LANG==='en'?'Full list of deals created in the fixed 48h window, newest first.':'Lista completa dos deals criados na janela fixa das últimas 48h, mais recentes primeiro.','h48-new-table')+'<span style="font-size:.75rem;color:var(--teal);font-weight:600;margin-left:auto">'+newDeals.length+' deals</span></div><div id="h48-new-table"></div></div>'+
     '</div>';
 
   buildH48Alerts(newDeals, wonDeals, now, cutoff);
@@ -444,6 +502,8 @@ function buildH48NewTable(newDeals){
 (function(){
   try{ var navOpen=localStorage.getItem('novo_nav_open')==='true'; if(navOpen) _setNavOpen(true); }catch(e){}
   (function(_e){if(_e)_e.textContent=NOVO_LANG.toUpperCase();})(document.getElementById('novo-lang-label'));
+  document.body.classList.toggle('novo-info-on',_novoShowInfo);
+  var _ib=document.getElementById('btn-info-toggle'); if(_ib)_ib.classList.toggle('highlighted',_novoShowInfo);
   novoLoadData();
 })();
 </script>

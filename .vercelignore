@@ -1,15 +1,15 @@
-# Documentation — not needed in the deploy bundle
-README.md
-AUDIT.md
+.env
+.env.*
+.env.local
+.vercel
+.claude
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+_local_trash
+docs
 STATUS_LOG.md
-_WORKSPACE.md
-docs/
-
-# Local-only files
-.env*.local
-.env.development*
-backup-*
-src_electron_backup/
-
-# Dev tooling
-scripts/dev.js
+AUDITORIA_GRAFICOS.md
+DEPLOY_GUIDE.md
+lib/credentials.json

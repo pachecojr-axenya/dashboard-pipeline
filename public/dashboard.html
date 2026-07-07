@@ -152,14 +152,12 @@ html[data-theme="light"] .mp-pop{box-shadow:0 16px 48px rgba(0,0,0,.18)}
 #novo-charttip .ct-line{color:var(--text);font-weight:600;white-space:nowrap}
 #novo-charttip .ct-foot{color:var(--text2);font-size:.66rem;margin-top:.25rem;white-space:normal}
 html[data-theme="light"] #novo-charttip{background:rgba(255,255,255,.72);color:#0f172a;box-shadow:0 12px 34px rgba(15,23,42,.18)}
-.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem;margin-bottom:.75rem}
-@media(max-width:900px){.kpi-row{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:520px){.kpi-row{grid-template-columns:1fr}}
-.kpi-card{background:var(--card);border-radius:14px;padding:1.6rem 1.8rem;position:relative;transition:box-shadow .18s}
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.75rem;margin-bottom:.75rem}
+.kpi-card{background:var(--card);border-radius:14px;padding:clamp(1rem,.6rem+1.3vw,1.6rem) clamp(1.05rem,.5rem+1.6vw,1.8rem);position:relative;transition:box-shadow .18s}
 .kpi-card:hover{box-shadow:0 0 0 2px rgba(58,184,183,.35)}
 .kpi-card--na{opacity:.5}
 .kpi-label{font-size:.66rem;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0;line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.kpi-value{font-size:2rem;font-weight:800;line-height:1.1;margin:.35rem 0 .25rem;white-space:nowrap}
+.kpi-value{font-size:clamp(1.35rem,.95rem+1.3vw,2rem);font-weight:800;line-height:1.1;margin:.35rem 0 .25rem;white-space:nowrap}
 .kpi-sub{font-size:.7rem;color:var(--muted);line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .kpi-row-sec{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:.5rem;margin-bottom:1.5rem}
 .kpi-sec{background:var(--card2);border-radius:10px;padding:.9rem 1.1rem;transition:box-shadow .18s}
@@ -253,6 +251,7 @@ table.lb tfoot td{font-weight:600;border-top:2px solid var(--border);position:st
 <script src="/revenue-engine.js?v=1"></script>
 <script src="/faturamento-manual.js?v=1"></script>
 <script src="/forecast-engine.js?v=1"></script>
+<script src="/prob-engine.js?v=1"></script>
 </head>
 <body>
 
@@ -565,7 +564,12 @@ var NOVO_S06_STAGES = {
 };
 
 // ── Probabilidades ────────────────────────────────────────────────────────────
-var NOVO_STAGE_PROB_DEFAULT = {
+// FONTE ÚNICA: a lógica de probabilidade (defaults, C07 por pipeline, ±10% do AE) vive
+// em prob-engine.js (window.ProbEngine), compartilhada com o Board View. As funções abaixo
+// (_novoFunnelDerivedProbPipe/_novoStageProbFor/_calcProbInfo) delegam ao ProbEngine,
+// passando o estado local (_novoStageProbCfg, NOVO_FUNNEL_PROB_PIPE, _novoFunnelData).
+// Fallback inline mantido caso o script não carregue.
+var NOVO_STAGE_PROB_DEFAULT = (window.ProbEngine && ProbEngine.DEFAULT) || {
   'Cotação': 0.33, 'Proposta Enviada': 0.285, 'Consultoria': 0.611,
   'Negociação': 0.42, 'Implantação': 1.0, 'Ganho': 1.0,
   'Standby': 0.12, 'Stand by': 0.12, 'Diagnóstico': 0.06,
@@ -606,30 +610,13 @@ function _novoFunnelDerivedProb() {
 // no funil de cada pipeline; amostra mínima → cai no padrão fixo). É o PADRÃO das telas de
 // forecast/coverage: cada deal usa a prob. do SEU pipeline via _novoStageProbFor().
 function _novoFunnelDerivedProbPipe() {
-  if (!_novoFunnelData) return null;
-  function forPipe(pd) {
-    if (!pd || !pd.stages) return {};
-    var cnt = {}; pd.stages.forEach(function(s) { cnt[s.stage] = s.count || 0; });
-    var ganho = cnt['Ganho'] || 0; if (ganho <= 0) return {};
-    var order = ['Reunião Agendada', 'Cotação', 'Proposta Enviada', 'Consultoria', 'Negociação'];
-    var out = {};
-    order.forEach(function(s) { var c = cnt[s] || 0; if (c >= NOVO_FC_PROB_MIN_SAMPLE) { var p = ganho / c; if (p > 1) p = 1; if (p < 0) p = 0; out[s] = p; } });
-    return out;
-  }
-  return { vendas: forPipe(_novoFunnelData.vendas), bid: forPipe(_novoFunnelData.bid) };
+  return ProbEngine.funnelDerivedProbPipe(_novoFunnelData); // fonte única (prob-engine.js)
 }
 var NOVO_FUNNEL_PROB_PIPE = null;
 // Prob. de etapa efetiva de um deal: override manual (Configurações) vence; senão a prob.
 // de ganho do funil DO PIPELINE do deal (C07); senão o padrão fixo (escolha do usuário).
 function _novoStageProbFor(stage, pipeline) {
-  var pk = pipeline === 'Bid' ? 'bid' : 'vendas';
-  if (_novoStageProbCfg.manual && _novoStageProbCfg.values) {
-    var ov = _novoStageProbCfg.values[pk];
-    if (ov && ov[stage] != null) return ov[stage];   // override manual POR PIPELINE
-  }
-  var fp = NOVO_FUNNEL_PROB_PIPE && NOVO_FUNNEL_PROB_PIPE[pk];
-  if (fp && fp[stage] != null) return fp[stage];
-  return NOVO_STAGE_PROB_DEFAULT[stage];
+  return ProbEngine.stageProbFor(stage, pipeline, { cfg: _novoStageProbCfg, funnelProbPipe: NOVO_FUNNEL_PROB_PIPE });
 }
 function _novoApplyStageProb() {
   var base = {};
@@ -1257,6 +1244,7 @@ var NOVO_HELP_CHARTS = [
     key: 'sizedonut',
     title: 'Distribuição por Tamanho (Donut)',
     desc: 'Donut da distribuição dos deals da base ativa por faixa, com toggle Receita | Vidas. Métrica = contagem de deals. O centro mostra o total de deals abertos no pipeline; a fatia cinza é a contagem de deals sem aquela informação (sem receita ou sem vidas). Pipelines Vendas + Bid; base ativa (Reunião Agendada/Pré-RFP-toggle, Diagnóstico, Cotação, Proposta Enviada, Consultoria, Negociação, Standby-toggle | exclui Ganho, Perdido e Implantação). Sem filtro de data. Não usa probabilidade. Clique numa fatia para ver os deals.',
+    note: 'A fatia cinza "Sem receita" (modo Receita) conta deals sem <code>arr_estimado</code> E sem <code>primeira_fatura</code> preenchidos no HubSpot, não deals sem valor de negócio | hoje é a maior fatia da base ativa e inclui contas grandes ainda sem os campos de valor (ex.: Reunião Pré-RFP com milhares de vidas). É um sinal de completude de dados, não de pipeline sem receita. O mesmo vale para "Sem vidas" no modo Vidas. Atenção: a faixa aqui usa <code>_annualRev</code>; o C08 mede o mesmo pipe pelo TCV da régua e por isso mostra fatias diferentes.',
     fields: [
       ['dealstage', 'Define a base ativa (exclui Ganho, Perdido e Implantação; Standby e reuniões via toggle).'],
       ['arr_estimado', 'Faixa no modo Receita (com fallback 1ª fatura × 12).'],
@@ -1280,6 +1268,7 @@ var NOVO_HELP_CHARTS = [
     key: 'revbkt',
     title: 'TCV do Pipe por Bucket',
     desc: 'Dois donuts com a distribuição do TCV (valor do contrato em 12 meses pela régua real, incluindo a corretagem de entrada): um por bucket de Receita, outro por bucket de Vidas (faixas do C03). O toggle escolhe a métrica: Bruto = Σ TCV; Ponderado = Σ TCV × probabilidade de fechamento por pipeline (C07). É a receita que a Axenya tem a receber no pipe, e quanto cada bucket representa. Diagnóstico usa vidas × R$/vida × 12. Base: pipeline ativo (Vendas + Bid); só deals com TCV > 0.',
+    note: 'O gráfico usa dois medidores de receita distintos: a FAIXA (bucket, no donut Por Receita) é decidida por <code>_annualRev</code> (arr_estimado, ou primeira_fatura × 12), mas a INCLUSÃO no gráfico e o TAMANHO de cada fatia usam o TCV da régua (calcReceitaMes). Consequência: deals de Diagnóstico, precificados por vida (vidas × R$/vida × 12), têm TCV positivo mas <code>_annualRev</code> = 0 | entram no gráfico e caem na fatia cinza "Sem receita", que por isso carrega uma parcela relevante do TCV total (hoje, quase metade | toda de Diagnóstico). Leia "Sem receita" como "sem arr_estimado/primeira_fatura preenchidos", não como "sem valor". Isso é escolha de leitura, não erro de cálculo | o TCV somado está correto.',
     fields: [
       ['primeira_fatura + modelo_remuneracao', 'Régua da receita (calcReceitaMes); TCV = soma dos 12 primeiros meses, com a entrada da corretagem.'],
       ['vidas', 'Bucket no modo Vidas; no Diagnóstico o TCV = vidas × R$/vida × 12.'],
@@ -1668,11 +1657,13 @@ function _novoHelpSection(c) {
   var filtLabels = NOVO_FILT_LABEL[NOVO_LANG] || NOVO_FILT_LABEL.pt;
   var filtTitle = NOVO_LANG === 'en' ? 'Period filter uses' : 'Filtro de período usa';
   var filtHtml = (fk && fk !== 'none') ? '<div style="margin:0 0 .65rem;padding:.5rem .65rem;background:var(--card2);border-radius:6px;border-left:3px solid var(--blue)"><div style="font-size:.61rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);font-weight:700;margin-bottom:.22rem">'+filtTitle+'</div><div style="font-size:.76rem;color:var(--text);line-height:1.5">'+(filtLabels[fk]||fk)+'</div></div>' : '';
+  var noteHtml = c.note ? '<div style="margin:0 0 .65rem;padding:.5rem .65rem;background:var(--card2);border-radius:6px;border-left:3px solid var(--yellow)"><div style="font-size:.61rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);font-weight:700;margin-bottom:.22rem">Ressalva</div><div style="font-size:.76rem;color:var(--text);line-height:1.5">'+c.note+'</div></div>' : '';
   return '<div style="margin-bottom:1.5rem">'+
     '<h3 style="font-size:.92rem;color:var(--text);margin:0 0 .25rem">'+c.title+codeTag+'</h3>'+
     '<p style="font-size:.8rem;line-height:1.6;color:var(--text2);margin:0 0 .5rem">'+c.desc+'</p>'+
     formulaHtml+
     filtHtml+
+    noteHtml+
     '<table class="lb" style="width:100%;font-size:.78rem"><thead><tr>'+
       '<th style="text-align:left">Campo HubSpot (interno)</th>'+
       '<th style="text-align:left">Como é usado</th>'+
@@ -1749,13 +1740,7 @@ var _nd = function(v) { if (!v) return '—'; var p = v.split('-'); return p.len
 var _nr = function(v) { return v != null ? Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—'; };
 
 function _calcProbInfo(d) {
-  var sp = _novoStageProbFor(d.stage, d.pipeline);
-  if (sp == null) return { sp: null, cp: null, final: null };
-  var cp = d.probabilidade;
-  if (cp == null) return { sp: sp, cp: null, final: sp };
-  if (cp <= sp - 0.3) return { sp: sp, cp: cp, final: sp * 0.9 };
-  if (cp >= sp + 0.3) return { sp: sp, cp: cp, final: sp * 1.1 };
-  return { sp: sp, cp: cp, final: sp };
+  return ProbEngine.calcProbInfo(d, { cfg: _novoStageProbCfg, funnelProbPipe: NOVO_FUNNEL_PROB_PIPE }); // fonte única (prob-engine.js)
 }
 
 function _novoDealsRows(deals) {

@@ -78,8 +78,7 @@ html[data-theme="light"] #novo-tip{background:rgba(246,248,250,.82)}
 #novo-tip .nt-text{font-size:.73rem;color:var(--text);font-weight:400;line-height:1.5}
 #novo-tip .nt-code{font-size:.62rem;font-weight:700;color:var(--teal);font-family:ui-monospace,Menlo,Consolas,monospace;margin-top:.3rem;padding-top:.28rem;border-top:1px solid rgba(255,255,255,.12);letter-spacing:.07em}
 html[data-theme="light"] #novo-tip .nt-code{border-top-color:rgba(0,0,0,.1)}
-.kpi-row{display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;margin-bottom:.75rem}
-@media(max-width:1100px){.kpi-row{grid-template-columns:repeat(2,1fr)}}
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.75rem;margin-bottom:.75rem}
 .tab-sub{display:inline-flex;background:var(--card2);border-radius:99px;padding:3px;gap:0;position:relative}
 .tab-sub-btn{background:transparent;border:none;border-radius:99px;color:var(--text2);padding:.3rem .9rem;cursor:pointer;font-size:.75rem;font-weight:500;transition:color .18s;position:relative;z-index:1}
 .tab-sub-btn.active{color:var(--text);font-weight:600}
@@ -91,10 +90,10 @@ html[data-theme="light"] .tab-sub-thumb{background:#fff;box-shadow:0 1px 4px rgb
 .bdr-fchip{background:var(--card2);border:1px solid var(--border);border-radius:99px;color:var(--text2);padding:.25rem .7rem;cursor:pointer;font-size:.72rem;font-weight:600;font-family:inherit;transition:all .15s}
 .bdr-fchip:hover{border-color:var(--teal);color:var(--text)}
 .bdr-fchip.on{background:var(--teal);border-color:var(--teal);color:#fff}
-.kpi-card{background:var(--card);border-radius:14px;padding:1.6rem 1.8rem}
+.kpi-card{background:var(--card);border-radius:14px;padding:clamp(1rem,.6rem+1.3vw,1.6rem) clamp(1.05rem,.5rem+1.6vw,1.8rem)}
 .kpi-click{cursor:pointer}
 .kpi-label{font-size:.66rem;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;line-height:1}
-.kpi-value{font-size:2rem;font-weight:800;line-height:1.1;margin:.35rem 0 .25rem}
+.kpi-value{font-size:clamp(1.35rem,.95rem+1.3vw,2rem);font-weight:800;line-height:1.1;margin:.35rem 0 .25rem}
 .kpi-sub{font-size:.7rem;color:var(--muted);line-height:1.35}
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:2000;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s linear;backdrop-filter:blur(5px)}
 .modal-overlay.open{opacity:1;pointer-events:auto}
