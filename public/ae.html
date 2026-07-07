@@ -302,7 +302,7 @@ var NOVO_I18N={
 function t(k){ return (NOVO_I18N[NOVO_LANG]||NOVO_I18N.pt)[k]||(NOVO_I18N.pt[k])||k; }
 function novoToggleLang(){ NOVO_LANG=NOVO_LANG==='pt'?'en':'pt'; try{localStorage.setItem('novo_lang',NOVO_LANG);}catch(e){} (function(_e){if(_e)_e.textContent=NOVO_LANG.toUpperCase();})(document.getElementById('novo-lang-label')); if(_novoDeals) novoRender(); }
 
-var AE_CARD_CODES={'kpi-active-deals':'P01','kpi-open-lives':'P02','kpi-won-lives':'P08','kpi-won-arr':'P07','kpi-stale':'S05','kpi-meetings':'P04','vidas-ae':'C01','arr':'A07','wonrev':'A08','winrate':'A09','monthly-won':'A10','pipeline-stage':'A11','aging':'A12','age-dist':'A13','radar':'A14','loss-reason':'A15','meeting-rate':'A16','efficiency':'A17','meeting-ae':'A18','velocity-stage':'A19'};
+var AE_CARD_CODES={'kpi-active-deals':'P01','kpi-open-lives':'P02','kpi-won-lives':'P08','kpi-won-arr':'P07','kpi-stale':'S05','kpi-meetings':'P04','vidas-ae':'C01','arr':'A07','wonrev':'A08','winrate':'A09','monthly-won':'A10','pipeline-stage':'A11','aging':'A12','age-dist':'A13','radar':'A14','loss-reason':'A15','meeting-rate':'A16','efficiency':'A17','meeting-ae':'A18','velocity-stage':'A19','meeting-alert':'A20'};
 var _novoShowInfo=(function(){try{return localStorage.getItem('ae_show_info')!=='0';}catch(e){return true;}})();
 function _codeTag(key){var c=AE_CARD_CODES[key]||'';return c?'<span class="novo-code-tag">'+c+'</span>':'';}
 function novoToggleInfo(){_novoShowInfo=!_novoShowInfo;document.body.classList.toggle('novo-info-on',_novoShowInfo);var b=document.getElementById('btn-info-toggle');if(b)b.classList.toggle('highlighted',_novoShowInfo);try{localStorage.setItem('ae_show_info',_novoShowInfo?'1':'0');}catch(e){}}
@@ -338,6 +338,10 @@ var AE_HELP_CHARTS=[
   {key:'meeting-ae',title:'Meeting Effectiveness by AE (A18)',
     desc:'Por AE (só executivos do time): deals que ENTRARAM em Reunião Agendada (data_reuniao_agendada preenchida; sem a data ficam fora), fatiados por a_reuniao_ocorreu_ (Sim | Não | sem preenchimento). O FILTRO DE PERÍODO do painel aplica sobre data_reuniao_agendada — mesma base e mesma contagem do A16. Hover mostra todas as fatias do AE juntas. Clique numa fatia para ver os deals.',
     fields:[['hubspot_owner_id','Define o AE (só time).'],['hs_v2_date_entered_1144746905','Base: deals com entrada em Reunião Agendada registrada.'],['a_reuniao_ocorreu_','Sim / Não / vazio; fatias da barra.']]},
+  {key:'meeting-alert',title:'Higiene de Reuniões Agendadas (A20)',
+    desc:'Triagem acionável dos deals na etapa Reunião Agendada (pipeline Vendas), agrupada por executivo. É um SNAPSHOT atual | NÃO segue o filtro de período do painel. Considera TODOS os owners (inclui BDRs e sem proprietário), não só o time. Deals de teste (nome com "teste") ficam fora. Clique num número para abrir os deals da situação. 4 situações: ⚪ Sem status (a data da reunião já passou e "A reunião ocorreu?" está vazio) | ❌ Não ocorreu, sem reagendamento | 🔴 Não ocorreu e reagendamento já vencido | ✅ Ocorreu, mas o deal segue parado na etapa.',
+    formula:'⚪ ocorreu=∅ & data_da_reuniao_com_executivo < hoje | ❌ ocorreu=Não & reagendamento=∅ | 🔴 ocorreu=Não & data_do_reagendamento_com_o_executivo < hoje | ✅ ocorreu=Sim & data_da_reuniao_com_executivo < hoje',
+    fields:[['dealstage','Só a etapa Reunião Agendada (Vendas).'],['a_reuniao_ocorreu_','Sim / Não / vazio | define a situação.'],['data_da_reuniao_com_executivo','Data agendada da reunião | "passou" = < hoje. No payload: data_reuniao_exec.'],['data_do_reagendamento_com_o_executivo','Data do reagendamento | vencido = < hoje. No payload: data_reagendamento_exec.'],['hubspot_owner_id','Executivo | agrupamento das linhas.'],['quantidade_de_colaboradores','Porte exibido no drill.']]},
   {key:'loss-reason',title:'Motivos de Perda por Deals (A15)',
     desc:'Contagem de deals PERDIDOS por motivo categórico. Considera deals em Perdido com close_date no período. Clique numa barra: a tabela lista os deals com o motivo E a justificativa em texto aberto (Motivo de Declínio/Perdido - Descrição).',
     fields:[['dealstage','Perdido.'],['closedate','Filtro de período.'],['motivo_do_declinio_ou_perdido','Motivo categórico (barras).'],['motivo_de_declinio_perdido___descricao','Texto aberto | coluna "Motivo declínio (texto)" do drill.']]},
@@ -776,6 +780,7 @@ function novoRender(){
       cWide('AE Efficiency | Deals vs Win Rate <span id="ae-eff-count" style="font-size:.68rem;color:var(--text2);font-weight:600;margin-left:.35rem;white-space:nowrap"></span>','Gráfico de bolhas por AE: eixo X = total de deals (abertos + ganhos + perdidos), eixo Y = win rate ajustado (ganhos ÷ (ganhos + perdidos)). O tamanho da bolha reflete as vidas em pipeline aberto. Só AEs do time. Clique numa bolha para ver os deals do AE.','efficiency',360,'',true)+
       // Seção Reuniões
       '<div class="section-hdr"><h2>Reuniões</h2></div>'+
+      '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header"><h3>Higiene de Reuniões Agendadas</h3>'+_infoBtn('Triagem dos deals na etapa Reunião Agendada (snapshot atual, NÃO segue o filtro de período). 4 situações acionáveis por executivo | clique num número para ver os deals. ⚪ Sem status = data da reunião passou e a_reuniao_ocorreu_ vazio | ❌ Não ocorreu sem reagendamento | 🔴 Não ocorreu e reagendamento vencido | ✅ Ocorreu mas o deal não avançou da etapa.','meeting-alert')+'</div><div id="ae-meeting-alert" style="margin-top:.5rem"></div></div>'+
       cWide('Meeting Rate Evolution (Monthly) <span id="ae-mr-count" style="font-size:.68rem;color:var(--text2);font-weight:600;margin-left:.35rem;white-space:nowrap"></span>','Mês a mês pela data de ENTRADA em Reunião Agendada: barras com o total do mês fatiadas por a_reuniao_ocorreu_ (Sim | Não | sem preenchimento); linha = Occurrence Rate = Sim ÷ (Sim + Não). SÓ executivos do time; deals sem a data ficam fora. O FILTRO DE PERÍODO do painel aplica sobre data_reuniao_agendada — mesma base e mesma contagem do A18. Hover mostra todas as fatias do mês juntas. Clique numa barra para ver os deals do mês.','meeting-rate',340)+
       cWide('Meeting Effectiveness by AE <span id="ae-mae-count" style="font-size:.68rem;color:var(--text2);font-weight:600;margin-left:.35rem;white-space:nowrap"></span>','Por AE (só executivos do time): deals que ENTRARAM em Reunião Agendada, fatiados por a_reuniao_ocorreu_ (Sim | Não | sem preenchimento). O FILTRO DE PERÍODO do painel aplica sobre data_reuniao_agendada — mesma base e mesma contagem do A16. Hover mostra todas as fatias do AE juntas. Clique numa barra para ver os deals do AE.','meeting-ae',340)+
       // Seção Perdas
@@ -800,6 +805,7 @@ function novoRender(){
   buildAEWinRate();
   buildAEEfficiency();
   buildAEMonthlyWon();
+  buildAEMeetingAlert();
   buildAEMeetingRate();
   buildAEMeetingByAE();
   buildAELossReason();
@@ -1170,6 +1176,111 @@ function buildAELossReason(){
 }
 
 function _aeMeetingClass(d){ var v=((d.reuniao_ocorreu==null?'':d.reuniao_ocorreu)+''); if(/sim/i.test(v)) return 'sim'; if(/n[aã]o/i.test(v)) return 'nao'; return 'vazio'; }
+
+// ── A20 | Alerta de Higiene de Reuniões ─────────────────────────────────────
+// Triagem acionável dos deals na etapa Reunião Agendada (Vendas). Snapshot atual (NÃO segue o
+// filtro de período), todos os owners. Mesmas 4 situações do relatório de reuniões do Slack.
+function _aeTodayStr(){ var d=new Date(); var m=d.getMonth()+1, dd=d.getDate(); return d.getFullYear()+'-'+(m<10?'0':'')+m+'-'+(dd<10?'0':'')+dd; }
+function _aeMtgAlertBase(){ return _rawDeals().filter(function(d){ return d.stage==='Reunião Agendada' && !/\bteste\b/i.test(d.dealname||''); }); }
+function _aeMtgAlertClass(d){
+  var today=_aeTodayStr(), occ=_aeMeetingClass(d);
+  if(occ==='vazio' && d.data_reuniao_exec && d.data_reuniao_exec<today) return 'sem_status';
+  if(occ==='nao' && !d.data_reagendamento_exec) return 'nao_sem_reag';
+  if(occ==='nao' && d.data_reagendamento_exec && d.data_reagendamento_exec<today) return 'nao_venc';
+  if(occ==='sim' && d.data_reuniao_exec && d.data_reuniao_exec<today) return 'ocorreu_parado';
+  return null;
+}
+var _AE_MTG_ALERT_BUCKETS=[
+  {key:'sem_status',emoji:'⚪',label:'Sem status',kpi:'Sem status',full:'Sem status registrado'},
+  {key:'nao_sem_reag',emoji:'❌',label:'Não ocorreu | sem reagend.',kpi:'Não ocorreu',full:'Não ocorreu | sem reagendamento'},
+  {key:'nao_venc',emoji:'🔴',label:'Reagend. vencido',kpi:'Reagend. vencido',full:'Não ocorreu | reagendamento vencido'},
+  {key:'ocorreu_parado',emoji:'✅',label:'Ocorreu | parado',kpi:'Ocorreu parado',full:'Ocorreu | parado na etapa'}
+];
+var _aeMtgAlertOwners=[];
+function buildAEMeetingAlert(){
+  var el=document.getElementById('ae-meeting-alert'); if(!el) return;
+  var byOwner={}, totals={sem_status:0,nao_sem_reag:0,nao_venc:0,ocorreu_parado:0}, grand=0;
+  _aeMtgAlertBase().forEach(function(d){
+    var cls=_aeMtgAlertClass(d); if(!cls) return;
+    var owner=(d.ae && d.ae!=='-')?d.ae:'(sem proprietário)';
+    var o=byOwner[owner]||(byOwner[owner]={sem_status:0,nao_sem_reag:0,nao_venc:0,ocorreu_parado:0,total:0});
+    o[cls]++; o.total++; totals[cls]++; grand++;
+  });
+  if(!grand){ el.innerHTML='<p style="color:var(--text2);padding:1rem 0">Nenhuma pendência de reunião | tudo em dia ✅</p>'; return; }
+  _aeMtgAlertOwners=Object.keys(byOwner).sort(function(a,b){ if(a==='(sem proprietário)')return 1; if(b==='(sem proprietário)')return -1; return byOwner[b].total-byOwner[a].total || a.localeCompare(b); });
+  var chips='<div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:1rem">'+_AE_MTG_ALERT_BUCKETS.map(function(b){
+    return '<div style="flex:1;min-width:130px;background:var(--card2);border-radius:8px;padding:.55rem .7rem;text-align:center">'+
+      '<div style="font-size:1.35rem;font-weight:700;color:var(--text)">'+b.emoji+' '+totals[b.key]+'</div>'+
+      '<div style="font-size:.63rem;color:var(--text2);text-transform:uppercase;letter-spacing:.04em;margin-top:.15rem">'+b.label+'</div></div>';
+  }).join('')+'</div>';
+  var head='<thead><tr><th style="text-align:left">Executivo</th>'+_AE_MTG_ALERT_BUCKETS.map(function(b){return '<th>'+b.emoji+'</th>';}).join('')+'<th>Total</th></tr></thead>';
+  var rows=_aeMtgAlertOwners.map(function(o,idx){
+    var od=byOwner[o];
+    var tds=_AE_MTG_ALERT_BUCKETS.map(function(b){
+      var n=od[b.key];
+      if(!n) return '<td style="color:var(--muted)">—</td>';
+      return '<td><a href="#" onclick="event.preventDefault();aeMtgAlertDrill('+idx+',\''+b.key+'\')" style="color:var(--teal);font-weight:700;text-decoration:none">'+n+'</a></td>';
+    }).join('');
+    return '<tr><td style="text-align:left;font-weight:600">'+_ne(o)+'</td>'+tds+'<td style="font-weight:700">'+od.total+'</td></tr>';
+  }).join('');
+  el.innerHTML=chips+'<table class="lb" style="width:100%">'+head+'<tbody>'+rows+'</tbody></table>';
+}
+// Drill do A20 | modal com cross-filter (Executivo × Situação) sobre TODA a base de Reunião
+// Agendada nas 4 situações. Abre pré-filtrado no executivo + situação do número clicado; os chips
+// permitem alternar (Todos, outra situação, outro executivo). Colunas: datas + dias derivados.
+function _aeMtgOwner(d){ return (d.ae && d.ae!=='-') ? d.ae : '(sem proprietário)'; }
+function _aeDaysSince(dateStr){ if(!dateStr) return null; var t=Date.now()-new Date(dateStr+'T00:00:00').getTime(); return Math.floor(t/86400000); }
+var _aeMtgModAll=[], _aeMtgModAe=null, _aeMtgModSit=null;
+function aeMtgModFilter(dim,val){ if(dim==='ae') _aeMtgModAe=(val==='__all'?null:val); else _aeMtgModSit=(val==='__all'?null:val); _aeMtgModRender(); }
+function _aeMtgChipRow(lbl,dim,cur,items){
+  var total=items.reduce(function(s,i){return s+i.count;},0);
+  return '<div style="margin-bottom:.5rem;display:flex;gap:.45rem;flex-wrap:wrap;align-items:center"><span style="font-size:.68rem;color:var(--text2);font-weight:700;margin-right:.2rem">'+lbl+'</span>'+
+    '<button class="stage-chip'+(!cur?' active':'')+'" onclick="aeMtgModFilter(\''+dim+'\',\'__all\')">'+(NOVO_LANG==='en'?'All':'Todos')+' <span class="chip-count">'+total+'</span></button>'+
+    items.map(function(it){return '<button class="stage-chip'+(cur===it.key?' active':'')+'" onclick="aeMtgModFilter(\''+dim+'\',\''+String(it.key).replace(/'/g,"\\'")+'\')">'+it.label+' <span class="chip-count">'+it.count+'</span></button>';}).join('')+'</div>';
+}
+function _aeMtgModRow(d){
+  var hsUrl=d.hs_id?'https://app.hubspot.com/contacts/44715285/deal/'+d.hs_id:'#';
+  var nameCell=d.hs_id?'<a href="'+hsUrl+'" target="_blank" rel="noopener" style="color:var(--teal);text-decoration:none">'+_ne(d.dealname)+'</a>':_ne(d.dealname);
+  var b=_AE_MTG_ALERT_BUCKETS.filter(function(x){return x.key===_aeMtgAlertClass(d);})[0];
+  var dReu=_aeDaysSince(d.data_reuniao_exec), dReag=_aeDaysSince(d.data_reagendamento_exec), dAtv=d.dias_sem_atividade;
+  var col=function(v,warn){ return '<td style="'+(v!=null&&warn&&v>warn?'color:var(--red);font-weight:700':'')+'">'+(v!=null?_ni(v):'—')+'</td>'; };
+  return '<tr>'+
+    '<td style="text-align:left;min-width:150px;max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+nameCell+'</td>'+
+    '<td style="text-align:left;white-space:nowrap">'+_ne(_aeMtgOwner(d))+'</td>'+
+    '<td style="white-space:nowrap">'+(b?b.emoji+' '+b.label:'—')+'</td>'+
+    '<td style="white-space:nowrap">'+_nd(d.data_reuniao_exec)+'</td>'+
+    '<td style="white-space:nowrap">'+_nd(d.data_reagendamento_exec)+'</td>'+
+    col(dReu,60)+col(dReag,30)+col(dAtv,30)+
+    '</tr>';
+}
+function _aeMtgModRender(){
+  var bySit=_aeMtgModSit?_aeMtgModAll.filter(function(d){return _aeMtgAlertClass(d)===_aeMtgModSit;}):_aeMtgModAll;
+  var byAe=_aeMtgModAe?_aeMtgModAll.filter(function(d){return _aeMtgOwner(d)===_aeMtgModAe;}):_aeMtgModAll;
+  var list=_aeMtgModAll.filter(function(d){return (!_aeMtgModAe||_aeMtgOwner(d)===_aeMtgModAe)&&(!_aeMtgModSit||_aeMtgAlertClass(d)===_aeMtgModSit);})
+    .sort(function(a,b){return (_aeDaysSince(b.data_reuniao_exec)||0)-(_aeDaysSince(a.data_reuniao_exec)||0);});
+  // 4 KPIs-filtro (situação) no topo | contagem sobre o subconjunto filtrado por executivo (byAe).
+  // Clicar seleciona a situação; clicar na já ativa volta para "todas".
+  var kp=document.getElementById('ae-mtgmod-kpis');
+  if(kp)kp.innerHTML='<div style="display:flex;gap:.55rem;flex-wrap:wrap;margin-bottom:.9rem">'+_AE_MTG_ALERT_BUCKETS.map(function(b){
+    var n=byAe.filter(function(d){return _aeMtgAlertClass(d)===b.key;}).length, on=_aeMtgModSit===b.key;
+    return '<div onclick="aeMtgModFilter(\'sit\',\''+(on?'__all':b.key)+'\')" style="flex:1;min-width:120px;cursor:pointer;background:var(--card2);border:2px solid '+(on?'var(--teal)':'transparent')+';border-radius:8px;padding:.5rem .7rem;text-align:center">'+
+      '<div style="font-size:1.3rem;font-weight:700;color:var(--text)">'+b.emoji+' '+n+'</div>'+
+      '<div style="font-size:.62rem;color:var(--text2);text-transform:uppercase;letter-spacing:.04em;margin-top:.12rem">'+b.kpi+'</div></div>';
+  }).join('')+'</div>';
+  var aeCounts={}; bySit.forEach(function(d){var k=_aeMtgOwner(d);aeCounts[k]=(aeCounts[k]||0)+1;});
+  var aeItems=Object.keys(aeCounts).sort(function(a,b){ if(a==='(sem proprietário)')return 1; if(b==='(sem proprietário)')return -1; return aeCounts[b]-aeCounts[a]||a.localeCompare(b); }).map(function(k){return {key:k,label:_ne(k),count:aeCounts[k]};});
+  var ch=document.getElementById('ae-mtgmod-chips'); if(ch)ch.innerHTML=_aeMtgChipRow('Executivo','ae',_aeMtgModAe,aeItems);
+  var head='<thead><tr><th style="text-align:left">Deal</th><th style="text-align:left">Executivo</th><th style="text-align:left">Situação</th><th>Data reunião</th><th>Data reagend.</th><th>Dias desde reunião</th><th>Dias desde reagend.</th><th>Dias s/ atividade</th></tr></thead>';
+  var tb=document.getElementById('ae-mtgmod-table'); if(tb)tb.innerHTML=list.length?'<table class="lb">'+head+'<tbody>'+list.map(_aeMtgModRow).join('')+'</tbody></table>':'<p style="color:var(--text2);padding:1rem 0">Nenhum deal.</p>';
+}
+function aeMtgAlertDrill(idx,bucket){
+  _aeMtgModAll=_aeMtgAlertBase().filter(function(d){return _aeMtgAlertClass(d)!=null;});
+  var owner=(idx==null?null:_aeMtgAlertOwners[idx]);
+  _aeMtgModAe=owner||null;
+  _aeMtgModSit=bucket||null;
+  openModal('Higiene de Reuniões Agendadas ('+_aeMtgModAll.length+')','<div id="ae-mtgmod-kpis"></div><div id="ae-mtgmod-chips"></div><div id="ae-mtgmod-table"></div>');
+  _aeMtgModRender();
+}
 // Base COMUM de A16 e A18 (mesma contagem nos dois): deals do time de executivos com entrada
 // em Reunião Agendada, e o FILTRO DE PERÍODO do painel aplica sobre data_reuniao_agendada.
 function _aeMeetingBase(){ return _rawDeals().filter(function(d){ return d.data_reuniao_agendada && _isCoreAE(d.ae) && _inWinStrict(d.data_reuniao_agendada); }); }
