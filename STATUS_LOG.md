@@ -2051,3 +2051,4 @@ Registro curto, uma linha por interação (a cada alteração).
 - **Drilldowns:** clique em KPI abre os deals que compõem o número; clique na linha temporal abre breakdown semanal; clique em ranking de BDR abre os deals daquele BDR; clique em quebras por origem/indústria/persona/porte abre os deals daquele bucket.
 - **Modal padrão:** mostra KPIs do recorte (deals, no-show confirmado, campo pendente, pipeline) + tabela com Deal, BDR, AE, reunião, campo, status, etapa, persona, indústria e pipeline.
 - **Cache bust:** JS atualizado para `/bdr-no-show.js?v=4`.
+- **Validação e deploy:** `node --check public/bdr-no-show.js`, `_check-inline-js` OK, reviewer code PASS. Commit `62e4781`. Deploy Vercel `dpl_8GSWoQsvqrfdkhALt4EgrgGvbKhU` READY. Produção validada: `/novo-bdr/no-show` 200, HTML contém JS v4 + modal + hover, JS v4 contém `openDrill`, `hover-tip` e handler `noShowRate`; API sem sessão 401.
