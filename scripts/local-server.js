@@ -56,8 +56,11 @@ const REWRITES = {
   '/novo-ae': '/ae.html',
   '/novo-bdr': '/bdr.html',
   '/novo-bdr/no-show': '/bdr-no-show.html',
+  '/novo-bdr/list-attack': '/bdr-list-attack.html',
   '/dashboard/bdr/no-show': '/bdr-no-show.html',
+  '/dashboard/bdr/list-attack': '/bdr-list-attack.html',
   '/novo-bdr-no-show': '/bdr-no-show.html',
+  '/novo-bdr-list-attack': '/bdr-list-attack.html',
   '/novo-board': '/board.html',
   '/novo-48h': '/48h.html',
   '/novo-cs': '/cs.html',
@@ -216,6 +219,7 @@ server.listen(PORT, () => {
   console.log(`   NOVO (visual)→  http://localhost:${PORT}/novo`);
   console.log(`   Forecast     →  http://localhost:${PORT}/forecast`);
   console.log(`   No Show BDR  →  http://localhost:${PORT}/novo-bdr/no-show`);
+  console.log(`   Ataque Lista →  http://localhost:${PORT}/novo-bdr/list-attack`);
   console.log('');
   console.log(`   Auth bypass  →  ATIVO (LOCAL_DEV_BYPASS=true)`);
   console.log(`   HubSpot data →  ${process.env.HUBSPOT_TOKEN ? 'token presente ✔' : 'sem token (UI carrega, dados não)'}`);

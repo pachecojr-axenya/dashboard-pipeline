@@ -129,6 +129,7 @@ Vercel (Node 18+) · HubSpot CRM API v3 · Google OAuth (auth) · hospedagem Ver
 | `/novo-board` | `public/board.html` | Board View |
 | `/novo-ae` | `public/ae.html` | AE Performance |
 | `/novo-bdr` | `public/bdr.html` | BDR Performance |
+| `/novo-bdr/list-attack` | `public/bdr-list-attack.html` | BDR Performance \| Ataque à Lista |
 | `/novo-48h` | `public/48h.html` | Last 48h |
 | `/novo-cs` | `public/cs.html` | CS Dashboard |
 | `/novo-cotacao` | `public/cotacao.html` | Cotação |
