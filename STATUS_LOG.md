@@ -2052,3 +2052,13 @@ Registro curto, uma linha por interação (a cada alteração).
 - **Modal padrão:** mostra KPIs do recorte (deals, no-show confirmado, campo pendente, pipeline) + tabela com Deal, BDR, AE, reunião, campo, status, etapa, persona, indústria e pipeline.
 - **Cache bust:** JS atualizado para `/bdr-no-show.js?v=4`.
 - **Validação e deploy:** `node --check public/bdr-no-show.js`, `_check-inline-js` OK, reviewer code PASS. Commit `62e4781`. Deploy Vercel `dpl_8GSWoQsvqrfdkhALt4EgrgGvbKhU` READY. Produção validada: `/novo-bdr/no-show` 200, HTML contém JS v4 + modal + hover, JS v4 contém `openDrill`, `hover-tip` e handler `noShowRate`; API sem sessão 401.
+
+### BDR No-Show | luzinha + `i` em rankings/quebras/tabelas (2026-07-07)
+
+> Correção de acabamento após feedback: ao abrir No Show, a luzinha/status sumia e nem todos os blocos tinham ícone de informação.
+
+- **Luzinha/status:** adicionada `health-dot g` no título/header e no item do menu lateral de No Show. `premium.js` também passou a preservar health do item canônico `/novo-bdr/no-show` e o HTML usa `premium.js?v=6` para evitar cache antigo sem dot.
+- **Ícones `i` adicionais:** rankings, quebras por origem/indústria/persona/porte, tabela de campo pendente, tabela operacional, perdidos por no-show e cards de storytelling ganharam `i` com drawer explicativo.
+- **Explicações:** adicionadas fichas específicas para ranking por volume, ranking fora do prazo, cada quebra, cada tabela e leitura executiva. Mantém o padrão das outras páginas: hover = rótulo; clique = explicação completa.
+- **Fonte do menu nesta subpágina:** No Show é página estática isolada e depende do menu canônico reconstruído por `premium.js` no `DOMContentLoaded`. Para esta rota, a saúde do item `/novo-bdr/no-show` é fonte única no `NAV_MODEL` de `premium.js` + `health-dot g` local no header. Não há bloco `PANELS` inline nesta página.
+- **Validações locais:** repo vanilla sem build/bundler. Gates usados: `node --check public/bdr-no-show.js`, `node --check public/premium.js`, `node scripts/_check-inline-js.js public/bdr-no-show.html`, parse de `vercel.json`, smoke local 200 em `/novo-bdr/no-show`, `/premium.js?v=6` e `/bdr-no-show.js?v=4`.

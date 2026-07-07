@@ -433,12 +433,13 @@
   }
 
   function renderRank(title, rows, mode) {
+    var infoKey = mode === 'outside' ? 'rankOutside' : 'rankVolume';
     var list = rankRows(rows, 'bdr', mode).map(function (r) {
       var val = mode === 'outside' ? fmtInt(r.outside) : fmtInt(r.noShows);
       var meta = mode === 'outside' ? fmtPct(r.outRate) + ' dos no-shows' : fmtPct(r.rate) + ' de taxa';
       return '<div class="rank-row clickable-row" data-rank-mode="' + esc(mode) + '" data-rank-name="' + esc(r.name) + '" data-hover-title="' + esc(r.name) + '" data-hover-text="Clique para abrir os deals deste BDR no ranking."><div><div class="rank-name">' + esc(r.name) + '</div><div class="rank-meta">' + esc(meta) + '</div></div><span class="pill ' + (mode === 'outside' && r.outside ? 'bad' : 'warn') + '">' + esc(val) + '</span><span class="rank-meta right">n=' + fmtInt(r.total) + '</span></div>';
     }).join('');
-    return '<div class="card span-4"><h2>' + esc(title) + '</h2><div class="desc">Ordena por quantidade e desempata por taxa | n = reuniões agendadas</div>' + (list || '<div class="muted">Sem dados no filtro atual</div>') + '</div>';
+    return '<div class="card span-4"><div class="card-title"><div><h2>' + esc(title) + '</h2><div class="desc">Ordena por quantidade e desempata por taxa | n = reuniões agendadas</div></div>' + infoBtn(infoKey) + '</div>' + (list || '<div class="muted">Sem dados no filtro atual</div>') + '</div>';
   }
 
   var CALC_HELP = {
@@ -456,6 +457,16 @@
     pipelineRisk: ['Pipeline em risco', 'SUM(ARR estimado) de no-shows abertos', 'ARR = arr_estimado, fallback primeira_fatura × 12, fallback premio_mensal × 12.'],
     pipelineLost: ['Pipeline perdido', 'SUM(ARR estimado) de perdidos com evidência de no-show', 'Usa motivo do declínio e descrição como suporte textual.'],
     timeline: ['Linha temporal semanal', 'Por semana: agendadas, no-show confirmado e campo pendente', 'Ajuda a separar problema operacional de reunião de problema de preenchimento.']
+    ,rankVolume: ['Ranking por volume de no-show', 'Por BDR: COUNT(no-show confirmado), desempate por taxa', 'Quantidade vem antes da taxa para priorizar onde cobrar primeiro. n = reuniões agendadas do BDR no filtro.']
+    ,rankOutside: ['Ranking por fora do prazo', 'Por BDR: COUNT(no-show aberto fora do SLA), desempate por % dos no-shows', 'Mostra quem tem mais recuperação atrasada, não quem tem maior taxa em amostra pequena.']
+    ,breakOrigem: ['Quebra por origem', 'Agrupa por origem__originacao_ do deal e calcula no-shows / total do bucket', 'Usa campo estruturado do deal. Clique em cada bucket para ver os deals.']
+    ,breakSegment: ['Quebra por indústria', 'Agrupa por company.industry e calcula no-shows / total do bucket', 'Vem da Company associada; sem inferência por nome/texto do deal.']
+    ,breakPersona: ['Quebra por persona', 'Agrupa por contact.jobtitle classificado em senioridade + área', 'Vem do Contact associado. A classificação é regex determinística sobre o cargo.']
+    ,breakPorte: ['Quebra por porte | vidas', 'Agrupa por faixa de vidas/colaboradores e calcula no-shows / total do bucket', 'Usa vidas como preferência e colaboradores como fallback.']
+    ,fieldTable: ['Tabela de campo pendente', 'Lista reuniões passadas com a_reuniao_ocorreu_ vazio', 'É fila de higiene de CRM: não conta como no-show confirmado sem outra evidência.']
+    ,recoveryTable: ['Tabela operacional de recuperação', 'Lista no-shows confirmados abertos, ordenados por risco', 'Risco combina no-show, fora de SLA, dias sem atividade e valor de pipeline.']
+    ,lostTable: ['Perdidos por no-show', 'Lista deals Perdidos com evidência textual de no-show no motivo/descrição', 'Texto é usado aqui como suporte final porque a perda já aconteceu.']
+    ,story: ['Leitura executiva', 'Resume no-shows confirmados, campo pendente e BDR prioritário', 'É uma camada de storytelling; os números vêm dos mesmos filtros e métricas dos cards.']
   };
 
   function openHelp(key) {
@@ -487,9 +498,9 @@
     var bdrRows = rankRows(rows, 'bdr', 'rate');
     var top = bdrRows[0];
     return '<div class="story-grid">' +
-      '<div class="story-card"><b>Leitura executiva</b><span>' + fmtInt(m.noShows) + ' no-shows confirmados e ' + fmtInt(m.fieldMissingPast) + ' reuniões passadas sem campo preenchido. O painel separa performance real de higiene de CRM.</span></div>' +
-      '<div class="story-card"><b>Onde cobrar primeiro</b><span>' + (top ? esc(top.name) + ' concentra ' + fmtInt(top.noShows) + ' no-shows confirmados no filtro atual.' : 'Sem concentração relevante no filtro atual.') + '</span></div>' +
-      '<div class="story-card"><b>Regra de classificação</b><span>Propriedades e atividades vêm primeiro. Texto só fecha casos ambíguos de no-show, remarcação ou perda.</span></div>' +
+      '<div class="story-card"><div class="story-head"><b>Leitura executiva</b>' + infoBtn('story') + '</div><span>' + fmtInt(m.noShows) + ' no-shows confirmados e ' + fmtInt(m.fieldMissingPast) + ' reuniões passadas sem campo preenchido. O painel separa performance real de higiene de CRM.</span></div>' +
+      '<div class="story-card"><div class="story-head"><b>Onde cobrar primeiro</b>' + infoBtn('rankVolume') + '</div><span>' + (top ? esc(top.name) + ' concentra ' + fmtInt(top.noShows) + ' no-shows confirmados no filtro atual.' : 'Sem concentração relevante no filtro atual.') + '</span></div>' +
+      '<div class="story-card"><div class="story-head"><b>Regra de classificação</b>' + infoBtn('noShow') + '</div><span>Propriedades e atividades vêm primeiro. Texto só fecha casos ambíguos de no-show, remarcação ou perda.</span></div>' +
       '</div>';
   }
 
@@ -503,6 +514,8 @@
   }
 
   function renderBreak(title, rows, key) {
+    var infoByKey = { origem: 'breakOrigem', segment: 'breakSegment', persona: 'breakPersona', porte: 'breakPorte' };
+    var infoKey = infoByKey[key] || 'noShow';
     var g = group(rows, key);
     var items = Object.keys(g).map(function (k) {
       var arr = g[k];
@@ -513,7 +526,7 @@
     var html = items.map(function (x) {
       return '<div class="break-row clickable-row" data-break-key="' + esc(key) + '" data-break-name="' + esc(x.name) + '" data-hover-title="' + esc(x.name) + '" data-hover-text="Clique para abrir os deals desta quebra."><div class="break-name">' + esc(x.name) + '</div><div class="break-val">' + fmtInt(x.ns) + '</div><div class="break-val">' + fmtPct(x.rate) + '</div><div class="break-track"><div class="break-fill" style="width:' + Math.round(x.ns / max * 100) + '%"></div></div></div>';
     }).join('');
-    return '<div class="card span-4"><h2>' + esc(title) + '</h2><div class="desc">No-shows | volume | taxa</div><div class="break-list">' + (html || '<div class="muted">Sem dados</div>') + '</div></div>';
+    return '<div class="card span-4"><div class="card-title"><div><h2>' + esc(title) + '</h2><div class="desc">No-shows | volume | taxa</div></div>' + infoBtn(infoKey) + '</div><div class="break-list">' + (html || '<div class="muted">Sem dados</div>') + '</div></div>';
   }
 
   function hubspotUrl(id) { return id ? 'https://app.hubspot.com/contacts/44715285/deal/' + encodeURIComponent(id) : '#'; }
@@ -589,7 +602,7 @@
       var slaClass = r.businessDays == null ? 'warn' : (r.outsideSla ? 'bad' : 'good');
       return '<tr><td><a class="deal-link" href="' + hubspotUrl(r.id) + '" target="_blank" rel="noopener">' + esc(r.name) + '</a></td><td>' + esc(r.bdr) + '</td><td>' + esc(r.ae) + '</td><td>' + esc(r.meetingIso) + '</td><td>' + esc(r.meetingFieldStatus) + '</td><td>' + esc(r.status) + '</td><td class="right">' + esc(r.businessDays == null ? '—' : r.businessDays) + '</td><td><span class="pill ' + slaClass + '">' + slaLabel + '</span></td><td class="right">' + fmtMoney(r.arr) + '</td><td class="right">' + fmtInt(r.risk) + '</td></tr>';
     }).join('');
-    return '<div class="card span-12"><h2>Tabela operacional de recuperação</h2><div class="desc">No-shows confirmados priorizados por risco | limitado a 100 linhas</div><div class="table-wrap"><table><thead><tr><th>Deal</th><th>BDR</th><th>AE</th><th>Reunião</th><th>Campo</th><th>Status</th><th class="right">Dias úteis</th><th>SLA</th><th class="right">Pipeline</th><th class="right">Risco</th></tr></thead><tbody>' + (body || '<tr><td colspan="10" class="muted">Nenhum no-show aberto no filtro atual</td></tr>') + '</tbody></table></div></div>';
+    return '<div class="card span-12"><div class="card-title"><div><h2>Tabela operacional de recuperação</h2><div class="desc">No-shows confirmados priorizados por risco | limitado a 100 linhas</div></div>' + infoBtn('recoveryTable') + '</div><div class="table-wrap"><table><thead><tr><th>Deal</th><th>BDR</th><th>AE</th><th>Reunião</th><th>Campo</th><th>Status</th><th class="right">Dias úteis</th><th>SLA</th><th class="right">Pipeline</th><th class="right">Risco</th></tr></thead><tbody>' + (body || '<tr><td colspan="10" class="muted">Nenhum no-show aberto no filtro atual</td></tr>') + '</tbody></table></div></div>';
   }
 
   function renderFieldTable(rows) {
@@ -597,7 +610,7 @@
     var body = arr.map(function (r) {
       return '<tr><td><a class="deal-link" href="' + hubspotUrl(r.id) + '" target="_blank" rel="noopener">' + esc(r.name) + '</a></td><td>' + esc(r.bdr) + '</td><td>' + esc(r.ae) + '</td><td>' + esc(r.meetingIso) + '</td><td class="right">' + esc(r.businessDays == null ? '—' : r.businessDays) + '</td><td>' + esc(r.lastActivity) + '</td><td>' + esc(r.stage) + '</td><td>' + esc(r.persona) + '<div class="muted">' + esc(r.personaSource) + '</div></td><td>' + esc(r.segment) + '<div class="muted">' + esc(r.segmentSource) + '</div></td></tr>';
     }).join('');
-    return '<div class="card span-12"><h2>Reunião passou | campo sem preenchimento</h2><div class="desc">Fila de higiene de CRM: a data da reunião passou, mas a_reuniao_ocorreu_ ainda não está Sim ou Não</div><div class="table-wrap"><table><thead><tr><th>Deal</th><th>BDR</th><th>AE</th><th>Reunião</th><th class="right">Dias úteis</th><th>Última atividade</th><th>Etapa</th><th>Persona</th><th>Indústria</th></tr></thead><tbody>' + (body || '<tr><td colspan="9" class="muted">Nenhuma reunião passada com campo pendente no filtro atual</td></tr>') + '</tbody></table></div></div>';
+    return '<div class="card span-12"><div class="card-title"><div><h2>Reunião passou | campo sem preenchimento</h2><div class="desc">Fila de higiene de CRM: a data da reunião passou, mas a_reuniao_ocorreu_ ainda não está Sim ou Não</div></div>' + infoBtn('fieldTable') + '</div><div class="table-wrap"><table><thead><tr><th>Deal</th><th>BDR</th><th>AE</th><th>Reunião</th><th class="right">Dias úteis</th><th>Última atividade</th><th>Etapa</th><th>Persona</th><th>Indústria</th></tr></thead><tbody>' + (body || '<tr><td colspan="9" class="muted">Nenhuma reunião passada com campo pendente no filtro atual</td></tr>') + '</tbody></table></div></div>';
   }
 
   function renderLostTable(rows) {
@@ -605,7 +618,7 @@
     var body = arr.map(function (r) {
       return '<tr><td><a class="deal-link" href="' + hubspotUrl(r.id) + '" target="_blank" rel="noopener">' + esc(r.name) + '</a></td><td>' + esc(r.bdr) + '</td><td>' + esc(r.ae) + '</td><td>' + esc(r.meetingIso) + '</td><td>' + esc(r.origem) + '</td><td>' + esc(r.porte) + '</td><td>' + esc(r.lostReason) + '</td><td class="right">' + fmtMoney(r.arr) + '</td></tr>';
     }).join('');
-    return '<div class="card span-12"><h2>Perdidos por no-show</h2><div class="desc">Deals perdidos com evidência textual de no-show no motivo ou descrição</div><div class="table-wrap"><table><thead><tr><th>Deal</th><th>BDR</th><th>AE</th><th>Reunião</th><th>Origem</th><th>Porte</th><th>Motivo</th><th class="right">Pipeline perdido</th></tr></thead><tbody>' + (body || '<tr><td colspan="8" class="muted">Nenhum perdido por no-show no filtro atual</td></tr>') + '</tbody></table></div></div>';
+    return '<div class="card span-12"><div class="card-title"><div><h2>Perdidos por no-show</h2><div class="desc">Deals perdidos com evidência textual de no-show no motivo ou descrição</div></div>' + infoBtn('lostTable') + '</div><div class="table-wrap"><table><thead><tr><th>Deal</th><th>BDR</th><th>AE</th><th>Reunião</th><th>Origem</th><th>Porte</th><th>Motivo</th><th class="right">Pipeline perdido</th></tr></thead><tbody>' + (body || '<tr><td colspan="8" class="muted">Nenhum perdido por no-show no filtro atual</td></tr>') + '</tbody></table></div></div>';
   }
 
   function render() {
