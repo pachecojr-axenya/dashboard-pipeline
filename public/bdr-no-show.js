@@ -373,11 +373,12 @@
   }
 
   function infoBtn(key) {
-    return '<button type="button" class="calc-btn" data-help="' + esc(key) + '" aria-label="Ver memória de cálculo">i</button>';
+    var h = CALC_HELP[key];
+    return '<button type="button" class="calc-btn" data-help="' + esc(key) + '" data-hover-title="' + esc(h ? h[0] : 'Memória de cálculo') + '" data-hover-text="' + esc(h ? h[1] : 'Clique para abrir a ficha completa') + '" aria-label="Ver memória de cálculo">i</button>';
   }
 
   function kpi(label, value, sub, cls, key) {
-    return '<div class="kpi ' + (cls || '') + '"><div class="label"><span>' + esc(label) + '</span>' + (key ? infoBtn(key) : '') + '</div><div class="value">' + value + '</div><div class="sub">' + esc(sub || '') + '</div></div>';
+    return '<div class="kpi clickable ' + (cls || '') + '" data-drill="' + esc(key || '') + '" data-hover-title="' + esc(label) + '" data-hover-text="Clique para abrir os deals que compõem este card. Passe no i para a fórmula."><div class="label"><span>' + esc(label) + '</span>' + (key ? infoBtn(key) : '') + '</div><div class="value">' + value + '</div><div class="sub">' + esc(sub || '') + '</div></div>';
   }
 
   function renderKpis(m) {
@@ -418,7 +419,7 @@
     var w = 760, h = 240, p = 34;
     var labels = keys.map(function (k, i) { var x = p + Math.round(i / Math.max(1, keys.length - 1) * (w - p * 2)); return '<text x="' + x + '" y="232" text-anchor="middle">' + esc(k.replace('-', ' ')) + '</text>'; }).join('');
     var svg = keys.length ? '<svg class="line-svg" viewBox="0 0 ' + w + ' ' + h + '" role="img" aria-label="Linha temporal semanal"><line x1="' + p + '" y1="20" x2="' + p + '" y2="210"/><line x1="' + p + '" y1="210" x2="730" y2="210"/><text x="8" y="24">' + fmtInt(max) + '</text><text x="18" y="214">0</text><polyline class="ln scheduled" points="' + svgPoints(scheduled, max, w, h, p) + '"/><polyline class="ln no-show" points="' + svgPoints(noShows, max, w, h, p) + '"/><polyline class="ln pending" points="' + svgPoints(pending, max, w, h, p) + '"/>' + labels + '</svg>' : '<div class="muted">Sem semanas com reunião no filtro atual</div>';
-    return '<div class="card span-8"><div class="card-title"><div><h2>Linha temporal semanal</h2><div class="desc">Agendadas, no-show confirmado e campo pendente por semana</div></div>' + infoBtn('timeline') + '</div><div class="line-legend"><span><i class="scheduled"></i>Agendadas</span><span><i class="no-show"></i>No-show confirmado</span><span><i class="pending"></i>Campo pendente</span></div><div class="trend line-chart">' + svg + '</div></div>';
+    return '<div class="card span-8"><div class="card-title"><div><h2>Linha temporal semanal</h2><div class="desc">Agendadas, no-show confirmado e campo pendente por semana</div></div>' + infoBtn('timeline') + '</div><div class="line-legend"><span><i class="scheduled"></i>Agendadas</span><span><i class="no-show"></i>No-show confirmado</span><span><i class="pending"></i>Campo pendente</span></div><div class="trend line-chart clickable" data-drill="timeline" data-hover-title="Linha temporal" data-hover-text="Clique para abrir a tabela semanal com volumes, taxa de no-show e pendências do campo.">' + svg + '</div></div>';
   }
 
   function rankRows(rows, key, mode) {
@@ -435,7 +436,7 @@
     var list = rankRows(rows, 'bdr', mode).map(function (r) {
       var val = mode === 'outside' ? fmtInt(r.outside) : fmtInt(r.noShows);
       var meta = mode === 'outside' ? fmtPct(r.outRate) + ' dos no-shows' : fmtPct(r.rate) + ' de taxa';
-      return '<div class="rank-row"><div><div class="rank-name">' + esc(r.name) + '</div><div class="rank-meta">' + esc(meta) + '</div></div><span class="pill ' + (mode === 'outside' && r.outside ? 'bad' : 'warn') + '">' + esc(val) + '</span><span class="rank-meta right">n=' + fmtInt(r.total) + '</span></div>';
+      return '<div class="rank-row clickable-row" data-rank-mode="' + esc(mode) + '" data-rank-name="' + esc(r.name) + '" data-hover-title="' + esc(r.name) + '" data-hover-text="Clique para abrir os deals deste BDR no ranking."><div><div class="rank-name">' + esc(r.name) + '</div><div class="rank-meta">' + esc(meta) + '</div></div><span class="pill ' + (mode === 'outside' && r.outside ? 'bad' : 'warn') + '">' + esc(val) + '</span><span class="rank-meta right">n=' + fmtInt(r.total) + '</span></div>';
     }).join('');
     return '<div class="card span-4"><h2>' + esc(title) + '</h2><div class="desc">Ordena por quantidade e desempata por taxa | n = reuniões agendadas</div>' + (list || '<div class="muted">Sem dados no filtro atual</div>') + '</div>';
   }
@@ -462,6 +463,17 @@
     if (!h) return;
     $('help-title').textContent = h[0];
     $('help-body').innerHTML = '<div class="help-block"><b>Fórmula</b><code>' + esc(h[1]) + '</code></div><div class="help-block"><b>Premissa</b><p>' + esc(h[2]) + '</p></div><div class="help-block"><b>Fonte</b><p>GET /api/forecast-table?includeLost=true&includeContext=true | Deal, Contact e Company associados.</p></div>';
+    $('help-backdrop').classList.add('open');
+    $('help-drawer').classList.add('open');
+  }
+
+  function openAllHelp() {
+    var keys = Object.keys(CALC_HELP);
+    $('help-title').textContent = 'Campos HubSpot | No Show';
+    $('help-body').innerHTML = '<p style="font-size:.8rem;color:var(--muted);line-height:1.55;margin:0 0 1rem">Padrão do dashboard: passar o mouse no i mostra o rótulo; clicar abre a ficha. Clicar em cards, linhas e gráficos abre os deals ou o breakdown correspondente.</p>' + keys.map(function (k) {
+      var h = CALC_HELP[k];
+      return '<div class="help-block"><b>' + esc(h[0]) + '</b><code>' + esc(h[1]) + '</code><p>' + esc(h[2]) + '</p></div>';
+    }).join('');
     $('help-backdrop').classList.add('open');
     $('help-drawer').classList.add('open');
   }
@@ -499,12 +511,77 @@
     }).sort(function (a, b) { return b.ns - a.ns || b.rate - a.rate; }).slice(0, 8);
     var max = Math.max(1, items.reduce(function (m, x) { return Math.max(m, x.ns); }, 0));
     var html = items.map(function (x) {
-      return '<div class="break-row"><div class="break-name">' + esc(x.name) + '</div><div class="break-val">' + fmtInt(x.ns) + '</div><div class="break-val">' + fmtPct(x.rate) + '</div><div class="break-track"><div class="break-fill" style="width:' + Math.round(x.ns / max * 100) + '%"></div></div></div>';
+      return '<div class="break-row clickable-row" data-break-key="' + esc(key) + '" data-break-name="' + esc(x.name) + '" data-hover-title="' + esc(x.name) + '" data-hover-text="Clique para abrir os deals desta quebra."><div class="break-name">' + esc(x.name) + '</div><div class="break-val">' + fmtInt(x.ns) + '</div><div class="break-val">' + fmtPct(x.rate) + '</div><div class="break-track"><div class="break-fill" style="width:' + Math.round(x.ns / max * 100) + '%"></div></div></div>';
     }).join('');
     return '<div class="card span-4"><h2>' + esc(title) + '</h2><div class="desc">No-shows | volume | taxa</div><div class="break-list">' + (html || '<div class="muted">Sem dados</div>') + '</div></div>';
   }
 
   function hubspotUrl(id) { return id ? 'https://app.hubspot.com/contacts/44715285/deal/' + encodeURIComponent(id) : '#'; }
+
+  function openModal(title, bodyHtml) {
+    $('modal-title').textContent = title;
+    $('modal-body').innerHTML = bodyHtml;
+    $('modal-overlay').classList.add('open');
+  }
+
+  function closeModal() {
+    $('modal-overlay').classList.remove('open');
+  }
+
+  function modalKpis(rows) {
+    var no = rows.filter(function (r) { return r.noShow; }).length;
+    var pend = rows.filter(function (r) { return r.fieldPendingPast; }).length;
+    var arr = rows.reduce(function (s, r) { return s + (r.arr || 0); }, 0);
+    return '<div class="modal-kpis"><div class="modal-kpi"><span>Deals</span><b>' + fmtInt(rows.length) + '</b></div><div class="modal-kpi"><span>No-show confirmado</span><b>' + fmtInt(no) + '</b></div><div class="modal-kpi"><span>Campo pendente</span><b>' + fmtInt(pend) + '</b></div><div class="modal-kpi"><span>Pipeline</span><b>' + fmtMoney(arr) + '</b></div></div>';
+  }
+
+  function dealRows(rows) {
+    return rows.map(function (r) {
+      return '<tr><td><a class="deal-link" href="' + hubspotUrl(r.id) + '" target="_blank" rel="noopener">' + esc(r.name) + '</a></td><td>' + esc(r.bdr) + '</td><td>' + esc(r.ae) + '</td><td>' + esc(r.meetingIso) + '</td><td>' + esc(r.meetingFieldStatus) + '</td><td>' + esc(r.status) + '</td><td>' + esc(r.stage) + '</td><td>' + esc(r.persona) + '</td><td>' + esc(r.segment) + '</td><td class="right">' + fmtMoney(r.arr) + '</td></tr>';
+    }).join('');
+  }
+
+  function openDeals(title, rows) {
+    var arr = (rows || []).slice(0, 200);
+    var html = modalKpis(rows || []) + '<div class="table-wrap"><table><thead><tr><th>Deal</th><th>BDR</th><th>AE</th><th>Reunião</th><th>Campo</th><th>Status</th><th>Etapa</th><th>Persona</th><th>Indústria</th><th class="right">Pipeline</th></tr></thead><tbody>' + (dealRows(arr) || '<tr><td colspan="10" class="muted">Sem deals para este recorte</td></tr>') + '</tbody></table></div>';
+    openModal(title + ' (' + fmtInt((rows || []).length) + ')', html);
+  }
+
+  function openTimelineModal(rows) {
+    var g = group(rows.filter(function (r) { return r.meetingDate; }), 'week');
+    var body = Object.keys(g).sort().map(function (k) {
+      var arr = g[k];
+      var no = arr.filter(function (r) { return r.noShow; }).length;
+      var pend = arr.filter(function (r) { return r.fieldPendingPast; }).length;
+      return '<tr><td>' + esc(k.replace('-', ' ')) + '</td><td class="right">' + fmtInt(arr.length) + '</td><td class="right">' + fmtInt(no) + '</td><td class="right">' + fmtPct(rate(no, arr.length)) + '</td><td class="right">' + fmtInt(pend) + '</td></tr>';
+    }).join('');
+    openModal('Linha temporal semanal', '<div class="table-wrap"><table><thead><tr><th>Semana</th><th class="right">Agendadas</th><th class="right">No-show</th><th class="right">Taxa</th><th class="right">Campo pendente</th></tr></thead><tbody>' + (body || '<tr><td colspan="5" class="muted">Sem semanas no filtro atual</td></tr>') + '</tbody></table></div>');
+  }
+
+  function drillRows(key) {
+    var rows = state.filtered;
+    if (key === 'scheduled') return rows.filter(function (r) { return r.meetingDate; });
+    if (key === 'past') return rows.filter(function (r) { return r.pastMeeting; });
+    if (key === 'fieldCoverage') return rows.filter(function (r) { return r.pastMeeting && r.meetingFieldFilled; });
+    if (key === 'fieldMissing') return rows.filter(function (r) { return r.fieldPendingPast; });
+    if (key === 'occurred') return rows.filter(function (r) { return r.occurred; });
+    if (key === 'fieldNo') return rows.filter(function (r) { return r.explicitOccurred === false; });
+    if (key === 'noShow') return rows.filter(function (r) { return r.noShow; });
+    if (key === 'noShowRate') return rows.filter(function (r) { return r.noShow; });
+    if (key === 'rescheduled') return rows.filter(function (r) { return r.rescheduled; });
+    if (key === 'recovered') return rows.filter(function (r) { return r.recovered; });
+    if (key === 'outsideSla') return rows.filter(function (r) { return r.outsideSla; });
+    if (key === 'pipelineRisk') return rows.filter(function (r) { return r.noShow && r.stage !== 'Perdido' && !r.recovered; });
+    if (key === 'pipelineLost') return rows.filter(function (r) { return r.status === 'Perdido por no-show'; });
+    return [];
+  }
+
+  function openDrill(key) {
+    if (!key) return;
+    if (key === 'timeline') return openTimelineModal(state.filtered);
+    var h = CALC_HELP[key];
+    openDeals(h ? h[0] : 'Detalhe', drillRows(key));
+  }
   function renderRecoveryTable(rows) {
     var arr = rows.filter(function (r) { return r.noShow && r.stage !== 'Perdido' && !r.recovered; }).sort(function (a, b) { return b.risk - a.risk || (b.businessDays || 0) - (a.businessDays || 0); }).slice(0, 100);
     var body = arr.map(function (r) {
@@ -551,8 +628,59 @@
     $('content').innerHTML = html;
     var helps = $('content').querySelectorAll('[data-help]');
     for (var i = 0; i < helps.length; i += 1) helps[i].onclick = function (ev) { ev.stopPropagation(); openHelp(this.getAttribute('data-help')); };
+    var drills = $('content').querySelectorAll('[data-drill]');
+    for (var d = 0; d < drills.length; d += 1) drills[d].onclick = function () { openDrill(this.getAttribute('data-drill')); };
+    var ranks = $('content').querySelectorAll('[data-rank-name]');
+    for (var r = 0; r < ranks.length; r += 1) ranks[r].onclick = function () {
+      var name = this.getAttribute('data-rank-name');
+      var mode = this.getAttribute('data-rank-mode');
+      var rows = state.filtered.filter(function (x) { return x.bdr === name && (mode === 'outside' ? x.outsideSla : x.noShow); });
+      openDeals('BDR | ' + name, rows);
+    };
+    var breaks = $('content').querySelectorAll('[data-break-key]');
+    for (var b = 0; b < breaks.length; b += 1) breaks[b].onclick = function () {
+      var key = this.getAttribute('data-break-key');
+      var name = this.getAttribute('data-break-name');
+      openDeals(name, state.filtered.filter(function (x) { return x[key] === name; }));
+    };
     showContent();
   }
+
+  function positionTip(ev) {
+    var tip = $('hover-tip');
+    if (!tip || !tip.classList.contains('show')) return;
+    var rect = tip.getBoundingClientRect();
+    var x = ev.clientX + 14;
+    var y = ev.clientY + 14;
+    if (x + rect.width > window.innerWidth - 8) x = ev.clientX - rect.width - 10;
+    if (y + rect.height > window.innerHeight - 8) y = ev.clientY - rect.height - 10;
+    tip.style.left = x + 'px';
+    tip.style.top = y + 'px';
+  }
+
+  document.addEventListener('mouseover', function (ev) {
+    var el = ev.target.closest('[data-hover-title],[data-hover-text]');
+    if (!el) return;
+    var tip = $('hover-tip');
+    tip.querySelector('.ht-title').textContent = el.getAttribute('data-hover-title') || 'Detalhe';
+    tip.querySelector('.ht-text').textContent = el.getAttribute('data-hover-text') || 'Clique para abrir o detalhe.';
+    tip.classList.add('show');
+    positionTip(ev);
+  });
+
+  document.addEventListener('mouseout', function (ev) {
+    if (!ev.target.closest('[data-hover-title],[data-hover-text]')) return;
+    var tip = $('hover-tip');
+    if (tip) tip.classList.remove('show');
+  });
+
+  document.addEventListener('mousemove', positionTip);
+
+  document.addEventListener('keydown', function (ev) {
+    if (ev.key !== 'Escape' && ev.keyCode !== 27) return;
+    if ($('help-drawer') && $('help-drawer').classList.contains('open')) return closeHelp();
+    if ($('modal-overlay') && $('modal-overlay').classList.contains('open')) return closeModal();
+  });
 
   function load() {
     showState('loading', 'Carregando dados', 'Buscando /api/forecast-table?includeLost=true&includeContext=true');
@@ -582,6 +710,6 @@
     try { localStorage.setItem('axenya_theme', n); } catch (e) {}
   }
 
-  window.NoShowBDR = { load: load, toggleTheme: toggleTheme, closeHelp: closeHelp, config: CONFIG, vidasRange: vidasRange };
+  window.NoShowBDR = { load: load, toggleTheme: toggleTheme, openAllHelp: openAllHelp, closeHelp: closeHelp, closeModal: closeModal, config: CONFIG, vidasRange: vidasRange };
   document.addEventListener('DOMContentLoaded', load);
 }());

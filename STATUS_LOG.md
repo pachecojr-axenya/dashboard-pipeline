@@ -2040,3 +2040,14 @@ Registro curto, uma linha por interação (a cada alteração).
 - **Storytelling visual:** cards com `i` e memória de cálculo por métrica, linha temporal semanal (agendadas × no-show confirmado × campo pendente), cards de leitura executiva e tabela específica de higiene do campo reunião.
 - **Escopo preservado:** universo continua sendo deals com `data_reuniao_agendada` entre set/25 e hoje; rota continua `/novo-bdr/no-show`; API sem login continua 401 em produção.
 - **Validação e deploy:** `node --check` em `public/bdr-no-show.js` e `api/forecast-table.js`, `_check-inline-js` em `public/bdr-no-show.html`, smoke local 200 em `/novo-bdr/no-show` e `/bdr-no-show.js?v=3`, reviewer code PASS. Commit `37438b0`. Deploy Vercel `dpl_GynwV5Ve8GoZTuYGKNvU7FxzVPUA` READY. Produção validada: `/novo-bdr/no-show` 200, JS v3 200, JS contém `includeContext=true`, API sem login 401.
+
+### BDR No-Show | padrão hover + clique + drilldown aplicado (2026-07-07)
+
+> Evolução pedida: “igual às outras páginas” — hover com rótulos e clique abrindo janelas explicativas/drilldowns. Front-only em `public/bdr-no-show.html/js`.
+
+- **Padrão aprendido de BDR/AE/Last48h:** hover em `i` mostra tooltip; clique em `i` abre drawer de memória de cálculo; clique em KPI/gráfico/linha de ranking abre modal de detalhe. Replicado no No Show.
+- **Header:** novo botão de memória de cálculo abre todas as fichas da página.
+- **Hover labels:** cards, ranking, quebras, gráfico temporal e botões `i` agora exibem rótulo contextual em tooltip flutuante.
+- **Drilldowns:** clique em KPI abre os deals que compõem o número; clique na linha temporal abre breakdown semanal; clique em ranking de BDR abre os deals daquele BDR; clique em quebras por origem/indústria/persona/porte abre os deals daquele bucket.
+- **Modal padrão:** mostra KPIs do recorte (deals, no-show confirmado, campo pendente, pipeline) + tabela com Deal, BDR, AE, reunião, campo, status, etapa, persona, indústria e pipeline.
+- **Cache bust:** JS atualizado para `/bdr-no-show.js?v=4`.
