@@ -245,7 +245,7 @@ var NOVO_I18N={
 function t(k){ return (NOVO_I18N[NOVO_LANG]||NOVO_I18N.pt)[k]||(NOVO_I18N.pt[k])||k; }
 function novoToggleLang(){ NOVO_LANG=NOVO_LANG==='pt'?'en':'pt'; try{localStorage.setItem('novo_lang',NOVO_LANG);}catch(e){} (function(_e){if(_e)_e.textContent=NOVO_LANG.toUpperCase();})(document.getElementById('novo-lang-label')); if(_novoDeals) novoRender(); }
 
-var BDR_CARD_CODES={'kpi-orig-deals':'R01','kpi-orig-colabs':'R02','kpi-ra-stale':'R03','origin-bdr':'R12','weekly-origin':'R13','leads-origin':'R14','handoff':'R15','new-deals':'R05','new-vidas':'R06','net-flow':'R07','net-vidas':'R08','avg-vidas':'R09','colabs':'R10','size-dist':'R11'};
+var BDR_CARD_CODES={'kpi-orig-deals':'R01','kpi-orig-colabs':'R02','kpi-ra-stale':'R03','origin-bdr':'R12','weekly-origin':'R13','leads-origin':'R14','handoff':'R15','new-deals':'R05','new-vidas':'R06','net-flow':'R07','net-vidas':'R08','avg-vidas':'R09','colabs':'R10','size-dist':'R11','leads-funnel':'R16','leads-contact-rate':'R17','leads-rate-bdr':'R18','leads-disq':'R19','leads-daily':'R20','leads-penetration':'R21','leads-week-table':'R22'};
 var _novoShowInfo=(function(){try{return localStorage.getItem('bdr_show_info')!=='0';}catch(e){return true;}})();
 function _codeTag(key){var c=BDR_CARD_CODES[key]||'';return c?'<span class="novo-code-tag">'+c+'</span>':'';}
 function novoToggleInfo(){_novoShowInfo=!_novoShowInfo;document.body.classList.toggle('novo-info-on',_novoShowInfo);var b=document.getElementById('btn-info-toggle');if(b)b.classList.toggle('highlighted',_novoShowInfo);try{localStorage.setItem('bdr_show_info',_novoShowInfo?'1':'0');}catch(e){}}
@@ -272,12 +272,12 @@ var BDR_HELP_CHARTS=[
     desc:'Deals (ou vidas, ou colaboradores) originados por cada BDR do TIME (13 do drawer; rótulo usa o nome canônico). Originação = entrada em Reunião Agendada; o filtro de período usa essa data. No modo Deals, a cor da barra indica o atingimento da META do BDR no período (verde ≥100% · amarelo ≥85% · laranja ≥70% · vermelho abaixo). Metas: botão "Metas" no card abre a tabela mês × BDR (edição GLOBAL, persistida no servidor); com filtro ativo, a meta comparada = SOMA das metas mensais dos meses da janela (meses sem meta mensal usam a meta padrão do BDR); sem filtro, a soma de todas as metas mensais cadastradas. Clique numa barra para ver os deals.',
     formula:'meta(BDR, janela) = Σ meta_mensal[mês][BDR] para cada mês da janela do filtro | fallback: meta padrão do BDR nos meses sem meta mensal',
     fields:[['sdr','Define o BDR; grafias do HubSpot mapeadas ao drawer (ex.: Gabriele de Almeida Silva → Gabriele Almeida).'],['hs_v2_date_entered_1144746905','Data da originação (data_reuniao_agendada) | dimensão do filtro de período.'],['vidas','Somado no modo Vidas.'],['quantidade_de_colaboradores','Somado no modo Colaboradores.']]},
-  {key:'weekly-origin',title:'Weekly Origination por BDR (R13)',
-    desc:'Geração semanal do time de BDRs: barras empilhadas por BDR (Top 6 do período + "Outros"), últimas 13 semanas (segunda a domingo), pela semana de ENTRADA em Reunião Agendada. Alterna Deals | Vidas | Colaboradores. Filtro de período pela mesma data.',
-    fields:[['sdr','Define o BDR (time do drawer).'],['hs_v2_date_entered_1144746905','Semana da originação (data_reuniao_agendada).'],['vidas','Peso no modo Vidas.'],['quantidade_de_colaboradores','Peso no modo Colaboradores.']]},
-  {key:'leads-origin',title:'Monthly Origination por BDR (R14)',
-    desc:'Geração mensal do time de BDRs, empilhada por BDR (Top 6 do período + "Outros", mesmo desenho do Weekly R13): últimos 12 meses pela ENTRADA em Reunião Agendada — AEs não entram. Alterna Deals | Vidas | Colaboradores. Rótulo no topo = total do mês. Clique num segmento para ver os deals do BDR.',
-    fields:[['sdr','Define o BDR (time do drawer); sdr vazio (origem AE) fica de fora.'],['hs_v2_date_entered_1144746905','Mês da originação (data_reuniao_agendada) | dimensão do filtro de período.'],['vidas','Peso no modo Vidas.'],['quantidade_de_colaboradores','Peso no modo Colaboradores.']]},
+  {key:'weekly-origin',title:'Weekly Origination (R13)',
+    desc:'Geração semanal do time de BDRs: barras empilhadas (Top 6 do período + "Outros"), últimas 13 semanas (segunda a domingo), pela semana de ENTRADA em Reunião Agendada. Alterna a métrica (Deals | Vidas | Colaboradores) e a DIMENSÃO do empilhamento: Por BDR (padrão), Por Origem (campo origem__originacao_ do deal) ou Por Porte (mesma faixa do R11). Filtro de período pela mesma data.',
+    fields:[['sdr','Define o BDR (time do drawer).'],['origem__originacao_','Dimensão "Por Origem" (fonte do deal: outbound, evento, inbound…).'],['hs_v2_date_entered_1144746905','Semana da originação (data_reuniao_agendada).'],['vidas','Peso no modo Vidas.'],['quantidade_de_colaboradores','Peso no modo Colaboradores | faixa da dimensão Por Porte.']]},
+  {key:'leads-origin',title:'Monthly Origination (R14)',
+    desc:'Geração mensal do time de BDRs, empilhada (Top 6 do período + "Outros", mesmo desenho do Weekly R13): últimos 12 meses pela ENTRADA em Reunião Agendada — AEs não entram. Alterna a métrica (Deals | Vidas | Colaboradores) e a DIMENSÃO do empilhamento: Por BDR, Por Origem (origem__originacao_ do deal) ou Por Porte. Rótulo no topo = total do mês. Clique num segmento para ver os deals.',
+    fields:[['sdr','Define o BDR (time do drawer); sdr vazio (origem AE) fica de fora.'],['origem__originacao_','Dimensão "Por Origem" (fonte do deal).'],['hs_v2_date_entered_1144746905','Mês da originação (data_reuniao_agendada) | dimensão do filtro de período.'],['vidas','Peso no modo Vidas.'],['quantidade_de_colaboradores','Peso no modo Colaboradores | faixa da dimensão Por Porte.']]},
   {key:'handoff',title:'BDR → AE Handoff Matrix (R15)',
     desc:'Quantos deals cada BDR passou para cada AE. Linhas = AEs (executivos; excluídos Anderson, Gabriel e membros do time de BDRs que aparecem como owner), colunas = os 13 BDRs do time; célula = nº de deals do par, cor por volume. Considera deals que entraram em Reunião Agendada no período (o filtro usa essa data), com BDR e AE preenchidos. Clique numa célula para ver os deals do par.',
     fields:[['sdr','BDR da coluna (time do drawer, nome canônico).'],['hubspot_owner_id','AE da linha (responsável atual do deal).'],['hs_v2_date_entered_1144746905','Janela do período (data_reuniao_agendada).']]},
@@ -297,6 +297,30 @@ var BDR_HELP_CHARTS=[
   {key:'size-dist',title:'Distribuição de Porte (R11)',
     desc:'Deals por faixa de porte (< 50 / 50–200 / 200–500 / 500+), APENAS originados pelo time de BDRs. O toggle define o campo da faixa: Colaboradores usa quantidade_de_colaboradores; Vidas usa vidas (nunca misturam). Filtro de período pela entrada em Reunião Agendada.',
     fields:[['quantidade_de_colaboradores','Faixa no modo Colaboradores (padrão).'],['vidas','Faixa no modo Vidas.'],['sdr','Origem BDR (time do drawer).'],['hs_v2_date_entered_1144746905','Janela do período.']]},
+  {key:'leads-funnel',title:'Funil de Lead Status (R16)',
+    desc:'Fotografia do funil de CONTATOS do time de BDRs no fim do período selecionado: cada contato conta no status que tinha naquela data, reconstruído a partir do histórico completo de hs_lead_status (propertiesWithHistory da API). Sem filtro = status atual. Contato do time = hubspot_owner_id do CONTATO é um dos 13 BDRs do drawer (o campo custom bdr de contato está vazio no portal). Percentual = share do total com status. Clique numa barra para ver os contatos.',
+    formula:'R16[status] = COUNT(contatos cujo último evento de hs_lead_status ≤ fim da janela é status)',
+    fields:[['hs_lead_status','Status do funil (histórico completo via propertiesWithHistory; timestamps em UTC).'],['hubspot_owner_id','Atribuição ao BDR (owner do contato).']]},
+  {key:'leads-contact-rate',title:'Taxa de Contato por Coorte Semanal (R17)',
+    desc:'Coorte = contatos cujo PRIMEIRO evento de lead status caiu na semana (entrada na cadência). Barras = tamanho da coorte; linhas = % da coorte que atingiu Tentativa de contato ou além (taxa de contato) e % que atingiu Conectado ou além (taxa de conexão), até hoje. Medir por coorte evita a inflação de medir por toque. O filtro de período limita as semanas exibidas.',
+    formula:'taxa_contato(semana) = coorte que atingiu ATTEMPTED_TO_CONTACT+ ÷ coorte | taxa_conexão = atingiu CONNECTED+ ÷ coorte',
+    fields:[['hs_lead_status','Progressão: NEW → OPEN → IN_PROGRESS → ATTEMPTED_TO_CONTACT → CONNECTED → OPEN_DEAL.'],['hubspot_owner_id','Time = owner do contato é BDR do drawer.']]},
+  {key:'leads-rate-bdr',title:'Taxa de Contato por BDR | Porte | Origem (R18)',
+    desc:'Tabela da cadência no período: coorte trabalhada (primeiro evento de status na janela), quantos atingiram Tentativa+, Conectado+, desqualificados, e as taxas. O toggle troca a dimensão das linhas: BDR (owner do contato), Porte (colaboradores do contato ou da empresa associada) ou Origem (axenya_origem_canonica, fallback origem). Clique numa linha para ver os contatos.',
+    fields:[['hs_lead_status','Progressão e desqualificação (UNQUALIFIED, BAD_TIMING).'],['hubspot_owner_id','Dimensão BDR.'],['numero_de_colaboradores','Porte (fallback: numberofemployees da empresa associada).'],['axenya_origem_canonica','Dimensão Origem (fallback: origem).']]},
+  {key:'leads-disq',title:'Desqualificações por Dia (R19)',
+    desc:'Eventos de entrada em Desqualificado (UNQUALIFIED) e Bad Timing (BAD_TIMING) por dia, pelo timestamp do histórico de hs_lead_status. IMPORTANTE: o portal NÃO tem campo de motivo de desqualificação de contato — o detalhe possível hoje é o tipo (Desqualificado vs Bad Timing) e os recortes por BDR/origem no clique. Para motivos granulares, criar propriedade de contato (ex.: motivo_desqualificacao) e preencher na cadência. Clique para ver os contatos.',
+    fields:[['hs_lead_status','Eventos UNQUALIFIED e BAD_TIMING com timestamp (UTC).']]},
+  {key:'leads-daily',title:'Contatos Trabalhados por Dia (R20)',
+    desc:'Quantos contatos DISTINTOS tiveram alguma mudança de lead status no dia, empilhado por BDR (Top 6 do período + Outros). Mede o ritmo operacional da cadência: mudança de status = o BDR mexeu no contato. Não captura toques que não mudam status (ligação repetida no mesmo status não conta de novo no dia seguinte).',
+    fields:[['hs_lead_status','Timestamp de cada transição (UTC).'],['hubspot_owner_id','BDR do contato.']]},
+  {key:'leads-penetration',title:'Penetração por Empresa (R21)',
+    desc:'Média de contatos trabalhados por empresa, por BDR, no período (coorte pelo primeiro evento de status na janela): mede se o BDR fala com mais de uma pessoa por conta (multi-threading). Contatos sem empresa associada ficam de fora. Clique numa barra para ver os contatos do BDR.',
+    formula:'penetração(BDR) = contatos trabalhados com empresa ÷ empresas distintas',
+    fields:[['associatedcompanyid','Agrupamento por empresa.'],['hubspot_owner_id','BDR do contato.']]},
+  {key:'leads-week-table',title:'Trabalhados na Semana (R22)',
+    desc:'Contatos com alguma mudança de lead status nos ÚLTIMOS 7 DIAS (independe do filtro de período): quem o time tocou nesta semana e onde cada um está agora. Colunas: contato (link HubSpot), empresa, cargo, BDR, status atual e último evento. Ordenado do evento mais recente para o mais antigo.',
+    fields:[['hs_lead_status','Última transição e status atual.'],['notes_last_contacted','Último contato registrado (atividade).'],['hubspot_owner_id','BDR do contato.']]},
 ];
 // Tabela de detalhe comum (colunas do modal de deals aberto ao clicar em barras/células).
 var BDR_HELP_DETAIL=[
@@ -412,6 +436,14 @@ function bdrSwitchOrigin(m){ _bdrOriginMode=m; _setActive('bdr-origin-tabs',m); 
 function bdrSwitchWeekly(m){ _bdrWeeklyMode=m; _setActive('bdr-weekly-tabs',m); buildBdrWeekly(); }
 function bdrSwitchLeads(m){ _bdrLeadsMode=m; _setActive('bdr-leads-tabs',m); buildBdrLeadsOrigin(); }
 function bdrSwitchSize(m){ _bdrSizeMode=m; _setActive('bdr-size-tabs',m); buildBdrSizeDist(); }
+// Dimensão do empilhamento do Weekly/Monthly: por BDR (padrão), por Origem do deal
+// (origem__originacao_) ou por Porte (faixa do _fPorte, campo do toggle do R11).
+var _bdrWeeklyDim='bdr', _bdrMonthlyDim='bdr';
+function bdrSwitchWeeklyDim(m){ _bdrWeeklyDim=m; _setActive('bdr-weekly-dim-tabs',m); buildBdrWeekly(); }
+function bdrSwitchMonthlyDim(m){ _bdrMonthlyDim=m; _setActive('bdr-leads-dim-tabs',m); buildBdrLeadsOrigin(); }
+function _dimFnDeal(dim){ return dim==='origem'?_fFonte:dim==='porte'?_fPorte:function(d){ return _teamBdrName(d); }; }
+function _dimFacetKey(dim){ return dim==='origem'?'fonte':dim==='porte'?'porte':'bdr'; }
+var _DIM_TABS=function(id,cur,fn){ return _subTabs(id,cur,[{mode:'bdr',label:'Por BDR',fn:fn},{mode:'origem',label:'Por Origem',fn:fn},{mode:'porte',label:'Por Porte',fn:fn}]); };
 
 var NOVO_FONT='Inter,\'Segoe UI\',system-ui,sans-serif';
 var NOVO_WON_STAGE='Ganho';
@@ -436,11 +468,13 @@ function _fBdr(d){ return _teamBdrName(d)||_bdrName(d)||'(sem BDR)'; }
 function _fOrigem(d){ return _isBdr(d)?'BDR':'AE'; }
 function _fDesfecho(d){ return _novoIsWon(d)?'Ganho':(d.stage==='Perdido'?'Perdido':'Aberto'); }
 function _fMes(d){ return _origDate(d)?_mlbl(_oym(d)):'(sem reunião agend.)'; }
+function _fFonte(d){ return d.origem||'(sem origem)'; }
 function _fPorte(d){ var v=(_bdrSizeMode==='vidas'?d.vidas:d.colaboradores)||0; return v<50?'< 50':(v<200?'50–200':(v<500?'200–500':'500+')); }
 // Facetas combináveis (AND entre dimensões; uma seleção por dimensão). Cada gráfico abre
 // este modal; os chips no topo permitem cruzar BDR × Origem × Desfecho × Porte × Mês.
 var _BDR_FACETS=[
   {key:'origem',label:'Origem',fn:_fOrigem},
+  {key:'fonte',label:'Fonte',fn:_fFonte},
   {key:'bdr',label:'BDR',fn:_fBdr},
   {key:'desfecho',label:'Desfecho',fn:_fDesfecho},
   {key:'porte',label:'Porte',fn:_fPorte},
@@ -576,10 +610,241 @@ function bdrMetasSave(){
 // Datas no padrão brasileiro (dd/mm/aaaa) nas tabelas dos modais.
 function _fmtBR(s){ if(!s) return '—'; var m=String(s).match(/^(\d{4})-(\d{2})-(\d{2})/); return m?(m[3]+'/'+m[2]+'/'+m[1]):String(s); }
 
+// ═══ Cadência de Leads (R16–R22) | contatos do time via /api/bdr-leads ═══════════
+// Cada contato traz o HISTÓRICO COMPLETO de hs_lead_status (hist = [[status, ts], ...]
+// em ordem cronológica, UTC), o que permite reconstruir o funil em QUALQUER data da
+// janela do filtro — sem snapshot externo (decisão de arquitetura 2026-07-10).
+var _bdrLeads=null, _bdrLeadsErr=null, _bdrLeadsLoading=false;
+var LEAD_STATUS_ORDER=['NEW','OPEN','IN_PROGRESS','ATTEMPTED_TO_CONTACT','CONNECTED','OPEN_DEAL','UNQUALIFIED','BAD_TIMING'];
+var LEAD_STATUS_PT={NEW:'Novo',OPEN:'Aberto',IN_PROGRESS:'Em andamento',ATTEMPTED_TO_CONTACT:'Tentativa de contato',CONNECTED:'Conectado',OPEN_DEAL:'Negócio aberto',UNQUALIFIED:'Desqualificado',BAD_TIMING:'Bad timing'};
+var LEAD_STATUS_COLOR={NEW:'rgba(88,166,255,.8)',OPEN:'rgba(110,118,129,.7)',IN_PROGRESS:'rgba(147,112,219,.8)',ATTEMPTED_TO_CONTACT:'rgba(210,153,34,.85)',CONNECTED:'rgba(58,184,183,.85)',OPEN_DEAL:'rgba(63,185,80,.8)',UNQUALIFIED:'rgba(248,81,73,.75)',BAD_TIMING:'rgba(227,179,65,.75)'};
+// Rank de progressão (contato/conexão); desqualificações são terminais, fora do rank.
+var LEAD_RANK={NEW:0,OPEN:1,IN_PROGRESS:2,ATTEMPTED_TO_CONTACT:3,CONNECTED:4,OPEN_DEAL:5};
+function _lStatusPt(s){ return LEAD_STATUS_PT[s]||s||'—'; }
+function bdrLoadLeads(force){
+  if(_bdrLeadsLoading) return;
+  _bdrLeadsLoading=true; _bdrLeadsErr=null;
+  fetch('/api/bdr-leads'+(force?'?refresh=1':''),{credentials:'include'})
+    .then(function(r){ if(!r.ok) return r.text().then(function(t){ throw new Error(t||('HTTP '+r.status)); }); return r.json(); })
+    .then(function(d){ _bdrLeadsLoading=false; if(!d||!d.success) throw new Error((d&&d.error)||'resposta inválida'); _bdrLeads=d; if(_novoDeals) novoRender(); })
+    .catch(function(e){ _bdrLeadsLoading=false; _bdrLeadsErr=String(e&&e.message||e); if(_novoDeals) novoRender(); });
+}
+function _lContacts(){ return (_bdrLeads&&_bdrLeads.contacts)||[]; }
+// Janela do filtro como limites ISO completos (UTC) | null = sem limite.
+function _lWin(){ var s=_filterState(); return { start:s.start?(s.start+'T00:00:00.000Z'):null, end:s.end?(s.end+'T23:59:59.999Z'):null }; }
+// Status do contato NA DATA (último evento ≤ end); end null = status atual.
+function _lStatusAt(c,end){
+  if(!end) return c.status;
+  var st=null;
+  for(var i=0;i<c.hist.length;i++){ if(c.hist[i][1]<=end) st=c.hist[i][0]; else break; }
+  return st;
+}
+function _lFirstEvent(c){ return c.hist.length?c.hist[0][1]:null; }
+function _lLastEvent(c){ return c.hist.length?c.hist[c.hist.length-1][1]:null; }
+// Coorte da janela = primeiro evento de status dentro da janela (entrada na cadência).
+function _lCohort(){ var w=_lWin(); return _lContacts().filter(function(c){ var f=_lFirstEvent(c); if(!f) return false; if(w.start&&f<w.start) return false; if(w.end&&f>w.end) return false; return true; }); }
+function _lReachedRank(c,rank){ for(var i=0;i<c.hist.length;i++){ var r=LEAD_RANK[c.hist[i][0]]; if(r!=null&&r>=rank) return true; } return false; }
+function _lWasDisq(c){ for(var i=0;i<c.hist.length;i++){ if(c.hist[i][0]==='UNQUALIFIED'||c.hist[i][0]==='BAD_TIMING') return true; } return false; }
+// ── Facetas de CONTATO (modal com chips, mesmo desenho do bdrOpenFacetModal) ──────
+function _lfBdr(c){ return c.bdr||'(sem BDR)'; }
+function _lfStatus(c){ return _lStatusPt(c.status); }
+function _lfPorte(c){ var v=c.colaboradores; if(v==null) return '(sem porte)'; return v<50?'< 50':(v<200?'50–200':(v<500?'200–500':'500+')); }
+function _lfOrigem(c){ return c.origem_canonica||c.origem||'(sem origem)'; }
+var _LEAD_FACETS=[
+  {key:'bdr',label:'BDR',fn:_lfBdr},
+  {key:'status',label:'Status',fn:_lfStatus},
+  {key:'porte',label:'Porte',fn:_lfPorte},
+  {key:'origem',label:'Origem',fn:_lfOrigem}
+];
+var _leadFacet=null;
+function bdrOpenLeadFacetModal(title,contacts,preKey,preVal){
+  _leadFacet={title:title,contacts:contacts||[],sel:{},cats:{}};
+  if(preKey&&preVal!=null) _leadFacet.sel[preKey]=preVal;
+  _leadFacetRender();
+}
+function bdrLeadFacetSel(key,idx){ if(!_leadFacet)return; var c=_leadFacet.cats[key]&&_leadFacet.cats[key][idx]; if(c){ _leadFacet.sel[key]=c.k; _leadFacetRender(); } }
+function bdrLeadFacetClear(key){ if(!_leadFacet)return; delete _leadFacet.sel[key]; _leadFacetRender(); }
+function _lContactRows(list){
+  return list.slice(0,400).map(function(c){
+    var url='https://app.hubspot.com/contacts/44715285/record/0-1/'+c.id;
+    var last=_lLastEvent(c);
+    return '<tr><td style="text-align:left;min-width:140px;max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><a href="'+url+'" target="_blank" rel="noopener" style="color:var(--teal);text-decoration:none">'+_ne(c.nome)+'</a></td>'+
+      '<td style="text-align:left;max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+_ne(c.empresa||'—')+'</td>'+
+      '<td style="text-align:left;max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+_ne(c.cargo||'—')+'</td>'+
+      '<td style="text-align:left;white-space:nowrap">'+_ne(c.bdr||'—')+'</td>'+
+      '<td style="white-space:nowrap">'+_ne(_lStatusPt(c.status))+'</td>'+
+      '<td>'+(c.colaboradores!=null?_ni(c.colaboradores):'—')+'</td>'+
+      '<td style="text-align:left;white-space:nowrap;max-width:170px;overflow:hidden;text-overflow:ellipsis">'+_ne(_lfOrigem(c))+'</td>'+
+      '<td style="white-space:nowrap">'+_fmtBR(c.criado)+'</td>'+
+      '<td style="white-space:nowrap">'+_fmtBR(last)+'</td></tr>';
+  }).join('');
+}
+function _leadFacetRender(){
+  var f=_leadFacet; if(!f)return;
+  f.cats={};
+  _LEAD_FACETS.forEach(function(fc){ var m={}; f.contacts.forEach(function(c){ var k=fc.fn(c); m[k]=(m[k]||0)+1; }); f.cats[fc.key]=Object.keys(m).map(function(k){return {k:k,n:m[k]};}).sort(function(a,b){return b.n-a.n;}); });
+  var sub=f.contacts.filter(function(c){ return _LEAD_FACETS.every(function(fc){ var s=f.sel[fc.key]; return s==null||fc.fn(c)===s; }); });
+  var bars=_LEAD_FACETS.map(function(fc){
+    var cats=f.cats[fc.key]; if(cats.length<=1&&f.sel[fc.key]==null) return '';
+    var selIdx=-1; cats.forEach(function(c,i){ if(c.k===f.sel[fc.key]) selIdx=i; });
+    var shown=cats.slice(0,12); if(selIdx>=12) shown=shown.concat([cats[selIdx]]);
+    var chips=shown.map(function(c){ var i=cats.indexOf(c); var on=f.sel[fc.key]===c.k; return '<button class="bdr-fchip'+(on?' on':'')+'" onclick="bdrLeadFacetSel(\''+fc.key+'\','+i+')">'+_ne(c.k)+' ('+c.n+')</button>'; }).join('');
+    var more=cats.length>shown.length?'<span style="font-size:.68rem;color:var(--text2)">+'+(cats.length-shown.length)+'</span>':'';
+    return '<div class="bdr-fbar"><span class="bdr-fbar-lbl">'+fc.label+':</span><button class="bdr-fchip'+(f.sel[fc.key]==null?' on':'')+'" onclick="bdrLeadFacetClear(\''+fc.key+'\')">Todos</button>'+chips+more+'</div>';
+  }).join('');
+  var capNote=sub.length>400?'<p style="font-size:.72rem;color:var(--text2);margin:.4rem 0 0">Mostrando os 400 primeiros de '+sub.length+' contatos | use os chips para refinar.</p>':'';
+  var table=sub.length?('<table class="lb"><thead><tr><th style="text-align:left">Contato</th><th style="text-align:left">Empresa</th><th style="text-align:left">Cargo</th><th style="text-align:left">BDR</th><th>Status</th><th>Colabs</th><th style="text-align:left">Origem</th><th>Criado</th><th>Últ. evento</th></tr></thead><tbody>'+_lContactRows(sub)+'</tbody></table>'+capNote):'<p style="color:var(--text2);padding:1rem 0">Nenhum contato para os filtros selecionados.</p>';
+  openModal(f.title+' ('+sub.length+')', bars+table);
+}
+// ── Builds R16–R22 ────────────────────────────────────────────────────────────────
+function buildLeadsFunnel(){
+  var th=_novoTheme(), w=_lWin(), all=_lContacts();
+  var counts={}, byStatus={};
+  all.forEach(function(c){ var s=_lStatusAt(c,w.end); if(!s) return; counts[s]=(counts[s]||0)+1; (byStatus[s]=byStatus[s]||[]).push(c); });
+  var order=LEAD_STATUS_ORDER.filter(function(s){return counts[s];});
+  var total=order.reduce(function(a,s){return a+counts[s];},0);
+  var canvas=document.getElementById('chart-bdr-leads-funnel');
+  if(canvas) canvas.style.height=Math.max(order.length*34+40,140)+'px';
+  _novoMkChart('chart-bdr-leads-funnel',{type:'bar',plugins:[ChartDataLabels],
+    data:{labels:order.map(_lStatusPt),datasets:[{data:order.map(function(s){return counts[s];}),backgroundColor:order.map(function(s){return LEAD_STATUS_COLOR[s];}),borderRadius:4}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,layout:{padding:{right:80}},plugins:{legend:{display:false},
+      datalabels:{anchor:'end',align:'right',color:th.cText,font:{family:NOVO_FONT,size:11,weight:'bold'},formatter:function(v){return _ni(v)+' ('+(total?Math.round(v/total*100):0)+'%)';}},
+      tooltip:{callbacks:{label:function(c){return _ni(c.parsed.x)+' contatos | '+(total?(c.parsed.x/total*100).toFixed(1):0)+'% do funil';}}}},
+      scales:{x:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0}},y:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT},autoSkip:false}}},
+      onClick:function(e,el){ if(!el.length)return; var s=order[el[0].index]; bdrOpenLeadFacetModal('Funil de Lead Status | '+_lStatusPt(s), byStatus[s]||[], 'status', _lStatusPt(s)); }}});
+}
+function buildLeadsContactRate(){
+  var th=_novoTheme(), cohort=_lCohort();
+  var st=_filterState();
+  var weeks;
+  if(st.start){ weeks=[]; var wk=_weekKey(st.start), endWk=_weekKey(st.end)||_weekKey(new Date().toISOString().substring(0,10)); var guard=0; while(wk&&wk<=endWk&&guard++<120){ weeks.push(wk); var d=new Date(wk+'T00:00:00'); d.setDate(d.getDate()+7); wk=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); } }
+  else weeks=_getWeeks(13);
+  var byWeek={}; weeks.forEach(function(w){byWeek[w]={n:0,att:0,con:0};});
+  cohort.forEach(function(c){ var w=_weekKey((_lFirstEvent(c)||'').substring(0,10)); if(!byWeek[w]) return; byWeek[w].n++; if(_lReachedRank(c,3))byWeek[w].att++; if(_lReachedRank(c,4))byWeek[w].con++; });
+  var ns=weeks.map(function(w){return byWeek[w].n;});
+  var rAtt=weeks.map(function(w){return byWeek[w].n?+(byWeek[w].att/byWeek[w].n*100).toFixed(1):null;});
+  var rCon=weeks.map(function(w){return byWeek[w].n?+(byWeek[w].con/byWeek[w].n*100).toFixed(1):null;});
+  _novoMkChart('chart-bdr-leads-contact-rate',{type:'bar',plugins:[ChartDataLabels],
+    data:{labels:weeks.map(_wlbl),datasets:[
+      {label:'Coorte (novos na cadência)',data:ns,backgroundColor:'rgba(88,166,255,.55)',borderRadius:2,yAxisID:'y',datalabels:{display:false}},
+      {type:'line',label:'Taxa de contato % (Tentativa+)',data:rAtt,borderColor:'rgba(210,153,34,.95)',backgroundColor:'rgba(210,153,34,.15)',pointRadius:3,borderWidth:2,tension:.3,yAxisID:'y1',spanGaps:true,datalabels:{display:false}},
+      {type:'line',label:'Taxa de conexão % (Conectado+)',data:rCon,borderColor:'rgba(58,184,183,.95)',backgroundColor:'rgba(58,184,183,.15)',pointRadius:3,borderWidth:2,tension:.3,yAxisID:'y1',spanGaps:true,datalabels:{display:false}}
+    ]},
+    options:{responsive:true,layout:{padding:{top:18}},plugins:{legend:{display:true,labels:{color:th.cText2,font:{family:NOVO_FONT,size:10},padding:8}},
+      tooltip:{mode:'index',intersect:false,callbacks:{label:function(c){ return c.dataset.label+': '+(c.datasetIndex===0?_ni(c.parsed.y)+' contatos':(c.parsed.y==null?'—':c.parsed.y+'%')); }}}},
+      scales:{x:{grid:{display:false},ticks:{color:th.cText2,font:{family:NOVO_FONT}}},
+        y:{position:'left',grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0}},
+        y1:{position:'right',min:0,max:100,grid:{display:false},ticks:{color:th.cText2,font:{family:NOVO_FONT},callback:function(v){return v+'%';}}}},
+      onClick:function(e,el){ if(!el.length)return; var w=weeks[el[0].index]; bdrOpenLeadFacetModal('Coorte da semana '+_wlbl(w), cohort.filter(function(c){return _weekKey((_lFirstEvent(c)||'').substring(0,10))===w;})); }}});
+}
+var _bdrRateDim='bdr';
+function bdrSwitchRateDim(m){ _bdrRateDim=m; _setActive('bdr-rate-tabs',m); buildLeadsRateTable(); }
+function buildLeadsRateTable(){
+  var el=document.getElementById('bdr-leads-rate-table'); if(!el)return;
+  var cohort=_lCohort();
+  var dimFn=_bdrRateDim==='porte'?_lfPorte:_bdrRateDim==='origem'?_lfOrigem:_lfBdr;
+  var rows={};
+  cohort.forEach(function(c){ var k=dimFn(c); var r=rows[k]=rows[k]||{n:0,att:0,con:0,dq:0,list:[]}; r.n++; r.list.push(c); if(_lReachedRank(c,3))r.att++; if(_lReachedRank(c,4))r.con++; if(_lWasDisq(c))r.dq++; });
+  var keys=Object.keys(rows).sort(function(a,b){return rows[b].n-rows[a].n;}).slice(0,20);
+  if(!keys.length){ el.innerHTML='<p style="color:var(--text2);padding:1rem 0">Nenhum contato entrou na cadência no período.</p>'; return; }
+  var tot={n:0,att:0,con:0,dq:0};
+  keys.forEach(function(k){ tot.n+=rows[k].n; tot.att+=rows[k].att; tot.con+=rows[k].con; tot.dq+=rows[k].dq; });
+  var pct=function(a,b){ return b?(a/b*100).toFixed(1).replace('.',',')+'%':'—'; };
+  var barCell=function(a,b,color){ var p=b?Math.round(a/b*100):0; return '<td style="min-width:110px"><div style="display:flex;align-items:center;gap:.45rem;justify-content:flex-end"><div style="flex:1;max-width:70px;height:6px;background:var(--card2);border-radius:3px;overflow:hidden"><div style="width:'+p+'%;height:100%;background:'+color+'"></div></div><span style="white-space:nowrap">'+pct(a,b)+'</span></div></td>'; };
+  window._bdrRateRows=rows; window._bdrRateKeys=keys;
+  var html='<table class="lb" style="font-size:.78rem;width:100%"><thead><tr><th style="text-align:left">'+(_bdrRateDim==='porte'?'Porte':_bdrRateDim==='origem'?'Origem':'BDR')+'</th><th>Trabalhados</th><th>Tentativa+</th><th>Conectados</th><th>Taxa contato</th><th>Taxa conexão</th><th>Desqualif.</th></tr></thead><tbody>';
+  keys.forEach(function(k,i){
+    var r=rows[k];
+    html+='<tr style="cursor:pointer" onclick="bdrLeadsRateRow('+i+')"><td style="text-align:left;white-space:nowrap;max-width:220px;overflow:hidden;text-overflow:ellipsis;font-weight:600">'+_ne(k)+'</td><td>'+_ni(r.n)+'</td><td>'+_ni(r.att)+'</td><td>'+_ni(r.con)+'</td>'+barCell(r.att,r.n,'rgba(210,153,34,.85)')+barCell(r.con,r.n,'rgba(58,184,183,.9)')+'<td style="color:'+(r.dq?'var(--red)':'var(--text2)')+'">'+_ni(r.dq)+'</td></tr>';
+  });
+  html+='</tbody><tfoot><tr><td style="text-align:left;font-weight:700">Total</td><td style="font-weight:700">'+_ni(tot.n)+'</td><td style="font-weight:700">'+_ni(tot.att)+'</td><td style="font-weight:700">'+_ni(tot.con)+'</td><td style="font-weight:700;text-align:right">'+pct(tot.att,tot.n)+'</td><td style="font-weight:700;text-align:right">'+pct(tot.con,tot.n)+'</td><td style="font-weight:700">'+_ni(tot.dq)+'</td></tr></tfoot></table>';
+  el.innerHTML=html;
+}
+function bdrLeadsRateRow(i){ var keys=window._bdrRateKeys||[], rows=window._bdrRateRows||{}; var k=keys[i]; if(k==null||!rows[k])return; var dimKey=_bdrRateDim==='porte'?'porte':_bdrRateDim==='origem'?'origem':'bdr'; bdrOpenLeadFacetModal('Cadência | '+k, rows[k].list, dimKey, k); }
+function _lDays(n){ var st=_filterState(), days=[]; var end=st.end?new Date(st.end+'T00:00:00'):new Date(); var start; if(st.start){ start=new Date(st.start+'T00:00:00'); var span=Math.round((end-start)/86400000)+1; if(span>n){ start=new Date(end); start.setDate(start.getDate()-(n-1)); } } else { start=new Date(end); start.setDate(start.getDate()-(n-1)); } var d=new Date(start); while(d<=end){ days.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')); d.setDate(d.getDate()+1); } return days; }
+function buildLeadsDisq(){
+  var th=_novoTheme(), days=_lDays(45), set={}; days.forEach(function(d,i){set[d]=i;});
+  var un=days.map(function(){return 0;}), bt=days.map(function(){return 0;});
+  var byDay={};
+  _lContacts().forEach(function(c){ c.hist.forEach(function(h){ if(h[0]!=='UNQUALIFIED'&&h[0]!=='BAD_TIMING')return; var d=h[1].substring(0,10); if(set[d]==null)return; if(h[0]==='UNQUALIFIED')un[set[d]]++; else bt[set[d]]++; (byDay[d]=byDay[d]||[]).push(c); }); });
+  _novoMkChart('chart-bdr-leads-disq',{type:'bar',plugins:[ChartDataLabels],
+    data:{labels:days.map(function(d){return d.substring(8,10)+'/'+d.substring(5,7);}),datasets:[
+      {label:'Desqualificado',data:un,backgroundColor:'rgba(248,81,73,.75)',borderRadius:2,stack:'s'},
+      {label:'Bad timing',data:bt,backgroundColor:'rgba(227,179,65,.75)',borderRadius:2,stack:'s'}
+    ]},
+    options:{responsive:true,layout:{padding:{top:22}},plugins:{legend:{display:true,labels:{color:th.cText2,font:{family:NOVO_FONT,size:10},padding:8}},
+      datalabels:{display:function(c){return c.datasetIndex===c.chart.data.datasets.length-1;},anchor:'end',align:'top',color:th.cText,font:{family:NOVO_FONT,size:9,weight:'bold'},formatter:function(v,c){var t=0;c.chart.data.datasets.forEach(function(ds){t+=(ds.data[c.dataIndex]||0);});return t||'';}},
+      tooltip:{mode:'index',intersect:false,filter:function(i){return i.parsed.y>0;}}},
+      scales:{x:{grid:{display:false},ticks:{color:th.cText2,font:{family:NOVO_FONT,size:9},maxRotation:0,autoSkip:true},stacked:true},y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0},stacked:true}},
+      onClick:function(e,el){ if(!el.length)return; var d=days[el[0].index]; bdrOpenLeadFacetModal('Desqualificações em '+_fmtBR(d), byDay[d]||[]); }}});
+}
+function buildLeadsDaily(){
+  var th=_novoTheme(), days=_lDays(30), set={}; days.forEach(function(d,i){set[d]=i;});
+  // contato DISTINTO por dia: um contato com 2 transições no mesmo dia conta 1.
+  var perBdrDay={}, totBdr={}, byDay={};
+  _lContacts().forEach(function(c){ var seen={}; c.hist.forEach(function(h){ var d=h[1].substring(0,10); if(set[d]==null||seen[d])return; seen[d]=1; var b=c.bdr||'(sem BDR)'; (perBdrDay[b]=perBdrDay[b]||{})[d]=(perBdrDay[b][d]||0)+1; totBdr[b]=(totBdr[b]||0)+1; (byDay[d]=byDay[d]||[]).push(c); }); });
+  var top=Object.keys(totBdr).sort(function(a,b){return totBdr[b]-totBdr[a];}).slice(0,6);
+  var groups=top.concat(['Outros']);
+  var colors=['rgba(88,166,255,.8)','rgba(63,185,80,.75)','rgba(58,184,183,.8)','rgba(210,153,34,.85)','rgba(147,112,219,.8)','rgba(248,81,73,.7)','rgba(140,140,150,.5)'];
+  var datasets=groups.map(function(g,i){
+    var data=days.map(function(d){
+      if(g!=='Outros') return (perBdrDay[g]&&perBdrDay[g][d])||0;
+      var t=0; Object.keys(perBdrDay).forEach(function(b){ if(top.indexOf(b)<0) t+=(perBdrDay[b][d]||0); }); return t;
+    });
+    return {label:g,data:data,backgroundColor:colors[i%colors.length],stack:'s',borderRadius:2};
+  });
+  _novoMkChart('chart-bdr-leads-daily',{type:'bar',plugins:[ChartDataLabels],
+    data:{labels:days.map(function(d){return d.substring(8,10)+'/'+d.substring(5,7);}),datasets:datasets},
+    options:{responsive:true,layout:{padding:{top:22}},plugins:{legend:{display:true,labels:{color:th.cText2,font:{family:NOVO_FONT,size:10},padding:8}},
+      datalabels:{display:function(c){return c.datasetIndex===c.chart.data.datasets.length-1;},anchor:'end',align:'top',color:th.cText,font:{family:NOVO_FONT,size:9,weight:'bold'},formatter:function(v,c){var t=0;c.chart.data.datasets.forEach(function(ds){t+=(ds.data[c.dataIndex]||0);});return t||'';}},
+      tooltip:{mode:'index',intersect:false,filter:function(i){return i.parsed.y>0;}}},
+      scales:{x:{grid:{display:false},ticks:{color:th.cText2,font:{family:NOVO_FONT,size:9},maxRotation:0,autoSkip:true},stacked:true},y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0},stacked:true}},
+      onClick:function(e,el){ if(!el.length)return; var d=days[el[0].index]; bdrOpenLeadFacetModal('Trabalhados em '+_fmtBR(d), byDay[d]||[]); }}});
+}
+function buildLeadsPenetration(){
+  var th=_novoTheme(), cohort=_lCohort().filter(function(c){return c.empresa_id;});
+  var agg={};
+  cohort.forEach(function(c){ var b=c.bdr||'(sem BDR)'; var a=agg[b]=agg[b]||{n:0,comps:{},list:[]}; a.n++; a.comps[c.empresa_id]=1; a.list.push(c); });
+  var ranked=Object.keys(agg).map(function(b){ var a=agg[b]; return {bdr:b,n:a.n,e:Object.keys(a.comps).length,avg:+(a.n/Object.keys(a.comps).length).toFixed(2)}; })
+    .filter(function(r){return r.e>0;}).sort(function(a,b){return b.avg-a.avg;});
+  var canvas=document.getElementById('chart-bdr-leads-penetration');
+  if(canvas) canvas.style.height=Math.max(ranked.length*32+44,150)+'px';
+  _novoMkChart('chart-bdr-leads-penetration',{type:'bar',plugins:[ChartDataLabels],
+    data:{labels:ranked.map(function(r){return r.bdr;}),datasets:[{data:ranked.map(function(r){return r.avg;}),backgroundColor:'rgba(58,184,183,.8)',borderRadius:4}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,layout:{padding:{right:56}},plugins:{legend:{display:false},
+      datalabels:{anchor:'end',align:'right',color:th.cText,font:{family:NOVO_FONT,size:11,weight:'bold'},formatter:function(v){return String(v).replace('.',',');}},
+      tooltip:{callbacks:{label:function(c){ var r=ranked[c.dataIndex]; return [_ni(r.n)+' contatos em '+_ni(r.e)+' empresas','Média: '+String(r.avg).replace('.',',')+' contatos/empresa']; }}}},
+      scales:{x:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT}}},y:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT},autoSkip:false}}},
+      onClick:function(e,el){ if(!el.length)return; var r=ranked[el[0].index]; bdrOpenLeadFacetModal('Penetração | '+r.bdr, agg[r.bdr].list, 'bdr', r.bdr); }}});
+}
+function buildLeadsWeekTable(){
+  var el=document.getElementById('bdr-leads-week-table'); if(!el)return;
+  var cut=new Date(); cut.setDate(cut.getDate()-7);
+  var cutIso=cut.toISOString();
+  var list=_lContacts().filter(function(c){ var l=_lLastEvent(c); return l&&l>=cutIso; })
+    .sort(function(a,b){ return _lLastEvent(b)<_lLastEvent(a)?-1:1; });
+  window._bdrWeekList=list;
+  if(!list.length){ el.innerHTML='<p style="color:var(--text2);padding:1rem 0">Nenhum contato com mudança de status nos últimos 7 dias.</p>'; return; }
+  var head='<div style="display:flex;justify-content:space-between;align-items:center;margin:.2rem 0 .5rem"><span style="font-size:.74rem;color:var(--text2)">'+list.length+' contatos com mudança de status nos últimos 7 dias (independe do filtro de período)</span><button class="btn-export" onclick="bdrOpenLeadFacetModal(\'Trabalhados na semana\', window._bdrWeekList)">Explorar com filtros</button></div>';
+  var rows=list.slice(0,60).map(function(c){
+    var url='https://app.hubspot.com/contacts/44715285/record/0-1/'+c.id;
+    var last=c.hist[c.hist.length-1];
+    return '<tr><td style="text-align:left;min-width:140px;max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><a href="'+url+'" target="_blank" rel="noopener" style="color:var(--teal);text-decoration:none">'+_ne(c.nome)+'</a></td>'+
+      '<td style="text-align:left;max-width:190px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+_ne(c.empresa||'—')+'</td>'+
+      '<td style="text-align:left;max-width:170px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+_ne(c.cargo||'—')+'</td>'+
+      '<td style="text-align:left;white-space:nowrap">'+_ne(c.bdr||'—')+'</td>'+
+      '<td style="white-space:nowrap">'+_ne(_lStatusPt(c.status))+'</td>'+
+      '<td style="white-space:nowrap">'+_ne(_lStatusPt(last[0]))+' em '+_fmtBR(last[1])+'</td></tr>';
+  }).join('');
+  var more=list.length>60?'<p style="font-size:.72rem;color:var(--text2);margin:.45rem 0 0">Mostrando 60 de '+list.length+' | clique em "Explorar com filtros" para ver todos.</p>':'';
+  el.innerHTML=head+'<table class="lb" style="font-size:.78rem;width:100%"><thead><tr><th style="text-align:left">Contato</th><th style="text-align:left">Empresa</th><th style="text-align:left">Cargo</th><th style="text-align:left">BDR</th><th>Status atual</th><th>Último evento</th></tr></thead><tbody>'+rows+'</tbody></table>'+more;
+}
+
 function novoLoadData(){
   var btn=document.getElementById('btn-refresh'); if(btn) btn.classList.add('spinning');
   document.getElementById('novo-content').innerHTML='<div style="text-align:center;padding:3rem 0;color:var(--text2)">'+t('loading')+'</div>';
   _bdrLoadMetas();
+  if(!_bdrLeads&&!_bdrLeadsLoading) bdrLoadLeads();
   fetch('/api/forecast-table?includeLost=true').then(function(r){ if(!r.ok) return r.text().then(function(txt){ throw new Error(txt||('HTTP '+r.status)); }); return r.json(); }).then(function(data){
     _novoDeals=Array.isArray(data)?data:(data.deals||[]);window._novoDealsRaw=_novoDeals;
     if(btn) btn.classList.remove('spinning');
@@ -626,10 +891,11 @@ function novoRender(){
       kpi('Reunião Agendada há +30 dias',_ni(raStale.length),'paradas na etapa | só time de BDRs',raStale.length>0?'var(--yellow)':'var(--text)','kpi-ra-stale','raStale',tipRaStale)+
     '</div>'+
     '<div class="novo-cards">'+
+      _bdrLeadsSectionHtml()+
       '<div class="section-hdr"><h2>Originação</h2></div>'+
       cWide('Originação por BDR'+_cntSpan(createdTeam),'Quantos deals (ou vidas, ou colaboradores) foram originados por cada BDR do TIME (os 13 nomes do drawer de Configurações; grafias do HubSpot mapeadas para o drawer). Originação = data de ENTRADA em Reunião Agendada (não createdate); o filtro de período usa essa data. Cor da barra (modo Deals) = atingimento da meta do BDR no período: com filtro ativo, a meta é a SOMA das metas mensais dos meses da janela (botão Metas; meses sem meta mensal usam a meta padrão); sem filtro, a soma de todas as metas mensais cadastradas. Clique numa barra para ver os deals.','origin-bdr',320,_subTabs('bdr-origin-tabs',_bdrOriginMode,[{mode:'deals',label:'Deals',fn:'bdrSwitchOrigin'},{mode:'vidas',label:'Vidas',fn:'bdrSwitchOrigin'},{mode:'colaboradores',label:'Colaboradores',fn:'bdrSwitchOrigin'}])+'<button onclick="bdrOpenMetasModal()" style="background:var(--card2);color:var(--teal);border:1px solid var(--border);border-radius:8px;padding:.3rem .7rem;font-size:.74rem;font-weight:600;cursor:pointer;margin-left:.4rem" title="Editar metas mensais por BDR (global)">Metas</button>',true)+
-      cWide('Weekly Origination (por BDR)'+_cntSpan(createdTeam),'Geração semanal APENAS do time de BDRs (drawer de Configurações): barras empilhadas por BDR (Top 6 + Outros), últimas 13 semanas pela data de ENTRADA em Reunião Agendada (não createdate); o filtro de período usa essa data. Alterna Deals | Vidas | Colaboradores.','weekly-origin',320,_subTabs('bdr-weekly-tabs',_bdrWeeklyMode,[{mode:'deals',label:'Deals',fn:'bdrSwitchWeekly'},{mode:'vidas',label:'Vidas',fn:'bdrSwitchWeekly'},{mode:'colaboradores',label:'Colaboradores',fn:'bdrSwitchWeekly'}]),true)+
-      cWide('Monthly Origination (por BDR)'+_cntSpan(createdTeam),'Geração mensal APENAS do time de BDRs (drawer de Configurações), empilhada por BDR (Top 6 + Outros, mesmo desenho do Weekly): últimos 12 meses pela data de ENTRADA em Reunião Agendada (não createdate); o filtro de período usa essa data. AEs não entram. Alterna Deals | Vidas | Colaboradores. Clique num segmento para ver os deals do BDR.','leads-origin',300,_subTabs('bdr-leads-tabs',_bdrLeadsMode,[{mode:'deals',label:'Deals',fn:'bdrSwitchLeads'},{mode:'vidas',label:'Vidas',fn:'bdrSwitchLeads'},{mode:'colaboradores',label:'Colaboradores',fn:'bdrSwitchLeads'}]),true)+
+      cWide('Weekly Origination'+_cntSpan(createdTeam),'Geração semanal APENAS do time de BDRs (drawer de Configurações): barras empilhadas (Top 6 + Outros), últimas 13 semanas pela data de ENTRADA em Reunião Agendada (não createdate); o filtro de período usa essa data. Alterna a métrica (Deals | Vidas | Colaboradores) e a DIMENSÃO do empilhamento: por BDR, por Origem do deal (origem__originacao_) ou por Porte.','weekly-origin',320,_subTabs('bdr-weekly-tabs',_bdrWeeklyMode,[{mode:'deals',label:'Deals',fn:'bdrSwitchWeekly'},{mode:'vidas',label:'Vidas',fn:'bdrSwitchWeekly'},{mode:'colaboradores',label:'Colaboradores',fn:'bdrSwitchWeekly'}])+'<span style="width:.15rem"></span>'+_DIM_TABS('bdr-weekly-dim-tabs',_bdrWeeklyDim,'bdrSwitchWeeklyDim'),true)+
+      cWide('Monthly Origination'+_cntSpan(createdTeam),'Geração mensal APENAS do time de BDRs (drawer de Configurações), empilhada (Top 6 + Outros, mesmo desenho do Weekly): últimos 12 meses pela data de ENTRADA em Reunião Agendada (não createdate); o filtro de período usa essa data. AEs não entram. Alterna a métrica (Deals | Vidas | Colaboradores) e a DIMENSÃO do empilhamento: por BDR, por Origem do deal (origem__originacao_) ou por Porte. Clique num segmento para ver os deals.','leads-origin',300,_subTabs('bdr-leads-tabs',_bdrLeadsMode,[{mode:'deals',label:'Deals',fn:'bdrSwitchLeads'},{mode:'vidas',label:'Vidas',fn:'bdrSwitchLeads'},{mode:'colaboradores',label:'Colaboradores',fn:'bdrSwitchLeads'}])+'<span style="width:.15rem"></span>'+_DIM_TABS('bdr-leads-dim-tabs',_bdrMonthlyDim,'bdrSwitchMonthlyDim'),true)+
       '<div class="section-hdr"><h2>Handoff BDR → AE</h2></div>'+
       '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header"><h3>BDR → AE Handoff Matrix</h3>'+_infoBtn('Cruza a quantidade de deals passados de cada BDR para cada AE. Linhas = AEs (executivos; Anderson e Gabriel excluídos a pedido), colunas = BDRs do TIME (drawer de Configurações); célula = nº de deals, cor por volume. Considera deals que entraram em Reunião Agendada no período (o filtro usa essa data), com BDR e AE preenchidos. Clique numa célula para ver os deals do par.','handoff')+'</div><div id="bdr-handoff-matrix" style="overflow-x:auto;margin-top:.5rem"></div></div>'+
       '<div class="section-hdr"><h2>Fluxo de Pipeline</h2></div>'+
@@ -650,8 +916,47 @@ function novoRender(){
   buildBdrAvgVidas();
   buildBdrColabs();
   buildBdrSizeDist();
+  if(_bdrLeads){
+    buildLeadsFunnel();
+    buildLeadsContactRate();
+    buildLeadsRateTable();
+    buildLeadsDisq();
+    buildLeadsDaily();
+    buildLeadsPenetration();
+    buildLeadsWeekTable();
+  }
   _initTabSubs();
 }
+
+// HTML da seção "Cadência de Leads" (R16–R22) | renderiza estado de carregamento/erro
+// enquanto o /api/bdr-leads não responde (a primeira chamada fria leva ~10-15s).
+function _bdrLeadsSectionHtml(){
+  var hdr='<div class="section-hdr"><h2>Cadência de Leads | Contatos do Time</h2></div>';
+  if(_bdrLeadsErr) return hdr+'<div class="novo-card" style="grid-column:1/-1;text-align:center;padding:2rem;color:var(--red)">Falha ao carregar contatos: '+_ne(_bdrLeadsErr)+'<br><br><button onclick="_bdrLeadsErr=null;bdrLoadLeads(true);novoRender();" style="background:var(--teal);color:#fff;border:none;border-radius:8px;padding:.5rem 1.2rem;cursor:pointer">Tentar novamente</button></div>';
+  if(!_bdrLeads) return hdr+'<div class="novo-card" style="grid-column:1/-1;text-align:center;padding:2rem;color:var(--text2)">Buscando contatos e histórico de lead status no HubSpot… (primeira carga leva ~15s; depois fica em cache)</div>';
+  var w=_lWin(), all=_lContacts();
+  var inFunnel=0; all.forEach(function(c){ if(_lStatusAt(c,w.end)) inFunnel++; });
+  var cohortN=_lCohort().length;
+  var meta='<div style="grid-column:1/-1;font-size:.74rem;color:var(--text2);margin:-.4rem 0 .1rem">'+_ni(all.length)+' contatos com lead status | '+_ni(_bdrLeads.semStatus)+' do time ainda sem status (fora do funil) | '+_ni(cohortN)+' entraram na cadência no período | fonte: histórico de hs_lead_status (HubSpot)'+(_bdrLeads.cached?' | cache':'')+'</div>';
+  var cW=function(title,tip,id,h,tabs){ return '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header"><h3>'+title+'</h3>'+_infoBtn(tip,id)+(tabs||'')+'</div><canvas id="chart-bdr-'+id+'" style="max-height:'+(h||320)+'px"></canvas></div>'; };
+  var cN=function(title,tip,id,h){ return '<div class="novo-card"><div class="novo-card-header"><h3>'+title+'</h3>'+_infoBtn(tip,id)+'</div><canvas id="chart-bdr-'+id+'" style="max-height:'+(h||320)+'px"></canvas></div>'; };
+  var tipFunnel='Fotografia do funil de contatos do time no FIM do período selecionado (sem filtro = agora): cada contato conta no status que tinha naquela data, reconstruído do histórico de hs_lead_status. Percentual = share do total com status. Clique numa barra para ver os contatos.';
+  var tipRate='Coorte = contatos cujo PRIMEIRO evento de lead status caiu na semana. Barras = tamanho da coorte; linhas = % que atingiu Tentativa de contato ou além (taxa de contato) e % que atingiu Conectado ou além (taxa de conexão), até hoje. Por coorte, não por toque — evita inflar a taxa. Clique numa barra para ver a coorte da semana.';
+  var tipTable='Cadência no período por dimensão (toggle): coorte trabalhada, quantos atingiram Tentativa+, Conectado+, desqualificados e as taxas. Porte usa colaboradores do contato (fallback: da empresa associada); Origem usa axenya_origem_canonica (fallback: origem). Clique numa linha para abrir os contatos.';
+  var tipDisq='Eventos de Desqualificado (UNQUALIFIED) e Bad timing (BAD_TIMING) por dia, pelo timestamp do histórico. O portal NÃO tem campo de motivo de desqualificação de contato: o recorte possível é o tipo + BDR/origem no clique (ver ficha). Últimos 45 dias da janela.';
+  var tipDaily='Contatos DISTINTOS com alguma mudança de lead status no dia, empilhado por BDR (Top 6 + Outros) — ritmo operacional da cadência. Últimos 30 dias da janela. Clique num dia para ver os contatos.';
+  var tipPen='Média de contatos trabalhados por empresa, por BDR (coorte do período; só contatos com empresa associada) — mede multi-threading nas contas. Clique numa barra para ver os contatos do BDR.';
+  var tipWeek='Contatos com mudança de lead status nos últimos 7 dias e onde cada um está agora. Independe do filtro de período. "Explorar com filtros" abre o modal com chips de BDR, status, porte e origem.';
+  return hdr+meta+
+    cW('Funil de Lead Status'+_lCnt(inFunnel),tipFunnel,'leads-funnel',360)+
+    cW('Taxa de Contato por Coorte Semanal'+_lCnt(cohortN),tipRate,'leads-contact-rate',300)+
+    '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header"><h3>Taxa de Contato por Dimensão'+_lCnt(cohortN)+'</h3>'+_infoBtn(tipTable,'leads-rate-bdr')+_subTabs('bdr-rate-tabs',_bdrRateDim,[{mode:'bdr',label:'BDR',fn:'bdrSwitchRateDim'},{mode:'porte',label:'Porte',fn:'bdrSwitchRateDim'},{mode:'origem',label:'Origem',fn:'bdrSwitchRateDim'}])+'</div><div id="bdr-leads-rate-table" style="overflow-x:auto;margin-top:.5rem"></div></div>'+
+    cW('Desqualificações por Dia',tipDisq,'leads-disq',280)+
+    cW('Contatos Trabalhados por Dia (por BDR)',tipDaily,'leads-daily',300)+
+    cN('Penetração por Empresa (contatos/conta)',tipPen,'leads-penetration',340)+
+    '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header"><h3>Trabalhados na Semana</h3>'+_infoBtn(tipWeek,'leads-week-table')+'</div><div id="bdr-leads-week-table" style="overflow-x:auto;margin-top:.3rem"></div></div>';
+}
+function _lCnt(n){ return ' <span style="font-size:.68rem;color:var(--text2);font-weight:600;margin-left:.35rem;white-space:nowrap">'+(n||0).toLocaleString('pt-BR')+' contatos</span>'; }
 
 function bdrKpiOpen(kind){
   var deals=_rawDeals();
@@ -738,12 +1043,13 @@ function buildBdrWeekly(){
   var colab=_bdrWeeklyMode==='colaboradores';
   var vidas=_bdrWeeklyMode==='vidas';
   var inc=function(d){ return vidas?(d.vidas||0):colab?(d.colaboradores||0):1; };
+  var dimFn=_dimFnDeal(_bdrWeeklyDim);
   var tot={};
-  created.forEach(function(d){ var b=_teamBdrName(d); tot[b]=(tot[b]||0)+inc(d); });
+  created.forEach(function(d){ var b=dimFn(d)||'(sem)'; tot[b]=(tot[b]||0)+inc(d); });
   var top=Object.keys(tot).sort(function(a,b){return tot[b]-tot[a];}).slice(0,6);
   var groups=top.concat(['Outros']);
   var colors=['rgba(88,166,255,.8)','rgba(63,185,80,.75)','rgba(58,184,183,.8)','rgba(210,153,34,.85)','rgba(147,112,219,.8)','rgba(248,81,73,.7)','rgba(140,140,150,.5)'];
-  var gOf=function(d){ var b=_teamBdrName(d); return top.indexOf(b)>=0?b:'Outros'; };
+  var gOf=function(d){ var b=dimFn(d)||'(sem)'; return top.indexOf(b)>=0?b:'Outros'; };
   var datasets=groups.map(function(g,i){
     return {label:g,data:weeks.map(function(w){ return created.filter(function(d){return _weekKey(_origDate(d))===w&&gOf(d)===g;}).reduce(function(s,d){return s+inc(d);},0); }),backgroundColor:colors[i%colors.length],stack:'s',borderRadius:2};
   });
@@ -752,7 +1058,7 @@ function buildBdrWeekly(){
     options:{responsive:true,layout:{padding:{top:26}},plugins:{legend:{display:true,labels:{color:th.cText2,font:{family:NOVO_FONT,size:10},padding:8}},datalabels:{display:function(c){return c.datasetIndex===c.chart.data.datasets.length-1;},anchor:'end',align:'top',color:th.cText,font:{family:NOVO_FONT,size:10,weight:'bold'},formatter:function(v,c){var t=0;c.chart.data.datasets.forEach(function(ds){t+=(ds.data[c.dataIndex]||0);});return t?_ni(t):'';}},
       tooltip:{mode:'index',intersect:false,filter:function(item){return item.parsed.y>0;},callbacks:{label:function(c){return c.dataset.label+': '+_ni(c.parsed.y)+(colab?' colaboradores':vidas?' vidas':' deals');}}}},
       scales:{x:{grid:{display:false},ticks:{color:th.cText2,font:{family:NOVO_FONT}},stacked:true},y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0},stacked:true}},
-      onClick:function(e,el){ if(!el.length)return; var ds=datasets[el[0].datasetIndex]; var pre=(ds&&ds.label!=='Outros')?ds.label:null; bdrOpenFacetModal('Weekly Origination por BDR', created, 'bdr', pre); }}});
+      onClick:function(e,el){ if(!el.length)return; var ds=datasets[el[0].datasetIndex]; var pre=(ds&&ds.label!=='Outros')?ds.label:null; bdrOpenFacetModal('Weekly Origination', created, _dimFacetKey(_bdrWeeklyDim), pre); }}});
 }
 
 // R14 | Monthly Origination (por BDR): APENAS o time de BDRs, empilhado por BDR
@@ -763,12 +1069,13 @@ function buildBdrLeadsOrigin(){
   var colab=_bdrLeadsMode==='colaboradores';
   var vidas=_bdrLeadsMode==='vidas';
   var inc=function(d){ return colab?(d.colaboradores||0):vidas?(d.vidas||0):1; };
+  var dimFn=_dimFnDeal(_bdrMonthlyDim);
   var tot={};
-  created.forEach(function(d){ var b=_teamBdrName(d); tot[b]=(tot[b]||0)+inc(d); });
+  created.forEach(function(d){ var b=dimFn(d)||'(sem)'; tot[b]=(tot[b]||0)+inc(d); });
   var top=Object.keys(tot).sort(function(a,b){return tot[b]-tot[a];}).slice(0,6);
   var groups=top.concat(['Outros']);
   var colors=['rgba(88,166,255,.8)','rgba(63,185,80,.75)','rgba(58,184,183,.8)','rgba(210,153,34,.85)','rgba(147,112,219,.8)','rgba(248,81,73,.7)','rgba(140,140,150,.5)'];
-  var gOf=function(d){ var b=_teamBdrName(d); return top.indexOf(b)>=0?b:'Outros'; };
+  var gOf=function(d){ var b=dimFn(d)||'(sem)'; return top.indexOf(b)>=0?b:'Outros'; };
   var datasets=groups.map(function(g,i){
     return {label:g,data:months.map(function(m){ return created.filter(function(d){return _oym(d)===m&&gOf(d)===g;}).reduce(function(s,d){return s+inc(d);},0); }),backgroundColor:colors[i%colors.length],stack:'s',borderRadius:2};
   });
@@ -777,7 +1084,7 @@ function buildBdrLeadsOrigin(){
     options:{responsive:true,layout:{padding:{top:26}},plugins:{legend:{display:true,labels:{color:th.cText2,font:{family:NOVO_FONT,size:10},padding:8}},datalabels:{display:function(c){return c.datasetIndex===c.chart.data.datasets.length-1;},anchor:'end',align:'top',color:th.cText,font:{family:NOVO_FONT,size:10,weight:'bold'},formatter:function(v,c){var t=0;c.chart.data.datasets.forEach(function(ds){t+=(ds.data[c.dataIndex]||0);});return t?_ni(t):'';}},
       tooltip:{mode:'index',intersect:false,filter:function(item){return item.parsed.y>0;},callbacks:{label:function(c){return c.dataset.label+': '+_ni(c.parsed.y)+(colab?' colaboradores':vidas?' vidas':' deals');}}}},
       scales:{x:{grid:{display:false},ticks:{color:th.cText2,font:{family:NOVO_FONT}},stacked:true},y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0},stacked:true}},
-      onClick:function(e,el){ if(!el.length)return; var ds=datasets[el[0].datasetIndex]; var m=months[el[0].index]; bdrOpenFacetModal('Monthly Origination | BDRs', created, (ds&&ds.label!=='Outros')?'bdr':'mes', (ds&&ds.label!=='Outros')?ds.label:_mlbl(m)); }}});
+      onClick:function(e,el){ if(!el.length)return; var ds=datasets[el[0].datasetIndex]; var m=months[el[0].index]; bdrOpenFacetModal('Monthly Origination | BDRs', created, (ds&&ds.label!=='Outros')?_dimFacetKey(_bdrMonthlyDim):'mes', (ds&&ds.label!=='Outros')?ds.label:_mlbl(m)); }}});
 }
 
 // R15 | Matriz de handoff BDR → AE: linhas = AEs (executivos), colunas = BDRs do time.

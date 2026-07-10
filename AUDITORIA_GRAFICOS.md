@@ -84,6 +84,22 @@ Os 4 KPIs do topo (após o alinhamento de definições de 2026-06-12) estão cor
 
 ---
 
+## `bdr.html` | painel BDR (adendo 2026-07-10)
+
+> Seção nova **Cadência de Leads | Contatos do Time** (R16–R22), baseada em CONTATOS (`/api/bdr-leads`: owner do contato = BDR do time + histórico completo de `hs_lead_status`). Validação estrutural com dados de produção no local (funil conferido 1:1 contra contagens independentes do search da API).
+
+| # | Gráfico | Cor | Diagnóstico |
+|---|---|---|---|
+| R16 | Funil de Lead Status | 🟢 | Snapshot no fim da janela reconstruído do histórico; conferido 1:1 com o search da API (NEW 1.879 · ATTEMPTED 155 · CONNECTED 168 · OPEN_DEAL 17 · UNQUALIFIED 107 · BAD_TIMING 3 em 2026-07-10). |
+| R17 | Taxa de Contato por Coorte Semanal | 🟢 | Coorte = primeiro evento de status na semana; taxas = atingiu ATTEMPTED+/CONNECTED+ até hoje. Por coorte de propósito (por toque infla). Semanas recentes têm taxa em maturação — ler com o tempo. |
+| R18 | Taxa de Contato por Dimensão | 🟢 | Mesma coorte do R17 agregada por BDR/Porte/Origem. Porte usa colaboradores do contato com fallback na empresa associada (74% de cobertura); Origem tem só ~17% de preenchimento — bucket "(sem origem)" domina e está explícito. |
+| R19 | Desqualificações por Dia | 🟠 | Eventos UNQUALIFIED/BAD_TIMING por timestamp do histórico — correto, MAS o portal não tem campo de motivo de desqualificação de contato: o "por quê" granular não existe na fonte. Recomendação registrada: criar propriedade (ex.: `motivo_desqualificacao`) e preencher na cadência. |
+| R20 | Contatos Trabalhados por Dia | 🟠 | Contato distinto com mudança de status no dia. Proxy de ritmo: toques que NÃO mudam status (2ª ligação no mesmo status) não contam — subconta atividade repetida; a ficha avisa. |
+| R21 | Penetração por Empresa | 🟢 | Contatos da coorte ÷ empresas distintas, por BDR; só contatos com empresa associada (95%). |
+| R22 | Trabalhados na Semana | 🟢 | Últimos 7 dias por último evento do histórico, independe do filtro; cap de 60 linhas na tabela com "Explorar com filtros" para o resto. |
+
+Também em 2026-07-10: **R13/R14** ganharam dimensão de empilhamento Por BDR | Por Origem (`origem__originacao_`) | Por Porte — cálculo por deal inalterado, só o agrupamento; drilldown pré-seleciona a dimensão ativa.
+
 ## Causas-raiz (consertam vários de uma vez)
 
 1. **Foto ≠ funil.** N01, N03, N08 (e Conversão do board) tratam a contagem atual por etapa como conversão. Conversão real só no **C09** (histórico, via `/api/funnel-stages`). Os outros deveriam se chamar "distribuição atual".
