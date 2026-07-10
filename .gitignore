@@ -7,3 +7,4 @@ lib/credentials.json
 node_modules
 .claude
 npm-debug.log*
+.env*
