@@ -228,7 +228,6 @@ var NOVO_I18N={
     bd_entry_exit:'Entrada vs Saída de Deals por Mês',bd_entry_exit_tip:'Entradas pela data de entrada na etapa Reunião Agendada (evento real do BDR, só pipeline Vendas); saídas por close_date, separando ganhos e perdidos.',
     bd_arr_bridge:'ARR Bridge (Variação Mensal)',bd_arr_bridge_tip:'Variação mensal do ARR ganho, por close_date.',
     bd_won_size:'Porte Médio dos Deals Ganhos (Vidas)',bd_won_size_tip:'Vidas médias de deals ganhos por mês de fechamento. Filtro usa close_date.',
-    bd_forecast:'Cenários de Forecast (Data Prevista)',bd_forecast_tip:'Pipeline aberto alocado pela data_prevista_para_receita quando há filtro ativo; sem filtro, snapshot do pipeline aberto atual.',
     bd_won_monthly:'Deals Ganhos por Mês',bd_won_monthly_tip:'Contagem de deals ganhos por mês de fechamento. Filtro usa close_date.',
   },
   en:{loading:'Fetching data…',error_prefix:'Error: ',retry:'Try again',updated_at:'Updated at',
@@ -241,7 +240,6 @@ var NOVO_I18N={
     bd_entry_exit:'Deal Inflow vs Outflow by Month',bd_entry_exit_tip:'Inflow by the date the deal entered the Scheduled Meeting stage (real BDR event, Vendas pipeline only); outflow by close_date, split into won and lost.',
     bd_arr_bridge:'ARR Bridge (Monthly Variation)',bd_arr_bridge_tip:'Monthly delta in won ARR, by close_date.',
     bd_won_size:'Avg Won Deal Size (Lives)',bd_won_size_tip:'Average lives from won deals by close month. Filter uses close_date.',
-    bd_forecast:'Forecast Scenarios (Expected Date)',bd_forecast_tip:'Open pipeline allocated by data_prevista_para_receita when a filter is active; without a filter, current open pipeline snapshot.',
     bd_won_monthly:'Won Deals by Month',bd_won_monthly_tip:'Count of won deals by close month. Filter uses close_date.',
   }
 };
@@ -252,7 +250,7 @@ var BOARD_CARD_CODES={
   'kpi-won-arr':'P07','kpi-open-pipe':'B02','kpi-adjusted-conv':'B03','kpi-forecast':'P03',
   'rev-trend':'B05','pipe-stage':'C04','deal-bench':'C08',
   'top-ae':'B15','watchlist':'B16',
-  'entry-exit':'B11','arr-bridge':'B12','forecast':'B14'
+  'entry-exit':'B11','arr-bridge':'B12'
 };
 var _boardShowInfo=(function(){try{return localStorage.getItem('board_show_info')!=='0';}catch(e){return true;}})();
 function _boardCodeTag(key){ var code=BOARD_CARD_CODES[key]||''; return code?'<span class="novo-code-tag">'+code+'</span>':''; }
@@ -300,17 +298,12 @@ var BOARD_HELP_CHARTS=[
   {key:'arr-bridge',title:'ARR Bridge (Variação Mensal)',
     desc:'Variação mensal do ARR ganho, por close_date.',
     fields:[['close_date','Mês do ganho.'],['arr_estimado','ARR ganho no mês.']]},
-  {key:'forecast',title:'Cenários de Forecast (Data Prevista)',
-    desc:'Pipeline aberto alocado pela data_prevista_para_receita quando há filtro ativo; sem filtro, snapshot do pipeline aberto atual. A etapa define a probabilidade padrão e a probabilidade customizada do deal tem prioridade.',
-    formula:'Forecast ponderado = Σ (ARR × probabilidade)',
-    fields:[['data_prevista_para_receita','Filtro de período quando ativo.'],['stage','Etapa define probabilidade padrão.'],['probabilidade','Probabilidade customizada do deal quando preenchida.'],['arr_estimado','ARR projetado.']]},
 ];
 
 // Qual dimensão de data o FILTRO GLOBAL de período usa em cada gráfico.
 var BOARD_FILT_FIELD={
   'rev-trend':'close','pipe-stage':'none',
   'deal-bench':'none','top-ae':'none','watchlist':'none','entry-exit':'both','arr-bridge':'close',
-  'forecast':'prev',
 };
 var BOARD_FILT_LABEL={
   pt:{
@@ -530,7 +523,6 @@ function novoRender(){
       '<div class="section-hdr"><h2>Fluxo & Forecast</h2></div>'+
       cWide(t('bd_entry_exit'),t('bd_entry_exit_tip'),'entry-exit',300,deals.length,null,true)+
       cWide(t('bd_arr_bridge'),t('bd_arr_bridge_tip'),'arr-bridge',280,won.length)+
-      c(t('bd_forecast'),t('bd_forecast_tip'),'forecast',300,_novoForecastOpen().length)+
     '</div>';
 
   buildBdRevTrend();
@@ -540,7 +532,6 @@ function novoRender(){
   buildBdWatchlist();
   buildBdEntryExit();
   buildBdArrBridge();
-  buildBdForecast();
   _initTabSubs();
 }
 
@@ -785,22 +776,6 @@ function buildBdArrBridge(){
       scales:{x:{grid:{display:false},ticks:{color:th.cText2,font:{family:NOVO_FONT}}},y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},callback:function(v){return _revShort(Math.abs(v));}}}}}});
 }
 
-function buildBdForecast(){
-  var th=_novoTheme(), open=_novoForecastOpen();
-  var totalOpen=open.reduce(function(s,d){return s+_annualRev(d);},0);
-  var weighted=open.reduce(function(s,d){ var p=_calcProbInfo(d).final||0; return s+_annualRev(d)*p; },0);
-  var optimistic=totalOpen*0.8;
-  var conservative=totalOpen*0.5;
-  var labels=['Ponderado (prob)','Otimista (80%)','Conservador (50%)'];
-  var vals=[Math.round(weighted),Math.round(optimistic),Math.round(conservative)];
-  _novoMkChart('chart-bd-forecast',{type:'bar',plugins:[ChartDataLabels],
-    data:{labels:labels,datasets:[{data:vals,backgroundColor:['rgba(88,166,255,.75)','rgba(63,185,80,.75)','rgba(210,153,34,.8)'],borderRadius:6}]},
-    options:{responsive:true,layout:{padding:{top:28}},plugins:{legend:{display:false},
-      datalabels:{anchor:'end',align:'end',color:th.cText,font:{family:NOVO_FONT,size:11,weight:'bold'},formatter:_revShort},
-      tooltip:{callbacks:{label:function(c){return _fmtBig(c.parsed.y);}}}},
-      scales:{x:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}},y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},callback:_revShort}}}}});
-}
-
 function _stageNorm(s){ return s==='Stand by'?'Standby':s; }
 
 (function(){
@@ -846,8 +821,8 @@ function _stageNorm(s){ return s==='Stand by'?'Standby':s; }
 (function(){
   var PANELS=[
     {label:'CRO Dashboard',url:'/novo',file:'dashboard.html',health:'g',icon:'<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>'},
-    {label:'Board View',url:'/novo-board',file:'board.html',health:'y',icon:'<path d="M2 20h20M4 20V10l8-6 8 6v10"/><path d="M10 20v-6h4v6"/>'},
-    {label:'AE Performance',url:'/novo-ae',file:'ae.html',health:'y',icon:'<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>'},
+    {label:'Board View',url:'/novo-board',file:'board.html',health:'g',icon:'<path d="M2 20h20M4 20V10l8-6 8 6v10"/><path d="M10 20v-6h4v6"/>'},
+    {label:'AE Performance',url:'/novo-ae',file:'ae.html',health:'g',icon:'<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>'},
     {label:'BDR Performance',url:'/novo-bdr',file:'bdr.html',health:'g',icon:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'},
     {label:'Last 48h',url:'/novo-48h',file:'48h.html',health:'r',icon:'<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>'},
     {label:'CS Dashboard',url:'/novo-cs',file:'cs.html',health:'r',icon:'<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>'},
