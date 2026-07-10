@@ -58,6 +58,30 @@
     return { total: total, recorrente: recorrente, pontual: Math.max(0, total - recorrente) };
   }
 
+  // Nº de meses de fatura do contrato, a partir do enum `periodo_contrato` do HubSpot
+  // ("12 Meses"/"24 Meses"/"36 meses"/"Não Possui"). Sem período definido → 12 (anualiza).
+  function contratoMeses(deal) {
+    var raw = deal && deal.periodo_contrato;
+    if (raw) { var m = String(raw).match(/\d+/); if (m) return parseInt(m[0], 10); }
+    return 12;
+  }
+
+  // TCV (valor total do contrato) = soma da receita da régua (`calcReceitaMes`) ao longo
+  // de TODOS os meses do período: os meses de entrada (maiores) + a cauda recorrente.
+  // Bruto, NÃO ponderado por probabilidade. Não altera a régua — só a soma sobre M meses.
+  // Retorna null se o deal não tem base para a régua (sem pf/modelo).
+  function calcTCV(deal) {
+    var M = contratoMeses(deal);
+    var s = 0, any = false;
+    for (var n = 1; n <= M; n++) {
+      var r = calcReceitaMes(n, deal);
+      if (r) { s += r.total; any = true; }
+    }
+    return any ? s : null;
+  }
+
   root.taxaRecorrente = taxaRecorrente;
   root.calcReceitaMes = calcReceitaMes;
+  root.contratoMeses = contratoMeses;
+  root.calcTCV = calcTCV;
 })(typeof window !== 'undefined' ? window : this);

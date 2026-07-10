@@ -6,7 +6,8 @@
   "private": true,
   "scripts": {
     "start": "node scripts/dev.js",
-    "deploy": "vercel --prod",
+    "predeploy": "node scripts/preflight-deploy.js",
+    "deploy": "vercel --prod --yes",
     "generate-credentials": "node scripts/generate-credentials.js"
   },
   "dependencies": {},

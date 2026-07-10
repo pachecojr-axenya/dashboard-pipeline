@@ -14,8 +14,11 @@ O projeto utiliza **Vercel Serverless Functions**.
 
 ### Como realizar o Deploy
 1. Certifique-se de estar linkado ao team correto: `vercel switch` (selecionar o team da Axenya).
-2. Certifique-se de estar linkado ao projeto correto: `vercel link --project prj_ID_DO_PROJETO`
-3. Faça o deploy para produção: `vercel --prod --yes`
+2. Certifique-se de estar linkado ao projeto correto: `vercel link --project prj_WlrmzEWZ9LXoRgeUCzy125UDlYLS`.
+3. Depois de commit/push, rode o preflight canônico: `node scripts/preflight-deploy.js`.
+4. Faça o deploy para produção: `npm run deploy`.
+
+> Regra canônica desde 2026-07-10: **não deployar árvore local suja, branch diferente de `main`, HEAD diferente de `origin/main`, projeto Vercel errado ou pacote sem os endpoints recentes.** O script `scripts/preflight-deploy.js` bloqueia esses casos antes do upload.
 
 ---
 

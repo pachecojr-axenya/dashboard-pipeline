@@ -59,6 +59,7 @@ const PROPERTIES = [
   'produto', 'quantidade_de_colaboradores', 'vidas',
   'valor_da_fatura_do_plano_de_saude_atual', 'primeira_fatura',
   'arr_estimado', 'modelo_de_remuneracao',
+  'contrato_atual_e_de_12__24_ou_36_meses_', // período do contrato (enum 12/24/36 Meses) → nº de meses de fatura; usado no TCV
   'possui_agenciamento', 'possui_vitalicio',
   'probabilidade_de_fechamento_', 'hs_deal_stage_probability',
   'qual_quarter_de_fechamento', 'data_prevista_para_receita',
@@ -68,9 +69,14 @@ const PROPERTIES = [
   // Usadas pelo P01 (Receita Ganha): data em que o deal entrou em Ganho (Vendas), com fallback p/ Implantação (Vendas).
   'hs_v2_date_entered_1144844314', // Vendas | Ganho
   'hs_v2_date_entered_1288611084', // Vendas | Implantação
+  'hs_v2_date_entered_1144746911', // Vendas | Perdido
   'motivo_do_declinio_ou_perdido',
   'motivo_de_declinio_perdido___descricao', // texto aberto | justificativa do declínio (drill A15 do painel AE)
   'a_reuniao_ocorreu_',
+  // Higiene de reuniões (card de Alerta no painel AE): data agendada da reunião com o executivo
+  // e data do reagendamento. Diferente de data_reuniao_agendada (= entrada na ETAPA Reunião Agendada).
+  'data_da_reuniao_com_executivo',
+  'data_do_reagendamento_com_o_executivo',
   // Campos adicionais (preenchidos no portal, confirmados via /api/forecast-table):
   'premio_mensal',        // prêmio mensal real (vs proxy ARR/12) | ~224 deals
   'notes_last_updated',   // data da última atividade/nota | ~1144 deals
@@ -450,6 +456,7 @@ module.exports = async function handler(req, res) {
           primeira_fatura: p.primeira_fatura ? parseFloat(p.primeira_fatura) : null,
           arr_estimado: arr,
           modelo_remuneracao: p.modelo_de_remuneracao || null,
+          periodo_contrato: p.contrato_atual_e_de_12__24_ou_36_meses_ || null,
           possui_agenciamento: normalizeBool(p.possui_agenciamento),
           possui_vitalicio: normalizeBool(p.possui_vitalicio),
           probabilidade: prob,
@@ -458,10 +465,17 @@ module.exports = async function handler(req, res) {
           close_date: p.closedate ? p.closedate.substring(0, 10) : null,
           data_ganho: p.hs_v2_date_entered_1144844314 ? p.hs_v2_date_entered_1144844314.substring(0, 10) : null,
           data_implantacao: p.hs_v2_date_entered_1288611084 ? p.hs_v2_date_entered_1288611084.substring(0, 10) : null,
+          // Data de entrada na etapa Perdido (Vendas). Usada pelo painel BDR (R07/R08) para contar as
+          // saídas por perda pela data de entrada na etapa, não por closedate. Só vem com ?includeLost=true.
+          data_perdido: p.hs_v2_date_entered_1144746911 ? p.hs_v2_date_entered_1144746911.substring(0, 10) : null,
           // Data de entrada na etapa Reunião Agendada (Vendas). É o evento real de "BDR marcou reunião",
           // usado pelo painel BDR no lugar de createdate (que é distorcido por importações em massa).
           data_reuniao_agendada: p.hs_v2_date_entered_1144746905 ? p.hs_v2_date_entered_1144746905.substring(0, 10) : null,
           reuniao_ocorreu: p.a_reuniao_ocorreu_ || null,
+          // Higiene de reuniões (card de Alerta | painel AE). data_reuniao_exec = data agendada com o
+          // executivo; data_reagendamento_exec = data do reagendamento. Ambas yyyy-mm-dd via substring(0,10).
+          data_reuniao_exec: p.data_da_reuniao_com_executivo ? p.data_da_reuniao_com_executivo.substring(0, 10) : null,
+          data_reagendamento_exec: p.data_do_reagendamento_com_o_executivo ? p.data_do_reagendamento_com_o_executivo.substring(0, 10) : null,
           // N08 | ms → dias (1 decimal). null = ainda não chegou a Diagnóstico.
           tempo_ate_diag_dias: (function(){ var v = parseFloat(p.cumulative_time_negocio_criado_ate_diagnostico_formula); return (!isNaN(v) && v >= 0) ? Math.round(v / 86400000 * 10) / 10 : null; })(),
           premio_mensal: p.premio_mensal ? parseFloat(p.premio_mensal) : null,

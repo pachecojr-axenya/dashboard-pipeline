@@ -1800,7 +1800,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
   </style>
 <link rel="stylesheet" href="/premium.css?v=5">
 <script src="/premium.js?v=5"></script>
-<script src="/revenue-engine.js?v=1"></script>
+<script src="/revenue-engine.js?v=2"></script>
 <script src="/faturamento-manual.js?v=1"></script>
 <script src="/forecast-engine.js?v=1"></script>
 </head>
@@ -1898,6 +1898,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
             <button type="button" class="fbtn" style="flex:1; justify-content:center; padding:0.2rem" onclick="selectNoStages()">Nenhuma</button>
           </div>
           <label class="custom-cb"><input type="checkbox" data-stage="Reunião Agendada" onchange="onStageCheckbox(this)"><span class="cb-box"></span>Reunião Agendada</label>
+          <label class="custom-cb"><input type="checkbox" data-stage="Reunião Pré-RFP" onchange="onStageCheckbox(this)"><span class="cb-box"></span>Reunião Pré-RFP</label>
           <label class="custom-cb"><input type="checkbox" data-stage="Diagnóstico" onchange="onStageCheckbox(this)"><span class="cb-box"></span>Diagnóstico</label>
           <label class="custom-cb"><input type="checkbox" data-stage="Cotação" onchange="onStageCheckbox(this)"><span class="cb-box"></span>Cotação</label>
           <label class="custom-cb"><input type="checkbox" data-stage="Proposta Enviada" onchange="onStageCheckbox(this)"><span class="cb-box"></span>Proposta Enviada</label>
@@ -2187,6 +2188,11 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       data-tip="ARR ponderado dividido por 12 meses. Representa a expectativa real de adição mensal de receita.">
       <div class="lbl">MRR ponderado</div>
       <div class="val" id="k-mrrw">—</div>
+    </div>
+    <div class="kpi"
+      data-tip="TCV (12 meses): soma, para cada negócio do pipeline filtrado, da receita projetada pela régua (calcReceita) nos próximos 12 meses. Mesma régua do forecast e mesma deduplicação Fee×Corretagem (negócio duplicado conta uma vez). Não é o ARR (valor anual do campo) nem é ponderado por probabilidade.">
+      <div class="lbl">TCV (12m)</div>
+      <div class="val" id="k-tcv">—</div>
     </div>
     </div>
   </div>
@@ -3292,7 +3298,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
     }
 
     // ── STAGE FILTER ──────────────────────────────────────────────────────────
-    const STAGE_DD_LIST = ['Reunião Agendada','Diagnóstico','Cotação','Proposta Enviada','Consultoria','Negociação','Implantação','Ganho','Standby'];
+    const STAGE_DD_LIST = ['Reunião Agendada','Reunião Pré-RFP','Diagnóstico','Cotação','Proposta Enviada','Consultoria','Negociação','Implantação','Ganho','Standby'];
 
     function toggleStageDd(e) {
       document.getElementById('stage-dd').classList.toggle('open');
@@ -3785,7 +3791,8 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
           ...d,
           prob_etapa: _fcStageProbFor(d.stage, d.pipeline) ?? null,
           prob_ajustada: pInfo.final,
-          prob_info: pInfo
+          prob_info: pInfo,
+          tcv: (typeof calcTCV === 'function') ? calcTCV(d) : null
         };
       });
 
@@ -3940,7 +3947,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
                 <div class="tt-row"><span class="tt-lbl">Vitalício</span><span class="tt-val">${vit}</span></div>
                 <div class="tt-row"><span class="tt-lbl">1ª Fatura</span><span class="tt-val">${fmtBRL(data.pf)}</span></div>
                 <div class="tt-row"><span class="tt-lbl">Vidas</span><span class="tt-val">${vidas || '—'}</span></div>
-                <div class="tt-row sep"><span class="tt-lbl">Mês de receita</span><span class="tt-val">${n}</span></div>
+                <div class="tt-row sep"><span class="tt-lbl">Mês de receita</span><span class="tt-val">${data.ym ? esc(data.ym) + ' | mês ' + n : n}</span></div>
                 <div class="tt-row"><span class="tt-lbl">Fórmula</span><span class="tt-val">${formulaStr}</span></div>
                 <div class="tt-row total"><span class="tt-lbl">Receita Real</span><span class="tt-val">${fmtBRL(data.rec)}</span></div>
               `;
@@ -3951,6 +3958,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
               // ── Receita Probabilizada tooltip ─────────────────────────────
               let h = `
                 <div style="font-weight:700; color:var(--teal); margin-bottom:.8rem; padding-bottom:.5rem; font-size:.9rem">${esc(data.dealname)}</div>
+                <div class="tt-row"><span class="tt-lbl">Mês de receita</span><span class="tt-val">${data.ym ? esc(data.ym) : '—'}</span></div>
                 <div class="tt-row"><span class="tt-lbl">Modelo</span><span class="tt-val">${esc(data.mod)}</span></div>
                 <div class="tt-row"><span class="tt-lbl">Agenciamento</span><span class="tt-val">${data.ag === true ? 'Sim' : (data.ag === false ? 'Não' : '—')}</span></div>
                 <div class="tt-row"><span class="tt-lbl">Vitalício</span><span class="tt-val">${data.vit === true ? 'Sim' : (data.vit === false ? 'Não' : '—')}</span></div>
@@ -4020,6 +4028,12 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       document.getElementById('k-arr').textContent = fmtBRL(totalArr);
       document.getElementById('k-arrw').textContent = fmtBRL(wArr);
       document.getElementById('k-mrrw').textContent = fmtBRL(wArr / 12);
+      const totalTcv = deals.reduce((s, d) => {
+        if (revExcl.has(_fcDealId(d))) return s;
+        let t = 0; for (let n = 1; n <= 12; n++) { const r = calcReceita(n, d); if (r) t += r; }
+        return s + t;
+      }, 0);
+      const kTcv = document.getElementById('k-tcv'); if (kTcv) kTcv.textContent = fmtBRL(totalTcv);
 
       const mTotals = new Array(MONTHS.length).fill(0);
       const mRealTotals = new Array(MONTHS.length).fill(0);
@@ -4090,6 +4104,15 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
         {
           k: 'arr_estimado', lbl: 'ARR Est. (R$)', w: 110, align: 'right', fmt: fmtBRL,
           tip: 'Receita Anual Recorrente estimada (R$). Se não informado, calculado como 1ª Fatura × 12'
+        },
+        {
+          k: 'periodo_contrato', lbl: 'Período', w: 78, align: 'center', hideMobile: true,
+          fmt: v => { if (!v || v === 'Não Possui') return '—'; const m = String(v).match(/\d+/); return m ? m[0] + 'm' : v; },
+          tip: 'Período do contrato (HubSpot | contrato_atual_e_de_12__24_ou_36_meses_): 12, 24 ou 36 meses. Vazio → o TCV assume 12 meses.'
+        },
+        {
+          k: 'tcv', lbl: 'TCV (R$)', w: 118, align: 'right', fmt: fmtBRL,
+          tip: 'Valor total do contrato = soma da receita projetada pela régua (calcReceitaMes) ao longo dos meses do Período | meses de entrada (maiores) + cauda recorrente | bruto, não ponderado por probabilidade. Sem Período → 12 meses. (Difere do KPI "TCV" do topo, que é 12 meses e deduplicado.)'
         },
         {
           k: 'modelo_remuneracao', lbl: 'Modelo', w: 85, hideMobile: true,
@@ -4291,6 +4314,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
               pf: d.primeira_fatura,
               vidas: d.vidas,
               n: mObj.n,
+              ym: m.label,
               rec: mObj.rec,
             };
             h += `<td class="m real m-hide v${sep}${now}" data-col="${ci}" data-calc="${esc(JSON.stringify(realCalcData))}">${fmtBRL(mObj.rec)}</td>`;
@@ -4313,6 +4337,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
               ag: d.possui_agenciamento,
               vit: d.possui_vitalicio,
               pf: d.primeira_fatura,
+              ym: m.label,
               rec: mObj.rec,
               sp: pi.sp,
               cp: pi.cp,
@@ -4352,6 +4377,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
         else if (c.k === 'fatura_atual') h += `<td class="${mh}" style="text-align:right">${totalFatAtu > 0 ? fmtBRL(totalFatAtu) : ''}</td>`;
         else if (c.k === 'primeira_fatura') h += `<td class="${mh}" style="text-align:right">${totalPrimFat > 0 ? fmtBRL(totalPrimFat) : ''}</td>`;
         else if (c.k === 'arr_estimado') h += `<td class="${mh}" style="text-align:right">${fmtBRL(totalArr)}</td>`;
+        else if (c.k === 'tcv') { const totalTcvCol = deals.reduce((s, d) => s + (d.tcv || 0), 0); h += `<td class="${mh}" style="text-align:right">${totalTcvCol > 0 ? fmtBRL(totalTcvCol) : ''}</td>`; }
         else if (c.k === 'prob_ajustada') h += `<td class="${mh}" style="text-align:right" data-tip="${esc(effAdjTip)}">${effAdjProb != null ? fmtPct(effAdjProb) : ''}</td>`;
         else h += `<td class="${mh}${c.sticky2 ? ' s2' : ''}"></td>`;
       });
@@ -5137,10 +5163,10 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
 (function(){
   var PANELS=[
     {label:'CRO Dashboard',url:'/novo',file:'dashboard.html',health:'g',icon:'<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>'},
-    {label:'Board View',url:'/novo-board',file:'board.html',health:'y',icon:'<path d="M2 20h20M4 20V10l8-6 8 6v10"/><path d="M10 20v-6h4v6"/>'},
-    {label:'AE Performance',url:'/novo-ae',file:'ae.html',health:'y',icon:'<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>'},
+    {label:'Board View',url:'/novo-board',file:'board.html',health:'g',icon:'<path d="M2 20h20M4 20V10l8-6 8 6v10"/><path d="M10 20v-6h4v6"/>'},
+    {label:'AE Performance',url:'/novo-ae',file:'ae.html',health:'g',icon:'<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>'},
     {label:'BDR Performance',url:'/novo-bdr',file:'bdr.html',health:'g',icon:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'},
-    {label:'Last 48h',url:'/novo-48h',file:'48h.html',health:'r',icon:'<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>'},
+    {label:'Last 48h',url:'/novo-48h',file:'48h.html',health:'g',icon:'<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>'},
     {label:'CS Dashboard',url:'/novo-cs',file:'cs.html',health:'r',icon:'<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>'},
     {label:'Cotação',url:'/novo-cotacao',file:'cotacao.html',health:'r',icon:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>'},
     {label:'Forecast',url:'/forecast',file:'forecast.html',health:'g',sec:'Forecast',icon:'<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>'},
