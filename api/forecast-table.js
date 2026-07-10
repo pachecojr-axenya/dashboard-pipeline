@@ -211,8 +211,23 @@ function getQuarterFromDate(dateStr) {
   return null;
 }
 
+// Retry em 429/5xx com backoff (espelho do _hsFetchRetry de lib/hubspot.js; este
+// arquivo mantém helpers HTTP próprios de propósito).
+async function _hsFetchRetry(url, options, maxRetries = 3) {
+  for (let attempt = 0; ; attempt++) {
+    const res = await fetch(url, options);
+    if ((res.status === 429 || res.status >= 500) && attempt < maxRetries) {
+      const ra = parseFloat(res.headers.get('retry-after'));
+      const wait = !isNaN(ra) ? Math.min(ra * 1000, 10000) : (1000 * Math.pow(2, attempt) + Math.random() * 300);
+      await new Promise(r => setTimeout(r, wait));
+      continue;
+    }
+    return res;
+  }
+}
+
 async function hubspotPost(token, endpoint, body) {
-  const res = await fetch(`https://api.hubapi.com${endpoint}`, {
+  const res = await _hsFetchRetry(`https://api.hubapi.com${endpoint}`, {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -227,7 +242,7 @@ async function hubspotPost(token, endpoint, body) {
 }
 
 async function hubspotGet(token, url) {
-  const res = await fetch(`https://api.hubapi.com${url}`, {
+  const res = await _hsFetchRetry(`https://api.hubapi.com${url}`, {
     headers: { 'Authorization': `Bearer ${token}` },
     signal: AbortSignal.timeout(30000),
   });

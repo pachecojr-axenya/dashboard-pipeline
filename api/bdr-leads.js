@@ -134,7 +134,7 @@ async function fetchStatusHistory(token, ids) {
   const batches = [];
   for (let i = 0; i < ids.length; i += 50) batches.push(ids.slice(i, i + 50));
   const hist = {};
-  await pool(batches, 4, async batch => {
+  await pool(batches, 2, async batch => {
     const resp = await hubspotPost(token, '/crm/v3/objects/contacts/batch/read', {
       inputs: batch.map(id => ({ id })),
       properties: ['hs_lead_status'],
@@ -155,7 +155,7 @@ async function fetchCompanies(token, ids) {
   const batches = [];
   for (let i = 0; i < ids.length; i += 100) batches.push(ids.slice(i, i + 100));
   const map = {};
-  await pool(batches, 4, async batch => {
+  await pool(batches, 2, async batch => {
     const resp = await hubspotPost(token, '/crm/v3/objects/companies/batch/read', {
       inputs: batch.map(id => ({ id })),
       properties: ['name', 'numberofemployees', 'domain'],
@@ -182,6 +182,7 @@ async function buildPayload(token) {
   ]);
 
   const hist = await fetchStatusHistory(token, contactsRaw.map(c => c.id));
+
 
   const companyIds = [...new Set(contactsRaw.map(c => c.properties.associatedcompanyid).filter(Boolean))];
   const companies = await fetchCompanies(token, companyIds);
@@ -240,6 +241,11 @@ module.exports = async function handler(req, res) {
     return res.status(200).json(data);
   } catch (e) {
     console.error('[bdr-leads]', e.message);
+    // Fallback stale: melhor servir a última foto boa (com aviso) do que derrubar a
+    // seção inteira por um rate limit transitório da cota compartilhada.
+    if (_cache.data) {
+      return res.status(200).json({ ...(_cache.data), cached: true, stale: true, staleError: e.message });
+    }
     return res.status(500).json({ success: false, error: e.message });
   }
 };

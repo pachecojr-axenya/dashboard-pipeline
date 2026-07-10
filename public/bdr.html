@@ -844,11 +844,13 @@ function novoLoadData(){
   var btn=document.getElementById('btn-refresh'); if(btn) btn.classList.add('spinning');
   document.getElementById('novo-content').innerHTML='<div style="text-align:center;padding:3rem 0;color:var(--text2)">'+t('loading')+'</div>';
   _bdrLoadMetas();
-  if(!_bdrLeads&&!_bdrLeadsLoading) bdrLoadLeads();
   fetch('/api/forecast-table?includeLost=true').then(function(r){ if(!r.ok) return r.text().then(function(txt){ throw new Error(txt||('HTTP '+r.status)); }); return r.json(); }).then(function(data){
     _novoDeals=Array.isArray(data)?data:(data.deals||[]);window._novoDealsRaw=_novoDeals;
     if(btn) btn.classList.remove('spinning');
     novoRender();
+    // Leads DEPOIS do forecast-table de propósito: as duas cargas na mesma cota do
+    // private app do HubSpot estouravam rate limit quando disparadas juntas (2026-07-10).
+    if(!_bdrLeads&&!_bdrLeadsLoading) bdrLoadLeads();
   }).catch(function(err){
     if(btn) btn.classList.remove('spinning');
     document.getElementById('novo-content').innerHTML='<div style="text-align:center;padding:3rem 0;color:var(--red)">'+t('error_prefix')+_ne(String(err))+'<br><br><button onclick="novoLoadData()" style="background:var(--teal);color:#fff;border:none;border-radius:8px;padding:.5rem 1.2rem;cursor:pointer">'+t('retry')+'</button></div>';
@@ -937,7 +939,7 @@ function _bdrLeadsSectionHtml(){
   var w=_lWin(), all=_lContacts();
   var inFunnel=0; all.forEach(function(c){ if(_lStatusAt(c,w.end)) inFunnel++; });
   var cohortN=_lCohort().length;
-  var meta='<div style="grid-column:1/-1;font-size:.74rem;color:var(--text2);margin:-.4rem 0 .1rem">'+_ni(all.length)+' contatos com lead status | '+_ni(_bdrLeads.semStatus)+' do time ainda sem status (fora do funil) | '+_ni(cohortN)+' entraram na cadência no período | fonte: histórico de hs_lead_status (HubSpot)'+(_bdrLeads.cached?' | cache':'')+'</div>';
+  var meta='<div style="grid-column:1/-1;font-size:.74rem;color:var(--text2);margin:-.4rem 0 .1rem">'+_ni(all.length)+' contatos com lead status | '+_ni(_bdrLeads.semStatus)+' do time ainda sem status (fora do funil) | '+_ni(cohortN)+' entraram na cadência no período | fonte: histórico de hs_lead_status (HubSpot)'+(_bdrLeads.stale?' | ⚠ DADOS EM CACHE (HubSpot indisponível no momento; atualize em alguns minutos)':(_bdrLeads.cached?' | cache':''))+'</div>';
   var cW=function(title,tip,id,h,tabs){ return '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header"><h3>'+title+'</h3>'+_infoBtn(tip,id)+(tabs||'')+'</div><canvas id="chart-bdr-'+id+'" style="max-height:'+(h||320)+'px"></canvas></div>'; };
   var cN=function(title,tip,id,h){ return '<div class="novo-card"><div class="novo-card-header"><h3>'+title+'</h3>'+_infoBtn(tip,id)+'</div><canvas id="chart-bdr-'+id+'" style="max-height:'+(h||320)+'px"></canvas></div>'; };
   var tipFunnel='Fotografia do funil de contatos do time no FIM do período selecionado (sem filtro = agora): cada contato conta no status que tinha naquela data, reconstruído do histórico de hs_lead_status. Percentual = share do total com status. Clique numa barra para ver os contatos.';
