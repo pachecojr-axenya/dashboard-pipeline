@@ -101,3 +101,43 @@ A variável `ALLOWED_EMAILS` é **aditiva** à lista hardcoded em `lib/auth.js`:
 - **Formato:** lista separada por vírgula, sem espaços. Ex.: `maria@axenya.com,pedro@axenya.com`
 - **Se vazia ou ausente:** só os e-mails hardcoded em `lib/auth.js` têm acesso.
 - **Domínio `@axenya.com`:** dependendo da lógica em `lib/auth.js`, pode haver verificação de domínio além da lista — confirmar antes de adicionar e-mails externos.
+
+---
+
+## 7. Mapa real da infra Vercel (2026-07-10) — LEIA ANTES DE DEPLOYAR
+
+> Levantado e corrigido em 2026-07-10. Evita redescobrir tudo na próxima sessão.
+
+### Projetos e domínios
+
+| Projeto Vercel | Conta/Team | Plano | Domínios | Status |
+|---|---|---|---|---|
+| `dashboard-axenya` | team `axenya-f1a041f6` (`team_kMpQxhA68GkDKY9ZxS2vn7Ge`) | Pro | `project-bsmfu.vercel.app` + `axenya-pipeline-dashboard.vercel.app` | **CANÔNICO — deployar aqui** |
+| `axenya-pipeline-dashboard-legacy` | "Samuel Alencar's projects" (`team_mPRF3KjR2KN77fZP5X2Om9Dj`) | Hobby | nenhum (domínio movido) | LEGADO. Deploys ficam BLOCKED (limite de funções do Hobby). Buildava do repo espelho `salencar-lang/axenya-pipeline-dashboard` (histórico divergente). NÃO usar. |
+
+O domínio que o time usa (`axenya-pipeline-dashboard.vercel.app`) foi movido para o canônico em 2026-07-10 (projeto legado renomeado para liberar o subdomínio; nada deletado).
+
+### Tokens e secrets (GCP Secret Manager, projeto `gen-lang-client-0423905839`)
+
+| Secret GCP | Conteúdo | Uso |
+|---|---|---|
+| `vercel_personal_token` | Token Vercel com acesso ao team Axenya | Deploy do canônico: `npx vercel deploy --prod --yes --token "$(gcloud secrets versions access latest --secret=vercel_personal_token --project=gen-lang-client-0423905839)"` |
+| `Vercel_Growth` | Token da conta pessoal | Só para administrar o projeto legado |
+| `Vercel` | Revogado (Not authorized) | Não usar |
+| `axenya-hubspot-pat-shared` | PAT HubSpot do portal 44715285 | `HUBSPOT_TOKEN` do Vercel (aplicado em 2026-07-10 após o token anterior do canônico expirar) e dev local |
+| `oauth-client-pipeline-dashboard` | JSON do OAuth client Google `596382399844-fabidm…` (projeto GCP da Axenya) | `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` do canônico (aplicado 2026-07-10) |
+| `axenya-opencode-gsc-service-account-json-shared` | Service Account JSON | `GOOGLE_SERVICE_ACCOUNT_JSON` (list-attack/sheets) |
+
+### OAuth Google (client `596382399844-fabidm…`)
+
+- Autoriza HOJE: origem `https://axenya-pipeline-dashboard.vercel.app` + redirect `.../api/auth/callback`.
+- `redirect_uri` é derivado do host da request (`api/auth/callback.js`) — cada domínio novo do projeto precisa ser adicionado ao client no Console (`gen-lang-client-0423905839` → Credentials); client clássico NÃO tem API de edição.
+- PENDENTE: adicionar `https://project-bsmfu.vercel.app` (origem + `/api/auth/callback`) se alguém for logar por essa URL.
+
+### Gotchas de validação (custaram tempo em 2026-07-10)
+
+1. **`public/bdr.html` tem 3 bytes NUL históricos** — `grep` sem `-a` trata a resposta como binária e NÃO imprime nada (parece que a feature não subiu quando subiu). Validar com `grep -a` ou python `bytes.count`.
+2. **Polling agressivo em domínio `.vercel.app` dispara o Vercel Security Checkpoint** (challenge por IP, `x-vercel-mitigated: challenge`, ~5-10 min). Validar com UMA requisição, não com loop de 5s.
+3. **`vercel deploy` via CLI pode ficar pendurado em "Building…"** mesmo com o build pronto — confirmar pelo campo `readyState` da API (`/v13/deployments/<url-do-deployment>`); o id `dpl_…` na API precisa do prefixo, o hash do inspect URL sozinho retorna not_found.
+4. **Envs `sensitive` (SESSION_SECRET, SNAPSHOT_SECRET, CRON_SECRET) não são decriptáveis** via API — validação autenticada de produção exige login real; valide o `HUBSPOT_TOKEN` direto contra `api.hubapi.com` antes de gravar.
+5. **Trocar env NÃO afeta deployment existente** — sempre redeployar + re-aliasar `axenya-pipeline-dashboard.vercel.app` (o alias explícito garante: `POST /v2/deployments/<dpl_id>/aliases`).
