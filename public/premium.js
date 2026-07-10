@@ -8,6 +8,15 @@
 (function () {
   'use strict';
 
+  /* ── Host canônico ───────────────────────────────────────────────────────
+     `project-bsmfu.vercel.app` é domínio técnico do projeto Vercel. Login de
+     usuário final deve acontecer no domínio autorizado no Google OAuth. */
+  var CANONICAL_HOST = 'axenya-pipeline-dashboard.vercel.app';
+  if (location.hostname === 'project-bsmfu.vercel.app') {
+    location.replace(location.protocol + '//' + CANONICAL_HOST + location.pathname + location.search + location.hash);
+    return;
+  }
+
   /* ── Marca a página no <html> p/ estilos premium por view ─────────────── */
   var page = (location.pathname.replace(/\.html$/, '').replace(/^\//, '') || 'index')
     .replace(/[^\w-]/g, '');

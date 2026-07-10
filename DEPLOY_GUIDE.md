@@ -135,7 +135,7 @@ O domínio que o time usa (`axenya-pipeline-dashboard.vercel.app`) foi movido pa
 
 - Autoriza HOJE: origem `https://axenya-pipeline-dashboard.vercel.app` + redirect `.../api/auth/callback`.
 - `redirect_uri` é derivado do host da request (`api/auth/callback.js`) — cada domínio novo do projeto precisa ser adicionado ao client no Console (`gen-lang-client-0423905839` → Credentials); client clássico NÃO tem API de edição.
-- PENDENTE: adicionar `https://project-bsmfu.vercel.app` (origem + `/api/auth/callback`) se alguém for logar por essa URL.
+- `project-bsmfu.vercel.app` é domínio técnico. `premium.js` redireciona esse host para `axenya-pipeline-dashboard.vercel.app` antes do login, evitando `redirect_uri_mismatch` sem duplicar OAuth em dois domínios.
 
 ### Gotchas de validação (custaram tempo em 2026-07-10)
 
