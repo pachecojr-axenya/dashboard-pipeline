@@ -893,7 +893,6 @@ function novoRender(){
       kpi('Reunião Agendada há +30 dias',_ni(raStale.length),'paradas na etapa | só time de BDRs',raStale.length>0?'var(--yellow)':'var(--text)','kpi-ra-stale','raStale',tipRaStale)+
     '</div>'+
     '<div class="novo-cards">'+
-      _bdrLeadsSectionHtml()+
       '<div class="section-hdr"><h2>Originação</h2></div>'+
       cWide('Originação por BDR'+_cntSpan(createdTeam),'Quantos deals (ou vidas, ou colaboradores) foram originados por cada BDR do TIME (os 13 nomes do drawer de Configurações; grafias do HubSpot mapeadas para o drawer). Originação = data de ENTRADA em Reunião Agendada (não createdate); o filtro de período usa essa data. Cor da barra (modo Deals) = atingimento da meta do BDR no período: com filtro ativo, a meta é a SOMA das metas mensais dos meses da janela (botão Metas; meses sem meta mensal usam a meta padrão); sem filtro, a soma de todas as metas mensais cadastradas. Clique numa barra para ver os deals.','origin-bdr',320,_subTabs('bdr-origin-tabs',_bdrOriginMode,[{mode:'deals',label:'Deals',fn:'bdrSwitchOrigin'},{mode:'vidas',label:'Vidas',fn:'bdrSwitchOrigin'},{mode:'colaboradores',label:'Colaboradores',fn:'bdrSwitchOrigin'}])+'<button onclick="bdrOpenMetasModal()" style="background:var(--card2);color:var(--teal);border:1px solid var(--border);border-radius:8px;padding:.3rem .7rem;font-size:.74rem;font-weight:600;cursor:pointer;margin-left:.4rem" title="Editar metas mensais por BDR (global)">Metas</button>',true)+
       cWide('Weekly Origination'+_cntSpan(createdTeam),'Geração semanal APENAS do time de BDRs (drawer de Configurações): barras empilhadas (Top 6 + Outros), últimas 13 semanas pela data de ENTRADA em Reunião Agendada (não createdate); o filtro de período usa essa data. Alterna a métrica (Deals | Vidas | Colaboradores) e a DIMENSÃO do empilhamento: por BDR, por Origem do deal (origem__originacao_) ou por Porte.','weekly-origin',320,_subTabs('bdr-weekly-tabs',_bdrWeeklyMode,[{mode:'deals',label:'Deals',fn:'bdrSwitchWeekly'},{mode:'vidas',label:'Vidas',fn:'bdrSwitchWeekly'},{mode:'colaboradores',label:'Colaboradores',fn:'bdrSwitchWeekly'}])+'<span style="width:.15rem"></span>'+_DIM_TABS('bdr-weekly-dim-tabs',_bdrWeeklyDim,'bdrSwitchWeeklyDim'),true)+
@@ -907,6 +906,7 @@ function novoRender(){
       cWide(t('bdr_avg_vidas')+_cntSpan(created.length),t('bdr_avg_vidas_tip'),'avg-vidas',280,null,true)+
       c(t('bdr_colabs')+_cntSpan(deals.length),t('bdr_colabs_tip'),'colabs',300,null,true)+
       c(t('bdr_size_dist')+_cntSpan(createdTeam),t('bdr_size_dist_tip'),'size-dist',300,_subTabs('bdr-size-tabs',_bdrSizeMode,[{mode:'colaboradores',label:'Colaboradores',fn:'bdrSwitchSize'},{mode:'vidas',label:'Vidas',fn:'bdrSwitchSize'}]),true)+
+      _bdrLeadsSectionHtml()+
     '</div>';
 
   buildBdrOrigin();
