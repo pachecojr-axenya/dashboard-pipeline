@@ -6,6 +6,8 @@
     { "source": "/novo-ae", "destination": "/ae.html" },
     { "source": "/novo-bdr", "destination": "/bdr.html" },
     { "source": "/novo-bdr/no-show", "destination": "/bdr-no-show.html" },
+    { "source": "/novo-bdr/workload", "destination": "/bdr-workload.html" },
+    { "source": "/dashboard/bdr/workload", "destination": "/bdr-workload.html" },
     { "source": "/novo-bdr/list-attack", "destination": "/bdr-list-attack.html" },
     { "source": "/novo-bdr/treble", "destination": "/bdr-treble.html" },
     { "source": "/dashboard/bdr/no-show", "destination": "/bdr-no-show.html" },

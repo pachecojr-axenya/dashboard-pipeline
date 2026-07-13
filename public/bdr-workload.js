@@ -1,0 +1,389 @@
+'use strict';
+/* BDR Workload | carga de trabalho e movimentação intraday/weekly/monthly.
+   Consome /api/bdr-workload (inserções por createdate + transições de hs_lead_status
+   via propertiesWithHistory). Agregação e filtros 100% no front. Spec:
+   docs/2026-07-13_bdr-workload-intraday-spec.md */
+var WorkloadBDR = (function () {
+  var HS_PORTAL = 'https://app.hubspot.com/contacts/44715285';
+
+  var STATUS_LABEL = {
+    NEW: 'Novo', OPEN: 'Aberto', IN_PROGRESS: 'Em andamento',
+    ATTEMPTED_TO_CONTACT: 'Tentativa de contato', CONNECTED: 'Contato efetivo',
+    OPEN_DEAL: 'Qualificado (deal)', UNQUALIFIED: 'Desqualificado', BAD_TIMING: 'Timing ruim',
+  };
+  var STATUS_CLS = {
+    CONNECTED: 'good', OPEN_DEAL: 'good', UNQUALIFIED: 'bad', BAD_TIMING: 'warn',
+    ATTEMPTED_TO_CONTACT: 'warn',
+  };
+  var FONTES = ['Apollo', 'Lusha', 'Manual', 'API interna'];
+
+  var raw = null;
+  var state = { period: 'hoje', since: null, until: null, bdr: '', porte: '', fonte: '' };
+
+  // ---------- datas (America/Sao_Paulo = fuso local dos usuários) ----------
+  function iso(d) {
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+  function periodRange(p) {
+    var now = new Date(), s = new Date(now), u = new Date(now);
+    if (p === 'ontem') { s.setDate(s.getDate() - 1); u = new Date(s); }
+    else if (p === '7d') { s.setDate(s.getDate() - 6); }
+    else if (p === 'semana') { var dow = (now.getDay() + 6) % 7; s.setDate(s.getDate() - dow); }
+    else if (p === 'mes') { s.setDate(1); }
+    return { since: iso(s), until: iso(u) };
+  }
+
+  function porteOf(colabs) {
+    if (colabs == null || !isFinite(colabs)) return 'Sem info';
+    if (colabs <= 200) return '≤200';
+    if (colabs <= 500) return '201–500';
+    if (colabs <= 5000) return '501–5k';
+    return '>5k';
+  }
+  var PORTES = ['≤200', '201–500', '501–5k', '>5k', 'Sem info'];
+
+  function hhmm(ts) {
+    var d = new Date(ts);
+    return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  }
+  function dmhm(ts) {
+    var d = new Date(ts);
+    return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + ' ' + hhmm(ts);
+  }
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+    });
+  }
+
+  // ---------- filtros ----------
+  function passBdr(x) { return !state.bdr || x.bdr === state.bdr; }
+  function passPorte(x) { return !state.porte || porteOf(x.colaboradores) === state.porte; }
+  function passFonte(x) { return !state.fonte || (x.fonte || 'Outra') === state.fonte; }
+
+  function fCompanies() { return raw.companiesCreated.filter(function (c) { return passBdr(c) && passPorte(c) && passFonte(c); }); }
+  function fContacts() { return raw.contactsCreated.filter(function (c) { return passBdr(c) && passPorte(c) && passFonte(c); }); }
+  // fonte não se aplica a transição (movimentação não tem fonte de criação)
+  function fTransitions() { return raw.transitions.filter(function (t) { return passBdr(t) && passPorte(t); }); }
+
+  // ---------- carga ----------
+  function load(refresh) {
+    var r = state.period === 'custom' ? { since: state.since, until: state.until } : periodRange(state.period);
+    state.since = r.since; state.until = r.until;
+    document.getElementById('state').classList.remove('hidden');
+    document.getElementById('content').classList.add('hidden');
+    var url = '/api/bdr-workload?since=' + r.since + '&until=' + r.until + (refresh ? '&refresh=1' : '');
+    fetch(url, { credentials: 'same-origin' })
+      .then(function (res) {
+        if (res.status === 401) { window.location.href = '/'; throw new Error('login'); }
+        return res.json();
+      })
+      .then(function (data) {
+        if (!data.success) throw new Error(data.error || 'Falha ao carregar');
+        raw = data;
+        render();
+      })
+      .catch(function (e) {
+        if (e.message === 'login') return;
+        document.getElementById('state').innerHTML = '<strong>Erro ao carregar</strong>' + esc(e.message);
+      });
+  }
+
+  // ---------- render ----------
+  function render() {
+    renderFilters();
+    var comps = fCompanies(), conts = fContacts(), trans = fTransitions();
+    var kEfetivo = trans.filter(function (t) { return t.para === 'CONNECTED'; });
+    var kQualif = trans.filter(function (t) { return t.para === 'OPEN_DEAL'; });
+    var kDesq = trans.filter(function (t) { return t.para === 'UNQUALIFIED' || t.para === 'BAD_TIMING'; });
+
+    var html = '';
+    html += kpis([
+      { label: 'Empresas inseridas', value: comps.length, cls: 'teal', drill: 'empresas', sub: subFontes(comps) },
+      { label: 'Contatos inseridos', value: conts.length, cls: 'teal', drill: 'contatos', sub: subFontes(conts) },
+      { label: 'Movimentações de status', value: trans.length, cls: '', drill: 'movs', sub: trans.length ? 'em ' + uniq(trans, 'contato_id') + ' contatos' : 'sem movimentação no recorte' },
+      { label: 'Contato efetivo', value: kEfetivo.length, cls: 'good', drill: 'efetivo', sub: 'transições para Contato efetivo' },
+      { label: 'Qualificado', value: kQualif.length, cls: 'good', drill: 'qualificado', sub: 'transições para Qualificado (deal)' },
+      { label: 'Desqualificado | Timing', value: kDesq.length, cls: kDesq.length ? 'bad' : '', drill: 'desq', sub: 'motivos: propriedade pendente no HubSpot' },
+    ]);
+    html += chartHoras(conts, trans);
+    html += '<div class="grid">';
+    html += chartPorBdr(comps, conts, trans);
+    html += chartPorFonte(comps, conts);
+    html += '</div>';
+    html += tabelaMovs(trans);
+    html += tabelaEmpresas(comps, conts);
+    html += tabelaContatos(conts);
+
+    document.getElementById('content').innerHTML = html;
+    document.getElementById('state').classList.add('hidden');
+    document.getElementById('content').classList.remove('hidden');
+    var gen = document.getElementById('gen-at');
+    if (gen) gen.textContent = 'Janela ' + state.since + ' a ' + state.until + ' | gerado ' + dmhm(raw.generatedAt) + (raw.cached ? ' | cache' : '');
+  }
+
+  function uniq(arr, key) {
+    var s = {}; arr.forEach(function (x) { s[x[key]] = 1; }); return Object.keys(s).length;
+  }
+  function subFontes(arr) {
+    if (!arr.length) return 'nada inserido no recorte';
+    var c = {};
+    arr.forEach(function (x) { var f = x.fonte || 'Outra'; c[f] = (c[f] || 0) + 1; });
+    return Object.keys(c).sort(function (a, b) { return c[b] - c[a]; })
+      .map(function (f) { return f + ' ' + c[f]; }).join(' | ');
+  }
+
+  function kpis(items) {
+    var h = '<section class="kpis">';
+    items.forEach(function (k) {
+      h += '<div class="kpi clickable ' + k.cls + '" onclick="WorkloadBDR.drill(\'' + k.drill + '\')">' +
+        '<div class="label">' + esc(k.label) + '</div>' +
+        '<div class="value">' + k.value + '</div>' +
+        '<div class="sub">' + esc(k.sub) + '</div></div>';
+    });
+    return h + '</section>';
+  }
+
+  function chartHoras(conts, trans) {
+    var multiDay = state.since !== state.until;
+    var buckets = {}, order = [];
+    function push(ts, tipo) {
+      var d = new Date(ts);
+      var key = multiDay
+        ? String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0')
+        : String(d.getHours()).padStart(2, '0') + 'h';
+      if (!buckets[key]) { buckets[key] = { ins: 0, mov: 0 }; order.push(key); }
+      buckets[key][tipo]++;
+    }
+    conts.forEach(function (c) { push(c.criado, 'ins'); });
+    trans.forEach(function (t) { push(t.ts, 'mov'); });
+    order.sort();
+    var max = 1;
+    order.forEach(function (k) { max = Math.max(max, buckets[k].ins + buckets[k].mov); });
+    var h = '<div class="grid"><div class="card span-12"><div class="card-title"><div><h2>Ritmo | ' +
+      (multiDay ? 'atividade por dia' : 'atividade por hora') + '</h2>' +
+      '<div class="desc">Contatos inseridos (turquesa) e movimentações de status (amarelo) ao longo ' + (multiDay ? 'dos dias' : 'do dia') + '</div></div></div>';
+    if (!order.length) { return h + '<div class="desc">Sem atividade no recorte.</div></div></div>'; }
+    h += '<div class="bars" style="height:190px">';
+    order.forEach(function (k) {
+      var b = buckets[k], tot = b.ins + b.mov;
+      var hi = Math.round(b.ins / max * 150), hm = Math.round(b.mov / max * 150);
+      h += '<div class="bar-wrap"><div style="width:100%;max-width:36px;display:flex;flex-direction:column;justify-content:end">' +
+        '<div class="bar" style="position:relative;background:linear-gradient(180deg,var(--yellow),rgba(227,179,65,.4));height:' + Math.max(hm, b.mov ? 3 : 0) + 'px;border-radius:' + (b.ins ? '7px 7px 0 0' : '7px 7px 0 0') + '"><small>' + (tot || '') + '</small></div>' +
+        '<div style="width:100%;background:linear-gradient(180deg,var(--teal),rgba(58,184,183,.4));height:' + Math.max(hi, b.ins ? 3 : 0) + 'px;border-radius:0 0 0 0"></div>' +
+        '</div><span class="bar-label" style="transform:none">' + esc(k) + '</span></div>';
+    });
+    return h + '</div></div></div>';
+  }
+
+  function chartPorBdr(comps, conts, trans) {
+    var por = {};
+    raw.team.forEach(function (b) { por[b] = { emp: 0, cont: 0, mov: 0, efetivo: 0, desq: 0 }; });
+    comps.forEach(function (c) { if (por[c.bdr]) por[c.bdr].emp++; });
+    conts.forEach(function (c) { if (por[c.bdr]) por[c.bdr].cont++; });
+    trans.forEach(function (t) {
+      if (!por[t.bdr]) return;
+      por[t.bdr].mov++;
+      if (t.para === 'CONNECTED') por[t.bdr].efetivo++;
+      if (t.para === 'UNQUALIFIED' || t.para === 'BAD_TIMING') por[t.bdr].desq++;
+    });
+    var rows = raw.team.slice().sort(function (a, b) {
+      return (por[b].cont + por[b].mov) - (por[a].cont + por[a].mov);
+    });
+    var max = 1;
+    rows.forEach(function (b) { max = Math.max(max, por[b].cont + por[b].mov); });
+    var h = '<div class="card span-6"><div class="card-title"><div><h2>Por BDR | inserção e movimentação</h2>' +
+      '<div class="desc">Barra = contatos inseridos + movimentações | pills: empresas inseridas, contatos efetivos, desqualificações</div></div></div><div class="break-list">';
+    rows.forEach(function (b) {
+      var p = por[b], tot = p.cont + p.mov;
+      h += '<div class="break-row" style="grid-template-columns:minmax(120px,1fr) auto">' +
+        '<span class="break-name">' + esc(b) + '</span>' +
+        '<span style="display:flex;gap:.3rem;justify-content:end">' +
+        '<span class="pill" data-tip="Empresas inseridas">🏢 ' + p.emp + '</span>' +
+        '<span class="pill' + (p.efetivo ? ' good' : '') + '" data-tip="Contatos efetivos">✓ ' + p.efetivo + '</span>' +
+        '<span class="pill' + (p.desq ? ' bad' : '') + '" data-tip="Desqualificados">✕ ' + p.desq + '</span></span>' +
+        '<div class="break-track"><div class="break-fill" style="width:' + Math.round(tot / max * 100) + '%"></div></div>' +
+        '<span class="break-val">' + p.cont + ' ins | ' + p.mov + ' mov</span></div>';
+    });
+    return h + '</div></div>';
+  }
+
+  function chartPorFonte(comps, conts) {
+    var por = {};
+    function add(arr, key) {
+      arr.forEach(function (x) {
+        var f = x.fonte || 'Outra';
+        if (!por[f]) por[f] = { emp: 0, cont: 0 };
+        por[f][key]++;
+      });
+    }
+    add(comps, 'emp'); add(conts, 'cont');
+    var fontes = Object.keys(por).sort(function (a, b) { return (por[b].emp + por[b].cont) - (por[a].emp + por[a].cont); });
+    var max = 1;
+    fontes.forEach(function (f) { max = Math.max(max, por[f].emp + por[f].cont); });
+    var h = '<div class="card span-6"><div class="card-title"><div><h2>Por fonte | de onde vem a inserção</h2>' +
+      '<div class="desc">Apollo e Lusha = push do próprio BDR via extensão | Manual = criado no HubSpot | API interna = automações (não é inserção de BDR)</div></div></div><div class="break-list">';
+    if (!fontes.length) h += '<div class="desc">Sem inserções no recorte.</div>';
+    fontes.forEach(function (f) {
+      var p = por[f], tot = p.emp + p.cont;
+      h += '<div class="break-row"><span class="break-name">' + esc(f) + '</span>' +
+        '<div class="break-track"><div class="break-fill" style="width:' + Math.round(tot / max * 100) + '%"></div></div>' +
+        '<span class="break-val">' + p.emp + ' emp | ' + p.cont + ' cont</span></div>';
+    });
+    return h + '</div></div>';
+  }
+
+  function pillStatus(s) {
+    if (!s) return '<span class="muted">—</span>';
+    var cls = STATUS_CLS[s] || '';
+    return '<span class="pill ' + cls + '">' + esc(STATUS_LABEL[s] || s) + '</span>';
+  }
+  function linkContato(id, nome) {
+    return '<a class="deal-link" target="_blank" rel="noopener" href="' + HS_PORTAL + '/record/0-1/' + id + '">' + esc(nome) + '</a>';
+  }
+  function linkEmpresa(id, nome) {
+    if (!id) return esc(nome || '—');
+    return '<a class="deal-link" target="_blank" rel="noopener" href="' + HS_PORTAL + '/record/0-2/' + id + '">' + esc(nome || id) + '</a>';
+  }
+
+  function tabelaMovs(trans) {
+    var h = '<div class="grid"><div class="card span-12"><div class="card-title"><div><h2>Movimentações de status | quem foi movido, por quem, para onde</h2>' +
+      '<div class="desc">Cada linha é uma transição de hs_lead_status dentro da janela (fonte: histórico nativo do HubSpot)</div></div>' +
+      '<span class="pill">' + trans.length + ' transições</span></div>';
+    if (!trans.length) return h + '<div class="desc">Sem movimentações no recorte.</div></div></div>';
+    h += '<div class="table-wrap"><table><thead><tr><th>Quando</th><th>Contato</th><th>Cargo</th><th>Empresa</th><th>Porte</th><th>BDR</th><th>De</th><th>Para</th></tr></thead><tbody>';
+    trans.slice().reverse().forEach(function (t) {
+      h += '<tr><td class="nowrap">' + dmhm(t.ts) + '</td><td>' + linkContato(t.contato_id, t.nome) + '</td>' +
+        '<td class="muted">' + esc(t.cargo || '—') + '</td><td>' + linkEmpresa(t.empresa_id, t.empresa) + '</td>' +
+        '<td>' + porteOf(t.colaboradores) + '</td><td>' + esc(t.bdr || '—') + '</td>' +
+        '<td>' + (t.de ? pillStatus(t.de) : '<span class="muted">(entrada)</span>') + '</td><td>' + pillStatus(t.para) + '</td></tr>';
+    });
+    return h + '</tbody></table></div></div></div>';
+  }
+
+  function tabelaEmpresas(comps, conts) {
+    var contPorEmp = {};
+    conts.forEach(function (c) { if (c.empresa_id) contPorEmp[c.empresa_id] = (contPorEmp[c.empresa_id] || 0) + 1; });
+    var h = '<div class="grid"><div class="card span-12"><div class="card-title"><div><h2>Empresas inseridas | criadas na janela com dono no time</h2>' +
+      '<div class="desc">Push Apollo/Lusha conta como inserção do BDR | contatos = inseridos na mesma empresa dentro da janela</div></div>' +
+      '<span class="pill">' + comps.length + ' empresas</span></div>';
+    if (!comps.length) return h + '<div class="desc">Sem empresas inseridas no recorte.</div></div></div>';
+    h += '<div class="table-wrap"><table><thead><tr><th>Quando</th><th>Empresa</th><th>Porte</th><th>Fonte</th><th>BDR</th><th class="right">Contatos inseridos</th></tr></thead><tbody>';
+    comps.forEach(function (c) {
+      h += '<tr><td class="nowrap">' + dmhm(c.criado) + '</td><td>' + linkEmpresa(c.id, c.nome) + '</td>' +
+        '<td>' + porteOf(c.colaboradores) + '</td><td>' + esc(c.fonte) + '</td><td>' + esc(c.bdr || '—') + '</td>' +
+        '<td class="right">' + (contPorEmp[c.id] || 0) + '</td></tr>';
+    });
+    return h + '</tbody></table></div></div></div>';
+  }
+
+  function tabelaContatos(conts) {
+    var h = '<div class="grid"><div class="card span-12"><div class="card-title"><div><h2>Contatos inseridos | com ou sem lead status</h2>' +
+      '<div class="desc">Inserção por createdate com dono no time | status atual mostra se o contato já começou a ser trabalhado</div></div>' +
+      '<span class="pill">' + conts.length + ' contatos</span></div>';
+    if (!conts.length) return h + '<div class="desc">Sem contatos inseridos no recorte.</div></div></div>';
+    h += '<div class="table-wrap"><table><thead><tr><th>Quando</th><th>Contato</th><th>Cargo</th><th>Empresa</th><th>Porte</th><th>Fonte</th><th>BDR</th><th>Status atual</th></tr></thead><tbody>';
+    conts.forEach(function (c) {
+      h += '<tr><td class="nowrap">' + dmhm(c.criado) + '</td><td>' + linkContato(c.id, c.nome) + '</td>' +
+        '<td class="muted">' + esc(c.cargo || '—') + '</td><td>' + linkEmpresa(c.empresa_id, c.empresa) + '</td>' +
+        '<td>' + porteOf(c.colaboradores) + '</td><td>' + esc(c.fonte) + '</td><td>' + esc(c.bdr || '—') + '</td>' +
+        '<td>' + pillStatus(c.status) + '</td></tr>';
+    });
+    return h + '</tbody></table></div></div></div>';
+  }
+
+  // ---------- filtros UI ----------
+  function renderFilters() {
+    var el = document.getElementById('filters');
+    var periods = [['hoje', 'Hoje'], ['ontem', 'Ontem'], ['7d', 'Últimos 7 dias'], ['semana', 'Semana atual'], ['mes', 'Mês atual'], ['custom', 'Período custom']];
+    var h = '<div class="periodbar"><span class="period-label">Período</span>';
+    periods.forEach(function (p) {
+      h += '<button class="period-chip' + (state.period === p[0] ? ' active' : '') + '" onclick="WorkloadBDR.setPeriod(\'' + p[0] + '\')">' + p[1] + '</button>';
+    });
+    if (state.period === 'custom') {
+      h += '<input type="date" id="f-since" value="' + (state.since || '') + '" style="width:auto;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:.4rem .5rem">' +
+        '<input type="date" id="f-until" value="' + (state.until || '') + '" style="width:auto;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:.4rem .5rem">' +
+        '<button class="btn primary" onclick="WorkloadBDR.applyCustom()">Aplicar</button>';
+    }
+    h += '<span class="period-help" id="gen-at"></span></div>';
+
+    h += sel('BDR', 'bdr', [''].concat((raw ? raw.team : BDRS_FALLBACK)), state.bdr, 'Todos');
+    h += sel('Porte (colaboradores)', 'porte', [''].concat(PORTES), state.porte, 'Todos');
+    h += sel('Fonte da inserção', 'fonte', [''].concat(FONTES), state.fonte, 'Todas');
+    h += '<div class="filter filter-actions"><button class="btn" onclick="WorkloadBDR.reset()">Limpar filtros</button>' +
+      '<button class="btn primary" onclick="WorkloadBDR.load(true)">Atualizar dados</button></div>';
+    el.innerHTML = h;
+  }
+  var BDRS_FALLBACK = [];
+  function sel(label, key, options, val, allLabel) {
+    var h = '<div class="filter"><label>' + label + '</label><select onchange="WorkloadBDR.setFilter(\'' + key + '\',this.value)">';
+    options.forEach(function (o) {
+      h += '<option value="' + esc(o) + '"' + (o === val ? ' selected' : '') + '>' + (o === '' ? allLabel : esc(o)) + '</option>';
+    });
+    return h + '</select></div>';
+  }
+
+  // ---------- drill ----------
+  function drill(kind) {
+    var title = '', rows = null;
+    if (kind === 'empresas') { openModal('Empresas inseridas | detalhe', tabelaEmpresas(fCompanies(), fContacts())); return; }
+    if (kind === 'contatos') { openModal('Contatos inseridos | detalhe', tabelaContatos(fContacts())); return; }
+    if (kind === 'movs') { openModal('Movimentações | detalhe', tabelaMovs(fTransitions())); return; }
+    var map = { efetivo: ['CONNECTED'], qualificado: ['OPEN_DEAL'], desq: ['UNQUALIFIED', 'BAD_TIMING'] };
+    var lab = { efetivo: 'Contato efetivo', qualificado: 'Qualificado', desq: 'Desqualificado | Timing' };
+    rows = fTransitions().filter(function (t) { return map[kind].indexOf(t.para) >= 0; });
+    openModal(lab[kind] + ' | detalhe', tabelaMovs(rows));
+  }
+  function openModal(title, html) {
+    document.getElementById('modal-title').textContent = title;
+    document.getElementById('modal-body').innerHTML = html;
+    document.getElementById('modal-overlay').classList.add('open');
+  }
+  function closeModal() { document.getElementById('modal-overlay').classList.remove('open'); }
+
+  // ---------- ajuda ----------
+  function openAllHelp() {
+    var blocks = [
+      ['Universo', 'Contatos e empresas cujo dono (hubspot_owner_id) é um dos 13 BDRs do time canônico. Owners duplicados e arquivados são resolvidos por nome + alias.'],
+      ['Inserção', 'createdate dentro da janela (fuso America/Sao_Paulo). Fonte via hs_object_source_detail_1: Apollo e Lusha = push do próprio BDR via extensão | Manual = CRM_UI | API interna = chave de automação (não conta como trabalho de BDR; filtre por fonte para excluir).'],
+      ['Movimentação', 'Transições de hs_lead_status dentro da janela, extraídas do histórico nativo (propertiesWithHistory). Contato efetivo = CONNECTED | Qualificado = OPEN_DEAL (deal em Reunião Agendada) | Desqualificado = UNQUALIFIED | Timing ruim = BAD_TIMING.'],
+      ['Limitações declaradas', 'Motivo de desqualificação ainda não existe como propriedade no HubSpot (pendência da spec outbound-hubspot-first). Filtro de fonte não se aplica a movimentações (movimentação não tem fonte de criação). Ligações e e-mails mal registrados não aparecem | o proxy de primeiro retorno é a transição para Contato efetivo.'],
+      ['Reconciliação', 'Todo KPI clicável abre a tabela nominal com exatamente as mesmas linhas contadas no número. A soma dos pequenos é o todo.'],
+    ];
+    var h = '';
+    blocks.forEach(function (b) { h += '<div class="help-block"><b>' + b[0] + '</b><p>' + b[1] + '</p></div>'; });
+    document.getElementById('help-body').innerHTML = h;
+    document.getElementById('help-drawer').classList.add('open');
+    document.getElementById('help-backdrop').classList.add('open');
+  }
+  function closeHelp() {
+    document.getElementById('help-drawer').classList.remove('open');
+    document.getElementById('help-backdrop').classList.remove('open');
+  }
+  function toggleTheme() {
+    var t = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', t);
+    try { localStorage.setItem('axenya_theme', t); } catch (e) { }
+  }
+
+  // ---------- API pública ----------
+  return {
+    init: function () { renderFilters(); load(false); },
+    load: function (refresh) { load(!!refresh); },
+    setPeriod: function (p) {
+      state.period = p;
+      if (p === 'custom') { renderFilters(); return; }
+      load(false);
+    },
+    applyCustom: function () {
+      var s = document.getElementById('f-since').value, u = document.getElementById('f-until').value;
+      if (!s || !u) return;
+      state.since = s; state.until = u;
+      load(false);
+    },
+    setFilter: function (k, v) { state[k] = v; render(); },
+    reset: function () { state.bdr = ''; state.porte = ''; state.fonte = ''; render(); },
+    drill: drill, closeModal: closeModal, openAllHelp: openAllHelp, closeHelp: closeHelp, toggleTheme: toggleTheme,
+  };
+})();
+window.addEventListener('DOMContentLoaded', function () { WorkloadBDR.init(); });
