@@ -51,6 +51,7 @@ No painel do Vercel, o projeto **precisa** ter as seguintes variáveis de ambien
 | `GOOGLE_CLIENT_SECRET` | Client Secret gerado no Google Cloud Console. |
 | `ALLOWED_ORIGIN` | URL exata de produção sem trailing slash (ex: `https://project-bsmfu.vercel.app`). Essencial para o CORS do backend aprovar as requisições. |
 | `ALLOWED_EMAILS` | Lista separada por vírgula de e-mails extras autorizados (além dos 5 hardcoded no `lib/auth.js`). |
+| `TREBLE_API_KEY` | API key Treble usada pelo painel `BDR | Treble` para leitura read-only de flows, sessões e histórico. |
 
 > **Nota sobre o `LOCAL_DEV_BYPASS=true`:**
 > Esta variável NUNCA deve ser colocada em produção. Ela existe apenas no `.env.local` para pular a autenticação do Google OAuth e verificar o dashboard rodando com dados locais e mock de usuário.

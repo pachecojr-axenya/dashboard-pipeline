@@ -1,58 +1,41 @@
 (function () {
   'use strict';
 
-  var state = {
-    raw: null,
-    messages: [],
-    filters: loadFilters(),
-    tab: 'strategic'
-  };
+  var state = { raw: null, rows: [], filters: loadFilters(), tab: 'overview' };
 
   function $(id) { return document.getElementById(id); }
-  function esc(v) {
-    return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) {
-      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
-    });
-  }
+  function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function fmt(n) { return Number(n || 0).toLocaleString('pt-BR'); }
   function pct(v) { return v == null ? 'Não medido' : (v * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '%'; }
   function day(v) { return v ? String(v).slice(0, 10).split('-').reverse().join('/') : '—'; }
-  function clsStatus(s) { return s === 'FAILED' ? 'bad' : (s === 'READ' || s === 'DELIVERED' || s === 'RECEIVED' ? 'good' : (s === 'UNKNOWN' ? 'warn' : 'teal')); }
+  function severityClass(v) { return v === 'danger' ? 'bad' : (v === 'warning' ? 'warn' : (v === 'success' ? 'good' : 'teal')); }
 
   function loadFilters() {
     try {
-      var saved = JSON.parse(localStorage.getItem('bdr_treble_filters') || '{}');
-      return {
-        days: saved.days || '180', bdr: saved.bdr || '', flow: saved.flow || '',
-        direction: saved.direction || '', status: saved.status || '', q: saved.q || ''
-      };
+      var saved = JSON.parse(localStorage.getItem('bdr_treble_filters_v2') || '{}');
+      return { days: saved.days || '90', bdr: saved.bdr || '', flow: saved.flow || '', family: saved.family || '', reason: saved.reason || '', q: saved.q || '' };
     } catch (e) {
-      return { days: '180', bdr: '', flow: '', direction: '', status: '', q: '' };
+      return { days: '90', bdr: '', flow: '', family: '', reason: '', q: '' };
     }
   }
-  function saveFilters() { try { localStorage.setItem('bdr_treble_filters', JSON.stringify(state.filters)); } catch (e) {} }
+  function saveFilters() { try { localStorage.setItem('bdr_treble_filters_v2', JSON.stringify(state.filters)); } catch (e) {} }
 
   function setState(type, title, text) {
-    var el = $('state');
-    var content = $('content');
+    var el = $('state'), content = $('content');
     if (content) content.classList.add('hidden');
     if (!el) return;
     el.classList.remove('hidden');
     el.innerHTML = (type === 'loading' ? '<div class="spinner"></div>' : '') + '<strong>' + esc(title) + '</strong>' + esc(text || '');
   }
 
-  function unique(arr, field) {
+  function unique(rows, field) {
     var seen = {}, out = [];
-    arr.forEach(function (m) { var v = m[field] || ''; if (v && !seen[v]) { seen[v] = true; out.push(v); } });
+    rows.forEach(function (m) { var v = m[field] || ''; if (v && !seen[v]) { seen[v] = true; out.push(v); } });
     return out.sort(function (a, b) { return String(a).localeCompare(String(b)); });
   }
 
   function renderFilters() {
-    var el = $('filters');
-    if (!el) return;
-    var bdrs = unique(state.messages, 'bdr');
-    var flows = unique(state.messages, 'flow');
-    var statuses = unique(state.messages, 'status');
+    var el = $('filters'); if (!el) return;
     function opts(values, selected, allLabel) {
       var h = '<option value="">' + esc(allLabel) + '</option>';
       values.forEach(function (v) { h += '<option value="' + esc(v) + '"' + (String(v) === String(selected) ? ' selected' : '') + '>' + esc(v) + '</option>'; });
@@ -61,116 +44,157 @@
     var periods = [['30', '30d'], ['90', '90d'], ['180', '180d'], ['365', '365d']];
     var h = '<div class="periodbar"><span class="period-label">Período</span>';
     periods.forEach(function (p) { h += '<button class="period-chip' + (state.filters.days === p[0] ? ' active' : '') + '" data-days="' + p[0] + '">' + p[1] + '</button>'; });
-    h += '<span class="muted">Cache server-side 10 min | refresh força recarga</span></div>';
-    h += '<div class="filter"><label>BDR</label><select id="f-bdr">' + opts(bdrs, state.filters.bdr, 'Todos') + '</select></div>';
-    h += '<div class="filter"><label>Flow</label><select id="f-flow">' + opts(flows, state.filters.flow, 'Todos') + '</select></div>';
-    h += '<div class="filter"><label>Direção</label><select id="f-direction"><option value="">Todas</option><option value="OUTBOUND">Outbound</option><option value="INBOUND">Inbound</option><option value="UNKNOWN">Não identificada</option></select></div>';
-    h += '<div class="filter"><label>Status</label><select id="f-status">' + opts(statuses, state.filters.status, 'Todos') + '</select></div>';
-    h += '<div class="filter"><label>Busca textual</label><input id="f-q" value="' + esc(state.filters.q) + '" placeholder="snippet, flow ou BDR"></div>';
+    h += '<span class="muted">Fonte primária Treble API | cache 10 min</span></div>';
+    h += '<div class="filter"><label>BDR inferido</label><select id="f-bdr">' + opts(unique(state.rows, 'bdr'), state.filters.bdr, 'Todos') + '</select></div>';
+    h += '<div class="filter"><label>Flow Treble</label><select id="f-flow">' + opts(unique(state.rows, 'flow'), state.filters.flow, 'Todos') + '</select></div>';
+    h += '<div class="filter"><label>Família de copy</label><select id="f-family">' + opts(unique(state.rows, 'family'), state.filters.family, 'Todas') + '</select></div>';
+    h += '<div class="filter"><label>Motivo observado</label><select id="f-reason">' + opts(unique(state.rows, 'reasonLabel'), state.filters.reason, 'Todos') + '</select></div>';
+    h += '<div class="filter"><label>Busca</label><input id="f-q" value="' + esc(state.filters.q) + '" placeholder="flow, BDR, motivo ou copy"></div>';
     h += '<div class="filter" style="display:flex;align-items:end;gap:.5rem"><button class="btn" id="f-clear">Limpar</button><button class="btn primary" id="f-refresh">Refresh</button></div>';
     el.innerHTML = h;
-    $('f-direction').value = state.filters.direction;
     function bind(id, key) { var x = $(id); if (x) x.onchange = function () { state.filters[key] = x.value; saveFilters(); render(); }; }
-    bind('f-bdr', 'bdr'); bind('f-flow', 'flow'); bind('f-direction', 'direction'); bind('f-status', 'status');
+    bind('f-bdr', 'bdr'); bind('f-flow', 'flow'); bind('f-family', 'family'); bind('f-reason', 'reason');
     $('f-q').oninput = function () { state.filters.q = this.value; saveFilters(); render(); };
-    $('f-clear').onclick = function () { state.filters = { days: state.filters.days, bdr: '', flow: '', direction: '', status: '', q: '' }; saveFilters(); render(); };
+    $('f-clear').onclick = function () { state.filters = { days: state.filters.days, bdr: '', flow: '', family: '', reason: '', q: '' }; saveFilters(); render(); };
     $('f-refresh').onclick = function () { api.load(true); };
     Array.prototype.forEach.call(el.querySelectorAll('.period-chip'), function (b) { b.onclick = function () { state.filters.days = b.getAttribute('data-days'); saveFilters(); api.load(false); }; });
   }
 
   function filtered() {
     var q = String(state.filters.q || '').toLowerCase();
-    return state.messages.filter(function (m) {
+    return state.rows.filter(function (m) {
       if (state.filters.bdr && m.bdr !== state.filters.bdr) return false;
       if (state.filters.flow && m.flow !== state.filters.flow) return false;
-      if (state.filters.direction && m.direction !== state.filters.direction) return false;
-      if (state.filters.status && m.status !== state.filters.status) return false;
+      if (state.filters.family && m.family !== state.filters.family) return false;
+      if (state.filters.reason && m.reasonLabel !== state.filters.reason) return false;
       if (q) {
-        var hay = [m.snippet, m.bdr, m.flow, m.direction, m.statusLabel].join(' ').toLowerCase();
+        var hay = [m.flow, m.bdr, m.family, m.reasonLabel, m.action, m.copy].join(' ').toLowerCase();
         if (hay.indexOf(q) < 0) return false;
       }
       return true;
     });
   }
 
-  function summary(rows) {
-    var s = { total: rows.length, outbound: 0, inbound: 0, failed: 0, delivered: 0, read: 0, unknown: 0, withoutOwner: 0 };
-    rows.forEach(function (m) {
-      if (m.direction === 'OUTBOUND') s.outbound++;
-      if (m.direction === 'INBOUND') s.inbound++;
-      if (m.status === 'FAILED') s.failed++;
-      if (m.status === 'DELIVERED' || m.status === 'READ') s.delivered++;
-      if (m.status === 'READ') s.read++;
-      if (m.status === 'UNKNOWN') s.unknown++;
-      if (!m.ownerPresent) s.withoutOwner++;
+  function summarize(rows) {
+    var s = { sessions: rows.length, sent: 0, delivered: 0, read: 0, replied: 0, failures: 0, notDelivered: 0, deliveredNotRead: 0, readNoReply: 0, noHistory: 0 };
+    rows.forEach(function (r) {
+      if (r.sent) s.sent++;
+      if (r.delivered) s.delivered++;
+      if (r.read) s.read++;
+      if (r.replied) s.replied++;
+      if (r.reason !== 'responded') s.failures++;
+      if (r.reason === 'not_delivered') s.notDelivered++;
+      if (r.reason === 'delivered_not_read') s.deliveredNotRead++;
+      if (r.reason === 'read_no_reply') s.readNoReply++;
+      if (r.reason === 'no_history') s.noHistory++;
     });
-    s.responseRate = s.outbound ? s.inbound / s.outbound : null;
-    s.failureRate = s.outbound ? s.failed / s.outbound : null;
-    s.statusCoverage = s.total ? (s.total - s.unknown) / s.total : null;
+    s.deliveryRate = s.sent ? s.delivered / s.sent : null;
+    s.readRate = s.delivered ? s.read / s.delivered : null;
+    s.responseRate = s.sent ? s.replied / s.sent : null;
+    s.failureRate = s.sessions ? s.failures / s.sessions : null;
     return s;
   }
 
   function group(rows, field) {
     var map = {};
-    rows.forEach(function (m) {
-      var k = m[field] || 'Sem dado';
-      if (!map[k]) map[k] = { key: k, total: 0, outbound: 0, inbound: 0, failed: 0, delivered: 0, read: 0, unknown: 0, withoutOwner: 0 };
-      var r = map[k]; r.total++;
-      if (m.direction === 'OUTBOUND') r.outbound++;
-      if (m.direction === 'INBOUND') r.inbound++;
-      if (m.status === 'FAILED') r.failed++;
-      if (m.status === 'DELIVERED' || m.status === 'READ') r.delivered++;
-      if (m.status === 'READ') r.read++;
-      if (m.status === 'UNKNOWN') r.unknown++;
-      if (!m.ownerPresent) r.withoutOwner++;
+    rows.forEach(function (r) {
+      var k = r[field] || 'Sem dado';
+      if (!map[k]) map[k] = { key: k, label: k, sessions: 0, sent: 0, delivered: 0, read: 0, replied: 0, failures: 0, reasons: {}, samples: [] };
+      var a = map[k];
+      a.sessions++;
+      if (r.sent) a.sent++;
+      if (r.delivered) a.delivered++;
+      if (r.read) a.read++;
+      if (r.replied) a.replied++;
+      if (r.reason !== 'responded') a.failures++;
+      a.reasons[r.reasonLabel] = (a.reasons[r.reasonLabel] || 0) + 1;
+      if (a.samples.length < 2 && r.copy) a.samples.push(r.copy);
     });
-    return Object.keys(map).map(function (k) { var r = map[k]; r.responseRate = r.outbound ? r.inbound / r.outbound : null; r.score = r.inbound / (r.outbound + 10); return r; })
-      .sort(function (a, b) { return b.total - a.total; });
+    return Object.keys(map).map(function (k) {
+      var a = map[k];
+      var top = Object.keys(a.reasons).map(function (x) { return { label: x, count: a.reasons[x] }; }).sort(function (x, y) { return y.count - x.count; })[0] || { label: 'Sem dado', count: 0 };
+      a.deliveryRate = a.sent ? a.delivered / a.sent : null;
+      a.readRate = a.delivered ? a.read / a.delivered : null;
+      a.responseRate = a.sent ? a.replied / a.sent : null;
+      a.failureRate = a.sessions ? a.failures / a.sessions : null;
+      a.topReason = top;
+      return a;
+    }).sort(function (a, b) { return b.sessions - a.sessions || a.label.localeCompare(b.label); });
   }
 
-  function kpi(label, value, sub, kind, drillKind) {
-    return '<div class="kpi ' + (kind || '') + (drillKind ? ' clickable" data-drill-kind="' + esc(drillKind) + '"' : '"') + '><div class="label">' + esc(label) + '</div><div class="value">' + esc(value) + '</div><div class="sub">' + esc(sub) + '</div></div>';
+  function kpi(label, value, sub, kind, drill) {
+    return '<div class="kpi ' + (kind || '') + (drill ? ' clickable" data-drill-kind="' + esc(drill) + '"' : '"') + '><div class="label">' + esc(label) + '</div><div class="value">' + esc(value) + '</div><div class="sub">' + esc(sub) + '</div></div>';
   }
 
-  function barRows(rows, type, limit, bad) {
+  function funnel(s) {
+    var steps = [
+      ['Sessões', s.sessions, 'Universo analisado'],
+      ['Enviadas', s.sent, 'HSM ou mensagem de saída'],
+      ['Entregues', s.delivered, pct(s.deliveryRate)],
+      ['Lidas', s.read, pct(s.readRate)],
+      ['Respondidas', s.replied, pct(s.responseRate)]
+    ];
+    var max = Math.max(s.sessions, 1);
+    return '<div class="card span-12"><div class="card-title"><div><h2>Funil Treble | entrega até resposta</h2><div class="desc">Mostra onde a conversa quebra | não é só volume bruto.</div></div></div>' + steps.map(function (x) {
+      return '<div class="bar-row"><div class="bar-name">' + esc(x[0]) + '<div class="muted">' + esc(x[2]) + '</div></div><div class="bar-track"><div class="bar-fill" style="width:' + Math.max(2, Math.round(x[1] / max * 100)) + '%"></div></div><div class="bar-val">' + fmt(x[1]) + '</div></div>';
+    }).join('') + '</div>';
+  }
+
+  function reasonCards(rows) {
+    var reasons = group(rows, 'reasonLabel');
+    return '<div class="grid">' + reasons.slice(0, 6).map(function (r) {
+      var sample = r.samples[0] || 'Sem exemplo de copy outbound';
+      return '<div class="card span-4 clickable-row" data-drill-field="reasonLabel" data-drill-value="' + esc(r.label) + '"><div class="card-title"><div><h2>' + esc(r.label) + '</h2><div class="desc">' + fmt(r.sessions) + ' sessões | ' + pct(r.failureRate) + ' do filtro</div></div></div><p class="muted">Ação: ' + esc(actionForReason(r.label)) + '</p><p style="margin-top:.75rem">' + esc(sample) + '</p></div>';
+    }).join('') + '</div>';
+  }
+
+  function actionForReason(label) {
+    if (/Sem evidência de entrega/.test(label)) return 'Verificar HSM, linha, opt-in e qualidade da base';
+    if (/Entregue, não lida/.test(label)) return 'Testar horário, primeira linha e remetente';
+    if (/Lida, sem resposta/.test(label)) return 'Reduzir fricção do CTA e testar pergunta mais direta';
+    if (/Sem resposta/.test(label)) return 'Criar follow-up específico por persona';
+    if (/Respondeu/.test(label)) return 'Replicar copy e cadência vencedora';
+    return 'Auditar configuração e captura do flow';
+  }
+
+  function barRows(rows, field, limit, metric) {
     if (!rows.length) return '<div class="muted">Sem dados no filtro.</div>';
-    var max = Math.max.apply(null, rows.map(function (r) { return r.total; }).concat([1]));
-    return rows.slice(0, limit || 10).map(function (r) {
-      return '<div class="bar-row clickable-row" data-drill-field="' + esc(type) + '" data-drill-value="' + esc(r.key) + '"><div class="bar-name">' + esc(r.key) + '<div class="muted">Resp. por mensagem ' + pct(r.responseRate) + ' | falhas ' + fmt(r.failed) + '</div></div><div class="bar-track"><div class="bar-fill ' + (bad ? 'bad' : '') + '" style="width:' + Math.max(3, Math.round(r.total / max * 100)) + '%"></div></div><div class="bar-val">' + fmt(r.total) + '</div><div class="bar-val">' + fmt(r.inbound) + ' resp.</div></div>';
+    var max = Math.max.apply(null, rows.map(function (r) { return metric === 'failures' ? r.failures : r.sessions; }).concat([1]));
+    return rows.slice(0, limit || 12).map(function (r) {
+      var val = metric === 'failures' ? r.failures : r.sessions;
+      return '<div class="bar-row clickable-row" data-drill-field="' + esc(field) + '" data-drill-value="' + esc(r.label) + '"><div class="bar-name">' + esc(r.label) + '<div class="muted">Resp. ' + pct(r.responseRate) + ' | gargalo: ' + esc(r.topReason.label) + '</div></div><div class="bar-track"><div class="bar-fill ' + (r.failures ? 'bad' : '') + '" style="width:' + Math.max(2, Math.round(val / max * 100)) + '%"></div></div><div class="bar-val">' + fmt(val) + '</div><div class="bar-val">' + fmt(r.replied) + ' resp.</div></div>';
     }).join('');
   }
 
-  function renderStrategic(rows, s) {
+  function renderOverview(rows, s) {
     var byFlow = group(rows, 'flow');
-    var byBdr = group(rows, 'bdr');
-    var best = byFlow.filter(function (r) { return r.outbound >= 5; }).sort(function (a, b) { return b.score - a.score; })[0];
-    var worst = byFlow.filter(function (r) { return r.outbound >= 5; }).sort(function (a, b) { return b.failed - a.failed || b.total - a.total; })[0];
+    var byFamily = group(rows, 'family');
+    var best = byFlow.filter(function (r) { return r.sent >= 3; }).sort(function (a, b) { return (b.responseRate || 0) - (a.responseRate || 0); })[0];
+    var worst = byFlow.filter(function (r) { return r.sessions >= 3; }).sort(function (a, b) { return b.failures - a.failures; })[0];
     var story = '<div class="story-grid">' +
-       '<div class="story-card"><b>O que aconteceu</b><span>' + fmt(s.total) + ' mensagens Treble sincronizadas | ' + fmt(s.outbound) + ' outbound | ' + fmt(s.inbound) + ' inbound.</span></div>' +
-      '<div class="story-card"><b>Onde está o gargalo</b><span>' + fmt(s.failed) + ' falhas | ' + fmt(s.withoutOwner) + ' sem owner | status medido em ' + pct(s.statusCoverage) + '.</span></div>' +
-      '<div class="story-card"><b>O que funciona</b><span>' + (best ? esc(best.key) + ' tem melhor resposta ajustada a volume.' : 'Sem volume suficiente por flow no filtro.') + '</span></div>' +
-      '<div class="story-card"><b>O que fazer na próxima vez</b><span>' + (worst ? 'Revisar entrega e copy do flow ' + esc(worst.key) + '.' : 'Padronizar metadata e owner para melhorar leitura.') + '</span></div></div>';
+      '<div class="story-card"><b>O que aconteceu</b><span>' + fmt(s.sessions) + ' sessões analisadas | ' + fmt(s.sent) + ' com envio | ' + fmt(s.replied) + ' com resposta.</span></div>' +
+      '<div class="story-card"><b>Onde dá errado</b><span>' + fmt(s.failures) + ' sem resposta/conclusão | ' + fmt(s.notDelivered) + ' sem entrega | ' + fmt(s.readNoReply) + ' lidas sem resposta.</span></div>' +
+      '<div class="story-card"><b>O que funciona</b><span>' + (best ? esc(best.label) + ' lidera resposta: ' + pct(best.responseRate) + '.' : 'Ainda sem volume suficiente por flow.') + '</span></div>' +
+      '<div class="story-card"><b>Próxima ação</b><span>' + (worst ? 'Atacar gargalo de ' + esc(worst.label) + ': ' + esc(worst.topReason.label) + '.' : 'Padronizar nomenclatura dos flows e rodar mais volume.') + '</span></div></div>';
     var kpis = '<div class="kpis">' +
-      kpi('Mensagens', fmt(s.total), 'Universo filtrado', 'teal', 'all') +
-      kpi('Outbound', fmt(s.outbound), 'HSMs e envios', '', 'outbound') +
-       kpi('Respostas', fmt(s.inbound), 'Por mensagem | inbound ÷ outbound = ' + pct(s.responseRate), 'good', 'inbound') +
-      kpi('Falhas', fmt(s.failed), 'Falhas ÷ outbound = ' + pct(s.failureRate), s.failed ? 'bad' : '', 'failed') +
-      kpi('Entregues', fmt(s.delivered), s.delivered ? 'Cobertura parcial' : 'Não medido', s.delivered ? 'good' : 'warn', 'delivered') +
-      kpi('Sem owner', fmt(s.withoutOwner), 'Owner do contato ausente', s.withoutOwner ? 'warn' : 'good', 'owner') + '</div>';
-    return story + kpis + '<div class="grid"><div class="card span-6"><div class="card-title"><div><h2>Flows por volume e resposta</h2><div class="desc">Clique para ver snippets sanitizados.</div></div></div>' + barRows(byFlow, 'flow', 12, false) + '</div><div class="card span-6"><div class="card-title"><div><h2>BDRs por proxy de owner</h2><div class="desc">Owner atual do contato associado | não autor histórico.</div></div></div>' + barRows(byBdr, 'bdr', 12, false) + '</div></div>';
+      kpi('Sessões', fmt(s.sessions), 'Treble API | período filtrado', 'teal', 'all') +
+      kpi('Entregues', fmt(s.delivered), 'Entrega ÷ enviadas = ' + pct(s.deliveryRate), s.delivered ? 'good' : 'warn', 'delivered') +
+      kpi('Lidas', fmt(s.read), 'Leitura ÷ entregues = ' + pct(s.readRate), s.read ? 'good' : 'warn', 'read') +
+      kpi('Respondidas', fmt(s.replied), 'Resposta ÷ enviadas = ' + pct(s.responseRate), 'good', 'responded') +
+      kpi('Sem entrega', fmt(s.notDelivered), 'Falha observada de entrega', s.notDelivered ? 'bad' : 'good', 'not_delivered') +
+      kpi('Lida sem resposta', fmt(s.readNoReply), 'Copy/CTA não converteu', s.readNoReply ? 'warn' : 'good', 'read_no_reply') + '</div>';
+    return story + kpis + '<div class="grid">' + funnel(s) + '<div class="card span-6"><div class="card-title"><div><h2>Flows | ranking de resposta</h2><div class="desc">Labels reais da Treble | clique para detalhes.</div></div></div>' + barRows(byFlow, 'flow', 12, 'sessions') + '</div><div class="card span-6"><div class="card-title"><div><h2>Famílias de copy</h2><div class="desc">Agrupamento por nome do flow | ajuda a decidir próxima abordagem.</div></div></div>' + barRows(byFamily, 'family', 8, 'sessions') + '</div></div>';
   }
 
-  function renderDiagnosis(rows) {
-    var byFlow = group(rows, 'flow');
-    var byStatus = group(rows, 'statusLabel');
-    var bad = byFlow.slice().sort(function (a, b) { return b.failed - a.failed || b.withoutOwner - a.withoutOwner; });
-    return '<div class="grid"><div class="card span-8"><div class="card-title"><div><h2>Diagnóstico por flow</h2><div class="desc">Falhas, resposta, volume e cobertura parcial de status.</div></div></div>' + barRows(bad, 'flow', 18, true) + '</div><div class="card span-4"><div class="card-title"><div><h2>Status medido</h2><div class="desc">Não medido é ausência de status, não zero.</div></div></div>' + barRows(byStatus, 'statusLabel', 10, false) + '</div></div>' + renderTable(rows.slice(0, 60), true);
+  function renderReasons(rows) {
+    var byFlow = group(rows, 'flow').sort(function (a, b) { return b.failures - a.failures || b.sessions - a.sessions; });
+    return reasonCards(rows) + '<div class="grid"><div class="card span-12"><div class="card-title"><div><h2>Mapa de gargalos por flow</h2><div class="desc">Mostra o motivo principal em linguagem operacional.</div></div></div>' + barRows(byFlow, 'flow', 20, 'failures') + '</div></div>' + renderTable(rows.slice(0, 80), true);
   }
 
   function renderTable(rows, compact) {
-     var h = '<div class="card span-12"><div class="card-title"><div><h2>Detalhe de mensagens</h2><div class="desc">Snippets outbound redigidos por heurística | conteúdo inbound ocultado | sem email, telefone, CPF/CNPJ ou payload bruto.</div></div></div><div class="table-wrap"><table><thead><tr><th>Data</th><th>Direção</th><th>Status</th><th>BDR proxy</th><th>Flow</th><th>Snippet</th><th>Mensurabilidade</th><th>HubSpot</th></tr></thead><tbody>';
+    var h = '<div class="card span-12"><div class="card-title"><div><h2>Detalhe operacional | sessões e copy</h2><div class="desc">Sem telefone, email, documento, session_id ou payload bruto | inbound ocultado.</div></div></div><div class="table-wrap"><table><thead><tr><th>Data</th><th>BDR inferido</th><th>Flow</th><th>Família</th><th>Motivo</th><th>Copy outbound redigida</th><th>Ação sugerida</th></tr></thead><tbody>';
     rows.slice(0, compact ? 80 : 300).forEach(function (m) {
-      h += '<tr><td class="nowrap">' + day(m.timestamp) + '</td><td>' + esc(m.direction) + '</td><td><span class="pill ' + clsStatus(m.status) + '">' + esc(m.statusLabel || m.status) + '</span></td><td>' + esc(m.bdr) + '<div class="muted">' + esc(m.bdrSource) + '</div></td><td>' + esc(m.flow) + '</td><td>' + esc(m.snippet || '—') + '</td><td>' + esc(m.measurability || '—') + '</td><td><a class="deal-link" href="' + esc(m.hubspotUrl) + '" target="_blank" rel="noopener">Abrir</a></td></tr>';
+      h += '<tr><td class="nowrap">' + day(m.createdAt) + '</td><td>' + esc(m.bdr) + '<div class="muted">' + esc(m.bdrSource) + '</div></td><td>' + esc(m.flow) + '</td><td>' + esc(m.family) + '</td><td><span class="pill ' + severityClass(m.severity) + '">' + esc(m.reasonLabel) + '</span></td><td>' + esc(m.copy || '—') + '</td><td>' + esc(m.action || '—') + '</td></tr>';
     });
     return h + '</tbody></table></div></div>';
   }
@@ -180,66 +204,52 @@
     var rows = filtered();
     var content = $('content'), stateEl = $('state');
     if (!rows.length) { setState('empty', 'Sem dados no filtro', 'Ajuste período ou filtros.'); return; }
-    var s = summary(rows);
+    var s = summarize(rows);
     var meta = state.raw && state.raw.meta ? state.raw.meta : {};
-    var flags = '<div class="note"><b>Status do sync:</b> origem = ' + esc(meta.source || 'HubSpot communications') + ' | gerado em ' + esc(day(state.raw && state.raw.generatedAt)) + (state.raw && state.raw.cached ? ' | cache' : '') + (state.raw && state.raw.stale ? ' | stale' : '') + '. <b>Limitação:</b> BDR é proxy do owner atual do contato associado.</div>';
-    var tabs = '<div class="tabs"><button class="tab ' + (state.tab === 'strategic' ? 'active' : '') + '" onclick="BdrTreble.tab(\'strategic\')">Estratégico</button><button class="tab ' + (state.tab === 'diagnosis' ? 'active' : '') + '" onclick="BdrTreble.tab(\'diagnosis\')">Diagnóstico por flow/mensagem</button><button class="tab ' + (state.tab === 'detail' ? 'active' : '') + '" onclick="BdrTreble.tab(\'detail\')">Detalhe de mensagens</button></div>';
-    var body = state.tab === 'diagnosis' ? renderDiagnosis(rows) : (state.tab === 'detail' ? renderTable(rows, false) : renderStrategic(rows, s));
-     if (stateEl) stateEl.classList.add('hidden');
-     content.classList.remove('hidden');
-     content.innerHTML = flags + tabs + body;
-     bindDynamicDrills(content);
+    var warn = meta.sessionsTruncated ? ' | amostra truncada: aumente com cuidado ou reduza o período' : '';
+    var flags = '<div class="note"><b>Fonte:</b> ' + esc(meta.source || 'Treble API') + ' | sessões analisadas ' + esc(meta.sessionsAnalyzed || rows.length) + ' de ' + esc(meta.sessionsFound || rows.length) + warn + '. <b>Labels:</b> BDR e família são inferidos do nome do flow.</div>';
+    var tabs = '<div class="tabs"><button class="tab ' + (state.tab === 'overview' ? 'active' : '') + '" onclick="BdrTreble.tab(\'overview\')">Visão executiva</button><button class="tab ' + (state.tab === 'reasons' ? 'active' : '') + '" onclick="BdrTreble.tab(\'reasons\')">Falhas e motivos</button><button class="tab ' + (state.tab === 'detail' ? 'active' : '') + '" onclick="BdrTreble.tab(\'detail\')">Mensagem real</button></div>';
+    var body = state.tab === 'reasons' ? renderReasons(rows) : (state.tab === 'detail' ? renderTable(rows, false) : renderOverview(rows, s));
+    if (stateEl) stateEl.classList.add('hidden');
+    content.classList.remove('hidden');
+    content.innerHTML = flags + tabs + body;
+    bindDrills(content);
   }
 
-  function bindDynamicDrills(root) {
-    Array.prototype.forEach.call(root.querySelectorAll('[data-drill-kind]'), function (el) {
-      el.addEventListener('click', function () { api.drill(el.getAttribute('data-drill-kind')); });
-    });
-    Array.prototype.forEach.call(root.querySelectorAll('[data-drill-field]'), function (el) {
-      el.addEventListener('click', function () {
-        api.drillGroup(el.getAttribute('data-drill-field'), el.getAttribute('data-drill-value'));
-      });
-    });
+  function bindDrills(root) {
+    Array.prototype.forEach.call(root.querySelectorAll('[data-drill-kind]'), function (el) { el.addEventListener('click', function () { api.drill(el.getAttribute('data-drill-kind')); }); });
+    Array.prototype.forEach.call(root.querySelectorAll('[data-drill-field]'), function (el) { el.addEventListener('click', function () { api.drillGroup(el.getAttribute('data-drill-field'), el.getAttribute('data-drill-value')); }); });
   }
 
-  function modal(title, rows) {
-    $('modal-title').textContent = title;
-    $('modal-body').innerHTML = renderTable(rows, false);
-    $('modal-overlay').classList.add('open');
-  }
+  function modal(title, rows) { $('modal-title').textContent = title; $('modal-body').innerHTML = renderTable(rows, false); $('modal-overlay').classList.add('open'); }
 
   var api = {
     load: function (refresh) {
-      setState('loading', 'Carregando dados', 'Buscando /api/bdr-treble');
-      var url = '/api/bdr-treble?days=' + encodeURIComponent(state.filters.days || '180') + (refresh ? '&refresh=true' : '');
-      fetch(url, { credentials: 'include' }).then(function (r) {
-        if (!r.ok) throw new Error(r.status === 401 ? 'Não autorizado. Faça login novamente.' : 'Erro HTTP ' + r.status);
-        return r.json();
-      }).then(function (json) {
-        if (!json.success) throw new Error(json.error || 'Resposta inválida');
-        state.raw = json; state.messages = json.messages || []; render();
-      }).catch(function (e) { setState('error', 'Erro ao carregar Treble', e.message || 'Falha desconhecida.'); });
+      setState('loading', 'Carregando Treble', 'Buscando flows, sessões e histórico diretamente na API Treble');
+      var url = '/api/bdr-treble?days=' + encodeURIComponent(state.filters.days || '90') + (refresh ? '&refresh=true' : '');
+      fetch(url, { credentials: 'include' }).then(function (r) { if (!r.ok) throw new Error(r.status === 401 ? 'Não autorizado. Faça login novamente.' : 'Erro HTTP ' + r.status); return r.json(); })
+        .then(function (json) { if (!json.success) throw new Error(json.error || 'Resposta inválida'); state.raw = json; state.rows = json.messages || []; render(); })
+        .catch(function (e) { setState('error', 'Erro ao carregar Treble', e.message || 'Falha desconhecida.'); });
     },
     tab: function (name) { state.tab = name; render(); },
     toggleTheme: function () { var html = document.documentElement; var light = html.getAttribute('data-theme') === 'light'; html.setAttribute('data-theme', light ? 'dark' : 'light'); try { localStorage.setItem('axenya_theme', light ? 'dark' : 'light'); } catch (e) {} },
     drill: function (kind) {
       var rows = filtered();
-      if (kind === 'outbound') rows = rows.filter(function (m) { return m.direction === 'OUTBOUND'; });
-      if (kind === 'inbound') rows = rows.filter(function (m) { return m.direction === 'INBOUND'; });
-      if (kind === 'failed') rows = rows.filter(function (m) { return m.status === 'FAILED'; });
-      if (kind === 'delivered') rows = rows.filter(function (m) { return m.status === 'DELIVERED' || m.status === 'READ'; });
-      if (kind === 'owner') rows = rows.filter(function (m) { return !m.ownerPresent; });
-      modal('Mensagens | ' + kind + ' | ' + fmt(rows.length), rows);
+      if (kind === 'delivered') rows = rows.filter(function (m) { return m.delivered; });
+      else if (kind === 'read') rows = rows.filter(function (m) { return m.read; });
+      else if (kind === 'responded') rows = rows.filter(function (m) { return m.replied; });
+      else if (kind !== 'all') rows = rows.filter(function (m) { return m.reason === kind; });
+      modal('Sessões | ' + kind + ' | ' + fmt(rows.length), rows);
     },
     drillGroup: function (field, value) {
-      var map = { flow: 'flow', bdr: 'bdr', statusLabel: 'statusLabel' };
+      var map = { flow: 'flow', bdr: 'bdr', family: 'family', reasonLabel: 'reasonLabel' };
       var f = map[field] || field;
       var rows = filtered().filter(function (m) { return String(m[f] || '') === String(value || ''); });
       modal(field + ' | ' + value + ' | ' + fmt(rows.length), rows);
     },
     closeModal: function () { $('modal-overlay').classList.remove('open'); },
     openHelp: function () {
-       $('help-body').innerHTML = '<div class="help-block"><b>Resposta</b><p>Resposta = mensagens INBOUND ÷ mensagens OUTBOUND no universo filtrado. Se outbound for zero, a taxa fica Não medido.</p></div><div class="help-block"><b>Entrega e leitura</b><p>Entregues e lidas são calculadas somente quando o status foi sincronizado para a communication. Não medido não é zero.</p></div><div class="help-block"><b>Flow</b><p>Flow vem de metadata Treble gravada no corpo/metadados da HubSpot communication. Quando não existe, aparece como Sem identificação de flow.</p></div><div class="help-block"><b>BDR</b><p>BDR = owner atual do contato associado à communication. É proxy inicial de atribuição, não autor histórico por mensagem.</p></div><div class="help-block"><b>Privacidade</b><p>O backend não retorna contato, email, telefone, CPF/CNPJ, payload bruto nem corpo HTML bruto. Snippets outbound usam redaction heurística e conteúdo inbound fica ocultado.</p></div>';
+      $('help-body').innerHTML = '<div class="help-block"><b>Fonte</b><p>Agora a fonte primária é a API Treble: polls, sessions e history. HubSpot não define o diagnóstico.</p></div><div class="help-block"><b>Motivos</b><p>Motivo observado é inferido por evidência de entrega, leitura e resposta. Failure reason bruto da Meta exige webhook deployment.failure ativo.</p></div><div class="help-block"><b>Resposta</b><p>Resposta = sessão com mensagem USER após envio. A taxa é respondidas ÷ enviadas.</p></div><div class="help-block"><b>Labels</b><p>Flow é o nome real na Treble. BDR e família de copy são inferidos do nome do flow | padronizar nomes melhora a leitura.</p></div><div class="help-block"><b>Privacidade</b><p>Sem telefone, email, documento, session_id ou payload bruto. Copy outbound é redigida por heurística e inbound fica ocultado.</p></div>';
       $('help-backdrop').classList.add('open'); $('help-drawer').classList.add('open');
     },
     closeHelp: function () { $('help-backdrop').classList.remove('open'); $('help-drawer').classList.remove('open'); }

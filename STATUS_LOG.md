@@ -17,7 +17,14 @@ Recurring every 20min (job `55d3b136`). Purpose: identify and close gaps so the 
 - **Fonte:** `GET /api/bdr-treble` lê somente HubSpot communications `WHATS_APP` já sincronizadas pelo pipeline Treble | HubSpot; não chama Treble no Vercel/browser, não envia mensagens e mantém `requireAuth`.
 - **Privacidade e limites:** payload sanitizado sem emails, telefones, CPF/CNPJ, payload bruto ou HTML bruto; snippets outbound redigidos por heurística e inbound ocultado; BDR = owner atual do contato associado como proxy inicial, não autor histórico por mensagem; entrega/leitura distinguem `Não medido` de zero.
 - **UI:** `public/bdr-treble.html/js` com storytelling `O que aconteceu | Onde está o gargalo | O que funciona | O que fazer na próxima vez`, filtros persistentes, abas Estratégico/Diagnóstico/Detalhe, drilldown por KPI/flow/BDR/status e memória de cálculo.
-- **Navegação:** rewrites adicionados para `/novo-bdr/treble`, `/dashboard/bdr/treble` e `/novo-bdr-treble`; menu canônico `premium.js` ganhou item `BDR | Treble` com saúde `y` enquanto valida dados reais.
+- **Navegação:** rewrites adicionados para `/novo-bdr/treble`, `/dashboard/bdr/treble` e `/novo-bdr-treble`; menu canônico `premium.js` ganhou item `BDR | Treble`.
+
+### BDR | Treble V1 | diagnóstico real por API Treble (2026-07-13)
+
+- **Correção de escopo:** V0 via HubSpot communications não resolvia storytelling, motivo de falha nem labels. V1 usa API oficial Treble como fonte primária: `poll/api/all`, `devapi/poll/{poll_id}/sessions` e `devapi/session/{session_id}/history`.
+- **Diagnóstico novo:** funil `Sessões | Enviadas | Entregues | Lidas | Respondidas`, cards de motivos (`Lida, sem resposta`, `Entregue, não lida`, `Sem evidência de entrega`, `Flow com erro na API Treble`), ranking de flows com labels reais e agrupamento por família de copy.
+- **Limites explícitos:** motivo é observado por evidência de entrega/leitura/resposta; `failure_reason` bruto exige webhook `deployment.failure` ativo. BDR e família são inferidos do nome do flow.
+- **Infra:** `TREBLE_API_KEY` adicionada em Production no Vercel. Sem chamadas Treble no browser; sem telefone, email, documento, `session_id` ou payload bruto no payload.
 
 ## Diretrizes do Projeto — leia antes de começar qualquer trabalho
 
