@@ -1311,8 +1311,14 @@
       display: flex; align-items: flex-start; justify-content: space-between;
       gap: 1rem; margin-bottom: 1.3rem;
     }
-    .deal-modal-title { font-size: 1.25rem; font-weight: 700; color: var(--text); line-height: 1.25; }
-    .deal-modal-sub { font-size: .82rem; color: var(--text2); margin-top: .3rem; }
+    .deal-modal-title { font-size: 1.25rem; font-weight: 700; color: var(--text); line-height: 1.25; margin-top: .1rem; }
+    .deal-modal-sub { font-size: .82rem; color: var(--text); margin-top: .3rem; }
+    .deal-modal-sub .dm-stage-days { color: var(--text2); }
+    .deal-modal-exec { font-size: .82rem; color: var(--text2); margin-top: .15rem; }
+    .dm-pipe { display: inline-block; font-size: .62rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--teal); background: rgba(58,184,183,.14); border: 1px solid rgba(58,184,183,.32); border-radius: 5px; padding: .12rem .45rem; }
+    .deal-trail.trail3 .dt-row { display: grid; grid-template-columns: 1fr auto 92px; gap: .8rem; align-items: baseline; }
+    .deal-trail.trail3 .dt-head { font-size: .66rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); border-bottom-color: var(--border); }
+    .deal-trail .dt-days { color: var(--text2); font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
     .deal-modal-list {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -2600,13 +2606,8 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
     const _ownerHistCache = {};
     function _dealModalExtras(d) {
       const muted = '<span style="color:var(--text2)">—</span>';
-      const row = (lbl, val) => `<div class="deal-row"><span class="dr-lbl">${esc(lbl)}</span><span class="dr-val">${val}</span></div>`;
+      const cell = (lbl, val) => `<div class="deal-row"><span class="dr-lbl">${esc(lbl)}</span><span class="dr-val">${val}</span></div>`;
       const dt = v => v ? esc(fmtDate(v)) : muted;
-      // Dias na etapa atual: entrada na etapa atual (cobre os 2 pipelines) → hoje; fallback stage_days.
-      let curDays = null;
-      const entAtual = d.stage_entered && d.stage_entered[d.stage];
-      if (entAtual) { const ms = Date.now() - Date.parse(entAtual); if (!isNaN(ms)) curDays = Math.max(0, Math.floor(ms / 86400000)); }
-      else if (d.stage_days && d.stage_days[d.stage] != null) curDays = d.stage_days[d.stage];
       const dsa = d.dias_sem_atividade;
       const dsaHtml = dsa != null
         ? `<span style="color:${dsa > 90 ? '#f85149' : (dsa > 30 ? '#d29922' : 'var(--text)')}">${fmtNum(dsa)} dias</span>`
@@ -2618,27 +2619,32 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
             : esc(d.sdr))
         : muted;
 
+      // ── RASTREAMENTO (2 colunas, na ordem pedida) ──
       let h = '<div class="deal-sec">Rastreamento</div>';
-      h += row('Criação', dt(d.createdate));
-      h += row('Origem', d.origem ? esc(d.origem) : muted);
-      h += row('BDR', bdrHtml);
-      h += row('Dias na etapa atual', curDays != null ? fmtNum(curDays) + ' dias' : muted);
-      h += row('Última atividade', dt(d.ultima_atividade));
-      h += row('Dias sem atividade', dsaHtml);
+      h += cell('BDR', bdrHtml) + cell('Origem', d.origem ? esc(d.origem) : muted);
+      h += cell('Dt. Criação', dt(d.createdate)) + cell('Dias no pipe', d.dias_no_pipe != null ? fmtNum(d.dias_no_pipe) + ' dias' : muted);
+      h += cell('Última atividade', dt(d.ultima_atividade)) + cell('Dias sem atividade', dsaHtml);
 
-      // Trilha de etapas | linha do tempo por data de entrada (todas as etapas por onde passou).
+      // ── TRILHA DE ETAPAS | Etapa | Data | Dias na etapa ──
       const trail = d.stage_entered
         ? Object.keys(d.stage_entered).map(k => ({ stage: k, date: d.stage_entered[k] }))
             .filter(x => x.date).sort((a, b) => a.date < b.date ? -1 : (a.date > b.date ? 1 : 0))
         : [];
       if (trail.length) {
         h += '<div class="deal-sec">Trilha de etapas</div>';
-        h += '<div class="deal-trail">' + trail.map(t =>
-          `<div class="dt-row"><span class="dt-stage">${esc(t.stage)}</span><span class="dt-date">${esc(fmtDate(t.date))}</span></div>`
-        ).join('') + '</div>';
+        let tr = '<div class="deal-trail trail3">';
+        tr += '<div class="dt-row dt-head"><span>Etapa</span><span>Data</span><span class="dt-days">Dias na etapa</span></div>';
+        trail.forEach((t, i) => {
+          const start = Date.parse(t.date);
+          const end = (i < trail.length - 1) ? Date.parse(trail[i + 1].date) : Date.now();
+          const days = (!isNaN(start) && !isNaN(end)) ? Math.max(0, Math.floor((end - start) / 86400000)) : null;
+          tr += `<div class="dt-row"><span class="dt-stage">${esc(t.stage)}</span><span class="dt-date">${esc(fmtDate(t.date))}</span><span class="dt-days">${days != null ? fmtNum(days) + ' d' : '—'}</span></div>`;
+        });
+        tr += '</div>';
+        h += tr;
       }
 
-      // Histórico de proprietários | preenchido sob demanda (chamada por deal em /api/history).
+      // ── HISTÓRICO DE PROPRIETÁRIOS (lazy) ──
       h += '<div class="deal-sec">Histórico de proprietários</div>';
       h += `<div class="deal-owner-hist" id="dm-owner-hist" data-deal="${esc(d.hs_id)}"><span style="color:var(--text2)">Carregando…</span></div>`;
       return h;
@@ -2677,10 +2683,21 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       const fields = currentInfo.filter(c => !c.sticky && !/^comp_/.test(c.k));
       const total = currentDeals.length;
 
+      const muted = '<span style="color:var(--text2)">—</span>';
+      // Dias na etapa atual (topo): entrada na etapa atual → hoje; fallback stage_days.
+      let curDays = null;
+      const entAtual = d.stage_entered && d.stage_entered[d.stage];
+      if (entAtual) { const ms = Date.now() - Date.parse(entAtual); if (!isNaN(ms)) curDays = Math.max(0, Math.floor(ms / 86400000)); }
+      else if (d.stage_days && d.stage_days[d.stage] != null) curDays = d.stage_days[d.stage];
+      const pipeTag = d.pipeline ? `<span class="dm-pipe">${esc(d.pipeline)}</span>` : '';
+      const stageLine = esc(d.stage || '—') + (curDays != null ? ` <span class="dm-stage-days">há ${fmtNum(curDays)} dias</span>` : '');
+
       let body = `<div class="deal-modal-head">
         <div style="min-width:0;">
+          ${pipeTag}
           <div class="deal-modal-title">${esc(d.dealname || '—')}</div>
-          <div class="deal-modal-sub">${esc(d.stage || '—')}${d.ae ? ' | ' + esc(_firstName(d.ae)) : ''}</div>
+          <div class="deal-modal-sub">${stageLine}</div>
+          <div class="deal-modal-exec">${d.ae ? esc(d.ae) : muted}</div>
         </div>
         <div class="deal-modal-nav">
           <button class="dm-nav-btn" onclick="navDealModal(-1)" title="Deal anterior (←)">‹</button>
@@ -2690,35 +2707,39 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
         </div>
       </div>`;
 
+      // Formatadores de valor
+      const brl = v => (v != null && !isNaN(v)) ? esc(fmtBRL(v)) : muted;
+      const num = v => (v != null) ? esc(fmtNum(v)) : muted;
+      const pct = v => (v != null) ? esc(fmtPct(v)) : muted;
+      const dt = v => v ? esc(fmtDate(v)) : muted;
+      const txt = v => v ? esc(v) : muted;
+      const boolv = v => v === true ? 'Sim' : (v === false ? 'Não' : muted);
+      const per = v => { if (!v || v === 'Não Possui') return muted; const m = String(v).match(/\d+/); return m ? m[0] + ' meses' : esc(v); };
+      const cell = (lbl, val) => `<div class="deal-row"><span class="dr-lbl">${lbl}</span><span class="dr-val">${val}</span></div>`;
+
+      // ── Campos principais (2 colunas, ordem definida) ──
       body += '<div class="deal-modal-list">';
-      const cmpOld = (compTab && d._cmp) ? d._cmp.old : null;
+      body += cell('Solução', txt(d.produto)) + cell('Fatura atual', brl(d.fatura_atual));
+      body += cell('Colaboradores', num(d.colaboradores)) + cell('Vidas', num(d.vidas));
+      body += cell('1ª Fatura', brl(d.primeira_fatura)) + cell('ARR', brl(d.arr_estimado));
+      body += cell('TCV', brl(d.tcv)) + cell('Período', per(d.periodo_contrato));
+      body += cell('Modelo', txt(d.modelo_remuneracao)) + cell('POC', boolv(d.is_poc));
+      body += cell('Agenciamento', boolv(d.possui_agenciamento)) + cell('Vitalício', boolv(d.possui_vitalicio));
+      body += cell('Prob. Etapa', pct(d.prob_etapa)) + cell('Prob. AE', pct(d.probabilidade));
+      body += cell('Prob. Ajustada', pct(d.prob_ajustada)) + cell('Quarter', (d.quarter && !quarterEmpty(d.quarter)) ? esc(d.quarter) : muted);
+      body += cell('Dt. Receita', dt(d.data_prevista_para_receita)) + cell('Dt. Vigência', dt(d.vigencia));
+
+      // Comparação (modo foto) — preserva a info sem poluir o grid fixo
       if (compTab && d._cmp) {
-        const stTxt = ({
-          novo: 'não existia na foto',
-          avancou: 'avançou de etapa',
-          regrediu: 'regrediu de etapa',
-          mudou: 'mudou de etapa',
-          igual: 'sem mudança de etapa',
-        })[d._cmp.st] || '';
-        body += `<div class="deal-row"><span class="dr-lbl">Comparação | foto ${esc(compMeta.tab)}</span><span class="dr-val">${esc(stTxt)}</span></div>`;
-        if (cmpOld && COMP_SHOW_REV_DELTAS) {
-          body += `<div class="deal-row"><span class="dr-lbl">Δ Receita Real (janela)</span><span class="dr-val ${d.comp_dreal > 0.5 ? 'dpos' : (d.comp_dreal < -0.5 ? 'dneg' : '')}">${fmtDeltaBRL(d.comp_dreal)}</span></div>`;
-          body += `<div class="deal-row"><span class="dr-lbl">Δ Receita Probabilizada (janela)</span><span class="dr-val ${d.comp_dprob > 0.5 ? 'dpos' : (d.comp_dprob < -0.5 ? 'dneg' : '')}">${fmtDeltaBRL(d.comp_dprob)}</span></div>`;
+        const stTxt = ({ novo: 'não existia na foto', avancou: 'avançou de etapa', regrediu: 'regrediu de etapa', mudou: 'mudou de etapa', igual: 'sem mudança de etapa' })[d._cmp.st] || '';
+        body += `<div class="deal-sec">Comparação | foto ${esc(compMeta.tab)}</div>`;
+        body += cell('Mudança', esc(stTxt));
+        if (COMP_SHOW_REV_DELTAS) {
+          body += cell('Δ Receita Real', `<span class="${d.comp_dreal > 0.5 ? 'dpos' : (d.comp_dreal < -0.5 ? 'dneg' : '')}">${fmtDeltaBRL(d.comp_dreal)}</span>`);
+          body += cell('Δ Receita Prob.', `<span class="${d.comp_dprob > 0.5 ? 'dpos' : (d.comp_dprob < -0.5 ? 'dneg' : '')}">${fmtDeltaBRL(d.comp_dprob)}</span>`);
         }
       }
-      fields.forEach(c => {
-        let valHtml = dealFieldValue(c, d[c.k]);
-        if (cmpOld && Object.prototype.hasOwnProperty.call(cmpOld, c.k)) {
-          const ov = cmpOld[c.k];
-          const changed = c.k === 'ae'
-            ? !compAeEq(ov, d[c.k])   // grafias de owner variam entre foto e vivo | mesma pessoa não é mudança
-            : String(ov ?? '') !== String(d[c.k] ?? '');
-          if (changed) {
-            valHtml += `<span class="cmp-old-modal">na foto: ${dealFieldValue(c, ov)}</span>`;
-          }
-        }
-        body += `<div class="deal-row"><span class="dr-lbl">${esc(c.lbl)}</span><span class="dr-val">${valHtml}</span></div>`;
-      });
+
       body += _dealModalExtras(d);
       body += '</div>';
 

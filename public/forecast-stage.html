@@ -1332,8 +1332,22 @@
       display: flex; align-items: flex-start; justify-content: space-between;
       gap: 1rem; margin-bottom: 1.3rem;
     }
-    .deal-modal-title { font-size: 1.25rem; font-weight: 700; color: var(--text); line-height: 1.25; }
-    .deal-modal-sub { font-size: .82rem; color: var(--text2); margin-top: .3rem; }
+    .deal-modal-title { font-size: 1.25rem; font-weight: 700; color: var(--text); line-height: 1.25; margin-top: .1rem; }
+    .deal-modal-sub { font-size: .82rem; color: var(--text); margin-top: .3rem; }
+    .deal-modal-sub .dm-stage-days { color: var(--text2); }
+    .deal-modal-exec { font-size: .82rem; color: var(--text2); margin-top: .15rem; }
+    .dm-pipe { display: inline-block; font-size: .62rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--teal); background: rgba(58,184,183,.14); border: 1px solid rgba(58,184,183,.32); border-radius: 5px; padding: .12rem .45rem; }
+    .deal-sec { grid-column: 1 / -1; margin-top: 1rem; margin-bottom: .1rem; padding: .1rem .25rem .35rem; font-size: .7rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--text2); border-bottom: 1px solid var(--border); }
+    .deal-trail, .deal-owner-hist { grid-column: 1 / -1; padding: .2rem .1rem 0; }
+    .deal-trail .dt-row, .deal-owner-hist .oh-row { display: flex; align-items: baseline; justify-content: space-between; gap: .8rem; padding: .34rem .25rem; border-bottom: 1px solid var(--border); font-size: .82rem; }
+    .deal-trail.trail3 .dt-row { display: grid; grid-template-columns: 1fr auto 92px; gap: .8rem; align-items: baseline; }
+    .deal-trail.trail3 .dt-head { font-size: .66rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+    .deal-trail .dt-stage { color: var(--text); font-weight: 600; }
+    .deal-trail .dt-date { color: var(--text2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .deal-trail .dt-days { color: var(--text2); font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
+    .deal-owner-hist .oh-name { color: var(--text); font-weight: 600; }
+    .deal-owner-hist .oh-meta { color: var(--text2); font-size: .76rem; white-space: nowrap; }
+    .deal-owner-hist .oh-cur { background: rgba(45,212,191,.09); border-radius: 6px; }
     .deal-modal-list {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -2822,17 +2836,94 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       if (box) box.scrollTop = 0;
     }
 
+    // ── Extras do modal (Rastreamento + Trilha + Histórico) | mesmo padrão do /forecast ──
+    const _ownerHistCache = {};
+    function _dealModalExtras(d) {
+      const muted = '<span style="color:var(--text2)">—</span>';
+      const cell = (lbl, val) => `<div class="deal-row"><span class="dr-lbl">${esc(lbl)}</span><span class="dr-val">${val}</span></div>`;
+      const dt = v => v ? esc(fmtDate(v)) : muted;
+      const dsa = d.dias_sem_atividade;
+      const dsaHtml = dsa != null
+        ? `<span style="color:${dsa > 90 ? '#f85149' : (dsa > 30 ? '#d29922' : 'var(--text)')}">${fmtNum(dsa)} dias</span>`
+        : muted;
+      const bdrHtml = d.sdr
+        ? (/^\d+$/.test(String(d.sdr))
+            ? `<span style="color:var(--text2)" title="Owner não resolvido">ID ${esc(d.sdr)}</span>`
+            : esc(d.sdr))
+        : muted;
+
+      let h = '<div class="deal-sec">Rastreamento</div>';
+      h += cell('BDR', bdrHtml) + cell('Origem', d.origem ? esc(d.origem) : muted);
+      h += cell('Dt. Criação', dt(d.createdate)) + cell('Dias no pipe', d.dias_no_pipe != null ? fmtNum(d.dias_no_pipe) + ' dias' : muted);
+      h += cell('Última atividade', dt(d.ultima_atividade)) + cell('Dias sem atividade', dsaHtml);
+
+      const trail = d.stage_entered
+        ? Object.keys(d.stage_entered).map(k => ({ stage: k, date: d.stage_entered[k] }))
+            .filter(x => x.date).sort((a, b) => a.date < b.date ? -1 : (a.date > b.date ? 1 : 0))
+        : [];
+      if (trail.length) {
+        h += '<div class="deal-sec">Trilha de etapas</div>';
+        let tr = '<div class="deal-trail trail3">';
+        tr += '<div class="dt-row dt-head"><span>Etapa</span><span>Data</span><span class="dt-days">Dias na etapa</span></div>';
+        trail.forEach((t, i) => {
+          const start = Date.parse(t.date);
+          const end = (i < trail.length - 1) ? Date.parse(trail[i + 1].date) : Date.now();
+          const days = (!isNaN(start) && !isNaN(end)) ? Math.max(0, Math.floor((end - start) / 86400000)) : null;
+          tr += `<div class="dt-row"><span class="dt-stage">${esc(t.stage)}</span><span class="dt-date">${esc(fmtDate(t.date))}</span><span class="dt-days">${days != null ? fmtNum(days) + ' d' : '—'}</span></div>`;
+        });
+        tr += '</div>';
+        h += tr;
+      }
+
+      h += '<div class="deal-sec">Histórico de proprietários</div>';
+      h += `<div class="deal-owner-hist" id="dm-owner-hist" data-deal="${esc(d.hs_id)}"><span style="color:var(--text2)">Carregando…</span></div>`;
+      return h;
+    }
+    function _renderOwnerHist(el, data) {
+      if (!el) return;
+      if (!data || !data.success) { el.innerHTML = '<span style="color:var(--text2)">indisponível</span>'; return; }
+      const cur = data.current, prev = data.previous || [];
+      let h = '';
+      if (cur) h += `<div class="oh-row oh-cur"><span class="oh-name">${esc(cur.owner)}</span><span class="oh-meta">atual | desde ${esc(fmtDate(cur.date))}</span></div>`;
+      if (prev.length) prev.forEach(p => { h += `<div class="oh-row"><span class="oh-name">${esc(p.owner)}</span><span class="oh-meta">assumiu ${esc(fmtDate(p.date))}</span></div>`; });
+      else h += '<div class="oh-row"><span style="color:var(--text2)">sem reatribuições anteriores</span></div>';
+      el.innerHTML = h;
+    }
+    function _fillOwnerHistory(id) {
+      const el = document.getElementById('dm-owner-hist');
+      if (!el || !id) return;
+      if (_ownerHistCache[id]) { _renderOwnerHist(el, _ownerHistCache[id]); return; }
+      fetch('/api/history?action=owner-history&id=' + encodeURIComponent(id), { credentials: 'same-origin' })
+        .then(r => r.json())
+        .then(data => {
+          _ownerHistCache[id] = data;
+          const cur = currentDeals[currentDealIndex];
+          const elNow = document.getElementById('dm-owner-hist');
+          if (elNow && cur && String(cur.hs_id) === String(id)) _renderOwnerHist(elNow, data);
+        })
+        .catch(() => { const elNow = document.getElementById('dm-owner-hist'); if (elNow) elNow.innerHTML = '<span style="color:var(--text2)">indisponível</span>'; });
+    }
+
     function renderDealModal() {
       const di = currentDealIndex;
       const d = currentDeals[di];
       if (!d) return;
-      const fields = currentInfo.filter(c => !c.sticky);
       const total = currentDeals.length;
+      const muted = '<span style="color:var(--text2)">—</span>';
+
+      let curDays = null;
+      const entAtual = d.stage_entered && d.stage_entered[d.stage];
+      if (entAtual) { const ms = Date.now() - Date.parse(entAtual); if (!isNaN(ms)) curDays = Math.max(0, Math.floor(ms / 86400000)); }
+      else if (d.stage_days && d.stage_days[d.stage] != null) curDays = d.stage_days[d.stage];
+      const pipeTag = d.pipeline ? `<span class="dm-pipe">${esc(d.pipeline)}</span>` : '';
+      const stageLine = esc(d.stage || '—') + (curDays != null ? ` <span class="dm-stage-days">há ${fmtNum(curDays)} dias</span>` : '');
 
       let body = `<div class="deal-modal-head">
         <div style="min-width:0;">
+          ${pipeTag}
           <div class="deal-modal-title">${esc(d.dealname || '—')}</div>
-          <div class="deal-modal-sub">${esc(d.stage || '—')}${d.ae ? ' · ' + esc(d.ae) : ''}</div>
+          <div class="deal-modal-sub">${stageLine}</div>
+          <div class="deal-modal-exec">${d.ae ? esc(d.ae) : muted}</div>
         </div>
         <div class="deal-modal-nav">
           <button class="dm-nav-btn" onclick="navDealModal(-1)" title="Deal anterior (←)">‹</button>
@@ -2842,10 +2933,26 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
         </div>
       </div>`;
 
+      const brl = v => (v != null && !isNaN(v)) ? esc(fmtBRL(v)) : muted;
+      const num = v => (v != null) ? esc(fmtNum(v)) : muted;
+      const pct = v => (v != null) ? esc(fmtPct(v)) : muted;
+      const dt = v => v ? esc(fmtDate(v)) : muted;
+      const txt = v => v ? esc(v) : muted;
+      const boolv = v => v === true ? 'Sim' : (v === false ? 'Não' : muted);
+      const per = v => { if (!v || v === 'Não Possui') return muted; const m = String(v).match(/\d+/); return m ? m[0] + ' meses' : esc(v); };
+      const cell = (lbl, val) => `<div class="deal-row"><span class="dr-lbl">${lbl}</span><span class="dr-val">${val}</span></div>`;
+
       body += '<div class="deal-modal-list">';
-      fields.forEach(c => {
-        body += `<div class="deal-row"><span class="dr-lbl">${esc(c.lbl)}</span><span class="dr-val">${dealFieldValue(c, d[c.k])}</span></div>`;
-      });
+      body += cell('Solução', txt(d.produto)) + cell('Fatura atual', brl(d.fatura_atual));
+      body += cell('Colaboradores', num(d.colaboradores)) + cell('Vidas', num(d.vidas));
+      body += cell('1ª Fatura', brl(d.primeira_fatura)) + cell('ARR', brl(d.arr_estimado));
+      body += cell('TCV', brl(d.tcv)) + cell('Período', per(d.periodo_contrato));
+      body += cell('Modelo', txt(d.modelo_remuneracao)) + cell('POC', boolv(d.is_poc));
+      body += cell('Agenciamento', boolv(d.possui_agenciamento)) + cell('Vitalício', boolv(d.possui_vitalicio));
+      body += cell('Prob. Etapa', pct(d.prob_etapa)) + cell('Prob. AE', pct(d.probabilidade));
+      body += cell('Prob. Ajustada', pct(d.prob_ajustada)) + cell('Quarter', (d.quarter && !quarterEmpty(d.quarter)) ? esc(d.quarter) : muted);
+      body += cell('Dt. Receita', dt(d.data_prevista_para_receita)) + cell('Dt. Vigência', dt(d.vigencia));
+      body += _dealModalExtras(d);
       body += '</div>';
 
       const url = `https://app.hubspot.com/contacts/${HUB_ID}/deal/${esc(d.hs_id)}`;
@@ -2857,6 +2964,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       </div>`;
 
       document.getElementById('deal-modal-box').innerHTML = body;
+      _fillOwnerHistory(d.hs_id);
     }
 
     function closeDealModal() {
