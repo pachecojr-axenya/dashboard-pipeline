@@ -4,6 +4,12 @@ Recurring every 20min (job `55d3b136`). Purpose: identify and close gaps so the 
 
 ---
 
+### Incidente de alias | BDR | Treble retornou 404 após deploy concorrente (2026-07-13)
+
+- **Causa:** o deploy de produção posterior feito por `jpacheco-5103` assumiu os aliases do projeto canônico depois do deploy do BDR | Treble; essa árvore não continha a nova página, então `/novo-bdr/treble` passou a retornar `NOT_FOUND`.
+- **Correção:** redeploy da árvore canônica `origin/main` (`0967d03`) no projeto Pro `dashboard-axenya`; página e API voltaram a responder, com API sem sessão em `401`.
+- **Regra operacional:** não executar deploys concorrentes no mesmo projeto; o último deploy assume todos os aliases de produção.
+
 ### BDR | Treble | subpágina read-only de WhatsApp sincronizado (2026-07-13)
 
 > Nova subpágina isolada em `/novo-bdr/treble`. Deploy concluído em `https://axenya-pipeline-dashboard.vercel.app/novo-bdr/treble`; API sem sessão retorna 401 e as rotas existentes continuam 200.
