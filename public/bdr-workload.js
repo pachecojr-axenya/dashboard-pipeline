@@ -65,6 +65,8 @@ var WorkloadBDR = (function () {
   function fContacts() { return raw.contactsCreated.filter(function (c) { return passBdr(c) && passPorte(c) && passFonte(c); }); }
   // fonte não se aplica a transição (movimentação não tem fonte de criação)
   function fTransitions() { return raw.transitions.filter(function (t) { return passBdr(t) && passPorte(t); }); }
+  // atividade não tem empresa nem fonte de criação: só filtro de BDR
+  function fActivities() { return (raw.activities || []).filter(passBdr); }
 
   // ---------- carga ----------
   function load(refresh) {
@@ -107,6 +109,7 @@ var WorkloadBDR = (function () {
       { label: 'Desqualificado | Timing', value: kDesq.length, cls: kDesq.length ? 'bad' : '', drill: 'desq', sub: 'motivos: propriedade pendente no HubSpot' },
     ]);
     html += chartHoras(conts, trans);
+    html += tabelaAtividades(fActivities(), comps, conts, trans);
     html += '<div class="grid">';
     html += chartPorBdr(comps, conts, trans);
     html += chartPorFonte(comps, conts);
@@ -233,6 +236,53 @@ var WorkloadBDR = (function () {
     return h + '</div></div>';
   }
 
+  function tabelaAtividades(acts, comps, conts, trans) {
+    var MIN_CONVERSA = 60000;
+    var por = {};
+    raw.team.forEach(function (b) {
+      por[b] = { calls: 0, calls1m: 0, emails: 0, whats: 0, linkedin: 0, comOutras: 0, notes: 0, tasks: 0, meetings: 0, ins: 0, mov: 0 };
+    });
+    acts.forEach(function (a) {
+      var p = por[a.bdr]; if (!p) return;
+      if (a.tipo === 'calls') { p.calls++; if (a.duracao_ms != null && a.duracao_ms >= MIN_CONVERSA) p.calls1m++; }
+      else if (a.tipo === 'emails') p.emails++;
+      else if (a.tipo === 'communications') {
+        if (a.canal === 'WHATS_APP') p.whats++;
+        else if (a.canal === 'LINKEDIN_MESSAGE') p.linkedin++;
+        else p.comOutras++;
+      }
+      else if (a.tipo === 'notes') p.notes++;
+      else if (a.tipo === 'tasks') p.tasks++;
+      else if (a.tipo === 'meetings') p.meetings++;
+    });
+    comps.forEach(function (c) { if (por[c.bdr]) por[c.bdr].ins++; });
+    conts.forEach(function (c) { if (por[c.bdr]) por[c.bdr].ins++; });
+    trans.forEach(function (t) { if (por[t.bdr]) por[t.bdr].mov++; });
+    function tot(p) { return p.calls + p.emails + p.whats + p.linkedin + p.comOutras + p.notes + p.tasks + p.meetings; }
+    var rows = raw.team.slice().sort(function (a, b) { return tot(por[b]) - tot(por[a]); });
+    var totalActs = 0; rows.forEach(function (b) { totalActs += tot(por[b]); });
+
+    var h = '<div class="grid"><div class="card span-12"><div class="card-title"><div><h2>Atividades | o trabalho além da inserção</h2>' +
+      '<div class="desc">Engagements registrados no HubSpot dentro da janela, por dono | ligação com conversa = duração ≥ 1 min | inserir nada e ligar o dia inteiro aparece aqui, não nos KPIs de inserção</div></div>' +
+      '<span class="pill">' + totalActs + ' atividades</span></div>';
+    if (!totalActs) return h + '<div class="desc">Sem atividades registradas no recorte.</div></div></div>';
+    h += '<div class="table-wrap"><table><thead><tr><th>BDR</th><th class="right">Ligações</th><th class="right">Com conversa (≥1 min)</th>' +
+      '<th class="right">E-mails</th><th class="right">WhatsApp</th><th class="right">LinkedIn</th><th class="right">Outras</th><th class="right">Notas</th>' +
+      '<th class="right">Tarefas</th><th class="right">Reuniões</th><th class="right">Total</th><th class="right">Inserções</th><th class="right">Movimentações</th></tr></thead><tbody>';
+    rows.forEach(function (b) {
+      var p = por[b], t = tot(p);
+      if (!t && !p.ins && !p.mov) return;
+      h += '<tr><td>' + esc(b) + '</td><td class="right">' + p.calls + '</td>' +
+        '<td class="right">' + (p.calls ? p.calls1m + ' <span class="muted">(' + Math.round(p.calls1m / p.calls * 100) + '%)</span>' : '0') + '</td>' +
+        '<td class="right">' + p.emails + '</td><td class="right">' + p.whats + '</td><td class="right">' + p.linkedin + '</td><td class="right">' + p.comOutras + '</td>' +
+        '<td class="right">' + p.notes + '</td><td class="right">' + p.tasks + '</td><td class="right">' + p.meetings + '</td>' +
+        '<td class="right"><b>' + t + '</b></td>' +
+        '<td class="right">' + (p.ins || '<span class="muted">0</span>') + '</td>' +
+        '<td class="right">' + (p.mov || '<span class="muted">0</span>') + '</td></tr>';
+    });
+    return h + '</tbody></table></div></div></div>';
+  }
+
   function pillStatus(s) {
     if (!s) return '<span class="muted">—</span>';
     var cls = STATUS_CLS[s] || '';
@@ -347,6 +397,7 @@ var WorkloadBDR = (function () {
       ['Universo', 'Contatos e empresas cujo dono (hubspot_owner_id) é um dos 13 BDRs do time canônico. Owners duplicados e arquivados são resolvidos por nome + alias.'],
       ['Inserção', 'createdate dentro da janela (fuso America/Sao_Paulo). Fonte via hs_object_source_detail_1: Apollo e Lusha = push do próprio BDR via extensão | Manual = CRM_UI | API interna = chave de automação (não conta como trabalho de BDR; filtre por fonte para excluir).'],
       ['Movimentação', 'Transições de hs_lead_status dentro da janela, extraídas do histórico nativo (propertiesWithHistory). Contato efetivo = CONNECTED | Qualificado = OPEN_DEAL (deal em Reunião Agendada) | Desqualificado = UNQUALIFIED | Timing ruim = BAD_TIMING.'],
+      ['Atividades', 'Engagements do HubSpot (calls, emails, communications, notes, tasks, meetings) com hs_timestamp na janela e dono no time. Ligação com conversa = duração ≥ 1 min (proxy; discagens não atendidas têm duração 0). WhatsApp = communications com canal WHATS_APP (captura Treble). Janelas muito longas podem truncar em 9.800 registros por tipo — a página avisa quando o teto é atingido.'],
       ['Limitações declaradas', 'Motivo de desqualificação ainda não existe como propriedade no HubSpot (pendência da spec outbound-hubspot-first). Filtro de fonte não se aplica a movimentações (movimentação não tem fonte de criação). Ligações e e-mails mal registrados não aparecem | o proxy de primeiro retorno é a transição para Contato efetivo.'],
       ['Reconciliação', 'Todo KPI clicável abre a tabela nominal com exatamente as mesmas linhas contadas no número. A soma dos pequenos é o todo.'],
     ];

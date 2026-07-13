@@ -89,14 +89,14 @@ function resolveTeamIds(ownerMap) {
   return idToBdr;
 }
 
-async function searchAll(token, objectType, filters, properties) {
+async function searchAll(token, objectType, filters, properties, sortProp) {
   const all = [];
   let after = 0, hasMore = true;
   while (hasMore) {
     const resp = await hubspotPost(token, `/crm/v3/objects/${objectType}/search`, {
       filterGroups: [{ filters }],
       properties,
-      sorts: [{ propertyName: 'createdate', direction: 'DESCENDING' }],
+      sorts: [{ propertyName: sortProp || 'createdate', direction: 'DESCENDING' }],
       limit: 200,
       after,
     });
@@ -150,6 +150,49 @@ async function fetchCompaniesById(token, ids) {
   return map;
 }
 
+// Atividades (engagements) da janela por owner do time. Cada tipo pagina até o teto
+// do search (9800) — janelas muito longas podem truncar o rabo; o front avisa.
+const ACTIVITY_TYPES = {
+  calls: ['hs_timestamp', 'hubspot_owner_id', 'hs_call_duration', 'hs_call_disposition'],
+  emails: ['hs_timestamp', 'hubspot_owner_id'],
+  communications: ['hs_timestamp', 'hubspot_owner_id', 'hs_communication_channel_type'],
+  notes: ['hs_timestamp', 'hubspot_owner_id'],
+  tasks: ['hs_timestamp', 'hubspot_owner_id'],
+  meetings: ['hs_timestamp', 'hubspot_owner_id'],
+};
+
+async function fetchCallDispositions(token) {
+  try {
+    const list = await hubspotGet(token, '/calls/v1/dispositions');
+    const map = {};
+    (Array.isArray(list) ? list : []).forEach(d => { map[d.id] = d.label; });
+    return map;
+  } catch (e) { return {}; }
+}
+
+async function fetchActivities(token, teamIds, idToBdr, sinceMs, untilMs) {
+  const dispMap = await fetchCallDispositions(token);
+  const out = [];
+  await Promise.all(Object.keys(ACTIVITY_TYPES).map(async type => {
+    const rows = await searchAll(token, type, [
+      { propertyName: 'hubspot_owner_id', operator: 'IN', values: teamIds },
+      { propertyName: 'hs_timestamp', operator: 'BETWEEN', value: String(sinceMs), highValue: String(untilMs) },
+    ], ACTIVITY_TYPES[type], 'hs_timestamp');
+    rows.forEach(r => {
+      const p = r.properties;
+      const a = { tipo: type, bdr: idToBdr[p.hubspot_owner_id] || null, ts: p.hs_timestamp };
+      if (type === 'calls') {
+        a.duracao_ms = p.hs_call_duration != null && p.hs_call_duration !== '' ? Number(p.hs_call_duration) : null;
+        a.desfecho = dispMap[p.hs_call_disposition] || null;
+      }
+      if (type === 'communications') a.canal = p.hs_communication_channel_type || null;
+      out.push(a);
+    });
+  }));
+  out.sort((a, b) => (a.ts < b.ts ? -1 : 1));
+  return out;
+}
+
 // 'Apollo Integration' -> Apollo | 'Lusha' -> Lusha | chave API interna -> API interna | CRM_UI -> Manual
 function sourceOf(p) {
   const d = p.hs_object_source_detail_1 || '';
@@ -182,7 +225,10 @@ async function buildPayload(token, sinceMs, untilMs) {
     ], CONTACT_PROPS),
   ]);
 
-  const hist = await fetchStatusHistory(token, contactsTouchedRaw.map(c => c.id));
+  const [hist, activities] = await Promise.all([
+    fetchStatusHistory(token, contactsTouchedRaw.map(c => c.id)),
+    fetchActivities(token, teamIds, idToBdr, sinceMs, untilMs),
+  ]);
 
   const transitions = [];
   contactsTouchedRaw.forEach(c => {
@@ -254,6 +300,7 @@ async function buildPayload(token, sinceMs, untilMs) {
     companiesCreated,
     contactsCreated,
     transitions,
+    activities,
   };
 }
 
