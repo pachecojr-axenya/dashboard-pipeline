@@ -4182,6 +4182,15 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
           k: 'vigencia', lbl: 'Vigência', w: 95, align: 'center', fmt: fmtDate, hideMobile: true,
           tip: 'Data de Vigência do contrato (HubSpot)'
         },
+        {
+          k: 'ultima_atividade', lbl: 'Últ. Atividade', w: 100, align: 'center', fmt: fmtDate, hideMobile: true,
+          tip: 'Data da última atividade/nota registrada no HubSpot (notes_last_updated).'
+        },
+        {
+          k: 'dias_sem_atividade', lbl: 'Dias s/ Ativ.', w: 82, align: 'right', hideMobile: true,
+          fmt: v => v == null ? '—' : `<span style="color:${v > 90 ? '#f85149' : (v > 30 ? '#d29922' : 'var(--text)')}">${fmtNum(v)}</span>`,
+          tip: 'Dias desde a última atividade. Acima de 90 em vermelho, acima de 30 em amarelo.'
+        },
       ];
       if (COMP_SHOW_REV_DELTAS && compTab && compMap) {
         INFO.splice(2, 0,
