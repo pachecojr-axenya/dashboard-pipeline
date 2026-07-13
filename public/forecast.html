@@ -4450,6 +4450,24 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       const idxVidas = (currentInfo || []).findIndex(c => c.k === 'vidas');
       const idxPf = (currentInfo || []).findIndex(c => c.k === 'primeira_fatura');
 
+      // Colunas informativas numéricas → no XLSX viram número de verdade (não texto).
+      // NUM_Z: moeda/inteiro (formato pt-BR sem decimais, igual à tela). PCT_KEYS:
+      // probabilidades, guardadas como fração (0,078) → número com formato de % do Excel.
+      const NUM_Z = {
+        dias_no_pipe: '#,##0', colaboradores: '#,##0', vidas: '#,##0',
+        fatura_atual: '#,##0', primeira_fatura: '#,##0', arr_estimado: '#,##0', tcv: '#,##0',
+        comp_dreal: '#,##0', comp_dprob: '#,##0'
+      };
+      const PCT_KEYS = { probabilidade: 1, prob_etapa: 1, prob_ajustada: 1 };
+
+      // Rótulo de cada mês repete nos dois blocos (Real e Probabilizada); sem o
+      // header de grupo (que não é exportado) as 48 colunas ficam indistinguíveis.
+      // Sufixa cada coluna de mês com seu bloco para o arquivo se auto-identificar.
+      colTypes.forEach((t, i) => {
+        if (t === 'real') headerRow[i] = headerRow[i] + ' | Receita Real (R$)';
+        else if (t === 'prob') headerRow[i] = headerRow[i] + ' | Receita Probabilizada (R$)';
+      });
+
       const numOverrides = [];  // {r,c,v,z} — base numérica p/ as fórmulas
       const formulaCells = [];  // {r,c,f}
 
@@ -4458,29 +4476,46 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
         const row = [];
         const realFormulaCols = new Set();
         tr.querySelectorAll('td').forEach((td, ci) => {
-          row.push(td.innerText.replace('↗', '').trim());
-          if (!isXlsx || !td.dataset.calc) return;
           const type = colTypes[ci];
-          if (type === 'real') {
-            try {
-              const f = buildRealFormula(JSON.parse(td.dataset.calc), di + 2, colL(idxPf), colL(idxVidas));
-              if (f) { formulaCells.push({ r: di + 1, c: ci, f }); realFormulaCols.add(ci); }
-            } catch {}
-          } else if (type === 'prob') {
-            try {
-              const data = JSON.parse(td.dataset.calc);
+          let cellText = td.innerText.replace('↗', '').trim();
+          let calc = null;
+          if (td.dataset.calc) { try { calc = JSON.parse(td.dataset.calc); } catch {} }
+          // Meses de receita: o número real vem do data-calc (rec/val), não do texto.
+          // innerText fica vazio quando a coluna está oculta (display:none) na tela —
+          // assim a exportação nunca perde o cálculo por causa do estado de render.
+          if (type === 'real' || type === 'prob') {
+            const num = calc ? (type === 'real' ? calc.rec : calc.val) : null;
+            if (num != null && isFinite(num)) {
+              if (cellText === '') cellText = 'R$ ' + Number(num).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+              if (isXlsx) numOverrides.push({ r: di + 1, c: ci, v: num, z: '#,##0' });  // fórmula (se houver) sobrescreve
+            }
+          }
+          row.push(cellText);
+          // Fórmulas auditáveis dos meses; aplicadas depois dos numOverrides, sobrescrevem.
+          if (isXlsx && calc) {
+            if (type === 'real') {
+              const f = buildRealFormula(calc, di + 2, colL(idxPf), colL(idxVidas));
+              if (f) { formulaCells.push({ r: di + 1, c: ci, f, z: '#,##0' }); realFormulaCols.add(ci); }
+            } else if (type === 'prob') {
               const realCi = ci - nMonths;
               // Probabilizada = Receita Real × Prob. Ajustada
-              if (data.probAdj != null && realFormulaCols.has(realCi)) {
-                formulaCells.push({ r: di + 1, c: ci, f: `${colL(realCi)}${di + 2}*${data.probAdj}` });
+              if (calc.probAdj != null && realFormulaCols.has(realCi)) {
+                formulaCells.push({ r: di + 1, c: ci, f: `${colL(realCi)}${di + 2}*${calc.probAdj}`, z: '#,##0' });
               }
-            } catch {}
+            }
           }
         });
+        // Colunas informativas numéricas → número real no XLSX (moeda, inteiro, %).
         if (isXlsx && currentDeals[di]) {
           const d = currentDeals[di];
-          if (idxVidas >= 0 && Number.isFinite(d.vidas)) numOverrides.push({ r: di + 1, c: idxVidas, v: d.vidas, z: '#,##0' });
-          if (idxPf >= 0 && Number.isFinite(d.primeira_fatura)) numOverrides.push({ r: di + 1, c: idxPf, v: d.primeira_fatura, z: '#,##0' });
+          (currentInfo || []).forEach((c, ci) => {
+            if (colTypes[ci] !== 'info') return;
+            const isPct = !!PCT_KEYS[c.k], zNum = NUM_Z[c.k];
+            if (!isPct && !zNum) return;  // coluna não numérica (texto/data): deixa como está
+            const raw = d[c.k];
+            if (raw != null && raw !== '' && isFinite(Number(raw))) numOverrides.push({ r: di + 1, c: ci, v: Number(raw), z: isPct ? '0.0%' : zNum });
+            else numOverrides.push({ r: di + 1, c: ci, blank: true });  // sem dado: limpa o "-" da célula numérica
+          });
         }
         rows.push(row);
       });
@@ -4491,9 +4526,14 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
         const row = [];
         tfoots.forEach((td, ci) => {
           row.push(td.innerText.trim());
-          if (isXlsx && (colTypes[ci] === 'real' || colTypes[ci] === 'prob') && dataRowCount > 0) {
-            const L = colL(ci);
-            formulaCells.push({ r: dataRowCount + 1, c: ci, f: `SUM(${L}2:${L}${dataRowCount + 1})` });
+          if (!isXlsx || dataRowCount === 0) return;
+          const L = colL(ci);
+          // Totais de colunas somáveis (meses + informativas de moeda/inteiro) como SUM.
+          if (colTypes[ci] === 'real' || colTypes[ci] === 'prob') {
+            formulaCells.push({ r: dataRowCount + 1, c: ci, f: `SUM(${L}2:${L}${dataRowCount + 1})`, z: '#,##0' });
+          } else if (colTypes[ci] === 'info') {
+            const key = ((currentInfo || [])[ci] || {}).k;
+            if (NUM_Z[key]) formulaCells.push({ r: dataRowCount + 1, c: ci, f: `SUM(${L}2:${L}${dataRowCount + 1})`, z: NUM_Z[key] });
           }
         });
         rows.push(row);
@@ -4518,13 +4558,17 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       } else if (format === 'xlsx') {
         if (typeof XLSX === 'undefined') return alert('Biblioteca XLSX não carregada ainda. Aguarde ou recarregue a página.');
         const ws = XLSX.utils.aoa_to_sheet(rows);
-        // Converte as bases (1ª Fatura, Vidas) para número, para as fórmulas calcularem.
+        // Converte as colunas numéricas (moeda, inteiro, %, meses) para número de verdade.
         numOverrides.forEach(o => {
-          ws[XLSX.utils.encode_cell({ r: o.r, c: o.c })] = { t: 'n', v: o.v, z: o.z };
+          const addr = XLSX.utils.encode_cell({ r: o.r, c: o.c });
+          if (o.blank) { delete ws[addr]; return; }  // célula numérica sem dado → vazia (não "-")
+          ws[addr] = { t: 'n', v: o.v, z: o.z };
         });
         // Substitui os valores das colunas U–BP pelas fórmulas de cálculo.
         formulaCells.forEach(fc => {
-          ws[XLSX.utils.encode_cell({ r: fc.r, c: fc.c })] = { t: 'n', f: fc.f };
+          const cell = { t: 'n', f: fc.f };
+          if (fc.z) cell.z = fc.z;
+          ws[XLSX.utils.encode_cell({ r: fc.r, c: fc.c })] = cell;
         });
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Forecast");
