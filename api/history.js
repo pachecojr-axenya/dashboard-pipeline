@@ -20,6 +20,34 @@
 
 const { listMonthlyTabs, readSnapshot, listTabs } = require('../lib/sheets');
 const { setCORSHeaders, requireAuth, getHubspotToken } = require('./_helpers');
+const FC = require('../lib/forecast-compute');
+const kv = require('../lib/kv');
+const fs = require('fs'); const os = require('os'); const path = require('path');
+
+// ── Comparação de fotos (action=compare) — helpers ──────────────────────────
+const _MANUAL_KV_KEY = 'forecast:faturamento_manual';
+const _MANUAL_TMP = path.join(os.tmpdir(), 'faturamento-manual.json');
+// Faturamento manual (estado atual — não é snapshotado; caveat da Fase 1).
+async function _readManual() {
+  if (kv.isConfigured && kv.isConfigured()) { try { const v = await kv.getJSON(_MANUAL_KV_KEY); if (v && typeof v === 'object') return v; } catch (e) { /* fallback */ } }
+  try { const j = JSON.parse(fs.readFileSync(_MANUAL_TMP, 'utf8')); if (j && typeof j === 'object') return j; } catch (e) { /* sem arquivo */ }
+  return {};
+}
+const _MESES = { jan: 0, fev: 1, mar: 2, abr: 3, mai: 4, jun: 5, jul: 6, ago: 7, set: 8, out: 9, nov: 10, dez: 11 };
+// Fotos disponíveis (semanais + mensais desde jun/2026), ordenadas da mais recente à mais antiga.
+async function _listFotos() {
+  const all = await listTabs(); const fotos = [];
+  all.forEach(t => {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(t)) { fotos.push({ tab: t, tipo: 'semanal', ord: t, refDate: t }); return; }
+    const m = t.match(/^([A-Za-zÀ-ÿ]{3}) (\d{4})$/);
+    if (m) { const mo = _MESES[m[1].toLowerCase()]; if (mo == null) return; const ym = m[2] + '-' + String(mo + 1).padStart(2, '0'); const ord = ym + '-31'; if (ord >= '2026-06-01') fotos.push({ tab: t, tipo: 'mensal', ord, refDate: ym + '-15' }); }
+  });
+  fotos.sort((a, b) => b.ord.localeCompare(a.ord));
+  return fotos;
+}
+// Foto mais próxima em ou antes de `date` (fotos já vem ordenada desc).
+function _resolveFoto(fotos, date) { return fotos.find(f => f.ord <= date) || null; }
+function _rowsToObjs(rows) { const h = rows[0]; return rows.slice(1).map(r => { const o = {}; h.forEach((k, i) => { o[k] = r[i] == null ? '' : r[i]; }); return o; }); }
 
 // ── Histórico de proprietários de um deal (action=owner-history&id=X) ────────
 // Lazy, por deal (chamado quando o modal do /forecast abre). Não entra no payload
@@ -111,6 +139,71 @@ module.exports = async function handler(req, res) {
       const snap = LOCAL_SNAPSHOTS[tab];
       if (!snap) return res.status(404).json({ success: false, error: 'Snapshot reconstruído não encontrado' });
       return res.status(200).json({ success: true, tab, deals: snap.deals, attrition: snap.attrition || [] });
+    }
+
+    if (action === 'compare') {
+      const a = params.get('a'); const b = params.get('b');
+      if (!a || !b) return res.status(400).json({ success: false, error: 'informe ?a=YYYY-MM-DD e ?b=YYYY-MM-DD' });
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(a) || !/^\d{4}-\d{2}-\d{2}$/.test(b)) return res.status(400).json({ success: false, error: 'datas devem estar no formato YYYY-MM-DD' });
+      if (!(b > a)) return res.status(400).json({ success: false, error: 'Data B deve ser posterior a Data A' });
+
+      const fotos = await _listFotos();
+      if (!fotos.length) return res.status(422).json({ success: false, error: 'Nenhuma foto disponível' });
+      const oldest = fotos[fotos.length - 1];
+      const fA = _resolveFoto(fotos, a); const fB = _resolveFoto(fotos, b);
+      if (!fA || !fB) return res.status(422).json({ success: false, error: 'Sem foto em ou antes de uma das datas (foto mais antiga: ' + oldest.tab + ')' });
+      if (fA.tab === fB.tab) return res.status(422).json({ success: false, error: 'As duas datas resolvem para a mesma foto (' + fA.tab + ') | escolha datas mais distantes' });
+
+      const [rowsA, rowsB, manual] = await Promise.all([readSnapshot(fA.tab), readSnapshot(fB.tab), _readManual()]);
+      if (!rowsA.length || !rowsB.length) return res.status(404).json({ success: false, error: 'Foto vazia' });
+
+      const snapA = FC.computeSnapshot(FC.mapFotoDeals(_rowsToObjs(rowsA)), fA.refDate, manual);
+      const snapB = FC.computeSnapshot(FC.mapFotoDeals(_rowsToObjs(rowsB)), fB.refDate, manual);
+      const byA = {}; snapA.stages.forEach(s => { byA[s.key] = s; });
+      const waterfall = snapB.stages.map(s => {
+        const pa = byA[s.key] || {};
+        return {
+          key: s.key, label: s.label,
+          a: { prob12: pa.prob12 || 0, real12: pa.real12 || 0, probTotal: pa.probTotal || 0, realTotal: pa.realTotal || 0 },
+          b: { prob12: s.prob12, real12: s.real12, probTotal: s.probTotal, realTotal: s.realTotal },
+          delta: { prob12: s.prob12 - (pa.prob12 || 0), real12: s.real12 - (pa.real12 || 0), probTotal: s.probTotal - (pa.probTotal || 0), realTotal: s.realTotal - (pa.realTotal || 0) },
+        };
+      });
+      const sumDelta = waterfall.reduce((x, w) => x + w.delta.prob12, 0);
+      const invariantOk = Math.abs(sumDelta - (snapB.totals.prob12 - snapA.totals.prob12)) < 0.01;
+
+      return res.status(200).json({
+        success: true,
+        measure: 'prob12',   // headline: Receita Probabilizada, TCV(12M) rolante
+        a: { requested: a, resolvedTab: fA.tab, tipo: fA.tipo, refDate: fA.refDate, kpis: snapA.kpis, totals: snapA.totals },
+        b: { requested: b, resolvedTab: fB.tab, tipo: fB.tipo, refDate: fB.refDate, kpis: snapB.kpis, totals: snapB.totals },
+        funnel: { stages: snapB.funnelStages, a: snapA.stageCounts, b: snapB.stageCounts },
+        waterfall,
+        totals: { a: snapA.totals, b: snapB.totals, deltaProb12: snapB.totals.prob12 - snapA.totals.prob12 },
+        invariant: { sumStageDeltaProb12: sumDelta, totalDeltaProb12: snapB.totals.prob12 - snapA.totals.prob12, ok: invariantOk },
+        dealDiff: FC.dealDiff(snapA.scopedDeals, snapB.scopedDeals).counts,
+        caveats: [
+          'Probabilidades por etapa e faturamento manual usam o estado ATUAL (não snapshotado) | Fase 1',
+          'Ganho/Implantação depende do faturamento manual (gate: vencimento ≤ data da foto) | em datas anteriores ao início do faturamento a etapa aparece subestimada — não é erro, é fidelidade ponto-no-tempo',
+        ],
+      });
+    }
+
+    if (action === 'compare-drill') {
+      const a = params.get('a'); const b = params.get('b'); const row = params.get('row');
+      const measure = params.get('measure') || 'prob12';
+      if (!a || !b || !row) return res.status(400).json({ success: false, error: 'informe ?a=&b=&row=' });
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(a) || !/^\d{4}-\d{2}-\d{2}$/.test(b)) return res.status(400).json({ success: false, error: 'datas devem estar no formato YYYY-MM-DD' });
+      if (!(b > a)) return res.status(400).json({ success: false, error: 'Data B deve ser posterior a Data A' });
+      const fotos = await _listFotos();
+      const fA = _resolveFoto(fotos, a); const fB = _resolveFoto(fotos, b);
+      if (!fA || !fB) return res.status(422).json({ success: false, error: 'Sem foto em ou antes de uma das datas' });
+      if (fA.tab === fB.tab) return res.status(422).json({ success: false, error: 'As duas datas resolvem para a mesma foto' });
+      const [rowsA, rowsB, manual] = await Promise.all([readSnapshot(fA.tab), readSnapshot(fB.tab), _readManual()]);
+      const cA = FC.dealContributions(FC.mapFotoDeals(_rowsToObjs(rowsA)), fA.refDate, manual);
+      const cB = FC.dealContributions(FC.mapFotoDeals(_rowsToObjs(rowsB)), fB.refDate, manual);
+      const drill = FC.drillRow(cA, cB, row, measure);
+      return res.status(200).json({ success: true, a: fA.tab, b: fB.tab, row: drill.rowKey, measure: drill.measure, sumDelta: drill.sumDelta, deals: drill.deals });
     }
 
     if (action === 'snapshot' && tab) {

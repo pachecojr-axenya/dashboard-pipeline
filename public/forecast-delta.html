@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Comparativo | Delta | Axenya</title>
+<link rel="icon" href="/favicon.svg">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+<style>
+:root{--bg:#0d1117;--card:#171f2e;--card2:#1e2a3c;--border:#293a50;--text:#e6edf3;--text2:#8b949e;--muted:#6e7681;--teal:#3ab8b7;--green:#3fb950;--red:#f85149;--orange:#d29922;--yellow:#e3b341;--blue:#58a6ff}
+html[data-theme="light"]{--bg:#f6f8fa;--card:#fff;--card2:#eaeef2;--border:#d0d7de;--text:#1f2328;--text2:#57606a;--teal:#0d7377;--green:#1a7f37;--yellow:#9a6700;--red:#cf222e;--blue:#0969da}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,'Segoe UI',system-ui,sans-serif;font-size:13px;line-height:1.5}
+a{color:var(--teal);text-decoration:none}
+.wrap{max-width:1180px;margin:0 auto;padding:1.25rem 1.5rem 3rem}
+.hdr{display:flex;align-items:center;gap:.9rem;margin-bottom:.35rem;flex-wrap:wrap}
+.hdr h1{font-size:1.15rem;font-weight:600;margin:0}
+.sub{color:var(--text2);font-size:.82rem;margin:0 0 1.25rem}
+.pill{font-size:.62rem;font-weight:700;letter-spacing:.04em;border-radius:5px;padding:.1rem .4rem;border:1px solid var(--border);color:var(--text2)}
+.back{margin-left:auto;font-size:.82rem}
+.ibtn{cursor:pointer;border:1px solid var(--border);background:var(--card2);color:var(--text2);border-radius:6px;width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-weight:700}
+.ibtn:hover{color:var(--text);border-color:var(--teal)}
+.card{background:var(--card);border-radius:10px;padding:1.15rem 1.35rem;margin-bottom:1.1rem}
+.controls{display:flex;gap:1.1rem;flex-wrap:wrap;align-items:flex-end}
+.ctl label{display:block;font-size:.7rem;font-weight:700;letter-spacing:.04em;color:var(--text2);text-transform:uppercase;margin-bottom:.3rem}
+select{background:var(--card2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:.5rem .7rem;font-family:inherit;font-size:.86rem;min-width:150px}
+.reslbl{font-size:.72rem;color:var(--muted);margin-top:.3rem;min-height:1em}
+.tab-sub{display:inline-flex;background:var(--card2);border:1px solid var(--border);border-radius:9px;padding:2px;gap:2px}
+.tab-sub-btn{border:0;background:transparent;color:var(--text2);font-family:inherit;font-size:.78rem;font-weight:600;padding:.4rem .7rem;border-radius:7px;cursor:pointer}
+.tab-sub-btn.on{background:var(--teal);color:#fff}
+.kpis{display:flex;gap:1rem;flex-wrap:wrap;margin:.2rem 0 0}
+.kpi{background:var(--card2);border-radius:9px;padding:.7rem .95rem;min-width:150px}
+.kpi .k{font-size:.68rem;text-transform:uppercase;letter-spacing:.04em;color:var(--text2);font-weight:700}
+.kpi .v{font-size:1.02rem;font-weight:700;margin-top:.15rem}
+.kpi .d{font-size:.75rem;margin-top:.1rem}
+.up{color:var(--green)}.down{color:var(--red)}
+.badge{display:inline-flex;align-items:center;gap:.4rem;font-size:.72rem;font-weight:700;border-radius:6px;padding:.25rem .55rem}
+.badge.ok{color:var(--green);background:rgba(63,185,80,.12)}
+.badge.bad{color:var(--red);background:rgba(248,81,73,.12)}
+.chart-wrap{position:relative;height:440px}
+.funnel-hdr{display:flex;align-items:baseline;gap:.7rem;margin-bottom:.8rem;flex-wrap:wrap}
+.funnel-hdr h3{font-size:.9rem;font-weight:600;margin:0}
+.funnel-note{font-size:.72rem;color:var(--text2)}
+.clickhint{font-size:.68rem;color:var(--muted);margin-top:.4rem}
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:500;align-items:center;justify-content:center;padding:1.5rem}
+.modal-box{background:var(--card);border-radius:12px;max-width:860px;width:100%;max-height:85vh;display:flex;flex-direction:column;overflow:hidden}
+.modal-hd{display:flex;align-items:center;gap:.7rem;padding:.95rem 1.25rem;border-bottom:1px solid var(--border)}
+.modal-hd h3{margin:0;font-size:.95rem;flex:1}
+.modal-x{cursor:pointer;color:var(--text2);font-size:1.3rem;line-height:1;padding:0 .3rem}
+.modal-x:hover{color:var(--text)}
+.modal-bd{overflow:auto;padding:.4rem 1.25rem 1.25rem}
+table.drill{width:100%;border-collapse:collapse;font-size:.8rem}
+table.drill th,table.drill td{text-align:right;padding:.4rem .5rem;border-bottom:1px solid var(--border);white-space:nowrap}
+table.drill th:first-child,table.drill td:first-child{text-align:left;white-space:normal;min-width:180px}
+table.drill th{color:var(--text2);font-weight:700;position:sticky;top:0;background:var(--card)}
+.tag{font-size:.62rem;font-weight:700;border-radius:4px;padding:.05rem .35rem}
+.tag.novo{color:var(--green);background:rgba(63,185,80,.14)}
+.tag.saiu{color:var(--red);background:rgba(248,81,73,.14)}
+.tag.permaneceu{color:var(--text2);background:var(--card2)}
+.state{color:var(--text2);text-align:center;padding:2.5rem}
+.state.err{color:var(--red)}
+.caveat{font-size:.72rem;color:var(--muted);margin-top:.6rem;border-top:1px solid var(--border);padding-top:.6rem}
+#info{display:none;font-size:.78rem;color:var(--text);background:var(--card2);border-radius:9px;padding:.9rem 1.1rem;margin-bottom:1.1rem;line-height:1.6}
+#info code{color:var(--teal)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hdr">
+    <h1>Comparativo | Delta do Forecast</h1>
+    <span class="pill" title="Ainda não validado contra o HubSpot">🟡 não validado</span>
+    <span class="ibtn" id="info-btn" title="Memória de cálculo">i</span>
+    <a class="back" href="/forecast-overall">← Forecast Overall</a>
+  </div>
+  <p class="sub">O que mudou no forecast de caixa entre duas datas | soma por etapa do funil</p>
+
+  <div id="info">
+    <strong>Como este waterfall é calculado</strong><br>
+    Cada barra é a variação líquida do <em>cash forecast</em> de uma etapa entre a Foto A e a Foto B.
+    Fonte única: mesmo motor do <code>/forecast-overall</code> (<code>forecast-overall-core.js</code>), recomputado
+    sobre cada foto com a data dela como referência temporal (<code>referenceDate</code>).
+    <br><strong>Medida:</strong> Receita Real ou Probabilizada (Real × probabilidade da etapa), no horizonte
+    <strong>TCV(12M) rolante</strong> a partir da data da foto, ou <strong>Pipeline total</strong> (todos os meses projetados).
+    <br><strong>Regra:</strong> a receita de cada deal é atribuída à etapa em que ele estava em cada foto — a soma das
+    variações por etapa é sempre igual à variação do total (Σ Δ = Total B − Total A).
+    <br><em>Caveat Fase 1:</em> probabilidades por etapa e faturamento manual usam o estado atual (não são snapshotados).
+    Em especial, <strong>Ganho/Implantação</strong> depende do faturamento manual (só entra quando o vencimento da 1ª fatura
+    é ≤ a data da foto); por isso, em datas <strong>anteriores ao início do faturamento</strong>, essa etapa aparece
+    subestimada — é fidelidade ponto-no-tempo, não erro.
+  </div>
+
+  <div class="card">
+    <div class="controls">
+      <div class="ctl">
+        <label>Foto A (antes)</label>
+        <select id="selA"></select>
+        <div class="reslbl" id="resA"></div>
+      </div>
+      <div class="ctl">
+        <label>Foto B (depois)</label>
+        <select id="selB"></select>
+        <div class="reslbl" id="resB"></div>
+      </div>
+      <div class="ctl">
+        <label>Medida</label>
+        <div class="tab-sub" id="metric-toggle">
+          <button class="tab-sub-btn on" data-v="prob">Probabilizada</button>
+          <button class="tab-sub-btn" data-v="real">Real</button>
+        </div>
+      </div>
+      <div class="ctl">
+        <label>Horizonte</label>
+        <div class="tab-sub" id="horizon-toggle">
+          <button class="tab-sub-btn on" data-v="12">TCV 12M</button>
+          <button class="tab-sub-btn" data-v="Total">Pipeline total</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Waterfall = elemento primário (spec seção 8) -->
+  <div class="card">
+    <div class="chart-wrap"><canvas id="wf"></canvas><div class="state" id="chart-state">Selecione duas fotos…</div></div>
+    <div class="clickhint">Clique numa barra de etapa para ver os deals que causaram o movimento.</div>
+    <div class="caveat" id="caveat"></div>
+  </div>
+
+  <!-- KPIs de apoio (seção 6.2) -->
+  <div class="card">
+    <div class="kpis" id="kpis"></div>
+  </div>
+
+  <!-- Funil delta (seção 6.3): contagem de deals por etapa, Foto A × Foto B -->
+  <div class="card">
+    <div class="funnel-hdr">
+      <h3>Funil | deals por etapa <span class="pill">🟡</span></h3>
+      <span class="funnel-note">Contagem de deals abertos por etapa em cada foto (A × B)</span>
+    </div>
+    <div class="chart-wrap" style="height:300px"><canvas id="funnel"></canvas></div>
+  </div>
+</div>
+
+<div class="modal" id="drill">
+  <div class="modal-box">
+    <div class="modal-hd"><h3 id="drill-title">Deals</h3><span class="modal-x" id="drill-x">×</span></div>
+    <div class="modal-bd" id="drill-body"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  Chart.register(ChartDataLabels);
+  var fotos = [], chart = null, funnelChart = null;
+  var metric = 'prob', horizon = '12';   // measure = metric + (horizon==='12'?'12':'Total')
+  function measureKey(){ return metric + (horizon === '12' ? '12' : 'Total'); }
+  function fmtBRL(v){ if(v==null||isNaN(v)) return '-'; return 'R$ ' + Math.round(v).toLocaleString('pt-BR'); }
+  function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function fmtBRLc(v){ var s = Math.abs(v) >= 1e6 ? (v/1e6).toFixed(2)+'M' : Math.round(v).toLocaleString('pt-BR'); return (v>=0?'+':'-')+'R$ '+ s.replace('-',''); }
+  function tipoLbl(t){ return t === 'mensal' ? 'mensal' : 'semanal'; }
+
+  function loadFotos(){
+    return fetch('/api/history?action=fotos', {credentials:'same-origin'})
+      .then(function(r){ return r.json(); })
+      .then(function(j){
+        if(!j.success || !j.fotos || !j.fotos.length){ throw new Error('Sem fotos disponíveis'); }
+        fotos = j.fotos;   // já vem ordenada da mais recente à mais antiga
+        var optsA = '', optsB = '';
+        fotos.forEach(function(f){ var o = '<option value="'+f.tab+'">'+f.tab+' ('+tipoLbl(f.tipo)+')</option>'; optsA += o; optsB += o; });
+        document.getElementById('selA').innerHTML = optsA;
+        document.getElementById('selB').innerHTML = optsB;
+        // Default: B = mais recente; A = ~1 mês antes (4 fotos atrás ou a mais antiga)
+        document.getElementById('selB').value = fotos[0].tab;
+        document.getElementById('selA').value = fotos[Math.min(fotos.length-1, 4)].tab;
+      });
+  }
+
+  function refresh(){
+    var a = document.getElementById('selA').value, b = document.getElementById('selB').value;
+    var cs = document.getElementById('chart-state');
+    if(!(b > a)){ cs.style.display='block'; cs.className='state err'; cs.textContent='A Foto B (depois) precisa ser posterior à Foto A (antes).'; if(chart){chart.destroy();chart=null;} document.getElementById('kpis').innerHTML=''; return; }
+    cs.style.display='block'; cs.className='state'; cs.textContent='Calculando…';
+    fetch('/api/history?action=compare&a='+a+'&b='+b, {credentials:'same-origin'})
+      .then(function(r){ return r.json().then(function(j){ return {ok:r.ok, j:j}; }); })
+      .then(function(res){
+        var j = res.j;
+        if(!j.success){ cs.className='state err'; cs.textContent = j.error || 'Erro'; if(chart){chart.destroy();chart=null;} document.getElementById('kpis').innerHTML=''; return; }
+        document.getElementById('resA').textContent = 'Foto: '+j.a.resolvedTab+' ('+tipoLbl(j.a.tipo)+')';
+        document.getElementById('resB').textContent = 'Foto: '+j.b.resolvedTab+' ('+tipoLbl(j.b.tipo)+')';
+        render(j);
+      })
+      .catch(function(e){ cs.className='state err'; cs.textContent='Erro de conexão: '+e.message; });
+  }
+
+  function render(j){
+    var m = measureKey();
+    var totA = j.totals.a[m], totB = j.totals.b[m];
+    // barras do waterfall
+    var labels = ['Total @ A'], data = [[0, totA]], colors = ['rgba(58,184,183,.85)'], dataline = [totA];
+    var run = totA, sumDelta = 0;
+    j.waterfall.forEach(function(w){
+      var d = w.delta[m]; sumDelta += d;
+      var from = run, to = run + d;
+      labels.push(w.label);
+      data.push([Math.min(from,to), Math.max(from,to)]);
+      colors.push(d >= 0 ? 'rgba(63,185,80,.85)' : 'rgba(248,81,73,.85)');
+      dataline.push(d);
+      run = to;
+    });
+    labels.push('Total @ B'); data.push([0, run]); colors.push('rgba(58,184,183,.85)'); dataline.push(run);
+
+    var css = getComputedStyle(document.documentElement);
+    var textc = css.getPropertyValue('--text2').trim(), gridc = css.getPropertyValue('--border').trim();
+    document.getElementById('chart-state').style.display = 'none';
+    if(chart) chart.destroy();
+    chart = new Chart(document.getElementById('wf'), {
+      type:'bar',
+      data:{ labels:labels, datasets:[{ data:data, backgroundColor:colors, borderRadius:4, barPercentage:.72 }] },
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        onClick:function(evt, els){ if(!els||!els.length) return; var i=els[0].index; if(i===0 || i===labels.length-1) return; var w=j.waterfall[i-1]; if(w) openDrill(w.key, w.label); },
+        plugins:{
+          legend:{display:false},
+          tooltip:{ callbacks:{ label:function(ctx){ var i=ctx.dataIndex; var isTot = i===0 || i===labels.length-1; return (isTot?'Total: ':'Δ ') + fmtBRL(dataline[i]); } } },
+          datalabels:{
+            anchor:'end', align:'end', color:textc, font:{size:10,weight:'700'},
+            formatter:function(v,ctx){ var i=ctx.dataIndex; var isTot = i===0 || i===labels.length-1; return isTot ? fmtBRL(dataline[i]) : fmtBRLc(dataline[i]); }
+          }
+        },
+        scales:{
+          x:{ ticks:{ color:textc, maxRotation:35, minRotation:0, font:{size:10} }, grid:{display:false} },
+          y:{ ticks:{ color:textc, callback:function(v){ return (v/1e6).toFixed(1)+'M'; } }, grid:{color:gridc} }
+        }
+      }
+    });
+
+    // ── KPIs de apoio (spec 6.2) ──
+    var kA = j.a.kpis, kB = j.b.kpis;
+    function num(v){ return Number(v||0).toLocaleString('pt-BR'); }
+    function money(v){ return fmtBRL(v); }
+    function pctd(a,b){ if(!a) return ''; var p=(b-a)/Math.abs(a)*100; return ' · '+(p>=0?'+':'−')+Math.abs(p).toFixed(0)+'%'; }
+    function card(title,a,b,fmt){ var d=b-a; var cls=d>=0?'up':'down'; return '<div class="kpi"><div class="k">'+title+'</div><div class="v">'+fmt(a)+' → '+fmt(b)+'</div><div class="d '+cls+'">'+(d>=0?'+':'−')+fmt(Math.abs(d))+pctd(a,b)+'</div></div>'; }
+    var inv = Math.abs(sumDelta - (totB-totA)) < 1;
+    var invBadge = '<div class="kpi" style="display:flex;align-items:center;justify-content:center"><span class="badge '+(inv?'ok':'bad')+'">'+(inv?'✓':'✗')+' Σ Δ = Δtotal</span></div>';
+    document.getElementById('kpis').innerHTML =
+      card('Deals abertos', kA.deals, kB.deals, num) +
+      card('Vidas em pipe', kA.vidas, kB.vidas, num) +
+      card('ARR Total em pipe', kA.arrTotal, kB.arrTotal, money) +
+      card('ARR Ponderado', kA.arrPond, kB.arrPond, money) +
+      card('MRR Ponderado', kA.mrrPond, kB.mrrPond, money) +
+      card('TCV (12M) ponderado', kA.tcv12, kB.tcv12, money) +
+      invBadge;
+
+    document.getElementById('caveat').textContent = (j.caveats && j.caveats[0]) ? ('⚠ ' + j.caveats[0]) : '';
+    renderFunnel(j);
+  }
+
+  function renderFunnel(j){
+    if(!j.funnel){ return; }
+    var stages = j.funnel.stages;
+    var css = getComputedStyle(document.documentElement);
+    var textc = css.getPropertyValue('--text2').trim(), gridc = css.getPropertyValue('--border').trim();
+    var aVals = stages.map(function(s){ return j.funnel.a[s]||0; });
+    var bVals = stages.map(function(s){ return j.funnel.b[s]||0; });
+    if(funnelChart) funnelChart.destroy();
+    funnelChart = new Chart(document.getElementById('funnel'), {
+      type:'bar',
+      data:{ labels:stages, datasets:[
+        { label:'Foto A ('+j.a.resolvedTab+')', data:aVals, backgroundColor:'rgba(139,148,158,.65)', borderRadius:3 },
+        { label:'Foto B ('+j.b.resolvedTab+')', data:bVals, backgroundColor:'rgba(58,184,183,.85)', borderRadius:3 }
+      ]},
+      options:{ responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{ labels:{ color:textc, boxWidth:12 } }, datalabels:{ display:false } },
+        scales:{ x:{ ticks:{ color:textc, maxRotation:35, font:{size:10} }, grid:{display:false} }, y:{ ticks:{ color:textc, precision:0 }, grid:{color:gridc}, beginAtZero:true } }
+      }
+    });
+  }
+
+  // ── Drill-down por barra (1F) ──
+  function openDrill(rowKey, label){
+    var a=document.getElementById('selA').value, b=document.getElementById('selB').value, m=measureKey();
+    var modal=document.getElementById('drill'), body=document.getElementById('drill-body');
+    document.getElementById('drill-title').textContent = 'Deals | '+label;
+    body.innerHTML='<div class="state">Carregando…</div>';
+    modal.style.display='flex';
+    fetch('/api/history?action=compare-drill&a='+a+'&b='+b+'&row='+encodeURIComponent(rowKey)+'&measure='+m, {credentials:'same-origin'})
+      .then(function(r){ return r.json(); })
+      .then(function(d){ if(!d.success){ body.innerHTML='<div class="state err">'+esc(d.error||'erro')+'</div>'; return; } renderDrill(d); })
+      .catch(function(e){ body.innerHTML='<div class="state err">'+esc(e.message)+'</div>'; });
+  }
+  function renderDrill(d){
+    var body=document.getElementById('drill-body'), rows=d.deals||[];
+    var head='<p style="color:var(--text2);font-size:.78rem;margin:.4rem 0 .8rem">Σ Δ desta etapa: <strong class="'+(d.sumDelta>=0?'up':'down')+'">'+fmtBRLc(d.sumDelta)+'</strong> · '+rows.length+' deals · medida '+d.measure+'</p>';
+    var cap=rows.slice(0,80);
+    var trs=cap.map(function(x){
+      var st=(x.stageA||'—'); if(x.stageA!==x.stageB) st+=' → '+(x.stageB||'—');
+      return '<tr><td>'+esc(x.dealname)+'</td><td style="text-align:left">'+esc(st)+'</td><td>'+fmtBRL(x.aCash)+'</td><td>'+fmtBRL(x.bCash)+'</td><td class="'+(x.delta>=0?'up':'down')+'">'+fmtBRLc(x.delta)+'</td><td><span class="tag '+x.tipo+'">'+x.tipo+'</span></td></tr>';
+    }).join('');
+    body.innerHTML=head+'<table class="drill"><thead><tr><th>Deal</th><th style="text-align:left">Etapa (A→B)</th><th>Cash A</th><th>Cash B</th><th>Δ</th><th></th></tr></thead><tbody>'+trs+'</tbody></table>'+(rows.length>80?'<p style="color:var(--muted);font-size:.72rem;margin-top:.6rem">Mostrando 80 de '+rows.length+' deals.</p>':'');
+  }
+  function closeDrill(){ document.getElementById('drill').style.display='none'; }
+  document.getElementById('drill-x').addEventListener('click', closeDrill);
+  document.getElementById('drill').addEventListener('click', function(e){ if(e.target===this) closeDrill(); });
+
+  // toggles
+  function wireToggle(id, cb){
+    document.getElementById(id).addEventListener('click', function(e){
+      var btn = e.target.closest('.tab-sub-btn'); if(!btn) return;
+      this.querySelectorAll('.tab-sub-btn').forEach(function(b){ b.classList.remove('on'); });
+      btn.classList.add('on'); cb(btn.getAttribute('data-v'));
+    });
+  }
+  wireToggle('metric-toggle', function(v){ metric=v; refresh(); });
+  wireToggle('horizon-toggle', function(v){ horizon=v; refresh(); });
+  document.getElementById('selA').addEventListener('change', refresh);
+  document.getElementById('selB').addEventListener('change', refresh);
+  document.getElementById('info-btn').addEventListener('click', function(){ var el=document.getElementById('info'); el.style.display = el.style.display==='none'||!el.style.display ? 'block':'none'; });
+
+  loadFotos().then(refresh).catch(function(e){ var cs=document.getElementById('chart-state'); cs.className='state err'; cs.textContent=e.message; });
+})();
+</script>
+</body>
+</html>

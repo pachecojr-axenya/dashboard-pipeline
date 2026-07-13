@@ -16,6 +16,7 @@
     { "source": "/novo-cs", "destination": "/cs.html" },
     { "source": "/novo-cotacao", "destination": "/cotacao.html" },
     { "source": "/forecast", "destination": "/forecast.html" },
+    { "source": "/forecast-delta", "destination": "/forecast-delta.html" },
     { "source": "/forecast-overall", "destination": "/forecast-stage.html" },
     { "source": "/forecast-mql", "destination": "/forecast-stage.html" },
     { "source": "/forecast-diagnostico", "destination": "/forecast-stage.html" },
