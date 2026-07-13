@@ -200,9 +200,12 @@ module.exports = async function handler(req, res) {
       if (!fA || !fB) return res.status(422).json({ success: false, error: 'Sem foto em ou antes de uma das datas' });
       if (fA.tab === fB.tab) return res.status(422).json({ success: false, error: 'As duas datas resolvem para a mesma foto' });
       const [rowsA, rowsB, manual] = await Promise.all([readSnapshot(fA.tab), readSnapshot(fB.tab), _readManual()]);
+      const mappedB = FC.mapFotoDeals(_rowsToObjs(rowsB));
+      // etapa bruta de cada deal em B (inclui Perdido/Ganho/fora de escopo) → destino de quem saiu
+      const rawBStageById = {}; mappedB.forEach(d => { rawBStageById[FC.dealId(d)] = d.stage; });
       const cA = FC.dealContributions(FC.mapFotoDeals(_rowsToObjs(rowsA)), fA.refDate, manual);
-      const cB = FC.dealContributions(FC.mapFotoDeals(_rowsToObjs(rowsB)), fB.refDate, manual);
-      const drill = FC.drillRow(cA, cB, row, measure);
+      const cB = FC.dealContributions(mappedB, fB.refDate, manual);
+      const drill = FC.drillRow(cA, cB, row, measure, rawBStageById);
       return res.status(200).json({ success: true, a: fA.tab, b: fB.tab, row: drill.rowKey, measure: drill.measure, sumDelta: drill.sumDelta, deals: drill.deals });
     }
 

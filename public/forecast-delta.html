@@ -56,6 +56,13 @@ table.drill th:first-child,table.drill td:first-child{text-align:left;white-spac
 table.drill th{color:var(--text2);font-weight:700;position:sticky;top:0;background:var(--card)}
 table.drill th.sortable{cursor:pointer;user-select:none}
 table.drill th.sortable:hover{color:var(--text)}
+.drill-filter{display:flex;align-items:center;gap:.4rem;flex-wrap:wrap;margin:.2rem 0 .1rem}
+.drill-filter .flabel{font-size:.72rem;color:var(--text2);font-weight:700;margin-right:.15rem}
+.fchip{font-size:.74rem;border:1px solid var(--border);background:var(--card2);color:var(--text2);border-radius:999px;padding:.18rem .6rem;cursor:pointer;user-select:none}
+.fchip:hover{color:var(--text)}
+.fchip.on{background:var(--teal);border-color:var(--teal);color:#fff}
+.fchip b{font-weight:700}
+.fclear{font-size:.72rem;color:var(--blue);cursor:pointer;margin-left:.2rem}
 .tag{font-size:.62rem;font-weight:700;border-radius:4px;padding:.05rem .35rem}
 .tag.novo{color:var(--green);background:rgba(63,185,80,.14)}
 .tag.saiu{color:var(--red);background:rgba(248,81,73,.14)}
@@ -156,13 +163,15 @@ table.drill th.sortable:hover{color:var(--text)}
   var fotos = [], chart = null, funnelChart = null;
   // estado do drill-down (modal de etapa): dados + coluna/sentido de ordenacao
   var drillRows = [], drillMeta = { sumDelta: 0, measure: '' }, drillSort = { key: 'delta', dir: -1 };
+  var drillMov = {};   // filtro de Movimentação: chave->true; vazio = todas
+  var MOV = [ { k: 'novo', label: 'Novo' }, { k: 'permaneceu', label: 'Permaneceu' }, { k: 'saiu', label: 'Saiu' } ];
   var DRILL_COLS = [
     { key: 'dealname', label: 'Deal', align: 'left', type: 'str' },
     { key: 'stage', label: 'Etapa (A→B)', align: 'left', type: 'str' },
     { key: 'aCash', label: 'Cash A', align: 'right', type: 'num' },
     { key: 'bCash', label: 'Cash B', align: 'right', type: 'num' },
     { key: 'delta', label: 'Δ', align: 'right', type: 'num' },
-    { key: 'tipo', label: 'Tipo', align: 'left', type: 'str' }
+    { key: 'tipo', label: 'Movimentação', align: 'left', type: 'str' }
   ];
   var metric = 'prob', horizon = '12';   // measure = metric + (horizon==='12'?'12':'Total')
   function measureKey(){ return metric + (horizon === '12' ? '12' : 'Total'); }
@@ -300,6 +309,7 @@ table.drill th.sortable:hover{color:var(--text)}
       .then(function(d){ if(!d.success){ body.innerHTML='<div class="state err">'+esc(d.error||'erro')+'</div>'; return; }
         drillRows=d.deals||[]; drillMeta={sumDelta:d.sumDelta, measure:d.measure};
         drillSort={key:'delta', dir:-1};   // padrao: maior movimento primeiro
+        drillMov={};                        // filtro de movimentacao limpo ao abrir
         renderDrill(); })
       .catch(function(e){ body.innerHTML='<div class="state err">'+esc(e.message)+'</div>'; });
   }
@@ -317,8 +327,14 @@ table.drill th.sortable:hover{color:var(--text)}
   }
   function renderDrill(){
     var body=document.getElementById('drill-body');
-    var rows=drillRows.slice().sort(drillCompare);
-    var head='<p style="color:var(--text2);font-size:.78rem;margin:.4rem 0 .8rem">Σ Δ desta etapa: <strong class="'+(drillMeta.sumDelta>=0?'up':'down')+'">'+fmtBRLc(drillMeta.sumDelta)+'</strong> · '+drillRows.length+' deals · medida '+drillMeta.measure+'</p>';
+    var activeKeys=Object.keys(drillMov).filter(function(k){return drillMov[k];});
+    var filtered=activeKeys.length ? drillRows.filter(function(x){return drillMov[x.tipo];}) : drillRows;
+    var rows=filtered.slice().sort(drillCompare);
+    var counts={}; MOV.forEach(function(mo){counts[mo.k]=0;}); drillRows.forEach(function(x){ if(counts[x.tipo]!=null) counts[x.tipo]++; });
+    var chips=MOV.map(function(mo){ return '<span class="fchip'+(drillMov[mo.k]?' on':'')+'" data-mov="'+mo.k+'">'+mo.label+' <b>'+counts[mo.k]+'</b></span>'; }).join('');
+    var fsum=filtered.reduce(function(s,r){return s+r.delta;},0);
+    var head='<div class="drill-filter"><span class="flabel">Movimentação:</span>'+chips+(activeKeys.length?'<span class="fclear" id="fclear">limpar</span>':'')+'</div>'+
+      '<p style="color:var(--text2);font-size:.78rem;margin:.3rem 0 .7rem">Σ Δ'+(activeKeys.length?' (filtro)':' desta etapa')+': <strong class="'+(fsum>=0?'up':'down')+'">'+fmtBRLc(fsum)+'</strong> · '+filtered.length+(activeKeys.length?' de '+drillRows.length:'')+' deals · medida '+drillMeta.measure+'</p>';
     var ths=DRILL_COLS.map(function(c){
       var arrow = drillSort.key===c.key ? (drillSort.dir>0?' ▲':' ▼') : '';
       return '<th class="sortable" data-key="'+c.key+'" style="text-align:'+c.align+'">'+c.label+arrow+'</th>';
@@ -328,8 +344,10 @@ table.drill th.sortable:hover{color:var(--text)}
       var st=(x.stageA||'—'); if(x.stageA!==x.stageB) st+=' → '+(x.stageB||'—');
       return '<tr><td>'+esc(x.dealname)+'</td><td style="text-align:left">'+esc(st)+'</td><td>'+fmtBRL(x.aCash)+'</td><td>'+fmtBRL(x.bCash)+'</td><td class="'+(x.delta>=0?'up':'down')+'">'+fmtBRLc(x.delta)+'</td><td><span class="tag '+x.tipo+'">'+x.tipo+'</span></td></tr>';
     }).join('');
-    body.innerHTML=head+'<table class="drill"><thead><tr>'+ths+'</tr></thead><tbody>'+trs+'</tbody></table>'+(drillRows.length>80?'<p style="color:var(--muted);font-size:.72rem;margin-top:.6rem">Mostrando 80 de '+drillRows.length+' deals (ordene para trazer outros ao topo).</p>':'');
+    body.innerHTML=head+'<table class="drill"><thead><tr>'+ths+'</tr></thead><tbody>'+trs+'</tbody></table>'+(rows.length>80?'<p style="color:var(--muted);font-size:.72rem;margin-top:.6rem">Mostrando 80 de '+rows.length+' deals (ordene/filtre para focar).</p>':'');
     body.querySelectorAll('th.sortable').forEach(function(th){ th.addEventListener('click', function(){ sortDrill(th.getAttribute('data-key')); }); });
+    body.querySelectorAll('.fchip').forEach(function(ch){ ch.addEventListener('click', function(){ var k=ch.getAttribute('data-mov'); if(drillMov[k]) delete drillMov[k]; else drillMov[k]=true; renderDrill(); }); });
+    var fc=document.getElementById('fclear'); if(fc) fc.addEventListener('click', function(){ drillMov={}; renderDrill(); });
   }
   function closeDrill(){ document.getElementById('drill').style.display='none'; }
   document.getElementById('drill-x').addEventListener('click', closeDrill);
