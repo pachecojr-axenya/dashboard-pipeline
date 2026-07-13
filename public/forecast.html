@@ -3792,7 +3792,10 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
           prob_etapa: _fcStageProbFor(d.stage, d.pipeline) ?? null,
           prob_ajustada: pInfo.final,
           prob_info: pInfo,
-          tcv: (typeof calcTCV === 'function') ? calcTCV(d) : null
+          tcv: (typeof calcTCV === 'function') ? calcTCV(d) : null,
+          // ARR × %AE: ARR estimado ponderado SÓ pela probabilidade informada pelo AE.
+          // Sem prob. do AE → null (fica em branco, não assume etapa).
+          arr_pae: (d.arr_estimado != null && d.probabilidade != null) ? d.arr_estimado * d.probabilidade : null
         };
       });
 
@@ -4106,6 +4109,10 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
           tip: 'Receita Anual Recorrente estimada (R$). Se não informado, calculado como 1ª Fatura × 12'
         },
         {
+          k: 'arr_pae', lbl: 'ARR × %AE (R$)', w: 120, align: 'right', fmt: fmtBRL, hideMobile: true,
+          tip: 'ARR Estimado × probabilidade informada pelo executivo (Prob. AE). Ponderação só pela % do AE, sem régua/etapa. Em branco quando o AE não informou a probabilidade.'
+        },
+        {
           k: 'periodo_contrato', lbl: 'Período', w: 78, align: 'center', hideMobile: true,
           fmt: v => { if (!v || v === 'Não Possui') return '—'; const m = String(v).match(/\d+/); return m ? m[0] + 'm' : v; },
           tip: 'Período do contrato (HubSpot | contrato_atual_e_de_12__24_ou_36_meses_): 12, 24 ou 36 meses. Vazio → o TCV assume 12 meses.'
@@ -4377,6 +4384,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
         else if (c.k === 'fatura_atual') h += `<td class="${mh}" style="text-align:right">${totalFatAtu > 0 ? fmtBRL(totalFatAtu) : ''}</td>`;
         else if (c.k === 'primeira_fatura') h += `<td class="${mh}" style="text-align:right">${totalPrimFat > 0 ? fmtBRL(totalPrimFat) : ''}</td>`;
         else if (c.k === 'arr_estimado') h += `<td class="${mh}" style="text-align:right">${fmtBRL(totalArr)}</td>`;
+        else if (c.k === 'arr_pae') { const totalArrPae = deals.reduce((s, d) => s + (d.arr_pae || 0), 0); h += `<td class="${mh}" style="text-align:right">${totalArrPae > 0 ? fmtBRL(totalArrPae) : ''}</td>`; }
         else if (c.k === 'tcv') { const totalTcvCol = deals.reduce((s, d) => s + (d.tcv || 0), 0); h += `<td class="${mh}" style="text-align:right">${totalTcvCol > 0 ? fmtBRL(totalTcvCol) : ''}</td>`; }
         else if (c.k === 'prob_ajustada') h += `<td class="${mh}" style="text-align:right" data-tip="${esc(effAdjTip)}">${effAdjProb != null ? fmtPct(effAdjProb) : ''}</td>`;
         else h += `<td class="${mh}${c.sticky2 ? ' s2' : ''}"></td>`;
@@ -4455,7 +4463,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       // probabilidades, guardadas como fração (0,078) → número com formato de % do Excel.
       const NUM_Z = {
         dias_no_pipe: '#,##0', colaboradores: '#,##0', vidas: '#,##0',
-        fatura_atual: '#,##0', primeira_fatura: '#,##0', arr_estimado: '#,##0', tcv: '#,##0',
+        fatura_atual: '#,##0', primeira_fatura: '#,##0', arr_estimado: '#,##0', arr_pae: '#,##0', tcv: '#,##0',
         comp_dreal: '#,##0', comp_dprob: '#,##0'
       };
       const PCT_KEYS = { probabilidade: 1, prob_etapa: 1, prob_ajustada: 1 };
