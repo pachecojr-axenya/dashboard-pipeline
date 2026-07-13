@@ -24,12 +24,32 @@
   var _cfg = null;
   function config(deps) { _cfg = deps || {}; }
 
+  // Piso temporal "agora" da projeção. Ponto-no-tempo: se _cfg.referenceDate for
+  // fornecido (Date, 'YYYY-MM-DD' ou {y,mo}), ancora nele em vez do mês corrente da
+  // máquina — é o que permite recomputar uma foto histórica como estava naquela data.
+  // Sem referenceDate, cai no new Date() de antes, então os painéis ao vivo (que não
+  // passam o campo) ficam byte-a-byte inalterados.
+  function _refNow() {
+    var r = _cfg && _cfg.referenceDate;
+    if (r) {
+      if (r instanceof Date) return { y: r.getFullYear(), mo: r.getMonth() };
+      if (typeof r === 'string') { var d = new Date(r.length <= 10 ? r + 'T00:00:00' : r); return { y: d.getFullYear(), mo: d.getMonth() }; }
+      if (typeof r === 'object' && r.y != null) return { y: r.y, mo: r.mo };
+    }
+    var now = new Date();
+    return { y: now.getFullYear(), mo: now.getMonth() };
+  }
+
   // Receita mensal (real + ponderada) de UM deal, por MONTHS. Pura: não acumula.
   function dealMonthly(d, probAdj) {
     var MONTHS = _cfg.MONTHS, getVpv = _cfg.getVpv, parseRevenueDate = _cfg.parseRevenueDate,
         addMonths = _cfg.addMonths, todayStr = _cfg.todayStr, calcReceita = _cfg.calcReceita;
     var FM = root.FaturamentoManual;
     var NIL = MONTHS.map(function () { return null; });
+
+    // POC (É POC? = Sim): deal de prova de conceito NÃO gera receita — não infere no
+    // forecast (regra do projeto). Zera Real e Probabilizada em todos os painéis.
+    if (d.is_poc === true) return NIL;
 
     // Faturamento manual: substitui integralmente o forecast pelos valores digitados.
     var _man = FM.manualMonths(d, todayStr());
@@ -48,7 +68,7 @@
       var delay = vidas <= 200 ? 9 : vidas <= 4999 ? 14 : 18;
       var revStart = null;
       if (d.createdate) { var cd = new Date(d.createdate + 'T00:00:00'); var totalMo = cd.getMonth() + delay; revStart = { y: cd.getFullYear() + Math.floor(totalMo / 12), mo: totalMo % 12 }; }
-      var now = new Date(); var nowRef = { y: now.getFullYear(), mo: now.getMonth() };
+      var nowRef = _refNow();
       if (!revStart || revStart.y < nowRef.y || (revStart.y === nowRef.y && revStart.mo < nowRef.mo)) revStart = nowRef;
       var recD = vidas * getVpv(vidas);
       return MONTHS.map(function (m) { if (probAdj == null) return null; var diff = (m.y - revStart.y) * 12 + (m.mo - revStart.mo); if (diff < 0) return null; return { val: recD * probAdj, rec: recD, probAdj: probAdj, n: diff + 1 }; });
