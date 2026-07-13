@@ -343,7 +343,7 @@ var AE_HELP_CHARTS=[
     formula:'⚪ ocorreu=∅ & data_da_reuniao_com_executivo < hoje | ❌ ocorreu=Não & reagendamento=∅ | 🔴 ocorreu=Não & data_do_reagendamento_com_o_executivo < hoje | ✅ ocorreu=Sim & data_da_reuniao_com_executivo < hoje',
     fields:[['dealstage','Só a etapa Reunião Agendada (Vendas).'],['a_reuniao_ocorreu_','Sim / Não / vazio | define a situação.'],['data_da_reuniao_com_executivo','Data agendada da reunião | "passou" = < hoje. No payload: data_reuniao_exec.'],['data_do_reagendamento_com_o_executivo','Data do reagendamento | vencido = < hoje. No payload: data_reagendamento_exec.'],['hubspot_owner_id','Executivo | agrupamento das linhas.'],['quantidade_de_colaboradores','Porte exibido no drill.']]},
   {key:'stale-alert',title:'Deals sem Atividade por Executivo (A21)',
-    desc:'Triagem dos deals ABERTOS (pipeline ativo) sem atividade registrada, agrupada por executivo. SNAPSHOT atual | NÃO segue o filtro de período. Faixas EXCLUSIVAS por dias sem atividade (cada deal conta em uma faixa): 15–29, 30–44, 45–59, 60–89 e 90+ dias. Exclui Ganho/Perdido e deals de teste (nome com "teste"). Clique num número para abrir os deals da faixa/executivo, com filtros cruzados (Executivo × Faixa).',
+    desc:'Triagem dos deals ABERTOS (pipeline Vendas) sem atividade registrada, agrupada por executivo. SNAPSHOT atual | NÃO segue o filtro de período. Faixas EXCLUSIVAS por dias sem atividade (cada deal conta em uma faixa): 15–29, 30–44, 45–59, 60–89 e 90+ dias. Só Vendas | exclui BID, Ganho/Perdido e deals de teste (nome com "teste"). Clique num número para abrir os deals da faixa/executivo, com filtros cruzados (Executivo × Faixa).',
     formula:'faixa por dias_sem_atividade: [15,30) · [30,45) · [45,60) · [60,90) · [90,∞)',
     fields:[['notes_last_updated','Data da última atividade/nota | base do cálculo. No payload: ultima_atividade e dias_sem_atividade.'],['hubspot_owner_id','Executivo | agrupamento das linhas.'],['dealstage','Base ativa do pipeline (exclui Ganho/Perdido).']]},
   {key:'loss-reason',title:'Motivos de Perda por Deals (A15)',
@@ -789,7 +789,7 @@ function novoRender(){
       cWide('Meeting Effectiveness by AE <span id="ae-mae-count" style="font-size:.68rem;color:var(--text2);font-weight:600;margin-left:.35rem;white-space:nowrap"></span>','Por AE (só executivos do time): deals que ENTRARAM em Reunião Agendada, fatiados por a_reuniao_ocorreu_ (Sim | Não | sem preenchimento). O FILTRO DE PERÍODO do painel aplica sobre data_reuniao_agendada — mesma base e mesma contagem do A16. Hover mostra todas as fatias do AE juntas. Clique numa barra para ver os deals do AE.','meeting-ae',340)+
       // Seção Higiene de Atividade
       '<div class="section-hdr"><h2>Higiene de Atividade</h2></div>'+
-      '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header"><h3>Deals sem Atividade por Executivo</h3>'+_infoBtn('Triagem dos deals ABERTOS (pipeline ativo) sem atividade registrada, por executivo. SNAPSHOT atual | NÃO segue o filtro de período. Faixas exclusivas por dias sem atividade (cada deal conta uma vez): 15–29, 30–44, 45–59, 60–89 e 90+. Exclui Ganho/Perdido e deals de teste. Clique num número para abrir os deals daquela faixa/executivo (filtros cruzados Executivo × Faixa).','stale-alert')+'</div><div id="ae-stale-alert" style="margin-top:.5rem"></div></div>'+
+      '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header"><h3>Deals sem Atividade por Executivo</h3>'+_infoBtn('Triagem dos deals ABERTOS (pipeline ativo) sem atividade registrada, por executivo. SNAPSHOT atual | NÃO segue o filtro de período. Faixas exclusivas por dias sem atividade (cada deal conta uma vez): 15–29, 30–44, 45–59, 60–89 e 90+. Só pipeline Vendas | exclui BID, Ganho/Perdido e deals de teste. Clique num número para abrir os deals daquela faixa/executivo (filtros cruzados Executivo × Faixa).','stale-alert')+'</div><div id="ae-stale-alert" style="margin-top:.5rem"></div></div>'+
       // Seção Perdas
       '<div class="section-hdr"><h2>Motivos de Perda</h2></div>'+
       cWide('Motivos de Perda por Deals'+_aeCntSpan(lost.length),'Contagem de deals perdidos por motivo (campo HubSpot motivo_do_declinio_ou_perdido). Considera deals em Perdido no período (close_date). Clique numa barra para ver os deals | a tabela inclui a justificativa em texto aberto (motivo_de_declinio_perdido___descricao).','loss-reason',340,'',true)+
@@ -1302,7 +1302,7 @@ var _AE_STALE_BUCKETS=[
   {key:'d90',min:90,max:Infinity,label:'90+ d'}
 ];
 function _aeStaleOwner(d){ return (d.ae && d.ae!=='-') ? d.ae : '(sem proprietário)'; }
-function _aeStaleBase(){ return _aeActivePipeline().filter(function(d){ return !/\bteste\b/i.test(d.dealname||'') && d.dias_sem_atividade!=null && d.dias_sem_atividade>=15; }); }
+function _aeStaleBase(){ return _aeActivePipeline().filter(function(d){ return d.pipeline!=='Bid' && !/\bteste\b/i.test(d.dealname||'') && d.dias_sem_atividade!=null && d.dias_sem_atividade>=15; }); }
 function _aeStaleClass(d){ var n=d.dias_sem_atividade; if(n==null) return null; for(var i=0;i<_AE_STALE_BUCKETS.length;i++){ var b=_AE_STALE_BUCKETS[i]; if(n>=b.min && n<b.max) return b.key; } return null; }
 var _aeStaleOwners=[];
 function buildAEStaleAlert(){
