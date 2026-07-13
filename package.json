@@ -7,6 +7,7 @@
   "scripts": {
     "start": "node scripts/dev.js",
     "test": "node scripts/test-delta-invariant.js 3002",
+    "check": "node --check api/bdr-treble.js && node --check public/bdr-treble.js && node --check public/premium.js && node --check scripts/local-server.js && node -e \"JSON.parse(require('fs').readFileSync('vercel.json','utf8'))\" && node scripts/_check-inline-js.js public/bdr-treble.html",
     "predeploy": "node scripts/preflight-deploy.js",
     "deploy": "vercel --prod --yes",
     "generate-credentials": "node scripts/generate-credentials.js"

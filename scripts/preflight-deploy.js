@@ -18,6 +18,9 @@ const REQUIRED_PATHS = [
   'public/bdr-no-show.js',
   'public/bdr-list-attack.html',
   'public/bdr-list-attack.js',
+  'api/bdr-treble.js',
+  'public/bdr-treble.html',
+  'public/bdr-treble.js',
   'public/forecast.html',
   'public/revenue-engine.js',
   'public/premium.js',
@@ -29,6 +32,9 @@ const REQUIRED_ROUTES = [
   '"/novo-bdr/list-attack"',
   '"/dashboard/bdr/no-show"',
   '"/dashboard/bdr/list-attack"',
+  '"/novo-bdr/treble"',
+  '"/dashboard/bdr/treble"',
+  '"/novo-bdr-treble"',
 ];
 
 const FORBIDDEN_TRACKED_PATHS = [
