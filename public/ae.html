@@ -1351,6 +1351,7 @@ function _aeStaleModRow(d){
   return '<tr>'+
     '<td style="text-align:left;min-width:150px;max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+nameCell+'</td>'+
     '<td style="text-align:left;white-space:nowrap">'+_ne(_aeStaleOwner(d))+'</td>'+
+    '<td style="white-space:nowrap">'+_ne(d.pipeline)+'</td>'+
     '<td style="white-space:nowrap">'+_ne(d.stage)+'</td>'+
     '<td style="white-space:nowrap">'+_aeStaleBucketLabel(_aeStaleClass(d))+'</td>'+
     '<td style="white-space:nowrap">'+_nd(d.ultima_atividade)+'</td>'+
@@ -1374,7 +1375,7 @@ function _aeStaleModRender(){
   var aeCounts={}; byFx.forEach(function(d){var k=_aeStaleOwner(d);aeCounts[k]=(aeCounts[k]||0)+1;});
   var aeItems=Object.keys(aeCounts).sort(function(a,b){ if(a==='(sem proprietário)')return 1; if(b==='(sem proprietário)')return -1; return aeCounts[b]-aeCounts[a]||a.localeCompare(b); }).map(function(k){return {key:k,label:_ne(k),count:aeCounts[k]};});
   var ch=document.getElementById('ae-stalemod-chips'); if(ch)ch.innerHTML=_aeStaleChipRow(_aeStaleModAe,aeItems);
-  var head='<thead><tr><th style="text-align:left">Deal</th><th style="text-align:left">Executivo</th><th style="text-align:left">Etapa</th><th>Faixa</th><th>Última atividade</th><th>Dias s/ atividade</th><th>Vidas</th><th>ARR</th></tr></thead>';
+  var head='<thead><tr><th style="text-align:left">Deal</th><th style="text-align:left">Executivo</th><th>Pipe</th><th style="text-align:left">Etapa</th><th>Faixa</th><th>Última atividade</th><th>Dias s/ atividade</th><th>Vidas</th><th>ARR</th></tr></thead>';
   var tb=document.getElementById('ae-stalemod-table'); if(tb)tb.innerHTML=list.length?'<table class="lb">'+head+'<tbody>'+list.map(_aeStaleModRow).join('')+'</tbody></table>':'<p style="color:var(--text2);padding:1rem 0">Nenhum deal.</p>';
 }
 function aeStaleDrill(idx,bucket){
