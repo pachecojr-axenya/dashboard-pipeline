@@ -6,6 +6,7 @@
   "private": true,
   "scripts": {
     "start": "node scripts/dev.js",
+    "test": "node scripts/test-delta-invariant.js 3002",
     "predeploy": "node scripts/preflight-deploy.js",
     "deploy": "vercel --prod --yes",
     "generate-credentials": "node scripts/generate-credentials.js"
