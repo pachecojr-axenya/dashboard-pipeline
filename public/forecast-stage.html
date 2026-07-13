@@ -1333,10 +1333,10 @@
       gap: 1rem; margin-bottom: 1.3rem;
     }
     .deal-modal-title { font-size: 1.25rem; font-weight: 700; color: var(--text); line-height: 1.25; margin-top: .1rem; }
-    .deal-modal-sub { font-size: .82rem; color: var(--text); margin-top: .3rem; }
+    .deal-modal-sub { font-size: .84rem; color: var(--text); margin-top: .45rem; }
     .deal-modal-sub .dm-stage-days { color: var(--text2); }
-    .deal-modal-exec { font-size: .82rem; color: var(--text2); margin-top: .15rem; }
-    .dm-pipe { display: inline-block; font-size: .62rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--teal); background: rgba(58,184,183,.14); border: 1px solid rgba(58,184,183,.32); border-radius: 5px; padding: .12rem .45rem; }
+    .deal-modal-exec { font-size: .82rem; color: var(--text2); margin-top: .32rem; }
+    .dm-pipe { display: inline-block; font-size: .62rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--teal); background: rgba(58,184,183,.14); border: 1px solid rgba(58,184,183,.32); border-radius: 5px; padding: .14rem .5rem; margin-bottom: .55rem; }
     .deal-sec { grid-column: 1 / -1; margin-top: 1rem; margin-bottom: .1rem; padding: .1rem .25rem .35rem; font-size: .7rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--text2); border-bottom: 1px solid var(--border); }
     .deal-trail, .deal-owner-hist { grid-column: 1 / -1; padding: .2rem .1rem 0; }
     .deal-trail .dt-row, .deal-owner-hist .oh-row { display: flex; align-items: baseline; justify-content: space-between; gap: .8rem; padding: .34rem .25rem; border-bottom: 1px solid var(--border); font-size: .82rem; }
@@ -2935,10 +2935,10 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
 
       const brl = v => (v != null && !isNaN(v)) ? esc(fmtBRL(v)) : muted;
       const num = v => (v != null) ? esc(fmtNum(v)) : muted;
-      const pct = v => (v != null) ? esc(fmtPct(v)) : muted;
+      const pct = v => (v != null) ? `<span class="${probCls(v)}">${esc(fmtPct(v))}</span>` : muted;
       const dt = v => v ? esc(fmtDate(v)) : muted;
       const txt = v => v ? esc(v) : muted;
-      const boolv = v => v === true ? 'Sim' : (v === false ? 'Não' : muted);
+      const boolv = v => v === true ? '<span class="byes">Sim</span>' : (v === false ? '<span class="bno">Não</span>' : muted);
       const per = v => { if (!v || v === 'Não Possui') return muted; const m = String(v).match(/\d+/); return m ? m[0] + ' meses' : esc(v); };
       const cell = (lbl, val) => `<div class="deal-row"><span class="dr-lbl">${lbl}</span><span class="dr-val">${val}</span></div>`;
 
