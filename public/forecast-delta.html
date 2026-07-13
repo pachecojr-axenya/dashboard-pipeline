@@ -54,6 +54,8 @@ table.drill{width:100%;border-collapse:collapse;font-size:.8rem}
 table.drill th,table.drill td{text-align:right;padding:.4rem .5rem;border-bottom:1px solid var(--border);white-space:nowrap}
 table.drill th:first-child,table.drill td:first-child{text-align:left;white-space:normal;min-width:180px}
 table.drill th{color:var(--text2);font-weight:700;position:sticky;top:0;background:var(--card)}
+table.drill th.sortable{cursor:pointer;user-select:none}
+table.drill th.sortable:hover{color:var(--text)}
 .tag{font-size:.62rem;font-weight:700;border-radius:4px;padding:.05rem .35rem}
 .tag.novo{color:var(--green);background:rgba(63,185,80,.14)}
 .tag.saiu{color:var(--red);background:rgba(248,81,73,.14)}
@@ -152,6 +154,16 @@ table.drill th{color:var(--text2);font-weight:700;position:sticky;top:0;backgrou
 (function(){
   Chart.register(ChartDataLabels);
   var fotos = [], chart = null, funnelChart = null;
+  // estado do drill-down (modal de etapa): dados + coluna/sentido de ordenacao
+  var drillRows = [], drillMeta = { sumDelta: 0, measure: '' }, drillSort = { key: 'delta', dir: -1 };
+  var DRILL_COLS = [
+    { key: 'dealname', label: 'Deal', align: 'left', type: 'str' },
+    { key: 'stage', label: 'Etapa (A→B)', align: 'left', type: 'str' },
+    { key: 'aCash', label: 'Cash A', align: 'right', type: 'num' },
+    { key: 'bCash', label: 'Cash B', align: 'right', type: 'num' },
+    { key: 'delta', label: 'Δ', align: 'right', type: 'num' },
+    { key: 'tipo', label: 'Tipo', align: 'left', type: 'str' }
+  ];
   var metric = 'prob', horizon = '12';   // measure = metric + (horizon==='12'?'12':'Total')
   function measureKey(){ return metric + (horizon === '12' ? '12' : 'Total'); }
   function fmtBRL(v){ if(v==null||isNaN(v)) return '-'; return 'R$ ' + Math.round(v).toLocaleString('pt-BR'); }
@@ -285,18 +297,39 @@ table.drill th{color:var(--text2);font-weight:700;position:sticky;top:0;backgrou
     modal.style.display='flex';
     fetch('/api/history?action=compare-drill&a='+a+'&b='+b+'&row='+encodeURIComponent(rowKey)+'&measure='+m, {credentials:'same-origin'})
       .then(function(r){ return r.json(); })
-      .then(function(d){ if(!d.success){ body.innerHTML='<div class="state err">'+esc(d.error||'erro')+'</div>'; return; } renderDrill(d); })
+      .then(function(d){ if(!d.success){ body.innerHTML='<div class="state err">'+esc(d.error||'erro')+'</div>'; return; }
+        drillRows=d.deals||[]; drillMeta={sumDelta:d.sumDelta, measure:d.measure};
+        drillSort={key:'delta', dir:-1};   // padrao: maior movimento primeiro
+        renderDrill(); })
       .catch(function(e){ body.innerHTML='<div class="state err">'+esc(e.message)+'</div>'; });
   }
-  function renderDrill(d){
-    var body=document.getElementById('drill-body'), rows=d.deals||[];
-    var head='<p style="color:var(--text2);font-size:.78rem;margin:.4rem 0 .8rem">Σ Δ desta etapa: <strong class="'+(d.sumDelta>=0?'up':'down')+'">'+fmtBRLc(d.sumDelta)+'</strong> · '+rows.length+' deals · medida '+d.measure+'</p>';
+  function drillVal(x, key){ return key==='stage' ? (x.stageB||x.stageA||'') : x[key]; }
+  function drillCompare(a,b){
+    var k=drillSort.key, dir=drillSort.dir, va=drillVal(a,k), vb=drillVal(b,k);
+    if(typeof va==='string' || typeof vb==='string'){ return dir*String(va).localeCompare(String(vb),'pt-BR'); }
+    va=(va==null||isNaN(va))?-Infinity:va; vb=(vb==null||isNaN(vb))?-Infinity:vb;
+    return dir*(va-vb);
+  }
+  function sortDrill(key){
+    if(drillSort.key===key){ drillSort.dir*=-1; }
+    else { var c=DRILL_COLS.filter(function(x){return x.key===key;})[0]; drillSort={key:key, dir:(c&&c.type==='num')?-1:1}; }
+    renderDrill();
+  }
+  function renderDrill(){
+    var body=document.getElementById('drill-body');
+    var rows=drillRows.slice().sort(drillCompare);
+    var head='<p style="color:var(--text2);font-size:.78rem;margin:.4rem 0 .8rem">Σ Δ desta etapa: <strong class="'+(drillMeta.sumDelta>=0?'up':'down')+'">'+fmtBRLc(drillMeta.sumDelta)+'</strong> · '+drillRows.length+' deals · medida '+drillMeta.measure+'</p>';
+    var ths=DRILL_COLS.map(function(c){
+      var arrow = drillSort.key===c.key ? (drillSort.dir>0?' ▲':' ▼') : '';
+      return '<th class="sortable" data-key="'+c.key+'" style="text-align:'+c.align+'">'+c.label+arrow+'</th>';
+    }).join('');
     var cap=rows.slice(0,80);
     var trs=cap.map(function(x){
       var st=(x.stageA||'—'); if(x.stageA!==x.stageB) st+=' → '+(x.stageB||'—');
       return '<tr><td>'+esc(x.dealname)+'</td><td style="text-align:left">'+esc(st)+'</td><td>'+fmtBRL(x.aCash)+'</td><td>'+fmtBRL(x.bCash)+'</td><td class="'+(x.delta>=0?'up':'down')+'">'+fmtBRLc(x.delta)+'</td><td><span class="tag '+x.tipo+'">'+x.tipo+'</span></td></tr>';
     }).join('');
-    body.innerHTML=head+'<table class="drill"><thead><tr><th>Deal</th><th style="text-align:left">Etapa (A→B)</th><th>Cash A</th><th>Cash B</th><th>Δ</th><th></th></tr></thead><tbody>'+trs+'</tbody></table>'+(rows.length>80?'<p style="color:var(--muted);font-size:.72rem;margin-top:.6rem">Mostrando 80 de '+rows.length+' deals.</p>':'');
+    body.innerHTML=head+'<table class="drill"><thead><tr>'+ths+'</tr></thead><tbody>'+trs+'</tbody></table>'+(drillRows.length>80?'<p style="color:var(--muted);font-size:.72rem;margin-top:.6rem">Mostrando 80 de '+drillRows.length+' deals (ordene para trazer outros ao topo).</p>':'');
+    body.querySelectorAll('th.sortable').forEach(function(th){ th.addEventListener('click', function(){ sortDrill(th.getAttribute('data-key')); }); });
   }
   function closeDrill(){ document.getElementById('drill').style.display='none'; }
   document.getElementById('drill-x').addEventListener('click', closeDrill);
