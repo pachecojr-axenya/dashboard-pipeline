@@ -6,7 +6,7 @@ Recurring every 20min (job `55d3b136`). Purpose: identify and close gaps so the 
 
 ### BDR | Treble | subpágina read-only de WhatsApp sincronizado (2026-07-13)
 
-> Nova subpágina isolada em `/novo-bdr/treble`. Commit `90e5485` enviado para `origin/main`; deploy Vercel ficou bloqueado porque o token local da CLI está inválido.
+> Nova subpágina isolada em `/novo-bdr/treble`. Deploy concluído em `https://axenya-pipeline-dashboard.vercel.app/novo-bdr/treble`; API sem sessão retorna 401 e as rotas existentes continuam 200.
 
 - **Fonte:** `GET /api/bdr-treble` lê somente HubSpot communications `WHATS_APP` já sincronizadas pelo pipeline Treble | HubSpot; não chama Treble no Vercel/browser, não envia mensagens e mantém `requireAuth`.
 - **Privacidade e limites:** payload sanitizado sem emails, telefones, CPF/CNPJ, payload bruto ou HTML bruto; snippets outbound redigidos por heurística e inbound ocultado; BDR = owner atual do contato associado como proxy inicial, não autor histórico por mensagem; entrega/leitura distinguem `Não medido` de zero.
