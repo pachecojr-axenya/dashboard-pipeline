@@ -61,6 +61,7 @@ const PROPERTIES = [
   'arr_estimado', 'modelo_de_remuneracao',
   'contrato_atual_e_de_12__24_ou_36_meses_', // período do contrato (enum 12/24/36 Meses) → nº de meses de fatura; usado no TCV
   'possui_agenciamento', 'possui_vitalicio',
+  'e_poc', // booleano "É POC?" (Sim/Não) | coluna nos painéis de Forecast
   'probabilidade_de_fechamento_', 'hs_deal_stage_probability',
   'qual_quarter_de_fechamento', 'data_prevista_para_receita',
   'hs_is_closed_won', 'hs_is_closed_lost', 'hs_object_id',
@@ -459,6 +460,7 @@ module.exports = async function handler(req, res) {
           periodo_contrato: p.contrato_atual_e_de_12__24_ou_36_meses_ || null,
           possui_agenciamento: normalizeBool(p.possui_agenciamento),
           possui_vitalicio: normalizeBool(p.possui_vitalicio),
+          is_poc: normalizeBool(p.e_poc),
           probabilidade: prob,
           quarter,
           data_prevista_para_receita: dateStr,
