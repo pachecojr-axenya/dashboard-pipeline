@@ -302,7 +302,7 @@ var NOVO_I18N={
 function t(k){ return (NOVO_I18N[NOVO_LANG]||NOVO_I18N.pt)[k]||(NOVO_I18N.pt[k])||k; }
 function novoToggleLang(){ NOVO_LANG=NOVO_LANG==='pt'?'en':'pt'; try{localStorage.setItem('novo_lang',NOVO_LANG);}catch(e){} (function(_e){if(_e)_e.textContent=NOVO_LANG.toUpperCase();})(document.getElementById('novo-lang-label')); if(_novoDeals) novoRender(); }
 
-var AE_CARD_CODES={'kpi-active-deals':'P01','kpi-open-lives':'P02','kpi-won-lives':'P08','kpi-won-arr':'P07','kpi-stale':'S05','kpi-meetings':'P04','vidas-ae':'C01','arr':'A07','wonrev':'A08','winrate':'A09','monthly-won':'A10','pipeline-stage':'A11','aging':'A12','age-dist':'A13','radar':'A14','loss-reason':'A15','meeting-rate':'A16','efficiency':'A17','meeting-ae':'A18','velocity-stage':'A19','meeting-alert':'A20'};
+var AE_CARD_CODES={'kpi-active-deals':'P01','kpi-open-lives':'P02','kpi-won-lives':'P08','kpi-won-arr':'P07','kpi-stale':'S05','kpi-meetings':'P04','vidas-ae':'C01','arr':'A07','wonrev':'A08','winrate':'A09','monthly-won':'A10','pipeline-stage':'A11','aging':'A12','age-dist':'A13','radar':'A14','loss-reason':'A15','meeting-rate':'A16','efficiency':'A17','meeting-ae':'A18','velocity-stage':'A19','meeting-alert':'A20','stale-alert':'A21'};
 var _novoShowInfo=(function(){try{return localStorage.getItem('ae_show_info')!=='0';}catch(e){return true;}})();
 function _codeTag(key){var c=AE_CARD_CODES[key]||'';return c?'<span class="novo-code-tag">'+c+'</span>':'';}
 function novoToggleInfo(){_novoShowInfo=!_novoShowInfo;document.body.classList.toggle('novo-info-on',_novoShowInfo);var b=document.getElementById('btn-info-toggle');if(b)b.classList.toggle('highlighted',_novoShowInfo);try{localStorage.setItem('ae_show_info',_novoShowInfo?'1':'0');}catch(e){}}
@@ -342,6 +342,10 @@ var AE_HELP_CHARTS=[
     desc:'Triagem acionável dos deals na etapa Reunião Agendada (pipeline Vendas), agrupada por executivo. É um SNAPSHOT atual | NÃO segue o filtro de período do painel. Considera TODOS os owners (inclui BDRs e sem proprietário), não só o time. Deals de teste (nome com "teste") ficam fora. Clique num número para abrir os deals da situação. 4 situações: ⚪ Sem status (a data da reunião já passou e "A reunião ocorreu?" está vazio) | ❌ Não ocorreu, sem reagendamento | 🔴 Não ocorreu e reagendamento já vencido | ✅ Ocorreu, mas o deal segue parado na etapa.',
     formula:'⚪ ocorreu=∅ & data_da_reuniao_com_executivo < hoje | ❌ ocorreu=Não & reagendamento=∅ | 🔴 ocorreu=Não & data_do_reagendamento_com_o_executivo < hoje | ✅ ocorreu=Sim & data_da_reuniao_com_executivo < hoje',
     fields:[['dealstage','Só a etapa Reunião Agendada (Vendas).'],['a_reuniao_ocorreu_','Sim / Não / vazio | define a situação.'],['data_da_reuniao_com_executivo','Data agendada da reunião | "passou" = < hoje. No payload: data_reuniao_exec.'],['data_do_reagendamento_com_o_executivo','Data do reagendamento | vencido = < hoje. No payload: data_reagendamento_exec.'],['hubspot_owner_id','Executivo | agrupamento das linhas.'],['quantidade_de_colaboradores','Porte exibido no drill.']]},
+  {key:'stale-alert',title:'Deals sem Atividade por Executivo (A21)',
+    desc:'Triagem dos deals ABERTOS (pipeline ativo) sem atividade registrada, agrupada por executivo. SNAPSHOT atual | NÃO segue o filtro de período. Faixas EXCLUSIVAS por dias sem atividade (cada deal conta em uma faixa): 15–29, 30–44, 45–59, 60–89 e 90+ dias. Exclui Ganho/Perdido e deals de teste (nome com "teste"). Clique num número para abrir os deals da faixa/executivo, com filtros cruzados (Executivo × Faixa).',
+    formula:'faixa por dias_sem_atividade: [15,30) · [30,45) · [45,60) · [60,90) · [90,∞)',
+    fields:[['notes_last_updated','Data da última atividade/nota | base do cálculo. No payload: ultima_atividade e dias_sem_atividade.'],['hubspot_owner_id','Executivo | agrupamento das linhas.'],['dealstage','Base ativa do pipeline (exclui Ganho/Perdido).']]},
   {key:'loss-reason',title:'Motivos de Perda por Deals (A15)',
     desc:'Contagem de deals PERDIDOS por motivo categórico. Considera deals em Perdido com close_date no período. Clique numa barra: a tabela lista os deals com o motivo E a justificativa em texto aberto (Motivo de Declínio/Perdido - Descrição).',
     fields:[['dealstage','Perdido.'],['closedate','Filtro de período.'],['motivo_do_declinio_ou_perdido','Motivo categórico (barras).'],['motivo_de_declinio_perdido___descricao','Texto aberto | coluna "Motivo declínio (texto)" do drill.']]},
@@ -783,6 +787,9 @@ function novoRender(){
       '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header"><h3>Higiene de Reuniões Agendadas</h3>'+_infoBtn('Triagem dos deals na etapa Reunião Agendada (snapshot atual, NÃO segue o filtro de período). 4 situações acionáveis por executivo | clique num número para ver os deals. ⚪ Sem status = data da reunião passou e a_reuniao_ocorreu_ vazio | ❌ Não ocorreu sem reagendamento | 🔴 Não ocorreu e reagendamento vencido | ✅ Ocorreu mas o deal não avançou da etapa.','meeting-alert')+'</div><div id="ae-meeting-alert" style="margin-top:.5rem"></div></div>'+
       cWide('Meeting Rate Evolution (Monthly) <span id="ae-mr-count" style="font-size:.68rem;color:var(--text2);font-weight:600;margin-left:.35rem;white-space:nowrap"></span>','Mês a mês pela data de ENTRADA em Reunião Agendada: barras com o total do mês fatiadas por a_reuniao_ocorreu_ (Sim | Não | sem preenchimento); linha = Occurrence Rate = Sim ÷ (Sim + Não). SÓ executivos do time; deals sem a data ficam fora. O FILTRO DE PERÍODO do painel aplica sobre data_reuniao_agendada — mesma base e mesma contagem do A18. Hover mostra todas as fatias do mês juntas. Clique numa barra para ver os deals do mês.','meeting-rate',340)+
       cWide('Meeting Effectiveness by AE <span id="ae-mae-count" style="font-size:.68rem;color:var(--text2);font-weight:600;margin-left:.35rem;white-space:nowrap"></span>','Por AE (só executivos do time): deals que ENTRARAM em Reunião Agendada, fatiados por a_reuniao_ocorreu_ (Sim | Não | sem preenchimento). O FILTRO DE PERÍODO do painel aplica sobre data_reuniao_agendada — mesma base e mesma contagem do A16. Hover mostra todas as fatias do AE juntas. Clique numa barra para ver os deals do AE.','meeting-ae',340)+
+      // Seção Higiene de Atividade
+      '<div class="section-hdr"><h2>Higiene de Atividade</h2></div>'+
+      '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header"><h3>Deals sem Atividade por Executivo</h3>'+_infoBtn('Triagem dos deals ABERTOS (pipeline ativo) sem atividade registrada, por executivo. SNAPSHOT atual | NÃO segue o filtro de período. Faixas exclusivas por dias sem atividade (cada deal conta uma vez): 15–29, 30–44, 45–59, 60–89 e 90+. Exclui Ganho/Perdido e deals de teste. Clique num número para abrir os deals daquela faixa/executivo (filtros cruzados Executivo × Faixa).','stale-alert')+'</div><div id="ae-stale-alert" style="margin-top:.5rem"></div></div>'+
       // Seção Perdas
       '<div class="section-hdr"><h2>Motivos de Perda</h2></div>'+
       cWide('Motivos de Perda por Deals'+_aeCntSpan(lost.length),'Contagem de deals perdidos por motivo (campo HubSpot motivo_do_declinio_ou_perdido). Considera deals em Perdido no período (close_date). Clique numa barra para ver os deals | a tabela inclui a justificativa em texto aberto (motivo_de_declinio_perdido___descricao).','loss-reason',340,'',true)+
@@ -806,6 +813,7 @@ function novoRender(){
   buildAEEfficiency();
   buildAEMonthlyWon();
   buildAEMeetingAlert();
+  buildAEStaleAlert();
   buildAEMeetingRate();
   buildAEMeetingByAE();
   buildAELossReason();
@@ -1280,6 +1288,101 @@ function aeMtgAlertDrill(idx,bucket){
   _aeMtgModSit=bucket||null;
   openModal('Higiene de Reuniões Agendadas ('+_aeMtgModAll.length+')','<div id="ae-mtgmod-kpis"></div><div id="ae-mtgmod-chips"></div><div id="ae-mtgmod-table"></div>');
   _aeMtgModRender();
+}
+
+// ── A21 | Higiene de Atividade | deals sem atividade por executivo ──────────
+// Snapshot da base ativa do pipeline, por executivo, em faixas EXCLUSIVAS de dias sem
+// atividade (15–29 · 30–44 · 45–59 · 60–89 · 90+). NÃO segue o filtro de período.
+// Exclui deals de teste. Clique num número → modal com cross-filter (Executivo × Faixa).
+var _AE_STALE_BUCKETS=[
+  {key:'d15',min:15,max:30,label:'15–29 d'},
+  {key:'d30',min:30,max:45,label:'30–44 d'},
+  {key:'d45',min:45,max:60,label:'45–59 d'},
+  {key:'d60',min:60,max:90,label:'60–89 d'},
+  {key:'d90',min:90,max:Infinity,label:'90+ d'}
+];
+function _aeStaleOwner(d){ return (d.ae && d.ae!=='-') ? d.ae : '(sem proprietário)'; }
+function _aeStaleBase(){ return _aeActivePipeline().filter(function(d){ return !/\bteste\b/i.test(d.dealname||'') && d.dias_sem_atividade!=null && d.dias_sem_atividade>=15; }); }
+function _aeStaleClass(d){ var n=d.dias_sem_atividade; if(n==null) return null; for(var i=0;i<_AE_STALE_BUCKETS.length;i++){ var b=_AE_STALE_BUCKETS[i]; if(n>=b.min && n<b.max) return b.key; } return null; }
+var _aeStaleOwners=[];
+function buildAEStaleAlert(){
+  var el=document.getElementById('ae-stale-alert'); if(!el) return;
+  var byOwner={}, totals={}, grand=0;
+  _AE_STALE_BUCKETS.forEach(function(b){ totals[b.key]=0; });
+  _aeStaleBase().forEach(function(d){
+    var cls=_aeStaleClass(d); if(!cls) return;
+    var owner=_aeStaleOwner(d);
+    var o=byOwner[owner]; if(!o){ o=byOwner[owner]={total:0}; _AE_STALE_BUCKETS.forEach(function(b){ o[b.key]=0; }); }
+    o[cls]++; o.total++; totals[cls]++; grand++;
+  });
+  if(!grand){ el.innerHTML='<p style="color:var(--text2);padding:1rem 0">Nenhum deal parado há 15+ dias ✅</p>'; return; }
+  _aeStaleOwners=Object.keys(byOwner).sort(function(a,b){ if(a==='(sem proprietário)')return 1; if(b==='(sem proprietário)')return -1; return byOwner[b].total-byOwner[a].total || a.localeCompare(b); });
+  var chips='<div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:1rem">'+_AE_STALE_BUCKETS.map(function(b){
+    return '<div style="flex:1;min-width:110px;background:var(--card2);border-radius:8px;padding:.55rem .7rem;text-align:center">'+
+      '<div style="font-size:1.35rem;font-weight:700;color:var(--text)">'+totals[b.key]+'</div>'+
+      '<div style="font-size:.63rem;color:var(--text2);text-transform:uppercase;letter-spacing:.04em;margin-top:.15rem">'+b.label+'</div></div>';
+  }).join('')+'</div>';
+  var head='<thead><tr><th style="text-align:left">Executivo</th>'+_AE_STALE_BUCKETS.map(function(b){return '<th>'+b.label+'</th>';}).join('')+'<th>Total</th></tr></thead>';
+  var rows=_aeStaleOwners.map(function(o,idx){
+    var od=byOwner[o];
+    var tds=_AE_STALE_BUCKETS.map(function(b){
+      var n=od[b.key]||0;
+      if(!n) return '<td style="color:var(--muted)">—</td>';
+      return '<td><a href="#" onclick="event.preventDefault();aeStaleDrill('+idx+',\''+b.key+'\')" style="color:var(--teal);font-weight:700;text-decoration:none">'+n+'</a></td>';
+    }).join('');
+    return '<tr><td style="text-align:left;font-weight:600">'+_ne(o)+'</td>'+tds+'<td style="font-weight:700">'+od.total+'</td></tr>';
+  }).join('');
+  el.innerHTML=chips+'<table class="lb" style="width:100%">'+head+'<tbody>'+rows+'</tbody></table>';
+}
+// Drill A21 | modal cross-filter (Executivo × Faixa), pré-filtrado no número clicado.
+var _aeStaleModAll=[], _aeStaleModAe=null, _aeStaleModFx=null;
+function aeStaleModFilter(dim,val){ if(dim==='ae') _aeStaleModAe=(val==='__all'?null:val); else _aeStaleModFx=(val==='__all'?null:val); _aeStaleModRender(); }
+function _aeStaleBucketLabel(k){ var b=_AE_STALE_BUCKETS.filter(function(x){return x.key===k;})[0]; return b?b.label:'—'; }
+function _aeStaleChipRow(cur,items){
+  var total=items.reduce(function(s,i){return s+i.count;},0);
+  return '<div style="margin-bottom:.5rem;display:flex;gap:.45rem;flex-wrap:wrap;align-items:center"><span style="font-size:.68rem;color:var(--text2);font-weight:700;margin-right:.2rem">Executivo</span>'+
+    '<button class="stage-chip'+(!cur?' active':'')+'" onclick="aeStaleModFilter(\'ae\',\'__all\')">'+(NOVO_LANG==='en'?'All':'Todos')+' <span class="chip-count">'+total+'</span></button>'+
+    items.map(function(it){return '<button class="stage-chip'+(cur===it.key?' active':'')+'" onclick="aeStaleModFilter(\'ae\',\''+String(it.key).replace(/'/g,"\\'")+'\')">'+it.label+' <span class="chip-count">'+it.count+'</span></button>';}).join('')+'</div>';
+}
+function _aeStaleModRow(d){
+  var hsUrl=d.hs_id?'https://app.hubspot.com/contacts/44715285/deal/'+d.hs_id:'#';
+  var nameCell=d.hs_id?'<a href="'+hsUrl+'" target="_blank" rel="noopener" style="color:var(--teal);text-decoration:none">'+_ne(d.dealname)+'</a>':_ne(d.dealname);
+  var dsa=d.dias_sem_atividade, dsaCol=dsa>90?'var(--red)':(dsa>30?'var(--orange)':'var(--text)');
+  return '<tr>'+
+    '<td style="text-align:left;min-width:150px;max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+nameCell+'</td>'+
+    '<td style="text-align:left;white-space:nowrap">'+_ne(_aeStaleOwner(d))+'</td>'+
+    '<td style="white-space:nowrap">'+_ne(d.stage)+'</td>'+
+    '<td style="white-space:nowrap">'+_aeStaleBucketLabel(_aeStaleClass(d))+'</td>'+
+    '<td style="white-space:nowrap">'+_nd(d.ultima_atividade)+'</td>'+
+    '<td style="color:'+dsaCol+';font-weight:700">'+(dsa!=null?_ni(dsa):'—')+'</td>'+
+    '<td>'+_ni(d.vidas)+'</td>'+
+    '<td>'+_revShort(_annualRev(d))+'</td>'+
+    '</tr>';
+}
+function _aeStaleModRender(){
+  var byFx=_aeStaleModFx?_aeStaleModAll.filter(function(d){return _aeStaleClass(d)===_aeStaleModFx;}):_aeStaleModAll;
+  var byAe=_aeStaleModAe?_aeStaleModAll.filter(function(d){return _aeStaleOwner(d)===_aeStaleModAe;}):_aeStaleModAll;
+  var list=_aeStaleModAll.filter(function(d){return (!_aeStaleModAe||_aeStaleOwner(d)===_aeStaleModAe)&&(!_aeStaleModFx||_aeStaleClass(d)===_aeStaleModFx);})
+    .sort(function(a,b){return (b.dias_sem_atividade||0)-(a.dias_sem_atividade||0);});
+  var kp=document.getElementById('ae-stalemod-kpis');
+  if(kp)kp.innerHTML='<div style="display:flex;gap:.55rem;flex-wrap:wrap;margin-bottom:.9rem">'+_AE_STALE_BUCKETS.map(function(b){
+    var n=byAe.filter(function(d){return _aeStaleClass(d)===b.key;}).length, on=_aeStaleModFx===b.key;
+    return '<div onclick="aeStaleModFilter(\'fx\',\''+(on?'__all':b.key)+'\')" style="flex:1;min-width:100px;cursor:pointer;background:var(--card2);border:2px solid '+(on?'var(--teal)':'transparent')+';border-radius:8px;padding:.5rem .6rem;text-align:center">'+
+      '<div style="font-size:1.25rem;font-weight:700;color:var(--text)">'+n+'</div>'+
+      '<div style="font-size:.6rem;color:var(--text2);text-transform:uppercase;letter-spacing:.03em;margin-top:.12rem">'+b.label+'</div></div>';
+  }).join('')+'</div>';
+  var aeCounts={}; byFx.forEach(function(d){var k=_aeStaleOwner(d);aeCounts[k]=(aeCounts[k]||0)+1;});
+  var aeItems=Object.keys(aeCounts).sort(function(a,b){ if(a==='(sem proprietário)')return 1; if(b==='(sem proprietário)')return -1; return aeCounts[b]-aeCounts[a]||a.localeCompare(b); }).map(function(k){return {key:k,label:_ne(k),count:aeCounts[k]};});
+  var ch=document.getElementById('ae-stalemod-chips'); if(ch)ch.innerHTML=_aeStaleChipRow(_aeStaleModAe,aeItems);
+  var head='<thead><tr><th style="text-align:left">Deal</th><th style="text-align:left">Executivo</th><th style="text-align:left">Etapa</th><th>Faixa</th><th>Última atividade</th><th>Dias s/ atividade</th><th>Vidas</th><th>ARR</th></tr></thead>';
+  var tb=document.getElementById('ae-stalemod-table'); if(tb)tb.innerHTML=list.length?'<table class="lb">'+head+'<tbody>'+list.map(_aeStaleModRow).join('')+'</tbody></table>':'<p style="color:var(--text2);padding:1rem 0">Nenhum deal.</p>';
+}
+function aeStaleDrill(idx,bucket){
+  _aeStaleModAll=_aeStaleBase().filter(function(d){return _aeStaleClass(d)!=null;});
+  var owner=(idx==null?null:_aeStaleOwners[idx]);
+  _aeStaleModAe=owner||null; _aeStaleModFx=bucket||null;
+  openModal('Deals sem atividade ('+_aeStaleModAll.length+')','<div id="ae-stalemod-kpis"></div><div id="ae-stalemod-chips"></div><div id="ae-stalemod-table"></div>');
+  _aeStaleModRender();
 }
 // Base COMUM de A16 e A18 (mesma contagem nos dois): deals do time de executivos com entrada
 // em Reunião Agendada, e o FILTRO DE PERÍODO do painel aplica sobre data_reuniao_agendada.
