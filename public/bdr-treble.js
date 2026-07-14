@@ -141,12 +141,12 @@
     var steps = [
       ['Sessões', s.sessions, 'Universo analisado'],
       ['Enviadas', s.sent, 'HSM ou mensagem de saída'],
-      ['Entregues', s.delivered, pct(s.deliveryRate)],
+      ['Entregues (sessões)', s.delivered, pct(s.deliveryRate) + ' | só sessions/history'],
       ['Lidas', s.read, pct(s.readRate)],
       ['Respondidas', s.replied, pct(s.responseRate)]
     ];
     var max = Math.max(s.sessions, 1);
-    return '<div class="card span-12"><div class="card-title"><div><h2>Funil Treble | entrega até resposta</h2><div class="desc">Mostra onde a conversa quebra | não é só volume bruto.</div></div></div>' + steps.map(function (x) {
+    return '<div class="card span-12"><div class="card-title"><div><h2>Funil Treble | sessions materializadas</h2><div class="desc">Entrega aqui significa delivered_at dentro de history. Falhas de deployment ficam fora deste denominador até ingerirmos deployment.failure.</div></div></div>' + steps.map(function (x) {
       return '<div class="bar-row"><div class="bar-name">' + esc(x[0]) + '<div class="muted">' + esc(x[2]) + '</div></div><div class="bar-track"><div class="bar-fill" style="width:' + Math.max(2, Math.round(x[1] / max * 100)) + '%"></div></div><div class="bar-val">' + fmt(x[1]) + '</div></div>';
     }).join('') + '</div>';
   }
@@ -178,7 +178,7 @@
     var max = Math.max.apply(null, rows.map(function (r) { return metric === 'failures' ? r.failures : r.sessions; }).concat([1]));
     return rows.slice(0, limit || 12).map(function (r) {
       var val = metric === 'failures' ? r.failures : r.sessions;
-      return '<div class="bar-row clickable-row" data-drill-field="' + esc(field) + '" data-drill-value="' + esc(r.label) + '"><div class="bar-name">' + esc(r.label) + '<div class="muted">Pessoas ' + fmt(r.peopleCount || 0) + ' | Entrega ' + pct(r.deliveryRate) + ' | Resp. ' + pct(r.responseRate) + ' | gargalo: ' + esc(r.topReason.label) + '</div></div><div class="bar-track"><div class="bar-fill ' + (r.failures ? 'bad' : '') + '" style="width:' + Math.max(2, Math.round(val / max * 100)) + '%"></div></div><div class="bar-val">' + fmt(val) + '</div><div class="bar-val">' + fmt(r.replied) + ' resp.</div></div>';
+      return '<div class="bar-row clickable-row" data-drill-field="' + esc(field) + '" data-drill-value="' + esc(r.label) + '"><div class="bar-name">' + esc(r.label) + '<div class="muted">Pessoas ' + fmt(r.peopleCount || 0) + ' | Entrega sessions ' + pct(r.deliveryRate) + ' | Resp. ' + pct(r.responseRate) + ' | gargalo: ' + esc(r.topReason.label) + '</div></div><div class="bar-track"><div class="bar-fill ' + (r.failures ? 'bad' : '') + '" style="width:' + Math.max(2, Math.round(val / max * 100)) + '%"></div></div><div class="bar-val">' + fmt(val) + '</div><div class="bar-val">' + fmt(r.replied) + ' resp.</div></div>';
     }).join('');
   }
 
@@ -191,23 +191,23 @@
     var topBdr = byBdr[0];
     var story = '<div class="story-grid">' +
       '<div class="story-card"><b>O que aconteceu</b><span>' + fmt(s.sessions) + ' sessões analisadas | ' + fmt(s.sent) + ' com envio | ' + fmt(s.replied) + ' com resposta.</span></div>' +
-      '<div class="story-card"><b>Onde dá errado</b><span>' + fmt(s.failures) + ' sem resposta/conclusão | ' + fmt(s.notDelivered) + ' sem entrega | ' + fmt(s.readNoReply) + ' lidas sem resposta.</span></div>' +
+      '<div class="story-card"><b>O que ainda não mede</b><span>Falhas reais de deployment exigem webhook deployment.failure. A entrega atual é só em sessions/history.</span></div>' +
       '<div class="story-card"><b>Quem mais usou</b><span>' + (topBdr ? esc(topBdr.label) + ' | ' + fmt(topBdr.sessions) + ' sessões | resposta ' + pct(topBdr.responseRate) + '.' : 'Ainda sem volume por BDR.') + '</span></div>' +
       '<div class="story-card"><b>Próxima ação</b><span>' + (worst ? 'Atacar gargalo de ' + esc(worst.label) + ': ' + esc(worst.topReason.label) + '.' : 'Padronizar nomenclatura dos flows e rodar mais volume.') + '</span></div></div>';
     var kpis = '<div class="kpis">' +
       kpi('Sessões', fmt(s.sessions), 'Treble API | período filtrado', 'teal', 'all') +
       kpi('Pessoas', fmt(s.people), 'Contatos anonimizados | sem telefone', 'teal', 'all') +
-      kpi('Entregues', fmt(s.delivered), 'Entrega ÷ enviadas = ' + pct(s.deliveryRate), s.delivered ? 'good' : 'warn', 'delivered') +
+      kpi('Entrega (sessions)', fmt(s.delivered), 'Somente sessions/history = ' + pct(s.deliveryRate), s.delivered ? 'warn' : 'warn', 'delivered') +
       kpi('Lidas', fmt(s.read), 'Leitura ÷ entregues = ' + pct(s.readRate), s.read ? 'good' : 'warn', 'read') +
       kpi('Respondidas', fmt(s.replied), 'Resposta ÷ enviadas = ' + pct(s.responseRate), 'good', 'responded') +
-      kpi('Sem entrega', fmt(s.notDelivered), 'Falha observada de entrega', s.notDelivered ? 'bad' : 'good', 'not_delivered') +
+      kpi('Falhas deployment', 'Não ingeridas', 'Precisa webhook deployment.failure', 'warn') +
       kpi('Lida sem resposta', fmt(s.readNoReply), 'Copy/CTA não converteu', s.readNoReply ? 'warn' : 'good', 'read_no_reply') + '</div>';
     return story + kpis + '<div class="grid">' + funnel(s) + '<div class="card span-6"><div class="card-title"><div><h2>Flows | ranking de resposta</h2><div class="desc">Labels reais da Treble | clique para detalhes.</div></div></div>' + barRows(byFlow, 'flow', 12, 'sessions') + '</div><div class="card span-6"><div class="card-title"><div><h2>Famílias de copy</h2><div class="desc">Agrupamento por nome do flow | ajuda a decidir próxima abordagem.</div></div></div>' + barRows(byFamily, 'family', 8, 'sessions') + '</div></div>';
   }
 
   function renderBdrs(rows) {
     var byBdr = group(rows, 'bdr');
-    var h = '<div class="grid"><div class="card span-12"><div class="card-title"><div><h2>BDRs | uso, entrega e resposta</h2><div class="desc">Responde quem usou mais, quem entregou melhor e onde cada um gargala.</div></div></div><div class="table-wrap"><table><thead><tr><th>BDR</th><th>Sessões</th><th>Pessoas</th><th>Entregues</th><th>Tx entrega</th><th>Lidas</th><th>Respondidas</th><th>Tx resposta</th><th>Gargalo principal</th><th>Público dominante</th></tr></thead><tbody>';
+    var h = '<div class="grid"><div class="card span-12"><div class="card-title"><div><h2>BDRs | uso, entrega em sessions e resposta</h2><div class="desc">Entrega aqui é scoped a sessions/history; não é delivery real de deployment.</div></div></div><div class="table-wrap"><table><thead><tr><th>BDR</th><th>Sessões</th><th>Pessoas</th><th>Entregues</th><th>Tx entrega sessions</th><th>Lidas</th><th>Respondidas</th><th>Tx resposta</th><th>Gargalo principal</th><th>Público dominante</th></tr></thead><tbody>';
     byBdr.forEach(function (b) {
       var br = rows.filter(function (m) { return m.bdr === b.label; });
       h += '<tr class="clickable-row" data-drill-field="bdr" data-drill-value="' + esc(b.label) + '"><td><b>' + esc(b.label) + '</b></td><td>' + fmt(b.sessions) + '</td><td>' + fmt(b.peopleCount || 0) + '</td><td>' + fmt(b.delivered) + '</td><td>' + pct(b.deliveryRate) + '</td><td>' + fmt(b.read) + '</td><td>' + fmt(b.replied) + '</td><td>' + pct(b.responseRate) + '</td><td>' + esc(b.topReason.label) + '</td><td>' + esc(topFor(br, 'audience')) + '</td></tr>';
@@ -216,8 +216,21 @@
   }
 
   function renderTimeline(rows) {
-    var byDay = group(rows, 'createdDay').sort(function (a, b) { return String(a.key).localeCompare(String(b.key)); });
-    return '<div class="grid"><div class="card span-12"><div class="card-title"><div><h2>Linha do tempo | envio, entrega e resposta</h2><div class="desc">Clique no dia para ver as mensagens e pessoas anonimizadas daquele ponto.</div></div></div>' + barRows(byDay, 'createdDay', 60, 'sessions') + '</div><div class="card span-12"><div class="card-title"><div><h2>Dias com maior gargalo</h2><div class="desc">Ordenado por falhas observadas.</div></div></div>' + barRows(byDay.slice().sort(function (a, b) { return b.failures - a.failures || b.sessions - a.sessions; }), 'createdDay', 15, 'failures') + '</div></div>';
+    var byDay = group(rows, 'createdDay').filter(function (d) { return d.key && d.key !== 'Sem data'; }).sort(function (a, b) { return String(a.key).localeCompare(String(b.key)); });
+    if (!byDay.length) return '<div class="card span-12"><div class="muted">Sem datas no filtro.</div></div>';
+    var w = 980, h = 340, padL = 54, padR = 26, padT = 24, padB = 50;
+    var max = Math.max.apply(null, byDay.map(function (d) { return Math.max(d.sent, d.delivered, d.read, d.replied, d.sessions); }).concat([1]));
+    var x = function (i) { return padL + (byDay.length === 1 ? 0 : i * (w - padL - padR) / (byDay.length - 1)); };
+    var y = function (v) { return padT + (h - padT - padB) * (1 - (v / max)); };
+    function points(metric) { return byDay.map(function (d, i) { return x(i).toFixed(1) + ',' + y(d[metric] || 0).toFixed(1); }).join(' '); }
+    function line(metric, color, label) { return '<polyline fill="none" stroke="' + color + '" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" points="' + points(metric) + '"><title>' + esc(label) + '</title></polyline>'; }
+    function dots(metric, color, label) { return byDay.map(function (d, i) { return '<circle class="clickable-row" data-drill-field="createdDay" data-drill-value="' + esc(d.key) + '" cx="' + x(i).toFixed(1) + '" cy="' + y(d[metric] || 0).toFixed(1) + '" r="4" fill="' + color + '"><title>' + esc(label + ' | ' + d.key + ': ' + fmt(d[metric] || 0)) + '</title></circle>'; }).join(''); }
+    var grid = [0, .25, .5, .75, 1].map(function (p) { var yy = padT + (h - padT - padB) * p; var val = Math.round(max * (1 - p)); return '<line x1="' + padL + '" x2="' + (w - padR) + '" y1="' + yy.toFixed(1) + '" y2="' + yy.toFixed(1) + '" stroke="rgba(255,255,255,.10)"/><text x="8" y="' + (yy + 4).toFixed(1) + '" fill="currentColor" opacity=".65" font-size="12">' + fmt(val) + '</text>'; }).join('');
+    var labels = byDay.map(function (d, i) { if (byDay.length > 18 && i % Math.ceil(byDay.length / 10) !== 0 && i !== byDay.length - 1) return ''; return '<text x="' + x(i).toFixed(1) + '" y="' + (h - 18) + '" fill="currentColor" opacity=".65" font-size="11" text-anchor="middle">' + esc(d.key.slice(5).split('-').reverse().join('/')) + '</text>'; }).join('');
+    var svg = '<svg viewBox="0 0 ' + w + ' ' + h + '" width="100%" role="img" aria-label="Linha do tempo Treble por dia" style="overflow:visible">' + grid + labels + line('sent', '#3ab8b7', 'Enviadas') + line('delivered', '#3fb950', 'Entregues em sessions') + line('read', '#e3b341', 'Lidas') + line('replied', '#f85149', 'Respondidas') + dots('sent', '#3ab8b7', 'Enviadas') + dots('delivered', '#3fb950', 'Entregues em sessions') + dots('read', '#e3b341', 'Lidas') + dots('replied', '#f85149', 'Respondidas') + '</svg>';
+    var legend = '<div class="story-grid"><div class="story-card"><b style="color:#3ab8b7">Enviadas</b><span>mensagens de saída em sessions</span></div><div class="story-card"><b style="color:#3fb950">Entregues em sessions</b><span>delivered_at dentro de history</span></div><div class="story-card"><b style="color:#e3b341">Lidas</b><span>read_at dentro de history</span></div><div class="story-card"><b style="color:#f85149">Respondidas</b><span>mensagem USER na sessão</span></div></div>';
+    var note = '<section class="note"><b>Importante:</b> este gráfico é linha temporal de sessões materializadas. Falhas reais de deployment não entram até capturarmos <code>deployment.failure</code>; portanto não use a linha verde como taxa real de entrega do disparo.</section>';
+    return '<div class="grid"><div class="card span-12"><div class="card-title"><div><h2>Linha do tempo | gráfico de linha</h2><div class="desc">Tendência diária de enviadas, entregues em sessions, lidas e respondidas. Clique em um ponto para abrir o dia.</div></div></div>' + svg + legend + '</div><div class="card span-12"><div class="card-title"><div><h2>Resumo por dia</h2><div class="desc">Tabela compacta de apoio ao gráfico.</div></div></div><div class="table-wrap"><table><thead><tr><th>Dia</th><th>Enviadas</th><th>Entregues sessions</th><th>Lidas</th><th>Respondidas</th><th>Tx resposta</th></tr></thead><tbody>' + byDay.map(function (d) { return '<tr class="clickable-row" data-drill-field="createdDay" data-drill-value="' + esc(d.key) + '"><td>' + esc(day(d.key)) + '</td><td>' + fmt(d.sent) + '</td><td>' + fmt(d.delivered) + '</td><td>' + fmt(d.read) + '</td><td>' + fmt(d.replied) + '</td><td>' + pct(d.responseRate) + '</td></tr>'; }).join('') + '</tbody></table></div></div></div>' + note;
   }
 
   function renderAudience(rows) {
@@ -307,7 +320,7 @@
     },
     closeModal: function () { $('modal-overlay').classList.remove('open'); },
     openHelp: function () {
-      $('help-body').innerHTML = '<div class="help-block"><b>Fonte</b><p>Agora a fonte primária é a API Treble: polls, sessions e history. HubSpot não define o diagnóstico.</p></div><div class="help-block"><b>Motivos</b><p>Motivo observado é inferido por evidência de entrega, leitura e resposta. Failure reason bruto da Meta exige webhook deployment.failure ativo.</p></div><div class="help-block"><b>Resposta</b><p>Resposta = sessão com mensagem USER após envio. A taxa é respondidas ÷ enviadas.</p></div><div class="help-block"><b>Labels</b><p>Flow é o nome real na Treble. BDR e família de copy são inferidos do nome do flow | padronizar nomes melhora a leitura.</p></div><div class="help-block"><b>Privacidade</b><p>Sem telefone, email, documento, session_id ou payload bruto. Copy outbound é redigida por heurística e inbound fica ocultado.</p></div>';
+      $('help-body').innerHTML = '<div class="help-block"><b>Fonte</b><p>Fonte primária: API Treble polls, sessions e history. HubSpot não define o diagnóstico.</p></div><div class="help-block"><b>Entrega scoped</b><p>Entrega neste painel = delivered_at dentro de sessions/history. Não é taxa real de campanha; falhas pré-session exigem webhook deployment.failure.</p></div><div class="help-block"><b>Timeline</b><p>A aba Linha do tempo usa gráfico de linha para enviadas, entregues em sessions, lidas e respondidas. Barras ficam apenas para rankings.</p></div><div class="help-block"><b>Resposta</b><p>Resposta = sessão com mensagem USER após envio. A taxa é respondidas ÷ enviadas em history.</p></div><div class="help-block"><b>Privacidade</b><p>Sem telefone, email, documento, session_id ou payload bruto. Copy outbound é redigida por heurística e inbound fica ocultado.</p></div>';
       $('help-backdrop').classList.add('open'); $('help-drawer').classList.add('open');
     },
     closeHelp: function () { $('help-backdrop').classList.remove('open'); $('help-drawer').classList.remove('open'); }

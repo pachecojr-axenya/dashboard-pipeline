@@ -430,7 +430,11 @@ async function buildPayload(token, days) {
     cached: false,
     stale: false,
     meta: {
-      source: 'Treble API oficial | polls | sessions | history',
+      source: 'Treble API oficial | polls | sessions | history | deployment.failure ainda não ingerido',
+      deliveryScope: 'scoped_to_materialized_sessions',
+      deliveryScopeLabel: 'Entrega em sessões materializadas',
+      realDeliveryAvailable: false,
+      realDeliveryRequirement: 'Taxa real de entrega exige capturar deployment.failure e/ou webhooks on-delivered/on-read com denominador de tentativas de deployment.',
       days,
       since: new Date(since * 1000).toISOString(),
       until: new Date(until * 1000).toISOString(),
@@ -447,15 +451,17 @@ async function buildPayload(token, days) {
       labelModel: 'Flow vem do nome real da conversa Treble | BDR e família de copy são inferidos do nome do flow',
       privacy: 'Sem telefone, email, documento, session_id ou payload bruto | pessoas anonimizadas como Pessoa 001 | copy outbound redigida por heurística | inbound ocultado por classificação de resposta',
       limitations: [
-        'Motivo é diagnóstico observado por entrega, leitura e resposta | não é motivo Meta bruto.',
-        'Falhas de deployment com failure_reason exigem webhook deployment.failure ativo.',
+        'Entrega exibida é scoped: apenas sessões que materializaram history na API Treble; não é taxa real de delivery do disparo.',
+        'Motivo é diagnóstico observado por entrega, leitura e resposta dentro de sessions/history | não é motivo Meta bruto.',
+        'Falhas de deployment com failure_reason exigem webhook deployment.failure ativo e persistido.',
         'Labels de BDR, público e agrupamento semântico dependem de nome do flow e copy outbound.'
       ]
     },
     apiMap: [
       { step: 1, method: 'GET', endpoint: '/poll/api/all', purpose: 'Lista flows/polls e nomes reais', returns: 'Array com id, name e settings', usedFor: 'Flow, BDR inferido, família de copy e público' },
       { step: 2, method: 'GET', endpoint: '/devapi/poll/{poll_id}/sessions', purpose: 'Lista sessões por flow com paginação', returns: 'results[] com id, created_at, finished_at e user', usedFor: 'Volume, linha do tempo e pessoa anonimizada' },
-      { step: 3, method: 'GET', endpoint: '/devapi/session/{session_id}/history', purpose: 'Lê eventos e mensagens de uma sessão', returns: 'MESSAGE.message com sender, type, text, delivered_at e read_at', usedFor: 'Funil enviada-entregue-lida-respondida e motivo observado' }
+      { step: 3, method: 'GET', endpoint: '/devapi/session/{session_id}/history', purpose: 'Lê eventos e mensagens de uma sessão', returns: 'MESSAGE.message com sender, type, text, delivered_at e read_at', usedFor: 'Funil scoped enviada-entregue-lida-respondida em sessões materializadas' },
+      { step: 4, method: 'POST', endpoint: '/treble-webhooks | event_type=deployment.failure', purpose: 'Webhook que a Treble chama no nosso servidor quando um deployment falha', returns: 'failure_reason, failed_at, conversation_id, user', usedFor: 'Ainda não ingerido no dashboard; necessário para taxa real de entrega e motivo bruto de não entrega' }
     ],
     messages: rows,
     flows: flows.map(f => ({ label: f.name, bdr: inferBdr(f.name), family: copyFamily(f.name), audience: inferAudience(f.name, '') }))
@@ -471,7 +477,7 @@ module.exports = async function handler(req, res) {
   catch (e) { return res.status(503).json({ success: false, error: 'Treble API não configurada no servidor.' }); }
   const days = clampDays(req.query && req.query.days);
   const refresh = String((req.query && req.query.refresh) || '') === 'true';
-  const key = 'v3:days:' + days;
+  const key = 'v4:days:' + days;
   const cached = cacheByKey[key];
   if (!refresh && cached && Date.now() - cached.time < CACHE_TTL_MS) {
     return res.status(200).json(Object.assign({}, cached.payload, { cached: true, stale: false }));
