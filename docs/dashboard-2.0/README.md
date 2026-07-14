@@ -23,7 +23,7 @@
 | Fase | Nome | Estado |
 |---|---|---|
 | 0 | Charter + decisões | ✅ fechada (aprovada pelo dono em 2026-07-14) |
-| 1 | Os 3 arquivos base (extração) | 🟠 em execução |
+| 1 | Os 3 arquivos base (extração) | 🟠 catálogo entregue | gate pendente: revisão do dono via [catalogo.md](catalogo.md) |
 | 2 | Primeiro consumidor: referência | ⬜ não iniciada |
 | 3 | Drawer gerado do catálogo (golden: Forecast) | ⬜ não iniciada |
 | 4 | Dado manual de primeira classe + configs globais | ⬜ não iniciada |

@@ -1,0 +1,154 @@
+{
+  "_meta": {
+    "arquivo": "referencia.json",
+    "papel": "Dimensões estáveis | pipes, etapas, réguas de probabilidade, times, faixas. Arquivo 3 da camada semântica (ADR-002).",
+    "versao": 1,
+    "atualizado_em": "2026-07-14",
+    "aviso": "Fonte única. Editar aqui e rodar `npm run check` (check-semantic valida consistência e drift contra o código). Fase 1: o código ainda NÃO consome este arquivo (consumo começa na Fase 2)."
+  },
+
+  "hubspot": {
+    "portal_id": "44715285",
+    "deal_link_template": "https://app.hubspot.com/contacts/44715285/deal/{id}"
+  },
+
+  "pipelines": {
+    "vendas": { "id": "782758156", "label": { "pt": "Vendas", "en": "Sales" }, "principal": true },
+    "bid": { "id": "894130090", "label": { "pt": "Bid", "en": "Bid" }, "principal": false }
+  },
+
+  "etapas": [
+    { "id": "1144746905", "pipeline": "vendas", "nome": "Reunião Agendada", "ordem": 1, "ativa_default": true, "final": false },
+    { "id": "1144746906", "pipeline": "vendas", "nome": "Diagnóstico", "ordem": 2, "ativa_default": true, "final": false },
+    { "id": "1144746908", "pipeline": "vendas", "nome": "Cotação", "ordem": 3, "ativa_default": true, "final": false },
+    { "id": "1144746909", "pipeline": "vendas", "nome": "Consultoria", "ordem": 4, "ativa_default": true, "final": false },
+    { "id": "1144746910", "pipeline": "vendas", "nome": "Negociação", "ordem": 5, "ativa_default": true, "final": false },
+    { "id": "1317543716", "pipeline": "vendas", "nome": "Stand by", "aliases": ["Standby"], "ordem": 6, "ativa_default": true, "final": false,
+      "notas": "Nome diverge entre consumidores do 1.0: forecast-table.js mapeia 'Stand by', funnel-stages.js mapeia 'Standby'. As réguas de probabilidade carregam as duas chaves por causa disso. Unificar na Fase 2." },
+    { "id": "1288611084", "pipeline": "vendas", "nome": "Implantação", "ordem": 7, "ativa_default": true, "final": false },
+    { "id": "1144844314", "pipeline": "vendas", "nome": "Ganho", "ordem": 8, "ativa_default": true, "final": true },
+    { "id": "1144746911", "pipeline": "vendas", "nome": "Perdido", "ordem": 9, "ativa_default": false, "final": true,
+      "notas": "Só entra nos payloads com ?includeLost=true (CRO Dashboard e conversões)." },
+
+    { "id": "1349620551", "pipeline": "bid", "nome": "Reunião Pré-RFP", "aliases": ["Reunião"], "ordem": 1, "ativa_default": true, "final": false,
+      "notas": "Premissas chamam de 'Reunião'; o código (forecast-table.js) mapeia 'Reunião Pré-RFP'." },
+    { "id": "1349620552", "pipeline": "bid", "nome": "Convite Enviado", "ordem": 2, "ativa_default": false, "final": false, "mapeada_no_1_0": false,
+      "notas": "Etapa existe no portal mas NÃO está no STAGE_MAP nem no ACTIVE_STAGE_IDS do 1.0 — deals aqui não aparecem em nenhum painel. Decidir inclusão na Fase 2." },
+    { "id": "1349620553", "pipeline": "bid", "nome": "Documentação", "ordem": 3, "ativa_default": false, "final": false, "mapeada_no_1_0": false,
+      "notas": "Idem Convite Enviado: fora do STAGE_MAP e do filtro de ativos do 1.0." },
+    { "id": "1349620554", "pipeline": "bid", "nome": "RFP Enviada", "ordem": 4, "ativa_default": false, "final": false, "mapeada_no_1_0": false,
+      "notas": "Idem Convite Enviado: fora do STAGE_MAP e do filtro de ativos do 1.0." },
+    { "id": "1363560722", "pipeline": "bid", "nome": "Cotação", "ordem": 5, "ativa_default": true, "final": false },
+    { "id": "1349620555", "pipeline": "bid", "nome": "Proposta Enviada", "ordem": 6, "ativa_default": true, "final": false },
+    { "id": "1349620556", "pipeline": "bid", "nome": "Consultoria", "ordem": 7, "ativa_default": true, "final": false },
+    { "id": "1353387279", "pipeline": "bid", "nome": "Negociação", "ordem": 8, "ativa_default": true, "final": false },
+    { "id": "1353457025", "pipeline": "bid", "nome": "Implantação", "ordem": 9, "ativa_default": true, "final": false },
+    { "id": "1353387280", "pipeline": "bid", "nome": "Ganho", "ordem": 10, "ativa_default": true, "final": true },
+    { "id": "1373066362", "pipeline": "bid", "nome": "Standby", "ordem": 11, "ativa_default": true, "final": false },
+    { "id": "1349620557", "pipeline": "bid", "nome": "Perdido", "ordem": 12, "ativa_default": false, "final": true, "mapeada_no_1_0": false,
+      "notas": "Sem stage id no LOST_STAGE_IDS do 1.0; perdidos do Bid são capturados via hs_is_closed_lost=true (segundo filterGroup do forecast-table.js)." }
+  ],
+
+  "reguas_probabilidade": {
+    "forecast_flat": {
+      "descricao": { "pt": "Régua flat do Forecast | premissas validadas exibidas na ajuda da aba /forecast", "en": "Forecast flat ruler | validated assumptions shown in /forecast help" },
+      "tipo": "forcada",
+      "valores": {
+        "Reunião Agendada": 0.06, "Diagnóstico": 0.06, "Cotação": 0.185790008,
+        "Proposta Enviada": 0.285, "Consultoria": 0.284954, "Negociação": 0.493,
+        "Implantação": 0.8, "Ganho": 1.0, "Standby": 0.12
+      },
+      "usada_em": ["public/forecast.html (STAGE_PROB_DEFAULT)", "public/forecast-stage.html (STAGE_PROB_DEFAULT)", "public/dashboard.html (NOVO_FC_STAGE_PROB_DEFAULT)", "public/ae.html (NOVO_FC_STAGE_PROB_DEFAULT)"]
+    },
+    "painel_default": {
+      "descricao": { "pt": "Régua default dos painéis CRO/Board/AE | fallback quando o C07 do funil não tem amostra", "en": "CRO/Board/AE panels default ruler | fallback when funnel C07 lacks sample" },
+      "tipo": "forcada",
+      "valores": {
+        "Diagnóstico": 0.06, "Cotação": 0.33, "Proposta Enviada": 0.285,
+        "Consultoria": 0.611, "Negociação": 0.42, "Implantação": 0.581,
+        "Ganho": 1.0, "Standby": 0.12, "Stand by": 0.12
+      },
+      "usada_em": ["api/forecast-table.js (STAGE_PROB)", "public/settings-modal.js", "public/board.html (NOVO_STAGE_PROB_DEFAULT)", "public/ae.html (NOVO_STAGE_PROB_DEFAULT)", "public/dashboard.html", "public/prob-engine.js (DEFAULT)"],
+      "divergencia_conhecida": "public/prob-engine.js usa Implantação=1.0 enquanto os demais consumidores usam 0.581 (detectado na extração da Fase 1, 2026-07-14). O prob-engine é o usado pelo Board; o comentário do próprio arquivo diz 'cópia verbatim do CRO', mas o valor difere. Resolver na Fase 2 (unificação) — até lá, registrado aqui para ninguém tratar como arredondamento."
+    },
+    "calculada_funil": {
+      "descricao": { "pt": "Probabilidade calculada em tempo real pelo funil (C07) | ganhos ÷ entraram na etapa, por pipeline", "en": "Real-time funnel-derived probability (C07) | won ÷ entered stage, per pipeline" },
+      "tipo": "calculada",
+      "regra": "prob_etapa_calculada",
+      "min_amostra": 20
+    }
+  },
+
+  "valor_por_vida": {
+    "descricao": { "pt": "R$/vida/mês usado na projeção de Diagnóstico (getVpv)", "en": "BRL/life/month used in Diagnóstico projection (getVpv)" },
+    "unidade": "BRL/vida/mês",
+    "faixas": [
+      { "vidas_max": 200, "valor": 36 },
+      { "vidas_max": 4999, "valor": 24 },
+      { "vidas_max": null, "valor": 12 }
+    ],
+    "override_local": "localStorage forecast_vpv_tiers (por navegador — vira dado manual de primeira classe na Fase 4)",
+    "notas": "Reunião Agendada usa R$24 fixo (não passa pelo getVpv) — ver regra receita_mensal_deal."
+  },
+
+  "porte": {
+    "corte_pme_vidas": 200,
+    "descricao": { "pt": "Corte de porte | PME < 200 vidas, não-PME >= 200 (base das % de corretagem)", "en": "Size cutoff | SMB < 200 lives, enterprise >= 200 (brokerage % basis)" },
+    "buckets_analise": [
+      { "label": "0-200", "min": 0, "max": 200 },
+      { "label": "200-2000", "min": 200, "max": 2000 },
+      { "label": ">2000", "min": 2000, "max": null }
+    ]
+  },
+
+  "tickets_cotacao": {
+    "pipeline": { "id": "847948895", "label": { "pt": "Pipeline de Cotação (tickets)", "en": "Quotation pipeline (tickets)" }, "objeto": "ticket" },
+    "notas": "Fluxo do painel Cotação via lib/hubspot.js (fetchCotacaoTickets). Nomes confirmados no portal em 2026-07-14.",
+    "etapas": [
+      { "id": "1262941018", "nome": "Novas Cotações", "ordem": 1, "final": false },
+      { "id": "1262941019", "nome": "Triagem", "ordem": 2, "final": false },
+      { "id": "1293302338", "nome": "Pendente", "ordem": 3, "final": false },
+      { "id": "1263003034", "nome": "Mapeamento de Mercado", "ordem": 4, "final": false },
+      { "id": "1263003035", "nome": "Criação da Apresentação", "ordem": 5, "final": false },
+      { "id": "1263003036", "nome": "Projeto Entregue", "ordem": 6, "final": true },
+      { "id": "1263003039", "nome": "Concluído", "ordem": 7, "final": true },
+      { "id": "1262941020", "nome": "(removida do portal)", "ordem": null, "final": null, "removida_do_portal": true,
+        "notas": "Etapa não existe mais no pipeline (verificado 2026-07-14), mas lib/hubspot.js ainda consulta hs_date_entered/exited dela. Limpeza candidata." },
+      { "id": "1263003037", "nome": "(removida do portal)", "ordem": null, "final": null, "removida_do_portal": true,
+        "notas": "Idem 1262941020." },
+      { "id": "1263003038", "nome": "(removida do portal)", "ordem": null, "final": null, "removida_do_portal": true,
+        "notas": "Idem 1262941020." }
+    ]
+  },
+
+  "times": {
+    "aes": [
+      { "nome": "André Pontes", "owner_id": "83684286" },
+      { "nome": "Guilherme Gabiatti", "owner_id": "83026278" },
+      { "nome": "Rafael Leite", "owner_id": "83126793" },
+      { "nome": "Fausto Haderspeck", "owner_id": "83375300" },
+      { "nome": "Juliana Dalberto", "owner_id": "83126792" },
+      { "nome": "Ágatta Marinho", "owner_id": "720522117" }
+    ],
+    "bdrs": [
+      { "nome": "Anderson Souza", "owner_id": "85310335" },
+      { "nome": "Cintia Rodrigues", "owner_id": "87213208" },
+      { "nome": "Gabriele Almeida", "owner_id": "83025540" },
+      { "nome": "Priscilla Feliciello", "owner_id": "83375302" },
+      { "nome": "Leticia Romão", "owner_id": "89781254" },
+      { "nome": "Allan Valença", "owner_id": "90688054" },
+      { "nome": "Bruna Reis", "owner_id": "91925085" },
+      { "nome": "Emanuelle Braga", "owner_id": "90688051" },
+      { "nome": "Felipe Andrade", "owner_id": "90540673" },
+      { "nome": "Giovana Rocha", "owner_id": "90141426" },
+      { "nome": "Marcelli Netto", "owner_id": "90540672" },
+      { "nome": "Thauan Pontes", "owner_id": "90540671" },
+      { "nome": "Yokyko Muramoto", "owner_id": "90540670" }
+    ]
+  },
+
+  "fuso": {
+    "canonico": "America/Sao_Paulo",
+    "notas": "ADR-011: todo corte temporal se calcula em America/Sao_Paulo, convertido uma vez na ingestão. O 1.0 ainda tem cortes via Date.now()/new Date() no fuso do servidor — convergência auditada na Fase 2+."
+  }
+}

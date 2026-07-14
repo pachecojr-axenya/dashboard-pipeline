@@ -1,0 +1,166 @@
+{
+  "_meta": {
+    "arquivo": "regras.json",
+    "papel": "Derivações | toda fórmula e cálculo, extraídos do código do 1.0 (não inventados). Arquivo 2 da camada semântica (ADR-002).",
+    "versao": 1,
+    "atualizado_em": "2026-07-14",
+    "aviso": "Fase 1 é EXTRAÇÃO: cada regra documenta o comportamento real do código em fonte_codigo, que segue sendo a implementação executada. A partir da Fase 2 o código passa a consumir daqui. vigente_desde por ADR-010.",
+    "tipos_validos": ["raw", "calculado", "manual", "hibrido"],
+    "status_validos": ["rascunho", "em_revisao", "validado", "descontinuado"]
+  },
+
+  "regras": {
+    "receita_regua_mensal": {
+      "label": { "pt": "Régua de receita mensal (mês n do contrato)", "en": "Monthly revenue ruler (contract month n)" },
+      "tipo": "calculado", "grain": "deal × mês do contrato",
+      "usa_dados": ["primeira_fatura", "modelo_remuneracao", "vidas", "possui_agenciamento"],
+      "usa_referencia": ["porte"],
+      "formula": "Fee por vida: total = pf todo mês. Corretagem +agenc: vidas<200 → meses 1-3 = pf, mês 4+ = pf×0,02 | vidas>=200 → mês 1 = pf×0,95, mês 2+ = pf×0,05. Corretagem -agenc: vidas<200 → pf×0,02 | vidas>=200 → pf×0,05, todo mês. Decompõe total = recorrente + pontual (pontual = max(0, total - recorrente)).",
+      "faltantes": "Sem pf ou sem modelo → null (deal fora da régua; contador 'X de Y completos')",
+      "fonte_codigo": ["public/revenue-engine.js:37 (calcReceitaMes)", "public/revenue-engine.js:23 (taxaRecorrente)"],
+      "owner": "revops", "status": "em_revisao", "vigente_desde": "2026-07-14"
+    },
+
+    "contrato_meses": {
+      "label": { "pt": "Meses de fatura do contrato", "en": "Contract invoice months" },
+      "tipo": "calculado", "grain": "deal",
+      "usa_dados": ["periodo_contrato"],
+      "formula": "Extrai o número do enum ('12 Meses'/'24 Meses'/'36 meses'). Sem período definido → 12 (anualiza).",
+      "fonte_codigo": ["public/revenue-engine.js:63 (contratoMeses)"],
+      "owner": "revops", "status": "em_revisao", "vigente_desde": "2026-07-14"
+    },
+
+    "tcv_bruto": {
+      "label": { "pt": "TCV bruto (valor total do contrato)", "en": "Gross TCV (total contract value)" },
+      "tipo": "calculado", "grain": "deal",
+      "usa_dados": ["primeira_fatura", "modelo_remuneracao", "vidas", "possui_agenciamento", "periodo_contrato"],
+      "formula": "Σ receita_regua_mensal(n) para n = 1..contrato_meses. Bruto, NÃO ponderado por probabilidade.",
+      "depende_de": ["receita_regua_mensal", "contrato_meses"],
+      "fonte_codigo": ["public/revenue-engine.js:73 (calcTCV)"],
+      "owner": "revops", "status": "em_revisao", "vigente_desde": "2026-07-14"
+    },
+
+    "receita_mensal_deal": {
+      "label": { "pt": "Receita mensal por deal | série Real e Probabilizada", "en": "Monthly revenue per deal | Actual and Weighted series" },
+      "tipo": "hibrido", "grain": "deal × mês calendário",
+      "usa_dados": ["is_poc", "faturamento_manual", "vidas", "colaboradores", "createdate", "modelo_remuneracao", "vigencia", "data_prevista_para_receita", "primeira_fatura", "possui_agenciamento", "vencimento_primeira_fatura"],
+      "usa_referencia": ["valor_por_vida", "etapas"],
+      "precedencia": "1º É POC? → série zerada. 2º Faturamento manual existe → substitui INTEGRALMENTE a régua (probAdj=1). 3º Senão → régua por etapa abaixo.",
+      "formula": "Por etapa: Diagnóstico → (vidas||colaboradores) × VPV(faixa); início = createdate + delay (vidas<=200: 9m | <=4999: 14m | senão 18m), com piso na referenceDate. Reunião Agendada → (vidas||colaboradores) × R$24; início = createdate + 15m, sem piso. Cotação/Consultoria/Negociação → início por modelo (corretagem: vigência futura+2m senão prevista+2m | fee: prevista+2m | sem modelo: prevista) e valor = receita_regua_mensal(n), cap 24 meses. Demais etapas → início na data prevista, receita_regua_mensal(n), cap 24 meses. Probabilizada = valor × probAdj (regra prob_final_deal ou régua da página).",
+      "ponto_no_tempo": "referenceDate injetável via ForecastEngine.config() (Delta 1A); sem ela, ancora em hoje",
+      "fonte_codigo": ["public/forecast-engine.js:44 (dealMonthly)", "public/forecast-engine.js:32 (_refNow)"],
+      "owner": "revops", "status": "em_revisao", "vigente_desde": "2026-07-14",
+      "notas": "É a Regra primária nº 3 do STATUS_LOG em forma de catálogo: toda receita de qualquer painel vem desta série (Real e Probabilizada)."
+    },
+
+    "cohorts_bdr": {
+      "label": { "pt": "Projeção de originação BDR (coortes)", "en": "BDR origination projection (cohorts)" },
+      "tipo": "hibrido", "grain": "mês de originação",
+      "usa_dados": ["premissas_bdr_originacao"],
+      "formula": "Por mês jul/26..jan/28: vidas = 4×34.000 (antigos) + 8×rampa(mês). Receita da coorte = vidas × R$24, iniciando originação+15m, probabilizada pela conversão MQL.",
+      "fonte_codigo": ["public/forecast-engine.js:117 (bdrCohorts)", "public/forecast-engine.js:110 (bdrNewVidasPer)"],
+      "owner": "cro", "status": "em_revisao", "vigente_desde": "2026-07-14",
+      "notas": "Premissas manuais hardcoded (ver dados.premissas_bdr_originacao) — regularizar na Fase 4."
+    },
+
+    "prob_etapa_calculada": {
+      "label": { "pt": "Probabilidade de ganho por etapa, calculada do funil (C07)", "en": "Funnel-derived win probability per stage (C07)" },
+      "tipo": "calculado", "grain": "etapa × pipeline",
+      "usa_dados": ["dealstage", "is_closed_won"],
+      "usa_referencia": ["etapas", "reguas_probabilidade.calculada_funil"],
+      "formula": "Por pipeline: prob(etapa) = ganhos_absolutos ÷ deals_que_entraram_na_etapa (payload /api/funnel-stages via propertiesWithHistory). Etapa com amostra < 20 não gera probabilidade (cai na régua default). Clamp [0,1].",
+      "fonte_codigo": ["public/prob-engine.js:47 (funnelDerivedProbPipe)"],
+      "owner": "revops", "status": "em_revisao", "vigente_desde": "2026-07-14"
+    },
+
+    "prob_final_deal": {
+      "label": { "pt": "Probabilidade final do deal (com ajuste do AE)", "en": "Final deal probability (with AE adjustment)" },
+      "tipo": "calculado", "grain": "deal",
+      "usa_dados": ["dealstage", "pipeline", "probabilidade_ae", "prob_override_etapa"],
+      "usa_referencia": ["reguas_probabilidade.painel_default", "reguas_probabilidade.calculada_funil"],
+      "precedencia": "prob de etapa = override manual (por pipeline) > calculada do funil (C07, por pipeline) > régua painel_default",
+      "formula": "final = prob_etapa, ajustada pela prob do AE só quando diverge >= 30pp: AE <= etapa-0,3 → etapa×0,9 | AE >= etapa+0,3 → etapa×1,1 | senão = etapa.",
+      "fonte_codigo": ["public/prob-engine.js:62 (stageProbFor)", "public/prob-engine.js:77 (calcProbInfo)"],
+      "owner": "revops", "status": "em_revisao", "vigente_desde": "2026-07-14",
+      "notas": "ADR-008 (toggle global forçada × calculada) muda a precedência para uma escolha explícita do usuário na Fase 4. Divergência conhecida do default de Implantação registrada em referencia.reguas_probabilidade.painel_default."
+    },
+
+    "filtro_deals_ativos": {
+      "label": { "pt": "Filtro de deals ativos (payload principal)", "en": "Active deals filter (main payload)" },
+      "tipo": "calculado", "grain": "consulta",
+      "usa_dados": ["pipeline", "dealstage", "is_closed_lost"],
+      "usa_referencia": ["pipelines.vendas", "pipelines.bid", "etapas"],
+      "filtro": "pipeline IN (Vendas, Bid) AND dealstage IN etapas com ativa_default=true. Perdidos só com ?includeLost=true (2º filterGroup: hs_is_closed_lost=true nos dois pipes — é o que pega o Perdido do Bid). Closed-lost sem stage mapeado → nome 'Perdido'.",
+      "fonte_codigo": ["api/forecast-table.js:40 (ACTIVE_STAGE_IDS)", "api/forecast-table.js:280 (fetchDeals)"],
+      "owner": "revops", "status": "em_revisao", "vigente_desde": "2026-07-14",
+      "notas": "ADR-007 (etapas ativas configuráveis pelo usuário, especialmente Reunião e Standby) transforma este filtro fixo em config global na Fase 4."
+    },
+
+    "dedup_fee_corretagem": {
+      "label": { "pt": "Dedup de deals duplicados (fee × corretagem)", "en": "Duplicate deal dedup (fee × brokerage)" },
+      "tipo": "calculado", "grain": "cliente",
+      "usa_dados": ["dealname", "modelo_remuneracao"],
+      "formula": "Mesmo cliente com deal de Fee por vida E de Corretagem conta UMA vez: vale o de menor TCV de 12 meses e prazo de pagamento mais longo (worst case).",
+      "fonte_codigo": ["public/forecast.html (lógica de dedup do painel Forecast)"],
+      "owner": "revops", "status": "em_revisao", "vigente_desde": "2026-07-14"
+    },
+
+    "arr_estimado_fallback": {
+      "label": { "pt": "ARR com fallback", "en": "ARR with fallback" },
+      "tipo": "calculado", "grain": "deal",
+      "usa_dados": ["arr_estimado", "primeira_fatura"],
+      "formula": "arr_estimado se > 0; senão primeira_fatura × 12; senão null.",
+      "fonte_codigo": ["api/forecast-table.js:426"],
+      "owner": "revops", "status": "em_revisao", "vigente_desde": "2026-07-14",
+      "notas": "⚠ Para Corretagem o fallback pf×12 superestima (pf é o prêmio, não a receita Axenya). Herdado do 1.0; avaliar na validação."
+    },
+
+    "probabilidade_deal_fallback": {
+      "label": { "pt": "Probabilidade do deal com fallback", "en": "Deal probability with fallback" },
+      "tipo": "calculado", "grain": "deal",
+      "usa_dados": ["probabilidade_ae", "probabilidade_etapa_hs"],
+      "formula": "probabilidade_ae normalizada (>1 → ÷100) se existir; senão hs_deal_stage_probability normalizada.",
+      "fonte_codigo": ["api/forecast-table.js:420"],
+      "owner": "revops", "status": "em_revisao", "vigente_desde": "2026-07-14"
+    },
+
+    "quarter_fallback": {
+      "label": { "pt": "Quarter com fallback pela data prevista", "en": "Quarter with expected-date fallback" },
+      "tipo": "calculado", "grain": "deal",
+      "usa_dados": ["quarter_fechamento", "data_prevista_para_receita"],
+      "formula": "quarter_fechamento quando válido (contém ano); senão derivado de data_prevista_para_receita (Q = mês÷3 + 1).",
+      "fonte_codigo": ["api/forecast-table.js:202 (quarterEmpty)", "api/forecast-table.js:209 (getQuarterFromDate)"],
+      "owner": "revops", "status": "em_revisao", "vigente_desde": "2026-07-14"
+    },
+
+    "conversao_ajustada": {
+      "label": { "pt": "Taxa de conversão ajustada", "en": "Adjusted conversion rate" },
+      "tipo": "calculado", "grain": "período × etapa",
+      "usa_dados": ["is_closed_won", "is_closed_lost"],
+      "formula": "ganhos ÷ (ganhos + perdidos) — só deals FINALIZADOS. Remove o pipe em aberto e não depende do ciclo de vendas. Premissa: ~1/3 dos deals históricos ainda ativos converterão na mesma proporção dos finalizados (projeta fechamentos futuros do pipe aberto).",
+      "fonte_codigo": ["conceito do CRO (README §3); implementações no C06/C07 e cards de conversão"],
+      "owner": "cro", "status": "em_revisao", "vigente_desde": "2026-07-14",
+      "notas": "Cards que calculam 'win rate' como ganhos ÷ (ganhos + abertos) — N09/N12 da auditoria — VIOLAM esta regra (ignoram perdidos) e estão 🔴."
+    },
+
+    "idades_em_dias": {
+      "label": { "pt": "Idades em dias (no pipe, sem atividade, por etapa)", "en": "Ages in days (in pipe, inactive, per stage)" },
+      "tipo": "calculado", "grain": "deal",
+      "usa_dados": ["createdate", "ultima_atividade", "stage_entered", "stage_exited"],
+      "formula": "dias_no_pipe = hoje - createdate. dias_sem_atividade = hoje - ultima_atividade. stage_days[etapa] = (saída || hoje) - entrada, piso 0.",
+      "fonte_codigo": ["api/forecast-table.js:487", "api/forecast-table.js:135 (computeStageDays)"],
+      "owner": "revops", "status": "em_revisao", "vigente_desde": "2026-07-14",
+      "notas": "⚠ 'hoje' via Date.now() no fuso do servidor — caso do ADR-011 (fuso) a convergir."
+    },
+
+    "capital_a_risco": {
+      "label": { "pt": "Capital a risco (Implantação = Ganho)", "en": "Capital at risk (Implementation = Won)" },
+      "tipo": "calculado", "grain": "período",
+      "usa_dados": ["dealstage"],
+      "usa_referencia": ["etapas"],
+      "formula": "Toggle global 'Implantação = Ganho' (ON por default): na régua geral implantação JÁ é ganho (não se perde conta implantada). A distinção OFF existe só para enxergar capital a risco até a assinatura.",
+      "fonte_codigo": ["public/dashboard.html (drawer de configurações)", "public/settings-modal.js"],
+      "owner": "cro", "status": "em_revisao", "vigente_desde": "2026-07-14"
+    }
+  }
+}

@@ -4,6 +4,17 @@ Recurring every 20min (job `55d3b136`). Purpose: identify and close gaps so the 
 
 ---
 
+### Dashboard 2.0 | Fase 1 | camada semântica extraída (3 arquivos base) (2026-07-14)
+
+> Catálogo máquina-legível criado por EXTRAÇÃO do 1.0 — nenhum painel/engine/api tocado (diff: `semantic/`, `scripts/`, `docs/`, 1 linha no `package.json`). O código ainda NÃO consome o catálogo (isso é a Fase 2).
+
+- **`semantic/referencia.json`:** pipes Vendas (9 etapas) + Bid (12 etapas, incl. as 4 fora do STAGE_MAP do 1.0), tickets Cotação (7 etapas confirmadas no portal + 3 que o `lib/hubspot.js` ainda consulta mas foram REMOVIDAS do portal), réguas de probabilidade (flat do Forecast + default dos painéis + calculada C07), VPV, porte, times AE/BDR com IDs, fuso canônico.
+- **`semantic/dados.json`:** ~45 dados com label PT/EN, unidade, origem (`fonte`/`manual`), dono. Dados manuais com persistência declarada — incl. `premissas_bdr_originacao` (hardcoded no forecast-engine, regularizar na Fase 4) e `meta_receita`/`vpv_tiers`/`prob_override_etapa` (localStorage por navegador, migrar p/ KV).
+- **`semantic/regras.json`:** 14 regras extraídas (régua de remuneração, receita_mensal_deal = Regra primária nº 3 em catálogo, prob C07, prob final ±10%, filtro de ativos, dedup fee×corretagem, conversão ajustada, etc.), todas com `tipo`, `vigente_desde`, `status: em_revisao` e ponteiro `fonte_codigo`.
+- **`scripts/check-semantic.js`** (plugado no `npm run check`): sintaxe + consistência interna + drift contra o código (ids hardcoded vigiados em forecast-table/funnel-stages/snapshot-format/hubspot). **`scripts/semantic-view.js`** gera `docs/dashboard-2.0/catalogo.md` (visão legível, só leitura).
+- **Achados da extração (registrados no catálogo, não mascarados):** (1) `prob-engine.js` usa Implantação=1.0 vs 0.581 dos demais consumidores da régua default; (2) 3 etapas de ticket removidas do portal ainda consultadas; (3) 4 etapas do Bid (Convite/Documentação/RFP/Perdido) fora do payload do 1.0; (4) nome 'Stand by'×'Standby' diverge entre forecast-table e funnel-stages; (5) fallback ARR pf×12 superestima Corretagem.
+- Gate da fase: `npm run check` PASS ✅; falta revisão do dono via `catalogo.md`.
+
 ### Dashboard 2.0 | Fase 0 | charter + ADRs + plano de migração (2026-07-14)
 
 > Kickoff do projeto **Dashboard 2.0** dentro do repo, estratégia strangler fig (nada do 1.0 é reescrito; camadas novas nascem por baixo com gate de paridade). Só documentos, zero código.
