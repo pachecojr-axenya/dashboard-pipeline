@@ -10,12 +10,13 @@
 const { setCORSHeaders, requireAuth, methodCheck } = require('./_helpers');
 
 const CACHE_TTL_MS = 10 * 60 * 1000;
-const DEFAULT_DAYS = 90;
+const DEFAULT_DAYS = 30;
 const MIN_DAYS = 7;
 const MAX_DAYS = 365;
 const MAX_FLOWS = 80;
 const MAX_SESSIONS_PER_FLOW = 100;
-const MAX_HISTORIES = 220;
+const MAX_SESSION_PAGES_PER_FLOW = 3;
+const MAX_HISTORIES = 1200;
 const BUILD_DEADLINE_MS = 58000;
 const TREBLE_BASE = 'https://main.treble.ai';
 
@@ -112,7 +113,8 @@ function redactPII(value) {
     .replace(/\b\d{14}\b/g, '[cnpj redigido]')
     .replace(/\b\d{3}\.\d{3}\.\d{3}-\d{2}\b/g, '[cpf redigido]')
     .replace(/\b\d{11}\b/g, '[cpf redigido]')
-    .replace(/\b(ol[aá]|oi|prezad[oa])\s+([A-ZÁÉÍÓÚÂÊÔÃÕÇ][\wÁÉÍÓÚÂÊÔÃÕÇáéíóúâêôãõç]+)(\s+[A-ZÁÉÍÓÚÂÊÔÃÕÇ][\wÁÉÍÓÚÂÊÔÃÕÇáéíóúâêôãõç]+)?\b/gi, '$1 [nome redigido]');
+    .replace(/\b(ol[aá]|oi|prezad[oa]|bom dia|boa tarde|boa noite)\s+([A-ZÁÉÍÓÚÂÊÔÃÕÇ][\wÁÉÍÓÚÂÊÔÃÕÇáéíóúâêôãõç]+)(\s+[A-ZÁÉÍÓÚÂÊÔÃÕÇ][\wÁÉÍÓÚÂÊÔÃÕÇáéíóúâêôãõç]+)?\b/gi, '$1 [nome redigido]')
+    .replace(/\b(tudo bem,?\s+)([A-ZÁÉÍÓÚÂÊÔÃÕÇ][\wÁÉÍÓÚÂÊÔÃÕÇáéíóúâêôãõç]+)(\s+[A-ZÁÉÍÓÚÂÊÔÃÕÇ][\wÁÉÍÓÚÂÊÔÃÕÇáéíóúâêôãõç]+)?\b/gi, '$1[nome redigido]');
 }
 
 function safeLabel(value, fallback) {
@@ -140,6 +142,22 @@ function copyFamily(name) {
   if (/persona|modelo/.test(s)) return 'Modelo por persona';
   if (/workflow/.test(s)) return 'Workflow automatizado';
   return 'Sem família de copy';
+}
+
+function inferAudience(name, copy) {
+  const s = (String(name || '') + ' ' + String(copy || '')).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  if (/beneficio|beneficios|plano de saude|saude corporativa|corretora|broker|seguro/.test(s)) return 'Benefícios | Saúde corporativa';
+  if (/rh|people|pessoas|recursos humanos|dp\b|departamento pessoal|folha|admissao|demissao/.test(s)) return 'RH | People | DP';
+  if (/sst|ocupacional|seguranca do trabalho|nr-01|nr01|aso|medicina/.test(s)) return 'SST | Saúde ocupacional';
+  if (/financeiro|cfo|compras|suprimentos|procurement|controladoria/.test(s)) return 'Financeiro | Compras';
+  if (/juridico|compliance|legal|lgpd|risco/.test(s)) return 'Jurídico | Compliance';
+  if (/ceo|founder|diretor|diretoria|vp\b|chro|c-level|c level/.test(s)) return 'Executivo | C-level';
+  if (/operadora|unimed|hapvida|bradesco|sulamerica|amil|notredame|intermedica/.test(s)) return 'Operadoras | Ecossistema saúde';
+  return 'Público não inferido';
+}
+
+function semanticGroup(family, audience, reasonLabel) {
+  return [family || 'Sem família de copy', audience || 'Público não inferido', reasonLabel || 'Indeterminado'].join(' | ');
 }
 
 function tsToIso(v) {
@@ -172,6 +190,10 @@ function summarizeHistory(history) {
   const read = outbound.some(m => m.read_at != null);
   const replied = inbound.length > 0;
   const sent = outbound.length > 0;
+  const sentAt = hsm ? tsToIso(hsm.created_at) : (outbound[0] ? tsToIso(outbound[0].created_at) : null);
+  const deliveredAt = (outbound.find(m => m.delivered_at != null) || {}).delivered_at;
+  const readAt = (outbound.find(m => m.read_at != null) || {}).read_at;
+  const repliedAt = inbound[0] ? tsToIso(inbound[0].created_at) : null;
   let reason = 'unknown';
   if (!messages.length) reason = 'no_history';
   else if (!sent) reason = 'no_outbound';
@@ -180,7 +202,8 @@ function summarizeHistory(history) {
   else if (!read) reason = 'delivered_not_read';
   else reason = 'read_no_reply';
   const text = hsm && hsm.text ? redactPII(hsm.text).slice(0, 260) : 'Copy não disponível na API';
-  return { messages, outbound, inbound, sent, delivered, read, replied, reason, copy: text };
+  const responseLatencyHours = sentAt && repliedAt ? Math.max(0, Math.round((new Date(repliedAt).getTime() - new Date(sentAt).getTime()) / 360000) / 10) : null;
+  return { messages, outbound, inbound, sent, delivered, read, replied, reason, copy: text, sentAt, deliveredAt: tsToIso(deliveredAt), readAt: tsToIso(readAt), repliedAt, responseLatencyHours };
 }
 
 function pct(num, den) {
@@ -218,8 +241,17 @@ function finishAgg(a) {
   });
 }
 
+function personLabel(session, registry) {
+  const user = session && session.user && typeof session.user === 'object' ? session.user : {};
+  const raw = (user.country_code || '') + '|' + (user.cellphone || '');
+  const key = raw === '|' ? 'session|' + String(session && session.id || '') : raw;
+  if (!registry[key]) registry[key] = 'Pessoa ' + String(Object.keys(registry).length + 1).padStart(3, '0');
+  return registry[key];
+}
+
 function buildRows(flows, sessionsByFlow, historiesBySession) {
   const rows = [];
+  const people = {};
   flows.forEach(flow => {
     const label = flowLabel(flow);
     const bdr = inferBdr(label);
@@ -228,23 +260,36 @@ function buildRows(flows, sessionsByFlow, historiesBySession) {
     sessions.forEach(session => {
       const history = historiesBySession[session.id] || [];
       const h = summarizeHistory(history);
+      const audience = inferAudience(label, h.copy);
+      const reasonMeta = REASON_META[h.reason] || REASON_META.unknown;
       rows.push({
         id: 's' + rows.length,
+        diagnostic: false,
         flowId: String(flow.id),
         flow: label,
         bdr,
         bdrSource: 'Inferido pelo nome do flow | ajustar nomenclatura na Treble para 100% de precisão',
         family,
+        audience,
+        semanticGroup: semanticGroup(family, audience, reasonMeta.label),
+        person: personLabel(session, people),
         createdAt: tsToIso(session.created_at),
+        createdDay: dayKey(tsToIso(session.created_at)),
         finishedAt: tsToIso(session.finished_at),
+        sentAt: h.sentAt,
+        deliveredAt: h.deliveredAt,
+        readAt: h.readAt,
+        repliedAt: h.repliedAt,
+        responseLatencyHours: h.responseLatencyHours,
         sent: h.sent,
         delivered: h.delivered,
         read: h.read,
         replied: h.replied,
         reason: h.reason,
-        reasonLabel: (REASON_META[h.reason] || REASON_META.unknown).label,
-        severity: (REASON_META[h.reason] || REASON_META.unknown).severity,
-        action: (REASON_META[h.reason] || REASON_META.unknown).action,
+        reasonLabel: reasonMeta.label,
+        severity: reasonMeta.severity,
+        action: reasonMeta.action,
+        nonDeliveryReason: h.reason === 'not_delivered' ? 'Sem delivered_at no histórico da mensagem | validar HSM, opt-in, linha e webhook deployment.failure' : '',
         copy: h.copy,
         outboundCount: h.outbound.length,
         inboundCount: h.inbound.length,
@@ -256,18 +301,24 @@ function buildRows(flows, sessionsByFlow, historiesBySession) {
 }
 
 function aggregate(rows) {
-  const byFlow = {}, byBdr = {}, byFamily = {}, byDay = {}, byReason = {};
-  rows.forEach(r => {
+  const byFlow = {}, byBdr = {}, byFamily = {}, byDay = {}, byReason = {}, byAudience = {}, bySemantic = {}, byPerson = {};
+  const actualRows = rows.filter(r => !r.diagnostic);
+  actualRows.forEach(r => {
     addAgg(byFlow, r.flow, r.flow, r);
     addAgg(byBdr, r.bdr, r.bdr, r);
     addAgg(byFamily, r.family, r.family, r);
     addAgg(byDay, dayKey(r.createdAt), dayKey(r.createdAt), r);
+    addAgg(byAudience, r.audience, r.audience, r);
+    addAgg(bySemantic, r.semanticGroup, r.semanticGroup, r);
+    addAgg(byPerson, r.person, r.person, r);
+  });
+  rows.forEach(r => {
     if (!byReason[r.reason]) byReason[r.reason] = { key: r.reason, label: r.reasonLabel, count: 0, severity: r.severity, action: r.action };
     byReason[r.reason].count += 1;
   });
   const arr = obj => Object.keys(obj).map(k => finishAgg(obj[k])).sort((a, b) => b.sessions - a.sessions || a.label.localeCompare(b.label));
   const reasonRows = Object.keys(byReason).map(k => byReason[k]).sort((a, b) => b.count - a.count);
-  const summary = finishAgg(rows.reduce((a, r) => {
+  const summary = finishAgg(actualRows.reduce((a, r) => {
     a.sessions += 1;
     if (r.sent) a.sent += 1;
     if (r.delivered) a.delivered += 1;
@@ -281,7 +332,25 @@ function aggregate(rows) {
   summary.deliveredNotRead = rows.filter(r => r.reason === 'delivered_not_read').length;
   summary.readNoReply = rows.filter(r => r.reason === 'read_no_reply').length;
   summary.noHistory = rows.filter(r => r.reason === 'no_history').length;
-  return { summary, byFlow: arr(byFlow), byBdr: arr(byBdr), byFamily: arr(byFamily), byDay: arr(byDay).sort((a, b) => a.key.localeCompare(b.key)), byReason: reasonRows };
+  summary.people = Object.keys(byPerson).length;
+  return { summary, byFlow: arr(byFlow), byBdr: arr(byBdr), byFamily: arr(byFamily), byDay: arr(byDay).sort((a, b) => a.key.localeCompare(b.key)), byReason: reasonRows, byAudience: arr(byAudience), bySemantic: arr(bySemantic), byPerson: arr(byPerson) };
+}
+
+async function fetchSessionsForFlow(token, flow, since, until) {
+  const out = [];
+  let next = '';
+  let truncated = false;
+  for (let page = 0; page < MAX_SESSION_PAGES_PER_FLOW; page++) {
+    const params = '&since=' + since + '&until=' + until + (next ? '&next_id=' + encodeURIComponent(next) : '');
+    const path = '/devapi/poll/' + encodeURIComponent(flow.id) + '/sessions?limit=' + MAX_SESSIONS_PER_FLOW + params;
+    const resp = await trebleGet(token, path);
+    const results = Array.isArray(resp.results) ? resp.results : [];
+    results.forEach(s => { if (s && s.id) out.push(s); });
+    next = resp.next_id ? String(resp.next_id) : '';
+    if (!next) break;
+    if (page === MAX_SESSION_PAGES_PER_FLOW - 1) truncated = true;
+  }
+  return { results: out, truncated };
 }
 
 async function buildPayload(token, days) {
@@ -294,11 +363,9 @@ async function buildPayload(token, days) {
   let sessionsTruncated = false;
   await Promise.all(flows.map(async flow => {
     try {
-      const path = '/devapi/poll/' + encodeURIComponent(flow.id) + '/sessions?limit=' + MAX_SESSIONS_PER_FLOW + '&since=' + since + '&until=' + until;
-      const resp = await trebleGet(token, path);
-      const results = Array.isArray(resp.results) ? resp.results : [];
-      if (resp.next_id) sessionsTruncated = true;
-      sessionsByFlow[flow.id] = results.filter(s => s && s.id).slice(0, MAX_SESSIONS_PER_FLOW);
+      const resp = await fetchSessionsForFlow(token, flow, since, until);
+      if (resp.truncated) sessionsTruncated = true;
+      sessionsByFlow[flow.id] = resp.results;
     } catch (e) {
       sessionsByFlow[flow.id] = [];
       flowErrors.push({ flow: flow.name, reason: 'flow_api_error' });
@@ -325,13 +392,20 @@ async function buildPayload(token, days) {
   const rows = buildRows(flows, sessionsByFlowLimited, historiesBySession);
   flowErrors.forEach(err => rows.push({
     id: 'flow_error_' + rows.length,
+    diagnostic: true,
     flowId: 'error',
     flow: err.flow,
     bdr: inferBdr(err.flow),
     bdrSource: 'Inferido pelo nome do flow | ajustar nomenclatura na Treble para 100% de precisão',
     family: copyFamily(err.flow),
     createdAt: null,
+    createdDay: 'Sem data',
     finishedAt: null,
+    sentAt: null,
+    deliveredAt: null,
+    readAt: null,
+    repliedAt: null,
+    responseLatencyHours: null,
     sent: false,
     delivered: false,
     read: false,
@@ -340,6 +414,10 @@ async function buildPayload(token, days) {
     reasonLabel: REASON_META.flow_api_error.label,
     severity: REASON_META.flow_api_error.severity,
     action: REASON_META.flow_api_error.action,
+    nonDeliveryReason: 'Erro ao consultar sessões do flow na API Treble',
+    audience: inferAudience(err.flow, ''),
+    semanticGroup: semanticGroup(copyFamily(err.flow), inferAudience(err.flow, ''), REASON_META.flow_api_error.label),
+    person: 'Pessoa não materializada',
     copy: 'Flow não retornou sessões na API Treble nesta consulta',
     outboundCount: 0,
     inboundCount: 0,
@@ -359,20 +437,28 @@ async function buildPayload(token, days) {
       cacheTtlMinutes: Math.round(CACHE_TTL_MS / 60000),
       flowsScanned: flows.length,
       sessionsFound: allSessions.length,
-      sessionsAnalyzed: rows.length,
+      sessionsAnalyzed: limited.length,
+      rowsReturned: rows.length,
+      diagnosticRows: flowErrors.length,
       flowErrors: flowErrors.length,
       sessionsTruncated: sessionsTruncated || allSessions.length > MAX_HISTORIES,
       maxHistories: MAX_HISTORIES,
+      sessionPagesPerFlow: MAX_SESSION_PAGES_PER_FLOW,
       labelModel: 'Flow vem do nome real da conversa Treble | BDR e família de copy são inferidos do nome do flow',
-      privacy: 'Sem telefone, email, documento, session_id ou payload bruto | copy outbound redigida por heurística | inbound ocultado por classificação de resposta',
+      privacy: 'Sem telefone, email, documento, session_id ou payload bruto | pessoas anonimizadas como Pessoa 001 | copy outbound redigida por heurística | inbound ocultado por classificação de resposta',
       limitations: [
         'Motivo é diagnóstico observado por entrega, leitura e resposta | não é motivo Meta bruto.',
         'Falhas de deployment com failure_reason exigem webhook deployment.failure ativo.',
-        'Labels de BDR dependem de nomenclatura do flow na Treble.'
+        'Labels de BDR, público e agrupamento semântico dependem de nome do flow e copy outbound.'
       ]
     },
+    apiMap: [
+      { step: 1, method: 'GET', endpoint: '/poll/api/all', purpose: 'Lista flows/polls e nomes reais', returns: 'Array com id, name e settings', usedFor: 'Flow, BDR inferido, família de copy e público' },
+      { step: 2, method: 'GET', endpoint: '/devapi/poll/{poll_id}/sessions', purpose: 'Lista sessões por flow com paginação', returns: 'results[] com id, created_at, finished_at e user', usedFor: 'Volume, linha do tempo e pessoa anonimizada' },
+      { step: 3, method: 'GET', endpoint: '/devapi/session/{session_id}/history', purpose: 'Lê eventos e mensagens de uma sessão', returns: 'MESSAGE.message com sender, type, text, delivered_at e read_at', usedFor: 'Funil enviada-entregue-lida-respondida e motivo observado' }
+    ],
     messages: rows,
-    flows: flows.map(f => ({ label: f.name, bdr: inferBdr(f.name), family: copyFamily(f.name) }))
+    flows: flows.map(f => ({ label: f.name, bdr: inferBdr(f.name), family: copyFamily(f.name), audience: inferAudience(f.name, '') }))
   }, aggs);
 }
 
@@ -385,7 +471,7 @@ module.exports = async function handler(req, res) {
   catch (e) { return res.status(503).json({ success: false, error: 'Treble API não configurada no servidor.' }); }
   const days = clampDays(req.query && req.query.days);
   const refresh = String((req.query && req.query.refresh) || '') === 'true';
-  const key = 'v2:days:' + days;
+  const key = 'v3:days:' + days;
   const cached = cacheByKey[key];
   if (!refresh && cached && Date.now() - cached.time < CACHE_TTL_MS) {
     return res.status(200).json(Object.assign({}, cached.payload, { cached: true, stale: false }));

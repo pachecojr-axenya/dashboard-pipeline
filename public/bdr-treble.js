@@ -12,13 +12,13 @@
 
   function loadFilters() {
     try {
-      var saved = JSON.parse(localStorage.getItem('bdr_treble_filters_v2') || '{}');
-      return { days: saved.days || '90', bdr: saved.bdr || '', flow: saved.flow || '', family: saved.family || '', reason: saved.reason || '', q: saved.q || '' };
+      var saved = JSON.parse(localStorage.getItem('bdr_treble_filters_v3') || '{}');
+      return { days: saved.days || '30', bdr: saved.bdr || '', flow: saved.flow || '', family: saved.family || '', audience: saved.audience || '', reason: saved.reason || '', q: saved.q || '' };
     } catch (e) {
-      return { days: '90', bdr: '', flow: '', family: '', reason: '', q: '' };
+      return { days: '30', bdr: '', flow: '', family: '', audience: '', reason: '', q: '' };
     }
   }
-  function saveFilters() { try { localStorage.setItem('bdr_treble_filters_v2', JSON.stringify(state.filters)); } catch (e) {} }
+  function saveFilters() { try { localStorage.setItem('bdr_treble_filters_v3', JSON.stringify(state.filters)); } catch (e) {} }
 
   function setState(type, title, text) {
     var el = $('state'), content = $('content');
@@ -48,14 +48,15 @@
     h += '<div class="filter"><label>BDR inferido</label><select id="f-bdr">' + opts(unique(state.rows, 'bdr'), state.filters.bdr, 'Todos') + '</select></div>';
     h += '<div class="filter"><label>Flow Treble</label><select id="f-flow">' + opts(unique(state.rows, 'flow'), state.filters.flow, 'Todos') + '</select></div>';
     h += '<div class="filter"><label>Família de copy</label><select id="f-family">' + opts(unique(state.rows, 'family'), state.filters.family, 'Todas') + '</select></div>';
+    h += '<div class="filter"><label>Público inferido</label><select id="f-audience">' + opts(unique(state.rows, 'audience'), state.filters.audience, 'Todos') + '</select></div>';
     h += '<div class="filter"><label>Motivo observado</label><select id="f-reason">' + opts(unique(state.rows, 'reasonLabel'), state.filters.reason, 'Todos') + '</select></div>';
     h += '<div class="filter"><label>Busca</label><input id="f-q" value="' + esc(state.filters.q) + '" placeholder="flow, BDR, motivo ou copy"></div>';
     h += '<div class="filter" style="display:flex;align-items:end;gap:.5rem"><button class="btn" id="f-clear">Limpar</button><button class="btn primary" id="f-refresh">Refresh</button></div>';
     el.innerHTML = h;
     function bind(id, key) { var x = $(id); if (x) x.onchange = function () { state.filters[key] = x.value; saveFilters(); render(); }; }
-    bind('f-bdr', 'bdr'); bind('f-flow', 'flow'); bind('f-family', 'family'); bind('f-reason', 'reason');
+    bind('f-bdr', 'bdr'); bind('f-flow', 'flow'); bind('f-family', 'family'); bind('f-audience', 'audience'); bind('f-reason', 'reason');
     $('f-q').oninput = function () { state.filters.q = this.value; saveFilters(); render(); };
-    $('f-clear').onclick = function () { state.filters = { days: state.filters.days, bdr: '', flow: '', family: '', reason: '', q: '' }; saveFilters(); render(); };
+    $('f-clear').onclick = function () { state.filters = { days: state.filters.days, bdr: '', flow: '', family: '', audience: '', reason: '', q: '' }; saveFilters(); render(); };
     $('f-refresh').onclick = function () { api.load(true); };
     Array.prototype.forEach.call(el.querySelectorAll('.period-chip'), function (b) { b.onclick = function () { state.filters.days = b.getAttribute('data-days'); saveFilters(); api.load(false); }; });
   }
@@ -66,18 +67,25 @@
       if (state.filters.bdr && m.bdr !== state.filters.bdr) return false;
       if (state.filters.flow && m.flow !== state.filters.flow) return false;
       if (state.filters.family && m.family !== state.filters.family) return false;
+      if (state.filters.audience && m.audience !== state.filters.audience) return false;
       if (state.filters.reason && m.reasonLabel !== state.filters.reason) return false;
       if (q) {
-        var hay = [m.flow, m.bdr, m.family, m.reasonLabel, m.action, m.copy].join(' ').toLowerCase();
+        var hay = [m.flow, m.bdr, m.family, m.audience, m.semanticGroup, m.person, m.reasonLabel, m.nonDeliveryReason, m.action, m.copy].join(' ').toLowerCase();
         if (hay.indexOf(q) < 0) return false;
       }
       return true;
     });
   }
 
+  function actualRows(rows) {
+    return rows.filter(function (r) { return !r.diagnostic; });
+  }
+
   function summarize(rows) {
-    var s = { sessions: rows.length, sent: 0, delivered: 0, read: 0, replied: 0, failures: 0, notDelivered: 0, deliveredNotRead: 0, readNoReply: 0, noHistory: 0 };
+    var people = {};
+    var s = { sessions: rows.length, sent: 0, delivered: 0, read: 0, replied: 0, failures: 0, notDelivered: 0, deliveredNotRead: 0, readNoReply: 0, noHistory: 0, people: 0 };
     rows.forEach(function (r) {
+      if (r.person) people[r.person] = true;
       if (r.sent) s.sent++;
       if (r.delivered) s.delivered++;
       if (r.read) s.read++;
@@ -92,6 +100,7 @@
     s.readRate = s.delivered ? s.read / s.delivered : null;
     s.responseRate = s.sent ? s.replied / s.sent : null;
     s.failureRate = s.sessions ? s.failures / s.sessions : null;
+    s.people = Object.keys(people).length;
     return s;
   }
 
@@ -99,7 +108,7 @@
     var map = {};
     rows.forEach(function (r) {
       var k = r[field] || 'Sem dado';
-      if (!map[k]) map[k] = { key: k, label: k, sessions: 0, sent: 0, delivered: 0, read: 0, replied: 0, failures: 0, reasons: {}, samples: [] };
+      if (!map[k]) map[k] = { key: k, label: k, sessions: 0, sent: 0, delivered: 0, read: 0, replied: 0, failures: 0, reasons: {}, samples: [], people: {} };
       var a = map[k];
       a.sessions++;
       if (r.sent) a.sent++;
@@ -108,6 +117,7 @@
       if (r.replied) a.replied++;
       if (r.reason !== 'responded') a.failures++;
       a.reasons[r.reasonLabel] = (a.reasons[r.reasonLabel] || 0) + 1;
+      if (r.person) a.people[r.person] = true;
       if (a.samples.length < 2 && r.copy) a.samples.push(r.copy);
     });
     return Object.keys(map).map(function (k) {
@@ -117,6 +127,7 @@
       a.readRate = a.delivered ? a.read / a.delivered : null;
       a.responseRate = a.sent ? a.replied / a.sent : null;
       a.failureRate = a.sessions ? a.failures / a.sessions : null;
+      a.peopleCount = Object.keys(a.people).length;
       a.topReason = top;
       return a;
     }).sort(function (a, b) { return b.sessions - a.sessions || a.label.localeCompare(b.label); });
@@ -157,27 +168,35 @@
     return 'Auditar configuração e captura do flow';
   }
 
+  function topFor(rows, field) {
+    var g = group(rows, field);
+    return g[0] ? g[0].label + ' (' + fmt(g[0].sessions) + ')' : 'Sem dado';
+  }
+
   function barRows(rows, field, limit, metric) {
     if (!rows.length) return '<div class="muted">Sem dados no filtro.</div>';
     var max = Math.max.apply(null, rows.map(function (r) { return metric === 'failures' ? r.failures : r.sessions; }).concat([1]));
     return rows.slice(0, limit || 12).map(function (r) {
       var val = metric === 'failures' ? r.failures : r.sessions;
-      return '<div class="bar-row clickable-row" data-drill-field="' + esc(field) + '" data-drill-value="' + esc(r.label) + '"><div class="bar-name">' + esc(r.label) + '<div class="muted">Resp. ' + pct(r.responseRate) + ' | gargalo: ' + esc(r.topReason.label) + '</div></div><div class="bar-track"><div class="bar-fill ' + (r.failures ? 'bad' : '') + '" style="width:' + Math.max(2, Math.round(val / max * 100)) + '%"></div></div><div class="bar-val">' + fmt(val) + '</div><div class="bar-val">' + fmt(r.replied) + ' resp.</div></div>';
+      return '<div class="bar-row clickable-row" data-drill-field="' + esc(field) + '" data-drill-value="' + esc(r.label) + '"><div class="bar-name">' + esc(r.label) + '<div class="muted">Pessoas ' + fmt(r.peopleCount || 0) + ' | Entrega ' + pct(r.deliveryRate) + ' | Resp. ' + pct(r.responseRate) + ' | gargalo: ' + esc(r.topReason.label) + '</div></div><div class="bar-track"><div class="bar-fill ' + (r.failures ? 'bad' : '') + '" style="width:' + Math.max(2, Math.round(val / max * 100)) + '%"></div></div><div class="bar-val">' + fmt(val) + '</div><div class="bar-val">' + fmt(r.replied) + ' resp.</div></div>';
     }).join('');
   }
 
   function renderOverview(rows, s) {
     var byFlow = group(rows, 'flow');
     var byFamily = group(rows, 'family');
+    var byBdr = group(rows, 'bdr');
     var best = byFlow.filter(function (r) { return r.sent >= 3; }).sort(function (a, b) { return (b.responseRate || 0) - (a.responseRate || 0); })[0];
     var worst = byFlow.filter(function (r) { return r.sessions >= 3; }).sort(function (a, b) { return b.failures - a.failures; })[0];
+    var topBdr = byBdr[0];
     var story = '<div class="story-grid">' +
       '<div class="story-card"><b>O que aconteceu</b><span>' + fmt(s.sessions) + ' sessões analisadas | ' + fmt(s.sent) + ' com envio | ' + fmt(s.replied) + ' com resposta.</span></div>' +
       '<div class="story-card"><b>Onde dá errado</b><span>' + fmt(s.failures) + ' sem resposta/conclusão | ' + fmt(s.notDelivered) + ' sem entrega | ' + fmt(s.readNoReply) + ' lidas sem resposta.</span></div>' +
-      '<div class="story-card"><b>O que funciona</b><span>' + (best ? esc(best.label) + ' lidera resposta: ' + pct(best.responseRate) + '.' : 'Ainda sem volume suficiente por flow.') + '</span></div>' +
+      '<div class="story-card"><b>Quem mais usou</b><span>' + (topBdr ? esc(topBdr.label) + ' | ' + fmt(topBdr.sessions) + ' sessões | resposta ' + pct(topBdr.responseRate) + '.' : 'Ainda sem volume por BDR.') + '</span></div>' +
       '<div class="story-card"><b>Próxima ação</b><span>' + (worst ? 'Atacar gargalo de ' + esc(worst.label) + ': ' + esc(worst.topReason.label) + '.' : 'Padronizar nomenclatura dos flows e rodar mais volume.') + '</span></div></div>';
     var kpis = '<div class="kpis">' +
       kpi('Sessões', fmt(s.sessions), 'Treble API | período filtrado', 'teal', 'all') +
+      kpi('Pessoas', fmt(s.people), 'Contatos anonimizados | sem telefone', 'teal', 'all') +
       kpi('Entregues', fmt(s.delivered), 'Entrega ÷ enviadas = ' + pct(s.deliveryRate), s.delivered ? 'good' : 'warn', 'delivered') +
       kpi('Lidas', fmt(s.read), 'Leitura ÷ entregues = ' + pct(s.readRate), s.read ? 'good' : 'warn', 'read') +
       kpi('Respondidas', fmt(s.replied), 'Resposta ÷ enviadas = ' + pct(s.responseRate), 'good', 'responded') +
@@ -186,15 +205,46 @@
     return story + kpis + '<div class="grid">' + funnel(s) + '<div class="card span-6"><div class="card-title"><div><h2>Flows | ranking de resposta</h2><div class="desc">Labels reais da Treble | clique para detalhes.</div></div></div>' + barRows(byFlow, 'flow', 12, 'sessions') + '</div><div class="card span-6"><div class="card-title"><div><h2>Famílias de copy</h2><div class="desc">Agrupamento por nome do flow | ajuda a decidir próxima abordagem.</div></div></div>' + barRows(byFamily, 'family', 8, 'sessions') + '</div></div>';
   }
 
+  function renderBdrs(rows) {
+    var byBdr = group(rows, 'bdr');
+    var h = '<div class="grid"><div class="card span-12"><div class="card-title"><div><h2>BDRs | uso, entrega e resposta</h2><div class="desc">Responde quem usou mais, quem entregou melhor e onde cada um gargala.</div></div></div><div class="table-wrap"><table><thead><tr><th>BDR</th><th>Sessões</th><th>Pessoas</th><th>Entregues</th><th>Tx entrega</th><th>Lidas</th><th>Respondidas</th><th>Tx resposta</th><th>Gargalo principal</th><th>Público dominante</th></tr></thead><tbody>';
+    byBdr.forEach(function (b) {
+      var br = rows.filter(function (m) { return m.bdr === b.label; });
+      h += '<tr class="clickable-row" data-drill-field="bdr" data-drill-value="' + esc(b.label) + '"><td><b>' + esc(b.label) + '</b></td><td>' + fmt(b.sessions) + '</td><td>' + fmt(b.peopleCount || 0) + '</td><td>' + fmt(b.delivered) + '</td><td>' + pct(b.deliveryRate) + '</td><td>' + fmt(b.read) + '</td><td>' + fmt(b.replied) + '</td><td>' + pct(b.responseRate) + '</td><td>' + esc(b.topReason.label) + '</td><td>' + esc(topFor(br, 'audience')) + '</td></tr>';
+    });
+    return h + '</tbody></table></div></div><div class="card span-12"><div class="card-title"><div><h2>Ranking visual por BDR</h2><div class="desc">Volume primeiro | taxa de resposta como qualidade.</div></div></div>' + barRows(byBdr, 'bdr', 20, 'sessions') + '</div></div>';
+  }
+
+  function renderTimeline(rows) {
+    var byDay = group(rows, 'createdDay').sort(function (a, b) { return String(a.key).localeCompare(String(b.key)); });
+    return '<div class="grid"><div class="card span-12"><div class="card-title"><div><h2>Linha do tempo | envio, entrega e resposta</h2><div class="desc">Clique no dia para ver as mensagens e pessoas anonimizadas daquele ponto.</div></div></div>' + barRows(byDay, 'createdDay', 60, 'sessions') + '</div><div class="card span-12"><div class="card-title"><div><h2>Dias com maior gargalo</h2><div class="desc">Ordenado por falhas observadas.</div></div></div>' + barRows(byDay.slice().sort(function (a, b) { return b.failures - a.failures || b.sessions - a.sessions; }), 'createdDay', 15, 'failures') + '</div></div>';
+  }
+
+  function renderAudience(rows) {
+    var byAudience = group(rows, 'audience');
+    var bySemantic = group(rows, 'semanticGroup');
+    var byPerson = group(rows, 'person');
+    return '<div class="grid"><div class="card span-6"><div class="card-title"><div><h2>Público inferido</h2><div class="desc">Heurística por flow e copy | útil para segmentar abordagem.</div></div></div>' + barRows(byAudience, 'audience', 12, 'sessions') + '</div><div class="card span-6"><div class="card-title"><div><h2>Agrupamento semântico</h2><div class="desc">Família | público | motivo observado.</div></div></div>' + barRows(bySemantic, 'semanticGroup', 12, 'failures') + '</div><div class="card span-12"><div class="card-title"><div><h2>Pessoas anonimizadas</h2><div class="desc">Não expõe telefone | identifica recorrência por contato no recorte.</div></div></div>' + barRows(byPerson, 'person', 30, 'sessions') + '</div></div>';
+  }
+
+  function renderApiMap() {
+    var meta = state.raw && state.raw.meta ? state.raw.meta : {};
+    var map = state.raw && state.raw.apiMap ? state.raw.apiMap : [];
+    var h = '<div class="grid"><div class="card span-12"><div class="card-title"><div><h2>Arquitetura API | chamadas e retornos</h2><div class="desc">Mapa operacional do que o dashboard puxa da Treble em modo read-only.</div></div></div><div class="table-wrap"><table><thead><tr><th>#</th><th>Método</th><th>Endpoint</th><th>Para quê</th><th>Retorno usado</th><th>Uso no painel</th></tr></thead><tbody>';
+    map.forEach(function (m) { h += '<tr><td>' + esc(m.step) + '</td><td>' + esc(m.method) + '</td><td><code>' + esc(m.endpoint) + '</code></td><td>' + esc(m.purpose) + '</td><td>' + esc(m.returns) + '</td><td>' + esc(m.usedFor) + '</td></tr>'; });
+    h += '</tbody></table></div></div><div class="card span-6"><div class="card-title"><div><h2>Cobertura desta consulta</h2><div class="desc">Quanto foi escaneado no Vercel.</div></div></div><p>Flows escaneados: <b>' + fmt(meta.flowsScanned) + '</b></p><p>Sessões encontradas: <b>' + fmt(meta.sessionsFound) + '</b></p><p>Sessões analisadas: <b>' + fmt(meta.sessionsAnalyzed) + '</b></p><p>Páginas por flow: <b>' + fmt(meta.sessionPagesPerFlow) + '</b></p><p>Limite de histories: <b>' + fmt(meta.maxHistories) + '</b></p></div><div class="card span-6"><div class="card-title"><div><h2>Limites transparentes</h2><div class="desc">O que ainda não é bruto da Meta.</div></div></div>' + (meta.limitations || []).map(function (x) { return '<p class="muted">' + esc(x) + '</p>'; }).join('') + '</div></div>';
+    return h;
+  }
+
   function renderReasons(rows) {
     var byFlow = group(rows, 'flow').sort(function (a, b) { return b.failures - a.failures || b.sessions - a.sessions; });
     return reasonCards(rows) + '<div class="grid"><div class="card span-12"><div class="card-title"><div><h2>Mapa de gargalos por flow</h2><div class="desc">Mostra o motivo principal em linguagem operacional.</div></div></div>' + barRows(byFlow, 'flow', 20, 'failures') + '</div></div>' + renderTable(rows.slice(0, 80), true);
   }
 
   function renderTable(rows, compact) {
-    var h = '<div class="card span-12"><div class="card-title"><div><h2>Detalhe operacional | sessões e copy</h2><div class="desc">Sem telefone, email, documento, session_id ou payload bruto | inbound ocultado.</div></div></div><div class="table-wrap"><table><thead><tr><th>Data</th><th>BDR inferido</th><th>Flow</th><th>Família</th><th>Motivo</th><th>Copy outbound redigida</th><th>Ação sugerida</th></tr></thead><tbody>';
+    var h = '<div class="card span-12"><div class="card-title"><div><h2>Detalhe operacional | sessões e copy</h2><div class="desc">Sem telefone, email, documento, session_id ou payload bruto | inbound ocultado.</div></div></div><div class="table-wrap"><table><thead><tr><th>Data</th><th>Pessoa</th><th>BDR inferido</th><th>Público</th><th>Flow</th><th>Família</th><th>Motivo</th><th>Copy outbound redigida</th><th>Ação sugerida</th></tr></thead><tbody>';
     rows.slice(0, compact ? 80 : 300).forEach(function (m) {
-      h += '<tr><td class="nowrap">' + day(m.createdAt) + '</td><td>' + esc(m.bdr) + '<div class="muted">' + esc(m.bdrSource) + '</div></td><td>' + esc(m.flow) + '</td><td>' + esc(m.family) + '</td><td><span class="pill ' + severityClass(m.severity) + '">' + esc(m.reasonLabel) + '</span></td><td>' + esc(m.copy || '—') + '</td><td>' + esc(m.action || '—') + '</td></tr>';
+      h += '<tr><td class="nowrap">' + day(m.createdAt) + '</td><td>' + esc(m.person || '—') + '</td><td>' + esc(m.bdr) + '<div class="muted">' + esc(m.bdrSource) + '</div></td><td>' + esc(m.audience || '—') + '</td><td>' + esc(m.flow) + '</td><td>' + esc(m.family) + '</td><td><span class="pill ' + severityClass(m.severity) + '">' + esc(m.reasonLabel) + '</span><div class="muted">' + esc(m.nonDeliveryReason || '') + '</div></td><td>' + esc(m.copy || '—') + '</td><td>' + esc(m.action || '—') + '</td></tr>';
     });
     return h + '</tbody></table></div></div>';
   }
@@ -202,14 +252,22 @@
   function render() {
     renderFilters();
     var rows = filtered();
+    var realRows = actualRows(rows);
     var content = $('content'), stateEl = $('state');
     if (!rows.length) { setState('empty', 'Sem dados no filtro', 'Ajuste período ou filtros.'); return; }
-    var s = summarize(rows);
+    var s = summarize(realRows);
     var meta = state.raw && state.raw.meta ? state.raw.meta : {};
     var warn = meta.sessionsTruncated ? ' | amostra truncada: aumente com cuidado ou reduza o período' : '';
-    var flags = '<div class="note"><b>Fonte:</b> ' + esc(meta.source || 'Treble API') + ' | sessões analisadas ' + esc(meta.sessionsAnalyzed || rows.length) + ' de ' + esc(meta.sessionsFound || rows.length) + warn + '. <b>Labels:</b> BDR e família são inferidos do nome do flow.</div>';
-    var tabs = '<div class="tabs"><button class="tab ' + (state.tab === 'overview' ? 'active' : '') + '" onclick="BdrTreble.tab(\'overview\')">Visão executiva</button><button class="tab ' + (state.tab === 'reasons' ? 'active' : '') + '" onclick="BdrTreble.tab(\'reasons\')">Falhas e motivos</button><button class="tab ' + (state.tab === 'detail' ? 'active' : '') + '" onclick="BdrTreble.tab(\'detail\')">Mensagem real</button></div>';
-    var body = state.tab === 'reasons' ? renderReasons(rows) : (state.tab === 'detail' ? renderTable(rows, false) : renderOverview(rows, s));
+    var flags = '<div class="note"><b>Fonte:</b> ' + esc(meta.source || 'Treble API') + ' | sessões analisadas ' + esc(meta.sessionsAnalyzed || realRows.length) + ' de ' + esc(meta.sessionsFound || realRows.length) + ' | linhas diagnósticas ' + esc(meta.diagnosticRows || 0) + warn + '. <b>Labels:</b> BDR, público e família são inferidos do nome do flow/copy.</div>';
+    var tabs = '<div class="tabs"><button class="tab ' + (state.tab === 'overview' ? 'active' : '') + '" onclick="BdrTreble.tab(\'overview\')">Visão executiva</button><button class="tab ' + (state.tab === 'bdrs' ? 'active' : '') + '" onclick="BdrTreble.tab(\'bdrs\')">Por BDR</button><button class="tab ' + (state.tab === 'timeline' ? 'active' : '') + '" onclick="BdrTreble.tab(\'timeline\')">Linha do tempo</button><button class="tab ' + (state.tab === 'audience' ? 'active' : '') + '" onclick="BdrTreble.tab(\'audience\')">Público e pessoas</button><button class="tab ' + (state.tab === 'reasons' ? 'active' : '') + '" onclick="BdrTreble.tab(\'reasons\')">Falhas e motivos</button><button class="tab ' + (state.tab === 'detail' ? 'active' : '') + '" onclick="BdrTreble.tab(\'detail\')">Mensagem real</button><button class="tab ' + (state.tab === 'api' ? 'active' : '') + '" onclick="BdrTreble.tab(\'api\')">Arquitetura API</button></div>';
+    var body;
+    if (state.tab === 'bdrs') body = renderBdrs(realRows);
+    else if (state.tab === 'timeline') body = renderTimeline(realRows);
+    else if (state.tab === 'audience') body = renderAudience(realRows);
+    else if (state.tab === 'reasons') body = renderReasons(rows);
+    else if (state.tab === 'detail') body = renderTable(rows, false);
+    else if (state.tab === 'api') body = renderApiMap();
+    else body = renderOverview(realRows, s);
     if (stateEl) stateEl.classList.add('hidden');
     content.classList.remove('hidden');
     content.innerHTML = flags + tabs + body;
@@ -242,7 +300,7 @@
       modal('Sessões | ' + kind + ' | ' + fmt(rows.length), rows);
     },
     drillGroup: function (field, value) {
-      var map = { flow: 'flow', bdr: 'bdr', family: 'family', reasonLabel: 'reasonLabel' };
+      var map = { flow: 'flow', bdr: 'bdr', family: 'family', audience: 'audience', semanticGroup: 'semanticGroup', person: 'person', reasonLabel: 'reasonLabel', createdDay: 'createdDay' };
       var f = map[field] || field;
       var rows = filtered().filter(function (m) { return String(m[f] || '') === String(value || ''); });
       modal(field + ' | ' + value + ' | ' + fmt(rows.length), rows);

@@ -4,6 +4,15 @@ Recurring every 20min (job `55d3b136`). Purpose: identify and close gaps so the 
 
 ---
 
+### BDR | Treble V2 | full picture operacional MBB (2026-07-14)
+
+> Refinada a subpágina `/novo-bdr/treble` para sair de um diagnóstico agregado simples e virar painel operacional piramidal: funil total, ranking por BDR, linha do tempo, público inferido, pessoas anonimizadas, agrupamento semântico e mapa de arquitetura da API.
+
+- **API ampliada:** `api/bdr-treble.js` agora pagina sessões por flow (`next_id`, até 3 páginas/flow), aumenta `history` analisável para 1.200 sessões no recorte, usa cache `v3` e retorna `apiMap` com chamadas/retornos: `poll/api/all`, `devapi/poll/{poll_id}/sessions`, `devapi/session/{session_id}/history`.
+- **Privacidade:** pessoas são pseudonimizadas como `Pessoa 001`, sem telefone/hash/session_id. Público e agrupamento semântico são inferidos por nome do flow + copy outbound redigida.
+- **UI:** novas abas `Por BDR`, `Linha do tempo`, `Público e pessoas`, `Arquitetura API`; default do período virou 30d para reduzir truncamento e entregar leitura operacional mais completa; cache-buster `bdr-treble.js?v=3`.
+- **Validação:** `npm run check` PASS; handler read-only Treble em dev com `LOCAL_DEV_BYPASS=true` retornou 200, `apiMap=3`, sem expor PII ou secrets.
+
 ### Menu lateral | BDR Performance vira "pasta" com acordeão (2026-07-14)
 
 > A subpágina **Workload | Intraday** (`/novo-bdr/workload`) existia mas não aparecia no menu. **BDR Performance** agora é um grupo colapsável (setinha ˅) que abre as subpáginas de BDR — mesmo padrão do Forecast › Overall. Escopo restrito ao grupo BDR; nada mais mudou de formato.
