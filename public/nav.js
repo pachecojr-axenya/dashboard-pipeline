@@ -6,8 +6,8 @@
  * Agora vive SÓ aqui: cada página inclui <script src="/nav.js?v=N"></script> e este
  * arquivo injeta o CSS, monta o drawer (#nav-drawer) e o dropdown do título (#panel-dd),
  * marca a página ativa por URL e roda no load. Para mudar um item do menu, edite APENAS
- * este arquivo. Depende de globais que cada página já define: closeDrawer, logout,
- * toggleTheme (footer/handlers do chrome).
+ * este arquivo. Depende de globais que cada página já define: closeDrawer,
+ * doLogout/logout, toggleTheme e (opcional) novoToggleLang (footer/handlers do chrome).
  *
  * Acordeão generalizado por grupo: item com acc:'<g>' vira cabeçalho recolhível do grupo
  * <g>; itens com sub:'<g>' são os filhos. Hoje: 'fc' (Forecast) e 'bdr' (BDR).
@@ -40,6 +40,10 @@
       '.health-dot.y{background:#f1c40f;--hg:rgba(241,196,15,.95)}',
       '.health-dot.r{background:#e74c3c;--hg:rgba(231,76,60,.95)}',
       '.nav-menu li.nav-hidden{display:none}',
+      '.novo-theme-sun{display:block}',
+      '.novo-theme-moon{display:none}',
+      '[data-theme="light"] .novo-theme-sun{display:none}',
+      '[data-theme="light"] .novo-theme-moon{display:block}',
       '.modal-body,.novo-help-body,.novo-prob-body,[style*="overflow-x:auto"]{scrollbar-width:thin;scrollbar-color:var(--text2) transparent}',
       '.modal-body::-webkit-scrollbar,.novo-help-body::-webkit-scrollbar,.novo-prob-body::-webkit-scrollbar,[style*="overflow-x:auto"]::-webkit-scrollbar{height:11px;width:11px}',
       '.modal-body::-webkit-scrollbar-track,.novo-help-body::-webkit-scrollbar-track,.novo-prob-body::-webkit-scrollbar-track,[style*="overflow-x:auto"]::-webkit-scrollbar-track{background:transparent}',
@@ -55,8 +59,10 @@
     {label:'Board View',url:'/novo-board',file:'board.html',health:'g',icon:'<path d="M2 20h20M4 20V10l8-6 8 6v10"/><path d="M10 20v-6h4v6"/>'},
     {label:'AE Performance',url:'/novo-ae',file:'ae.html',health:'g',icon:'<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>'},
     {label:'BDR Performance',url:'/novo-bdr',file:'bdr.html',health:'g',acc:'bdr',icon:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'},
-    {label:'BDR | No Show',url:'/novo-bdr/no-show',file:'bdr-no-show.html',sub:'bdr',health:'g',icon:'<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>'},
-    {label:'BDR | Ataque à Lista',url:'/novo-bdr/list-attack',file:'bdr-list-attack.html',sub:'bdr',health:'g',icon:'<line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>'},
+    {label:'Workload | Intraday',url:'/novo-bdr/workload',file:'bdr-workload.html',sub:'bdr',health:'y',icon:'<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>'},
+    {label:'No-Show',url:'/novo-bdr/no-show',file:'bdr-no-show.html',sub:'bdr',health:'g',icon:'<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>'},
+    {label:'Ataque à Lista',url:'/novo-bdr/list-attack',file:'bdr-list-attack.html',sub:'bdr',health:'g',icon:'<line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>'},
+    {label:'Treble',url:'/novo-bdr/treble',file:'bdr-treble.html',sub:'bdr',health:'y',icon:'<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>'},
     {label:'Last 48h',url:'/novo-48h',file:'48h.html',health:'g',icon:'<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>'},
     {label:'CS Dashboard',url:'/novo-cs',file:'cs.html',health:'r',icon:'<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>'},
     {label:'Cotação',url:'/novo-cotacao',file:'cotacao.html',health:'r',icon:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>'},
@@ -107,7 +113,11 @@
       var cls='nav-item'+(subId?' nav-sub':'')+(accId?' nav-acc':'')+(p.url===current?' active':'');
       h+='<li'+liAttr+'><a class="'+cls+'" href="'+p.url+'" data-url="'+p.url+'" style="text-decoration:none">'+svgFor(p)+'<span>'+p.label+'</span>'+dot(p.health)+chev+'</a></li>';
     }
-    h+='</ul><div class="nav-drawer-footer"><button class="nav-foot-btn" type="button" onclick="logout()" title="Sair" aria-label="Sair"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button><button class="nav-foot-btn" type="button" onclick="toggleTheme()" title="Tema / Theme"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></button></div>';
+    // Idioma: só nas páginas que expõem novoToggleLang (forecast/forecast-stage não têm).
+    var langBtn = (typeof window.novoToggleLang === 'function')
+      ? '<button class="nav-foot-btn" type="button" onclick="novoToggleLang()" title="Idioma / Language"><span id="novo-lang-label">'+(typeof window.NOVO_LANG!=='undefined'&&window.NOVO_LANG==='pt'?'EN':'PT')+'</span></button>'
+      : '';
+    h+='</ul><div class="nav-drawer-footer"><button class="nav-foot-btn" type="button" onclick="(window.doLogout||window.logout)()" title="Sair" aria-label="Sair"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button>'+langBtn+'<button class="nav-foot-btn" type="button" onclick="toggleTheme()" title="Tema / Theme"><svg class="novo-theme-sun" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg><svg class="novo-theme-moon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></button></div>';
     nav.innerHTML=h;
     // Auto-recolher: cada grupo de acordeão começa expandido só se a página atual pertence a ele.
     var groups={}; for(var a=0;a<PANELS.length;a++){ if(PANELS[a].acc) groups[PANELS[a].acc]=true; }
@@ -136,6 +146,13 @@
   window.togglePanelMenu=function(e){ if(e){e.stopPropagation();} var sw=document.getElementById('panel-switcher'); if(!sw) return; var open=!sw.classList.contains('open'); sw.classList.toggle('open',open); var btn=sw.querySelector('.panel-switch-btn'); if(btn) btn.setAttribute('aria-expanded',open?'true':'false'); };
   window.closePanelMenu=function(){ var sw=document.getElementById('panel-switcher'); if(sw){ sw.classList.remove('open'); var btn=sw.querySelector('.panel-switch-btn'); if(btn) btn.setAttribute('aria-expanded','false'); } };
   document.addEventListener('click',function(e){ var sw=document.getElementById('panel-switcher'); if(sw&&sw.classList.contains('open')&&!sw.contains(e.target)) window.closePanelMenu(); });
-  document.addEventListener('keydown',function(e){ if(e.key==='Escape'||e.keyCode===27){ var sw=document.getElementById('panel-switcher'); if(sw&&sw.classList.contains('open')) window.closePanelMenu(); } });
+  // Escape em cascata (paridade com o antigo bloco inline): settings → ajuda → modal → dropdown.
+  document.addEventListener('keydown',function(e){
+    if(e.key!=='Escape'&&e.keyCode!==27) return;
+    var gs=document.getElementById('gs-drawer'); if(gs&&gs.classList.contains('open')&&typeof window.novoCloseSettings==='function'){ window.novoCloseSettings(); return; }
+    var help=document.getElementById('novo-help-drawer'); if(help&&help.classList.contains('open')&&typeof window.novoCloseHelp==='function'){ window.novoCloseHelp(); return; }
+    var modal=document.getElementById('modal-overlay'); if(modal&&modal.classList.contains('open')&&typeof window.closeModal==='function'){ window.closeModal(); return; }
+    var sw=document.getElementById('panel-switcher'); if(sw&&sw.classList.contains('open')) window.closePanelMenu();
+  });
   if(document.readyState!=='loading') build(); else document.addEventListener('DOMContentLoaded',build);
 })();

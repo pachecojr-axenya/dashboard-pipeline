@@ -247,9 +247,14 @@
     { href: '/novo', label: 'CRO Dashboard', svg: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>' },
     { href: '/novo-board', label: 'Board View', health: 'g', svg: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20h20M4 20V10l8-6 8 6v10"/><path d="M10 20v-6h4v6"/></svg>' },
     { href: '/novo-ae', label: 'AE Performance', health: 'g', svg: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>' },
-    { href: '/novo-bdr', label: 'BDR Performance', svg: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>' },
-    { href: '/novo-bdr/no-show', label: 'BDR | No Show', health: 'g', svg: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-7"/><circle cx="11" cy="11" r="1"/><circle cx="14" cy="14" r="1"/></svg>' },
-    { href: '/novo-bdr/list-attack', label: 'BDR | Ataque à Lista', health: 'g', svg: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>' },
+    /* Grupo BDR (acordeão): "BDR Performance" é o pai (acc) e leva à visão geral;
+       as subpáginas (sub) ficam recolhidas atrás da setinha. Espelha o PANELS
+       inline das páginas grandes — ver docs/nav-bdr-accordion.md. */
+    { href: '/novo-bdr', label: 'BDR Performance', health: 'g', acc: true, grp: 'bdr', svg: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>' },
+    { href: '/novo-bdr/workload', label: 'Workload | Intraday', health: 'y', sub: true, grp: 'bdr', svg: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>' },
+    { href: '/novo-bdr/no-show', label: 'No-Show', health: 'g', sub: true, grp: 'bdr', svg: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="14" y1="14" x2="10" y2="18"/><line x1="10" y1="14" x2="14" y2="18"/></svg>' },
+    { href: '/novo-bdr/list-attack', label: 'Ataque à Lista', health: 'g', sub: true, grp: 'bdr', svg: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>' },
+    { href: '/novo-bdr/treble', label: 'Treble', health: 'y', sub: true, grp: 'bdr', svg: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a4 4 0 0 1-4 4H7l-4 4V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/><path d="M8 9h8"/><path d="M8 13h5"/></svg>' },
     { href: '/novo-48h', label: 'Last 48h', health: 'g', svg: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>' },
     { href: '/novo-cs', label: 'CS Dashboard', svg: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>' },
     { href: '/novo-cotacao', label: 'Cotação', svg: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>' },
@@ -265,8 +270,10 @@
 
     var current = location.pathname.replace(/\.html$/, '') || '/' + page;
     if (page === 'novo-dashboard' || page === 'dashboard' || current === '/dashboard') current = '/novo';
+    if (current === '/dashboard/bdr/workload' || current === '/novo-bdr-workload' || page === 'bdr-workload') current = '/novo-bdr/workload';
     if (current === '/dashboard/bdr/no-show' || current === '/novo-bdr-no-show' || page === 'bdr-no-show') current = '/novo-bdr/no-show';
     if (current === '/dashboard/bdr/list-attack' || current === '/novo-bdr-list-attack' || page === 'bdr-list-attack') current = '/novo-bdr/list-attack';
+    if (current === '/dashboard/bdr/treble' || current === '/novo-bdr-treble' || page === 'bdr-treble') current = '/novo-bdr/treble';
 
     function dot(h) {
       if (!h) return '';
@@ -274,16 +281,45 @@
       var t = tt[h] || '';
       return '<span class="health-dot ' + h + '" title="' + t + '" aria-label="' + t + '"></span>';
     }
+    var CHEVRON = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>';
 
     var html = '';
     NAV_MODEL.forEach(function (it) {
       if (it.divider) { html += '<li class="nav-divider" role="separator"></li>'; return; }
       var active = it.href === current;
-      html += '<li class="nav-item' + (active ? ' active' : '') + '" data-href="' + it.href + '"' +
-        (active ? ' aria-current="page"' : '') + '>' + it.svg + it.label + dot(it.health) + '</li>';
+      var cls = 'nav-item' + (it.sub ? ' nav-sub' : '') + (it.acc ? ' nav-acc' : '') + (active ? ' active' : '');
+      var acc = it.acc ? '<span class="nav-acc-chevron" data-acc-grp="' + it.grp + '" role="button" tabindex="0" title="Mostrar/ocultar subpáginas" aria-label="Mostrar/ocultar subpáginas">' + CHEVRON + '</span>' : '';
+      html += '<li class="' + cls + '" data-href="' + it.href + '"' +
+        (it.grp ? ' data-grp="' + it.grp + '"' : '') +
+        (active ? ' aria-current="page"' : '') + '>' + it.svg + it.label + dot(it.health) + acc + '</li>';
     });
     menu.innerHTML = html;
+
+    // Acordeão: recolhe cada grupo, exceto o que contém a página atual.
+    var groups = {};
+    NAV_MODEL.forEach(function (it) {
+      if (!it.grp) return;
+      if (groups[it.grp] === undefined) groups[it.grp] = false;
+      if ((it.acc || it.sub) && it.href === current) groups[it.grp] = true;
+    });
+    function setGroup(grp, open) {
+      var subs = menu.querySelectorAll('.nav-item.nav-sub[data-grp="' + grp + '"]');
+      for (var i = 0; i < subs.length; i++) subs[i].classList.toggle('nav-collapsed', !open);
+      var ch = menu.querySelector('.nav-acc-chevron[data-acc-grp="' + grp + '"]');
+      if (ch) ch.classList.toggle('open', open);
+    }
+    Object.keys(groups).forEach(function (g) { setGroup(g, groups[g]); });
+    // Local de propósito: NÃO sobrescrever window.toggleNavGroup — as páginas
+    // grandes trazem a própria versão inline (DOM diferente, com <a href>).
+    function toggleGroup(grp) {
+      var ch = menu.querySelector('.nav-acc-chevron[data-acc-grp="' + grp + '"]');
+      setGroup(grp, !(ch && ch.classList.contains('open')));
+    }
+
     menu.addEventListener('click', function (e) {
+      // Clique na setinha: só expande/recolhe, não navega.
+      var chev = e.target.closest ? e.target.closest('.nav-acc-chevron') : null;
+      if (chev) { e.stopPropagation(); e.preventDefault(); toggleGroup(chev.getAttribute('data-acc-grp')); return; }
       var li = e.target.closest ? e.target.closest('.nav-item') : null;
       if (li && li.getAttribute('data-href') && !li.classList.contains('active')) {
         window.location.href = li.getAttribute('data-href');

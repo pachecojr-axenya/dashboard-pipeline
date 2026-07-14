@@ -416,6 +416,26 @@ html[data-theme="light"] .nav-drawer {
 }
 html[data-theme="light"] .nav-item:hover { background: var(--hover); }
 
+/* Acordeão de subpáginas (grupo BDR) — pai .nav-acc + filhos .nav-sub atrás da
+   setinha .nav-acc-chevron. Ver premium.js buildCanonicalNav / docs/nav-bdr-accordion.md. */
+.nav-item.nav-sub { padding-left: 2.7rem; font-size: .82rem; }
+.nav-item.nav-sub:hover { padding-left: 2.9rem; }
+.nav-item.nav-sub svg { width: 14px; height: 14px; }
+.nav-item.nav-sub.nav-collapsed { display: none; }
+.nav-item .health-dot { margin-left: auto; }
+.nav-acc-chevron {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px;
+  color: var(--text2);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: transform .18s, background .16s, color .16s;
+}
+.nav-item.nav-acc .health-dot { margin-left: auto; }
+.nav-acc-chevron:hover { background: var(--accent-glow); color: var(--teal); }
+.nav-acc-chevron.open { transform: rotate(180deg); }
+
 .modal {
   border-radius: 20px;
   border: 1px solid var(--pm-card-border);

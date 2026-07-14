@@ -4,6 +4,101 @@ Recurring every 20min (job `55d3b136`). Purpose: identify and close gaps so the 
 
 ---
 
+### Forecast | P. Etapa alinhada à tabela de probabilidades (2026-07-14)
+
+> Ajuste cirúrgico na aba `/forecast`: a coluna **P. Etapa** volta a usar a régua flat exibida na ajuda (`Reunião Agendada 6,0%`, `Diagnóstico 6,0%`, `Cotação 18,6%`, `Proposta Enviada 28,5%`, `Consultoria 28,5%`, `Negociação 49,3%`, `Implantação 80,0%`, `Ganho 100,0%`, `Standby 12,0%`).
+
+- **Escopo restrito:** `public/forecast.html`, `public/forecast-stage.html` e compatibilidade em `public/forecast-overall-core.js`; sem tocar menu, `public/nav.js`, `public/premium.js`, BDR/Treble/Workload ou alterações recentes do Pacheco.
+- **Causa:** a tabela dedicada de Forecast podia aplicar probabilidade por pipeline/cache C07 para alguns deals, enquanto a ajuda da própria aba mostra a régua flat do Forecast. Além disso, browsers com override local antigo (`forecast_stage_prob`) podiam manter os defaults legados `33%/61,1%/42%/58,1%`.
+- **Correção:** `P. Etapa` agora lê a régua flat validada do Forecast (ou override manual explícito) e overrides locais legados são limpos automaticamente quando batem com os valores antigos.
+
+### BDR Workload | janela "Últimos 30 dias" sem truncar (2026-07-14)
+
+> Adicionado o período **Últimos 30 dias** (contando hoje) à subpágina Workload/Intraday. Verificado ao vivo: janela 2026-06-15→07-14 = 20.188 atividades, 5.361 ligações, 13/13 BDRs, incluindo hoje.
+
+- **Anti-truncamento (`api/bdr-workload.js`):** o search do HubSpot tem teto ~10k por consulta (`searchAll` para em 9.800). Nova `searchWindow()` divide a janela no tempo e recorre quando bate no teto (dedup por id) — 30 dias de ligações (que passam de 11k em dias cheios) não subcontam mais. Rede de segurança: no dataset atual 30d ficou em 5,3k, abaixo do teto, mas a proteção fica para janelas/times maiores.
+- **Cliente (`public/bdr-workload.js`):** chip "Últimos 30 dias" + `periodRange('30d')` = `hoje-29`. Reusa o render multi-dia existente; drill-down de ligações funciona igual na janela de 30d.
+- **Latência:** 1ª carga de 30d ~36s (cabe no limite de 60s da função); KV cacheia por 5 min. História rápida de verdade = Fase 2 (BigQuery pré-agregado).
+- Validado headless (13/13 BDRs clicáveis, 0 erro JS) e `npm run check` OK.
+
+### BDR Intraday | cache durável (KV) + drill-down de ligações + ambientes separados (2026-07-14)
+
+> Fase 1 da proposta `openspec/changes/bdr-intraday-history-drilldown/`. Responde direto ao "72 ligações do Anderson parece muito" e ao medo de "cache não persiste". Deploy prod concluído.
+
+- **Ambientes (`lib/env.js`):** fonte única — resolve VERCEL_ENV→NODE_ENV→development (preview=dev p/ dados). Expõe `gcpProject` (sempre `gen-lang-client-0423905839`), `bqDataset()` (`axenya_bdr_intraday_dev`×`_prd`), `ciDataset()` (`axenya_commercial_intel_prd` read-only), `kvKey(ns)` (prefixo `dev:`/`prd:`), `flag()`. Datasets BQ criados em `southamerica-east1` com labels. Regra: dev/preview nunca escrevem em `_prd`.
+- **Cache durável (`api/bdr-workload.js`):** troca o `_cache` em memória (efêmero, por instância) por 2 camadas L1 memória + **L2 KV** (durável, compartilhado, env-namespaced, TTL 5 min). KV é dependência mole: ausente/erro → degrada para L1+live sem lançar. Resposta indica `cacheLayer`.
+- **Drill-down (`api/bdr-workload-calls.js` + `public/bdr-workload.{html,js}`):** "Ligações" clicável → modal com conversa×discagem (≥1 min), por desfecho, por duração (client-side, custo zero) + "para quem" (contato·empresa) lazy via associação call→contact, sanitizado (sem telefone/e-mail), degradável. Verificado com dado real: **Anderson 2026-07-13 = 72 ligações, 4 conversas (6%), 68 discagens** (25 com 0s). `hs_call_disposition` vem vazio (BDRs não preenchem) → sinal real = duração.
+- **Sem quebrar:** `npm run check` OK; Playwright headless validou o modal (72 linhas reconciliam, enriquecimento lazy, 0 erro JS). Endpoints novos adicionados ao guard do `preflight-deploy.js`.
+- **Fase 2 (histórico BigQuery):** especificada, NÃO deployada — `lib/bq.js` + ingestão diária idempotente + cron só após verificação + UI weekly + join com `enr_call_semantics`. Doc: `docs/bdr-intraday-history.md`.
+
+### BDR | Treble V6 | analytics real de deployment.failure conectado (2026-07-14)
+
+> Corrige o gap apontado pelo usuário: só renomear a métrica não bastava; era preciso configurar a fonte real de falhas.
+
+- **Cloud Run analytics:** `treble-hubspot-sync` redeployado com `analytics_store.py`; `deployment.failure` passa a ser persistido em `treble_delivery_events` sem PII/texto. Serviço permanece `DRY_RUN=true` para não mutar HubSpot pelo webhook, mas grava analytics.
+- **Treble UI:** webhooks globais configurados para o endpoint `/webhooks/treble`; evento **Falha de implantação** fica marcado junto com HSM status e fechamento de sessão.
+- **Dashboard API:** `/api/bdr-treble` chama o endpoint interno `/analytics/delivery` com secret server-side e calcula `Entrega real observada = entregues em sessions / (enviadas em sessions + deployment.failure capturados)`.
+- **UX:** se ainda não houver `deployment.failure` capturado, o KPI mostra **Em coleta** em vez de 100%, evitando falsa precisão. Quando o primeiro failure real chegar, a taxa cai automaticamente.
+- **Timeline:** linha vermelha adicionada para `Falhas deployment` no gráfico temporal.
+
+### BDR | Treble V7 | HSM deployments report retroativo conectado (2026-07-14)
+
+> Double-check do caso citado pelo usuário: `pri_face_scan`/HSM com 21 envios, 17 entregues e 1 resposta em 23/junho. A fonte correta não era `/sessions` nem apenas webhook novo; era o relatório histórico `general_deployments_report` da Treble.
+
+- **Fonte nova:** `/api/bdr-treble` passa a ler o CSV `general_deployments_report` server-side (`TREBLE_DEPLOYMENTS_REPORT_URL`) e retorna apenas agregados sem telefone/user/session payload.
+- **Caso validado:** `conversation_id=1368340`, dia `2026-06-23`: enviados `21`, entregues `17`, respostas `1`, falhas `4` (`FAILURE_BY_UNABLE_TO_CONTACT=3`, `SUCCESS sem delivered=1`).
+- **Taxa real observada:** agora prioriza o relatório histórico de deployments quando disponível. No recorte de 30d validado localmente: `1253 entregues / 2073 envios = 60,4%`.
+- **UI:** adicionada tabela `Deployments HSM | relatório Treble` por conversa/dia; timeline incorpora falhas históricas do report.
+
+### BDR | Treble V3 | corrige semântica de entrega + linha temporal (2026-07-14)
+
+> Ajuste após validação operacional: 100% de entrega era verdadeiro apenas dentro de `/sessions` + `/history`, mas enganoso como taxa real de campanha porque falhas pré-session aparecem em `deployment.failure`.
+
+- **Métrica corrigida:** labels mudaram para `Entrega (sessions)` / `Entregues em sessions`; o painel explicita que a métrica é scoped a sessões materializadas e não inclui falhas de deployment.
+- **API map:** adicionada linha `POST /treble-webhooks | event_type=deployment.failure` como requisito para taxa real de entrega e motivo bruto de não entrega; cache `v4`.
+- **Timeline:** aba `Linha do tempo` agora usa gráfico de linha SVG para enviadas, entregues em sessions, lidas e respondidas; tabela fica só como apoio.
+- **Próximo passo analítico:** persistir `deployment.failure` + `on-delivered`/`on-read` para recalcular `delivery_real = delivered / tentativas_deployment`.
+
+### BDR | Treble V2 | full picture operacional MBB (2026-07-14)
+
+> Refinada a subpágina `/novo-bdr/treble` para sair de um diagnóstico agregado simples e virar painel operacional piramidal: funil total, ranking por BDR, linha do tempo, público inferido, pessoas anonimizadas, agrupamento semântico e mapa de arquitetura da API.
+
+- **API ampliada:** `api/bdr-treble.js` agora pagina sessões por flow (`next_id`, até 3 páginas/flow), aumenta `history` analisável para 1.200 sessões no recorte, usa cache `v3` e retorna `apiMap` com chamadas/retornos: `poll/api/all`, `devapi/poll/{poll_id}/sessions`, `devapi/session/{session_id}/history`.
+- **Privacidade:** pessoas são pseudonimizadas como `Pessoa 001`, sem telefone/hash/session_id. Público e agrupamento semântico são inferidos por nome do flow + copy outbound redigida.
+- **UI:** novas abas `Por BDR`, `Linha do tempo`, `Público e pessoas`, `Arquitetura API`; default do período virou 30d para reduzir truncamento e entregar leitura operacional mais completa; cache-buster `bdr-treble.js?v=3`.
+- **Validação:** `npm run check` PASS; handler read-only Treble em dev com `LOCAL_DEV_BYPASS=true` retornou 200, `apiMap=3`, sem expor PII ou secrets.
+
+### Menu lateral | BDR Performance vira "pasta" com acordeão (2026-07-14)
+
+> A subpágina **Workload | Intraday** (`/novo-bdr/workload`) existia mas não aparecia no menu. **BDR Performance** agora é um grupo colapsável (setinha ˅) que abre as subpáginas de BDR — mesmo padrão do Forecast › Overall. Escopo restrito ao grupo BDR; nada mais mudou de formato.
+
+- **Subpáginas no grupo `bdr`:** Workload \| Intraday, No-Show, Ataque à Lista, Treble (pai = `/novo-bdr`). Auto-expande na página atual; clicar no chevron expande/recolhe, clicar no rótulo navega.
+- **Duas fontes de menu, ambas atualizadas:** (1) array `PANELS` inline nas 10 páginas grandes (`dashboard/board/ae/cs/cotacao/48h/forecast*/bdr`) — acordeão genérico `toggleNavGroup(grp)`/`data-grp`/`.nav-sub`/`.nav-collapsed`, substituindo o antigo `toggleForecastAccordion` de grupo único; (2) `public/premium.js` (`NAV_MODEL`+`buildCanonicalNav`) que monta o menu das subpáginas de BDR, com toggle **local** (não sobrescreve `window.toggleNavGroup` para não colidir com a versão inline). CSS em `premium.css` + inline.
+- **Sem quebrar:** validado headless (Playwright) em 8 rotas — grandes e subpáginas — grupo presente, chevron alterna, item ativo correto, 0 erro de JS. `npm run check` OK. `bdr.html` mantém seus 3 bytes NUL originais.
+- **Doc:** `docs/nav-bdr-accordion.md` (inclui a regra de manter `PANELS` e `NAV_MODEL` em sincronia).
+
+### Incidente de alias | BDR | Treble retornou 404 após deploy concorrente (2026-07-13)
+
+- **Causa:** o deploy de produção posterior feito por `jpacheco-5103` assumiu os aliases do projeto canônico depois do deploy do BDR | Treble; essa árvore não continha a nova página, então `/novo-bdr/treble` passou a retornar `NOT_FOUND`.
+- **Correção:** redeploy da árvore canônica `origin/main` (`0967d03`) no projeto Pro `dashboard-axenya`; página e API voltaram a responder, com API sem sessão em `401`.
+- **Regra operacional:** não executar deploys concorrentes no mesmo projeto; o último deploy assume todos os aliases de produção.
+
+### BDR | Treble | subpágina read-only de WhatsApp sincronizado (2026-07-13)
+
+> Nova subpágina isolada em `/novo-bdr/treble`. Deploy concluído em `https://axenya-pipeline-dashboard.vercel.app/novo-bdr/treble`; API sem sessão retorna 401 e as rotas existentes continuam 200.
+
+- **Fonte:** `GET /api/bdr-treble` lê somente HubSpot communications `WHATS_APP` já sincronizadas pelo pipeline Treble | HubSpot; não chama Treble no Vercel/browser, não envia mensagens e mantém `requireAuth`.
+- **Privacidade e limites:** payload sanitizado sem emails, telefones, CPF/CNPJ, payload bruto ou HTML bruto; snippets outbound redigidos por heurística e inbound ocultado; BDR = owner atual do contato associado como proxy inicial, não autor histórico por mensagem; entrega/leitura distinguem `Não medido` de zero.
+- **UI:** `public/bdr-treble.html/js` com storytelling `O que aconteceu | Onde está o gargalo | O que funciona | O que fazer na próxima vez`, filtros persistentes, abas Estratégico/Diagnóstico/Detalhe, drilldown por KPI/flow/BDR/status e memória de cálculo.
+- **Navegação:** rewrites adicionados para `/novo-bdr/treble`, `/dashboard/bdr/treble` e `/novo-bdr-treble`; menu canônico `premium.js` ganhou item `BDR | Treble`.
+
+### BDR | Treble V1 | diagnóstico real por API Treble (2026-07-13)
+
+- **Correção de escopo:** V0 via HubSpot communications não resolvia storytelling, motivo de falha nem labels. V1 usa API oficial Treble como fonte primária: `poll/api/all`, `devapi/poll/{poll_id}/sessions` e `devapi/session/{session_id}/history`.
+- **Diagnóstico novo:** funil `Sessões | Enviadas | Entregues | Lidas | Respondidas`, cards de motivos (`Lida, sem resposta`, `Entregue, não lida`, `Sem evidência de entrega`, `Flow com erro na API Treble`), ranking de flows com labels reais e agrupamento por família de copy.
+- **Limites explícitos:** motivo é observado por evidência de entrega/leitura/resposta; `failure_reason` bruto exige webhook `deployment.failure` ativo. BDR e família são inferidos do nome do flow.
+- **Infra:** `TREBLE_API_KEY` adicionada em Production no Vercel. Sem chamadas Treble no browser; sem telefone, email, documento, `session_id` ou payload bruto no payload.
+
 ## Diretrizes do Projeto — leia antes de começar qualquer trabalho
 
 > Esta seção existe para que qualquer IA (ou humano) possa pegar o projeto do zero sem perder contexto. Atualize sempre que houver mudanças estruturais.
@@ -11,8 +106,9 @@ Recurring every 20min (job `55d3b136`). Purpose: identify and close gaps so the 
 ### ⭐ Regras primárias (inegociáveis)
 
 1. **Separador de texto é SEMPRE a barra vertical `|`.** Nunca usar travessão `—`, en-dash `–`, hífen `-` nem middot `·` como separador, em nenhum texto exibido ao usuário (títulos, tooltips, labels, subtítulos, ajuda, fórmulas). Ao criar ou editar qualquer string, já escrever com `|`. O travessão só é permitido como placeholder de "sem dado" (`'—'`), nunca como separador.
-2. **Menu lateral e dropdown de painéis têm fonte única — agora em `public/nav.js`.** (2026-07-13: o bloco `PANELS` que antes era COPIADO em cada HTML foi extraído para `public/nav.js`, que injeta o CSS, monta `#nav-drawer` e `#panel-dd`, marca a página ativa por URL e roda no load.) Cada página só inclui `<script src="/nav.js?v=N"></script>` + tem os mount points `#nav-drawer` e `.panel-switcher` no corpo. **Para mudar QUALQUER item/ordem/ícone/saúde/acordeão do menu, editar APENAS `public/nav.js`** — nunca recriar bloco `PANELS` inline numa página. Acordeão é por grupo (`acc:'<g>'` no cabeçalho, `sub:'<g>'` nos filhos; hoje `fc`=Forecast, `bdr`=BDR) via `toggleNavGroup`. Depende de globais que cada página define (`closeDrawer`, `logout`, `toggleTheme`).
+2. **Menu lateral e dropdown de painéis têm fonte única — agora em `public/nav.js`.** (2026-07-13: o bloco `PANELS` que antes era COPIADO em cada HTML foi extraído para `public/nav.js`, que injeta o CSS, monta `#nav-drawer` e `#panel-dd`, marca a página ativa por URL e roda no load. 2026-07-14: merge do main resolvido a favor do `nav.js` — o bloco inline que o main ainda tinha foi descartado e as novidades dele, grupo BDR com Workload|Intraday e Treble, portadas para o `nav.js`.) Cada página só inclui `<script src="/nav.js?v=N"></script>` + tem os mount points `#nav-drawer` e `.panel-switcher` no corpo. **Para mudar QUALQUER item/ordem/ícone/saúde/acordeão do menu, editar APENAS `public/nav.js`** — nunca recriar bloco `PANELS` inline numa página. Acordeão é por grupo (`acc:'<g>'` no cabeçalho, `sub:'<g>'` nos filhos; hoje `fc`=Forecast, `bdr`=BDR) via `toggleNavGroup`. Depende de globais que cada página define (`closeDrawer`, `doLogout`/`logout`, `toggleTheme`). ⚠ Exceção que ainda é segunda fonte: as SUBPÁGINAS BDR (workload, treble, no-show, list-attack) usam `premium.js`/`NAV_MODEL` + `buildCanonicalNav` — mudança de menu precisa ser espelhada lá até a unificação.
 3. **Toda receita vem de duas bases canônicas (fonte única).** Nenhum painel recalcula receita por conta própria; todo gráfico ou KPI de receita, em qualquer tela, consome estas duas séries: (a) **previsão real** = valor mensal do faturamento manual dos deals em Ganho/Implantação que já faturam (`api/faturamento-manual.js`, Upstash KV, fonte única `_fcDealMonthly`, sem cutoff de `createdate`); (b) **previsão probabilizada** = régua de receita por modelo (`revenue-engine.js` → `calcReceitaMes`) ponderada pela probabilidade de etapa puxada ao vivo do funil (C06). Deals duplos (mesmo cliente com fee por vida e corretagem) contam uma vez: menor TCV de 12 meses e prazo de pagamento mais longo. Se dois painéis divergem no número de receita, é bug de fonte, não de arredondamento. **Atualização (2026-07-01):** o gráfico de forecast do CRO Dashboard (N06B | "Forecast Total") foi religado no motor compartilhado `forecast-engine.js` (`ForecastEngine.dealMonthly` + `bdrCohorts`, régua via `calcReceitaMes`, faturamento manual via `faturamento-manual.js`) e bate mês a mês, em Real e Probabilizado, com o painel **Forecast Overall** (o do `forecast-stage.html`). **Atualização (2026-07-01, seguinte):** o **N05** (Cobertura do Pipeline) também foi religado — N06B e N05 agora consomem a MESMA função `_novoForecastSeries()` (série mensal única extraída do N06B), então Receita Real e Probabilizada do N05 batem mês a mês com o N06B por construção (verificado com dados de produção: idênticos nos 24 meses). O N05 ganhou toggle **Cobertura (×) ↔ Receita (R$)**. Com isso a fonte única de receita está completa no dashboard. Código morto restante para limpeza futura: `_novoCoverageTarget` (var órfã) e a família `_novoFc*`/`_novoForecastCalcReceita` antiga ainda usada pelo **modal** do N06B (`_novoOpenN06BForecastModal`), que segue no motor antigo.
+4. **GitHub é a fonte da verdade de deploy.** Regra prática: se não está commitado e pushado, não vai para produção. Antes de deploy: `git fetch origin`, `git status --short --branch`, `git log --oneline --decorate -5`, `npm run check`, `npm run predeploy` e checagem do que está no ar. Deploy só de base limpa/rastreável, uma pessoa por vez com LOCK/UNLOCK no Slack. Runbook: `docs/github-source-of-truth.md`.
 
 ### Trabalho em sessões paralelas — regras de coordenação
 
@@ -22,7 +118,7 @@ Recurring every 20min (job `55d3b136`). Purpose: identify and close gaps so the 
 2. **Front-only é seguro; API não.** Mudança dentro de um único HTML usando campos que JÁ chegam no payload (tooltips, títulos, drawers, escalas, toggles, lógica de gráfico) → paralelizável. Se a tarefa pedir um dado que não está no payload (campo novo do HubSpot → `PROPERTIES` do `forecast-table.js`; agregação server-side → `funnel-stages.js`), a mudança é de API: **pare e coordene antes de tocar**. Teste rápido: o dado já aparece em algum drill/tabela? Então é front-only.
 3. **Mudou `api/` ou `lib/` = reiniciar o servidor local (porta 3002)** — o `local-server.js` cacheia `require` dos handlers. O restart derruba a validação da outra sessão: avise antes.
 4. **Raio de explosão dos compartilhados.** `forecast-engine.js`, `revenue-engine.js`, `faturamento-manual.js`, `shared-charts.js`, `filter-bar.js`, `settings-modal.js` e o bloco `PANELS` (replicado nos 10 HTMLs) afetam vários painéis de uma vez — tratar como `api/`: coordenar. Contrato do payload (`/api/forecast-table`): ADICIONAR campo é seguro; RENOMEAR/REMOVER quebra todos os painéis.
-5. **Só UMA sessão deploya**, e somente quando as outras confirmarem "terminei e validei". O deploy sobe trabalho pela metade de todo mundo. **Autorizações permanentes de deploy ("pode ir deployando") NÃO sobrevivem à existência de sessão paralela: havendo outra sessão ativa, TODO deploy exige confirmação explícita do usuário naquele momento** — "o trabalho da outra sessão parece commitado/validado" NÃO é confirmação (violado em 2026-07-02; sem dano, por sorte). Endpoint NOVO em `api/` → checar antes o limite de 12 funções serverless do plano Hobby (deploy inteiro falha se estourar).
+5. **Só UMA sessão deploya**, e somente quando as outras confirmarem "terminei e validei". O deploy sobe trabalho pela metade de todo mundo. **Autorizações permanentes de deploy ("pode ir deployando") NÃO sobrevivem à existência de sessão paralela: havendo outra sessão ativa, TODO deploy exige confirmação explícita do usuário naquele momento** — "o trabalho da outra sessão parece commitado/validado" NÃO é confirmação (violado em 2026-07-02; sem dano, por sorte). Endpoint NOVO em `api/` → confirmar que o deploy está no projeto canônico Pro `dashboard-axenya`, não no legado/Hobby.
 6. **Commitar a cada entrega validada** — é o ponto de restauração se uma sessão corromper algo (já aconteceu: sed em arquivo com bytes NUL).
 7. **Não usar `sed -i` nos HTML** — `public/bdr.html` tem 3 bytes NUL herdados e o sed o corrompeu (2026-07-02). Usar a ferramenta de edição da sessão.
 
@@ -38,7 +134,7 @@ Dashboard de pipeline de vendas da **Axenya**, construído para uso interno do C
 | Backend | Vercel serverless functions (Node 18+, `maxDuration: 60s`) |
 | Dados | HubSpot CRM API v3 (`/crm/v3/objects/deals/search`, `batch/read`) |
 | Auth | Google OAuth via `lib/auth.js` (bypassado localmente, ver abaixo) |
-| Hosting | Vercel (Hobby plan — limite de 12 funções serverless) |
+| Hosting | Vercel Pro no projeto canônico `dashboard-axenya` (team Axenya). Projeto legado/Hobby não deve ser usado. |
 | Repositório | https://github.com/pachecojr-axenya/dashboard-pipeline (branch `main`) |
 
 ### Setup local
@@ -47,8 +143,8 @@ Dashboard de pipeline de vendas da **Axenya**, construído para uso interno do C
 # 1. Copie as variáveis de ambiente (já estão no .env.local — nunca commitar)
 # 2. Inicie o servidor local (porta 3002)
 $env:LOCAL_DEV_BYPASS = 'true'
-$env:SESSION_SECRET   = 'f71c591e01d11258d94806ef70f86fa2b54e50f60d8d2b2bba19ca7ed16d59a7'
-$env:HUBSPOT_TOKEN    = 'pat-na1-...' # (Pegar no portal HubSpot ou Vercel Secrets)
+$env:SESSION_SECRET   = '<SESSION_SECRET_LOCAL_32C_MIN>' # carregar de .env.local/Secret Manager; nunca colar valor real em docs/chat
+$env:HUBSPOT_TOKEN    = '<HUBSPOT_TOKEN_LOCAL>'           # carregar de .env.local/Secret Manager; nunca imprimir
 $env:ALLOWED_ORIGIN   = 'http://localhost:3002'
 node scripts/local-server.js
 # Acesse: http://localhost:3002/novo
@@ -2127,3 +2223,20 @@ Registro curto, uma linha por interação (a cada alteração).
 - **XLSX mantém as fórmulas:** a lógica de fórmulas (Real via `buildRealFormula` referenciando 1ª Fatura/Vidas; Probabilizada = Real × P. Ajustada; totais `SUM`) ficou intacta.
 - **Toda coluna numérica agora sai como NÚMERO no XLSX (não texto).** Antes só Vidas/1ª Fatura e os meses (via fórmula) eram numéricos; o resto ia como string ("557.975", "45,0%"). Generalizado via `numOverrides`: `NUM_Z` (moeda/inteiro, formato `#,##0`) cobre `dias_no_pipe`, `colaboradores`, `vidas`, `fatura_atual`, `primeira_fatura`, `arr_estimado`, `tcv`, `comp_dreal`, `comp_dprob`; `PCT_KEYS` (formato `0.0%` sobre a fração armazenada) cobre `probabilidade`, `prob_etapa`, `prob_ajustada`. Meses também recebem número base (rec/val do `data-calc`); a fórmula, quando existe, sobrescreve. Totais somáveis viram `SUM(...)` com formato. Célula numérica sem dado é **esvaziada** (não fica "-"). Texto e datas ficam como estão. O **CSV não muda** (segue legível, com "—"/percentuais formatados).
 - **Validação (browser real, Playwright + Chrome, dados de produção via 3002):** CSV com cabeçalhos rotulados e valores presentes (ex.: CommShop Real `559.828 / 29.465…`, Prob `43.785 / 2.304…`); XLSX com **2770 células de fórmula** (ex.: `AN3=J3*0.95`, `BL3=AN3*0.0782…`) e, nas **58 colunas numéricas × 225 linhas**, 2228 células numéricas e **0 vazamento de texto** (varredura de tipos de célula: int/moeda `t:"n"` `#,##0`, % `t:"n"` `0.0%`, totais `SUM` com formato). `_check-inline-js public/forecast.html` = 0 erros.
+
+## BDR Workload | nova subpágina /novo-bdr/workload + /api/bdr-workload (2026-07-13)
+
+> A pedido: primeira versão da visão de carga de trabalho intraday/weekly/monthly dos BDRs — "como foi o dia de hoje". Spec completa em `docs/2026-07-13_bdr-workload-intraday-spec.md` (decisões travadas com o usuário + smoke tests na API HubSpot). Sessão única no repo; API nova, sem tocar em endpoints existentes.
+
+- **Novo `api/bdr-workload.js` (`GET ?since&until`, datas em America/Sao_Paulo):** 3 buscas — empresas criadas na janela com owner do time, contatos criados na janela (COM ou SEM `hs_lead_status`; o `/api/bdr-leads` só cobre quem tem status), e contatos do time com `lastmodifieddate >= since` para extrair transições de `hs_lead_status` via `propertiesWithHistory` dentro da janela. Fonte de criação via `hs_object_source_detail_1`: Apollo/Lusha = push do próprio BDR via extensão (validado 13/07: 866 das 880 empresas desde 01/06 são INTEGRATION; owner preenchido em 90% e setado no ato do push) | `hubspot-development-growth` = chave de API interna (automações, NÃO conta como inserção de BDR) | CRM_UI = manual (raro: 14 desde 01/06). Time/alias duplicado do `bdr-leads.js` de propósito (não tocar em produção); consolidar em `lib/bdr-team.js` quando houver 3º consumidor. Cache 5 min por janela + fallback stale.
+- **Nova `public/bdr-workload.html` + `public/bdr-workload.js` (padrão bdr-no-show):** filtros de período (Hoje | Ontem | Últimos 7 dias | Semana | Mês | custom) + BDR + porte + fonte; 6 KPIs clicáveis (empresas inseridas, contatos inseridos, movimentações, contato efetivo, qualificado, desqualificado|timing) com drill nominal — todo KPI abre a lista exata que ele conta (reconciliação por construção); gráfico de ritmo (por hora no intraday, por dia em janelas maiores; inserções turquesa + movimentações amarelo); quebras por BDR e por fonte; 3 tabelas nominais (movimentações de→para com links HubSpot, empresas inseridas com nº de contatos, contatos inseridos com status atual). Motivo de desqualificação declarado como pendente (propriedade não existe no portal; Gate 0 da spec outbound-hubspot-first).
+- **Rotas:** `/novo-bdr/workload` + `/dashboard/bdr/workload` em `vercel.json` e `scripts/local-server.js`. Não entrou no bloco `PANELS` ainda (mesmo padrão do no-show: nav próprio da subpágina).
+- **Validação local (porta 3003, dados de produção):** endpoint 200 em ~2s; dia 13/07 = 95 empresas inseridas (Allan 39 Lusha, Thauan 26 Apollo), 177 contatos, 16 transições (7 ATTEMPTED→CONNECTED, 2 desqualificações) batendo com contagem independente via payload do `/api/bdr-leads`; screenshot full-page ok.
+
+## BDR Workload | camada de Atividades (engagements) validada e no ar (2026-07-13)
+
+> A pedido: "o Anderson não inseriu nada, mas como foi no contexto de atividade?" — validado na API e incorporado. Runbook consolidado no vault: `20_Company/Sales/Pipeline_Dashboard/BDR_Workload_Subpage_Runbook.md`.
+
+- **`api/bdr-workload.js`:** novo bloco de atividades — busca paginada de calls, emails, communications, notes, tasks e meetings por `hubspot_owner_id` do time + `hs_timestamp` na janela (paralelo aos demais fetches; `searchAll` ganhou `sortProp` porque engagement não tem `createdate`). Calls levam duração e disposition (mapa `/calls/v1/dispositions` tolerante a falha — hoje retorna vazio, exibimos só duração); communications levam canal (WHATS_APP | LINKEDIN_MESSAGE). Teto de 9.800 por tipo declarado na ajuda.
+- **`public/bdr-workload.js`:** nova tabela "Atividades | o trabalho além da inserção" — por BDR: ligações, com conversa (≥1 min, % sobre o total), e-mails, WhatsApp, LinkedIn, outras, notas, tarefas, reuniões, total, e as colunas de inserções/movimentações lado a lado para contrastar (o caso Anderson: 0 inserções | 72 ligações | 4 com conversa | 20 notas fica visível de imediato). Filtro de BDR aplica; porte/fonte não (atividade não tem empresa/fonte).
+- **Validação (13/07, produção via local):** 1.125 atividades no dia | 384 calls (Anderson 72), 266 tasks, 233 emails, 206 communications (132 WhatsApp + 74 LinkedIn), 31 notes, 5 meetings; payload em ~4,5s; screenshot ok.

@@ -13,12 +13,15 @@ O projeto utiliza **Vercel Serverless Functions**.
 - **Nunca** tente fazer deploy no plano Hobby, pois falhará com erro de limite de functions (existem mais de 20 endpoints na pasta `api/`).
 
 ### Como realizar o Deploy
+0. Leia `docs/github-source-of-truth.md`. Regra prática: se não está commitado e pushado no GitHub, não vai para produção.
 1. Certifique-se de estar linkado ao team correto: `vercel switch` (selecionar o team da Axenya).
 2. Certifique-se de estar linkado ao projeto correto: `vercel link --project prj_WlrmzEWZ9LXoRgeUCzy125UDlYLS`.
-3. Depois de commit/push, rode o preflight canônico: `node scripts/preflight-deploy.js`.
-4. Faça o deploy para produção: `npm run deploy`.
+3. Cheque o estado do Git: `git fetch origin && git status --short --branch && git log --oneline --decorate -5`.
+4. Cheque o que está no ar nas rotas críticas antes de subir, para saber exatamente o que será alterado.
+5. Depois de commit/push, rode o preflight canônico: `node scripts/preflight-deploy.js`.
+6. Faça um único deploy para produção: `npm run deploy`.
 
-> Regra canônica desde 2026-07-10: **não deployar árvore local suja, branch diferente de `main`, HEAD diferente de `origin/main`, projeto Vercel errado ou pacote sem os endpoints recentes.** O script `scripts/preflight-deploy.js` bloqueia esses casos antes do upload.
+> Regra canônica desde 2026-07-10, reforçada em 2026-07-14: **não deployar árvore local suja, mudança sem commit/push, branch diferente de `main` sem combinação explícita, HEAD diferente de `origin/main`, projeto Vercel errado ou pacote sem os endpoints recentes.** O script `scripts/preflight-deploy.js` bloqueia esses casos antes do upload.
 
 ---
 
@@ -51,6 +54,7 @@ No painel do Vercel, o projeto **precisa** ter as seguintes variáveis de ambien
 | `GOOGLE_CLIENT_SECRET` | Client Secret gerado no Google Cloud Console. |
 | `ALLOWED_ORIGIN` | URL exata de produção sem trailing slash (ex: `https://project-bsmfu.vercel.app`). Essencial para o CORS do backend aprovar as requisições. |
 | `ALLOWED_EMAILS` | Lista separada por vírgula de e-mails extras autorizados (além dos 5 hardcoded no `lib/auth.js`). |
+| `TREBLE_API_KEY` | API key Treble usada pelo painel `BDR | Treble` para leitura read-only de flows, sessões e histórico. |
 
 > **Nota sobre o `LOCAL_DEV_BYPASS=true`:**
 > Esta variável NUNCA deve ser colocada em produção. Ela existe apenas no `.env.local` para pular a autenticação do Google OAuth e verificar o dashboard rodando com dados locais e mock de usuário.
@@ -95,6 +99,12 @@ curl -o /dev/null -s -w "%{http_code}" https://project-bsmfu.vercel.app/api/fore
 
 Se `/api/auth/me` retornar 200 sem cookie, o bypass está ativo em produção — **reverter o deploy imediatamente**.
 
+Também registrar no Slack ou no `STATUS_LOG.md`:
+
+```text
+UNLOCK deploy dashboard | prod: <commit> | smokes: /novo,/forecast,/novo-bdr/treble,... | status: OK
+```
+
 ---
 
 ## 6. Sobre `ALLOWED_EMAILS`
@@ -124,7 +134,7 @@ O domínio que o time usa (`axenya-pipeline-dashboard.vercel.app`) foi movido pa
 
 | Secret GCP | Conteúdo | Uso |
 |---|---|---|
-| `vercel_personal_token` | Token Vercel com acesso ao team Axenya | Deploy do canônico: `npx vercel deploy --prod --yes --token "$(gcloud secrets versions access latest --secret=vercel_personal_token --project=gen-lang-client-0423905839)"` |
+| `vercel_personal_token` | Token Vercel com acesso ao team Axenya | Deploy do canônico. Carregar silenciosamente em variável de ambiente local apenas durante a execução; nunca imprimir o valor nem colar em comando/documentação. |
 | `Vercel_Growth` | Token da conta pessoal | Só para administrar o projeto legado |
 | `Vercel` | Revogado (Not authorized) | Não usar |
 | `axenya-hubspot-pat-shared` | PAT HubSpot do portal 44715285 | `HUBSPOT_TOKEN` do Vercel (aplicado em 2026-07-10 após o token anterior do canônico expirar) e dev local |

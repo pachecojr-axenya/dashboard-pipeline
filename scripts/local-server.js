@@ -56,11 +56,16 @@ const REWRITES = {
   '/novo-ae': '/ae.html',
   '/novo-bdr': '/bdr.html',
   '/novo-bdr/no-show': '/bdr-no-show.html',
+  '/novo-bdr/workload': '/bdr-workload.html',
+  '/dashboard/bdr/workload': '/bdr-workload.html',
   '/novo-bdr/list-attack': '/bdr-list-attack.html',
+  '/novo-bdr/treble': '/bdr-treble.html',
   '/dashboard/bdr/no-show': '/bdr-no-show.html',
   '/dashboard/bdr/list-attack': '/bdr-list-attack.html',
+  '/dashboard/bdr/treble': '/bdr-treble.html',
   '/novo-bdr-no-show': '/bdr-no-show.html',
   '/novo-bdr-list-attack': '/bdr-list-attack.html',
+  '/novo-bdr-treble': '/bdr-treble.html',
   '/novo-board': '/board.html',
   '/novo-48h': '/48h.html',
   '/novo-cs': '/cs.html',
@@ -221,6 +226,7 @@ server.listen(PORT, () => {
   console.log(`   Forecast     →  http://localhost:${PORT}/forecast`);
   console.log(`   No Show BDR  →  http://localhost:${PORT}/novo-bdr/no-show`);
   console.log(`   Ataque Lista →  http://localhost:${PORT}/novo-bdr/list-attack`);
+  console.log(`   BDR Treble   →  http://localhost:${PORT}/novo-bdr/treble`);
   console.log('');
   console.log(`   Auth bypass  →  ATIVO (LOCAL_DEV_BYPASS=true)`);
   console.log(`   HubSpot data →  ${process.env.HUBSPOT_TOKEN ? 'token presente ✔' : 'sem token (UI carrega, dados não)'}`);

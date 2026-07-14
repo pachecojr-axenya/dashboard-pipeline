@@ -115,3 +115,7 @@ node scripts/_capture-charts.js public/novo-board.html
 node scripts/_capture-charts.js public/novo-dashboard.html includeLost
 ```
 (Servidor local na 3002 precisa estar no ar.)
+
+## Adendo | BDR Workload (2026-07-13)
+
+- **`bdr-workload.html` (subpágina nova) → 🟡 em auditoria.** KPIs e tabelas reconciliam por construção (todo KPI clicável abre a lista nominal que ele conta). Validação inicial 13/07 com dados de produção: empresas/contatos/transições do dia batem com contagem independente. Pendências declaradas na própria página: motivo de desqualificação (propriedade inexistente no portal), fonte não se aplica a movimentações, primeiro retorno usa proxy CONNECTED.
