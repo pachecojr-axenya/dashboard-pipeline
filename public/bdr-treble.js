@@ -278,6 +278,12 @@
     var content = $('content'), stateEl = $('state');
     if (!rows.length) { setState('empty', 'Sem dados no filtro', 'Ajuste período ou filtros.'); return; }
     var s = summarize(realRows);
+    var serverSummary = (state.raw && state.raw.summary) || {};
+    s.deploymentFailures = Number(serverSummary.deploymentFailures || 0);
+    s.realObservedAttempts = Number(serverSummary.realObservedAttempts || 0);
+    s.realObservedDeliveryRate = serverSummary.realObservedDeliveryRate == null ? null : Number(serverSummary.realObservedDeliveryRate);
+    s.deliveryAnalyticsAvailable = !!serverSummary.deliveryAnalyticsAvailable;
+    s.deliveryAnalyticsStatus = serverSummary.deliveryAnalyticsStatus || 'unavailable';
     var meta = state.raw && state.raw.meta ? state.raw.meta : {};
     var warn = meta.sessionsTruncated ? ' | amostra truncada: aumente com cuidado ou reduza o período' : '';
     var flags = '<div class="note"><b>Fonte:</b> ' + esc(meta.source || 'Treble API') + ' | sessões analisadas ' + esc(meta.sessionsAnalyzed || realRows.length) + ' de ' + esc(meta.sessionsFound || realRows.length) + ' | linhas diagnósticas ' + esc(meta.diagnosticRows || 0) + warn + '. <b>Labels:</b> BDR, público e família são inferidos do nome do flow/copy.</div>';
