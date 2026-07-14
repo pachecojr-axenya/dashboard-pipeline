@@ -4,6 +4,15 @@ Recurring every 20min (job `55d3b136`). Purpose: identify and close gaps so the 
 
 ---
 
+### Menu lateral | BDR Performance vira "pasta" com acordeão (2026-07-14)
+
+> A subpágina **Workload | Intraday** (`/novo-bdr/workload`) existia mas não aparecia no menu. **BDR Performance** agora é um grupo colapsável (setinha ˅) que abre as subpáginas de BDR — mesmo padrão do Forecast › Overall. Escopo restrito ao grupo BDR; nada mais mudou de formato.
+
+- **Subpáginas no grupo `bdr`:** Workload \| Intraday, No-Show, Ataque à Lista, Treble (pai = `/novo-bdr`). Auto-expande na página atual; clicar no chevron expande/recolhe, clicar no rótulo navega.
+- **Duas fontes de menu, ambas atualizadas:** (1) array `PANELS` inline nas 10 páginas grandes (`dashboard/board/ae/cs/cotacao/48h/forecast*/bdr`) — acordeão genérico `toggleNavGroup(grp)`/`data-grp`/`.nav-sub`/`.nav-collapsed`, substituindo o antigo `toggleForecastAccordion` de grupo único; (2) `public/premium.js` (`NAV_MODEL`+`buildCanonicalNav`) que monta o menu das subpáginas de BDR, com toggle **local** (não sobrescreve `window.toggleNavGroup` para não colidir com a versão inline). CSS em `premium.css` + inline.
+- **Sem quebrar:** validado headless (Playwright) em 8 rotas — grandes e subpáginas — grupo presente, chevron alterna, item ativo correto, 0 erro de JS. `npm run check` OK. `bdr.html` mantém seus 3 bytes NUL originais.
+- **Doc:** `docs/nav-bdr-accordion.md` (inclui a regra de manter `PANELS` e `NAV_MODEL` em sincronia).
+
 ### Incidente de alias | BDR | Treble retornou 404 após deploy concorrente (2026-07-13)
 
 - **Causa:** o deploy de produção posterior feito por `jpacheco-5103` assumiu os aliases do projeto canônico depois do deploy do BDR | Treble; essa árvore não continha a nova página, então `/novo-bdr/treble` passou a retornar `NOT_FOUND`.
