@@ -19,6 +19,8 @@ const MAX_SESSION_PAGES_PER_FLOW = 3;
 const MAX_HISTORIES = 1200;
 const BUILD_DEADLINE_MS = 58000;
 const TREBLE_BASE = 'https://main.treble.ai';
+const TREBLE_ANALYTICS_URL = process.env.TREBLE_ANALYTICS_URL || 'https://treble-hubspot-sync-596382399844.southamerica-east1.run.app/analytics/delivery';
+const TREBLE_WEBHOOK_SECRET_HEADER = process.env.TREBLE_WEBHOOK_SECRET_HEADER || 'X-Axenya-Treble-Webhook-Secret';
 
 let cacheByKey = {};
 
@@ -89,6 +91,23 @@ async function trebleGet(token, path) {
   });
   if (!res.ok) throw new Error('Treble GET ' + path.split('?')[0] + ' | HTTP ' + res.status);
   return res.json();
+}
+
+async function fetchDeliveryAnalytics(days) {
+  const secret = process.env.TREBLE_ANALYTICS_SECRET || process.env.TREBLE_WEBHOOK_SECRET || '';
+  if (!secret) return { available: false, error: 'analytics_secret_missing', deploymentFailures: 0, failureReasons: [], byDay: [] };
+  try {
+    const res = await fetch(TREBLE_ANALYTICS_URL + '?days=' + encodeURIComponent(days), {
+      method: 'GET',
+      headers: { Accept: 'application/json', [TREBLE_WEBHOOK_SECRET_HEADER]: secret },
+      signal: AbortSignal.timeout(12000)
+    });
+    if (!res.ok) return { available: false, error: 'analytics_http_' + res.status, deploymentFailures: 0, failureReasons: [], byDay: [] };
+    const data = await res.json();
+    return Object.assign({ available: true }, data);
+  } catch (e) {
+    return { available: false, error: 'analytics_unavailable', deploymentFailures: 0, failureReasons: [], byDay: [] };
+  }
 }
 
 function stripText(v) {
@@ -424,17 +443,24 @@ async function buildPayload(token, days) {
     messageCount: 0
   }));
   const aggs = aggregate(rows);
+  const deliveryAnalytics = await fetchDeliveryAnalytics(days);
+  const deploymentFailures = Number(deliveryAnalytics.deploymentFailures || 0);
+  aggs.summary.deploymentFailures = deploymentFailures;
+  aggs.summary.realObservedAttempts = aggs.summary.sent + deploymentFailures;
+  aggs.summary.realObservedDeliveryRate = deploymentFailures > 0 && aggs.summary.realObservedAttempts ? aggs.summary.delivered / aggs.summary.realObservedAttempts : null;
+  aggs.summary.deliveryAnalyticsAvailable = !!deliveryAnalytics.available;
+  aggs.summary.deliveryAnalyticsStatus = deliveryAnalytics.available ? (deploymentFailures > 0 ? 'active_with_failures' : 'active_collecting_no_failures_yet') : 'unavailable';
   return Object.assign({
     success: true,
     generatedAt: new Date().toISOString(),
     cached: false,
     stale: false,
     meta: {
-      source: 'Treble API oficial | polls | sessions | history | deployment.failure ainda não ingerido',
+      source: 'Treble API oficial | polls | sessions | history + analytics interno deployment.failure',
       deliveryScope: 'scoped_to_materialized_sessions',
       deliveryScopeLabel: 'Entrega em sessões materializadas',
-      realDeliveryAvailable: false,
-      realDeliveryRequirement: 'Taxa real de entrega exige capturar deployment.failure e/ou webhooks on-delivered/on-read com denominador de tentativas de deployment.',
+      realDeliveryAvailable: !!deliveryAnalytics.available,
+      realDeliveryRequirement: 'Taxa real observada = entregues em sessions / (enviadas em sessions + deployment.failure capturados). Denominador completo por batch ainda depende de persistir todas as tentativas de deployment.',
       days,
       since: new Date(since * 1000).toISOString(),
       until: new Date(until * 1000).toISOString(),
@@ -451,7 +477,8 @@ async function buildPayload(token, days) {
       labelModel: 'Flow vem do nome real da conversa Treble | BDR e família de copy são inferidos do nome do flow',
       privacy: 'Sem telefone, email, documento, session_id ou payload bruto | pessoas anonimizadas como Pessoa 001 | copy outbound redigida por heurística | inbound ocultado por classificação de resposta',
       limitations: [
-        'Entrega exibida é scoped: apenas sessões que materializaram history na API Treble; não é taxa real de delivery do disparo.',
+        'Entrega em sessions é scoped: apenas sessões que materializaram history na API Treble.',
+        'Entrega real observada inclui deployment.failure capturado pelo webhook interno quando disponível.',
         'Motivo é diagnóstico observado por entrega, leitura e resposta dentro de sessions/history | não é motivo Meta bruto.',
         'Falhas de deployment com failure_reason exigem webhook deployment.failure ativo e persistido.',
         'Labels de BDR, público e agrupamento semântico dependem de nome do flow e copy outbound.'
@@ -461,8 +488,10 @@ async function buildPayload(token, days) {
       { step: 1, method: 'GET', endpoint: '/poll/api/all', purpose: 'Lista flows/polls e nomes reais', returns: 'Array com id, name e settings', usedFor: 'Flow, BDR inferido, família de copy e público' },
       { step: 2, method: 'GET', endpoint: '/devapi/poll/{poll_id}/sessions', purpose: 'Lista sessões por flow com paginação', returns: 'results[] com id, created_at, finished_at e user', usedFor: 'Volume, linha do tempo e pessoa anonimizada' },
       { step: 3, method: 'GET', endpoint: '/devapi/session/{session_id}/history', purpose: 'Lê eventos e mensagens de uma sessão', returns: 'MESSAGE.message com sender, type, text, delivered_at e read_at', usedFor: 'Funil scoped enviada-entregue-lida-respondida em sessões materializadas' },
-      { step: 4, method: 'POST', endpoint: '/treble-webhooks | event_type=deployment.failure', purpose: 'Webhook que a Treble chama no nosso servidor quando um deployment falha', returns: 'failure_reason, failed_at, conversation_id, user', usedFor: 'Ainda não ingerido no dashboard; necessário para taxa real de entrega e motivo bruto de não entrega' }
+      { step: 4, method: 'POST', endpoint: '/treble-webhooks | event_type=deployment.failure', purpose: 'Webhook que a Treble chama no nosso servidor quando um deployment falha', returns: 'failure_reason, failed_at, conversation_id, user', usedFor: 'Fonte real de falhas de deployment usada no denominador observado' },
+      { step: 5, method: 'GET', endpoint: '/analytics/delivery', purpose: 'Endpoint interno Axenya no Cloud Run com falhas persistidas sem PII', returns: 'deploymentFailures, failureReasons, byDay', usedFor: 'Taxa real observada e linha temporal de falhas capturadas' }
     ],
+    deliveryAnalytics,
     messages: rows,
     flows: flows.map(f => ({ label: f.name, bdr: inferBdr(f.name), family: copyFamily(f.name), audience: inferAudience(f.name, '') }))
   }, aggs);
@@ -477,7 +506,7 @@ module.exports = async function handler(req, res) {
   catch (e) { return res.status(503).json({ success: false, error: 'Treble API não configurada no servidor.' }); }
   const days = clampDays(req.query && req.query.days);
   const refresh = String((req.query && req.query.refresh) || '') === 'true';
-  const key = 'v4:days:' + days;
+  const key = 'v6:days:' + days;
   const cached = cacheByKey[key];
   if (!refresh && cached && Date.now() - cached.time < CACHE_TTL_MS) {
     return res.status(200).json(Object.assign({}, cached.payload, { cached: true, stale: false }));

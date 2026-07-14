@@ -14,6 +14,16 @@ Recurring every 20min (job `55d3b136`). Purpose: identify and close gaps so the 
 - **Sem quebrar:** `npm run check` OK; Playwright headless validou o modal (72 linhas reconciliam, enriquecimento lazy, 0 erro JS). Endpoints novos adicionados ao guard do `preflight-deploy.js`.
 - **Fase 2 (histórico BigQuery):** especificada, NÃO deployada — `lib/bq.js` + ingestão diária idempotente + cron só após verificação + UI weekly + join com `enr_call_semantics`. Doc: `docs/bdr-intraday-history.md`.
 
+### BDR | Treble V6 | analytics real de deployment.failure conectado (2026-07-14)
+
+> Corrige o gap apontado pelo usuário: só renomear a métrica não bastava; era preciso configurar a fonte real de falhas.
+
+- **Cloud Run analytics:** `treble-hubspot-sync` redeployado com `analytics_store.py`; `deployment.failure` passa a ser persistido em `treble_delivery_events` sem PII/texto. Serviço permanece `DRY_RUN=true` para não mutar HubSpot pelo webhook, mas grava analytics.
+- **Treble UI:** webhooks globais configurados para o endpoint `/webhooks/treble`; evento **Falha de implantação** fica marcado junto com HSM status e fechamento de sessão.
+- **Dashboard API:** `/api/bdr-treble` chama o endpoint interno `/analytics/delivery` com secret server-side e calcula `Entrega real observada = entregues em sessions / (enviadas em sessions + deployment.failure capturados)`.
+- **UX:** se ainda não houver `deployment.failure` capturado, o KPI mostra **Em coleta** em vez de 100%, evitando falsa precisão. Quando o primeiro failure real chegar, a taxa cai automaticamente.
+- **Timeline:** linha vermelha adicionada para `Falhas deployment` no gráfico temporal.
+
 ### BDR | Treble V3 | corrige semântica de entrega + linha temporal (2026-07-14)
 
 > Ajuste após validação operacional: 100% de entrega era verdadeiro apenas dentro de `/sessions` + `/history`, mas enganoso como taxa real de campanha porque falhas pré-session aparecem em `deployment.failure`.
