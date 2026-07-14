@@ -4,6 +4,25 @@ Recurring every 20min (job `55d3b136`). Purpose: identify and close gaps so the 
 
 ---
 
+### BDR Intraday | cache durável (KV) + drill-down de ligações + ambientes separados (2026-07-14)
+
+> Fase 1 da proposta `openspec/changes/bdr-intraday-history-drilldown/`. Responde direto ao "72 ligações do Anderson parece muito" e ao medo de "cache não persiste". Deploy prod concluído.
+
+- **Ambientes (`lib/env.js`):** fonte única — resolve VERCEL_ENV→NODE_ENV→development (preview=dev p/ dados). Expõe `gcpProject` (sempre `gen-lang-client-0423905839`), `bqDataset()` (`axenya_bdr_intraday_dev`×`_prd`), `ciDataset()` (`axenya_commercial_intel_prd` read-only), `kvKey(ns)` (prefixo `dev:`/`prd:`), `flag()`. Datasets BQ criados em `southamerica-east1` com labels. Regra: dev/preview nunca escrevem em `_prd`.
+- **Cache durável (`api/bdr-workload.js`):** troca o `_cache` em memória (efêmero, por instância) por 2 camadas L1 memória + **L2 KV** (durável, compartilhado, env-namespaced, TTL 5 min). KV é dependência mole: ausente/erro → degrada para L1+live sem lançar. Resposta indica `cacheLayer`.
+- **Drill-down (`api/bdr-workload-calls.js` + `public/bdr-workload.{html,js}`):** "Ligações" clicável → modal com conversa×discagem (≥1 min), por desfecho, por duração (client-side, custo zero) + "para quem" (contato·empresa) lazy via associação call→contact, sanitizado (sem telefone/e-mail), degradável. Verificado com dado real: **Anderson 2026-07-13 = 72 ligações, 4 conversas (6%), 68 discagens** (25 com 0s). `hs_call_disposition` vem vazio (BDRs não preenchem) → sinal real = duração.
+- **Sem quebrar:** `npm run check` OK; Playwright headless validou o modal (72 linhas reconciliam, enriquecimento lazy, 0 erro JS). Endpoints novos adicionados ao guard do `preflight-deploy.js`.
+- **Fase 2 (histórico BigQuery):** especificada, NÃO deployada — `lib/bq.js` + ingestão diária idempotente + cron só após verificação + UI weekly + join com `enr_call_semantics`. Doc: `docs/bdr-intraday-history.md`.
+
+### BDR | Treble V3 | corrige semântica de entrega + linha temporal (2026-07-14)
+
+> Ajuste após validação operacional: 100% de entrega era verdadeiro apenas dentro de `/sessions` + `/history`, mas enganoso como taxa real de campanha porque falhas pré-session aparecem em `deployment.failure`.
+
+- **Métrica corrigida:** labels mudaram para `Entrega (sessions)` / `Entregues em sessions`; o painel explicita que a métrica é scoped a sessões materializadas e não inclui falhas de deployment.
+- **API map:** adicionada linha `POST /treble-webhooks | event_type=deployment.failure` como requisito para taxa real de entrega e motivo bruto de não entrega; cache `v4`.
+- **Timeline:** aba `Linha do tempo` agora usa gráfico de linha SVG para enviadas, entregues em sessions, lidas e respondidas; tabela fica só como apoio.
+- **Próximo passo analítico:** persistir `deployment.failure` + `on-delivered`/`on-read` para recalcular `delivery_real = delivered / tentativas_deployment`.
+
 ### BDR | Treble V2 | full picture operacional MBB (2026-07-14)
 
 > Refinada a subpágina `/novo-bdr/treble` para sair de um diagnóstico agregado simples e virar painel operacional piramidal: funil total, ranking por BDR, linha do tempo, público inferido, pessoas anonimizadas, agrupamento semântico e mapa de arquitetura da API.

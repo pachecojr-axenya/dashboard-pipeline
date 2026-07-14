@@ -24,6 +24,8 @@
 
 const { hubspotPost, hubspotGet } = require('../lib/hubspot');
 const { setCORSHeaders, requireAuth, getHubspotToken, methodCheck } = require('./_helpers');
+const kv = require('../lib/kv');
+const env = require('../lib/env');
 
 const BDR_TEAM = [
   'Anderson Souza', 'Cintia Rodrigues', 'Gabriele Almeida', 'Priscilla Feliciello',
@@ -326,20 +328,42 @@ module.exports = async function handler(req, res) {
   if (!(sinceMs <= untilMs)) return res.status(400).json({ success: false, error: 'since > until' });
 
   const key = `${since}|${until}`;
+  const kvKey = env.kvKey(`workload:${key}`); // namespaced por ambiente (dev/prod não colidem)
   const refresh = q.get('refresh') === '1';
 
+  // Cache em 2 camadas: L1 memória (por instância) + L2 KV (durável, compartilhado).
+  // KV é dependência mole: se ausente/erro, degrada para L1 + live sem lançar.
+  async function kvGet() {
+    if (!kv.isConfigured()) return null;
+    try { return await kv.getJSON(kvKey); } catch (e) { console.error('[bdr-workload] KV get', e.message); return null; }
+  }
+  async function kvSet(entry) {
+    if (!kv.isConfigured()) return;
+    try { await kv.setJSON(kvKey, entry); } catch (e) { console.error('[bdr-workload] KV set', e.message); }
+  }
+  const fresh = (entry) => entry && (Date.now() - entry.at < CACHE_TTL);
+
   try {
-    const hit = _cache[key];
-    if (!refresh && hit && Date.now() - hit.at < CACHE_TTL) {
-      return res.status(200).json({ ...(hit.data), cached: true });
+    if (!refresh) {
+      const l1 = _cache[key];
+      if (fresh(l1)) return res.status(200).json({ ...(l1.data), cached: true, cacheLayer: 'memory' });
+      const l2 = await kvGet();
+      if (fresh(l2)) {
+        _cache = { [key]: l2 }; // reidrata L1 após cold start
+        return res.status(200).json({ ...(l2.data), cached: true, cacheLayer: 'kv' });
+      }
     }
     const data = await buildPayload(token, sinceMs, untilMs);
-    _cache = { [key]: { at: Date.now(), data } };
+    const entry = { at: Date.now(), data };
+    _cache = { [key]: entry };
+    await kvSet(entry); // best-effort
     return res.status(200).json(data);
   } catch (e) {
     console.error('[bdr-workload]', e.message);
-    const hit = _cache[key];
-    if (hit) return res.status(200).json({ ...(hit.data), cached: true, stale: true, staleError: e.message });
+    const l1 = _cache[key];
+    if (l1) return res.status(200).json({ ...(l1.data), cached: true, stale: true, staleError: e.message });
+    const l2 = await kvGet();
+    if (l2) return res.status(200).json({ ...(l2.data), cached: true, stale: true, cacheLayer: 'kv', staleError: e.message });
     return res.status(500).json({ success: false, error: e.message });
   }
 };

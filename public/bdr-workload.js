@@ -272,7 +272,8 @@ var WorkloadBDR = (function () {
     rows.forEach(function (b) {
       var p = por[b], t = tot(p);
       if (!t && !p.ins && !p.mov) return;
-      h += '<tr><td>' + esc(b) + '</td><td class="right">' + p.calls + '</td>' +
+      h += '<tr><td>' + esc(b) + '</td><td class="right">' +
+        (p.calls ? '<span class="calls-link" onclick="WorkloadBDR.drillCalls(\'' + b + '\')" title="Ver detalhe das ligações" style="cursor:pointer;color:var(--teal);text-decoration:underline dotted;text-underline-offset:2px">' + p.calls + '</span>' : '0') + '</td>' +
         '<td class="right">' + (p.calls ? p.calls1m + ' <span class="muted">(' + Math.round(p.calls1m / p.calls * 100) + '%)</span>' : '0') + '</td>' +
         '<td class="right">' + p.emails + '</td><td class="right">' + p.whats + '</td><td class="right">' + p.linkedin + '</td><td class="right">' + p.comOutras + '</td>' +
         '<td class="right">' + p.notes + '</td><td class="right">' + p.tasks + '</td><td class="right">' + p.meetings + '</td>' +
@@ -384,6 +385,86 @@ var WorkloadBDR = (function () {
     rows = fTransitions().filter(function (t) { return map[kind].indexOf(t.para) >= 0; });
     openModal(lab[kind] + ' | detalhe', tabelaMovs(rows));
   }
+  // ---------- drill de ligações (o "72 do Anderson") ----------
+  var CALL_MIN_CONVERSA = 60000;
+  var CALL_BUCKETS = [['0s', 0, 1], ['<30s', 1, 30000], ['30s–1min', 30000, 60000],
+    ['1–3min', 60000, 180000], ['3–10min', 180000, 600000], ['>10min', 600000, Infinity]];
+  function callBucket(ms) {
+    var v = ms == null ? 0 : ms;
+    for (var i = 0; i < CALL_BUCKETS.length; i++) { if (v >= CALL_BUCKETS[i][1] && v < CALL_BUCKETS[i][2]) return CALL_BUCKETS[i][0]; }
+    return '>10min';
+  }
+  function fmtDur(ms) {
+    if (ms == null) return '—';
+    var s = Math.round(ms / 1000);
+    if (s < 60) return s + 's';
+    return Math.floor(s / 60) + 'min ' + (s % 60) + 's';
+  }
+  function callsFor(b) {
+    return (raw.activities || []).filter(function (a) { return a.tipo === 'calls' && a.bdr === b; })
+      .sort(function (a, b2) { return (a.ts < b2.ts ? 1 : -1); });
+  }
+  // Corpo do modal: breakdown client-side (instantâneo) + área "para quem" (lazy).
+  function renderCallsBody(b, calls, apiCalls) {
+    var conv = 0, byDesf = {}, byBk = {};
+    calls.forEach(function (c) {
+      if (c.duracao_ms != null && c.duracao_ms >= CALL_MIN_CONVERSA) conv++;
+      var d = c.desfecho || 'Sem desfecho'; byDesf[d] = (byDesf[d] || 0) + 1;
+      var bk = callBucket(c.duracao_ms); byBk[bk] = (byBk[bk] || 0) + 1;
+    });
+    var n = calls.length, disc = n - conv;
+    var h = '<div class="note" style="margin-bottom:1rem"><b>' + n + ' ligações</b> na janela ' + esc(state.since) + ' a ' + esc(state.until) +
+      ' — <b>' + conv + ' conversas</b> (' + (n ? Math.round(conv / n * 100) : 0) + '%) · <b>' + disc + ' discagens</b> (&lt;1 min ou sem atender). ' +
+      '<span class="muted">Número bruto de ligações infla o esforço; o que vale é a conversa.</span></div>';
+    // por desfecho + por duração, lado a lado
+    h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">';
+    function miniTable(title, obj, order) {
+      var keys = order || Object.keys(obj).sort(function (a, c) { return obj[c] - obj[a]; });
+      var t = '<div><h3 style="margin:0 0 .4rem;font-size:.8rem;text-transform:uppercase;letter-spacing:.05em;color:var(--text2)">' + title + '</h3><table style="width:100%"><tbody>';
+      keys.forEach(function (k) { if (obj[k]) t += '<tr><td>' + esc(k) + '</td><td class="right"><b>' + obj[k] + '</b></td></tr>'; });
+      return t + '</tbody></table></div>';
+    }
+    h += miniTable('Por desfecho', byDesf, null);
+    h += miniTable('Por duração', byBk, CALL_BUCKETS.map(function (x) { return x[0]; }));
+    h += '</div>';
+    // lista nominal
+    h += '<div class="table-wrap"><table><thead><tr><th>Hora</th><th>Duração</th><th>Desfecho</th><th>Tipo</th><th>Para quem</th></tr></thead><tbody id="calls-detail-rows">';
+    var src = apiCalls || calls;
+    src.forEach(function (c) {
+      var isConv = c.conversa != null ? c.conversa : (c.duracao_ms != null && c.duracao_ms >= CALL_MIN_CONVERSA);
+      var quem = apiCalls ? (c.contato ? esc(c.contato) + (c.empresa ? ' <span class="muted">· ' + esc(c.empresa) + '</span>' : '') : '<span class="muted">—</span>')
+        : '<span class="muted">carregando…</span>';
+      h += '<tr><td>' + (c.ts ? dmhm(c.ts) : '—') + '</td><td>' + fmtDur(c.duracao_ms) + '</td>' +
+        '<td>' + esc(c.desfecho || 'Sem desfecho') + '</td>' +
+        '<td>' + (isConv ? '<span class="pill" style="background:rgba(46,204,113,.16);color:#2ecc71">conversa</span>' : '<span class="pill muted">discagem</span>') + '</td>' +
+        '<td>' + quem + '</td></tr>';
+    });
+    h += '</tbody></table></div>';
+    if (!apiCalls) h += '<div class="desc" id="calls-enrich-note" style="margin-top:.5rem">Buscando "para quem" (contato/empresa)…</div>';
+    return h;
+  }
+  function drillCalls(b) {
+    var calls = callsFor(b);
+    openModal('Ligações | ' + b + ' | detalhe', renderCallsBody(b, calls, null));
+    var expected = 'Ligações | ' + b + ' | detalhe';
+    fetch('/api/bdr-workload-calls?bdr=' + encodeURIComponent(b) + '&since=' + state.since + '&until=' + state.until, { credentials: 'same-origin' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        // só atualiza se o modal ainda é o mesmo (usuário não trocou/fechou)
+        if (document.getElementById('modal-title').textContent !== expected) return;
+        if (d && d.success && d.enriched) {
+          document.getElementById('modal-body').innerHTML = renderCallsBody(b, calls, d.calls);
+        } else {
+          var note = document.getElementById('calls-enrich-note');
+          if (note) note.innerHTML = '<span class="muted">"Para quem" indisponível nesta janela — breakdown por desfecho/duração acima permanece válido.</span>';
+          document.querySelectorAll('#calls-detail-rows td:last-child .muted').forEach(function (el) { if (el.textContent === 'carregando…') el.textContent = '—'; });
+        }
+      })
+      .catch(function () {
+        var note = document.getElementById('calls-enrich-note');
+        if (note) note.innerHTML = '<span class="muted">"Para quem" indisponível (erro de rede).</span>';
+      });
+  }
   function openModal(title, html) {
     document.getElementById('modal-title').textContent = title;
     document.getElementById('modal-body').innerHTML = html;
@@ -434,7 +515,7 @@ var WorkloadBDR = (function () {
     },
     setFilter: function (k, v) { state[k] = v; render(); },
     reset: function () { state.bdr = ''; state.porte = ''; state.fonte = ''; render(); },
-    drill: drill, closeModal: closeModal, openAllHelp: openAllHelp, closeHelp: closeHelp, toggleTheme: toggleTheme,
+    drill: drill, drillCalls: drillCalls, closeModal: closeModal, openAllHelp: openAllHelp, closeHelp: closeHelp, toggleTheme: toggleTheme,
   };
 })();
 window.addEventListener('DOMContentLoaded', function () { WorkloadBDR.init(); });
