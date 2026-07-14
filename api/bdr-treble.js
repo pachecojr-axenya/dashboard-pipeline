@@ -21,6 +21,7 @@ const BUILD_DEADLINE_MS = 58000;
 const TREBLE_BASE = 'https://main.treble.ai';
 const TREBLE_ANALYTICS_URL = process.env.TREBLE_ANALYTICS_URL || 'https://treble-hubspot-sync-596382399844.southamerica-east1.run.app/analytics/delivery';
 const TREBLE_WEBHOOK_SECRET_HEADER = process.env.TREBLE_WEBHOOK_SECRET_HEADER || 'X-Axenya-Treble-Webhook-Secret';
+const TREBLE_DEPLOYMENTS_REPORT_URL = process.env.TREBLE_DEPLOYMENTS_REPORT_URL || 'https://s3.us-east-1.amazonaws.com/core.metrics.treble.ai/reports/105583/general_deployments_report_07_10_2026_17_29_16.csv';
 
 let cacheByKey = {};
 
@@ -107,6 +108,94 @@ async function fetchDeliveryAnalytics(days) {
     return Object.assign({ available: true }, data);
   } catch (e) {
     return { available: false, error: 'analytics_unavailable', deploymentFailures: 0, failureReasons: [], byDay: [] };
+  }
+}
+
+function parseCsv(text) {
+  const rows = [];
+  let row = [], cell = '', quoted = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i], next = text[i + 1];
+    if (quoted) {
+      if (ch === '"' && next === '"') { cell += '"'; i++; }
+      else if (ch === '"') quoted = false;
+      else cell += ch;
+    } else if (ch === '"') quoted = true;
+    else if (ch === ',') { row.push(cell); cell = ''; }
+    else if (ch === '\n') { row.push(cell); rows.push(row); row = []; cell = ''; }
+    else if (ch !== '\r') cell += ch;
+  }
+  if (cell || row.length) { row.push(cell); rows.push(row); }
+  const header = rows.shift() || [];
+  return rows.filter(r => r.length).map(r => {
+    const obj = {};
+    header.forEach((h, i) => { obj[h] = r[i] || ''; });
+    return obj;
+  });
+}
+
+function parseReportTime(value) {
+  const s = String(value || '').trim();
+  if (!s || /^(none|null|nan)$/i.test(s)) return null;
+  if (/^\d+(\.\d+)?$/.test(s)) return new Date(Number(s) * 1000).toISOString();
+  const d = new Date(s.replace(' ', 'T') + 'Z');
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+}
+
+async function fetchDeploymentReport(days, flowNameById) {
+  if (!TREBLE_DEPLOYMENTS_REPORT_URL) return { available: false, sent: 0, delivered: 0, responded: 0, notDelivered: 0, byDay: [], byConversation: [], failureReasons: [] };
+  try {
+    const res = await fetch(TREBLE_DEPLOYMENTS_REPORT_URL, { method: 'GET', signal: AbortSignal.timeout(20000) });
+    if (!res.ok) throw new Error('report_http_' + res.status);
+    const text = await res.text();
+    const sinceMs = Date.now() - days * 86400000;
+    const rows = parseCsv(text);
+    const byDay = {}, byConversation = {}, byConversationDay = {}, reasons = {};
+    let sent = 0, delivered = 0, responded = 0, notDelivered = 0;
+    rows.forEach(r => {
+      const iso = parseReportTime(r.deployment_timestamp);
+      const ms = iso ? new Date(iso).getTime() : 0;
+      if (!ms || ms < sinceMs) return;
+      const day = iso.slice(0, 10);
+      const cid = String(r.conversation_id || 'unknown');
+      const status = String(r.delivery_status || 'UNKNOWN').toUpperCase();
+      const detailRaw = String(r.status_detail || status || 'UNKNOWN').toUpperCase();
+      const detail = /^[A-Z0-9_]+$/.test(detailRaw) ? detailRaw : 'FAILURE_OTHER';
+      const isDelivered = status === 'DELIVERED';
+      const hasResponse = !!parseReportTime(r.user_responded_timestamp);
+      sent += 1;
+      if (isDelivered) delivered += 1; else notDelivered += 1;
+      if (hasResponse) responded += 1;
+      if (!byDay[day]) byDay[day] = { day, sent: 0, delivered: 0, responded: 0, deploymentFailures: 0 };
+      byDay[day].sent += 1;
+      byDay[day].delivered += isDelivered ? 1 : 0;
+      byDay[day].responded += hasResponse ? 1 : 0;
+      byDay[day].deploymentFailures += isDelivered ? 0 : 1;
+      if (!byConversation[cid]) byConversation[cid] = { conversationId: cid, name: flowNameById[cid] || ('Conversation ' + cid), sent: 0, delivered: 0, responded: 0, deploymentFailures: 0, failureReasons: {} };
+      const c = byConversation[cid];
+      c.sent += 1; c.delivered += isDelivered ? 1 : 0; c.responded += hasResponse ? 1 : 0; c.deploymentFailures += isDelivered ? 0 : 1;
+      if (!isDelivered) { reasons[detail] = (reasons[detail] || 0) + 1; c.failureReasons[detail] = (c.failureReasons[detail] || 0) + 1; }
+      const cdKey = cid + '|' + day;
+      if (!byConversationDay[cdKey]) byConversationDay[cdKey] = { conversationId: cid, name: flowNameById[cid] || ('Conversation ' + cid), day, sent: 0, delivered: 0, responded: 0, deploymentFailures: 0, failureReasons: {} };
+      const cd = byConversationDay[cdKey];
+      cd.sent += 1; cd.delivered += isDelivered ? 1 : 0; cd.responded += hasResponse ? 1 : 0; cd.deploymentFailures += isDelivered ? 0 : 1;
+      if (!isDelivered) cd.failureReasons[detail] = (cd.failureReasons[detail] || 0) + 1;
+    });
+    const convRows = Object.keys(byConversation).map(k => byConversation[k]).sort((a, b) => b.sent - a.sent).slice(0, 80);
+    const convDayRows = Object.keys(byConversationDay).map(k => byConversationDay[k]).sort((a, b) => b.day.localeCompare(a.day) || b.sent - a.sent).slice(0, 160);
+    return {
+      available: true,
+      source: 'treble_general_deployments_report_csv',
+      sent, delivered, responded, notDelivered,
+      deliveryRate: sent ? delivered / sent : null,
+      responseRate: sent ? responded / sent : null,
+      byDay: Object.keys(byDay).map(k => byDay[k]).sort((a, b) => a.day.localeCompare(b.day)),
+      byConversation: convRows,
+      byConversationDay: convDayRows,
+      failureReasons: Object.keys(reasons).map(k => ({ reason: k, count: reasons[k] })).sort((a, b) => b.count - a.count)
+    };
+  } catch (e) {
+    return { available: false, error: 'deployment_report_unavailable', sent: 0, delivered: 0, responded: 0, notDelivered: 0, byDay: [], byConversation: [], failureReasons: [] };
   }
 }
 
@@ -444,12 +533,20 @@ async function buildPayload(token, days) {
   }));
   const aggs = aggregate(rows);
   const deliveryAnalytics = await fetchDeliveryAnalytics(days);
+  const flowNameById = {};
+  flows.forEach(f => { flowNameById[String(f.id)] = f.name; });
+  const deploymentReport = await fetchDeploymentReport(days, flowNameById);
   const deploymentFailures = Number(deliveryAnalytics.deploymentFailures || 0);
-  aggs.summary.deploymentFailures = deploymentFailures;
-  aggs.summary.realObservedAttempts = aggs.summary.sent + deploymentFailures;
-  aggs.summary.realObservedDeliveryRate = deploymentFailures > 0 && aggs.summary.realObservedAttempts ? aggs.summary.delivered / aggs.summary.realObservedAttempts : null;
+  const reportFailures = Number(deploymentReport.notDelivered || 0);
+  aggs.summary.deploymentFailures = deploymentReport.available ? reportFailures : deploymentFailures;
+  aggs.summary.realObservedAttempts = deploymentReport.available ? Number(deploymentReport.sent || 0) : (aggs.summary.sent + deploymentFailures);
+  aggs.summary.realObservedDelivered = deploymentReport.available ? Number(deploymentReport.delivered || 0) : aggs.summary.delivered;
+  aggs.summary.realObservedResponses = deploymentReport.available ? Number(deploymentReport.responded || 0) : aggs.summary.replied;
+  aggs.summary.realObservedDeliveryRate = aggs.summary.realObservedAttempts ? aggs.summary.realObservedDelivered / aggs.summary.realObservedAttempts : null;
+  aggs.summary.realObservedSource = deploymentReport.available ? 'treble_deployments_report' : 'webhook_delivery_analytics';
   aggs.summary.deliveryAnalyticsAvailable = !!deliveryAnalytics.available;
-  aggs.summary.deliveryAnalyticsStatus = deliveryAnalytics.available ? (deploymentFailures > 0 ? 'active_with_failures' : 'active_collecting_no_failures_yet') : 'unavailable';
+  aggs.summary.deploymentReportAvailable = !!deploymentReport.available;
+  aggs.summary.deliveryAnalyticsStatus = deploymentReport.available ? 'active_from_deployments_report' : (deliveryAnalytics.available ? (deploymentFailures > 0 ? 'active_with_failures' : 'active_collecting_no_failures_yet') : 'unavailable');
   return Object.assign({
     success: true,
     generatedAt: new Date().toISOString(),
@@ -492,6 +589,7 @@ async function buildPayload(token, days) {
       { step: 5, method: 'GET', endpoint: '/analytics/delivery', purpose: 'Endpoint interno Axenya no Cloud Run com falhas persistidas sem PII', returns: 'deploymentFailures, failureReasons, byDay', usedFor: 'Taxa real observada e linha temporal de falhas capturadas' }
     ],
     deliveryAnalytics,
+    deploymentReport,
     messages: rows,
     flows: flows.map(f => ({ label: f.name, bdr: inferBdr(f.name), family: copyFamily(f.name), audience: inferAudience(f.name, '') }))
   }, aggs);

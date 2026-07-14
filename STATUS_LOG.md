@@ -24,6 +24,15 @@ Recurring every 20min (job `55d3b136`). Purpose: identify and close gaps so the 
 - **UX:** se ainda não houver `deployment.failure` capturado, o KPI mostra **Em coleta** em vez de 100%, evitando falsa precisão. Quando o primeiro failure real chegar, a taxa cai automaticamente.
 - **Timeline:** linha vermelha adicionada para `Falhas deployment` no gráfico temporal.
 
+### BDR | Treble V7 | HSM deployments report retroativo conectado (2026-07-14)
+
+> Double-check do caso citado pelo usuário: `pri_face_scan`/HSM com 21 envios, 17 entregues e 1 resposta em 23/junho. A fonte correta não era `/sessions` nem apenas webhook novo; era o relatório histórico `general_deployments_report` da Treble.
+
+- **Fonte nova:** `/api/bdr-treble` passa a ler o CSV `general_deployments_report` server-side (`TREBLE_DEPLOYMENTS_REPORT_URL`) e retorna apenas agregados sem telefone/user/session payload.
+- **Caso validado:** `conversation_id=1368340`, dia `2026-06-23`: enviados `21`, entregues `17`, respostas `1`, falhas `4` (`FAILURE_BY_UNABLE_TO_CONTACT=3`, `SUCCESS sem delivered=1`).
+- **Taxa real observada:** agora prioriza o relatório histórico de deployments quando disponível. No recorte de 30d validado localmente: `1253 entregues / 2073 envios = 60,4%`.
+- **UI:** adicionada tabela `Deployments HSM | relatório Treble` por conversa/dia; timeline incorpora falhas históricas do report.
+
 ### BDR | Treble V3 | corrige semântica de entrega + linha temporal (2026-07-14)
 
 > Ajuste após validação operacional: 100% de entrega era verdadeiro apenas dentro de `/sessions` + `/history`, mas enganoso como taxa real de campanha porque falhas pré-session aparecem em `deployment.failure`.

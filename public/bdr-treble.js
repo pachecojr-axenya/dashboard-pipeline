@@ -208,7 +208,20 @@
       kpi('Respondidas', fmt(s.replied), 'Resposta ÷ enviadas = ' + pct(s.responseRate), 'good', 'responded') +
       kpi('Falhas deployment', fmt(s.deploymentFailures || 0), s.deliveryAnalyticsAvailable ? 'Webhook interno capturado' : 'Analytics indisponível', (s.deploymentFailures || 0) ? 'bad' : 'warn') +
       kpi('Lida sem resposta', fmt(s.readNoReply), 'Copy/CTA não converteu', s.readNoReply ? 'warn' : 'good', 'read_no_reply') + '</div>';
-    return story + kpis + '<div class="grid">' + funnel(s) + '<div class="card span-6"><div class="card-title"><div><h2>Flows | ranking de resposta</h2><div class="desc">Labels reais da Treble | clique para detalhes.</div></div></div>' + barRows(byFlow, 'flow', 12, 'sessions') + '</div><div class="card span-6"><div class="card-title"><div><h2>Famílias de copy</h2><div class="desc">Agrupamento por nome do flow | ajuda a decidir próxima abordagem.</div></div></div>' + barRows(byFamily, 'family', 8, 'sessions') + '</div></div>';
+    return story + kpis + '<div class="grid">' + funnel(s) + renderDeploymentReport() + '<div class="card span-6"><div class="card-title"><div><h2>Flows | ranking de resposta</h2><div class="desc">Labels reais da Treble | clique para detalhes.</div></div></div>' + barRows(byFlow, 'flow', 12, 'sessions') + '</div><div class="card span-6"><div class="card-title"><div><h2>Famílias de copy</h2><div class="desc">Agrupamento por nome do flow | ajuda a decidir próxima abordagem.</div></div></div>' + barRows(byFamily, 'family', 8, 'sessions') + '</div></div>';
+  }
+
+  function renderDeploymentReport() {
+    var report = (state.raw && state.raw.deploymentReport) || {};
+    var rows = report.byConversationDay || [];
+    if (!report.available) return '<div class="card span-12"><div class="card-title"><div><h2>Deployments HSM | relatório Treble</h2><div class="desc">Relatório histórico indisponível; usando apenas sessions/history + webhook.</div></div></div></div>';
+    var h = '<div class="card span-12"><div class="card-title"><div><h2>Deployments HSM | relatório Treble</h2><div class="desc">Fonte histórica de envio outbound: enviados, entregues, respostas e motivos de falha por conversa/dia. Sem telefone ou payload bruto.</div></div></div><div class="table-wrap"><table><thead><tr><th>Dia</th><th>Conversa</th><th>Enviados</th><th>Entregues</th><th>Falhas</th><th>Respostas</th><th>Tx entrega real</th><th>Motivos falha</th></tr></thead><tbody>';
+    rows.slice(0, 40).forEach(function (r) {
+      var rate = r.sent ? r.delivered / r.sent : null;
+      var reasons = Object.keys(r.failureReasons || {}).map(function (k) { return k + ': ' + r.failureReasons[k]; }).join(' | ');
+      h += '<tr><td>' + esc(day(r.day)) + '</td><td>' + esc(r.name || ('Conversation ' + r.conversationId)) + '<div class="muted">ID ' + esc(r.conversationId || '') + '</div></td><td>' + fmt(r.sent) + '</td><td>' + fmt(r.delivered) + '</td><td>' + fmt(r.deploymentFailures) + '</td><td>' + fmt(r.responded) + '</td><td>' + pct(rate) + '</td><td>' + esc(reasons || '—') + '</td></tr>';
+    });
+    return h + '</tbody></table></div></div>';
   }
 
   function renderBdrs(rows) {
@@ -225,6 +238,7 @@
     var byDay = group(rows, 'createdDay').filter(function (d) { return d.key && d.key !== 'Sem data'; }).sort(function (a, b) { return String(a.key).localeCompare(String(b.key)); });
     var failuresByDay = {};
     (((state.raw || {}).deliveryAnalytics || {}).byDay || []).forEach(function (d) { failuresByDay[d.day] = Number(d.deploymentFailures || 0); });
+    (((state.raw || {}).deploymentReport || {}).byDay || []).forEach(function (d) { failuresByDay[d.day] = Number(d.deploymentFailures || 0); });
     byDay.forEach(function (d) { d.deploymentFailures = failuresByDay[d.key] || 0; });
     if (!byDay.length) return '<div class="card span-12"><div class="muted">Sem datas no filtro.</div></div>';
     var w = 980, h = 340, padL = 54, padR = 26, padT = 24, padB = 50;
