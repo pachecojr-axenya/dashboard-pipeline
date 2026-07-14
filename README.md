@@ -180,7 +180,7 @@ Há duas formas de rodar localmente:
 **Opção A — `local-server.js` (recomendada, zero dependências externas):**
 
 ```powershell
-# A partir de dashboard-ivan-visual/
+# A partir de dashboard-axenya/
 node scripts/local-server.js
 # Acesse: http://localhost:3002/novo
 ```
