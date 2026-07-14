@@ -19,7 +19,7 @@ Portal HubSpot: `44715285`
 | 3 | Cotação | `1144746908` | sim | não |  |
 | 4 | Consultoria | `1144746909` | sim | não |  |
 | 5 | Negociação | `1144746910` | sim | não |  |
-| 6 | Stand by (aliases: Standby) | `1317543716` | sim | não | Nome diverge entre consumidores do 1.0: forecast-table.js mapeia 'Stand by', funnel-stages.js mapeia 'Standby'. As réguas de probabilidade carregam as duas chaves por causa disso. Unificar na Fase 2. |
+| 6 | Stand by (aliases: Standby) | `1317543716` | não | não | Nome diverge entre consumidores do 1.0: forecast-table.js mapeia 'Stand by', funnel-stages.js mapeia 'Standby'. As réguas de probabilidade carregam as duas chaves por causa disso. 🔴 BUG pré-existente (achado Fase 2, 2026-07-14): em funnel-stages.js o map produz 'Standby' mas os buckets do funil Vendas usam 'Stand by' → a linha Stand by do C06 Vendas conta SEMPRE 0. Preservado pela paridade; corrigir conscientemente (unificação de nome). |
 | 7 | Implantação | `1288611084` | sim | não |  |
 | 8 | Ganho | `1144844314` | sim | sim |  |
 | 9 | Perdido | `1144746911` | não | sim | Só entra nos payloads com ?includeLost=true (CRO Dashboard e conversões). |
@@ -73,7 +73,7 @@ Usada em: public/forecast.html (STAGE_PROB_DEFAULT) · public/forecast-stage.htm
 | Standby | 12,0% |
 | Stand by | 12,0% |
 
-Usada em: api/forecast-table.js (STAGE_PROB) · public/settings-modal.js · public/board.html (NOVO_STAGE_PROB_DEFAULT) · public/ae.html (NOVO_STAGE_PROB_DEFAULT) · public/dashboard.html · public/prob-engine.js (DEFAULT)
+Usada em: public/settings-modal.js · public/board.html (NOVO_STAGE_PROB_DEFAULT) · public/ae.html (NOVO_STAGE_PROB_DEFAULT) · public/dashboard.html · public/prob-engine.js (DEFAULT)
 > 🔴 **Divergência conhecida:** public/prob-engine.js usa Implantação=1.0 enquanto os demais consumidores usam 0.581 (detectado na extração da Fase 1, 2026-07-14). O prob-engine é o usado pelo Board; o comentário do próprio arquivo diz 'cópia verbatim do CRO', mas o valor difere. Resolver na Fase 2 (unificação) — até lá, registrado aqui para ninguém tratar como arredondamento.
 
 **calculada_funil** | Probabilidade calculada em tempo real pelo funil (C07) \| ganhos ÷ entraram na etapa, por pipeline | tipo: calculada
@@ -211,7 +211,7 @@ Fuso canônico: America/Sao_Paulo.
 - **Tipo:** calculado · **Grain:** consulta · **Status:** em_revisao · **Vigente desde:** 2026-07-14 · **Dono:** revops
 - **Usa dados:** `pipeline`, `dealstage`, `is_closed_lost`
 - **Usa referência:** `pipelines.vendas`, `pipelines.bid`, `etapas`
-- **Filtro:** pipeline IN (Vendas, Bid) AND dealstage IN etapas com ativa_default=true. Perdidos só com ?includeLost=true (2º filterGroup: hs_is_closed_lost=true nos dois pipes — é o que pega o Perdido do Bid). Closed-lost sem stage mapeado → nome 'Perdido'.
+- **Filtro:** COMPORTAMENTO ATUAL (1.0): pipeline IN (Vendas, Bid) AND dealstage IN (todas as etapas com mapeada_no_1_0 != false, exceto Perdido) — Stand by INCLUÍDO. Perdidos só com ?includeLost=true (2º filterGroup: hs_is_closed_lost=true nos dois pipes — é o que pega o Perdido do Bid). Closed-lost sem stage mapeado → nome 'Perdido'.
 - **Código (1.0):** api/forecast-table.js:40 (ACTIVE_STAGE_IDS) · api/forecast-table.js:280 (fetchDeals)
 - **Notas:** ADR-007 (etapas ativas configuráveis pelo usuário, especialmente Reunião e Standby) transforma este filtro fixo em config global na Fase 4.
 

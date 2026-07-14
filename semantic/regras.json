@@ -90,7 +90,8 @@
       "tipo": "calculado", "grain": "consulta",
       "usa_dados": ["pipeline", "dealstage", "is_closed_lost"],
       "usa_referencia": ["pipelines.vendas", "pipelines.bid", "etapas"],
-      "filtro": "pipeline IN (Vendas, Bid) AND dealstage IN etapas com ativa_default=true. Perdidos só com ?includeLost=true (2º filterGroup: hs_is_closed_lost=true nos dois pipes — é o que pega o Perdido do Bid). Closed-lost sem stage mapeado → nome 'Perdido'.",
+      "filtro": "COMPORTAMENTO ATUAL (1.0): pipeline IN (Vendas, Bid) AND dealstage IN (todas as etapas com mapeada_no_1_0 != false, exceto Perdido) — Stand by INCLUÍDO. Perdidos só com ?includeLost=true (2º filterGroup: hs_is_closed_lost=true nos dois pipes — é o que pega o Perdido do Bid). Closed-lost sem stage mapeado → nome 'Perdido'.",
+      "intencao_declarada": "ativa_default em referencia.json é o default DESEJADO da config de etapas ativas (ADR-007) — o dono marcou Stand by como inativa por default (2026-07-14). Aplicar isso MUDA NÚMEROS e acontece conscientemente na Fase 4, atrás da config, nunca como efeito colateral da Fase 2 (paridade).",
       "fonte_codigo": ["api/forecast-table.js:40 (ACTIVE_STAGE_IDS)", "api/forecast-table.js:280 (fetchDeals)"],
       "owner": "revops", "status": "em_revisao", "vigente_desde": "2026-07-14",
       "notas": "ADR-007 (etapas ativas configuráveis pelo usuário, especialmente Reunião e Standby) transforma este filtro fixo em config global na Fase 4."

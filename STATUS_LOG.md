@@ -4,6 +4,16 @@ Recurring every 20min (job `55d3b136`). Purpose: identify and close gaps so the 
 
 ---
 
+### Dashboard 2.0 | Fase 2 (parcial) | forecast-table + funnel-stages consomem o catálogo (2026-07-14)
+
+> Primeiros dois consumidores religados na camada semântica via **`lib/semantic.js`** (porta Node do `semantic/referencia.json`). **Gate de paridade PASSOU:** payloads before/after byte-idênticos (fora `timestamp`) em `/api/forecast-table`, `?includeLost=true`, `/api/funnel-stages` e `action=compare`; `test-delta-invariant` PASS; `npm run check` OK; rotas 200. Servidor local reiniciado (mudança em `api/` + `lib/`).
+
+- **`api/forecast-table.js`:** PIPELINE ids/labels, STAGE_MAP, ACTIVE_STAGE_IDS e LOST_STAGE_IDS agora derivados do catálogo. Removido `STAGE_PROB` (código morto — definido e nunca usado).
+- **`api/funnel-stages.js`:** idem, com os quirks históricos preservados EXPLICITAMENTE: alias `'Standby'` (1317543716) e exclusão da Reunião Pré-RFP no map do Bid.
+- **🔴 Bug pré-existente achado e registrado (não corrigido, paridade):** no funnel-stages o map produz `'Standby'` mas os buckets do funil Vendas usam `'Stand by'` → a linha Stand by do C06 Vendas conta SEMPRE 0. Anotado no catálogo (etapa 1317543716).
+- **Edit do dono no catálogo:** `Stand by.ativa_default: false` = intenção declarada para a config de etapas ativas (ADR-007/Fase 4); comportamento do 1.0 (Stand by ATIVO no payload) preservado e documentado em `regras.filtro_deals_ativos.intencao_declarada`. Aplicar a intenção muda números e será ato consciente da Fase 4.
+- Próximos consumidores da Fase 2: `lib/hubspot.js` (tickets Cotação), `lib/snapshot-format.js`, e a régua flat do front (JS ES5 gerado do catálogo).
+
 ### Dashboard 2.0 | Fase 1 | camada semântica extraída (3 arquivos base) (2026-07-14)
 
 > Catálogo máquina-legível criado por EXTRAÇÃO do 1.0 — nenhum painel/engine/api tocado (diff: `semantic/`, `scripts/`, `docs/`, 1 linha no `package.json`). O código ainda NÃO consome o catálogo (isso é a Fase 2).

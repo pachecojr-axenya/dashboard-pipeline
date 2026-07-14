@@ -24,7 +24,7 @@
 |---|---|---|
 | 0 | Charter + decisões | ✅ fechada (aprovada pelo dono em 2026-07-14) |
 | 1 | Os 3 arquivos base (extração) | 🟠 catálogo entregue | gate pendente: revisão do dono via [catalogo.md](catalogo.md) |
-| 2 | Primeiro consumidor: referência | ⬜ não iniciada |
+| 2 | Primeiro consumidor: referência | 🟠 em execução | forecast-table + funnel-stages religados com paridade provada; faltam lib/hubspot, snapshot-format e front |
 | 3 | Drawer gerado do catálogo (golden: Forecast) | ⬜ não iniciada |
 | 4 | Dado manual de primeira classe + configs globais | ⬜ não iniciada |
 | 5 | Componente de gráfico parametrizado | ⬜ não iniciada |

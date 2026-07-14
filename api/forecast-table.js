@@ -6,52 +6,23 @@
  */
 
 const { setCORSHeaders, requireAuth, getHubspotToken, methodCheck } = require('./_helpers');
+// Fase 2 do Dashboard 2.0: pipes/etapas vêm da camada semântica (fonte única).
+const semantic = require('../lib/semantic');
 
-const PIPELINE_ID   = '782758156'; // Vendas
-const PIPELINE_2_ID = '894130090'; // Bid
+const PIPELINE_ID   = semantic.PIPELINES.vendas;
+const PIPELINE_2_ID = semantic.PIPELINES.bid;
 
-const PIPELINE_LABELS = {
-  [PIPELINE_ID]:   'Vendas',
-  [PIPELINE_2_ID]: 'Bid',
-};
+const PIPELINE_LABELS = semantic.pipelineLabels();
 
-const STAGE_MAP = {
-  // Vendas
-  '1144746905': 'Reunião Agendada',
-  '1144746906': 'Diagnóstico',
-  '1144746908': 'Cotação',
-  '1144746909': 'Consultoria',
-  '1144746910': 'Negociação',
-  '1317543716': 'Stand by',
-  '1288611084': 'Implantação',
-  '1144844314': 'Ganho',
-  '1144746911': 'Perdido',
-  // Bid
-  '1363560722': 'Cotação',
-  '1349620551': 'Reunião Pré-RFP',
-  '1349620555': 'Proposta Enviada',
-  '1349620556': 'Consultoria',
-  '1353387279': 'Negociação',
-  '1353387280': 'Ganho',
-  '1353457025': 'Implantação',
-  '1373066362': 'Standby',
-};
+const STAGE_MAP = semantic.stageMap();
 
-const ACTIVE_STAGE_IDS = [
-  // Vendas - activos + Reunião Agendada + Stand by (sem Perdido)
-  '1144746905', '1144746906', '1144746908', '1144746909', '1144746910', '1317543716', '1288611084', '1144844314',
-  // Bid
-  '1363560722', '1349620551', '1349620555', '1349620556', '1353387279', '1353387280', '1353457025', '1373066362',
-];
+// Ativos = mapeadas exceto Perdido (Stand by incluído — comportamento 1.0; a
+// intenção ativa_default=false do catálogo só entra com a config da Fase 4).
+const ACTIVE_STAGE_IDS = semantic.activeStageIds();
 // Etapas de Perdido — incluídas APENAS quando o cliente pede ?includeLost=true (ex.: CRO Dashboard).
 // Os demais painéis chamam sem o parâmetro e continuam recebendo só os ativos.
-const LOST_STAGE_IDS = ['1144746911']; // Vendas Perdido (Bid não tem etapa de perdido mapeada)
-
-const STAGE_PROB = {
-  'Cotação': 0.33, 'Proposta Enviada': 0.285, 'Consultoria': 0.611,
-  'Negociação': 0.42, 'Implantação': 0.581, 'Ganho': 1.0,
-  'Standby': 0.12, 'Stand by': 0.12, 'Diagnóstico': 0.06,
-};
+// (Bid não tem etapa de perdido mapeada; closed-lost do Bid entra via hs_is_closed_lost.)
+const LOST_STAGE_IDS = semantic.lostStageIds();
 
 const PROPERTIES = [
   'dealname', 'dealstage', 'pipeline', 'hubspot_owner_id', 'sdr',

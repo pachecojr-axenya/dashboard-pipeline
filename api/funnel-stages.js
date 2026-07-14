@@ -10,31 +10,20 @@
 
 const { setCORSHeaders, requireAuth, getHubspotToken, methodCheck } = require('./_helpers');
 const { hubspotPost } = require('../lib/hubspot');
+// Fase 2 do Dashboard 2.0: pipes/etapas vêm da camada semântica (fonte única).
+const semantic = require('../lib/semantic');
 
-const VENDAS_ID = '782758156';
-const BID_ID    = '894130090';
+const VENDAS_ID = semantic.PIPELINES.vendas;
+const BID_ID    = semantic.PIPELINES.bid;
 
-const VENDAS_STAGE_MAP = {
-  '1144746905': 'Reunião Agendada',
-  '1144746906': 'Diagnóstico',
-  '1144746908': 'Cotação',
-  '1144746909': 'Consultoria',
-  '1144746910': 'Negociação',
-  '1317543716': 'Standby',
-  '1288611084': 'Implantação',
-  '1144844314': 'Ganho',
-  '1144746911': 'Perdido',
-};
+// Alias histórico deste consumidor: 1317543716 aqui sempre se chamou 'Standby'
+// (sem espaço). Como os buckets abaixo usam 'Stand by' (VENDAS_EXTRA), a linha
+// Stand by do funil Vendas conta 0 desde sempre — bug pré-existente REGISTRADO
+// no catálogo (etapa 1317543716); preservado aqui pela paridade da Fase 2.
+const VENDAS_STAGE_MAP = semantic.stageMap({ pipeline: 'vendas', alias: { '1317543716': 'Standby' } });
 
-const BID_STAGE_MAP = {
-  '1363560722': 'Cotação',
-  '1349620555': 'Proposta Enviada',
-  '1349620556': 'Consultoria',
-  '1353387279': 'Negociação',
-  '1353387280': 'Ganho',
-  '1353457025': 'Implantação',
-  '1373066362': 'Standby',
-};
+// Este consumidor nunca mapeou a Reunião Pré-RFP do Bid (exclusão histórica).
+const BID_STAGE_MAP = semantic.stageMap({ pipeline: 'bid', exclude: ['1349620551'] });
 
 const VENDAS_FUNNEL = ['Reunião Agendada','Diagnóstico','Cotação','Consultoria','Negociação','Implantação','Ganho'];
 const VENDAS_EXTRA  = ['Stand by','Perdido'];
