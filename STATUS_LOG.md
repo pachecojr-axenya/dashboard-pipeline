@@ -4,6 +4,14 @@ Recurring every 20min (job `55d3b136`). Purpose: identify and close gaps so the 
 
 ---
 
+### Dashboard 2.0 | Fase 0 | charter + ADRs + plano de migração (2026-07-14)
+
+> Kickoff do projeto **Dashboard 2.0** dentro do repo, estratégia strangler fig (nada do 1.0 é reescrito; camadas novas nascem por baixo com gate de paridade). Só documentos, zero código.
+
+- **Nova pasta canônica `docs/dashboard-2.0/`:** `README.md` (índice + estado das fases), `charter.md` (consumidores + 20 perguntas propostas + build-vs-buy — 🟠 rascunho em validação com o dono), `decisoes-adr.md` (ADR-001…011; 003 e 009 em status Proposta), `plano-migracao.md` (fases 0–7 com objetivo/entregável/gate/rollback) e `fonte/` (cópias congeladas dos 3 docs de planejamento originais).
+- **Fases seguintes dependem do gate da Fase 0:** aprovação do charter e dos ADRs propostos pelo dono. Nenhum arquivo de painel/engine/api foi tocado.
+- `CLAUDE.md` ganhou ponteiro para a pasta nova.
+
 ### Forecast | P. Etapa alinhada à tabela de probabilidades (2026-07-14)
 
 > Ajuste cirúrgico na aba `/forecast`: a coluna **P. Etapa** volta a usar a régua flat exibida na ajuda (`Reunião Agendada 6,0%`, `Diagnóstico 6,0%`, `Cotação 18,6%`, `Proposta Enviada 28,5%`, `Consultoria 28,5%`, `Negociação 49,3%`, `Implantação 80,0%`, `Ganho 100,0%`, `Standby 12,0%`).

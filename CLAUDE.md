@@ -9,6 +9,8 @@ nesta ordem:
    + entradas recentes.
 3. `AUDITORIA_GRAFICOS.md` | estado de validação de cada gráfico.
 4. `docs/github-source-of-truth.md` | regra prática de GitHub como fonte da verdade antes de deploy.
+5. `docs/dashboard-2.0/README.md` | quando o trabalho tocar o projeto Dashboard 2.0
+   (migração por fases): charter, ADRs e plano de migração.
 
 Este arquivo é só um **ponteiro**, de propósito: não guarda regra nem contexto para
 não existir conteúdo duplicado que possa desatualizar. As regras vivem nos arquivos
