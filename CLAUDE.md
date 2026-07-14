@@ -8,8 +8,11 @@ nesta ordem:
 2. `STATUS_LOG.md` | seção "Diretrizes do Projeto" (Regras primárias inegociáveis)
    + entradas recentes.
 3. `AUDITORIA_GRAFICOS.md` | estado de validação de cada gráfico.
+4. `docs/github-source-of-truth.md` | regra prática de GitHub como fonte da verdade antes de deploy.
 
 Este arquivo é só um **ponteiro**, de propósito: não guarda regra nem contexto para
 não existir conteúdo duplicado que possa desatualizar. As regras vivem nos arquivos
 acima. Em especial, a **fonte única de receita** é a **Regra primária nº 3** do
-`STATUS_LOG.md`. Spec de build do Pipeline Coverage: `docs/coverage-pipeline-v1-spec.md`.
+`STATUS_LOG.md`, e a **fonte da verdade de deploy** é GitHub/commit pushado
+conforme `docs/github-source-of-truth.md`. Spec de build do Pipeline Coverage:
+`docs/coverage-pipeline-v1-spec.md`.
