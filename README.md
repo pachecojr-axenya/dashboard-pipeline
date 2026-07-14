@@ -136,7 +136,8 @@ Vercel (Node 18+) · HubSpot CRM API v3 · Google OAuth (auth) · hospedagem Ver
 | `/forecast` | `public/forecast.html` | Forecast (visão dedicada) |
 
 > O CRO Dashboard concentra a lógica inline em `public/dashboard.html`. Menu lateral e dropdown de
-> painéis são gerados por um bloco `PANELS` compartilhado, idêntico em todas as páginas.
+> painéis vêm de `public/nav.js` (fonte única — Regra primária nº 2), incluído por
+> `<script src="/nav.js?v=N"></script>` em cada página; nada é mais copiado entre os HTMLs.
 >
 > **Nota sobre as rotas:** os arquivos não têm mais o prefixo `novo-`, mas as **rotas** mantêm o prefixo
 > (`/novo`, `/novo-board`, …) — preservadas de propósito para não quebrar links já compartilhados. O
@@ -239,7 +240,7 @@ Propriedades custom relevantes: `vidas`, `premio_mensal`, `sdr` (BDR), `arr_esti
   `.tab-sub-thumb`.
 - **i18n:** todo texto de interface passa por `t('chave')`, com paridade total entre os dicionários
   `pt` e `en`. Nomes de etapa do CRM (Cotação, Negociação…) ficam em PT nos dois idiomas (nomes próprios).
-- **Menu lateral / dropdown de painéis:** fonte única (`PANELS`), propagada para os 7 arquivos.
+- **Menu lateral / dropdown de painéis:** fonte única em `public/nav.js` (array `PANELS`); para alterar um item, edite só esse arquivo.
 - **STATUS_LOG.md:** registrar uma linha por mudança, a cada iteração.
 
 ---
