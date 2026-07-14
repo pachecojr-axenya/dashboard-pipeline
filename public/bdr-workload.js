@@ -28,6 +28,7 @@ var WorkloadBDR = (function () {
     var now = new Date(), s = new Date(now), u = new Date(now);
     if (p === 'ontem') { s.setDate(s.getDate() - 1); u = new Date(s); }
     else if (p === '7d') { s.setDate(s.getDate() - 6); }
+    else if (p === '30d') { s.setDate(s.getDate() - 29); } // 30 dias contando hoje
     else if (p === 'semana') { var dow = (now.getDay() + 6) % 7; s.setDate(s.getDate() - dow); }
     else if (p === 'mes') { s.setDate(1); }
     return { since: iso(s), until: iso(u) };
@@ -346,7 +347,7 @@ var WorkloadBDR = (function () {
   // ---------- filtros UI ----------
   function renderFilters() {
     var el = document.getElementById('filters');
-    var periods = [['hoje', 'Hoje'], ['ontem', 'Ontem'], ['7d', 'Últimos 7 dias'], ['semana', 'Semana atual'], ['mes', 'Mês atual'], ['custom', 'Período custom']];
+    var periods = [['hoje', 'Hoje'], ['ontem', 'Ontem'], ['7d', 'Últimos 7 dias'], ['30d', 'Últimos 30 dias'], ['semana', 'Semana atual'], ['mes', 'Mês atual'], ['custom', 'Período custom']];
     var h = '<div class="periodbar"><span class="period-label">Período</span>';
     periods.forEach(function (p) {
       h += '<button class="period-chip' + (state.period === p[0] ? ' active' : '') + '" onclick="WorkloadBDR.setPeriod(\'' + p[0] + '\')">' + p[1] + '</button>';

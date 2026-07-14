@@ -172,14 +172,34 @@ async function fetchCallDispositions(token) {
   } catch (e) { return {}; }
 }
 
+// Busca por janela de tempo que NÃO trunca: o search do HubSpot tem teto ~10k
+// por consulta (searchAll para em 9.800). Se a janela bater no teto, divide no
+// tempo e recorre — garante contagem completa em janelas longas (ex.: 30 dias,
+// em que só as ligações já passam de 11k). Dedup por id ao juntar.
+async function searchWindow(token, type, baseFilters, tsProp, sinceMs, untilMs, props) {
+  const filters = baseFilters.concat([
+    { propertyName: tsProp, operator: 'BETWEEN', value: String(sinceMs), highValue: String(untilMs) },
+  ]);
+  const rows = await searchAll(token, type, filters, props, tsProp);
+  // < teto → completo; janela já mínima (1h) → desiste para não recorrer infinito
+  if (rows.length < 9800 || (untilMs - sinceMs) <= 3600000) return rows;
+  const mid = Math.floor((sinceMs + untilMs) / 2);
+  const [a, b] = await Promise.all([
+    searchWindow(token, type, baseFilters, tsProp, sinceMs, mid, props),
+    searchWindow(token, type, baseFilters, tsProp, mid + 1, untilMs, props),
+  ]);
+  const seen = new Set(), merged = [];
+  a.concat(b).forEach(r => { if (!seen.has(r.id)) { seen.add(r.id); merged.push(r); } });
+  return merged;
+}
+
 async function fetchActivities(token, teamIds, idToBdr, sinceMs, untilMs) {
   const dispMap = await fetchCallDispositions(token);
   const out = [];
   await Promise.all(Object.keys(ACTIVITY_TYPES).map(async type => {
-    const rows = await searchAll(token, type, [
-      { propertyName: 'hubspot_owner_id', operator: 'IN', values: teamIds },
-      { propertyName: 'hs_timestamp', operator: 'BETWEEN', value: String(sinceMs), highValue: String(untilMs) },
-    ], ACTIVITY_TYPES[type], 'hs_timestamp');
+    const rows = await searchWindow(token, type,
+      [{ propertyName: 'hubspot_owner_id', operator: 'IN', values: teamIds }],
+      'hs_timestamp', sinceMs, untilMs, ACTIVITY_TYPES[type]);
     rows.forEach(r => {
       const p = r.properties;
       const a = { tipo: type, bdr: idToBdr[p.hubspot_owner_id] || null, ts: p.hs_timestamp };

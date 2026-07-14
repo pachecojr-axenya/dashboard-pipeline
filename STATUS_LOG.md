@@ -4,6 +4,15 @@ Recurring every 20min (job `55d3b136`). Purpose: identify and close gaps so the 
 
 ---
 
+### BDR Workload | janela "Últimos 30 dias" sem truncar (2026-07-14)
+
+> Adicionado o período **Últimos 30 dias** (contando hoje) à subpágina Workload/Intraday. Verificado ao vivo: janela 2026-06-15→07-14 = 20.188 atividades, 5.361 ligações, 13/13 BDRs, incluindo hoje.
+
+- **Anti-truncamento (`api/bdr-workload.js`):** o search do HubSpot tem teto ~10k por consulta (`searchAll` para em 9.800). Nova `searchWindow()` divide a janela no tempo e recorre quando bate no teto (dedup por id) — 30 dias de ligações (que passam de 11k em dias cheios) não subcontam mais. Rede de segurança: no dataset atual 30d ficou em 5,3k, abaixo do teto, mas a proteção fica para janelas/times maiores.
+- **Cliente (`public/bdr-workload.js`):** chip "Últimos 30 dias" + `periodRange('30d')` = `hoje-29`. Reusa o render multi-dia existente; drill-down de ligações funciona igual na janela de 30d.
+- **Latência:** 1ª carga de 30d ~36s (cabe no limite de 60s da função); KV cacheia por 5 min. História rápida de verdade = Fase 2 (BigQuery pré-agregado).
+- Validado headless (13/13 BDRs clicáveis, 0 erro JS) e `npm run check` OK.
+
 ### BDR Intraday | cache durável (KV) + drill-down de ligações + ambientes separados (2026-07-14)
 
 > Fase 1 da proposta `openspec/changes/bdr-intraday-history-drilldown/`. Responde direto ao "72 ligações do Anderson parece muito" e ao medo de "cache não persiste". Deploy prod concluído.
@@ -89,8 +98,9 @@ Recurring every 20min (job `55d3b136`). Purpose: identify and close gaps so the 
 ### ⭐ Regras primárias (inegociáveis)
 
 1. **Separador de texto é SEMPRE a barra vertical `|`.** Nunca usar travessão `—`, en-dash `–`, hífen `-` nem middot `·` como separador, em nenhum texto exibido ao usuário (títulos, tooltips, labels, subtítulos, ajuda, fórmulas). Ao criar ou editar qualquer string, já escrever com `|`. O travessão só é permitido como placeholder de "sem dado" (`'—'`), nunca como separador.
-2. **Menu lateral e dropdown de painéis têm fonte única.** Ambos são gerados pelo bloco JS compartilhado (`PANELS`) injetado antes de `</body>` em cada `novo-*.html` — idênticos em todas as páginas. Para mudar item/ordem/ícone/saúde do menu, editar apenas `PANELS` no bloco e propagar para os 7 arquivos; nunca editar a `<ul class="nav-menu">` estática de um arquivo só.
+2. **Menu lateral e dropdown de painéis têm fonte única por versão.** Estado atual de `origin/main`: páginas grandes ainda usam o bloco JS compartilhado `PANELS` propagado entre HTMLs; subpáginas BDR usam `premium.js`/`NAV_MODEL`. Estado alvo em discussão: migrar tudo para `public/nav.js`. Até esse PR de integração existir, tratar `PANELS`, `premium.js` e `public/nav.js` como zona compartilhada bloqueante. Nunca editar `<ul class="nav-menu">` estática de um arquivo só; mudança de item/ordem/ícone/saúde precisa ser propagada na fonte canônica da versão.
 3. **Toda receita vem de duas bases canônicas (fonte única).** Nenhum painel recalcula receita por conta própria; todo gráfico ou KPI de receita, em qualquer tela, consome estas duas séries: (a) **previsão real** = valor mensal do faturamento manual dos deals em Ganho/Implantação que já faturam (`api/faturamento-manual.js`, Upstash KV, fonte única `_fcDealMonthly`, sem cutoff de `createdate`); (b) **previsão probabilizada** = régua de receita por modelo (`revenue-engine.js` → `calcReceitaMes`) ponderada pela probabilidade de etapa puxada ao vivo do funil (C06). Deals duplos (mesmo cliente com fee por vida e corretagem) contam uma vez: menor TCV de 12 meses e prazo de pagamento mais longo. Se dois painéis divergem no número de receita, é bug de fonte, não de arredondamento. **Atualização (2026-07-01):** o gráfico de forecast do CRO Dashboard (N06B | "Forecast Total") foi religado no motor compartilhado `forecast-engine.js` (`ForecastEngine.dealMonthly` + `bdrCohorts`, régua via `calcReceitaMes`, faturamento manual via `faturamento-manual.js`) e bate mês a mês, em Real e Probabilizado, com o painel **Forecast Overall** (o do `forecast-stage.html`). **Atualização (2026-07-01, seguinte):** o **N05** (Cobertura do Pipeline) também foi religado — N06B e N05 agora consomem a MESMA função `_novoForecastSeries()` (série mensal única extraída do N06B), então Receita Real e Probabilizada do N05 batem mês a mês com o N06B por construção (verificado com dados de produção: idênticos nos 24 meses). O N05 ganhou toggle **Cobertura (×) ↔ Receita (R$)**. Com isso a fonte única de receita está completa no dashboard. Código morto restante para limpeza futura: `_novoCoverageTarget` (var órfã) e a família `_novoFc*`/`_novoForecastCalcReceita` antiga ainda usada pelo **modal** do N06B (`_novoOpenN06BForecastModal`), que segue no motor antigo.
+4. **GitHub é a fonte da verdade de deploy.** Regra prática: se não está commitado e pushado, não vai para produção. Antes de deploy: `git fetch origin`, `git status --short --branch`, `git log --oneline --decorate -5`, `npm run check`, `npm run predeploy` e checagem do que está no ar. Deploy só de base limpa/rastreável, uma pessoa por vez com LOCK/UNLOCK no Slack. Runbook: `docs/github-source-of-truth.md`.
 
 ### Trabalho em sessões paralelas — regras de coordenação
 
@@ -100,7 +110,7 @@ Recurring every 20min (job `55d3b136`). Purpose: identify and close gaps so the 
 2. **Front-only é seguro; API não.** Mudança dentro de um único HTML usando campos que JÁ chegam no payload (tooltips, títulos, drawers, escalas, toggles, lógica de gráfico) → paralelizável. Se a tarefa pedir um dado que não está no payload (campo novo do HubSpot → `PROPERTIES` do `forecast-table.js`; agregação server-side → `funnel-stages.js`), a mudança é de API: **pare e coordene antes de tocar**. Teste rápido: o dado já aparece em algum drill/tabela? Então é front-only.
 3. **Mudou `api/` ou `lib/` = reiniciar o servidor local (porta 3002)** — o `local-server.js` cacheia `require` dos handlers. O restart derruba a validação da outra sessão: avise antes.
 4. **Raio de explosão dos compartilhados.** `forecast-engine.js`, `revenue-engine.js`, `faturamento-manual.js`, `shared-charts.js`, `filter-bar.js`, `settings-modal.js` e o bloco `PANELS` (replicado nos 10 HTMLs) afetam vários painéis de uma vez — tratar como `api/`: coordenar. Contrato do payload (`/api/forecast-table`): ADICIONAR campo é seguro; RENOMEAR/REMOVER quebra todos os painéis.
-5. **Só UMA sessão deploya**, e somente quando as outras confirmarem "terminei e validei". O deploy sobe trabalho pela metade de todo mundo. **Autorizações permanentes de deploy ("pode ir deployando") NÃO sobrevivem à existência de sessão paralela: havendo outra sessão ativa, TODO deploy exige confirmação explícita do usuário naquele momento** — "o trabalho da outra sessão parece commitado/validado" NÃO é confirmação (violado em 2026-07-02; sem dano, por sorte). Endpoint NOVO em `api/` → checar antes o limite de 12 funções serverless do plano Hobby (deploy inteiro falha se estourar).
+5. **Só UMA sessão deploya**, e somente quando as outras confirmarem "terminei e validei". O deploy sobe trabalho pela metade de todo mundo. **Autorizações permanentes de deploy ("pode ir deployando") NÃO sobrevivem à existência de sessão paralela: havendo outra sessão ativa, TODO deploy exige confirmação explícita do usuário naquele momento** — "o trabalho da outra sessão parece commitado/validado" NÃO é confirmação (violado em 2026-07-02; sem dano, por sorte). Endpoint NOVO em `api/` → confirmar que o deploy está no projeto canônico Pro `dashboard-axenya`, não no legado/Hobby.
 6. **Commitar a cada entrega validada** — é o ponto de restauração se uma sessão corromper algo (já aconteceu: sed em arquivo com bytes NUL).
 7. **Não usar `sed -i` nos HTML** — `public/bdr.html` tem 3 bytes NUL herdados e o sed o corrompeu (2026-07-02). Usar a ferramenta de edição da sessão.
 
@@ -116,7 +126,7 @@ Dashboard de pipeline de vendas da **Axenya**, construído para uso interno do C
 | Backend | Vercel serverless functions (Node 18+, `maxDuration: 60s`) |
 | Dados | HubSpot CRM API v3 (`/crm/v3/objects/deals/search`, `batch/read`) |
 | Auth | Google OAuth via `lib/auth.js` (bypassado localmente, ver abaixo) |
-| Hosting | Vercel (Hobby plan — limite de 12 funções serverless) |
+| Hosting | Vercel Pro no projeto canônico `dashboard-axenya` (team Axenya). Projeto legado/Hobby não deve ser usado. |
 | Repositório | https://github.com/pachecojr-axenya/dashboard-pipeline (branch `main`) |
 
 ### Setup local
@@ -125,8 +135,8 @@ Dashboard de pipeline de vendas da **Axenya**, construído para uso interno do C
 # 1. Copie as variáveis de ambiente (já estão no .env.local — nunca commitar)
 # 2. Inicie o servidor local (porta 3002)
 $env:LOCAL_DEV_BYPASS = 'true'
-$env:SESSION_SECRET   = 'f71c591e01d11258d94806ef70f86fa2b54e50f60d8d2b2bba19ca7ed16d59a7'
-$env:HUBSPOT_TOKEN    = 'pat-na1-...' # (Pegar no portal HubSpot ou Vercel Secrets)
+$env:SESSION_SECRET   = '<SESSION_SECRET_LOCAL_32C_MIN>' # carregar de .env.local/Secret Manager; nunca colar valor real em docs/chat
+$env:HUBSPOT_TOKEN    = '<HUBSPOT_TOKEN_LOCAL>'           # carregar de .env.local/Secret Manager; nunca imprimir
 $env:ALLOWED_ORIGIN   = 'http://localhost:3002'
 node scripts/local-server.js
 # Acesse: http://localhost:3002/novo
