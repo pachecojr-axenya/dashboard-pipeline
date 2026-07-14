@@ -6,7 +6,7 @@
     "atualizado_em": "2026-07-14",
     "aviso": "Fonte única. Editar aqui e rodar `npm run check` (check-semantic valida consistência e drift contra o código). Fase 2 em andamento: consumidores listados em consumidores_2_0 leem este arquivo via lib/semantic.js.",
     "semantica_ativa_default": "ativa_default = default DESEJADO da futura config de etapas ativas (ADR-007), não necessariamente o comportamento do 1.0. Divergência conhecida: Stand by (1317543716) está ativa_default=false por decisão do dono (2026-07-14), mas o payload do 1.0 a INCLUI — a troca de comportamento é da Fase 4. O filtro atual está derivado em regras.filtro_deals_ativos.",
-    "consumidores_2_0": ["api/forecast-table.js (via lib/semantic.js)", "api/funnel-stages.js (via lib/semantic.js)"]
+    "consumidores_2_0": ["api/forecast-table.js (via lib/semantic.js)", "api/funnel-stages.js (via lib/semantic.js)", "lib/snapshot-format.js (via lib/semantic.js)", "lib/hubspot.js (via lib/semantic.js — pipes, mapas, tickets Cotação)", "public/{forecast,forecast-stage,dashboard,ae}.html (régua flat via public/semantic-ref.js gerado)"]
   },
   "hubspot": {
     "portal_id": "44715285",
@@ -236,11 +236,12 @@
         "Standby": 0.12
       },
       "usada_em": [
-        "public/forecast.html (STAGE_PROB_DEFAULT)",
-        "public/forecast-stage.html (STAGE_PROB_DEFAULT)",
-        "public/dashboard.html (NOVO_FC_STAGE_PROB_DEFAULT)",
-        "public/ae.html (NOVO_FC_STAGE_PROB_DEFAULT)"
-      ]
+        "public/forecast.html (STAGE_PROB_DEFAULT ← SEMANTIC_REF)",
+        "public/forecast-stage.html (STAGE_PROB_DEFAULT ← SEMANTIC_REF)",
+        "public/dashboard.html (NOVO_FC_STAGE_PROB_DEFAULT ← SEMANTIC_REF)",
+        "public/ae.html (NOVO_FC_STAGE_PROB_DEFAULT ← SEMANTIC_REF)"
+      ],
+      "ordem_exibicao_legada": "O JS gerado (semantic-ref.js) emite as chaves na ordem histórica dos literais (RA, Cotação, ..., Diagnóstico por último) — spreads e tabelas de ajuda iteram as chaves; reordenar é mudança visual consciente, não colateral."
     },
     "painel_default": {
       "descricao": {
@@ -266,7 +267,7 @@
         "public/dashboard.html",
         "public/prob-engine.js (DEFAULT)"
       ],
-      "divergencia_conhecida": "public/prob-engine.js usa Implantação=1.0 enquanto os demais consumidores usam 0.581 (detectado na extração da Fase 1, 2026-07-14). O prob-engine é o usado pelo Board; o comentário do próprio arquivo diz 'cópia verbatim do CRO', mas o valor difere. Resolver na Fase 2 (unificação) — até lá, registrado aqui para ninguém tratar como arredondamento."
+      "divergencia_conhecida": "public/prob-engine.js usa Implantação=1.0 enquanto os literais de ae.html/board.html/settings-modal usam 0.581 (achado Fase 1, 2026-07-14). Agravante (achado Fase 2): dashboard.html:572 lê ProbEngine.DEFAULT quando o prob-engine carrega — ou seja, CRO e Board efetivamente usam 1.0, e ae/settings 0.581. Resolver exige DECISÃO do dono (qual valor é o certo?) — muda números; não é paridade. Até lá, esta régua no catálogo registra 0.581 como valor documental e esta nota como verdade operacional."
     },
     "calculada_funil": {
       "descricao": {

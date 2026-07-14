@@ -8,6 +8,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
 <script src="/shared-charts.js?v=1"></script>
+<script src="/semantic-ref.js?v=1"></script>
 <script src="/revenue-engine.js?v=1"></script>
 <script src="/faturamento-manual.js?v=1"></script>
 <script src="/forecast-engine.js?v=1"></script>
@@ -607,7 +608,7 @@ if (typeof FaturamentoManual !== 'undefined') {
 }
 // Defaults de probabilidade do /forecast (NÃO os do dashboard) — fallback quando a amostra
 // do funil de uma etapa é < 20, para bater com o Forecast Overall.
-var NOVO_FC_STAGE_PROB_DEFAULT = { 'Reunião Agendada':0.06, 'Cotação':0.185790008, 'Proposta Enviada':0.285, 'Consultoria':0.284954, 'Negociação':0.493, 'Implantação':0.8, 'Ganho':1.0, 'Standby':0.12, 'Diagnóstico':0.06 };
+var NOVO_FC_STAGE_PROB_DEFAULT = window.SEMANTIC_REF.reguas.forecast_flat.valores; // fonte única | semantic-ref.js (Fase 2 do 2.0)
 function _novoFcStageProbForwd(stage, pipeline){
   var pk = pipeline==='Bid' ? 'bid' : 'vendas';
   var fp = NOVO_FUNNEL_PROB_PIPE && NOVO_FUNNEL_PROB_PIPE[pk];

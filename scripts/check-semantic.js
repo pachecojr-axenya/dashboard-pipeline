@@ -100,7 +100,12 @@ if (referencia && dados && regras) {
   // ── Drift contra o código ───────────────────────────────────────────────────
   // Ids de etapa do HubSpot têm 10 dígitos; qualquer um hardcoded nos arquivos
   // vigiados precisa existir no catálogo.
-  const vigiados = ['api/forecast-table.js', 'api/funnel-stages.js', 'lib/snapshot-format.js', 'lib/hubspot.js'];
+  const vigiados = [
+    'api/forecast-table.js', 'api/funnel-stages.js', 'lib/snapshot-format.js', 'lib/hubspot.js',
+    // Cauda com IDs hardcoded conhecidos (verificados limpos em 2026-07-14) — o check
+    // trava o invariante "ID novo nasce no catálogo" até a migração oportunística deles.
+    'api/watcher-deals.js', 'api/bdr-list-attack.js', 'scripts/build-pipeline-flow.js', 'scripts/reconstruct-snapshot.js',
+  ];
   const tk = referencia.tickets_cotacao || {};
   const ticketIds = (tk.etapas || []).map(e => e.id).concat(tk.pipeline ? [tk.pipeline.id] : []);
   const conhecidos = new Set([...stageIds, ...pipeIds, ...ticketIds]);
@@ -114,14 +119,30 @@ if (referencia && dados && regras) {
     });
   });
 
-  // Régua flat: o literal 0.185790008 (Cotação 18,6%) identifica a régua nos
-  // consumidores do 1.0; se sumir de lá, o catálogo desatualizou (ou vice-versa).
-  ['public/forecast.html', 'public/forecast-stage.html'].forEach(rel => {
-    const p = path.join(ROOT, rel);
-    if (!fs.existsSync(p)) { warns.push(`drift: ${rel} ausente`); return; }
-    if (!fs.readFileSync(p, 'utf8').includes('0.185790008')) {
-      errors.push(`drift: ${rel} não contém mais a régua flat (0.185790008) documentada em referencia.reguas_probabilidade.forecast_flat`);
+  // Front (Fase 2): public/semantic-ref.js é GERADO do catálogo — precisa estar
+  // em sincronia byte a byte com o que o gerador produziria agora.
+  try {
+    const gen = require('./gen-semantic-front');
+    const refJsPath = path.join(ROOT, 'public', 'semantic-ref.js');
+    if (!fs.existsSync(refJsPath)) {
+      errors.push('front: public/semantic-ref.js ausente — rode: node scripts/gen-semantic-front.js');
+    } else if (fs.readFileSync(refJsPath, 'utf8') !== gen.build()) {
+      errors.push('front: public/semantic-ref.js desatualizado em relação ao catálogo — rode: node scripts/gen-semantic-front.js');
     }
+  } catch (e) {
+    errors.push('front: gen-semantic-front falhou | ' + e.message);
+  }
+
+  // Cada página que consome SEMANTIC_REF precisa incluir /semantic-ref.js ANTES do uso.
+  ['public/forecast.html', 'public/forecast-stage.html', 'public/dashboard.html', 'public/ae.html'].forEach(rel => {
+    const p = path.join(ROOT, rel);
+    if (!fs.existsSync(p)) { warns.push(`front: ${rel} ausente`); return; }
+    const src = fs.readFileSync(p, 'utf8');
+    const inc = src.indexOf('/semantic-ref.js');
+    const uso = src.indexOf('SEMANTIC_REF.reguas');
+    if (uso === -1) { errors.push(`front: ${rel} não consome mais SEMANTIC_REF (religação desfeita?)`); return; }
+    if (inc === -1) { errors.push(`front: ${rel} usa SEMANTIC_REF mas não inclui /semantic-ref.js`); return; }
+    if (inc > uso) errors.push(`front: ${rel} inclui /semantic-ref.js DEPOIS do uso — quebra em runtime`);
   });
 
   // Visualização legível (ADR-003): avisa se está mais velha que os JSONs.

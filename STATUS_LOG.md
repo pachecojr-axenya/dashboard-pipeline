@@ -4,6 +4,15 @@ Recurring every 20min (job `55d3b136`). Purpose: identify and close gaps so the 
 
 ---
 
+### Dashboard 2.0 | Fase 2 FECHADA | libs + front consomem o catálogo (2026-07-14)
+
+> Fase 2 concluída: além de forecast-table/funnel-stages (entrada anterior), religados **lib/snapshot-format.js**, **lib/hubspot.js** (pipes, mapas Vendas/Bid, tickets Cotação) e a **régua flat do front** nos 4 HTMLs (forecast, forecast-stage, dashboard, ae) via **`public/semantic-ref.js`** — arquivo ES5 GERADO do catálogo por `scripts/gen-semantic-front.js` (commitado; check-semantic acusa se desatualizar). ⚠ Front mudou → cache-buster `semantic-ref.js?v=1` incluído antes do revenue-engine em cada página.
+
+- **Paridade provada:** constantes dos libs byte-idênticas (assert before/after); `pull-tickets` idêntico excluindo `hs_time_in_*` (cronômetro do HubSpot, avança com o relógio); régua flat gerada == literal histórico em valores E ordem de chaves (ordem legada preservada de propósito — spreads/tabelas iteram chaves); `npm run check` PASS; rotas 200; include antes do uso verificado no HTML servido.
+- **Scan repo-wide:** ZERO IDs de etapa fora do catálogo em api/lib/scripts/public. Cauda com IDs hardcoded conhecidos (bdr-list-attack, watcher-deals, build-pipeline-flow, reconstruct-snapshot, drills nos HTMLs) adicionada aos vigiados do check-semantic — migração oportunística.
+- **Achado agravado (registrado no catálogo, exige decisão do dono):** `dashboard.html:572` lê `ProbEngine.DEFAULT` quando o prob-engine carrega → CRO e Board usam **Implantação=1.0**; ae.html/settings-modal usam **0.581**. Unificar muda números — decisão pendente: qual é o valor certo?
+- Playwright indisponível nesta máquina; validação de runtime do front = identidade de valores por construção + ordem include/uso + sintaxe. Recomendado: olhada visual nos 4 painéis no próximo uso.
+
 ### Dashboard 2.0 | Fase 2 (parcial) | forecast-table + funnel-stages consomem o catálogo (2026-07-14)
 
 > Primeiros dois consumidores religados na camada semântica via **`lib/semantic.js`** (porta Node do `semantic/referencia.json`). **Gate de paridade PASSOU:** payloads before/after byte-idênticos (fora `timestamp`) em `/api/forecast-table`, `?includeLost=true`, `/api/funnel-stages` e `action=compare`; `test-delta-invariant` PASS; `npm run check` OK; rotas 200. Servidor local reiniciado (mudança em `api/` + `lib/`).

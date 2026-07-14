@@ -24,7 +24,7 @@
 |---|---|---|
 | 0 | Charter + decisões | ✅ fechada (aprovada pelo dono em 2026-07-14) |
 | 1 | Os 3 arquivos base (extração) | 🟠 catálogo entregue | gate pendente: revisão do dono via [catalogo.md](catalogo.md) |
-| 2 | Primeiro consumidor: referência | 🟠 em execução | forecast-table + funnel-stages religados com paridade provada; faltam lib/hubspot, snapshot-format e front |
+| 2 | Consumo da referência | ✅ fechada (2026-07-14) | núcleo religado com paridade: forecast-table, funnel-stages, snapshot-format, hubspot.js (incl. tickets), régua flat do front via `semantic-ref.js` gerado. Cauda documentada (BDR/watcher/scripts, todos com IDs já catalogados e vigiados pelo check); pendência de decisão: divergência Implantação 0.581×1.0 |
 | 3 | Drawer gerado do catálogo (golden: Forecast) | ⬜ não iniciada |
 | 4 | Dado manual de primeira classe + configs globais | ⬜ não iniciada |
 | 5 | Componente de gráfico parametrizado | ⬜ não iniciada |

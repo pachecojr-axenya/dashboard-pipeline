@@ -1776,6 +1776,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
   </style>
 <link rel="stylesheet" href="/premium.css?v=5">
 <script src="/premium.js?v=5"></script>
+<script src="/semantic-ref.js?v=1"></script>
 <script src="/revenue-engine.js?v=1"></script>
 <script src="/faturamento-manual.js?v=1"></script>
 <script src="/forecast-engine.js?v=1"></script>
@@ -2291,7 +2292,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
     const _today = new Date();
     const NOW_KEY = _today.getFullYear() * 100 + _today.getMonth();
 
-    const STAGE_PROB_DEFAULT = { 'Reunião Agendada': 0.06, 'Cotação': 0.185790008, 'Proposta Enviada': 0.285, 'Consultoria': 0.284954, 'Negociação': 0.493, 'Implantação': 0.8, 'Ganho': 1.0, 'Standby': 0.12, 'Diagnóstico': 0.06 };
+    const STAGE_PROB_DEFAULT = window.SEMANTIC_REF.reguas.forecast_flat.valores; // fonte única | semantic-ref.js (Fase 2 do 2.0)
     const STAGE_PROB_LEGACY = { 'Cotação': 0.33, 'Consultoria': 0.611, 'Negociação': 0.42, 'Implantação': 0.581 };
     function _fcLooksLegacyProbOverride(saved) {
       if (!saved || typeof saved !== 'object') return false;

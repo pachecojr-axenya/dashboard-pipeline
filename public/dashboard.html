@@ -248,6 +248,7 @@ table.lb tfoot td{font-weight:600;border-top:2px solid var(--border);position:st
 <link rel="stylesheet" href="/premium.css?v=5">
 <script src="/premium.js?v=5"></script>
 <script src="/shared-charts.js?v=1"></script>
+<script src="/semantic-ref.js?v=1"></script>
 <script src="/revenue-engine.js?v=1"></script>
 <script src="/faturamento-manual.js?v=1"></script>
 <script src="/forecast-engine.js?v=1"></script>
@@ -3887,7 +3888,7 @@ if (typeof FaturamentoManual !== 'undefined') {
 }
 // Defaults de probabilidade do /forecast (NÃO os do dashboard) — usados só aqui, para o N06B
 // espelhar o Forecast Overall quando a amostra do funil de uma etapa é < 20.
-var NOVO_FC_STAGE_PROB_DEFAULT = { 'Reunião Agendada':0.06, 'Cotação':0.185790008, 'Proposta Enviada':0.285, 'Consultoria':0.284954, 'Negociação':0.493, 'Implantação':0.8, 'Ganho':1.0, 'Standby':0.12, 'Diagnóstico':0.06 };
+var NOVO_FC_STAGE_PROB_DEFAULT = window.SEMANTIC_REF.reguas.forecast_flat.valores; // fonte única | semantic-ref.js (Fase 2 do 2.0)
 // Prob. de etapa do jeito do /forecast: funil por pipeline (C07) senão o default do /forecast.
 function _novoFcStageProbForwd(stage, pipeline){
   var pk = pipeline==='Bid' ? 'bid' : 'vendas';

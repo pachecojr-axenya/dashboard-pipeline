@@ -57,7 +57,7 @@ Portal HubSpot: `44715285`
 | Ganho | 100,0% |
 | Standby | 12,0% |
 
-Usada em: public/forecast.html (STAGE_PROB_DEFAULT) · public/forecast-stage.html (STAGE_PROB_DEFAULT) · public/dashboard.html (NOVO_FC_STAGE_PROB_DEFAULT) · public/ae.html (NOVO_FC_STAGE_PROB_DEFAULT)
+Usada em: public/forecast.html (STAGE_PROB_DEFAULT ← SEMANTIC_REF) · public/forecast-stage.html (STAGE_PROB_DEFAULT ← SEMANTIC_REF) · public/dashboard.html (NOVO_FC_STAGE_PROB_DEFAULT ← SEMANTIC_REF) · public/ae.html (NOVO_FC_STAGE_PROB_DEFAULT ← SEMANTIC_REF)
 
 **painel_default** | Régua default dos painéis CRO/Board/AE \| fallback quando o C07 do funil não tem amostra | tipo: forcada
 
@@ -74,7 +74,7 @@ Usada em: public/forecast.html (STAGE_PROB_DEFAULT) · public/forecast-stage.htm
 | Stand by | 12,0% |
 
 Usada em: public/settings-modal.js · public/board.html (NOVO_STAGE_PROB_DEFAULT) · public/ae.html (NOVO_STAGE_PROB_DEFAULT) · public/dashboard.html · public/prob-engine.js (DEFAULT)
-> 🔴 **Divergência conhecida:** public/prob-engine.js usa Implantação=1.0 enquanto os demais consumidores usam 0.581 (detectado na extração da Fase 1, 2026-07-14). O prob-engine é o usado pelo Board; o comentário do próprio arquivo diz 'cópia verbatim do CRO', mas o valor difere. Resolver na Fase 2 (unificação) — até lá, registrado aqui para ninguém tratar como arredondamento.
+> 🔴 **Divergência conhecida:** public/prob-engine.js usa Implantação=1.0 enquanto os literais de ae.html/board.html/settings-modal usam 0.581 (achado Fase 1, 2026-07-14). Agravante (achado Fase 2): dashboard.html:572 lê ProbEngine.DEFAULT quando o prob-engine carrega — ou seja, CRO e Board efetivamente usam 1.0, e ae/settings 0.581. Resolver exige DECISÃO do dono (qual valor é o certo?) — muda números; não é paridade. Até lá, esta régua no catálogo registra 0.581 como valor documental e esta nota como verdade operacional.
 
 **calculada_funil** | Probabilidade calculada em tempo real pelo funil (C07) \| ganhos ÷ entraram na etapa, por pipeline | tipo: calculada
 
