@@ -54,6 +54,7 @@
     var saved = _cfg.stageProbSaved || {};
     var def = _cfg.stageProbDefault || {};
     if (saved[stage] != null) return saved[stage];
+    if (_cfg.funnelProb && _cfg.funnelProb[stage] != null) return _cfg.funnelProb[stage];
     var pk = pipeline === 'Bid' ? 'bid' : 'vendas';
     var fp = _cfg.funnelProb && _cfg.funnelProb[pk];
     if (fp && fp[stage] != null) return fp[stage];
