@@ -4,6 +4,14 @@ Recurring every 20min (job `55d3b136`). Purpose: identify and close gaps so the 
 
 ---
 
+### Forecast | P. Etapa alinhada à tabela de probabilidades (2026-07-14)
+
+> Ajuste cirúrgico na aba `/forecast`: a coluna **P. Etapa** volta a usar a régua flat exibida na ajuda (`Reunião Agendada 6,0%`, `Diagnóstico 6,0%`, `Cotação 18,6%`, `Proposta Enviada 28,5%`, `Consultoria 28,5%`, `Negociação 49,3%`, `Implantação 80,0%`, `Ganho 100,0%`, `Standby 12,0%`).
+
+- **Escopo restrito:** `public/forecast.html`, `public/forecast-stage.html` e compatibilidade em `public/forecast-overall-core.js`; sem tocar menu, `public/nav.js`, `public/premium.js`, BDR/Treble/Workload ou alterações recentes do Pacheco.
+- **Causa:** a tabela dedicada de Forecast podia aplicar probabilidade por pipeline/cache C07 para alguns deals, enquanto a ajuda da própria aba mostra a régua flat do Forecast. Além disso, browsers com override local antigo (`forecast_stage_prob`) podiam manter os defaults legados `33%/61,1%/42%/58,1%`.
+- **Correção:** `P. Etapa` agora lê a régua flat validada do Forecast (ou override manual explícito) e overrides locais legados são limpos automaticamente quando batem com os valores antigos.
+
 ### BDR Workload | janela "Últimos 30 dias" sem truncar (2026-07-14)
 
 > Adicionado o período **Últimos 30 dias** (contando hoje) à subpágina Workload/Intraday. Verificado ao vivo: janela 2026-06-15→07-14 = 20.188 atividades, 5.361 ligações, 13/13 BDRs, incluindo hoje.
