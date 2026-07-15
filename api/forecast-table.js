@@ -16,9 +16,27 @@ const PIPELINE_LABELS = semantic.pipelineLabels();
 
 const STAGE_MAP = semantic.stageMap();
 
-// Ativos = mapeadas exceto Perdido (Stand by incluído — comportamento 1.0; a
-// intenção ativa_default=false do catálogo só entra com a config da Fase 4).
+// Ativos = mapeadas exceto Perdido (comportamento 1.0). A config global de
+// etapas ativas (Fase 4b/ADR-007, KV via api/config-global) SOBREPÕE por etapa:
+// etapas_ativas[id]=false tira a etapa do pipe ativo; true força inclusão.
+// Sem config → lista base intacta (paridade). Cache de 60s por instância.
 const ACTIVE_STAGE_IDS = semantic.activeStageIds();
+const cfgStore = require('./config-global');
+let _cfgCache = { at: 0, etapas: {} };
+async function activeStageIdsEffective() {
+  const now = Date.now();
+  if (now - _cfgCache.at > 60000) {
+    let etapas = {};
+    try {
+      etapas = cfgStore.effective(await cfgStore.readCfg()).etapas_ativas || {};
+    } catch (e) { /* sem config → default */ }
+    _cfgCache = { at: now, etapas };
+  }
+  const ov = _cfgCache.etapas;
+  const base = ACTIVE_STAGE_IDS.filter(id => ov[id] !== false);
+  Object.keys(ov).forEach(id => { if (ov[id] === true && !base.includes(id) && !LOST_STAGE_IDS.includes(id)) base.push(id); });
+  return base;
+}
 // Etapas de Perdido — incluídas APENAS quando o cliente pede ?includeLost=true (ex.: CRO Dashboard).
 // Os demais painéis chamam sem o parâmetro e continuam recebendo só os ativos.
 // (Bid não tem etapa de perdido mapeada; closed-lost do Bid entra via hs_is_closed_lost.)
@@ -174,11 +192,14 @@ function normalizeBool(val) {
   return null;
 }
 
-function quarterEmpty(q) {
-  if (!q) return true;
-  const s = String(q).trim().toLowerCase();
-  if (s === 'false' || s === 'true' || s === 'sem informação' || s === 'sem informacao') return true;
-  return !/\d{4}/.test(s);
+// Quarter do portal → "Qx YYYY". As opções do radio qual_quarter_de_fechamento são
+// "Q1".."Q4" (sem ano) e "Q1 2027".."Q4 2027"; decisão do dono (2026-07-15): todo
+// Qx SEM ano significa 2026. Lixo histórico ('false'/'true'/'sem informação') → null.
+const QUARTER_ANO_IMPLICITO = '2026';
+function normalizeQuarter(q) {
+  if (!q) return null;
+  const m = String(q).trim().match(/^Q([1-4])(?:\s+(\d{4}))?$/i);
+  return m ? `Q${m[1]} ${m[2] || QUARTER_ANO_IMPLICITO}` : null;
 }
 
 function getQuarterFromDate(dateStr) {
@@ -257,10 +278,11 @@ async function fetchDeals(token, includeLost) {
   // dois pipelines via hs_is_closed_lost — pega o Perdido do BID, que não tem stage id
   // mapeado em LOST_STAGE_IDS (filterGroups são OR entre si). P09 (Vidas Perdidas) e as
   // taxas de conversão passam a contar perdidos de Vendas + Bid.
+  const activeIds = await activeStageIdsEffective();
   const filterGroups = [
     { filters: [
       { propertyName: 'pipeline',  operator: 'IN', values: [PIPELINE_ID, PIPELINE_2_ID] },
-      { propertyName: 'dealstage', operator: 'IN', values: ACTIVE_STAGE_IDS },
+      { propertyName: 'dealstage', operator: 'IN', values: activeIds },
     ]},
   ];
   if (includeLost) {
@@ -409,8 +431,9 @@ module.exports = async function handler(req, res) {
         const dateStr = p.data_prevista_para_receita
           ? p.data_prevista_para_receita.substring(0, 10) : null;
 
-        let quarter = p.qual_quarter_de_fechamento || null;
-        if (quarterEmpty(quarter)) quarter = getQuarterFromDate(dateStr) || null;
+        // O campo do AE tem precedência; a data prevista só entra quando o campo está vazio/inválido.
+        let quarter = normalizeQuarter(p.qual_quarter_de_fechamento);
+        if (!quarter) quarter = getQuarterFromDate(dateStr) || null;
 
         const camposFaltantes = s06Missing(p);
 

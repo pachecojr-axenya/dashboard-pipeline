@@ -23,6 +23,7 @@ const REQUIRED_PATHS = [
   'public/bdr-treble.js',
   'api/bdr-workload.js',
   'api/bdr-workload-calls.js',
+  'api/config-global.js',
   'public/bdr-workload.html',
   'public/bdr-workload.js',
   'lib/env.js',

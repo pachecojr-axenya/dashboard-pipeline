@@ -127,7 +127,7 @@ Corte PME: 200 vidas. Fuso canônico: America/Sao_Paulo.
 | `is_poc` | É POC? | fonte | deal | `e_poc` | booleano | revops | POC não gera receita: zera Real e Probabilizada em todos os painéis (regra receita_mensal_deal). |
 | `probabilidade_ae` | Probabilidade (AE) | fonte | deal | `probabilidade_de_fechamento_` | fracao_0_1 | vendas | Digitada pelo AE no HubSpot (dado de fonte para o dash, manual para o AE). Normalizada: >1 divide por 100. |
 | `probabilidade_etapa_hs` | Probabilidade da etapa (HubSpot) | fonte | deal | `hs_deal_stage_probability` | fracao_0_1 | revops |  |
-| `quarter_fechamento` | Quarter de fechamento | fonte | deal | `qual_quarter_de_fechamento` | enum | vendas | Fallback: derivado de data_prevista_para_receita quando vazio/inválido (regra quarter_fallback). |
+| `quarter_fechamento` | Quarter de fechamento | fonte | deal | `qual_quarter_de_fechamento` | enum | vendas | Opções do radio no portal: Q1..Q4 (SEM ano) e Q1 2027..Q4 2027. Convenção (decisão do dono 2026-07-15): Qx sem ano = 2026. Fallback: derivado de data_prevista_para_receita quando vazio/inválido (regra quarter_fallback). |
 | `data_prevista_para_receita` | Data prevista para receita | fonte | deal | `data_prevista_para_receita` | data | vendas |  |
 | `is_closed_won` | Fechado ganho | fonte | deal | `hs_is_closed_won` | booleano | revops |  |
 | `is_closed_lost` | Fechado perdido | fonte | deal | `hs_is_closed_lost` | booleano | revops | É o que captura os perdidos do Bid (sem stage id de Perdido mapeado no 1.0). |
@@ -152,6 +152,7 @@ Corte PME: 200 vidas. Fuso canônico: America/Sao_Paulo.
 | `faturamento_manual` | Faturamento manual | ✏️ manual | deal | — | BRL/mês | financeiro | Valores mensais reais digitados para Ganho/Implantação já faturando. UI: selo ✏️ nas linhas manuais do painel Ganho, com autor/data no tooltip; ⚠ após validade_dias sem revisão; entradas anteriores à Fase 4 aparecem como 'sem registro de autor'. Caveat conhecido do Delta: NÃO é ponto-no-tempo (recompute de foto antiga aplica valores de hoje). |
 | `meta_receita` | Meta de receita | ✏️ manual | config | — | BRL/mês | cro | Usada por Revenue vs Plan (MTD) e Cobertura (N05). |
 | `vpv_tiers` | R$/vida por faixa (VPV) | ✏️ manual | config | — | BRL/vida/mês | cro | Premissa de projeção para Diagnóstico. |
+| `config_global` | Configuração global do dashboard | ✏️ manual | config | — | enum | cro | Campos: prob_fonte ('calculada' default \| 'premissas' — fonte da probabilidade de etapa em CRO/Board; Forecast fora do toggle na v1, D1) e etapas_ativas ({stage_id: bool} — override GLOBAL do filtro de deals ativos, ADR-007; aplicado server-side no forecast-table com cache 60s; vazio = comportamento atual). UI: seção 'Global' no settings-modal (toggle prob); UI de etapas_ativas entra com a padronização do header. Os toggles antigos 'Ativos incluem RA/Standby' do modal são CLIENT-SIDE por usuário — camada distinta. |
 | `prob_override_etapa` | Override manual de probabilidade por etapa | ✏️ manual | config | — | fracao_0_1 | cro | localStorage novo_stage_prob_cfg (por pipeline) — por navegador. Fase 4: KV + toggle global ADR-008. |
 | `premissas_bdr_originacao` | Premissas de originação BDR | ✏️ manual | config | — | vidas | cro | É premissa de negócio disfarçada de código — o caso exato que o ADR-004 proíbe. |
 
@@ -300,10 +301,11 @@ Corte PME: 200 vidas. Fuso canônico: America/Sao_Paulo.
 
 ### `quarter_fallback` | Quarter com fallback pela data prevista
 
-- **Tipo:** calculado · **Grain:** deal · **Status:** em_revisao · **Vigente desde:** 2026-07-14 · **Dono:** revops
+- **Tipo:** calculado · **Grain:** deal · **Status:** em_revisao · **Vigente desde:** 2026-07-15 · **Dono:** revops
 - **Usa dados:** `quarter_fechamento`, `data_prevista_para_receita`
-- **Fórmula:** quarter_fechamento quando válido (contém ano); senão derivado de data_prevista_para_receita (Q = mês÷3 + 1).
-- **Código (1.0):** api/forecast-table.js:202 (quarterEmpty) · api/forecast-table.js:209 (getQuarterFromDate)
+- **Fórmula:** quarter_fechamento normalizado ("Qx" SEM ano = "Qx 2026"; "Qx YYYY" passa; lixo 'false'/'true'/'sem informação' = vazio) tem PRECEDÊNCIA; só quando vazio/inválido deriva de data_prevista_para_receita (Q = mês÷3 + 1).
+- **Código (1.0):** api/forecast-table.js (normalizeQuarter + getQuarterFromDate) · public/forecast.html (normalizeQuarter, replay de fotos) · lib/forecast-compute.js (_quarter)
+- **Notas:** Decisão do dono (2026-07-15): as opções sem ano do radio do portal (Q1..Q4) significam 2026 — antes o painel exigia ano e descartava 114/145 quarters preenchidos (13 viravam '—', 39 eram sobrescritos pela data prevista divergindo do AE). Quando o portal ganhar opções com ano, migrar os valores e aposentar o ano implícito.
 
 ### `conversao_ajustada` | Taxa de conversão ajustada
 

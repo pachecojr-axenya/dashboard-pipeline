@@ -61,6 +61,9 @@
   }
 
   // Prob. de etapa efetiva de um deal. ctx = { cfg, funnelProbPipe }.
+  // Toggle global (Fase 4b/ADR-008, D1-D3 decididas 2026-07-15): window.CONFIG_GLOBAL
+  // .prob_fonte='premissas' pula o C07 e usa a régua única direto; 'calculada'
+  // (default) = comportamento atual. Override manual do usuário vence sempre.
   function stageProbFor(stage, pipeline, ctx) {
     ctx = ctx || {};
     var cfg = ctx.cfg || { manual: false, values: { vendas: {}, bid: {} } };
@@ -69,9 +72,12 @@
       var ov = cfg.values[pk];
       if (ov && ov[stage] != null) return ov[stage];   // override manual POR PIPELINE
     }
-    var fp = ctx.funnelProbPipe && ctx.funnelProbPipe[pk];
-    if (fp && fp[stage] != null) return fp[stage];      // C07 do funil por pipeline
-    return DEFAULT[stage];                               // fallback fixo
+    var g = root.CONFIG_GLOBAL;
+    if (!(g && g.prob_fonte === 'premissas')) {
+      var fp = ctx.funnelProbPipe && ctx.funnelProbPipe[pk];
+      if (fp && fp[stage] != null) return fp[stage];    // C07 do funil por pipeline
+    }
+    return DEFAULT[stage];                               // régua única (fallback/premissas)
   }
 
   // Prob. FINAL do deal com o ajuste ±10% do AE. Retorna { sp, cp, final }.
@@ -94,4 +100,19 @@
     stageProbFor: stageProbFor,
     calcProbInfo: calcProbInfo
   };
+
+  // Fase 4b: carrega a config global (KV) e re-renderiza se a fonte de prob mudou.
+  // Roda em qualquer página que inclua este engine (CRO, Board); o settings-modal
+  // também carrega/salva — GET duplicado é inofensivo.
+  if (typeof fetch === 'function' && typeof root.document !== 'undefined') {
+    fetch('/api/config-global', { credentials: 'same-origin' })
+      .then(function (r) { return r && r.ok ? r.json() : null; })
+      .then(function (j) {
+        if (!j || !j.success) return;
+        var antes = root.CONFIG_GLOBAL && root.CONFIG_GLOBAL.prob_fonte;
+        root.CONFIG_GLOBAL = j.config;
+        if (antes !== j.config.prob_fonte && typeof root.novoRender === 'function') root.novoRender();
+      })
+      .catch(function () {});
+  }
 })(typeof window !== 'undefined' ? window : this);

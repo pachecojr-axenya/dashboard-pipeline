@@ -91,6 +91,8 @@
     + '.novo-prob-save-global{flex:1;padding:.5rem .3rem;border-radius:8px;border:none;background:var(--teal);color:#fff;cursor:pointer;font-size:.73rem;font-weight:600;font-family:inherit;line-height:1.25;transition:background .15s}'
     + '.novo-prob-save-global:hover{background:#2ea5a4}'
     + '.np-section-sep{font-size:.7rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text2);padding:.9rem 0 .4rem;border-bottom:1px solid var(--border);margin-bottom:.25rem}'
+    + '.np-pf{border:1px solid var(--border);background:var(--card2);color:var(--text2);border-radius:7px;font-family:inherit;font-size:.72rem;font-weight:600;padding:.3rem .55rem;cursor:pointer}'
+    + '.np-pf.on{background:var(--teal);border-color:var(--teal);color:#fff}'
     + '.np-reset{background:none;border:none;color:var(--text2);cursor:pointer;font-size:.85rem;padding:0 .25rem;line-height:1;transition:color .12s;flex-shrink:0}'
     + '.np-reset:hover{color:var(--teal)}';
 
@@ -109,6 +111,15 @@
       // Metas dos BDRs saíram do drawer (2026-07-02): editar pelo botão "Metas" do card
       // R12 do painel BDR (modal mês × BDR, global). window.BDR_METAS segue carregado
       // abaixo como fallback dos meses sem meta mensal.
+      // Global (Fase 4b/ADR-008): fonte da probabilidade de etapa, salva p/ TODOS (KV).
+      + '    <div class="np-section-sep" style="margin-top:.75rem">Global | todos os usuários</div>'
+      + '    <p style="font-size:.72rem;color:var(--text2);margin:.35rem 0 .45rem;line-height:1.4">Fonte da probabilidade de etapa nos painéis CRO/Board. O grupo Forecast usa a régua própria (fora do toggle na v1). Salvo no servidor, vale para todos.</p>'
+      + '    <div class="novo-prob-field" style="border-bottom:none;align-items:center"><label>Probabilidade de etapa</label>'
+      + '      <span style="margin-left:auto;display:inline-flex;gap:4px">'
+      + '        <button id="np-pf-calc" class="np-pf" onclick="novoSetProbFonte(\'calculada\')">Calculada ao vivo</button>'
+      + '        <button id="np-pf-prem" class="np-pf" onclick="novoSetProbFonte(\'premissas\')">Premissas</button>'
+      + '      </span></div>'
+      + '    <div id="np-pf-meta" style="font-size:.68rem;color:var(--text2);margin:0 0 .4rem"></div>'
       // s: Probabilidades separator
       + '    <div class="np-section-sep" style="margin-top:.75rem">Probabilidades</div>'
       // t: notice
@@ -143,6 +154,34 @@
 
   function fmtPct(v){ return ((v||0)*100).toFixed(1).replace('.', ','); }
 
+  // ── Config global (Fase 4b/ADR-008) ──────────────────────────────────────────
+  function _gsPaintProbFonte(meta){
+    var g = window.CONFIG_GLOBAL || { prob_fonte: 'calculada' };
+    var c = document.getElementById('np-pf-calc'), p = document.getElementById('np-pf-prem');
+    if (c) c.classList.toggle('on', g.prob_fonte !== 'premissas');
+    if (p) p.classList.toggle('on', g.prob_fonte === 'premissas');
+    var mt = document.getElementById('np-pf-meta');
+    if (mt) mt.textContent = meta && meta.em ? ('✏️ alterado por ' + (meta.por || '?') + ' em ' + String(meta.em).substring(0, 16).replace('T', ' ')) : '';
+  }
+  function _gsLoadGlobal(){
+    fetch('/api/config-global', { credentials: 'same-origin' })
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(j){ if (j && j.success) { window.CONFIG_GLOBAL = j.config; _gsPaintProbFonte(j.meta); } })
+      .catch(function(){});
+  }
+  window.novoSetProbFonte = function(f){
+    fetch('/api/config-global', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prob_fonte: f }) })
+      .then(function(r){ return r.json(); })
+      .then(function(j){
+        if (!j || !j.success) return;
+        window.CONFIG_GLOBAL = j.config;
+        _gsPaintProbFonte(j.meta);
+        if (typeof novoRender === 'function') novoRender();
+      })
+      .catch(function(){});
+  };
+  _gsLoadGlobal();
+
   window._gsResetProb = function(inputId, stage){
     var el = document.getElementById(inputId);
     if (el) el.value = fmtPct(SP_DEFAULT[stage]||0);
@@ -156,6 +195,7 @@
   };
 
   window.novoOpenSettings = function(){
+    _gsLoadGlobal();   // repinta o toggle global (pode ter mudado por outro usuário)
     inject();
     var sp=window.NOVO_STAGE_PROB||{};
     var v=function(id,val){ var el=document.getElementById(id); if(el) el.value=val; };

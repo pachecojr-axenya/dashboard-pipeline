@@ -4,6 +4,22 @@ Recurring every 20min (job `55d3b136`). Purpose: identify and close gaps so the 
 
 ---
 
+### Forecast | Quarter sem ano deixava de aparecer (Canopus) — convenção "Qx = 2026" (2026-07-15)
+
+> Bug reportado pelo dono: Grupo Canopus com Q3 no HubSpot aparecia vazio no `/forecast`. **Causa raiz:** as opções do radio `qual_quarter_de_fechamento` no portal são `Q1..Q4` (SEM ano) + `Q1 2027..Q4 2027`, e o `quarterEmpty()` exigia ano de 4 dígitos — impossível um AE preencher um quarter de 2026 aceito pelo painel. Alcance medido: **114 dos 145** deals ativos com quarter preenchido eram descartados (13 viravam "—"; 39 eram sobrescritos pelo fallback da data prevista DIVERGINDO do quarter que o AE escolheu, ex.: EPTV Q4 → painel mostrava Q1 2027). Receita Real/Probabilizada nunca foi afetada (motor usa data_prevista, não quarter).
+>
+> **Decisão do dono:** todo Q1–Q4 sem ano = **2026**. Implementado `normalizeQuarter()` ("Qx" → "Qx 2026"; lixo 'false'/'true' → null) com **precedência do campo do AE sobre a data prevista** em: `api/forecast-table.js`, replay de fotos do `forecast.html` (fotos guardam o valor cru) e `lib/forecast-compute.js` (espelho). Regra `quarter_fallback` + dado `quarter_fechamento` atualizados no catálogo; `semantic-ref.js` regenerado (cache-buster **v=4** nas 6 páginas). Pós-fix: quarter null caiu de 76 → 64 (só os realmente vazios); distribuição toda com ano. Validado: API ao vivo (Canopus Q3 2026, EPTV Q4 2026), Edge headless no DOM do `/forecast`, `npm run check` PASS, `test-delta-invariant` PASS. ⚠ Mudou api/+lib/ → **servidor local reiniciado**.
+>
+> **Pendência CRM (recomendada, não feita):** trocar as opções sem ano por opções com ano no portal e migrar os 114 valores — "Q3" puro fica ambíguo na virada de 2027. Achado colateral registrado: `a_reuniao_ocorreu_` é CHECKBOX múltiplo (2 deals ativos com "Nao;Sim": 3tentos e Mangels) e cada painel trata diferente (CRO ignora, AE conta como Sim, No-Show trata como pendente) — pede decisão.
+
+### Dashboard 2.0 | Fase 4b (núcleo) | config global no KV: toggle de probabilidade + etapas ativas (2026-07-15)
+
+> Implementa as decisões D1–D3 do dono: **`api/config-global.js`** (NOVO endpoint; GET/POST; KV `forecast:config_global` com fallback /tmp; meta ADR-004 em/por/anterior; validação de valores). Campos: `prob_fonte` ('calculada' default | 'premissas') e `etapas_ativas` ({stage_id: bool}, ADR-007 global). ⚠ Endpoint novo adicionado ao guard do preflight.
+
+- **Toggle de probabilidade:** `prob-engine.js` honra `window.CONFIG_GLOBAL.prob_fonte` ('premissas' pula o C07 → régua única direto) e carrega a config no load com re-render — **CRO e Board seguem o toggle**; Forecast fora (D1). UI: seção "Global | todos os usuários" no `settings-modal.js` (Board/AE/48h/BDR), com autor/data da última mudança (✏️). **Pendente declarado:** AE ainda não consome C07 na posição 'calculada' (D2 completa no passe do header, quando o ae.html ganha o funil); UI de etapas_ativas globais idem — a API já funciona.
+- **Etapas ativas globais (server-side):** `forecast-table` aplica override do KV no filtro de deals ativos (leitor COMPARTILHADO com o endpoint — mesma cadeia KV→/tmp; cache 60s/instância). Sem config = paridade exata.
+- **Provado ao vivo:** GET defaults ✓; POST premissas + meta + anterior ✓; valor inválido rejeitado ✓; paridade sem config (214 deals, 55 RA) ✓; RA global OFF → payload sem RA (159 = 214−55 exato) ✓; reset ✓; seção Global no DOM real do Board ✓. Bug pego pelo teste: leitor inicial só olhava KV e ignorava o fallback /tmp — corrigido antes do commit. Cache-busters `settings-modal?v=2`/`prob-engine?v=2` (bdr.html intocado — NUL; pega no deploy).
+
 ### Forecast | coluna "🟡 P. Realtime" nas listagens + gates F1/F3 fechados (2026-07-15)
 
 > Pedido do dono: nova coluna informativa ao lado da P. Etapa em `/forecast` e `/forecast-overall`+painéis de etapa — a probabilidade da etapa **calculada ao vivo do funil** (Implantação ÷ entraram, Vendas+Bid combinados, amostra >= 20, cache 1h; "—" sem amostra). Reusa o `FC_FUNNEL_PROB` que as páginas já computavam. **Puramente informativa: não altera a receita probabilizada.** Nasce 🟡 (régua da auditoria). Regra `prob_realtime_forecast` catalogada — com o alerta de que é VARIANTE do C07 do CRO (lá: Ganho ÷ entraram, por pipeline). Incluída no export CSV.

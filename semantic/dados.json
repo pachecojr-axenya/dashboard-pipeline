@@ -288,7 +288,7 @@
       "hubspot": "qual_quarter_de_fechamento",
       "unidade": "enum",
       "dono": "vendas",
-      "notas": "Fallback: derivado de data_prevista_para_receita quando vazio/inválido (regra quarter_fallback).",
+      "notas": "Opções do radio no portal: Q1..Q4 (SEM ano) e Q1 2027..Q4 2027. Convenção (decisão do dono 2026-07-15): Qx sem ano = 2026. Fallback: derivado de data_prevista_para_receita quando vazio/inválido (regra quarter_fallback).",
       "label_portal": "Qual quarter de fechamento?"
     },
     "data_prevista_para_receita": {
@@ -588,6 +588,19 @@
       "dono": "cro",
       "persistencia": "Default em referencia.json (valor_por_vida); override em localStorage forecast_vpv_tiers — por navegador. Fase 4: KV.",
       "notas": "Premissa de projeção para Diagnóstico."
+    },
+    "config_global": {
+      "label": {
+        "pt": "Configuração global do dashboard",
+        "en": "Global dashboard configuration"
+      },
+      "origem": "manual",
+      "objeto": "config",
+      "unidade": "enum",
+      "dono": "cro",
+      "persistencia": "Upstash KV global via api/config-global.js (D3 do toggle, 2026-07-15), com meta ADR-004 (em/por/anterior). Todos os usuários veem o mesmo.",
+      "notas": "Campos: prob_fonte ('calculada' default | 'premissas' — fonte da probabilidade de etapa em CRO/Board; Forecast fora do toggle na v1, D1) e etapas_ativas ({stage_id: bool} — override GLOBAL do filtro de deals ativos, ADR-007; aplicado server-side no forecast-table com cache 60s; vazio = comportamento atual). UI: seção 'Global' no settings-modal (toggle prob); UI de etapas_ativas entra com a padronização do header. Os toggles antigos 'Ativos incluem RA/Standby' do modal são CLIENT-SIDE por usuário — camada distinta.",
+      "label_portal": null
     },
     "prob_override_etapa": {
       "label": {

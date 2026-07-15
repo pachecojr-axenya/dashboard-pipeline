@@ -179,9 +179,10 @@
       "label": { "pt": "Quarter com fallback pela data prevista", "en": "Quarter with expected-date fallback" },
       "tipo": "calculado", "grain": "deal",
       "usa_dados": ["quarter_fechamento", "data_prevista_para_receita"],
-      "formula": "quarter_fechamento quando válido (contém ano); senão derivado de data_prevista_para_receita (Q = mês÷3 + 1).",
-      "fonte_codigo": ["api/forecast-table.js:202 (quarterEmpty)", "api/forecast-table.js:209 (getQuarterFromDate)"],
-      "owner": "revops", "status": "em_revisao", "vigente_desde": "2026-07-14"
+      "formula": "quarter_fechamento normalizado (\"Qx\" SEM ano = \"Qx 2026\"; \"Qx YYYY\" passa; lixo 'false'/'true'/'sem informação' = vazio) tem PRECEDÊNCIA; só quando vazio/inválido deriva de data_prevista_para_receita (Q = mês÷3 + 1).",
+      "fonte_codigo": ["api/forecast-table.js (normalizeQuarter + getQuarterFromDate)", "public/forecast.html (normalizeQuarter, replay de fotos)", "lib/forecast-compute.js (_quarter)"],
+      "owner": "revops", "status": "em_revisao", "vigente_desde": "2026-07-15",
+      "notas": "Decisão do dono (2026-07-15): as opções sem ano do radio do portal (Q1..Q4) significam 2026 — antes o painel exigia ano e descartava 114/145 quarters preenchidos (13 viravam '—', 39 eram sobrescritos pela data prevista divergindo do AE). Quando o portal ganhar opções com ano, migrar os valores e aposentar o ano implícito."
     },
 
     "conversao_ajustada": {
