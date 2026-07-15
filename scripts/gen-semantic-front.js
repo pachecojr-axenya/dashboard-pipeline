@@ -42,7 +42,7 @@ function build() {
     // Camada semântica p/ o drawer gerado (Fase 3): regras completas + dicionário
     // de dados enxuto (label/hubspot/unidade/origem) para o renderer resolver chips.
     regras: regras.regras,
-    dados: Object.fromEntries(Object.entries(dados.dados).map(([k, d]) => [k, { label: d.label, hubspot: d.hubspot || null, unidade: d.unidade, origem: d.origem }]))
+    dados: Object.fromEntries(Object.entries(dados.dados).map(([k, d]) => [k, { label: d.label, hubspot: d.hubspot || null, label_portal: d.label_portal || null, unidade: d.unidade, origem: d.origem }]))
   };
   return "'use strict';\n" +
     '// GERADO por scripts/gen-semantic-front.js a partir de semantic/referencia.json — NÃO EDITAR.\n' +
