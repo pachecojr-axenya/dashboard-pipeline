@@ -15,7 +15,20 @@
       "tipo": "calculado", "grain": "deal × mês do contrato",
       "usa_dados": ["primeira_fatura", "modelo_remuneracao", "vidas", "possui_agenciamento"],
       "usa_referencia": ["porte"],
+      "ajuda": { "pt": "Define quanto cada deal rende por mês a partir da primeira fatura (pf). Fee por vida: a pf JÁ é a receita da Axenya. Corretagem: a pf é o prêmio pago à operadora — a receita é o percentual de comissão.", "en": "Defines each deal's monthly revenue from the first invoice (pf). Fee per life: pf IS Axenya's revenue. Brokerage: pf is the premium paid to the carrier — revenue is the commission percentage." },
       "formula": "Fee por vida: total = pf todo mês. Corretagem +agenc: vidas<200 → meses 1-3 = pf, mês 4+ = pf×0,02 | vidas>=200 → mês 1 = pf×0,95, mês 2+ = pf×0,05. Corretagem -agenc: vidas<200 → pf×0,02 | vidas>=200 → pf×0,05, todo mês. Decompõe total = recorrente + pontual (pontual = max(0, total - recorrente)).",
+      "tabela": {
+        "colunas": ["Modelo", "Vidas", "Mês", "Receita mensal"],
+        "linhas": [
+          ["Fee por vida", "todas", "todos", "100% da pf"],
+          ["Corretagem −agenc", "< 200", "todos", "2% da pf"],
+          ["Corretagem −agenc", ">= 200", "todos", "5% da pf"],
+          ["Corretagem +agenc", "< 200", "1º ao 3º", "100% da pf"],
+          ["Corretagem +agenc", "< 200", "4º em diante", "2% da pf"],
+          ["Corretagem +agenc", ">= 200", "1º", "95% da pf"],
+          ["Corretagem +agenc", ">= 200", "2º em diante", "5% da pf"]
+        ]
+      },
       "faltantes": "Sem pf ou sem modelo → null (deal fora da régua; contador 'X de Y completos')",
       "fonte_codigo": ["public/revenue-engine.js:37 (calcReceitaMes)", "public/revenue-engine.js:23 (taxaRecorrente)"],
       "owner": "revops", "status": "em_revisao", "vigente_desde": "2026-07-14"
@@ -41,7 +54,8 @@
     },
 
     "receita_mensal_deal": {
-      "label": { "pt": "Receita mensal por deal | série Real e Probabilizada", "en": "Monthly revenue per deal | Actual and Weighted series" },
+      "label": { "pt": "Receita por etapa | quando e quanto (séries Real e Probabilizada)", "en": "Revenue per stage | when and how much (Actual and Weighted series)" },
+      "ajuda": { "pt": "Receita Real = o que se espera faturar de fato (manual quando já fatura, régua estimada nas demais etapas). Receita Probabilizada = Real × probabilidade da etapa. Todas as telas de Forecast consomem estas duas séries como fonte única.", "en": "Actual Revenue = what is expected to be invoiced (manual when already invoicing, estimated ruler otherwise). Weighted Revenue = Actual × stage probability. All Forecast views consume these two series as the single source." },
       "tipo": "hibrido", "grain": "deal × mês calendário",
       "usa_dados": ["is_poc", "faturamento_manual", "vidas", "colaboradores", "createdate", "modelo_remuneracao", "vigencia", "data_prevista_para_receita", "primeira_fatura", "possui_agenciamento", "vencimento_primeira_fatura"],
       "usa_referencia": ["valor_por_vida", "etapas"],
@@ -54,7 +68,8 @@
     },
 
     "cohorts_bdr": {
-      "label": { "pt": "Projeção de originação BDR (coortes)", "en": "BDR origination projection (cohorts)" },
+      "label": { "pt": "Originação BDR (projeção de topo de funil)", "en": "BDR origination (top-of-funnel projection)" },
+      "ajuda": { "pt": "Projeção agregada do que os BDRs vão originar, somada ao forecast dos deals. Entra nos totais apenas quando não há filtro de etapa ou quando Reunião Agendada está entre as etapas filtradas.", "en": "Aggregate projection of BDR origination, added to the deal forecast. Included in totals only when no stage filter is active or Reunião Agendada is among the filtered stages." },
       "tipo": "hibrido", "grain": "mês de originação",
       "usa_dados": ["premissas_bdr_originacao"],
       "formula": "Por mês jul/26..jan/28: vidas = 4×34.000 (antigos) + 8×rampa(mês). Receita da coorte = vidas × R$24, iniciando originação+15m, probabilizada pela conversão MQL.",
@@ -98,11 +113,34 @@
     },
 
     "dedup_fee_corretagem": {
-      "label": { "pt": "Dedup de deals duplicados (fee × corretagem)", "en": "Duplicate deal dedup (fee × brokerage)" },
+      "label": { "pt": "Deals duplicados (Fee × Corretagem)", "en": "Duplicate deals (Fee × Brokerage)" },
+      "ajuda": { "pt": "Quando o mesmo cliente tem dois negócios simultâneos (um Fee por vida e um Corretagem), só UM conta no forecast, para não dobrar a receita.", "en": "When the same client has two simultaneous deals (one Fee per life and one Brokerage), only ONE counts in the forecast, to avoid doubling revenue." },
       "tipo": "calculado", "grain": "cliente",
-      "usa_dados": ["dealname", "modelo_remuneracao"],
-      "formula": "Mesmo cliente com deal de Fee por vida E de Corretagem conta UMA vez: vale o de menor TCV de 12 meses e prazo de pagamento mais longo (worst case).",
-      "fonte_codigo": ["public/forecast.html (lógica de dedup do painel Forecast)"],
+      "usa_dados": ["dealname", "modelo_remuneracao", "vigencia"],
+      "formula": "Critério de escolha do deal que fica: 1º etapa mais avançada; empate → menor TCV de 12 meses; novo empate → vigência mais distante (cenário conservador).",
+      "fonte_codigo": ["public/forecast.html (dedup do painel Forecast; texto validado na ajuda da aba)"],
+      "owner": "revops", "status": "em_revisao", "vigente_desde": "2026-07-14",
+      "notas": "As Premissas (doc) diziam 'menor TCV + prazo mais longo'; o comportamento real do código antepõe a ETAPA MAIS AVANÇADA como 1º critério — catálogo segue o código (extração), divergência do doc anotada."
+    },
+
+    "prob_final_forecast": {
+      "label": { "pt": "Probabilidade final no Forecast (régua flat + ajuste do AE)", "en": "Final probability in Forecast (flat ruler + AE adjustment)" },
+      "ajuda": { "pt": "A coluna P. Etapa segue a régua flat validada do Forecast; a probabilidade informada pelo AE só ajusta ±10% quando diverge muito da etapa.", "en": "P. Etapa follows the validated Forecast flat ruler; the AE's own probability only adjusts ±10% when it diverges strongly from the stage." },
+      "tipo": "calculado", "grain": "deal",
+      "usa_dados": ["dealstage", "probabilidade_ae", "prob_override_etapa"],
+      "usa_referencia": ["reguas_probabilidade.forecast_flat"],
+      "precedencia": "override manual em Configurações > régua flat do Forecast. Overrides legados iguais aos defaults antigos são limpos automaticamente (fix 2026-07-14).",
+      "formula": "P.Etapa = régua flat. Ajuste pelo AE: sem prob. do AE → P.Etapa; dentro de ±30 pp → P.Etapa; AE >= P.Etapa+30pp → P.Etapa × 1,10; AE <= P.Etapa−30pp → P.Etapa × 0,90.",
+      "tabela": {
+        "colunas": ["Situação", "Probabilidade final"],
+        "linhas": [
+          ["AE não informou", "P.Etapa (sem ajuste)"],
+          ["Prob. AE dentro de ±30 pp da P.Etapa", "P.Etapa (sem ajuste)"],
+          ["Prob. AE >= P.Etapa + 30 pp", "P.Etapa × 1,10 (+10%)"],
+          ["Prob. AE <= P.Etapa − 30 pp", "P.Etapa × 0,90 (−10%)"]
+        ]
+      },
+      "fonte_codigo": ["public/forecast.html (P. Etapa | fix 2026-07-14)", "public/forecast-stage.html"],
       "owner": "revops", "status": "em_revisao", "vigente_desde": "2026-07-14"
     },
 

@@ -28,6 +28,8 @@ function ordered(valores, order) {
 
 function build() {
   const referencia = JSON.parse(fs.readFileSync(path.join(ROOT, 'semantic', 'referencia.json'), 'utf8'));
+  const dados = JSON.parse(fs.readFileSync(path.join(ROOT, 'semantic', 'dados.json'), 'utf8'));
+  const regras = JSON.parse(fs.readFileSync(path.join(ROOT, 'semantic', 'regras.json'), 'utf8'));
   const payload = {
     versao: referencia._meta.versao,
     pipelines: referencia.pipelines,
@@ -35,7 +37,12 @@ function build() {
     reguas: {
       forecast_flat: { tipo: 'forcada', valores: ordered(referencia.reguas_probabilidade.forecast_flat.valores, FLAT_ORDER) },
       painel_default: { tipo: 'forcada', valores: referencia.reguas_probabilidade.painel_default.valores }
-    }
+    },
+    valor_por_vida: referencia.valor_por_vida,
+    // Camada semântica p/ o drawer gerado (Fase 3): regras completas + dicionário
+    // de dados enxuto (label/hubspot/unidade/origem) para o renderer resolver chips.
+    regras: regras.regras,
+    dados: Object.fromEntries(Object.entries(dados.dados).map(([k, d]) => [k, { label: d.label, hubspot: d.hubspot || null, unidade: d.unidade, origem: d.origem }]))
   };
   return "'use strict';\n" +
     '// GERADO por scripts/gen-semantic-front.js a partir de semantic/referencia.json — NÃO EDITAR.\n' +

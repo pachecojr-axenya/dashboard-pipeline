@@ -169,7 +169,7 @@ Fuso canônico: America/Sao_Paulo.
 - **Fórmula:** Σ receita_regua_mensal(n) para n = 1..contrato_meses. Bruto, NÃO ponderado por probabilidade.
 - **Código (1.0):** public/revenue-engine.js:73 (calcTCV)
 
-### `receita_mensal_deal` | Receita mensal por deal \| série Real e Probabilizada
+### `receita_mensal_deal` | Receita por etapa \| quando e quanto (séries Real e Probabilizada)
 
 - **Tipo:** hibrido · **Grain:** deal × mês calendário · **Status:** em_revisao · **Vigente desde:** 2026-07-14 · **Dono:** revops
 - **Usa dados:** `is_poc`, `faturamento_manual`, `vidas`, `colaboradores`, `createdate`, `modelo_remuneracao`, `vigencia`, `data_prevista_para_receita`, `primeira_fatura`, `possui_agenciamento`, `vencimento_primeira_fatura`
@@ -180,7 +180,7 @@ Fuso canônico: America/Sao_Paulo.
 - **Código (1.0):** public/forecast-engine.js:44 (dealMonthly) · public/forecast-engine.js:32 (_refNow)
 - **Notas:** É a Regra primária nº 3 do STATUS_LOG em forma de catálogo: toda receita de qualquer painel vem desta série (Real e Probabilizada).
 
-### `cohorts_bdr` | Projeção de originação BDR (coortes)
+### `cohorts_bdr` | Originação BDR (projeção de topo de funil)
 
 - **Tipo:** hibrido · **Grain:** mês de originação · **Status:** em_revisao · **Vigente desde:** 2026-07-14 · **Dono:** cro
 - **Usa dados:** `premissas_bdr_originacao`
@@ -215,12 +215,22 @@ Fuso canônico: America/Sao_Paulo.
 - **Código (1.0):** api/forecast-table.js:40 (ACTIVE_STAGE_IDS) · api/forecast-table.js:280 (fetchDeals)
 - **Notas:** ADR-007 (etapas ativas configuráveis pelo usuário, especialmente Reunião e Standby) transforma este filtro fixo em config global na Fase 4.
 
-### `dedup_fee_corretagem` | Dedup de deals duplicados (fee × corretagem)
+### `dedup_fee_corretagem` | Deals duplicados (Fee × Corretagem)
 
 - **Tipo:** calculado · **Grain:** cliente · **Status:** em_revisao · **Vigente desde:** 2026-07-14 · **Dono:** revops
-- **Usa dados:** `dealname`, `modelo_remuneracao`
-- **Fórmula:** Mesmo cliente com deal de Fee por vida E de Corretagem conta UMA vez: vale o de menor TCV de 12 meses e prazo de pagamento mais longo (worst case).
-- **Código (1.0):** public/forecast.html (lógica de dedup do painel Forecast)
+- **Usa dados:** `dealname`, `modelo_remuneracao`, `vigencia`
+- **Fórmula:** Critério de escolha do deal que fica: 1º etapa mais avançada; empate → menor TCV de 12 meses; novo empate → vigência mais distante (cenário conservador).
+- **Código (1.0):** public/forecast.html (dedup do painel Forecast; texto validado na ajuda da aba)
+- **Notas:** As Premissas (doc) diziam 'menor TCV + prazo mais longo'; o comportamento real do código antepõe a ETAPA MAIS AVANÇADA como 1º critério — catálogo segue o código (extração), divergência do doc anotada.
+
+### `prob_final_forecast` | Probabilidade final no Forecast (régua flat + ajuste do AE)
+
+- **Tipo:** calculado · **Grain:** deal · **Status:** em_revisao · **Vigente desde:** 2026-07-14 · **Dono:** revops
+- **Usa dados:** `dealstage`, `probabilidade_ae`, `prob_override_etapa`
+- **Usa referência:** `reguas_probabilidade.forecast_flat`
+- **Precedência:** override manual em Configurações > régua flat do Forecast. Overrides legados iguais aos defaults antigos são limpos automaticamente (fix 2026-07-14).
+- **Fórmula:** P.Etapa = régua flat. Ajuste pelo AE: sem prob. do AE → P.Etapa; dentro de ±30 pp → P.Etapa; AE >= P.Etapa+30pp → P.Etapa × 1,10; AE <= P.Etapa−30pp → P.Etapa × 0,90.
+- **Código (1.0):** public/forecast.html (P. Etapa \| fix 2026-07-14) · public/forecast-stage.html
 
 ### `arr_estimado_fallback` | ARR com fallback
 

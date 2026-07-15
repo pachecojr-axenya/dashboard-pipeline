@@ -1806,7 +1806,8 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
   </style>
 <link rel="stylesheet" href="/premium.css?v=5">
 <script src="/premium.js?v=5"></script>
-<script src="/semantic-ref.js?v=1"></script>
+<script src="/semantic-ref.js?v=2"></script>
+<script src="/semantic-help.js?v=1"></script>
 <script src="/revenue-engine.js?v=2"></script>
 <script src="/faturamento-manual.js?v=1"></script>
 <script src="/forecast-engine.js?v=1"></script>
@@ -2064,89 +2065,10 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
         </table>
       </section>
 
-      <!-- Ajuste pelo AE -->
-      <section class="help-section">
-        <h3 class="help-h3">Ajuste pela probabilidade informada pelo AE</h3>
-        <p class="help-p">O AE pode informar sua própria probabilidade de fechamento para cada deal. Ela é comparada com a probabilidade da etapa (P.Etapa):</p>
-        <table class="help-table">
-          <thead><tr><th>Situação</th><th>Probabilidade final</th></tr></thead>
-          <tbody>
-            <tr><td>AE não informou</td><td>P.Etapa (sem ajuste)</td></tr>
-            <tr><td>Prob. AE dentro de ±30 pp da P.Etapa</td><td>P.Etapa (sem ajuste)</td></tr>
-            <tr><td>Prob. AE ≥ P.Etapa + 30 pp</td><td>P.Etapa × 1,10 (+10%)</td></tr>
-            <tr><td>Prob. AE ≤ P.Etapa − 30 pp</td><td>P.Etapa × 0,90 (−10%)</td></tr>
-          </tbody>
-        </table>
-      </section>
-
-      <!-- Receita por etapa -->
-      <section class="help-section">
-        <h3 class="help-h3">Receita por etapa (quando e quanto)</h3>
-
-        <p class="help-p" style="margin-top:.4rem;"><strong>Reunião Agendada (MQL)</strong></p>
-        <p class="help-p">Vidas (ou colaboradores, se não houver vidas) × <strong>R$ 24/vida</strong>. A receita começa <strong>15 meses</strong> após a criação do deal. Além dos deals, soma-se a projeção de originação BDR (ver abaixo).</p>
-
-        <p class="help-p" style="margin-top:.7rem;"><strong>Diagnóstico</strong></p>
-        <p class="help-p">Ainda sem fatura: vidas (ou colaboradores) × R$/vida por faixa. Início = criação + delay; se essa data já passou, começa no mês atual. 100% recorrente (estimado).</p>
-        <table class="help-table">
-          <thead><tr><th>Faixa</th><th>R$/vida</th><th>Delay até receita</th></tr></thead>
-          <tbody>
-            <tr><td>Até 200 vidas</td><td>R$ 36</td><td>+ 9 meses</td></tr>
-            <tr><td>201 – 4.999 vidas</td><td>R$ 24</td><td>+ 14 meses</td></tr>
-            <tr><td>5.000+ vidas</td><td>R$ 12</td><td>+ 18 meses</td></tr>
-          </tbody>
-        </table>
-
-        <p class="help-p" style="margin-top:.7rem;"><strong>Cotação · Consultoria · Negociação</strong></p>
-        <p class="help-p">Régua pelo modelo de cobrança (abaixo). Início da receita depende do modelo: <strong>Corretagem</strong> → vigência + 2 meses (se a vigência já passou ou está vazia, usa a data prevista + 2); <strong>Fee por vida</strong> → data prevista + 2 meses; <strong>sem modelo</strong> → data prevista.</p>
-
-        <p class="help-p" style="margin-top:.7rem;"><strong>Proposta Enviada · Standby · demais</strong></p>
-        <p class="help-p">Régua pelo modelo de cobrança, a partir da <em>data prevista para receita</em> do deal, por até 24 meses.</p>
-
-        <p class="help-p" style="margin-top:.7rem;"><strong>Ganho · Implantação (faturamento real)</strong></p>
-        <p class="help-p">Quando o deal já fatura (campo <em>Vencimento da 1ª Fatura</em> preenchido e vencido, ou marcado à mão no editor), a Receita Real usa os <strong>valores mensais digitados</strong>, que substituem a régua estimada. Deals ganhos entram no forecast <strong>mesmo criados antes de set/2025</strong> — receita real não é cortada por data de criação.</p>
-      </section>
-
-      <!-- Modelos de cobrança -->
-      <section class="help-section">
-        <h3 class="help-h3">Modelos de cobrança (régua de receita)</h3>
-        <p class="help-p">Define quanto cada deal rende por mês a partir da <strong>primeira fatura</strong>.</p>
-
-        <p class="help-p" style="margin-top:.5rem;"><strong>Fee por vida</strong></p>
-        <p class="help-p">Receita mensal = primeira fatura (valor fixo, todos os meses).</p>
-
-        <p class="help-p" style="margin-top:.7rem;"><strong>Corretagem — sem agenciamento</strong></p>
-        <table class="help-table">
-          <thead><tr><th>Vidas</th><th>Receita mensal</th></tr></thead>
-          <tbody>
-            <tr><td>Menos de 200</td><td>2% da primeira fatura</td></tr>
-            <tr><td>200 ou mais</td><td>5% da primeira fatura</td></tr>
-          </tbody>
-        </table>
-
-        <p class="help-p" style="margin-top:.7rem;"><strong>Corretagem — com agenciamento</strong></p>
-        <table class="help-table">
-          <thead><tr><th>Vidas</th><th>Mês</th><th>Receita</th></tr></thead>
-          <tbody>
-            <tr><td>Menos de 200</td><td>1º ao 3º</td><td>100% da primeira fatura</td></tr>
-            <tr><td>Menos de 200</td><td>4º em diante</td><td>2% da primeira fatura</td></tr>
-            <tr><td>200 ou mais</td><td>1º</td><td>95% da primeira fatura</td></tr>
-            <tr><td>200 ou mais</td><td>2º em diante</td><td>5% da primeira fatura</td></tr>
-          </tbody>
-        </table>
-      </section>
-
-      <!-- Originação BDR -->
-      <section class="help-section">
-        <h3 class="help-h3">Originação BDR (projeção de topo de funil)</h3>
-        <p class="help-p">4 BDRs antigos (34k vidas/mês) + 8 novos em rampa (jul/26 → jan/28). Cada mês de originação vira receita <strong>15 meses depois</strong> (vidas × R$ 24), probabilizada pela conversão Reunião Agendada → Implantação (ao vivo). Entra nos totais <strong>apenas quando não há filtro de etapa ou quando Reunião Agendada está entre as etapas filtradas</strong>.</p>
-      </section>
-
-      <!-- Dedup -->
-      <section class="help-section">
-        <h3 class="help-h3">Deals duplicados (Fee × Corretagem)</h3>
-        <p class="help-p">Quando o mesmo cliente tem dois negócios simultâneos (um Fee por vida e um Corretagem), só <strong>um</strong> conta no forecast, para não dobrar a receita. Mantém-se a <strong>etapa mais avançada</strong>; empate → <strong>menor TCV de 12 meses</strong>; novo empate → <strong>vigência mais distante</strong> (cenário conservador).</p>
-      </section>
+      <!-- Fase 3 do Dashboard 2.0: seções GERADAS do catálogo semântico (semantic/
+           regras.json via semantic-ref.js + semantic-help.js). Nada aqui é escrito
+           à mão — se o catálogo está certo, a ajuda está certa (ADR-006). -->
+      <div data-semantic-help="prob_final_forecast,receita_mensal_deal,receita_regua_mensal,cohorts_bdr,dedup_fee_corretagem"></div>
 
       <div style="height:1px;background:var(--border);margin:1.2rem 0 1rem;"></div>
       <p style="font-size:0.75rem;color:var(--text2);margin:0;text-align:center;">Os valores de probabilidade por etapa são configuráveis em <strong>Configurações</strong>. Os R$/vida são fixos.</p>

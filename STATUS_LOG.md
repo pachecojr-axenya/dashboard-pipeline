@@ -4,6 +4,16 @@ Recurring every 20min (job `55d3b136`). Purpose: identify and close gaps so the 
 
 ---
 
+### Dashboard 2.0 | Fase 3 (golden template) | ajuda do /forecast GERADA do catálogo (2026-07-14)
+
+> Primeiro drawer de proveniência gerado (ADR-006): as 5 seções de regra do modal "Como funciona" do `/forecast` (ajuste do AE, receita por etapa, modelos de cobrança, originação BDR, dedup) deixaram de ser texto à mão e passam a ser **renderizadas do catálogo** por **`public/semantic-help.js`** (novo, ES5) sobre o payload de `semantic-ref.js?v=2` (agora embute `regras` + dicionário de `dados`). Container declarativo: `<div data-semantic-help="regra1,regra2,...">`.
+
+- Cada seção gerada expõe: ajuda de negócio, cálculo, tabela estruturada (quando houver), precedência, faltantes, **campos usados com a propriedade HubSpot**, tipo, status (🟠/🟢) e `vigente_desde` — o contrato do drawer sai da camada semântica, não de prosa.
+- **Catálogo enriquecido na extração:** dedup corrigido para o comportamento real (1º etapa mais avançada > menor TCV 12m > vigência mais distante; doc das Premissas dizia diferente — anotado); nova regra `prob_final_forecast` (régua flat + ajuste AE ±10%/30pp); tabela estruturada da régua de remuneração.
+- **Mantidos à mão de propósito:** intro Real×Probabilizada (2 linhas), tabela dinâmica de probabilidades (mostra valores AO VIVO com override — melhor que estático) e rodapé.
+- Validação: renderer testado em Node (5 seções, conteúdo da ajuda antiga coberto: ±10%, 95%/2%/5% da pf, R$ 36, dedup, premissas BDR); `npm run check` PASS; `/forecast` servido com ref→help→container na ordem certa. ⚠ Front mudou: cache-busters `semantic-ref.js?v=2` (4 páginas) + `semantic-help.js?v=1`.
+- **Gate pendente (dono):** abrir a ajuda do `/forecast` e auditar seção a seção se o gerado descreve o comportamento real. Depois: replicar no `forecast-stage.html` e demais painéis.
+
 ### Dashboard 2.0 | Fase 2 FECHADA | libs + front consomem o catálogo (2026-07-14)
 
 > Fase 2 concluída: além de forecast-table/funnel-stages (entrada anterior), religados **lib/snapshot-format.js**, **lib/hubspot.js** (pipes, mapas Vendas/Bid, tickets Cotação) e a **régua flat do front** nos 4 HTMLs (forecast, forecast-stage, dashboard, ae) via **`public/semantic-ref.js`** — arquivo ES5 GERADO do catálogo por `scripts/gen-semantic-front.js` (commitado; check-semantic acusa se desatualizar). ⚠ Front mudou → cache-buster `semantic-ref.js?v=1` incluído antes do revenue-engine em cada página.

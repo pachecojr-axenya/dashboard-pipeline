@@ -25,7 +25,7 @@
 | 0 | Charter + decisões | ✅ fechada (aprovada pelo dono em 2026-07-14) |
 | 1 | Os 3 arquivos base (extração) | 🟠 catálogo entregue | gate pendente: revisão do dono via [catalogo.md](catalogo.md) |
 | 2 | Consumo da referência | ✅ fechada (2026-07-14) | núcleo religado com paridade: forecast-table, funnel-stages, snapshot-format, hubspot.js (incl. tickets), régua flat do front via `semantic-ref.js` gerado. Cauda documentada (BDR/watcher/scripts, todos com IDs já catalogados e vigiados pelo check); pendência de decisão: divergência Implantação 0.581×1.0 |
-| 3 | Drawer gerado do catálogo (golden: Forecast) | ⬜ não iniciada |
+| 3 | Drawer gerado do catálogo (golden: Forecast) | 🟠 golden template entregue | ajuda do /forecast gerada de 5 regras do catálogo via `semantic-help.js`; gate pendente: auditoria do dono seção a seção; replicar em forecast-stage e demais painéis |
 | 4 | Dado manual de primeira classe + configs globais | ⬜ não iniciada |
 | 5 | Componente de gráfico parametrizado | ⬜ não iniciada |
 | 6 | Manifestos + novos domínios | ⬜ não iniciada |
