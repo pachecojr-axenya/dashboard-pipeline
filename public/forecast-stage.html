@@ -3621,6 +3621,9 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
         return {
           ...d,
           prob_etapa: isBid ? FC_BID_PROB : (STAGE_PROB[d.stage] ?? null),
+          // Prob. Realtime (pedido do dono 2026-07-15): prob. da etapa calculada ao vivo
+          // do funil. Informativa — não entra em conta nenhuma.
+          prob_realtime: (FC_FUNNEL_PROB && FC_FUNNEL_PROB[d.stage] != null) ? FC_FUNNEL_PROB[d.stage] : null,
           prob_ajustada: isBid ? FC_BID_PROB : pInfo.final,
           prob_info: isBid ? { sp: FC_BID_PROB, cp: d.probabilidade, final: FC_BID_PROB, modStr: 'BID | probabilidade fixa conservadora (~0,5%)' } : pInfo,
           // TCV (igual ao painel Forecast principal) e ARR × %AE (só a prob. do executivo).
@@ -4007,6 +4010,10 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
         {
           k: 'prob_etapa', lbl: 'P. Etapa', w: 65, align: 'right', prob: true, hideMobile: true,
           tip: 'Taxa histórica de ganho para a etapa (Cotação 18,6% · Consultoria 28,5% · Negociação 49,3% · Implantação 80,0% · Ganho 100%)'
+        },
+        {
+          k: 'prob_realtime', lbl: '🟡 P. Realtime', w: 78, align: 'right', prob: true, hideMobile: true,
+          tip: 'Probabilidade da etapa CALCULADA AO VIVO do funil (deals que chegaram a Implantação ÷ que entraram na etapa, Vendas+Bid, amostra mínima 20). Informativa: compare com a P. Etapa da régua; NÃO altera a receita probabilizada. "—" = etapa sem amostra suficiente.'
         },
         {
           k: 'prob_ajustada', lbl: 'P. Ajust.', w: 65, align: 'right', prob: true, hideMobile: true,

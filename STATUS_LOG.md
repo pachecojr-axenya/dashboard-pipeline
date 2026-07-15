@@ -4,6 +4,12 @@ Recurring every 20min (job `55d3b136`). Purpose: identify and close gaps so the 
 
 ---
 
+### Forecast | coluna "🟡 P. Realtime" nas listagens + gates F1/F3 fechados (2026-07-15)
+
+> Pedido do dono: nova coluna informativa ao lado da P. Etapa em `/forecast` e `/forecast-overall`+painéis de etapa — a probabilidade da etapa **calculada ao vivo do funil** (Implantação ÷ entraram, Vendas+Bid combinados, amostra >= 20, cache 1h; "—" sem amostra). Reusa o `FC_FUNNEL_PROB` que as páginas já computavam. **Puramente informativa: não altera a receita probabilizada.** Nasce 🟡 (régua da auditoria). Regra `prob_realtime_forecast` catalogada — com o alerta de que é VARIANTE do C07 do CRO (lá: Ganho ÷ entraram, por pipeline). Incluída no export CSV.
+>
+> **Gates fechados pelo dono no roteiro:** Fase 1 (catálogo todo revisado) ✅ e Fase 3 (ajuda gerada dos 3 painéis auditada) ✅.
+
 ### Dashboard 2.0 | Drawer gerado v2 (redesign) + metodologia de remuneração reconciliada (2026-07-15)
 
 > **semantic-help v2** (feedback do dono: "frankenstein"): narrativa de negócio primeiro (explicação → como calculamos → tabela → regras práticas nomeadas), metadados técnicos recolhidos em `<details>`, campos exibidos pelo **label oficial do portal**, CSS próprio injetado (`sh-*`) — consistente nos 3 painéis que geram ajuda. Cache-busters `semantic-ref?v=3` (label_portal embutido) + `semantic-help?v=2` nas 6 páginas. Validado em Node + Edge headless.

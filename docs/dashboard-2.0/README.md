@@ -23,9 +23,9 @@
 | Fase | Nome | Estado |
 |---|---|---|
 | 0 | Charter + decisões | ✅ fechada (aprovada pelo dono em 2026-07-14) |
-| 1 | Os 3 arquivos base (extração) | 🟠 catálogo entregue | gate pendente: revisão do dono via [catalogo.md](catalogo.md) |
+| 1 | Os 3 arquivos base (extração) | ✅ fechada (gate: revisão do dono concluída em 2026-07-15 — réguas, remuneração, etapas, times e regras) |
 | 2 | Consumo da referência | ✅ fechada (2026-07-14) | núcleo religado com paridade: forecast-table, funnel-stages, snapshot-format, hubspot.js (incl. tickets), régua flat do front via `semantic-ref.js` gerado. Cauda documentada (BDR/watcher/scripts, todos com IDs já catalogados e vigiados pelo check); pendência de decisão: divergência Implantação 0.581×1.0 |
-| 3 | Drawer gerado do catálogo (golden: Forecast) | 🟠 todos os painéis de forecast cobertos | /forecast (5 seções), /forecast-overall + 8 painéis de etapa (AE + dedup; seções dinâmicas por painel ficam à mão), /forecast-delta (memória de cálculo inteira). Gate pendente: auditoria do dono. Restante: painéis fora do grupo forecast (CRO/Board/AE via NOVO_HELP_CHARTS) |
+| 3 | Drawer gerado do catálogo (golden: Forecast) | ✅ fechada no grupo forecast (gate: auditoria do dono concluída em 2026-07-15; renderer v2 pós-feedback) | Extensão futura: painéis CRO/Board/AE via NOVO_HELP_CHARTS |
 | 4 | Dado manual de primeira classe + configs globais | 🟠 iniciada (4a entregue) | faturamento manual com meta (quem/quando/anterior) no KV + selo ✏️ e badge ⚠ no painel Ganho. Aguardando dono: [design do toggle de probabilidade](design-toggle-probabilidade.md), chave de etapas ativas, virada do Stand by |
 | 5 | Componente de gráfico parametrizado | ⬜ não iniciada |
 | 6 | Manifestos + novos domínios | ⬜ não iniciada |

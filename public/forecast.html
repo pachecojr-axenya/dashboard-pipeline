@@ -3744,6 +3744,10 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
         return {
           ...d,
           prob_etapa: _fcStageProbFor(d.stage, d.pipeline) ?? null,
+          // Prob. Realtime (pedido do dono 2026-07-15): a prob. da etapa CALCULADA ao vivo
+          // do funil (Implantação ÷ entraram, Vendas+Bid, amostra >= 20). Informativa —
+          // NÃO entra em nenhuma conta; a probabilizada segue a régua/P. Ajust.
+          prob_realtime: (FC_FUNNEL_PROB && FC_FUNNEL_PROB[d.stage] != null) ? FC_FUNNEL_PROB[d.stage] : null,
           prob_ajustada: pInfo.final,
           prob_info: pInfo,
           tcv: (typeof calcTCV === 'function') ? calcTCV(d) : null,
@@ -4100,6 +4104,10 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
           tip: 'Taxa histórica de ganho para a etapa (Cotação 18,6% · Consultoria 28,5% · Negociação 49,3% · Implantação 80,0% · Ganho 100%)'
         },
         {
+          k: 'prob_realtime', lbl: '🟡 P. Realtime', w: 78, align: 'right', prob: true, hideMobile: true,
+          tip: 'Probabilidade da etapa CALCULADA AO VIVO do funil (deals que chegaram a Implantação ÷ que entraram na etapa, Vendas+Bid, amostra mínima 20). Informativa: compare com a P. Etapa da régua; NÃO altera a receita probabilizada. "—" = etapa sem amostra suficiente.'
+        },
+        {
           k: 'prob_ajustada', lbl: 'P. Ajust.', w: 65, align: 'right', prob: true, hideMobile: true,
           tip: 'Prob. ajustada: se Prob. AE desvia ±30 pp da P. Etapa → aplica ±10% multiplicador sobre a P. Etapa'
         },
@@ -4433,7 +4441,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
         fatura_atual: '#,##0', primeira_fatura: '#,##0', arr_estimado: '#,##0', arr_pae: '#,##0', tcv: '#,##0',
         comp_dreal: '#,##0', comp_dprob: '#,##0'
       };
-      const PCT_KEYS = { probabilidade: 1, prob_etapa: 1, prob_ajustada: 1 };
+      const PCT_KEYS = { probabilidade: 1, prob_etapa: 1, prob_realtime: 1, prob_ajustada: 1 };
 
       // Rótulo de cada mês repete nos dois blocos (Real e Probabilizada); sem o
       // header de grupo (que não é exportado) as 48 colunas ficam indistinguíveis.

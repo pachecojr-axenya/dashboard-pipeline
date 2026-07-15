@@ -254,6 +254,16 @@ Corte PME: 200 vidas. Fuso canônico: America/Sao_Paulo.
 - **Código (1.0):** public/forecast.html (dedup do painel Forecast; texto validado na ajuda da aba)
 - **Notas:** As Premissas (doc) diziam 'menor TCV + prazo mais longo'; o comportamento real do código antepõe a ETAPA MAIS AVANÇADA como 1º critério — catálogo segue o código (extração), divergência do doc anotada.
 
+### `prob_realtime_forecast` | Prob. Realtime (coluna informativa \| painéis Forecast)
+
+> Coluna pedida pelo dono (2026-07-15): mostra, ao lado da P. Etapa da régua, a probabilidade da etapa calculada AO VIVO do funil — para comparar premissa × realidade sem mudar nenhuma conta.
+
+- **Tipo:** calculado · **Grain:** etapa · **Status:** em_revisao · **Vigente desde:** 2026-07-15 · **Dono:** revops
+- **Usa dados:** `dealstage`
+- **Usa referência:** `etapas`
+- **Fórmula:** Deals que chegaram a Implantação ÷ deals que entraram na etapa, VENDAS+BID COMBINADOS, amostra mínima 20 (senão '—'). Cache de 1h no navegador. ⚠ Variante do Forecast — DIFERENTE do C07 dos painéis CRO/Board (lá: Ganho ÷ entraram, POR pipeline). Puramente informativa: NÃO altera a receita probabilizada.
+- **Código (1.0):** public/forecast.html (_fcFunnelDerivedProb + coluna prob_realtime) · public/forecast-stage.html (idem)
+
 ### `prob_final_forecast` | Probabilidade final no Forecast (régua flat + ajuste do AE)
 
 > A coluna P. Etapa segue a régua flat validada do Forecast; a probabilidade informada pelo AE só ajusta ±10% quando diverge muito da etapa.

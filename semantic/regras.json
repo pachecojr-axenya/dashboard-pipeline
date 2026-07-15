@@ -124,6 +124,17 @@
       "notas": "As Premissas (doc) diziam 'menor TCV + prazo mais longo'; o comportamento real do código antepõe a ETAPA MAIS AVANÇADA como 1º critério — catálogo segue o código (extração), divergência do doc anotada."
     },
 
+    "prob_realtime_forecast": {
+      "label": { "pt": "Prob. Realtime (coluna informativa | painéis Forecast)", "en": "Realtime Probability (informational column | Forecast panels)" },
+      "ajuda": { "pt": "Coluna pedida pelo dono (2026-07-15): mostra, ao lado da P. Etapa da régua, a probabilidade da etapa calculada AO VIVO do funil — para comparar premissa × realidade sem mudar nenhuma conta.", "en": "Column requested by the owner (2026-07-15): shows, next to the ruler's P. Etapa, the stage probability computed LIVE from the funnel — to compare premise × reality without changing any calculation." },
+      "tipo": "calculado", "grain": "etapa",
+      "usa_dados": ["dealstage"],
+      "usa_referencia": ["etapas"],
+      "formula": "Deals que chegaram a Implantação ÷ deals que entraram na etapa, VENDAS+BID COMBINADOS, amostra mínima 20 (senão '—'). Cache de 1h no navegador. ⚠ Variante do Forecast — DIFERENTE do C07 dos painéis CRO/Board (lá: Ganho ÷ entraram, POR pipeline). Puramente informativa: NÃO altera a receita probabilizada.",
+      "fonte_codigo": ["public/forecast.html (_fcFunnelDerivedProb + coluna prob_realtime)", "public/forecast-stage.html (idem)"],
+      "owner": "revops", "status": "em_revisao", "vigente_desde": "2026-07-15"
+    },
+
     "prob_final_forecast": {
       "label": { "pt": "Probabilidade final no Forecast (régua flat + ajuste do AE)", "en": "Final probability in Forecast (flat ruler + AE adjustment)" },
       "ajuda": { "pt": "A coluna P. Etapa segue a régua flat validada do Forecast; a probabilidade informada pelo AE só ajusta ±10% quando diverge muito da etapa.", "en": "P. Etapa follows the validated Forecast flat ruler; the AE's own probability only adjusts ±10% when it diverges strongly from the stage." },
