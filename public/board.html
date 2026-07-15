@@ -226,7 +226,7 @@ var NOVO_I18N={
     bd_revbkt:'TCV do Pipe por Bucket',bd_revbkt_tip:'Dois donuts do pipeline ativo por faixa (Por Receita e Por Vidas). Métrica = TCV pela régua real de 12 meses (inclui a corretagem de entrada; Diagnóstico = vidas × R$/vida × 12). Bruto = Σ TCV por faixa; Ponderado = Σ TCV × probabilidade final (C07 por pipeline + ajuste ±10% do AE), a mesma premissa global do CRO. Só considera deals com TCV > 0. Clique numa fatia para ver os deals.',
     bd_concentration:'Concentração de Receita do Pipeline Aberto',bd_concentration_tip:'% do ARR aberto atual representado pelos top deals. Não usa filtro de período.',
     bd_entry_exit:'Entrada vs Saída de Deals por Mês',bd_entry_exit_tip:'Entradas pela data de entrada na etapa Reunião Agendada (evento real do BDR, só pipeline Vendas); saídas por close_date, separando ganhos e perdidos.',
-    bd_arr_bridge:'ARR Bridge (Variação Mensal)',bd_arr_bridge_tip:'Variação mensal do ARR ganho, por close_date.',
+    bd_arr_bridge:'🔴 ARR Bridge (Variação Mensal)',bd_arr_bridge_tip:'⚠ Veredito da auditoria (12/06): NÃO é um ARR Bridge — é a diferença do ARR ganho entre meses consecutivos; barras negativas NÃO são churn, só "ganhei menos que no mês passado". Variação mensal do ARR ganho, por close_date.',
     bd_won_size:'Porte Médio dos Deals Ganhos (Vidas)',bd_won_size_tip:'Vidas médias de deals ganhos por mês de fechamento. Filtro usa close_date.',
     bd_won_monthly:'Deals Ganhos por Mês',bd_won_monthly_tip:'Contagem de deals ganhos por mês de fechamento. Filtro usa close_date.',
   },
@@ -238,7 +238,7 @@ var NOVO_I18N={
     bd_revbkt:'Pipe TCV by Bucket',bd_revbkt_tip:'Two donuts of the active pipeline by band (By Revenue and By Lives). Metric = 12-month TCV from the real régua (includes the entry brokerage; Diagnosis = lives × R$/life × 12). Gross = Σ TCV per band; Weighted = Σ TCV × final probability (C07 per pipeline + AE ±10% adjustment), the same global premise as the CRO. Only counts deals with TCV > 0. Click a slice to see the deals.',
     bd_concentration:'Open Pipeline Revenue Concentration',bd_concentration_tip:'% of current open ARR represented by top deals. Does not use the period filter.',
     bd_entry_exit:'Deal Inflow vs Outflow by Month',bd_entry_exit_tip:'Inflow by the date the deal entered the Scheduled Meeting stage (real BDR event, Vendas pipeline only); outflow by close_date, split into won and lost.',
-    bd_arr_bridge:'ARR Bridge (Monthly Variation)',bd_arr_bridge_tip:'Monthly delta in won ARR, by close_date.',
+    bd_arr_bridge:'🔴 ARR Bridge (Monthly Variation)',bd_arr_bridge_tip:'⚠ Audit verdict (Jun 12): NOT an ARR Bridge — it is the month-over-month difference in won ARR; negative bars are NOT churn, just "won less than last month". Monthly delta in won ARR, by close_date.',
     bd_won_size:'Avg Won Deal Size (Lives)',bd_won_size_tip:'Average lives from won deals by close month. Filter uses close_date.',
     bd_won_monthly:'Won Deals by Month',bd_won_monthly_tip:'Count of won deals by close month. Filter uses close_date.',
   }
@@ -522,7 +522,7 @@ function novoRender(){
       cTbl('Top 10 Open Deals by Weighted R$/yr | BoD Watchlist','Top 10 deals abertos por Receita Ponderada (ARR × probabilidade). Não usa filtro de período.','watchlist',_activePipe.length)+
       '<div class="section-hdr"><h2>Fluxo & Forecast</h2></div>'+
       cWide(t('bd_entry_exit'),t('bd_entry_exit_tip'),'entry-exit',300,deals.length,null,true)+
-      cWide(t('bd_arr_bridge'),t('bd_arr_bridge_tip'),'arr-bridge',280,won.length)+
+      cWide(t('bd_arr_bridge'),t('bd_arr_bridge_tip'),'arr-bridge',280,won.length,null,true)+
     '</div>';
 
   buildBdRevTrend();

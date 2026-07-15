@@ -119,3 +119,32 @@ node scripts/_capture-charts.js public/novo-dashboard.html includeLost
 ## Adendo | BDR Workload (2026-07-13)
 
 - **`bdr-workload.html` (subpágina nova) → 🟡 em auditoria.** KPIs e tabelas reconciliam por construção (todo KPI clicável abre a lista nominal que ele conta). Validação inicial 13/07 com dados de produção: empresas/contatos/transições do dia batem com contagem independente. Pendências declaradas na própria página: motivo de desqualificação (propriedade inexistente no portal), fonte não se aplica a movimentações, primeiro retorno usa proxy CONNECTED.
+
+## Adendo | Sincronização de títulos 🟡 com os vereditos desta auditoria (2026-07-14)
+
+> Revisão dos títulos com 🟡: vários gráficos do CRO/Board seguiam com 🟡 no título
+> apesar de JÁ terem veredito nesta auditoria (título mentindo por dessincronização).
+> Títulos sincronizados aos vereditos existentes — nada foi "promovido" sem lastro.
+
+**Sincronizados no `dashboard.html` (14 chaves i18n, PT+EN), por NOME da tabela N01–N26:**
+🔴 Progressão por Etapa (N03) · 🔴 Taxa de Passagem (N08) · 🟠 Fluxo Líquido de Vidas (N02) ·
+🟠 Distribuição por Tamanho (N10) · 🟠 Distribuição de Vidas (N11) · 🟠 Valor do Pipeline
+Projeção Mensal (N14) · 🟠 Reunião Ocorreu/Cobertura (N19) · 🟠 Timeline de Recebíveis (N25) ·
+🟢 Receita por Segmento (N15, duplicata do C08) · 🟢 Visibilidade de Receita (N16) ·
+🟢 Resultados Financeiros (N21) · 🟢 Deals Ganhos Mensal (N22) · 🟢 Receita Ponderada por
+Etapa (N24) · 🟢 Triagem de Risco Top 20 (N26). No `board.html`: 🔴 ARR Bridge (veredito
+desta auditoria; tooltip agora carrega o aviso "não é churn").
+
+**Fila honesta do que CONTINUA 🟡 (nunca analisado — validação real pendente):**
+
+| Onde | O quê | O que a validação exige |
+|---|---|---|
+| `/novo-ae` | Receita do Forecast por AE · Meeting Rate Evolution · Meeting Effectiveness · Distribuição de Etapas por AE · Idade Média por AE · Radar de Performance · KPI Receita Ganha/Ano | Painel AE nunca entrou nesta auditoria; validar cada card contra contagens independentes do HubSpot (mesmo método do bloco N) |
+| `/novo-board` | TCV do Pipe por Bucket (C08) · Top 5 AEs Weighted · Top 10 BoD Watchlist | Conferir TCV pela régua e ponderação global contra amostra manual |
+| `/forecast-delta` | Painel inteiro (pill 🟡) | Invariante Σ Δ = Total B − A PASSA para todos os pares de fotos (reteste 2026-07-14) e drawer gerado do catálogo ✓, MAS falta a prova externa: com a PRÓXIMA foto de sexta, comparar B=foto do dia com o Forecast Overall ao vivo no MESMO momento — se bater, sobe para 🟠/🟢. Não forçar foto fora do cron só para isso (escreve na planilha de produção). |
+| `/novo-bdr/workload` | Página (🟡 em auditoria) | Pendências declaradas acima (adendo 2026-07-13) |
+| `/novo` | Fluxo Semanal · KPIs Pipeline Ponderado/Completude/Prêmio Mensal/Momentum · S01–S04 | Sem veredito na tabela N (cards novos pós-12/06); validar contra HubSpot |
+
+**Método usado nesta revisão:** títulos extraídos do DOM real (Edge headless) — não de grep
+de código, porque o dashboard tem chaves i18n mortas que nunca renderizam (t_funnel,
+t_sizedist, t_vidasdist, listadas acima) e essas ficaram intocadas.

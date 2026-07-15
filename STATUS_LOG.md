@@ -4,6 +4,15 @@ Recurring every 20min (job `55d3b136`). Purpose: identify and close gaps so the 
 
 ---
 
+### Revisão dos títulos 🟡 | sincronização com os vereditos da AUDITORIA (2026-07-14)
+
+> Pedido do dono: revisar os gráficos com 🟡 e garantir confiabilidade sinalizada. Vários títulos ainda diziam 🟡 apesar de a AUDITORIA já ter veredito — título dessincronizado = sinalização mentirosa.
+
+- **`dashboard.html`:** 14 chaves i18n (PT+EN) sincronizadas com a tabela N01–N26 por NOME: 2 viram 🔴 (Progressão por Etapa/N03, Taxa de Passagem/N08 — foto-como-funil), 6 viram 🟠, 6 viram 🟢. Chaves i18n mortas (t_funnel/t_sizedist/t_vidasdist) intocadas.
+- **`board.html`:** ARR Bridge 🟡→🔴 (veredito: não é bridge, negativo ≠ churn — aviso agora no próprio tooltip).
+- **Nada foi promovido sem lastro:** só vereditos já existentes da auditoria de 12/06+adendos. Fila do que CONTINUA 🟡 (AE 7 cards, board 3, /forecast-delta, bdr-workload, S01–S04/KPIs novos do CRO) registrada na AUDITORIA com o que cada validação exige. Delta: invariante retestado hoje (PASS); prova externa agendada para a próxima foto de sexta (comparar B=foto do dia com o Overall ao vivo no mesmo momento — sem forçar foto fora do cron).
+- Método: títulos extraídos do DOM real (Edge headless), não de grep de código. Validado: board renderiza 🔴 no ARR Bridge sem emoji duplicado; `npm run check` PASS.
+
 ### Dashboard 2.0 | Fase 4a | faturamento manual vira dado de primeira classe (2026-07-14)
 
 > ADR-004 aplicado ao faturamento manual, SEM mudar nenhum número: (1) **API** (`api/faturamento-manual.js`): toda escrita grava `entry.meta = { em, por, anterior }` — quem editou (email da sessão), quando, e o estado anterior (log de 1 nível); sibling inofensivo, consumidores leem manual/months por acesso direto. (2) **Cliente** (`public/faturamento-manual.js`): novo `FaturamentoManual.meta(d)`. (3) **UI** (painel Ganho, `forecast-stage.html`): selo **✏️** nas linhas manuais com autor/data no tooltip, **⚠** após 45 dias sem revisão (`validade_dias` declarado em `semantic/dados.json`), e entradas legadas (pré-Fase 4) marcadas como "sem registro de autor".
