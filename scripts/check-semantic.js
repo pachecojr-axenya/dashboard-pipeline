@@ -124,9 +124,12 @@ if (referencia && dados && regras) {
   try {
     const gen = require('./gen-semantic-front');
     const refJsPath = path.join(ROOT, 'public', 'semantic-ref.js');
+    // Comparação EOL-insensível: o autocrlf do Windows reescreve o arquivo com CRLF
+    // no checkout; só conteúdo real conta como drift.
+    const norm = s => s.replace(/\r\n/g, '\n');
     if (!fs.existsSync(refJsPath)) {
       errors.push('front: public/semantic-ref.js ausente — rode: node scripts/gen-semantic-front.js');
-    } else if (fs.readFileSync(refJsPath, 'utf8') !== gen.build()) {
+    } else if (norm(fs.readFileSync(refJsPath, 'utf8')) !== norm(gen.build())) {
       errors.push('front: public/semantic-ref.js desatualizado em relação ao catálogo — rode: node scripts/gen-semantic-front.js');
     }
   } catch (e) {
