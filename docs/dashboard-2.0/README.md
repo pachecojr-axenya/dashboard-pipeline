@@ -26,7 +26,7 @@
 | 1 | Os 3 arquivos base (extração) | ✅ fechada (gate: revisão do dono concluída em 2026-07-15 — réguas, remuneração, etapas, times e regras) |
 | 2 | Consumo da referência | ✅ fechada (2026-07-14) | núcleo religado com paridade: forecast-table, funnel-stages, snapshot-format, hubspot.js (incl. tickets), régua flat do front via `semantic-ref.js` gerado. Cauda documentada (BDR/watcher/scripts, todos com IDs já catalogados e vigiados pelo check); pendência de decisão: divergência Implantação 0.581×1.0 |
 | 3 | Drawer gerado do catálogo (golden: Forecast) | ✅ fechada no grupo forecast (gate: auditoria do dono concluída em 2026-07-15; renderer v2 pós-feedback) | Extensão futura: painéis CRO/Board/AE via NOVO_HELP_CHARTS |
-| 4 | Dado manual de primeira classe + configs globais | 🟠 iniciada (4a entregue) | faturamento manual com meta (quem/quando/anterior) no KV + selo ✏️ e badge ⚠ no painel Ganho. Aguardando dono: [design do toggle de probabilidade](design-toggle-probabilidade.md), chave de etapas ativas, virada do Stand by |
+| 4 | Dado manual de primeira classe + configs globais | 🟠 4a + 4b-núcleo entregues | 4a: faturamento manual com meta/selo ✏️. 4b: `api/config-global` (KV, D1–D3), toggle Premissas×Calculada honrado por CRO/Board via prob-engine, etapas_ativas globais server-side. Restante: AE consumir C07 na posição calculada + UI de etapas globais (passe do header) |
 | 5 | Componente de gráfico parametrizado | ⬜ não iniciada |
 | 6 | Manifestos + novos domínios | ⬜ não iniciada |
 | 7 | Operacional (deploy GitHub, alertas, fuso, telemetria) | ⬜ não iniciada |
