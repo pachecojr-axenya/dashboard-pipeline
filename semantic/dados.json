@@ -5,91 +5,613 @@
     "versao": 1,
     "atualizado_em": "2026-07-14",
     "aviso": "Definição mora aqui; VALOR de dado manual mora no banco (KV), nunca neste arquivo (ADR-004). Só entra dado que o 1.0 realmente usa — nada especulativo.",
-    "unidades_validas": ["texto", "id", "booleano", "data", "data_hora", "numero", "vidas", "pessoas", "dias", "meses", "ms", "BRL", "BRL/mês", "BRL/vida/mês", "fracao_0_1", "enum"]
+    "unidades_validas": [
+      "texto",
+      "id",
+      "booleano",
+      "data",
+      "data_hora",
+      "numero",
+      "vidas",
+      "pessoas",
+      "dias",
+      "meses",
+      "ms",
+      "BRL",
+      "BRL/mês",
+      "BRL/vida/mês",
+      "fracao_0_1",
+      "enum"
+    ],
+    "nota_label_portal": "label_portal = rótulo OFICIAL do campo no portal HubSpot (verificado via API em 2026-07-15, pente-fino pedido pelo dono). O nome técnico (hubspot) é o nome interno — os dois são o MESMO campo."
   },
-
   "dados": {
-    "dealname": { "label": { "pt": "Nome do deal", "en": "Deal name" }, "origem": "fonte", "objeto": "deal", "hubspot": "dealname", "unidade": "texto", "dono": "revops",
-      "notas": "Payload remove sufixos ' - Novo(a) Deal' / ' - New Deal'." },
-    "pipeline": { "label": { "pt": "Pipeline", "en": "Pipeline" }, "origem": "fonte", "objeto": "deal", "hubspot": "pipeline", "unidade": "id", "dono": "revops" },
-    "dealstage": { "label": { "pt": "Etapa", "en": "Stage" }, "origem": "fonte", "objeto": "deal", "hubspot": "dealstage", "unidade": "id", "dono": "revops" },
-    "hs_object_id": { "label": { "pt": "ID do deal", "en": "Deal ID" }, "origem": "fonte", "objeto": "deal", "hubspot": "hs_object_id", "unidade": "id", "dono": "revops" },
-    "hubspot_owner_id": { "label": { "pt": "Executivo (AE)", "en": "Account Executive" }, "origem": "fonte", "objeto": "deal", "hubspot": "hubspot_owner_id", "unidade": "id", "dono": "revops",
-      "notas": "Resolvido para nome via /crm/v3/owners (inclui arquivados)." },
-    "sdr": { "label": { "pt": "BDR", "en": "BDR" }, "origem": "fonte", "objeto": "deal", "hubspot": "sdr", "unidade": "id", "dono": "revops" },
-    "origem_originacao": { "label": { "pt": "Origem | Originação", "en": "Source | Origination" }, "origem": "fonte", "objeto": "deal", "hubspot": "origem__originacao_", "unidade": "enum", "dono": "revops",
-      "notas": "Preenchimento ~17% (registrado na auditoria R18) — bucket '(sem origem)' domina qualquer corte por origem." },
-    "produto": { "label": { "pt": "Produto", "en": "Product" }, "origem": "fonte", "objeto": "deal", "hubspot": "produto", "unidade": "enum", "dono": "revops" },
-    "colaboradores": { "label": { "pt": "Colaboradores", "en": "Employees" }, "origem": "fonte", "objeto": "deal", "hubspot": "quantidade_de_colaboradores", "unidade": "pessoas", "dono": "revops",
-      "notas": "Fallback de vidas nas projeções (vidas || colaboradores)." },
-    "vidas": { "label": { "pt": "Vidas", "en": "Lives" }, "origem": "fonte", "objeto": "deal", "hubspot": "vidas", "unidade": "vidas", "dono": "revops" },
-    "fatura_atual": { "label": { "pt": "Fatura atual do plano", "en": "Current plan invoice" }, "origem": "fonte", "objeto": "deal", "hubspot": "valor_da_fatura_do_plano_de_saude_atual", "unidade": "BRL/mês", "dono": "revops" },
-    "primeira_fatura": { "label": { "pt": "1ª Fatura (pf)", "en": "First invoice (pf)" }, "origem": "fonte", "objeto": "deal", "hubspot": "primeira_fatura", "unidade": "BRL/mês", "dono": "revops",
-      "notas": "Base de TODA a régua de receita. Fee por vida: pf JÁ é a receita Axenya. Corretagem: pf é o PRÊMIO pago à operadora (receita = % sobre pf)." },
-    "arr_estimado": { "label": { "pt": "ARR Estimado", "en": "Estimated ARR" }, "origem": "fonte", "objeto": "deal", "hubspot": "arr_estimado", "unidade": "BRL", "dono": "revops",
-      "notas": "Payload aplica fallback pf×12 quando vazio (regra arr_estimado_fallback)." },
-    "modelo_remuneracao": { "label": { "pt": "Modelo de Remuneração", "en": "Compensation model" }, "origem": "fonte", "objeto": "deal", "hubspot": "modelo_de_remuneracao", "unidade": "enum", "dono": "revops",
-      "notas": "Valores: 'Fee por vida' | 'Corretagem'. Sem modelo → deal fora da régua (contador de completude)." },
-    "periodo_contrato": { "label": { "pt": "Período do contrato", "en": "Contract term" }, "origem": "fonte", "objeto": "deal", "hubspot": "contrato_atual_e_de_12__24_ou_36_meses_", "unidade": "enum", "dono": "revops",
-      "notas": "'12 Meses'/'24 Meses'/'36 meses'/'Não Possui'. Sem período → 12 (anualiza), regra contrato_meses." },
-    "possui_agenciamento": { "label": { "pt": "Possui Agenciamento", "en": "Has brokerage entry fee" }, "origem": "fonte", "objeto": "deal", "hubspot": "possui_agenciamento", "unidade": "booleano", "dono": "revops",
-      "notas": "Só adiciona o pico pontual de entrada; não muda a cauda recorrente." },
-    "possui_vitalicio": { "label": { "pt": "Possui Vitalício", "en": "Has lifetime component" }, "origem": "fonte", "objeto": "deal", "hubspot": "possui_vitalicio", "unidade": "booleano", "dono": "revops" },
-    "is_poc": { "label": { "pt": "É POC?", "en": "Is POC?" }, "origem": "fonte", "objeto": "deal", "hubspot": "e_poc", "unidade": "booleano", "dono": "revops",
-      "notas": "POC não gera receita: zera Real e Probabilizada em todos os painéis (regra receita_mensal_deal)." },
-    "probabilidade_ae": { "label": { "pt": "Probabilidade (AE)", "en": "Probability (AE)" }, "origem": "fonte", "objeto": "deal", "hubspot": "probabilidade_de_fechamento_", "unidade": "fracao_0_1", "dono": "vendas",
-      "notas": "Digitada pelo AE no HubSpot (dado de fonte para o dash, manual para o AE). Normalizada: >1 divide por 100." },
-    "probabilidade_etapa_hs": { "label": { "pt": "Probabilidade da etapa (HubSpot)", "en": "Stage probability (HubSpot)" }, "origem": "fonte", "objeto": "deal", "hubspot": "hs_deal_stage_probability", "unidade": "fracao_0_1", "dono": "revops" },
-    "quarter_fechamento": { "label": { "pt": "Quarter de fechamento", "en": "Closing quarter" }, "origem": "fonte", "objeto": "deal", "hubspot": "qual_quarter_de_fechamento", "unidade": "enum", "dono": "vendas",
-      "notas": "Fallback: derivado de data_prevista_para_receita quando vazio/inválido (regra quarter_fallback)." },
-    "data_prevista_para_receita": { "label": { "pt": "Data prevista para receita", "en": "Expected revenue date" }, "origem": "fonte", "objeto": "deal", "hubspot": "data_prevista_para_receita", "unidade": "data", "dono": "vendas" },
-    "is_closed_won": { "label": { "pt": "Fechado ganho", "en": "Closed won" }, "origem": "fonte", "objeto": "deal", "hubspot": "hs_is_closed_won", "unidade": "booleano", "dono": "revops" },
-    "is_closed_lost": { "label": { "pt": "Fechado perdido", "en": "Closed lost" }, "origem": "fonte", "objeto": "deal", "hubspot": "hs_is_closed_lost", "unidade": "booleano", "dono": "revops",
-      "notas": "É o que captura os perdidos do Bid (sem stage id de Perdido mapeado no 1.0)." },
-    "createdate": { "label": { "pt": "Data de criação", "en": "Create date" }, "origem": "fonte", "objeto": "deal", "hubspot": "createdate", "unidade": "data", "dono": "revops",
-      "notas": "Distorcida por importações em massa (mai/26 = 181 deals); painéis BDR preferem data_reuniao_agendada." },
-    "closedate": { "label": { "pt": "Data de fechamento", "en": "Close date" }, "origem": "fonte", "objeto": "deal", "hubspot": "closedate", "unidade": "data", "dono": "revops" },
-    "ultima_atividade": { "label": { "pt": "Última atividade", "en": "Last activity" }, "origem": "fonte", "objeto": "deal", "hubspot": "notes_last_updated", "unidade": "data_hora", "dono": "revops",
-      "notas": "Base de dias_sem_atividade." },
-    "vigencia": { "label": { "pt": "Vigência", "en": "Effective date" }, "origem": "fonte", "objeto": "deal", "hubspot": "vigencia", "unidade": "data", "dono": "vendas",
-      "notas": "Início de receita de Corretagem em Cotação/Consultoria/Negociação = vigência+2m quando futura." },
-    "vencimento_primeira_fatura": { "label": { "pt": "Vencimento da 1ª fatura", "en": "First invoice due date" }, "origem": "fonte", "objeto": "deal", "hubspot": "vencimento_da_1o_fatura", "unidade": "data", "dono": "financeiro",
-      "notas": "Gate do faturamento manual: Ganho/Implantação com vencimento vencido usa valor real digitado." },
-    "premio_mensal": { "label": { "pt": "Prêmio mensal", "en": "Monthly premium" }, "origem": "fonte", "objeto": "deal", "hubspot": "premio_mensal", "unidade": "BRL/mês", "dono": "revops" },
-    "motivo_perda": { "label": { "pt": "Motivo do declínio/perda", "en": "Loss reason" }, "origem": "fonte", "objeto": "deal", "hubspot": "motivo_do_declinio_ou_perdido", "unidade": "enum", "dono": "vendas",
-      "notas": "Roster precisa limpeza na origem (princípio 5 do README): 'outros'/'escolheu outra corretora' sem submotivo." },
-    "motivo_perda_descricao": { "label": { "pt": "Motivo da perda | descrição", "en": "Loss reason | description" }, "origem": "fonte", "objeto": "deal", "hubspot": "motivo_de_declinio_perdido___descricao", "unidade": "texto", "dono": "vendas" },
-    "reuniao_ocorreu": { "label": { "pt": "A reunião ocorreu?", "en": "Meeting happened?" }, "origem": "fonte", "objeto": "deal", "hubspot": "a_reuniao_ocorreu_", "unidade": "enum", "dono": "vendas" },
-    "data_reuniao_exec": { "label": { "pt": "Data da reunião com executivo", "en": "Meeting date with AE" }, "origem": "fonte", "objeto": "deal", "hubspot": "data_da_reuniao_com_executivo", "unidade": "data", "dono": "vendas" },
-    "data_reagendamento_exec": { "label": { "pt": "Data do reagendamento", "en": "Rescheduled meeting date" }, "origem": "fonte", "objeto": "deal", "hubspot": "data_do_reagendamento_com_o_executivo", "unidade": "data", "dono": "vendas" },
-    "tempo_ate_diagnostico": { "label": { "pt": "Tempo até Diagnóstico", "en": "Time to Diagnóstico" }, "origem": "fonte", "objeto": "deal", "hubspot": "cumulative_time_negocio_criado_ate_diagnostico_formula", "unidade": "ms", "dono": "revops",
-      "notas": "Fórmula calculada NO HubSpot (Reunião Agendada → Diagnóstico). Payload converte para dias (1 decimal)." },
-    "stage_entered": { "label": { "pt": "Data de entrada por etapa", "en": "Stage entry date" }, "origem": "fonte", "objeto": "deal", "hubspot": "hs_v2_date_entered_{stage_id}", "unidade": "data", "dono": "revops",
-      "notas": "Família de propriedades (uma por etapa, dois pipelines). A variante v1 hs_date_entered_* vem VAZIA neste portal — usar sempre v2. Etapa presente nos dois pipes: vale a entrada mais antiga." },
-    "stage_exited": { "label": { "pt": "Data de saída por etapa", "en": "Stage exit date" }, "origem": "fonte", "objeto": "deal", "hubspot": "hs_v2_date_exited_{stage_id}", "unidade": "data", "dono": "revops",
-      "notas": "Usada com stage_entered para dias por etapa (tabela A19 do painel AE)." },
-
-    "contato_jobtitle": { "label": { "pt": "Cargo do contato", "en": "Contact job title" }, "origem": "fonte", "objeto": "contact", "hubspot": "jobtitle", "unidade": "texto", "dono": "revops" },
-    "empresa_nome": { "label": { "pt": "Nome da empresa", "en": "Company name" }, "origem": "fonte", "objeto": "company", "hubspot": "name", "unidade": "texto", "dono": "revops" },
-    "empresa_setor": { "label": { "pt": "Setor da empresa", "en": "Company industry" }, "origem": "fonte", "objeto": "company", "hubspot": "industry", "unidade": "enum", "dono": "revops" },
-    "empresa_funcionarios": { "label": { "pt": "Funcionários da empresa", "en": "Company employees" }, "origem": "fonte", "objeto": "company", "hubspot": "numberofemployees", "unidade": "pessoas", "dono": "revops" },
-
-    "faturamento_manual": { "label": { "pt": "Faturamento manual", "en": "Manual invoicing" }, "origem": "manual", "objeto": "deal", "unidade": "BRL/mês", "dono": "financeiro",
+    "dealname": {
+      "label": {
+        "pt": "Nome do deal",
+        "en": "Deal name"
+      },
+      "origem": "fonte",
+      "objeto": "deal",
+      "hubspot": "dealname",
+      "unidade": "texto",
+      "dono": "revops",
+      "notas": "Payload remove sufixos ' - Novo(a) Deal' / ' - New Deal'.",
+      "label_portal": "Deal Name"
+    },
+    "pipeline": {
+      "label": {
+        "pt": "Pipeline",
+        "en": "Pipeline"
+      },
+      "origem": "fonte",
+      "objeto": "deal",
+      "hubspot": "pipeline",
+      "unidade": "id",
+      "dono": "revops",
+      "label_portal": "Pipeline"
+    },
+    "dealstage": {
+      "label": {
+        "pt": "Etapa",
+        "en": "Stage"
+      },
+      "origem": "fonte",
+      "objeto": "deal",
+      "hubspot": "dealstage",
+      "unidade": "id",
+      "dono": "revops",
+      "label_portal": "Deal Stage"
+    },
+    "hs_object_id": {
+      "label": {
+        "pt": "ID do deal",
+        "en": "Deal ID"
+      },
+      "origem": "fonte",
+      "objeto": "deal",
+      "hubspot": "hs_object_id",
+      "unidade": "id",
+      "dono": "revops",
+      "label_portal": "Record ID"
+    },
+    "hubspot_owner_id": {
+      "label": {
+        "pt": "Executivo (AE)",
+        "en": "Account Executive"
+      },
+      "origem": "fonte",
+      "objeto": "deal",
+      "hubspot": "hubspot_owner_id",
+      "unidade": "id",
+      "dono": "revops",
+      "notas": "Resolvido para nome via /crm/v3/owners (inclui arquivados).",
+      "label_portal": "Deal owner"
+    },
+    "sdr": {
+      "label": {
+        "pt": "BDR",
+        "en": "BDR"
+      },
+      "origem": "fonte",
+      "objeto": "deal",
+      "hubspot": "sdr",
+      "unidade": "id",
+      "dono": "revops",
+      "label_portal": "BDR"
+    },
+    "origem_originacao": {
+      "label": {
+        "pt": "Origem | Originação",
+        "en": "Source | Origination"
+      },
+      "origem": "fonte",
+      "objeto": "deal",
+      "hubspot": "origem__originacao_",
+      "unidade": "enum",
+      "dono": "revops",
+      "notas": "Preenchimento ~17% (registrado na auditoria R18) — bucket '(sem origem)' domina qualquer corte por origem.",
+      "label_portal": "Origem do lead (Fonte)"
+    },
+    "produto": {
+      "label": {
+        "pt": "Produto",
+        "en": "Product"
+      },
+      "origem": "fonte",
+      "objeto": "deal",
+      "hubspot": "produto",
+      "unidade": "enum",
+      "dono": "revops",
+      "label_portal": "Solução Oferecida"
+    },
+    "colaboradores": {
+      "label": {
+        "pt": "Colaboradores",
+        "en": "Employees"
+      },
+      "origem": "fonte",
+      "objeto": "deal",
+      "hubspot": "quantidade_de_colaboradores",
+      "unidade": "pessoas",
+      "dono": "revops",
+      "notas": "Fallback de vidas nas projeções (vidas || colaboradores).",
+      "label_portal": "Quantidade de Colaboradores"
+    },
+    "vidas": {
+      "label": {
+        "pt": "Vidas",
+        "en": "Lives"
+      },
+      "origem": "fonte",
+      "objeto": "deal",
+      "hubspot": "vidas",
+      "unidade": "vidas",
+      "dono": "revops",
+      "label_portal": "Quantidade de Vidas"
+    },
+    "fatura_atual": {
+      "label": {
+        "pt": "Fatura atual do plano",
+        "en": "Current plan invoice"
+      },
+      "origem": "fonte",
+      "objeto": "deal",
+      "hubspot": "valor_da_fatura_do_plano_de_saude_atual",
+      "unidade": "BRL/mês",
+      "dono": "revops",
+      "label_portal": "Valor da fatura estimada"
+    },
+    "primeira_fatura": {
+      "label": {
+        "pt": "1ª Fatura (pf)",
+        "en": "First invoice (pf)"
+      },
+      "origem": "fonte",
+      "objeto": "deal",
+      "hubspot": "primeira_fatura",
+      "unidade": "BRL/mês",
+      "dono": "revops",
+      "notas": "Base de TODA a régua de receita. Fee por vida: pf JÁ é a receita Axenya. Corretagem: pf é o PRÊMIO pago à operadora (receita = % sobre pf).",
+      "label_portal": "Primeira Fatura"
+    },
+    "arr_estimado": {
+      "label": {
+        "pt": "ARR Estimado",
+        "en": "Estimated ARR"
+      },
+      "origem": "fonte",
+      "objeto": "deal",
+      "hubspot": "arr_estimado",
+      "unidade": "BRL",
+      "dono": "revops",
+      "notas": "Payload aplica fallback pf×12 quando vazio (regra arr_estimado_fallback).",
+      "label_portal": "ARR Estimado"
+    },
+    "modelo_remuneracao": {
+      "label": {
+        "pt": "Modelo de Remuneração",
+        "en": "Compensation model"
+      },
+      "origem": "fonte",
+      "objeto": "deal",
+      "hubspot": "modelo_de_remuneracao",
+      "unidade": "enum",
+      "dono": "revops",
+      "notas": "Valores: 'Fee por vida' | 'Corretagem'. Sem modelo → deal fora da régua (contador de completude).",
+      "label_portal": "Modelo de remuneração"
+    },
+    "periodo_contrato": {
+      "label": {
+        "pt": "Período do contrato",
+        "en": "Contract term"
+      },
+      "origem": "fonte",
+      "objeto": "deal",
+      "hubspot": "periodo_do_contrato___vg",
+      "hubspot_fallback": "contrato_atual_e_de_12__24_ou_36_meses_",
+      "unidade": "enum",
+      "dono": "revops",
+      "notas": "MIGRADO em 2026-07-15 (decisão do dono): fonte primária = periodo_do_contrato___vg ('Período do Contrato'); fallback = campo legado 'Contrato atual é de 12, 24 ou 36 meses?'. Motivo do fallback: preenchimento no pente-fino era 4 deals (novo) × 43 (legado) — migração seca perderia dado; quando o novo campo for adotado no CRM, o fallback aposenta. Valores: '12 Meses'/'24 Meses'/'36 meses'/'Não Possui'. Sem período → 12 (anualiza), regra contrato_meses.",
+      "label_portal": "Período do Contrato"
+    },
+    "possui_agenciamento": {
+      "label": {
+        "pt": "Possui Agenciamento",
+        "en": "Has brokerage entry fee"
+      },
+      "origem": "fonte",
+      "objeto": "deal",
+      "hubspot": "possui_agenciamento",
+      "unidade": "booleano",
+      "dono": "revops",
+      "notas": "Só adiciona o pico pontual de entrada; não muda a cauda recorrente.",
+      "label_portal": "Possui agenciamento?"
+    },
+    "possui_vitalicio": {
+      "label": {
+        "pt": "Possui Vitalício",
+        "en": "Has lifetime component"
+      },
+      "origem": "fonte",
+      "objeto": "deal",
+      "hubspot": "possui_vitalicio",
+      "unidade": "booleano",
+      "dono": "revops",
+      "label_portal": "Possui vitalício?"
+    },
+    "is_poc": {
+      "label": {
+        "pt": "É POC?",
+        "en": "Is POC?"
+      },
+      "origem": "fonte",
+      "objeto": "deal",
+      "hubspot": "e_poc",
+      "unidade": "booleano",
+      "dono": "revops",
+      "notas": "POC não gera receita: zera Real e Probabilizada em todos os painéis (regra receita_mensal_deal).",
+      "label_portal": "É POC?"
+    },
+    "probabilidade_ae": {
+      "label": {
+        "pt": "Probabilidade (AE)",
+        "en": "Probability (AE)"
+      },
+      "origem": "fonte",
+      "objeto": "deal",
+      "hubspot": "probabilidade_de_fechamento_",
+      "unidade": "fracao_0_1",
+      "dono": "vendas",
+      "notas": "Digitada pelo AE no HubSpot (dado de fonte para o dash, manual para o AE). Normalizada: >1 divide por 100.",
+      "label_portal": "Probabilidade de fechamento:"
+    },
+    "probabilidade_etapa_hs": {
+      "label": {
+        "pt": "Probabilidade da etapa (HubSpot)",
+        "en": "Stage probability (HubSpot)"
+      },
+      "origem": "fonte",
+      "objeto": "deal",
+      "hubspot": "hs_deal_stage_probability",
+      "unidade": "fracao_0_1",
+      "dono": "revops",
+      "label_portal": "Deal probability"
+    },
+    "quarter_fechamento": {
+      "label": {
+        "pt": "Quarter de fechamento",
+        "en": "Closing quarter"
+      },
+      "origem": "fonte",
+      "objeto": "deal",
+      "hubspot": "qual_quarter_de_fechamento",
+      "unidade": "enum",
+      "dono": "vendas",
+      "notas": "Fallback: derivado de data_prevista_para_receita quando vazio/inválido (regra quarter_fallback).",
+      "label_portal": "Qual quarter de fechamento?"
+    },
+    "data_prevista_para_receita": {
+      "label": {
+        "pt": "Data prevista para receita",
+        "en": "Expected revenue date"
+      },
+      "origem": "fonte",
+      "objeto": "deal",
+      "hubspot": "data_prevista_para_receita",
+      "unidade": "data",
+      "dono": "vendas",
+      "label_portal": "Data Prevista para Receita"
+    },
+    "is_closed_won": {
+      "label": {
+        "pt": "Fechado ganho",
+        "en": "Closed won"
+      },
+      "origem": "fonte",
+      "objeto": "deal",
+      "hubspot": "hs_is_closed_won",
+      "unidade": "booleano",
+      "dono": "revops",
+      "label_portal": "Is Closed Won"
+    },
+    "is_closed_lost": {
+      "label": {
+        "pt": "Fechado perdido",
+        "en": "Closed lost"
+      },
+      "origem": "fonte",
+      "objeto": "deal",
+      "hubspot": "hs_is_closed_lost",
+      "unidade": "booleano",
+      "dono": "revops",
+      "notas": "É o que captura os perdidos do Bid (sem stage id de Perdido mapeado no 1.0).",
+      "label_portal": "Is closed lost"
+    },
+    "createdate": {
+      "label": {
+        "pt": "Data de criação",
+        "en": "Create date"
+      },
+      "origem": "fonte",
+      "objeto": "deal",
+      "hubspot": "createdate",
+      "unidade": "data",
+      "dono": "revops",
+      "notas": "Distorcida por importações em massa (mai/26 = 181 deals); painéis BDR preferem data_reuniao_agendada.",
+      "label_portal": "Create Date"
+    },
+    "closedate": {
+      "label": {
+        "pt": "Data de fechamento",
+        "en": "Close date"
+      },
+      "origem": "fonte",
+      "objeto": "deal",
+      "hubspot": "closedate",
+      "unidade": "data",
+      "dono": "revops",
+      "label_portal": "Close Date"
+    },
+    "ultima_atividade": {
+      "label": {
+        "pt": "Última atividade",
+        "en": "Last activity"
+      },
+      "origem": "fonte",
+      "objeto": "deal",
+      "hubspot": "notes_last_updated",
+      "unidade": "data_hora",
+      "dono": "revops",
+      "notas": "Base de dias_sem_atividade.",
+      "label_portal": "Last Activity Date"
+    },
+    "vigencia": {
+      "label": {
+        "pt": "Vigência",
+        "en": "Effective date"
+      },
+      "origem": "fonte",
+      "objeto": "deal",
+      "hubspot": "vigencia",
+      "unidade": "data",
+      "dono": "vendas",
+      "notas": "Início de receita de Corretagem em Cotação/Consultoria/Negociação = vigência+2m quando futura.",
+      "label_portal": "Data de Vigência"
+    },
+    "vencimento_primeira_fatura": {
+      "label": {
+        "pt": "Vencimento da 1ª fatura",
+        "en": "First invoice due date"
+      },
+      "origem": "fonte",
+      "objeto": "deal",
+      "hubspot": "vencimento_da_1o_fatura",
+      "unidade": "data",
+      "dono": "financeiro",
+      "notas": "Gate do faturamento manual: Ganho/Implantação com vencimento vencido usa valor real digitado.",
+      "label_portal": "Vencimento da 1º Fatura"
+    },
+    "premio_mensal": {
+      "label": {
+        "pt": "Prêmio mensal",
+        "en": "Monthly premium"
+      },
+      "origem": "fonte",
+      "objeto": "deal",
+      "hubspot": "premio_mensal",
+      "unidade": "BRL/mês",
+      "dono": "revops",
+      "label_portal": "Prêmio Mensal"
+    },
+    "motivo_perda": {
+      "label": {
+        "pt": "Motivo do declínio/perda",
+        "en": "Loss reason"
+      },
+      "origem": "fonte",
+      "objeto": "deal",
+      "hubspot": "motivo_do_declinio_ou_perdido",
+      "unidade": "enum",
+      "dono": "vendas",
+      "notas": "Roster precisa limpeza na origem (princípio 5 do README): 'outros'/'escolheu outra corretora' sem submotivo.",
+      "label_portal": "Motivo de Declínio/Perdido"
+    },
+    "motivo_perda_descricao": {
+      "label": {
+        "pt": "Motivo da perda | descrição",
+        "en": "Loss reason | description"
+      },
+      "origem": "fonte",
+      "objeto": "deal",
+      "hubspot": "motivo_de_declinio_perdido___descricao",
+      "unidade": "texto",
+      "dono": "vendas",
+      "label_portal": "Motivo de Declínio/Perdido - Descrição"
+    },
+    "reuniao_ocorreu": {
+      "label": {
+        "pt": "A reunião ocorreu?",
+        "en": "Meeting happened?"
+      },
+      "origem": "fonte",
+      "objeto": "deal",
+      "hubspot": "a_reuniao_ocorreu_",
+      "unidade": "enum",
+      "dono": "vendas",
+      "label_portal": "A reunião ocorreu?"
+    },
+    "data_reuniao_exec": {
+      "label": {
+        "pt": "Data da reunião com executivo",
+        "en": "Meeting date with AE"
+      },
+      "origem": "fonte",
+      "objeto": "deal",
+      "hubspot": "data_da_reuniao_com_executivo",
+      "unidade": "data",
+      "dono": "vendas",
+      "label_portal": "Data da reunião com o executivo"
+    },
+    "data_reagendamento_exec": {
+      "label": {
+        "pt": "Data do reagendamento",
+        "en": "Rescheduled meeting date"
+      },
+      "origem": "fonte",
+      "objeto": "deal",
+      "hubspot": "data_do_reagendamento_com_o_executivo",
+      "unidade": "data",
+      "dono": "vendas",
+      "label_portal": "Data do reagendamento da reunião"
+    },
+    "tempo_ate_diagnostico": {
+      "label": {
+        "pt": "Tempo até Diagnóstico",
+        "en": "Time to Diagnóstico"
+      },
+      "origem": "fonte",
+      "objeto": "deal",
+      "hubspot": "cumulative_time_negocio_criado_ate_diagnostico_formula",
+      "unidade": "ms",
+      "dono": "revops",
+      "notas": "Fórmula calculada NO HubSpot (Reunião Agendada → Diagnóstico). Payload converte para dias (1 decimal).",
+      "label_portal": "Cumulative time: negócio criado até Diagnóstico (fórmula)"
+    },
+    "stage_entered": {
+      "label": {
+        "pt": "Data de entrada por etapa",
+        "en": "Stage entry date"
+      },
+      "origem": "fonte",
+      "objeto": "deal",
+      "hubspot": "hs_v2_date_entered_{stage_id}",
+      "unidade": "data",
+      "dono": "revops",
+      "notas": "Família de propriedades (uma por etapa, dois pipelines). A variante v1 hs_date_entered_* vem VAZIA neste portal — usar sempre v2. Etapa presente nos dois pipes: vale a entrada mais antiga.",
+      "label_portal": "Date entered \"Negócio ganho  (Pipeline de Vendas )\""
+    },
+    "stage_exited": {
+      "label": {
+        "pt": "Data de saída por etapa",
+        "en": "Stage exit date"
+      },
+      "origem": "fonte",
+      "objeto": "deal",
+      "hubspot": "hs_v2_date_exited_{stage_id}",
+      "unidade": "data",
+      "dono": "revops",
+      "notas": "Usada com stage_entered para dias por etapa (tabela A19 do painel AE).",
+      "label_portal": "Date exited \"Negócio ganho  (Pipeline de Vendas )\""
+    },
+    "contato_jobtitle": {
+      "label": {
+        "pt": "Cargo do contato",
+        "en": "Contact job title"
+      },
+      "origem": "fonte",
+      "objeto": "contact",
+      "hubspot": "jobtitle",
+      "unidade": "texto",
+      "dono": "revops"
+    },
+    "empresa_nome": {
+      "label": {
+        "pt": "Nome da empresa",
+        "en": "Company name"
+      },
+      "origem": "fonte",
+      "objeto": "company",
+      "hubspot": "name",
+      "unidade": "texto",
+      "dono": "revops",
+      "label_portal": "Company name"
+    },
+    "empresa_setor": {
+      "label": {
+        "pt": "Setor da empresa",
+        "en": "Company industry"
+      },
+      "origem": "fonte",
+      "objeto": "company",
+      "hubspot": "industry",
+      "unidade": "enum",
+      "dono": "revops",
+      "label_portal": "Setor"
+    },
+    "empresa_funcionarios": {
+      "label": {
+        "pt": "Funcionários da empresa",
+        "en": "Company employees"
+      },
+      "origem": "fonte",
+      "objeto": "company",
+      "hubspot": "numberofemployees",
+      "unidade": "pessoas",
+      "dono": "revops",
+      "label_portal": "Number of Employees"
+    },
+    "faturamento_manual": {
+      "label": {
+        "pt": "Faturamento manual",
+        "en": "Manual invoicing"
+      },
+      "origem": "manual",
+      "objeto": "deal",
+      "unidade": "BRL/mês",
+      "dono": "financeiro",
       "persistencia": "Upstash KV (api/faturamento-manual.js). Desde 2026-07-14 (Fase 4/ADR-004) toda escrita grava meta = { em, por, anterior } — quem editou, quando, e o estado anterior (log de 1 nível).",
       "precedencia": "Sobrepõe integralmente a régua no deal/mês em que existe (regra receita_mensal_deal)",
       "validade_dias": 45,
-      "notas": "Valores mensais reais digitados para Ganho/Implantação já faturando. UI: selo ✏️ nas linhas manuais do painel Ganho, com autor/data no tooltip; ⚠ após validade_dias sem revisão; entradas anteriores à Fase 4 aparecem como 'sem registro de autor'. Caveat conhecido do Delta: NÃO é ponto-no-tempo (recompute de foto antiga aplica valores de hoje)." },
-    "meta_receita": { "label": { "pt": "Meta de receita", "en": "Revenue target" }, "origem": "manual", "objeto": "config", "unidade": "BRL/mês", "dono": "cro",
+      "notas": "Valores mensais reais digitados para Ganho/Implantação já faturando. UI: selo ✏️ nas linhas manuais do painel Ganho, com autor/data no tooltip; ⚠ após validade_dias sem revisão; entradas anteriores à Fase 4 aparecem como 'sem registro de autor'. Caveat conhecido do Delta: NÃO é ponto-no-tempo (recompute de foto antiga aplica valores de hoje)."
+    },
+    "meta_receita": {
+      "label": {
+        "pt": "Meta de receita",
+        "en": "Revenue target"
+      },
+      "origem": "manual",
+      "objeto": "config",
+      "unidade": "BRL/mês",
+      "dono": "cro",
       "persistencia": "localStorage (settings-modal) — por navegador. ⚠ Fase 4: migrar para KV com selo/log (hoje cada navegador pode ter meta diferente).",
-      "notas": "Usada por Revenue vs Plan (MTD) e Cobertura (N05)." },
-    "vpv_tiers": { "label": { "pt": "R$/vida por faixa (VPV)", "en": "BRL/life per tier (VPV)" }, "origem": "manual", "objeto": "config", "unidade": "BRL/vida/mês", "dono": "cro",
+      "notas": "Usada por Revenue vs Plan (MTD) e Cobertura (N05)."
+    },
+    "vpv_tiers": {
+      "label": {
+        "pt": "R$/vida por faixa (VPV)",
+        "en": "BRL/life per tier (VPV)"
+      },
+      "origem": "manual",
+      "objeto": "config",
+      "unidade": "BRL/vida/mês",
+      "dono": "cro",
       "persistencia": "Default em referencia.json (valor_por_vida); override em localStorage forecast_vpv_tiers — por navegador. Fase 4: KV.",
-      "notas": "Premissa de projeção para Diagnóstico." },
-    "prob_override_etapa": { "label": { "pt": "Override manual de probabilidade por etapa", "en": "Manual stage probability override" }, "origem": "manual", "objeto": "config", "unidade": "fracao_0_1", "dono": "cro",
+      "notas": "Premissa de projeção para Diagnóstico."
+    },
+    "prob_override_etapa": {
+      "label": {
+        "pt": "Override manual de probabilidade por etapa",
+        "en": "Manual stage probability override"
+      },
+      "origem": "manual",
+      "objeto": "config",
+      "unidade": "fracao_0_1",
+      "dono": "cro",
       "persistencia": "localStorage novo_stage_prob_cfg (por pipeline) — por navegador. Fase 4: KV + toggle global ADR-008.",
-      "precedencia": "override manual > calculada do funil (C07) > régua default (regra prob_final_deal)" },
-    "premissas_bdr_originacao": { "label": { "pt": "Premissas de originação BDR", "en": "BDR origination assumptions" }, "origem": "manual", "objeto": "config", "unidade": "vidas", "dono": "cro",
+      "precedencia": "override manual > calculada do funil (C07) > régua default (regra prob_final_deal)"
+    },
+    "premissas_bdr_originacao": {
+      "label": {
+        "pt": "Premissas de originação BDR",
+        "en": "BDR origination assumptions"
+      },
+      "origem": "manual",
+      "objeto": "config",
+      "unidade": "vidas",
+      "dono": "cro",
       "persistencia": "⚠ HARDCODED em public/forecast-engine.js (bdrCohorts/bdrNewVidasPer): 4 BDRs antigos × 34.000 vidas/mês + 8 novos em rampa jul/26 (3.333) → ago/26 (10.000) → set/26 (22.667) → 34.000 até jan/28; receita da coorte = vidas × R$24 iniciando +15 meses. Fase 4: mover para dado manual de primeira classe.",
-      "notas": "É premissa de negócio disfarçada de código — o caso exato que o ADR-004 proíbe." }
+      "notas": "É premissa de negócio disfarçada de código — o caso exato que o ADR-004 proíbe."
+    }
   }
 }

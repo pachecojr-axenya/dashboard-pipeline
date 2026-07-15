@@ -30,7 +30,11 @@ const PROPERTIES = [
   'produto', 'quantidade_de_colaboradores', 'vidas',
   'valor_da_fatura_do_plano_de_saude_atual', 'primeira_fatura',
   'arr_estimado', 'modelo_de_remuneracao',
-  'contrato_atual_e_de_12__24_ou_36_meses_', // período do contrato (enum 12/24/36 Meses) → nº de meses de fatura; usado no TCV
+  // Período do contrato → nº de meses de fatura (TCV). Cadeia (decisão do dono 2026-07-15):
+  // periodo_do_contrato___vg é a fonte primária; o campo legado fica de fallback enquanto
+  // o novo é adotado no CRM (preenchimento 4×43 no pente-fino de 15/07).
+  'periodo_do_contrato___vg',
+  'contrato_atual_e_de_12__24_ou_36_meses_',
   'possui_agenciamento', 'possui_vitalicio',
   'e_poc', // booleano "É POC?" (Sim/Não) | coluna nos painéis de Forecast
   'probabilidade_de_fechamento_', 'hs_deal_stage_probability',
@@ -428,7 +432,7 @@ module.exports = async function handler(req, res) {
           primeira_fatura: p.primeira_fatura ? parseFloat(p.primeira_fatura) : null,
           arr_estimado: arr,
           modelo_remuneracao: p.modelo_de_remuneracao || null,
-          periodo_contrato: p.contrato_atual_e_de_12__24_ou_36_meses_ || null,
+          periodo_contrato: p.periodo_do_contrato___vg || p.contrato_atual_e_de_12__24_ou_36_meses_ || null,
           possui_agenciamento: normalizeBool(p.possui_agenciamento),
           possui_vitalicio: normalizeBool(p.possui_vitalicio),
           is_poc: normalizeBool(p.e_poc),

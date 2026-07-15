@@ -44,14 +44,15 @@ Probabilidade de etapa:  ( ) Premissas (régua forçada)   (•) Calculada ao vi
 3. **Defaults reproduzem o comportamento atual** (gate da Fase 4): toggle nasce em
    `Calculada`, Forecast fora do toggle → nenhum número muda no dia do deploy.
 
-## O que a decisão muda na prática
+## Decisões — TODAS FECHADAS pelo dono em 2026-07-15
 
-- **Você decide 1:** Forecast dentro ou fora do toggle? (recomendo FORA na v1)
-- **Você decide 2:** o AE deve mesmo passar a seguir o toggle (ganha C07) ou manter
-  régua fixa? (recomendo seguir o toggle — elimina a 3ª fonte)
-- **Você decide 3:** onde persiste — KV global (todos veem igual — recomendo) ou
-  por navegador como hoje (`localStorage`, cada um vê um número ≠, que é o
-  anti-padrão que o 2.0 mata)?
+- **D1 — DECIDIDA:** Forecast fica **FORA do toggle na v1**. Registro do dono:
+  *"em breve ele poderá ser incluído"* — a inclusão futura é mudança consciente,
+  com validação junto ao CRO (a régua flat é premissa do forecast oficial).
+- **D2 — DECIDIDA (pela recomendação):** o painel AE **passa a seguir o toggle**
+  (posição Calculada usa C07 do funil; elimina a terceira fonte de probabilidade).
+- **D3 — DECIDIDA:** persistência em **KV global** — todos os usuários veem o
+  mesmo número; localStorage por navegador aposentado para esta config.
 - **D4 — DECIDIDA pelo dono (2026-07-15):** régua forçada ÚNICA. Nas palavras
   dele: *"se precisarmos de um fallback, a gente usa a probabilidade hardcoded,
   que vai ter que ser a mesma"*. Ou seja: a `painel_default` é aposentada; a régua

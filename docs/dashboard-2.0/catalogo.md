@@ -121,7 +121,7 @@ Corte PME: 200 vidas. Fuso canônico: America/Sao_Paulo.
 | `primeira_fatura` | 1ª Fatura (pf) | fonte | deal | `primeira_fatura` | BRL/mês | revops | Base de TODA a régua de receita. Fee por vida: pf JÁ é a receita Axenya. Corretagem: pf é o PRÊMIO pago à operadora (receita = % sobre pf). |
 | `arr_estimado` | ARR Estimado | fonte | deal | `arr_estimado` | BRL | revops | Payload aplica fallback pf×12 quando vazio (regra arr_estimado_fallback). |
 | `modelo_remuneracao` | Modelo de Remuneração | fonte | deal | `modelo_de_remuneracao` | enum | revops | Valores: 'Fee por vida' \| 'Corretagem'. Sem modelo → deal fora da régua (contador de completude). |
-| `periodo_contrato` | Período do contrato | fonte | deal | `contrato_atual_e_de_12__24_ou_36_meses_` | enum | revops | '12 Meses'/'24 Meses'/'36 meses'/'Não Possui'. Sem período → 12 (anualiza), regra contrato_meses. |
+| `periodo_contrato` | Período do contrato | fonte | deal | `periodo_do_contrato___vg` | enum | revops | MIGRADO em 2026-07-15 (decisão do dono): fonte primária = periodo_do_contrato___vg ('Período do Contrato'); fallback = campo legado 'Contrato atual é de 12, 24 ou 36 meses?'. Motivo do fallback: preenchimento no pente-fino era 4 deals (novo) × 43 (legado) — migração seca perderia dado; quando o novo campo for adotado no CRM, o fallback aposenta. Valores: '12 Meses'/'24 Meses'/'36 meses'/'Não Possui'. Sem período → 12 (anualiza), regra contrato_meses. |
 | `possui_agenciamento` | Possui Agenciamento | fonte | deal | `possui_agenciamento` | booleano | revops | Só adiciona o pico pontual de entrada; não muda a cauda recorrente. |
 | `possui_vitalicio` | Possui Vitalício | fonte | deal | `possui_vitalicio` | booleano | revops |  |
 | `is_poc` | É POC? | fonte | deal | `e_poc` | booleano | revops | POC não gera receita: zera Real e Probabilizada em todos os painéis (regra receita_mensal_deal). |
@@ -181,10 +181,10 @@ Corte PME: 200 vidas. Fuso canônico: America/Sao_Paulo.
 
 ### `contrato_meses` | Meses de fatura do contrato
 
-- **Tipo:** calculado · **Grain:** deal · **Status:** em_revisao · **Vigente desde:** 2026-07-14 · **Dono:** revops
+- **Tipo:** calculado · **Grain:** deal · **Status:** em_revisao · **Vigente desde:** 2026-07-15 · **Dono:** revops
 - **Usa dados:** `periodo_contrato`
-- **Fórmula:** Extrai o número do enum ('12 Meses'/'24 Meses'/'36 meses'). Sem período definido → 12 (anualiza).
-- **Código (1.0):** public/revenue-engine.js:63 (contratoMeses)
+- **Fórmula:** Extrai o número do enum ('12 Meses'/'24 Meses'/'36 meses'). Fonte do dado (2026-07-15, decisão do dono): periodo_do_contrato___vg com fallback no campo legado (ver dados.periodo_contrato). Sem período definido → 12 (anualiza).
+- **Código (1.0):** public/revenue-engine.js:63 (contratoMeses) · api/forecast-table.js (cadeia periodo_do_contrato___vg → legado)
 
 ### `tcv_bruto` | TCV bruto (valor total do contrato)
 

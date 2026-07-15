@@ -31,16 +31,17 @@
       },
       "faltantes": "Sem pf ou sem modelo → null (deal fora da régua; contador 'X de Y completos')",
       "fonte_codigo": ["public/revenue-engine.js:37 (calcReceitaMes)", "public/revenue-engine.js:23 (taxaRecorrente)"],
-      "owner": "revops", "status": "em_revisao", "vigente_desde": "2026-07-14"
+      "owner": "revops", "status": "em_revisao", "vigente_desde": "2026-07-14",
+      "disputa_aberta": "⚠ REVISÃO DO DONO (2026-07-15): para Corretagem SEM agenciamento, o dono afirma que a receita deve ser 'primeira fatura × porcentagem do vitalício × 12' — DIFERENTE do que o motor faz hoje (cauda mensal recorrente de 2%/5% da pf por porte). Investigação no portal: NÃO existe campo de percentual de vitalício; existem 'possui_vitalicio' (bool), 'vitalicio_ou_comissionamento' (enum Vitalício/Comissionamento) e 'receita_vitalicio_estimada' (number, 11 deals preenchidos). O MOTOR NÃO FOI ALTERADO — mudar reescreve a receita/TCV/forecast inteiros e exige a fórmula exata confirmada pelo dono (qual %? de onde vem? ×12 = pico único anual ou cauda?). Bloqueado aguardando resposta."
     },
 
     "contrato_meses": {
       "label": { "pt": "Meses de fatura do contrato", "en": "Contract invoice months" },
       "tipo": "calculado", "grain": "deal",
       "usa_dados": ["periodo_contrato"],
-      "formula": "Extrai o número do enum ('12 Meses'/'24 Meses'/'36 meses'). Sem período definido → 12 (anualiza).",
-      "fonte_codigo": ["public/revenue-engine.js:63 (contratoMeses)"],
-      "owner": "revops", "status": "em_revisao", "vigente_desde": "2026-07-14"
+      "formula": "Extrai o número do enum ('12 Meses'/'24 Meses'/'36 meses'). Fonte do dado (2026-07-15, decisão do dono): periodo_do_contrato___vg com fallback no campo legado (ver dados.periodo_contrato). Sem período definido → 12 (anualiza).",
+      "fonte_codigo": ["public/revenue-engine.js:63 (contratoMeses)", "api/forecast-table.js (cadeia periodo_do_contrato___vg → legado)"],
+      "owner": "revops", "status": "em_revisao", "vigente_desde": "2026-07-15"
     },
 
     "tcv_bruto": {

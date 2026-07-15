@@ -4,6 +4,15 @@ Recurring every 20min (job `55d3b136`). Purpose: identify and close gaps so the 
 
 ---
 
+### Dashboard 2.0 | Pente-fino HubSpot + migração periodo_contrato + decisões finais do toggle (2026-07-15)
+
+> Segunda leva da revisão do dono. **Pente-fino dos campos (pedido dele):** as 983 propriedades de deal do portal foram baixadas via API e batidas contra `dados.json` e contra os literais de `forecast-table`/`snapshot-format` — **zero nomes errados**; a estranheza era nome interno × label. Correção estrutural: todo dado de fonte agora carrega **`label_portal`** (rótulo oficial do HubSpot, 41 campos anotados) ao lado do nome técnico.
+
+- **`periodo_contrato` migrado (decisão do dono):** fonte primária = `periodo_do_contrato___vg` ("Período do Contrato"), fallback = campo legado. Motivo do fallback: preenchimento 4×43 no pente-fino — migração seca perderia 39 deals. `api/forecast-table.js` busca os dois e aplica a cadeia; payload validado ao vivo (14 deals com período). ⚠ Mudou api/ → servidor reiniciado.
+- **⛔ DISPUTA ABERTA registrada (regra `receita_regua_mensal`):** dono afirma que Corretagem SEM agenciamento = "pf × % do vitalício × 12", diferente da cauda 2%/5% do motor. Portal NÃO tem campo de % de vitalício (existem `possui_vitalicio`, `vitalicio_ou_comissionamento`, `receita_vitalicio_estimada` c/ 11 deals). **Motor NÃO alterado** — reescreve receita/TCV/forecast; aguardando fórmula exata do dono.
+- **Toggle ADR-008 — TODAS as decisões fechadas:** D1 Forecast fora na v1 (registrada inclusão futura) · D2 AE segue o toggle · D3 KV global · D4/D4b régua única flat (já implementada). Implementação do toggle liberada (Fase 4b).
+- **Fila registrada (pedidos do dono, 15/07):** (a) padronizar menu superior direito em todos os painéis: Como funciona | Configurações | Toggle de código | Informações — via fonte única incluída; (b) coluna "Probabilidade Realtime" (C07 ao vivo) ao lado da P. Etapa nas listagens dos painéis Forecast; (c) REDESIGN do modal "Como funciona" gerado — feedback do dono: "frankenstein", precisa narrativa lógica e visual para não-programador (refazer o renderer semantic-help.js).
+
 ### Dashboard 2.0 | RÉGUA ÚNICA de probabilidade (D4/D4b do dono) implementada (2026-07-15)
 
 > Decisões da revisão do dono: (1) valores da flat confirmados; (2) **painel_default REMOVIDA** — "as probabilidades fixas e o fallback têm que ser idênticos"; (3) **Implantação usa o valor da flat (80%)**, SUPERSEDENDO o 1.0 de 14/07. ⚠ MUDANÇA CONSCIENTE DE NÚMEROS: fallbacks de CRO/Board/AE/Configurações onde o C07 não tem amostra passam da régua antiga (Cotação 33%, Consultoria 61,1%, Negociação 42%, Implantação 100%) para a flat validada (18,6% | 28,5% | 49,3% | 80%).
