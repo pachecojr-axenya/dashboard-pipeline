@@ -52,14 +52,21 @@ Probabilidade de etapa:  ( ) Premissas (régua forçada)   (•) Calculada ao vi
 - **Você decide 3:** onde persiste — KV global (todos veem igual — recomendo) ou
   por navegador como hoje (`localStorage`, cada um vê um número ≠, que é o
   anti-padrão que o 2.0 mata)?
-- **Você decide 4 (adicionada na sua revisão de 2026-07-15):** unificar as duas
-  réguas forçadas numa só. Hoje `forecast_flat` (premissa validada do Forecast) e
-  `painel_default` (fallback do C07 em CRO/Board/AE) têm VALORES diferentes
-  (Cotação 18,6%×33%, Consultoria 28,5%×61,1%, Negociação 49,3%×42%). Proposta:
-  a posição "Premissas" do toggle usa a **flat validada** como régua única e a
-  `painel_default` é aposentada. Efeito: os fallbacks de CRO/Board/AE mudam de
-  número quando o C07 não tem amostra (etapas com amostra >= 20 não mudam nada,
-  pois o C07 vence). Recomendo aprovar junto com o toggle — é a mesma cirurgia.
+- **D4 — DECIDIDA pelo dono (2026-07-15):** régua forçada ÚNICA. Nas palavras
+  dele: *"se precisarmos de um fallback, a gente usa a probabilidade hardcoded,
+  que vai ter que ser a mesma"*. Ou seja: a `painel_default` é aposentada; a régua
+  única (a flat validada do Forecast) vale como premissa E como fallback do C07.
+  Efeito nos números: fallbacks de CRO/Board/AE mudam onde o C07 não tem amostra
+  (etapas com amostra >= 20 não mudam, pois o C07 vence).
+
+- **D4b — desdobramento em aberto (a única pendência da D4): Implantação = 80% ou 100%?**
+  A régua única precisa de UM valor, e hoje existem dois legítimos:
+  | Opção | O que acontece |
+  |---|---|
+  | **80%** (valor do Forecast validado) | O Forecast não muda; REVERTE a decisão de 14/07 nos painéis (Implantação volta a não ser "já ganho" na ponderação) |
+  | **100%** (decisão de 14/07, "implantação já é ganho") | Painéis não mudam; o FORECAST OFICIAL passa a ponderar Implantação a 100% → a Receita Probabilizada de deals em Implantação sobe ~25% |
+  | **Exceção declarada** | Régua única para tudo, MENOS Implantação (um valor por contexto, declarado no catálogo e visível no drawer) — menos limpo, zero surpresa nos números |
+  Sem D4b decidida, a implementação da régua única não começa.
 
 ## Implementação (quando aprovado)
 
