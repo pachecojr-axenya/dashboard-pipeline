@@ -4,6 +4,15 @@ Recurring every 20min (job `55d3b136`). Purpose: identify and close gaps so the 
 
 ---
 
+### Dashboard 2.0 | Fase 3 (replicação) | Forecast Overall com seções geradas (2026-07-14)
+
+> Drawer gerado replicado no `/forecast-overall` (`forecast-stage.html`): as seções **Ajuste pelo AE** e **Deduplicação Fee×Corretagem** (estáticas, sem mutação por JS) viraram containers `data-semantic-help`. As seções sensíveis ao painel ativo (`help-sec-overall/diag/mql/ganho/rev`, mutadas por `getElementById` conforme a etapa) e as instruções de UI (botão ✎, olho) **ficam à mão de propósito** — são ajuda de interface, não proveniência de regra; entram no manifesto das Fases 5/6.
+
+- Catálogo enriquecido de novo na extração: dedup ganhou o detalhe "deal perdedor continua na lista com receita ZERADA (não soma no total)" — estava só na ajuda do Overall.
+- `id="help-sec-dedup"` preservado no container (toggle do JS intacto). Include `semantic-help.js?v=1` adicionado.
+- Validado em Edge headless no DOM real: 2 seções geradas presentes, detalhe do perdedor presente, tabela dinâmica de probabilidades intacta. `npm run check` PASS.
+- Trabalho autônomo sem revisão do dono (pedido de 2026-07-14, "reviso tudo de uma vez amanhã"): APENAS mudanças aditivas/paridade — Fase 4 (etapas ativas, toggle prob) e ADR-009 (deploy GitHub) continuam PARADOS aguardando o dono.
+
 ### Dashboard 2.0 | Fase 3 (golden template) | ajuda do /forecast GERADA do catálogo (2026-07-14)
 
 > Primeiro drawer de proveniência gerado (ADR-006): as 5 seções de regra do modal "Como funciona" do `/forecast` (ajuste do AE, receita por etapa, modelos de cobrança, originação BDR, dedup) deixaram de ser texto à mão e passam a ser **renderizadas do catálogo** por **`public/semantic-help.js`** (novo, ES5) sobre o payload de `semantic-ref.js?v=2` (agora embute `regras` + dicionário de `dados`). Container declarativo: `<div data-semantic-help="regra1,regra2,...">`.

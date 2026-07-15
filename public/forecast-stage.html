@@ -1777,6 +1777,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
 <link rel="stylesheet" href="/premium.css?v=5">
 <script src="/premium.js?v=5"></script>
 <script src="/semantic-ref.js?v=2"></script>
+<script src="/semantic-help.js?v=1"></script>
 <script src="/revenue-engine.js?v=1"></script>
 <script src="/faturamento-manual.js?v=1"></script>
 <script src="/forecast-engine.js?v=1"></script>
@@ -2033,20 +2034,8 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
         </table>
       </section>
 
-      <!-- Ajuste pelo AE -->
-      <section class="help-section">
-        <h3 class="help-h3">Ajuste pela probabilidade informada pelo AE</h3>
-        <p class="help-p">O AE pode informar sua própria probabilidade de fechamento para cada deal. Ela é comparada com a probabilidade da etapa (P.Etapa):</p>
-        <table class="help-table">
-          <thead><tr><th>Situação</th><th>Probabilidade final</th></tr></thead>
-          <tbody>
-            <tr><td>AE não informou</td><td>P.Etapa (sem ajuste)</td></tr>
-            <tr><td>Prob. AE dentro de ±30 pp da P.Etapa</td><td>P.Etapa (sem ajuste)</td></tr>
-            <tr><td>Prob. AE ≥ P.Etapa + 30 pp</td><td>P.Etapa × 1,10 (+10%)</td></tr>
-            <tr><td>Prob. AE ≤ P.Etapa − 30 pp</td><td>P.Etapa × 0,90 (−10%)</td></tr>
-          </tbody>
-        </table>
-      </section>
+      <!-- Ajuste pelo AE | GERADO do catálogo (Fase 3 do 2.0, ADR-006) -->
+      <div data-semantic-help="prob_final_forecast"></div>
 
       <!-- Receita — Diagnóstico -->
       <section class="help-section" id="help-sec-diag">
@@ -2135,20 +2124,8 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
         <p class="help-p">A receita é projetada a partir da <em>data prevista para receita</em> cadastrada no deal, por até 24 meses.</p>
       </section>
 
-      <!-- Deduplicação Fee × Corretagem (vale para todos os painéis) -->
-      <section class="help-section" id="help-sec-dedup">
-        <h3 class="help-h3">Deduplicação Fee × Corretagem</h3>
-        <p class="help-p">Um mesmo cliente costuma ter <strong>dois deals</strong> — um de <strong>Fee por vida</strong> e outro de <strong>Corretagem</strong> (os nomes diferem só por esse trecho). Para não contar receita em dobro, mantemos a receita de <strong>apenas um</strong> deles. Critério de desempate, nesta ordem:</p>
-        <table class="help-table">
-          <thead><tr><th>#</th><th>Mantém o deal com…</th></tr></thead>
-          <tbody>
-            <tr><td>1</td><td>etapa <strong>mais avançada</strong></td></tr>
-            <tr><td>2</td><td>menor <strong>TCV de 12 meses</strong></td></tr>
-            <tr><td>3</td><td><strong>vigência</strong> mais distante</td></tr>
-          </tbody>
-        </table>
-        <p class="help-p" style="margin-top:.6rem;">O deal "perdedor" continua aparecendo na lista, mas com <strong>receita zerada</strong> (não soma no total).</p>
-      </section>
+      <!-- Deduplicação Fee × Corretagem | GERADO do catálogo (Fase 3 do 2.0, ADR-006) -->
+      <div id="help-sec-dedup" data-semantic-help="dedup_fee_corretagem"></div>
 
       <div style="height:1px;background:var(--border);margin:1.2rem 0 1rem;"></div>
       <p style="font-size:0.75rem;color:var(--text2);margin:0;text-align:center;">Os valores de probabilidade por etapa são configuráveis em <strong>Configurações</strong>. Os R$/vida são fixos.</p>

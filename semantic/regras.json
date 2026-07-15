@@ -117,7 +117,7 @@
       "ajuda": { "pt": "Quando o mesmo cliente tem dois negócios simultâneos (um Fee por vida e um Corretagem), só UM conta no forecast, para não dobrar a receita.", "en": "When the same client has two simultaneous deals (one Fee per life and one Brokerage), only ONE counts in the forecast, to avoid doubling revenue." },
       "tipo": "calculado", "grain": "cliente",
       "usa_dados": ["dealname", "modelo_remuneracao", "vigencia"],
-      "formula": "Critério de escolha do deal que fica: 1º etapa mais avançada; empate → menor TCV de 12 meses; novo empate → vigência mais distante (cenário conservador).",
+      "formula": "Critério de escolha do deal que fica: 1º etapa mais avançada; empate → menor TCV de 12 meses; novo empate → vigência mais distante (cenário conservador). O deal 'perdedor' continua aparecendo na lista, mas com receita ZERADA (não soma no total).",
       "fonte_codigo": ["public/forecast.html (dedup do painel Forecast; texto validado na ajuda da aba)"],
       "owner": "revops", "status": "em_revisao", "vigente_desde": "2026-07-14",
       "notas": "As Premissas (doc) diziam 'menor TCV + prazo mais longo'; o comportamento real do código antepõe a ETAPA MAIS AVANÇADA como 1º critério — catálogo segue o código (extração), divergência do doc anotada."

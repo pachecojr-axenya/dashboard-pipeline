@@ -219,7 +219,7 @@ Fuso canônico: America/Sao_Paulo.
 
 - **Tipo:** calculado · **Grain:** cliente · **Status:** em_revisao · **Vigente desde:** 2026-07-14 · **Dono:** revops
 - **Usa dados:** `dealname`, `modelo_remuneracao`, `vigencia`
-- **Fórmula:** Critério de escolha do deal que fica: 1º etapa mais avançada; empate → menor TCV de 12 meses; novo empate → vigência mais distante (cenário conservador).
+- **Fórmula:** Critério de escolha do deal que fica: 1º etapa mais avançada; empate → menor TCV de 12 meses; novo empate → vigência mais distante (cenário conservador). O deal 'perdedor' continua aparecendo na lista, mas com receita ZERADA (não soma no total).
 - **Código (1.0):** public/forecast.html (dedup do painel Forecast; texto validado na ajuda da aba)
 - **Notas:** As Premissas (doc) diziam 'menor TCV + prazo mais longo'; o comportamento real do código antepõe a ETAPA MAIS AVANÇADA como 1º critério — catálogo segue o código (extração), divergência do doc anotada.
 
