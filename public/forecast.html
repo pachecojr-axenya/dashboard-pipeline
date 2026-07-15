@@ -1806,7 +1806,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
   </style>
 <link rel="stylesheet" href="/premium.css?v=5">
 <script src="/premium.js?v=5"></script>
-<script src="/semantic-ref.js?v=3"></script>
+<script src="/semantic-ref.js?v=4"></script>
 <script src="/semantic-help.js?v=2"></script>
 <script src="/revenue-engine.js?v=2"></script>
 <script src="/faturamento-manual.js?v=1"></script>
@@ -2315,6 +2315,14 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       const s = String(q).trim().toLowerCase();
       if (s === 'false' || s === 'true') return true;
       return !/\d{4}/.test(s);
+    }
+
+    // Espelho do normalizeQuarter da API (decisão do dono 2026-07-15): "Qx" sem ano = 2026.
+    // Usado no replay de fotos, que guarda o valor CRU do portal (ex.: "Q3").
+    function normalizeQuarter(q) {
+      if (!q) return null;
+      const m = String(q).trim().match(/^Q([1-4])(?:\s+(\d{4}))?$/i);
+      return m ? ('Q' + m[1] + ' ' + (m[2] || '2026')) : null;
     }
 
     function parseQuarter(q) {
@@ -3435,7 +3443,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
         possui_agenciamento: compNormBool(row['Agenciamento']),
         possui_vitalicio: compNormBool(row['Vitalício']),
         probabilidade: compNormProb(row['Probabilidade (campo)']) ?? compNormProb(row['Probabilidade HS']),
-        quarter: row['Quarter'] || null,
+        quarter: normalizeQuarter(row['Quarter']),
         data_prevista_para_receita: row['Data Prevista Receita'] ? String(row['Data Prevista Receita']).substring(0, 10) : null,
         vigencia: row['Vigência'] ? String(row['Vigência']).substring(0, 10) : null,
         premio_mensal: compParseNum(row['Prêmio Mensal (R$)']),
@@ -3451,9 +3459,9 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
           d.quarter = 'Q' + (Math.floor(_mo / 3) + 1) + ' ' + rd.substring(0, 4);
         }
       }
-      // Espelho exato do vivo: quarter "vazio" (sem ano, 'false', etc.) → deriva da
-      // data prevista; sem data → null (a foto guarda o valor cru, ex.: "Q4").
-      if (quarterEmpty(d.quarter)) {
+      // Espelho exato do vivo: campo do AE (já normalizado, "Qx" sem ano = 2026) tem
+      // precedência; sem campo → deriva da data prevista; sem data → null.
+      if (!d.quarter) {
         const q = d.data_prevista_para_receita ? parseRevenueDate(d.data_prevista_para_receita) : null;
         d.quarter = q ? ('Q' + (Math.floor(q.mo / 3) + 1) + ' ' + q.y) : null;
       }
