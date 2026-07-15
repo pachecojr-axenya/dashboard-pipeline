@@ -255,11 +255,12 @@
         "Proposta Enviada": 0.285,
         "Consultoria": 0.611,
         "Negociação": 0.42,
-        "Implantação": 0.581,
+        "Implantação": 1.0,
         "Ganho": 1.0,
         "Standby": 0.12,
         "Stand by": 0.12
       },
+      "decisao_implantacao": "DECISÃO DO DONO (2026-07-14): Implantação pondera a 100% (1.0) — coerente com a régua geral do CRO ('implantação já é ganho', README §3; o toggle Implantação=Ganho existe só para enxergar capital a risco). Resolve a divergência 0.581×1.0 achada nas Fases 1-2: prob-engine.js e dashboard.html já usavam 1.0; ae.html, board.html e settings-modal.js foram alinhados de 0.581 → 1.0 nesta data (mudança consciente de números nos ponderados desses painéis). Os STAGE_PROB_LEGACY de forecast/forecast-stage mantêm 0.581 de propósito: são detectores de override antigo no localStorage, não régua.",
       "usada_em": [
         "public/settings-modal.js",
         "public/board.html (NOVO_STAGE_PROB_DEFAULT)",
@@ -267,7 +268,7 @@
         "public/dashboard.html",
         "public/prob-engine.js (DEFAULT)"
       ],
-      "divergencia_conhecida": "public/prob-engine.js usa Implantação=1.0 enquanto os literais de ae.html/board.html/settings-modal usam 0.581 (achado Fase 1, 2026-07-14). Agravante (achado Fase 2): dashboard.html:572 lê ProbEngine.DEFAULT quando o prob-engine carrega — ou seja, CRO e Board efetivamente usam 1.0, e ae/settings 0.581. Resolver exige DECISÃO do dono (qual valor é o certo?) — muda números; não é paridade. Até lá, esta régua no catálogo registra 0.581 como valor documental e esta nota como verdade operacional."
+      "divergencia_conhecida": "RESOLVIDA em 2026-07-14 — ver decisao_implantacao acima. Histórico: prob-engine.js/dashboard.html usavam Implantação=1.0 e ae.html/board.html/settings-modal 0.581 (achado das Fases 1-2); o dono decidiu por 1.0 e todos os consumidores foram alinhados."
     },
     "calculada_funil": {
       "descricao": {

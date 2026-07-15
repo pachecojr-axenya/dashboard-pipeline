@@ -11,7 +11,7 @@
   var SP_DEFAULT = {
     'Reunião Agendada':0.06,'Diagnóstico':0.06,
     'Cotação':0.33,'Proposta Enviada':0.285,'Consultoria':0.611,
-    'Negociação':0.42,'Implantação':0.581,'Ganho':1.0,
+    'Negociação':0.42,'Implantação':1.0,'Ganho':1.0, // Implantação=1.0 | decisão do dono 2026-07-14 (semantic/referencia.json)
     'Standby':0.12,'Stand by':0.12,
   };
 

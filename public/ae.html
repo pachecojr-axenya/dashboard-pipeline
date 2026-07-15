@@ -540,7 +540,7 @@ function _c01CountText(deals,mode){ var total=deals.length; if(mode==='deals')re
 // dos motores de receita do Forecast e do CRO Dashboard. Enquanto o funil não chega (ou a
 // amostra da etapa é < 20), vale o padrão fixo. Override manual (Salvar Probabilidades no
 // drawer) vence o funil, como no CRO.
-var NOVO_STAGE_PROB_DEFAULT={'Reunião Agendada':0.06,'Cotação':0.33,'Proposta Enviada':0.285,'Consultoria':0.611,'Negociação':0.42,'Implantação':0.581,'Ganho':1.0,'Standby':0.12,'Stand by':0.12,'Diagnóstico':0.06};
+var NOVO_STAGE_PROB_DEFAULT={'Reunião Agendada':0.06,'Cotação':0.33,'Proposta Enviada':0.285,'Consultoria':0.611,'Negociação':0.42,'Implantação':1.0,'Ganho':1.0,'Standby':0.12,'Stand by':0.12,'Diagnóstico':0.06}; // Implantação=1.0 | decisão do dono 2026-07-14 (semantic/referencia.json)
 var _aeProbManual=(function(){ try{ return !!localStorage.getItem('novo_stage_prob'); }catch(e){ return false; } })();
 var NOVO_STAGE_PROB=(function(){ try{ var raw=localStorage.getItem('novo_stage_prob'); if(raw){ var parsed=JSON.parse(raw); var merged={}; Object.keys(NOVO_STAGE_PROB_DEFAULT).forEach(function(k){merged[k]=NOVO_STAGE_PROB_DEFAULT[k];}); Object.keys(parsed).forEach(function(k){merged[k]=parsed[k];}); return merged; } }catch(e){} var copy={}; Object.keys(NOVO_STAGE_PROB_DEFAULT).forEach(function(k){copy[k]=NOVO_STAGE_PROB_DEFAULT[k];}); return copy; })();
 var NOVO_FC_PROB_MIN_SAMPLE=20;

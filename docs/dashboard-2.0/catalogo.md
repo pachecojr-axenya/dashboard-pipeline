@@ -68,13 +68,13 @@ Usada em: public/forecast.html (STAGE_PROB_DEFAULT ← SEMANTIC_REF) · public/f
 | Proposta Enviada | 28,5% |
 | Consultoria | 61,1% |
 | Negociação | 42,0% |
-| Implantação | 58,1% |
+| Implantação | 100,0% |
 | Ganho | 100,0% |
 | Standby | 12,0% |
 | Stand by | 12,0% |
 
 Usada em: public/settings-modal.js · public/board.html (NOVO_STAGE_PROB_DEFAULT) · public/ae.html (NOVO_STAGE_PROB_DEFAULT) · public/dashboard.html · public/prob-engine.js (DEFAULT)
-> 🔴 **Divergência conhecida:** public/prob-engine.js usa Implantação=1.0 enquanto os literais de ae.html/board.html/settings-modal usam 0.581 (achado Fase 1, 2026-07-14). Agravante (achado Fase 2): dashboard.html:572 lê ProbEngine.DEFAULT quando o prob-engine carrega — ou seja, CRO e Board efetivamente usam 1.0, e ae/settings 0.581. Resolver exige DECISÃO do dono (qual valor é o certo?) — muda números; não é paridade. Até lá, esta régua no catálogo registra 0.581 como valor documental e esta nota como verdade operacional.
+> 🔴 **Divergência conhecida:** RESOLVIDA em 2026-07-14 — ver decisao_implantacao acima. Histórico: prob-engine.js/dashboard.html usavam Implantação=1.0 e ae.html/board.html/settings-modal 0.581 (achado das Fases 1-2); o dono decidiu por 1.0 e todos os consumidores foram alinhados.
 
 **calculada_funil** | Probabilidade calculada em tempo real pelo funil (C07) \| ganhos ÷ entraram na etapa, por pipeline | tipo: calculada
 
