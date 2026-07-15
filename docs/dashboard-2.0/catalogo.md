@@ -262,8 +262,9 @@ Corte PME: 200 vidas. Fuso canônico: America/Sao_Paulo.
 - **Tipo:** calculado · **Grain:** etapa · **Status:** em_revisao · **Vigente desde:** 2026-07-15 · **Dono:** revops
 - **Usa dados:** `dealstage`
 - **Usa referência:** `etapas`
-- **Fórmula:** Deals que chegaram a Implantação ÷ deals que entraram na etapa, VENDAS+BID COMBINADOS, amostra mínima 20 (senão '—'). Cache de 1h no navegador. ⚠ Variante do Forecast — DIFERENTE do C07 dos painéis CRO/Board (lá: Ganho ÷ entraram, POR pipeline). Puramente informativa: NÃO altera a receita probabilizada.
-- **Código (1.0):** public/forecast.html (_fcFunnelDerivedProb + coluna prob_realtime) · public/forecast-stage.html (idem)
+- **Depende de:** `prob_etapa_calculada`
+- **Fórmula:** = C07 (regra prob_etapa_calculada): deals GANHOS ÷ deals que entraram na etapa, POR PIPELINE, amostra mínima 20 (senão '—'). Cache de 1h no navegador. UNIFICADA com CRO/Board por decisão do dono (2026-07-15, 'os dados precisam conversar') — a variante anterior do Forecast (Implantação ÷ entraram, combinado) foi aposentada. Puramente informativa: NÃO altera a receita probabilizada.
+- **Código (1.0):** public/prob-engine.js (funnelDerivedProbPipe — fonte única) · public/forecast.html (coluna prob_realtime) · public/forecast-stage.html (idem)
 
 ### `prob_final_forecast` | Probabilidade final no Forecast (régua flat + ajuste do AE)
 

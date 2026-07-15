@@ -130,8 +130,9 @@
       "tipo": "calculado", "grain": "etapa",
       "usa_dados": ["dealstage"],
       "usa_referencia": ["etapas"],
-      "formula": "Deals que chegaram a Implantação ÷ deals que entraram na etapa, VENDAS+BID COMBINADOS, amostra mínima 20 (senão '—'). Cache de 1h no navegador. ⚠ Variante do Forecast — DIFERENTE do C07 dos painéis CRO/Board (lá: Ganho ÷ entraram, POR pipeline). Puramente informativa: NÃO altera a receita probabilizada.",
-      "fonte_codigo": ["public/forecast.html (_fcFunnelDerivedProb + coluna prob_realtime)", "public/forecast-stage.html (idem)"],
+      "formula": "= C07 (regra prob_etapa_calculada): deals GANHOS ÷ deals que entraram na etapa, POR PIPELINE, amostra mínima 20 (senão '—'). Cache de 1h no navegador. UNIFICADA com CRO/Board por decisão do dono (2026-07-15, 'os dados precisam conversar') — a variante anterior do Forecast (Implantação ÷ entraram, combinado) foi aposentada. Puramente informativa: NÃO altera a receita probabilizada.",
+      "depende_de": ["prob_etapa_calculada"],
+      "fonte_codigo": ["public/prob-engine.js (funnelDerivedProbPipe — fonte única)", "public/forecast.html (coluna prob_realtime)", "public/forecast-stage.html (idem)"],
       "owner": "revops", "status": "em_revisao", "vigente_desde": "2026-07-15"
     },
 

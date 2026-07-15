@@ -1806,8 +1806,9 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
   </style>
 <link rel="stylesheet" href="/premium.css?v=5">
 <script src="/premium.js?v=5"></script>
-<script src="/semantic-ref.js?v=4"></script>
+<script src="/semantic-ref.js?v=5"></script>
 <script src="/semantic-help.js?v=2"></script>
+<script src="/prob-engine.js?v=2"></script>
 <script src="/revenue-engine.js?v=2"></script>
 <script src="/faturamento-manual.js?v=1"></script>
 <script src="/forecast-engine.js?v=1"></script>
@@ -2213,9 +2214,11 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
     // A coluna P. Etapa da aba Forecast deve ser flat por etapa, igual à tabela de ajuda.
     // O cálculo C06 fica documentado, mas não sobrescreve a régua validada automaticamente.
     const FC_PROB_MIN_SAMPLE = 20;
-    // FC_FUNNEL_PROB é flat por etapa: { 'Cotação': 0.185..., ... }.
+    // FC_FUNNEL_PROB = C07 POR PIPELINE ({ vendas:{etapa:p}, bid:{...} }) — UNIFICADO
+    // com CRO/Board por decisão do dono (2026-07-15, "os dados precisam conversar").
+    // Fonte única: ProbEngine.funnelDerivedProbPipe (Ganho ÷ entraram, amostra >= 20).
     let FC_FUNNEL_PROB = (() => {
-      try { const c = JSON.parse(sessionStorage.getItem('fc_funnel_prob_flat_v2') || 'null'); if (c && c.values && c.ts && (Date.now() - c.ts) < 3600000) return c.values; } catch { }
+      try { const c = JSON.parse(sessionStorage.getItem('fc_funnel_prob_pipe_v1') || 'null'); if (c && c.values && c.ts && (Date.now() - c.ts) < 3600000) return c.values; } catch { }
       return null;
     })();
     let STAGE_PROB = {};
@@ -2227,30 +2230,15 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
     function _fcStageProbFor(stage, pipeline) {
       return STAGE_PROB[stage] != null ? STAGE_PROB[stage] : STAGE_PROB_DEFAULT[stage];
     }
-    // Prob. por etapa no Forecast: Implantação absoluta ÷ entraram na etapa, combinando
-    // Vendas + Bid. Amostra < FC_PROB_MIN_SAMPLE → omite (cai no padrão fixo).
-    function _fcFunnelDerivedProb(fd) {
-      if (!fd) return null;
-      const cnt = {};
-      [fd.vendas, fd.bid].forEach(pd => {
-        ((pd && pd.stages) || []).forEach(s => { cnt[s.stage] = (cnt[s.stage] || 0) + (s.count || 0); });
-      });
-      const finalC = cnt['Implantação'] || 0;
-      if (finalC <= 0) return {};
-      const order = ['Reunião Agendada', 'Cotação', 'Proposta Enviada', 'Consultoria', 'Negociação'];  // Diagnóstico fixo em 6%; Implantação/Ganho usam default.
-      const out = {};
-      order.forEach(s => { const c = cnt[s] || 0; if (c >= FC_PROB_MIN_SAMPLE) { let p = finalC / c; if (p > 1) p = 1; if (p < 0) p = 0; out[s] = p; } });
-      return out;
-    }
     async function _fcLoadFunnelProb() {
       try {
         const r = await fetch('/api/funnel-stages', { credentials: 'same-origin' });
         const j = await r.json();
         if (!r.ok || !j.success) return;
-        const d = _fcFunnelDerivedProb(j);
-        if (!d || !Object.keys(d).length) return;
+        const d = (window.ProbEngine && ProbEngine.funnelDerivedProbPipe) ? ProbEngine.funnelDerivedProbPipe(j) : null;
+        if (!d || (!Object.keys(d.vendas || {}).length && !Object.keys(d.bid || {}).length)) return;
         FC_FUNNEL_PROB = d;
-        try { sessionStorage.setItem('fc_funnel_prob_flat_v2', JSON.stringify({ ts: Date.now(), values: d })); } catch { }
+        try { sessionStorage.setItem('fc_funnel_prob_pipe_v1', JSON.stringify({ ts: Date.now(), values: d })); } catch { }
         _fcApplyStageProb();
         if (typeof applyAndRender === 'function') applyAndRender();
       } catch { /* mantém defaults/cache */ }
@@ -3755,7 +3743,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
           // Prob. Realtime (pedido do dono 2026-07-15): a prob. da etapa CALCULADA ao vivo
           // do funil (Implantação ÷ entraram, Vendas+Bid, amostra >= 20). Informativa —
           // NÃO entra em nenhuma conta; a probabilizada segue a régua/P. Ajust.
-          prob_realtime: (FC_FUNNEL_PROB && FC_FUNNEL_PROB[d.stage] != null) ? FC_FUNNEL_PROB[d.stage] : null,
+          prob_realtime: (function(){ if (!FC_FUNNEL_PROB) return null; const fp = FC_FUNNEL_PROB[d.pipeline === 'Bid' ? 'bid' : 'vendas']; return (fp && fp[d.stage] != null) ? fp[d.stage] : null; })(),
           prob_ajustada: pInfo.final,
           prob_info: pInfo,
           tcv: (typeof calcTCV === 'function') ? calcTCV(d) : null,
@@ -4113,7 +4101,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
         },
         {
           k: 'prob_realtime', lbl: '🟡 P. Realtime', w: 78, align: 'right', prob: true, hideMobile: true,
-          tip: 'Probabilidade da etapa CALCULADA AO VIVO do funil (deals que chegaram a Implantação ÷ que entraram na etapa, Vendas+Bid, amostra mínima 20). Informativa: compare com a P. Etapa da régua; NÃO altera a receita probabilizada. "—" = etapa sem amostra suficiente.'
+          tip: 'Probabilidade da etapa CALCULADA AO VIVO do funil — a MESMA leitura C07 do CRO/Board (deals Ganhos ÷ que entraram na etapa, POR pipeline, amostra mínima 20). Informativa: compare com a P. Etapa da régua; NÃO altera a receita probabilizada. "—" = etapa sem amostra suficiente.'
         },
         {
           k: 'prob_ajustada', lbl: 'P. Ajust.', w: 65, align: 'right', prob: true, hideMobile: true,

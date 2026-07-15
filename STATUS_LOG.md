@@ -12,6 +12,12 @@ Recurring every 20min (job `55d3b136`). Purpose: identify and close gaps so the 
 >
 > **Pendência CRM (recomendada, não feita):** trocar as opções sem ano por opções com ano no portal e migrar os 114 valores — "Q3" puro fica ambíguo na virada de 2027. Achado colateral registrado: `a_reuniao_ocorreu_` é CHECKBOX múltiplo (2 deals ativos com "Nao;Sim": 3tentos e Mangels) e cada painel trata diferente (CRO ignora, AE conta como Sim, No-Show trata como pendente) — pede decisão.
 
+### Forecast | P. Realtime UNIFICADA com o C07 (decisão do dono) + quarters commitados (2026-07-15)
+
+> Decisão do dono: "C07 e realtime deveriam ser a mesma leitura — os dados precisam conversar". A coluna **P. Realtime** de `/forecast` e `/forecast-overall`+etapas agora é alimentada pelo **`ProbEngine.funnelDerivedProbPipe`** (o MESMO C07 do CRO/Board: Ganho ÷ entraram, POR pipeline, amostra >= 20) — a variante anterior do Forecast (Implantação ÷ entraram, combinado) foi **aposentada** e removida do código. Cache novo `fc_funnel_prob_pipe_v1`; `prob-engine.js` incluído nas duas páginas; tooltip e regra `prob_realtime_forecast` atualizados (agora `depende_de: prob_etapa_calculada` — fonte única). Validado em Edge headless: tabela com 235 linhas + coluna no DOM real.
+>
+> Antes disso: trabalho da sessão paralela dos **quarters** commitado (43c7eb9) após validação ao vivo — 150 quarters no payload, 0 fora do formato `Qx YYYY`, 118×2026/32×2027 (regra "sem ano = 2026" funcionando nas 3 camadas: API, fotos, replay client).
+
 ### Dashboard 2.0 | Fase 4b (núcleo) | config global no KV: toggle de probabilidade + etapas ativas (2026-07-15)
 
 > Implementa as decisões D1–D3 do dono: **`api/config-global.js`** (NOVO endpoint; GET/POST; KV `forecast:config_global` com fallback /tmp; meta ADR-004 em/por/anterior; validação de valores). Campos: `prob_fonte` ('calculada' default | 'premissas') e `etapas_ativas` ({stage_id: bool}, ADR-007 global). ⚠ Endpoint novo adicionado ao guard do preflight.
