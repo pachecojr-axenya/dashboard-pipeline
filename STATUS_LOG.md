@@ -12,6 +12,14 @@ Recurring every 20min (job `55d3b136`). Purpose: identify and close gaps so the 
 >
 > **Pendência CRM (recomendada, não feita):** trocar as opções sem ano por opções com ano no portal e migrar os 114 valores — "Q3" puro fica ambíguo na virada de 2027. Achado colateral registrado: `a_reuniao_ocorreu_` é CHECKBOX múltiplo (2 deals ativos com "Nao;Sim": 3tentos e Mangels) e cada painel trata diferente (CRO ignora, AE conta como Sim, No-Show trata como pendente) — pede decisão.
 
+### 🚀 DEPLOY DE PRODUÇÃO | Dashboard 2.0 no ar (2026-07-15)
+
+> **Merge fast-forward** da `pacheco/nav-single-source-2026-07-13` no `main` (40 commits, 65 arquivos, +7.597 linhas; zero conflito) → push → `npm run check`+`predeploy` PASS (1 fix no caminho: comparação EOL-insensível no check-semantic, o autocrlf do checkout acusava falso drift) → **deploy de PREVIEW** com smokes REAIS (Deployment Protection do Vercel desativada temporariamente via API e RESTAURADA em seguida — estado idêntico): páginas 200, `semantic-ref/help` servidos, **APIs 401 com o JSON do nosso handler = `semantic/` empacotado e funcionando no runtime** (o único risco técnico não testado, agora provado) → **deploy de produção** (`dashboard-axenya-ossv6i148`, autorização explícita do dono).
+>
+> **Smokes de produção nos 2 domínios** (`project-bsmfu` + `axenya-pipeline-dashboard`): TODAS as rotas do runbook 200 (incl. `/forecast-delta` nova e as 5 rotas BDR do Samuel intactas), `/api/forecast-table` 401 (auth ativa, bypass ausente). Rollback disponível: deployment anterior `mn28zqld4` (Samuel, 21h antes).
+>
+> **No ar agora (mudanças intencionais a comunicar ao time):** camada semântica completa (catálogo + drawers gerados + P. Realtime=C07 + régua única com Implantação 80% + quarters sem ano=2026 + selo ✏️ + config global + coluna nova) — detalhes nas entradas abaixo. ⚠ Faltou só o UNLOCK no Slack (fazer manualmente).
+
 ### Forecast | P. Realtime UNIFICADA com o C07 (decisão do dono) + quarters commitados (2026-07-15)
 
 > Decisão do dono: "C07 e realtime deveriam ser a mesma leitura — os dados precisam conversar". A coluna **P. Realtime** de `/forecast` e `/forecast-overall`+etapas agora é alimentada pelo **`ProbEngine.funnelDerivedProbPipe`** (o MESMO C07 do CRO/Board: Ganho ÷ entraram, POR pipeline, amostra >= 20) — a variante anterior do Forecast (Implantação ÷ entraram, combinado) foi **aposentada** e removida do código. Cache novo `fc_funnel_prob_pipe_v1`; `prob-engine.js` incluído nas duas páginas; tooltip e regra `prob_realtime_forecast` atualizados (agora `depende_de: prob_etapa_calculada` — fonte única). Validado em Edge headless: tabela com 235 linhas + coluna no DOM real.
