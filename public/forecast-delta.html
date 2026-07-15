@@ -7,6 +7,8 @@
 <link rel="icon" href="/favicon.svg">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+<script src="/semantic-ref.js?v=2"></script>
+<script src="/semantic-help.js?v=1"></script>
 <style>
 :root{--bg:#0d1117;--card:#171f2e;--card2:#1e2a3c;--border:#293a50;--text:#e6edf3;--text2:#8b949e;--muted:#6e7681;--teal:#3ab8b7;--green:#3fb950;--red:#f85149;--orange:#d29922;--yellow:#e3b341;--blue:#58a6ff}
 html[data-theme="light"]{--bg:#f6f8fa;--card:#fff;--card2:#eaeef2;--border:#d0d7de;--text:#1f2328;--text2:#57606a;--teal:#0d7377;--green:#1a7f37;--yellow:#9a6700;--red:#cf222e;--blue:#0969da}
@@ -72,6 +74,12 @@ table.drill th.sortable:hover{color:var(--text)}
 .caveat{font-size:.72rem;color:var(--muted);margin-top:.6rem;border-top:1px solid var(--border);padding-top:.6rem}
 #info{display:none;font-size:.78rem;color:var(--text);background:var(--card2);border-radius:9px;padding:.9rem 1.1rem;margin-bottom:1.1rem;line-height:1.6}
 #info code{color:var(--teal)}
+/* classes do drawer gerado (semantic-help.js) | versão mínima local */
+.help-section{margin:0}
+.help-h3{font-size:.84rem;margin:0 0 .4rem;color:var(--text)}
+.help-p{font-size:.78rem;color:var(--text);margin:0 0 .35rem;line-height:1.6}
+.help-table{border-collapse:collapse;margin:.4rem 0 .6rem;font-size:.75rem}
+.help-table th,.help-table td{border:1px solid var(--border);padding:.25rem .55rem;text-align:left}
 </style>
 </head>
 <body>
@@ -84,19 +92,9 @@ table.drill th.sortable:hover{color:var(--text)}
   </div>
   <p class="sub">O que mudou no forecast de caixa entre duas datas | soma por etapa do funil</p>
 
+  <!-- Memória de cálculo GERADA do catálogo (Fase 3 do 2.0, ADR-006) -->
   <div id="info">
-    <strong>Como este waterfall é calculado</strong><br>
-    Cada barra é a variação líquida do <em>cash forecast</em> de uma etapa entre a Foto A e a Foto B.
-    Fonte única: mesmo motor do <code>/forecast-overall</code> (<code>forecast-overall-core.js</code>), recomputado
-    sobre cada foto com a data dela como referência temporal (<code>referenceDate</code>).
-    <br><strong>Medida:</strong> Receita Real ou Probabilizada (Real × probabilidade da etapa), no horizonte
-    <strong>TCV(12M) rolante</strong> a partir da data da foto, ou <strong>Pipeline total</strong> (todos os meses projetados).
-    <br><strong>Regra:</strong> a receita de cada deal é atribuída à etapa em que ele estava em cada foto — a soma das
-    variações por etapa é sempre igual à variação do total (Σ Δ = Total B − Total A).
-    <br><em>Caveat Fase 1:</em> probabilidades por etapa e faturamento manual usam o estado atual (não são snapshotados).
-    Em especial, <strong>Ganho/Implantação</strong> depende do faturamento manual (só entra quando o vencimento da 1ª fatura
-    é ≤ a data da foto); por isso, em datas <strong>anteriores ao início do faturamento</strong>, essa etapa aparece
-    subestimada — é fidelidade ponto-no-tempo, não erro.
+    <div data-semantic-help="comparacao_fotos_delta"></div>
   </div>
 
   <div class="card">

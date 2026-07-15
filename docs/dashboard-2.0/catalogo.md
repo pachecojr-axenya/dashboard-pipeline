@@ -270,6 +270,17 @@ Fuso canônico: America/Sao_Paulo.
 - **Código (1.0):** api/forecast-table.js:487 · api/forecast-table.js:135 (computeStageDays)
 - **Notas:** ⚠ 'hoje' via Date.now() no fuso do servidor — caso do ADR-011 (fuso) a convergir.
 
+### `comparacao_fotos_delta` | Delta do Forecast \| comparação entre duas fotos
+
+- **Tipo:** calculado · **Grain:** etapa × par de fotos · **Status:** em_revisao · **Vigente desde:** 2026-07-14 · **Dono:** revops
+- **Usa dados:** `dealstage`, `vencimento_primeira_fatura`, `faturamento_manual`
+- **Usa referência:** `etapas`
+- **Depende de:** `receita_mensal_deal`
+- **Fórmula:** CashForecast(etapa, foto) = Σ da série mensal (Real ou Probabilizada) dos deals abertos que estavam NAQUELA etapa na foto, no horizonte TCV(12M) rolante a partir da data da foto (toggle secundário: Pipeline total = todos os meses projetados). Δ(etapa) = CashForecast(etapa, B) − CashForecast(etapa, A). A receita de cada deal é atribuída à etapa em que ele estava em CADA foto — novos/avançados/regredidos/saídos ficam embutidos no Δ líquido. Invariante (teste automatizado): Σ Δ(etapa) == Total(B) − Total(A).
+- **Faltantes:** Caveat Fase 1 do Delta: probabilidades por etapa e faturamento manual usam o estado ATUAL (não são snapshotados). Ganho/Implantação só entra quando o vencimento da 1ª fatura <= data da foto — em datas anteriores ao início do faturamento a etapa aparece subestimada (fidelidade ponto-no-tempo, não erro). Foto deal-level mais antiga: 2026-05-12; resolução semanal.
+- **Ponto no tempo:** referenceDate = data de cada foto (engine determinística, Delta 1A). Data escolhida resolve para a foto mais próxima ANTERIOR ou igual, com rótulo honesto; B > A obrigatório; A e B na mesma foto → mensagem, não waterfall zerado.
+- **Código (1.0):** api/history.js:144 (action=compare) · public/forecast-delta.html · scripts/test-delta-invariant.js
+
 ### `capital_a_risco` | Capital a risco (Implantação = Ganho)
 
 - **Tipo:** calculado · **Grain:** período · **Status:** em_revisao · **Vigente desde:** 2026-07-14 · **Dono:** cro

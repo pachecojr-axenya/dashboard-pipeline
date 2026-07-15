@@ -4,6 +4,13 @@ Recurring every 20min (job `55d3b136`). Purpose: identify and close gaps so the 
 
 ---
 
+### Dashboard 2.0 | Fase 3 | TODOS os painéis de forecast com drawer gerado (2026-07-14)
+
+> Fechada a cobertura do grupo Forecast: **/forecast-delta** teve a memória de cálculo (`#info`) inteira substituída por seção gerada da nova regra **`comparacao_fotos_delta`** (catalogada de: texto do #info + `action=compare` + spec do Delta — fórmula CashForecast por etapa/foto, invariante Σ Δ = Total B − A, resolução de fotos, caveats de ponto-no-tempo). Constatação de rota: os 8 painéis de etapa (`/forecast-mql`, `/forecast-diagnostico`, …, `/forecast-bid`, `/forecast-ganho`) são TODOS o mesmo `forecast-stage.html` (vercel.json) — já cobertos pela entrada anterior.
+
+- `forecast-delta.html`: includes `semantic-ref.js?v=2` + `semantic-help.js?v=1`; CSS mínimo local das classes `.help-*` (a página não tinha); toggle do botão `i` intacto.
+- Validado em Edge headless: seção gerada no DOM real (invariante e caveat presentes), seletores de foto intactos; `test-delta-invariant` PASS; `npm run check` PASS.
+
 ### Dashboard 2.0 | Fase 3 (replicação) | Forecast Overall com seções geradas (2026-07-14)
 
 > Drawer gerado replicado no `/forecast-overall` (`forecast-stage.html`): as seções **Ajuste pelo AE** e **Deduplicação Fee×Corretagem** (estáticas, sem mutação por JS) viraram containers `data-semantic-help`. As seções sensíveis ao painel ativo (`help-sec-overall/diag/mql/ganho/rev`, mutadas por `getElementById` conforme a etapa) e as instruções de UI (botão ✎, olho) **ficam à mão de propósito** — são ajuda de interface, não proveniência de regra; entram no manifesto das Fases 5/6.

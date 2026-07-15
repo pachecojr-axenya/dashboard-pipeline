@@ -192,6 +192,20 @@
       "notas": "⚠ 'hoje' via Date.now() no fuso do servidor — caso do ADR-011 (fuso) a convergir."
     },
 
+    "comparacao_fotos_delta": {
+      "label": { "pt": "Delta do Forecast | comparação entre duas fotos", "en": "Forecast Delta | two-snapshot comparison" },
+      "ajuda": { "pt": "Cada barra do waterfall é a variação líquida do cash forecast de uma etapa entre a Foto A e a Foto B. Fonte única: o mesmo motor do /forecast-overall, recomputado sobre cada foto com a data dela como referência temporal.", "en": "Each waterfall bar is the net change in a stage's cash forecast between Snapshot A and Snapshot B. Single source: the same engine as /forecast-overall, recomputed over each snapshot with its date as the temporal reference." },
+      "tipo": "calculado", "grain": "etapa × par de fotos",
+      "usa_dados": ["dealstage", "vencimento_primeira_fatura", "faturamento_manual"],
+      "usa_referencia": ["etapas"],
+      "depende_de": ["receita_mensal_deal"],
+      "formula": "CashForecast(etapa, foto) = Σ da série mensal (Real ou Probabilizada) dos deals abertos que estavam NAQUELA etapa na foto, no horizonte TCV(12M) rolante a partir da data da foto (toggle secundário: Pipeline total = todos os meses projetados). Δ(etapa) = CashForecast(etapa, B) − CashForecast(etapa, A). A receita de cada deal é atribuída à etapa em que ele estava em CADA foto — novos/avançados/regredidos/saídos ficam embutidos no Δ líquido. Invariante (teste automatizado): Σ Δ(etapa) == Total(B) − Total(A).",
+      "ponto_no_tempo": "referenceDate = data de cada foto (engine determinística, Delta 1A). Data escolhida resolve para a foto mais próxima ANTERIOR ou igual, com rótulo honesto; B > A obrigatório; A e B na mesma foto → mensagem, não waterfall zerado.",
+      "faltantes": "Caveat Fase 1 do Delta: probabilidades por etapa e faturamento manual usam o estado ATUAL (não são snapshotados). Ganho/Implantação só entra quando o vencimento da 1ª fatura <= data da foto — em datas anteriores ao início do faturamento a etapa aparece subestimada (fidelidade ponto-no-tempo, não erro). Foto deal-level mais antiga: 2026-05-12; resolução semanal.",
+      "fonte_codigo": ["api/history.js:144 (action=compare)", "public/forecast-delta.html", "scripts/test-delta-invariant.js"],
+      "owner": "revops", "status": "em_revisao", "vigente_desde": "2026-07-14"
+    },
+
     "capital_a_risco": {
       "label": { "pt": "Capital a risco (Implantação = Ganho)", "en": "Capital at risk (Implementation = Won)" },
       "tipo": "calculado", "grain": "período",
