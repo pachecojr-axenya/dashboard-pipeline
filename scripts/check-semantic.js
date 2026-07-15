@@ -51,7 +51,7 @@ if (referencia && dados && regras) {
 
   // Chaves das réguas precisam ser nomes/aliases de etapas reais.
   const reguas = referencia.reguas_probabilidade || {};
-  ['forecast_flat', 'painel_default'].forEach(rk => {
+  ['forecast_flat'].forEach(rk => {
     const valores = (reguas[rk] || {}).valores || {};
     Object.keys(valores).forEach(nome => {
       if (!stageNames.has(nome)) errors.push(`referencia: régua ${rk} tem chave '${nome}' que não é nome/alias de etapa`);

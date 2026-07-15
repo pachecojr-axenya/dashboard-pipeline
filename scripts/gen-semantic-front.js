@@ -34,9 +34,9 @@ function build() {
     versao: referencia._meta.versao,
     pipelines: referencia.pipelines,
     etapas: referencia.etapas.map(e => ({ id: e.id, pipeline: e.pipeline, nome: e.nome, ordem: e.ordem, ativa_default: e.ativa_default, final: e.final })),
+    // Régua ÚNICA (D4/D4b, 2026-07-15): forecast_flat é premissa E fallback.
     reguas: {
-      forecast_flat: { tipo: 'forcada', valores: ordered(referencia.reguas_probabilidade.forecast_flat.valores, FLAT_ORDER) },
-      painel_default: { tipo: 'forcada', valores: referencia.reguas_probabilidade.painel_default.valores }
+      forecast_flat: { tipo: 'forcada', valores: ordered(referencia.reguas_probabilidade.forecast_flat.valores, FLAT_ORDER) }
     },
     valor_por_vida: referencia.valor_por_vida,
     // Camada semântica p/ o drawer gerado (Fase 3): regras completas + dicionário

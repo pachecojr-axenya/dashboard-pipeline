@@ -136,6 +136,7 @@ body.nav-docked #view-novo{margin-left:280px}
 <link rel="stylesheet" href="/premium.css?v=5">
 <script src="/premium.js?v=5"></script>
 <script src="/filter-bar.js?v=1"></script>
+<script src="/semantic-ref.js?v=2"></script>
 <script src="/settings-modal.js?v=1"></script>
 <script src="/shared-charts.js?v=1"></script>
 <script src="/revenue-engine.js?v=1"></script>
@@ -415,7 +416,7 @@ var _novoActiveStandby=(function(){try{return localStorage.getItem('novo_active_
 function _novoIsWon(d){ var s=d.stage; return s==='Ganho'||(_novoImplWon&&s==='Implantação'); }
 function _novoIsOpen(d){ return !_novoIsWon(d)&&d.stage!=='Perdido'&&(_novoActiveMeetings||d.stage!=='Reunião Agendada')&&(_novoActiveStandby||(d.stage!=='Standby'&&d.stage!=='Stand by')); }
 var NOVO_STAGE_ORDER=['Diagnóstico','Cotação','Proposta Enviada','Consultoria','Negociação','Standby','Implantação'];
-var NOVO_STAGE_PROB_DEFAULT={'Cotação':0.33,'Proposta Enviada':0.285,'Consultoria':0.611,'Negociação':0.42,'Implantação':1.0,'Ganho':1.0,'Standby':0.12,'Stand by':0.12,'Diagnóstico':0.06}; // Implantação=1.0 | decisão do dono 2026-07-14 (semantic/referencia.json)
+var NOVO_STAGE_PROB_DEFAULT=window.SEMANTIC_REF.reguas.forecast_flat.valores; // RÉGUA ÚNICA (D4/D4b, 2026-07-15) | fonte: semantic-ref.js
 var NOVO_STAGE_PROB=(function(){try{var raw=localStorage.getItem('novo_stage_prob');if(raw){var parsed=JSON.parse(raw);var merged={};Object.keys(NOVO_STAGE_PROB_DEFAULT).forEach(function(k){merged[k]=NOVO_STAGE_PROB_DEFAULT[k];});Object.keys(parsed).forEach(function(k){merged[k]=parsed[k];});return merged;}}catch(e){}var copy={};Object.keys(NOVO_STAGE_PROB_DEFAULT).forEach(function(k){copy[k]=NOVO_STAGE_PROB_DEFAULT[k];});return copy;})();
 // ── TCV pela régua real (fonte única revenue-engine.js) | idêntico ao C04/C08 do CRO ──
 // Diagnóstico: vidas × R$/vida × 12. Demais: soma dos 12 primeiros meses da régua.

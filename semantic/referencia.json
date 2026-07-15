@@ -6,7 +6,7 @@
     "atualizado_em": "2026-07-14",
     "aviso": "Fonte única. Editar aqui e rodar `npm run check` (check-semantic valida consistência e drift contra o código). Fase 2 em andamento: consumidores listados em consumidores_2_0 leem este arquivo via lib/semantic.js.",
     "semantica_ativa_default": "ativa_default = default DESEJADO da futura config de etapas ativas (ADR-007), não necessariamente o comportamento do 1.0. Nota 2026-07-15: a divergência do Stand by se resolveu sozinha — a etapa foi EXTINTA do portal (zero deals), então a intenção do dono (inativa) e a realidade coincidem; o id segue no filtro do 1.0 inofensivamente. O filtro atual está derivado em regras.filtro_deals_ativos.",
-    "direcao_reguas_unificacao": "DECISÃO DO DONO (2026-07-15, D4 do design do toggle): régua forçada ÚNICA — 'se precisarmos de fallback, usamos a probabilidade hardcoded, que é a MESMA'. painel_default será aposentada; a flat validada vira premissa E fallback. Implementação na Fase 4b, BLOQUEADA por uma pendência: D4b — valor único de Implantação (80% do Forecast × 100% da decisão de 14/07 × exceção declarada). Até lá, as duas réguas seguem documentadas aqui como realidade vigente do 1.0.",
+    "direcao_reguas_unificacao": "IMPLEMENTADA (2026-07-15): D4 + D4b decididas pelo dono — régua forçada ÚNICA = forecast_flat (valores confirmados na revisão), com Implantação=0.8. painel_default aposentada; todos os consumidores religados. Ver reguas_probabilidade.painel_default_APOSENTADA para o histórico.",
     "consumidores_2_0": ["api/forecast-table.js (via lib/semantic.js)", "api/funnel-stages.js (via lib/semantic.js)", "lib/snapshot-format.js (via lib/semantic.js)", "lib/hubspot.js (via lib/semantic.js — pipes, mapas, tickets Cotação)", "public/{forecast,forecast-stage,dashboard,ae}.html (régua flat via public/semantic-ref.js gerado)"]
   },
   "hubspot": {
@@ -222,8 +222,8 @@
   "reguas_probabilidade": {
     "forecast_flat": {
       "descricao": {
-        "pt": "Régua flat do Forecast | premissas validadas exibidas na ajuda da aba /forecast",
-        "en": "Forecast flat ruler | validated assumptions shown in /forecast help"
+        "pt": "RÉGUA ÚNICA (D4/D4b, decisão do dono 2026-07-15) | premissa validada do Forecast E fallback do C07 nos painéis — valores confirmados pelo dono na revisão",
+        "en": "SINGLE RULER (D4/D4b, owner decision 2026-07-15) | validated Forecast premise AND C07 fallback in panels — values confirmed by owner in review"
       },
       "tipo": "forcada",
       "valores": {
@@ -235,43 +235,22 @@
         "Negociação": 0.493,
         "Implantação": 0.8,
         "Ganho": 1.0,
-        "Standby": 0.12
-      },
-      "usada_em": [
-        "public/forecast.html (STAGE_PROB_DEFAULT ← SEMANTIC_REF)",
-        "public/forecast-stage.html (STAGE_PROB_DEFAULT ← SEMANTIC_REF)",
-        "public/dashboard.html (NOVO_FC_STAGE_PROB_DEFAULT ← SEMANTIC_REF)",
-        "public/ae.html (NOVO_FC_STAGE_PROB_DEFAULT ← SEMANTIC_REF)"
-      ],
-      "ordem_exibicao_legada": "O JS gerado (semantic-ref.js) emite as chaves na ordem histórica dos literais (RA, Cotação, ..., Diagnóstico por último) — spreads e tabelas de ajuda iteram as chaves; reordenar é mudança visual consciente, não colateral."
-    },
-    "painel_default": {
-      "descricao": {
-        "pt": "Régua default dos painéis CRO/Board/AE | fallback quando o C07 do funil não tem amostra",
-        "en": "CRO/Board/AE panels default ruler | fallback when funnel C07 lacks sample"
-      },
-      "tipo": "forcada",
-      "valores": {
-        "Diagnóstico": 0.06,
-        "Cotação": 0.33,
-        "Proposta Enviada": 0.285,
-        "Consultoria": 0.611,
-        "Negociação": 0.42,
-        "Implantação": 1.0,
-        "Ganho": 1.0,
         "Standby": 0.12,
         "Stand by": 0.12
       },
-      "decisao_implantacao": "DECISÃO DO DONO (2026-07-14): Implantação pondera a 100% (1.0) — coerente com a régua geral do CRO ('implantação já é ganho', README §3; o toggle Implantação=Ganho existe só para enxergar capital a risco). Resolve a divergência 0.581×1.0 achada nas Fases 1-2: prob-engine.js e dashboard.html já usavam 1.0; ae.html, board.html e settings-modal.js foram alinhados de 0.581 → 1.0 nesta data (mudança consciente de números nos ponderados desses painéis). Os STAGE_PROB_LEGACY de forecast/forecast-stage mantêm 0.581 de propósito: são detectores de override antigo no localStorage, não régua.",
+      "nota_stand_by": "'Stand by' (com espaço) é alias da etapa extinta de Vendas — mantido para replay de fotos históricas que ainda carregam deals nela.",
       "usada_em": [
-        "public/settings-modal.js",
-        "public/board.html (NOVO_STAGE_PROB_DEFAULT)",
-        "public/ae.html (NOVO_STAGE_PROB_DEFAULT)",
-        "public/dashboard.html",
-        "public/prob-engine.js (DEFAULT)"
+        "public/forecast.html (STAGE_PROB_DEFAULT ← SEMANTIC_REF)",
+        "public/forecast-stage.html (STAGE_PROB_DEFAULT ← SEMANTIC_REF)",
+        "public/dashboard.html (NOVO_FC_STAGE_PROB_DEFAULT ← SEMANTIC_REF; fallback inline espelhado)",
+        "public/ae.html (NOVO_FC_STAGE_PROB_DEFAULT e NOVO_STAGE_PROB_DEFAULT ← SEMANTIC_REF)",
+        "public/board.html (NOVO_STAGE_PROB_DEFAULT ← SEMANTIC_REF)",
+        "public/prob-engine.js (DEFAULT ← SEMANTIC_REF, fallback espelhado)",
+        "public/settings-modal.js (SP_DEFAULT ← SEMANTIC_REF, fallback espelhado — bdr/48h não carregam semantic-ref)"
       ],
-      "divergencia_conhecida": "RESOLVIDA em 2026-07-14 — ver decisao_implantacao acima. Histórico: prob-engine.js/dashboard.html usavam Implantação=1.0 e ae.html/board.html/settings-modal 0.581 (achado das Fases 1-2); o dono decidiu por 1.0 e todos os consumidores foram alinhados."
+      "ordem_exibicao_legada": "O JS gerado (semantic-ref.js) emite as chaves na ordem histórica dos literais (RA, Cotação, ..., Diagnóstico por último) — spreads e tabelas de ajuda iteram as chaves; reordenar é mudança visual consciente, não colateral."
     },
+    "painel_default_APOSENTADA": "Removida em 2026-07-15 por decisão do dono (D4/D4b): 'as duas probabilidades fixas e o fallback têm que ser idênticas'. Todos os antigos consumidores (prob-engine DEFAULT, board/ae NOVO_STAGE_PROB_DEFAULT, fallback do dashboard, settings-modal SP_DEFAULT) passam a usar a régua única forecast_flat — incluindo Implantação=0.8 (D4b: 'para implantação pode usar o valor que está em Forecast Flat'), que SUPERSEDE a decisão de 14/07 (Implantação=1.0 nos painéis). Valores antigos para história: Cotação 0.33, Proposta 0.285, Consultoria 0.611, Negociação 0.42, Implantação 0.581→1.0. Os STAGE_PROB_LEGACY de forecast/forecast-stage mantêm valores antigos de propósito (detectores de override legado, não régua).",
     "calculada_funil": {
       "descricao": {
         "pt": "Probabilidade calculada em tempo real pelo funil (C07) | ganhos ÷ entraram na etapa, por pipeline",

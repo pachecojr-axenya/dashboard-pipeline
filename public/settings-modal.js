@@ -8,10 +8,12 @@
 // _novoActiveStandby, novoToggleImplWon/ActiveMeetings/ActiveStandby, novoRender e
 // setContentBlur. NOVO_STAGE_PROB / NOVO_META_MTD têm fallback aqui se ausentes.
 (function(){
-  var SP_DEFAULT = {
+  // RÉGUA ÚNICA (D4/D4b, 2026-07-15): mesma régua do Forecast como default/fallback.
+  // Literal = espelho para páginas sem semantic-ref.js (bdr.html, 48h.html).
+  var SP_DEFAULT = (window.SEMANTIC_REF && window.SEMANTIC_REF.reguas && window.SEMANTIC_REF.reguas.forecast_flat.valores) || {
     'Reunião Agendada':0.06,'Diagnóstico':0.06,
-    'Cotação':0.33,'Proposta Enviada':0.285,'Consultoria':0.611,
-    'Negociação':0.42,'Implantação':1.0,'Ganho':1.0, // Implantação=1.0 | decisão do dono 2026-07-14 (semantic/referencia.json)
+    'Cotação':0.185790008,'Proposta Enviada':0.285,'Consultoria':0.284954,
+    'Negociação':0.493,'Implantação':0.8,'Ganho':1.0,
     'Standby':0.12,'Stand by':0.12,
   };
 

@@ -45,6 +45,7 @@ Object.entries(referencia.pipelines).forEach(([key, pipe]) => {
 L.push('### Réguas de probabilidade');
 L.push('');
 Object.entries(referencia.reguas_probabilidade).forEach(([key, r]) => {
+  if (typeof r === 'string') { L.push(`**${key}** (nota histórica) | ${esc(r)}`); L.push(''); return; }
   L.push(`**${key}** | ${esc(r.descricao.pt)} | tipo: ${r.tipo}`);
   L.push('');
   if (r.valores) {
@@ -59,14 +60,24 @@ Object.entries(referencia.reguas_probabilidade).forEach(([key, r]) => {
   L.push('');
 });
 
-L.push('### Valor por vida (VPV) | Porte | Times');
+L.push('### Valor por vida (VPV) | Porte');
 L.push('');
 L.push('| Faixa de vidas | R$/vida/mês |');
 L.push('|---|---|');
 referencia.valor_por_vida.faixas.forEach(f => L.push(`| ${f.vidas_max == null ? 'acima' : 'até ' + f.vidas_max} | ${f.valor} |`));
 L.push('');
-L.push(`Corte PME: ${referencia.porte.corte_pme_vidas} vidas. AEs: ${referencia.times.aes.length} | BDRs: ${referencia.times.bdrs.length} (ids no JSON).`);
-L.push(`Fuso canônico: ${referencia.fuso.canonico}.`);
+L.push(`Corte PME: ${referencia.porte.corte_pme_vidas} vidas. Fuso canônico: ${referencia.fuso.canonico}.`);
+L.push('');
+
+L.push('### Times | Executivos (AEs) e BDRs');
+L.push('');
+L.push('| AE | owner_id |');
+L.push('|---|---|');
+referencia.times.aes.forEach(p => L.push(`| ${esc(p.nome)} | \`${p.owner_id}\` |`));
+L.push('');
+L.push('| BDR | owner_id |');
+L.push('|---|---|');
+referencia.times.bdrs.forEach(p => L.push(`| ${esc(p.nome)} | \`${p.owner_id}\` |`));
 L.push('');
 
 // ── Dados ─────────────────────────────────────────────────────────────────────
@@ -86,6 +97,7 @@ L.push('');
 Object.entries(regras.regras).forEach(([k, r]) => {
   L.push(`### \`${k}\` | ${esc(r.label.pt)}`);
   L.push('');
+  if (r.ajuda && r.ajuda.pt) L.push(`> ${esc(r.ajuda.pt)}`), L.push('');
   L.push(`- **Tipo:** ${r.tipo} · **Grain:** ${esc(r.grain || '—')} · **Status:** ${r.status} · **Vigente desde:** ${r.vigente_desde} · **Dono:** ${r.owner}`);
   if (r.usa_dados) L.push(`- **Usa dados:** ${r.usa_dados.map(d => '`' + d + '`').join(', ')}`);
   if (r.usa_referencia) L.push(`- **Usa referência:** ${r.usa_referencia.map(d => '`' + d + '`').join(', ')}`);
@@ -93,6 +105,13 @@ Object.entries(regras.regras).forEach(([k, r]) => {
   if (r.precedencia) L.push(`- **Precedência:** ${esc(r.precedencia)}`);
   if (r.filtro) L.push(`- **Filtro:** ${esc(r.filtro)}`);
   if (r.formula) L.push(`- **Fórmula:** ${esc(r.formula)}`);
+  if (r.tabela) {
+    L.push('');
+    L.push('| ' + r.tabela.colunas.map(esc).join(' | ') + ' |');
+    L.push('|' + r.tabela.colunas.map(() => '---').join('|') + '|');
+    r.tabela.linhas.forEach(l => L.push('| ' + l.map(esc).join(' | ') + ' |'));
+    L.push('');
+  }
   if (r.faltantes) L.push(`- **Faltantes:** ${esc(r.faltantes)}`);
   if (r.ponto_no_tempo) L.push(`- **Ponto no tempo:** ${esc(r.ponto_no_tempo)}`);
   L.push(`- **Código (1.0):** ${r.fonte_codigo.map(esc).join(' · ')}`);

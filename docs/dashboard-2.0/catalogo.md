@@ -43,7 +43,7 @@ Portal HubSpot: `44715285`
 
 ### Réguas de probabilidade
 
-**forecast_flat** | Régua flat do Forecast \| premissas validadas exibidas na ajuda da aba /forecast | tipo: forcada
+**forecast_flat** | RÉGUA ÚNICA (D4/D4b, decisão do dono 2026-07-15) \| premissa validada do Forecast E fallback do C07 nos painéis — valores confirmados pelo dono na revisão | tipo: forcada
 
 | Etapa | Probabilidade |
 |---|---|
@@ -56,31 +56,17 @@ Portal HubSpot: `44715285`
 | Implantação | 80,0% |
 | Ganho | 100,0% |
 | Standby | 12,0% |
-
-Usada em: public/forecast.html (STAGE_PROB_DEFAULT ← SEMANTIC_REF) · public/forecast-stage.html (STAGE_PROB_DEFAULT ← SEMANTIC_REF) · public/dashboard.html (NOVO_FC_STAGE_PROB_DEFAULT ← SEMANTIC_REF) · public/ae.html (NOVO_FC_STAGE_PROB_DEFAULT ← SEMANTIC_REF)
-
-**painel_default** | Régua default dos painéis CRO/Board/AE \| fallback quando o C07 do funil não tem amostra | tipo: forcada
-
-| Etapa | Probabilidade |
-|---|---|
-| Diagnóstico | 6,0% |
-| Cotação | 33,0% |
-| Proposta Enviada | 28,5% |
-| Consultoria | 61,1% |
-| Negociação | 42,0% |
-| Implantação | 100,0% |
-| Ganho | 100,0% |
-| Standby | 12,0% |
 | Stand by | 12,0% |
 
-Usada em: public/settings-modal.js · public/board.html (NOVO_STAGE_PROB_DEFAULT) · public/ae.html (NOVO_STAGE_PROB_DEFAULT) · public/dashboard.html · public/prob-engine.js (DEFAULT)
-> 🔴 **Divergência conhecida:** RESOLVIDA em 2026-07-14 — ver decisao_implantacao acima. Histórico: prob-engine.js/dashboard.html usavam Implantação=1.0 e ae.html/board.html/settings-modal 0.581 (achado das Fases 1-2); o dono decidiu por 1.0 e todos os consumidores foram alinhados.
+Usada em: public/forecast.html (STAGE_PROB_DEFAULT ← SEMANTIC_REF) · public/forecast-stage.html (STAGE_PROB_DEFAULT ← SEMANTIC_REF) · public/dashboard.html (NOVO_FC_STAGE_PROB_DEFAULT ← SEMANTIC_REF; fallback inline espelhado) · public/ae.html (NOVO_FC_STAGE_PROB_DEFAULT e NOVO_STAGE_PROB_DEFAULT ← SEMANTIC_REF) · public/board.html (NOVO_STAGE_PROB_DEFAULT ← SEMANTIC_REF) · public/prob-engine.js (DEFAULT ← SEMANTIC_REF, fallback espelhado) · public/settings-modal.js (SP_DEFAULT ← SEMANTIC_REF, fallback espelhado — bdr/48h não carregam semantic-ref)
+
+**painel_default_APOSENTADA** (nota histórica) | Removida em 2026-07-15 por decisão do dono (D4/D4b): 'as duas probabilidades fixas e o fallback têm que ser idênticas'. Todos os antigos consumidores (prob-engine DEFAULT, board/ae NOVO_STAGE_PROB_DEFAULT, fallback do dashboard, settings-modal SP_DEFAULT) passam a usar a régua única forecast_flat — incluindo Implantação=0.8 (D4b: 'para implantação pode usar o valor que está em Forecast Flat'), que SUPERSEDE a decisão de 14/07 (Implantação=1.0 nos painéis). Valores antigos para história: Cotação 0.33, Proposta 0.285, Consultoria 0.611, Negociação 0.42, Implantação 0.581→1.0. Os STAGE_PROB_LEGACY de forecast/forecast-stage mantêm valores antigos de propósito (detectores de override legado, não régua).
 
 **calculada_funil** | Probabilidade calculada em tempo real pelo funil (C07) \| ganhos ÷ entraram na etapa, por pipeline | tipo: calculada
 
 Calculada pela regra `prob_etapa_calculada` (amostra mínima 20).
 
-### Valor por vida (VPV) | Porte | Times
+### Valor por vida (VPV) | Porte
 
 | Faixa de vidas | R$/vida/mês |
 |---|---|
@@ -88,8 +74,34 @@ Calculada pela regra `prob_etapa_calculada` (amostra mínima 20).
 | até 4999 | 24 |
 | acima | 12 |
 
-Corte PME: 200 vidas. AEs: 6 | BDRs: 13 (ids no JSON).
-Fuso canônico: America/Sao_Paulo.
+Corte PME: 200 vidas. Fuso canônico: America/Sao_Paulo.
+
+### Times | Executivos (AEs) e BDRs
+
+| AE | owner_id |
+|---|---|
+| André Pontes | `83684286` |
+| Guilherme Gabiatti | `83026278` |
+| Rafael Leite | `83126793` |
+| Fausto Haderspeck | `83375300` |
+| Juliana Dalberto | `83126792` |
+| Ágatta Marinho | `720522117` |
+
+| BDR | owner_id |
+|---|---|
+| Anderson Souza | `85310335` |
+| Cintia Rodrigues | `87213208` |
+| Gabriele Almeida | `83025540` |
+| Priscilla Feliciello | `83375302` |
+| Leticia Romão | `89781254` |
+| Allan Valença | `90688054` |
+| Bruna Reis | `91925085` |
+| Emanuelle Braga | `90688051` |
+| Felipe Andrade | `90540673` |
+| Giovana Rocha | `90141426` |
+| Marcelli Netto | `90540672` |
+| Thauan Pontes | `90540671` |
+| Yokyko Muramoto | `90540670` |
 
 ## Dados (`semantic/dados.json`)
 
@@ -147,10 +159,23 @@ Fuso canônico: America/Sao_Paulo.
 
 ### `receita_regua_mensal` | Régua de receita mensal (mês n do contrato)
 
+> Define quanto cada deal rende por mês a partir da primeira fatura (pf). Fee por vida: a pf JÁ é a receita da Axenya. Corretagem: a pf é o prêmio pago à operadora — a receita é o percentual de comissão.
+
 - **Tipo:** calculado · **Grain:** deal × mês do contrato · **Status:** em_revisao · **Vigente desde:** 2026-07-14 · **Dono:** revops
 - **Usa dados:** `primeira_fatura`, `modelo_remuneracao`, `vidas`, `possui_agenciamento`
 - **Usa referência:** `porte`
 - **Fórmula:** Fee por vida: total = pf todo mês. Corretagem +agenc: vidas<200 → meses 1-3 = pf, mês 4+ = pf×0,02 \| vidas>=200 → mês 1 = pf×0,95, mês 2+ = pf×0,05. Corretagem -agenc: vidas<200 → pf×0,02 \| vidas>=200 → pf×0,05, todo mês. Decompõe total = recorrente + pontual (pontual = max(0, total - recorrente)).
+
+| Modelo | Vidas | Mês | Receita mensal |
+|---|---|---|---|
+| Fee por vida | todas | todos | 100% da pf |
+| Corretagem −agenc | < 200 | todos | 2% da pf |
+| Corretagem −agenc | >= 200 | todos | 5% da pf |
+| Corretagem +agenc | < 200 | 1º ao 3º | 100% da pf |
+| Corretagem +agenc | < 200 | 4º em diante | 2% da pf |
+| Corretagem +agenc | >= 200 | 1º | 95% da pf |
+| Corretagem +agenc | >= 200 | 2º em diante | 5% da pf |
+
 - **Faltantes:** Sem pf ou sem modelo → null (deal fora da régua; contador 'X de Y completos')
 - **Código (1.0):** public/revenue-engine.js:37 (calcReceitaMes) · public/revenue-engine.js:23 (taxaRecorrente)
 
@@ -171,6 +196,8 @@ Fuso canônico: America/Sao_Paulo.
 
 ### `receita_mensal_deal` | Receita por etapa \| quando e quanto (séries Real e Probabilizada)
 
+> Receita Real = o que se espera faturar de fato (manual quando já fatura, régua estimada nas demais etapas). Receita Probabilizada = Real × probabilidade da etapa. Todas as telas de Forecast consomem estas duas séries como fonte única.
+
 - **Tipo:** hibrido · **Grain:** deal × mês calendário · **Status:** em_revisao · **Vigente desde:** 2026-07-14 · **Dono:** revops
 - **Usa dados:** `is_poc`, `faturamento_manual`, `vidas`, `colaboradores`, `createdate`, `modelo_remuneracao`, `vigencia`, `data_prevista_para_receita`, `primeira_fatura`, `possui_agenciamento`, `vencimento_primeira_fatura`
 - **Usa referência:** `valor_por_vida`, `etapas`
@@ -181,6 +208,8 @@ Fuso canônico: America/Sao_Paulo.
 - **Notas:** É a Regra primária nº 3 do STATUS_LOG em forma de catálogo: toda receita de qualquer painel vem desta série (Real e Probabilizada).
 
 ### `cohorts_bdr` | Originação BDR (projeção de topo de funil)
+
+> Projeção agregada do que os BDRs vão originar, somada ao forecast dos deals. Entra nos totais apenas quando não há filtro de etapa ou quando Reunião Agendada está entre as etapas filtradas.
 
 - **Tipo:** hibrido · **Grain:** mês de originação · **Status:** em_revisao · **Vigente desde:** 2026-07-14 · **Dono:** cro
 - **Usa dados:** `premissas_bdr_originacao`
@@ -200,11 +229,11 @@ Fuso canônico: America/Sao_Paulo.
 
 - **Tipo:** calculado · **Grain:** deal · **Status:** em_revisao · **Vigente desde:** 2026-07-14 · **Dono:** revops
 - **Usa dados:** `dealstage`, `pipeline`, `probabilidade_ae`, `prob_override_etapa`
-- **Usa referência:** `reguas_probabilidade.painel_default`, `reguas_probabilidade.calculada_funil`
-- **Precedência:** prob de etapa = override manual (por pipeline) > calculada do funil (C07, por pipeline) > régua painel_default
+- **Usa referência:** `reguas_probabilidade.forecast_flat`, `reguas_probabilidade.calculada_funil`
+- **Precedência:** prob de etapa = override manual (por pipeline) > calculada do funil (C07, por pipeline) > RÉGUA ÚNICA forecast_flat (D4/D4b, 2026-07-15 — antes era a painel_default, aposentada)
 - **Fórmula:** final = prob_etapa, ajustada pela prob do AE só quando diverge >= 30pp: AE <= etapa-0,3 → etapa×0,9 \| AE >= etapa+0,3 → etapa×1,1 \| senão = etapa.
 - **Código (1.0):** public/prob-engine.js:62 (stageProbFor) · public/prob-engine.js:77 (calcProbInfo)
-- **Notas:** ADR-008 (toggle global forçada × calculada) muda a precedência para uma escolha explícita do usuário na Fase 4. Divergência conhecida do default de Implantação registrada em referencia.reguas_probabilidade.painel_default.
+- **Notas:** ADR-008 (toggle global forçada × calculada) muda a precedência para uma escolha explícita do usuário na Fase 4. Histórico da divergência de Implantação: referencia.reguas_probabilidade.painel_default_APOSENTADA.
 
 ### `filtro_deals_ativos` | Filtro de deals ativos (payload principal)
 
@@ -217,6 +246,8 @@ Fuso canônico: America/Sao_Paulo.
 
 ### `dedup_fee_corretagem` | Deals duplicados (Fee × Corretagem)
 
+> Quando o mesmo cliente tem dois negócios simultâneos (um Fee por vida e um Corretagem), só UM conta no forecast, para não dobrar a receita.
+
 - **Tipo:** calculado · **Grain:** cliente · **Status:** em_revisao · **Vigente desde:** 2026-07-14 · **Dono:** revops
 - **Usa dados:** `dealname`, `modelo_remuneracao`, `vigencia`
 - **Fórmula:** Critério de escolha do deal que fica: 1º etapa mais avançada; empate → menor TCV de 12 meses; novo empate → vigência mais distante (cenário conservador). O deal 'perdedor' continua aparecendo na lista, mas com receita ZERADA (não soma no total).
@@ -225,11 +256,21 @@ Fuso canônico: America/Sao_Paulo.
 
 ### `prob_final_forecast` | Probabilidade final no Forecast (régua flat + ajuste do AE)
 
+> A coluna P. Etapa segue a régua flat validada do Forecast; a probabilidade informada pelo AE só ajusta ±10% quando diverge muito da etapa.
+
 - **Tipo:** calculado · **Grain:** deal · **Status:** em_revisao · **Vigente desde:** 2026-07-14 · **Dono:** revops
 - **Usa dados:** `dealstage`, `probabilidade_ae`, `prob_override_etapa`
 - **Usa referência:** `reguas_probabilidade.forecast_flat`
 - **Precedência:** override manual em Configurações > régua flat do Forecast. Overrides legados iguais aos defaults antigos são limpos automaticamente (fix 2026-07-14).
 - **Fórmula:** P.Etapa = régua flat. Ajuste pelo AE: sem prob. do AE → P.Etapa; dentro de ±30 pp → P.Etapa; AE >= P.Etapa+30pp → P.Etapa × 1,10; AE <= P.Etapa−30pp → P.Etapa × 0,90.
+
+| Situação | Probabilidade final |
+|---|---|
+| AE não informou | P.Etapa (sem ajuste) |
+| Prob. AE dentro de ±30 pp da P.Etapa | P.Etapa (sem ajuste) |
+| Prob. AE >= P.Etapa + 30 pp | P.Etapa × 1,10 (+10%) |
+| Prob. AE <= P.Etapa − 30 pp | P.Etapa × 0,90 (−10%) |
+
 - **Código (1.0):** public/forecast.html (P. Etapa \| fix 2026-07-14) · public/forecast-stage.html
 
 ### `arr_estimado_fallback` | ARR com fallback
@@ -271,6 +312,8 @@ Fuso canônico: America/Sao_Paulo.
 - **Notas:** ⚠ 'hoje' via Date.now() no fuso do servidor — caso do ADR-011 (fuso) a convergir.
 
 ### `comparacao_fotos_delta` | Delta do Forecast \| comparação entre duas fotos
+
+> Cada barra do waterfall é a variação líquida do cash forecast de uma etapa entre a Foto A e a Foto B. Fonte única: o mesmo motor do /forecast-overall, recomputado sobre cada foto com a data dela como referência temporal.
 
 - **Tipo:** calculado · **Grain:** etapa × par de fotos · **Status:** em_revisao · **Vigente desde:** 2026-07-14 · **Dono:** revops
 - **Usa dados:** `dealstage`, `vencimento_primeira_fatura`, `faturamento_manual`

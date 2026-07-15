@@ -4,6 +4,15 @@ Recurring every 20min (job `55d3b136`). Purpose: identify and close gaps so the 
 
 ---
 
+### Dashboard 2.0 | RÉGUA ÚNICA de probabilidade (D4/D4b do dono) implementada (2026-07-15)
+
+> Decisões da revisão do dono: (1) valores da flat confirmados; (2) **painel_default REMOVIDA** — "as probabilidades fixas e o fallback têm que ser idênticos"; (3) **Implantação usa o valor da flat (80%)**, SUPERSEDENDO o 1.0 de 14/07. ⚠ MUDANÇA CONSCIENTE DE NÚMEROS: fallbacks de CRO/Board/AE/Configurações onde o C07 não tem amostra passam da régua antiga (Cotação 33%, Consultoria 61,1%, Negociação 42%, Implantação 100%) para a flat validada (18,6% | 28,5% | 49,3% | 80%).
+
+- **Catálogo:** `forecast_flat` agora é A régua única (chave 'Stand by' adicionada como alias p/ replay de fotos históricas); `painel_default` virou nota histórica (`painel_default_APOSENTADA`); regra `prob_final_deal` atualizada.
+- **Código religado:** `prob-engine.js` (DEFAULT ← SEMANTIC_REF, fallback espelhado), `settings-modal.js` (SP_DEFAULT idem — bdr/48h usam o espelho), `ae.html`/`board.html` (NOVO_STAGE_PROB_DEFAULT ← SEMANTIC_REF; board ganhou include do semantic-ref), `dashboard.html` (fallback inline espelhado). `gen-semantic-front` só embute a régua única.
+- **`semantic-view.js` corrigido:** não renderizava `tabela`, `ajuda` e as listas de times — por isso o dono não achou remuneração/AEs/BDRs no catalogo.md. Agora renderiza tudo.
+- Validado: `npm run check` PASS; Edge headless nas 3 páginas alteradas (JS rodando); catálogo regenerado com remuneração e times visíveis.
+
 ### Revisão dos títulos 🟡 | sincronização com os vereditos da AUDITORIA (2026-07-14)
 
 > Pedido do dono: revisar os gráficos com 🟡 e garantir confiabilidade sinalizada. Vários títulos ainda diziam 🟡 apesar de a AUDITORIA já ter veredito — título dessincronizado = sinalização mentirosa.

@@ -20,10 +20,12 @@
  * verbatim da do CRO — os números batem.
  */
 (function (root) {
-  // Default fixo por etapa (idêntico a NOVO_STAGE_PROB_DEFAULT do CRO).
-  var DEFAULT = {
-    'Cotação': 0.33, 'Proposta Enviada': 0.285, 'Consultoria': 0.611,
-    'Negociação': 0.42, 'Implantação': 1.0, 'Ganho': 1.0,
+  // RÉGUA ÚNICA (D4/D4b, decisão do dono 2026-07-15): o fallback do C07 é a MESMA
+  // régua validada do Forecast (semantic/referencia.json → forecast_flat, via
+  // semantic-ref.js). O literal abaixo é espelho para páginas sem semantic-ref.
+  var DEFAULT = (root.SEMANTIC_REF && root.SEMANTIC_REF.reguas && root.SEMANTIC_REF.reguas.forecast_flat.valores) || {
+    'Reunião Agendada': 0.06, 'Cotação': 0.185790008, 'Proposta Enviada': 0.285,
+    'Consultoria': 0.284954, 'Negociação': 0.493, 'Implantação': 0.8, 'Ganho': 1.0,
     'Standby': 0.12, 'Stand by': 0.12, 'Diagnóstico': 0.06
   };
   // Amostra mínima do funil para uma etapa gerar prob. derivada (senão cai no default).

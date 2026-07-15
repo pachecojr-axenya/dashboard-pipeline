@@ -92,12 +92,12 @@
       "label": { "pt": "Probabilidade final do deal (com ajuste do AE)", "en": "Final deal probability (with AE adjustment)" },
       "tipo": "calculado", "grain": "deal",
       "usa_dados": ["dealstage", "pipeline", "probabilidade_ae", "prob_override_etapa"],
-      "usa_referencia": ["reguas_probabilidade.painel_default", "reguas_probabilidade.calculada_funil"],
-      "precedencia": "prob de etapa = override manual (por pipeline) > calculada do funil (C07, por pipeline) > régua painel_default",
+      "usa_referencia": ["reguas_probabilidade.forecast_flat", "reguas_probabilidade.calculada_funil"],
+      "precedencia": "prob de etapa = override manual (por pipeline) > calculada do funil (C07, por pipeline) > RÉGUA ÚNICA forecast_flat (D4/D4b, 2026-07-15 — antes era a painel_default, aposentada)",
       "formula": "final = prob_etapa, ajustada pela prob do AE só quando diverge >= 30pp: AE <= etapa-0,3 → etapa×0,9 | AE >= etapa+0,3 → etapa×1,1 | senão = etapa.",
       "fonte_codigo": ["public/prob-engine.js:62 (stageProbFor)", "public/prob-engine.js:77 (calcProbInfo)"],
       "owner": "revops", "status": "em_revisao", "vigente_desde": "2026-07-14",
-      "notas": "ADR-008 (toggle global forçada × calculada) muda a precedência para uma escolha explícita do usuário na Fase 4. Divergência conhecida do default de Implantação registrada em referencia.reguas_probabilidade.painel_default."
+      "notas": "ADR-008 (toggle global forçada × calculada) muda a precedência para uma escolha explícita do usuário na Fase 4. Histórico da divergência de Implantação: referencia.reguas_probabilidade.painel_default_APOSENTADA."
     },
 
     "filtro_deals_ativos": {
