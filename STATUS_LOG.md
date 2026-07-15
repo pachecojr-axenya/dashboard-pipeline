@@ -4,6 +4,12 @@ Recurring every 20min (job `55d3b136`). Purpose: identify and close gaps so the 
 
 ---
 
+### Dashboard 2.0 | Drawer gerado v2 (redesign) + metodologia de remuneração reconciliada (2026-07-15)
+
+> **semantic-help v2** (feedback do dono: "frankenstein"): narrativa de negócio primeiro (explicação → como calculamos → tabela → regras práticas nomeadas), metadados técnicos recolhidos em `<details>`, campos exibidos pelo **label oficial do portal**, CSS próprio injetado (`sh-*`) — consistente nos 3 painéis que geram ajuda. Cache-busters `semantic-ref?v=3` (label_portal embutido) + `semantic-help?v=2` nas 6 páginas. Validado em Node + Edge headless.
+>
+> **Metodologia oficial de remuneração** (imagem do dono, arquivada em `docs/dashboard-2.0/fonte/`): cards Fee e Corretagem+agenciamento batem EXATAMENTE com a régua mensal do motor anualizada. Card 4 (vitalício sem agenc): % praticado nos deals mensuráveis = 2%/5% por porte → matematicamente igual à cauda atual; gap = % fixo por porte vs por deal. Proposta de campo `percentual_vitalicio` no HubSpot registrada — dono pediu para AGUARDAR (ainda revisando cálculos). Vitalício hoje NÃO alimenta cálculo nenhum nos painéis principais (só a coluna booleana informativa).
+
 ### Dashboard 2.0 | Pente-fino HubSpot + migração periodo_contrato + decisões finais do toggle (2026-07-15)
 
 > Segunda leva da revisão do dono. **Pente-fino dos campos (pedido dele):** as 983 propriedades de deal do portal foram baixadas via API e batidas contra `dados.json` e contra os literais de `forecast-table`/`snapshot-format` — **zero nomes errados**; a estranheza era nome interno × label. Correção estrutural: todo dado de fonte agora carrega **`label_portal`** (rótulo oficial do HubSpot, 41 campos anotados) ao lado do nome técnico.
