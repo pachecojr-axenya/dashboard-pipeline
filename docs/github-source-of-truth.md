@@ -84,7 +84,7 @@ HTML deve retornar `200`. API sem sessão retornar `401` é esperado.
 Coordene antes de mexer/deployar:
 
 - `public/nav.js`
-- `public/premium.js`
+- `public/premium.js` **e todo o território BDR (`bdr*`, `api/bdr-*`) — dono: Samuel; não mexer sem coordenar com ele**
 - blocos `PANELS` inline, se ainda existirem
 - `vercel.json`
 - `api/*`

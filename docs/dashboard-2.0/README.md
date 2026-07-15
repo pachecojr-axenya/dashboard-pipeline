@@ -33,6 +33,13 @@
 
 Atualize esta tabela a cada fase fechada (gate cumprido = fase fecha).
 
+## Territórios de dono (coordenação entre pessoas/sessões)
+
+| Território | Dono | Arquivos | Regra |
+|---|---|---|---|
+| **Subpáginas BDR** | **Samuel** | `bdr*.html`, `bdr*.js`, `premium.js`, `api/bdr-*` | **Não mexer sem coordenar com o Samuel.** Detalhes: menu delas vem de `premium.js`/`NAV_MODEL` (segunda fonte espelhada do `nav.js` — mudança de menu precisa ser portada nos dois); `bdr.html` tem 3 bytes NUL (nunca sed); elas NÃO carregam `semantic-ref.js` — os módulos compartilhados (`settings-modal.js`, `prob-engine.js`) carregam nelas com **fallback literal espelhado da régua única** (mantido em sincronia pelo código; ver `forecast_flat.usada_em` no catálogo). A migração 2.0 delas acontece com/pelo Samuel. |
+| Demais painéis + camada semântica | Pacheco (+ sessões de IA coordenadas) | resto do repo | Regras de sessões paralelas do STATUS_LOG |
+
 ## Relação com os canônicos do 1.0
 
 As regras vigentes do repo (STATUS_LOG.md | Diretrizes, README.md, AUDITORIA_GRAFICOS.md,
