@@ -52,6 +52,14 @@ Probabilidade de etapa:  ( ) Premissas (régua forçada)   (•) Calculada ao vi
 - **Você decide 3:** onde persiste — KV global (todos veem igual — recomendo) ou
   por navegador como hoje (`localStorage`, cada um vê um número ≠, que é o
   anti-padrão que o 2.0 mata)?
+- **Você decide 4 (adicionada na sua revisão de 2026-07-15):** unificar as duas
+  réguas forçadas numa só. Hoje `forecast_flat` (premissa validada do Forecast) e
+  `painel_default` (fallback do C07 em CRO/Board/AE) têm VALORES diferentes
+  (Cotação 18,6%×33%, Consultoria 28,5%×61,1%, Negociação 49,3%×42%). Proposta:
+  a posição "Premissas" do toggle usa a **flat validada** como régua única e a
+  `painel_default` é aposentada. Efeito: os fallbacks de CRO/Board/AE mudam de
+  número quando o C07 não tem amostra (etapas com amostra >= 20 não mudam nada,
+  pois o C07 vence). Recomendo aprovar junto com o toggle — é a mesma cirurgia.
 
 ## Implementação (quando aprovado)
 

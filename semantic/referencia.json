@@ -5,7 +5,8 @@
     "versao": 1,
     "atualizado_em": "2026-07-14",
     "aviso": "Fonte única. Editar aqui e rodar `npm run check` (check-semantic valida consistência e drift contra o código). Fase 2 em andamento: consumidores listados em consumidores_2_0 leem este arquivo via lib/semantic.js.",
-    "semantica_ativa_default": "ativa_default = default DESEJADO da futura config de etapas ativas (ADR-007), não necessariamente o comportamento do 1.0. Divergência conhecida: Stand by (1317543716) está ativa_default=false por decisão do dono (2026-07-14), mas o payload do 1.0 a INCLUI — a troca de comportamento é da Fase 4. O filtro atual está derivado em regras.filtro_deals_ativos.",
+    "semantica_ativa_default": "ativa_default = default DESEJADO da futura config de etapas ativas (ADR-007), não necessariamente o comportamento do 1.0. Nota 2026-07-15: a divergência do Stand by se resolveu sozinha — a etapa foi EXTINTA do portal (zero deals), então a intenção do dono (inativa) e a realidade coincidem; o id segue no filtro do 1.0 inofensivamente. O filtro atual está derivado em regras.filtro_deals_ativos.",
+    "direcao_reguas_unificacao": "DIREÇÃO DO DONO (revisão de 2026-07-15): as duas réguas forçadas (forecast_flat × painel_default) devem convergir para UMA fonte única. Não são dados repetidos — os valores diferem (ex.: Cotação 18,6% × 33%) e as funções diferem (premissa validada do Forecast × fallback do C07 nos painéis) — mas a coexistência é dívida do 1.0. Unificação desenhada como Decisão 4 do design do toggle (docs/dashboard-2.0/design-toggle-probabilidade.md); muda números nos fallbacks de CRO/Board/AE, então é ato consciente da Fase 4, não edição de catálogo.",
     "consumidores_2_0": ["api/forecast-table.js (via lib/semantic.js)", "api/funnel-stages.js (via lib/semantic.js)", "lib/snapshot-format.js (via lib/semantic.js)", "lib/hubspot.js (via lib/semantic.js — pipes, mapas, tickets Cotação)", "public/{forecast,forecast-stage,dashboard,ae}.html (régua flat via public/semantic-ref.js gerado)"]
   },
   "hubspot": {
@@ -81,7 +82,8 @@
       "ordem": 6,
       "ativa_default": false,
       "final": false,
-      "notas": "Nome diverge entre consumidores do 1.0: forecast-table.js mapeia 'Stand by', funnel-stages.js mapeia 'Standby'. As réguas de probabilidade carregam as duas chaves por causa disso. 🔴 BUG pré-existente (achado Fase 2, 2026-07-14): em funnel-stages.js o map produz 'Standby' mas os buckets do funil Vendas usam 'Stand by' → a linha Stand by do C06 Vendas conta SEMPRE 0. Preservado pela paridade; corrigir conscientemente (unificação de nome)."
+      "removida_do_portal": true,
+      "notas": "⚰ ETAPA EXTINTA DO PORTAL (informada pelo dono e verificada via API em 2026-07-15: pipeline Vendas tem 8 etapas, sem Stand by; zero deals vivos nela). Mantida no catálogo porque as fotos históricas (mai–jul/26) e o histórico de dealstage ainda referenciam o id. O código segue consultando o id inofensivamente (filtro IN sem matches) até limpeza consciente. Histórico: nome divergia entre consumidores ('Stand by' × 'Standby'), e a linha Stand by do C06 Vendas contava sempre 0 (mismatch de buckets) — ambos agora irrelevantes na prática."
     },
     {
       "id": "1288611084",

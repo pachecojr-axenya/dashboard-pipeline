@@ -19,7 +19,7 @@ Portal HubSpot: `44715285`
 | 3 | Cotação | `1144746908` | sim | não |  |
 | 4 | Consultoria | `1144746909` | sim | não |  |
 | 5 | Negociação | `1144746910` | sim | não |  |
-| 6 | Stand by (aliases: Standby) | `1317543716` | não | não | Nome diverge entre consumidores do 1.0: forecast-table.js mapeia 'Stand by', funnel-stages.js mapeia 'Standby'. As réguas de probabilidade carregam as duas chaves por causa disso. 🔴 BUG pré-existente (achado Fase 2, 2026-07-14): em funnel-stages.js o map produz 'Standby' mas os buckets do funil Vendas usam 'Stand by' → a linha Stand by do C06 Vendas conta SEMPRE 0. Preservado pela paridade; corrigir conscientemente (unificação de nome). |
+| 6 | Stand by (aliases: Standby) | `1317543716` | não | não | ⚰ ETAPA EXTINTA DO PORTAL (informada pelo dono e verificada via API em 2026-07-15: pipeline Vendas tem 8 etapas, sem Stand by; zero deals vivos nela). Mantida no catálogo porque as fotos históricas (mai–jul/26) e o histórico de dealstage ainda referenciam o id. O código segue consultando o id inofensivamente (filtro IN sem matches) até limpeza consciente. Histórico: nome divergia entre consumidores ('Stand by' × 'Standby'), e a linha Stand by do C06 Vendas contava sempre 0 (mismatch de buckets) — ambos agora irrelevantes na prática. |
 | 7 | Implantação | `1288611084` | sim | não |  |
 | 8 | Ganho | `1144844314` | sim | sim |  |
 | 9 | Perdido | `1144746911` | não | sim | Só entra nos payloads com ?includeLost=true (CRO Dashboard e conversões). |
