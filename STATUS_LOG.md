@@ -4,6 +4,14 @@ Recurring every 20min (job `55d3b136`). Purpose: identify and close gaps so the 
 
 ---
 
+### Dashboard 2.0 | Fase 4a | faturamento manual vira dado de primeira classe (2026-07-14)
+
+> ADR-004 aplicado ao faturamento manual, SEM mudar nenhum número: (1) **API** (`api/faturamento-manual.js`): toda escrita grava `entry.meta = { em, por, anterior }` — quem editou (email da sessão), quando, e o estado anterior (log de 1 nível); sibling inofensivo, consumidores leem manual/months por acesso direto. (2) **Cliente** (`public/faturamento-manual.js`): novo `FaturamentoManual.meta(d)`. (3) **UI** (painel Ganho, `forecast-stage.html`): selo **✏️** nas linhas manuais com autor/data no tooltip, **⚠** após 45 dias sem revisão (`validade_dias` declarado em `semantic/dados.json`), e entradas legadas (pré-Fase 4) marcadas como "sem registro de autor".
+
+- Testado ao vivo: roundtrip completo na API (1ª escrita grava meta com `dev@axenya.com`; 2ª preserva `anterior`; limpeza remove entrada de teste — KV limpo); Edge headless mostrou 2 selos ✏️ renderizados nas linhas manuais reais. `npm run check` PASS. Servidor reiniciado (mudança em api/).
+- **`docs/dashboard-2.0/design-toggle-probabilidade.md`** (novo): proposta de design do ADR-008 para decisão do dono — o toggle escolhe a preferência (Calculada×Premissas), CRO/Board/AE respeitam, Forecast declara-se fora na v1, defaults reproduzem o comportamento atual. 3 decisões marcadas no doc.
+- Restante da Fase 4 aguardando o dono: decisão do toggle, chave de etapas ativas (default = comportamento atual) e a virada consciente do Stand by.
+
 ### Dashboard 2.0 | Fase 3 | TODOS os painéis de forecast com drawer gerado (2026-07-14)
 
 > Fechada a cobertura do grupo Forecast: **/forecast-delta** teve a memória de cálculo (`#info`) inteira substituída por seção gerada da nova regra **`comparacao_fotos_delta`** (catalogada de: texto do #info + `action=compare` + spec do Delta — fórmula CashForecast por etapa/foto, invariante Σ Δ = Total B − A, resolução de fotos, caveats de ponto-no-tempo). Constatação de rota: os 8 painéis de etapa (`/forecast-mql`, `/forecast-diagnostico`, …, `/forecast-bid`, `/forecast-ganho`) são TODOS o mesmo `forecast-stage.html` (vercel.json) — já cobertos pela entrada anterior.

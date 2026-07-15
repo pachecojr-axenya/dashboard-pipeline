@@ -52,9 +52,16 @@
     return (e && e.months) ? e.months : {};
   }
 
+  // Metadados de edição (ADR-004): { em, por, anterior } ou null (entrada legada,
+  // anterior à Fase 4 — sem registro de autor).
+  function meta(d) {
+    var e = entry(d);
+    return (e && e.meta) ? e.meta : null;
+  }
+
   root.FaturamentoManual = {
     config: config, setData: setData, data: data, entry: entry, load: load,
     monthKey: monthKey, vencido: vencido, elegivel: elegivel,
-    isManual: isManual, manualMonths: manualMonths
+    isManual: isManual, manualMonths: manualMonths, meta: meta
   };
 })(typeof window !== 'undefined' ? window : this);

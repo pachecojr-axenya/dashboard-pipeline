@@ -75,9 +75,10 @@
     "empresa_funcionarios": { "label": { "pt": "Funcionários da empresa", "en": "Company employees" }, "origem": "fonte", "objeto": "company", "hubspot": "numberofemployees", "unidade": "pessoas", "dono": "revops" },
 
     "faturamento_manual": { "label": { "pt": "Faturamento manual", "en": "Manual invoicing" }, "origem": "manual", "objeto": "deal", "unidade": "BRL/mês", "dono": "financeiro",
-      "persistencia": "Upstash KV (api/faturamento-manual.js)",
+      "persistencia": "Upstash KV (api/faturamento-manual.js). Desde 2026-07-14 (Fase 4/ADR-004) toda escrita grava meta = { em, por, anterior } — quem editou, quando, e o estado anterior (log de 1 nível).",
       "precedencia": "Sobrepõe integralmente a régua no deal/mês em que existe (regra receita_mensal_deal)",
-      "notas": "Valores mensais reais digitados para Ganho/Implantação já faturando. Fase 4: ganha atualizado_em/atualizado_por/log. Caveat conhecido do Delta: NÃO é ponto-no-tempo (recompute de foto antiga aplica valores de hoje)." },
+      "validade_dias": 45,
+      "notas": "Valores mensais reais digitados para Ganho/Implantação já faturando. UI: selo ✏️ nas linhas manuais do painel Ganho, com autor/data no tooltip; ⚠ após validade_dias sem revisão; entradas anteriores à Fase 4 aparecem como 'sem registro de autor'. Caveat conhecido do Delta: NÃO é ponto-no-tempo (recompute de foto antiga aplica valores de hoje)." },
     "meta_receita": { "label": { "pt": "Meta de receita", "en": "Revenue target" }, "origem": "manual", "objeto": "config", "unidade": "BRL/mês", "dono": "cro",
       "persistencia": "localStorage (settings-modal) — por navegador. ⚠ Fase 4: migrar para KV com selo/log (hoje cada navegador pode ter meta diferente).",
       "notas": "Usada por Revenue vs Plan (MTD) e Cobertura (N05)." },

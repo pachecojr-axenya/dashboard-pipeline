@@ -80,6 +80,14 @@ module.exports = async function handler(req, res) {
     const all = await readAll();
     const entry = (all[dealId] && typeof all[dealId] === 'object') ? all[dealId] : {};
 
+    // Dado manual de primeira classe (ADR-004 | Fase 4): toda escrita registra
+    // quem/quando + o estado anterior (log mínimo de 1 nível). Consumidores leem
+    // entry.manual/entry.months por acesso direto — `meta` é sibling inofensivo.
+    const anterior = {
+      manual: ('manual' in entry) ? entry.manual : null,
+      months: entry.months ? { ...entry.months } : null,
+    };
+
     if ('manual' in body) {
       if (body.manual === null) delete entry.manual;       // volta ao gate automático
       else entry.manual = !!body.manual;                   // força inclusão/exclusão
@@ -87,6 +95,12 @@ module.exports = async function handler(req, res) {
     if ('months' in body) {
       entry.months = cleanMonths(body.months);
     }
+
+    entry.meta = {
+      em: new Date().toISOString(),
+      por: (user && (user.email || user.name)) || 'desconhecido',
+      anterior,
+    };
 
     // Se o deal ficou sem nenhuma informação útil, remove a entrada (mantém o store enxuto).
     const hasMonths = entry.months && Object.keys(entry.months).length > 0;

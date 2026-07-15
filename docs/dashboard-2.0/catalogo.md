@@ -137,7 +137,7 @@ Fuso canônico: America/Sao_Paulo.
 | `empresa_nome` | Nome da empresa | fonte | company | `name` | texto | revops |  |
 | `empresa_setor` | Setor da empresa | fonte | company | `industry` | enum | revops |  |
 | `empresa_funcionarios` | Funcionários da empresa | fonte | company | `numberofemployees` | pessoas | revops |  |
-| `faturamento_manual` | Faturamento manual | ✏️ manual | deal | — | BRL/mês | financeiro | Valores mensais reais digitados para Ganho/Implantação já faturando. Fase 4: ganha atualizado_em/atualizado_por/log. Caveat conhecido do Delta: NÃO é ponto-no-tempo (recompute de foto antiga aplica valores de hoje). |
+| `faturamento_manual` | Faturamento manual | ✏️ manual | deal | — | BRL/mês | financeiro | Valores mensais reais digitados para Ganho/Implantação já faturando. UI: selo ✏️ nas linhas manuais do painel Ganho, com autor/data no tooltip; ⚠ após validade_dias sem revisão; entradas anteriores à Fase 4 aparecem como 'sem registro de autor'. Caveat conhecido do Delta: NÃO é ponto-no-tempo (recompute de foto antiga aplica valores de hoje). |
 | `meta_receita` | Meta de receita | ✏️ manual | config | — | BRL/mês | cro | Usada por Revenue vs Plan (MTD) e Cobertura (N05). |
 | `vpv_tiers` | R$/vida por faixa (VPV) | ✏️ manual | config | — | BRL/vida/mês | cro | Premissa de projeção para Diagnóstico. |
 | `prob_override_etapa` | Override manual de probabilidade por etapa | ✏️ manual | config | — | fracao_0_1 | cro | localStorage novo_stage_prob_cfg (por pipeline) — por navegador. Fase 4: KV + toggle global ADR-008. |
