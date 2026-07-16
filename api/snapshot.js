@@ -41,19 +41,25 @@ function tabToSnapshotDate(tab) {
 
 // Grava as fotos historicas do Sheet no BQ (best-effort, idempotente). Roda de
 // dentro do Vercel (credencial GOOGLE_SERVICE_ACCOUNT_JSON ja disponivel ali).
+// As fotos da planilha sao semanais/mensais → vao para o daily E para o
+// weekly_gold (as datas historicas ficam disponiveis nas duas granularidades).
 async function backfillBQFromSheet() {
-  await bq.ensureSnapshotTable();
-  const jaNoBQ = (await bq.listSnapshotDates()).map(r => r.tab);
+  await bq.ensureTables();
+  const jaNoWeekly = (await bq.listSnapshotDates(bq.TABLE_WEEKLY)).map(r => r.tab);
+  const jaNoDaily = (await bq.listSnapshotDates(bq.TABLE_DAILY)).map(r => r.tab);
   const tabs = await listTabs();
   const done = [], skip = [];
   for (const t of tabs) {
     const meta = tabToSnapshotDate(t);
     if (!meta) continue;
-    if (jaNoBQ.indexOf(meta.date) !== -1) { skip.push(t + '=' + meta.date); continue; }
+    if (jaNoWeekly.indexOf(meta.date) !== -1 && jaNoDaily.indexOf(meta.date) !== -1) { skip.push(t + '=' + meta.date); continue; }
     const rows = await readSnapshot(t);
     if (rows.length < 2 || rows[0].length !== bq.NUM_COLS) { skip.push(t + ' (formato)'); continue; }
-    const r = await bq.insertSnapshotRows(meta.date, meta.tipo, rows.slice(1));
-    done.push(t + '=>' + meta.date + ' (' + r.inserted + ')');
+    const dealRows = rows.slice(1);
+    let ins = 0;
+    if (jaNoDaily.indexOf(meta.date) === -1) { const r = await bq.insertSnapshotRows(meta.date, meta.tipo, dealRows, null, bq.TABLE_DAILY); ins = r.inserted; }
+    if (jaNoWeekly.indexOf(meta.date) === -1) { await bq.insertSnapshotRows(meta.date, meta.tipo, dealRows, null, bq.TABLE_WEEKLY); }
+    done.push(t + '=>' + meta.date + ' (' + ins + ')');
   }
   return { done, skip };
 }
@@ -228,20 +234,35 @@ module.exports = async function handler(req, res) {
       actions['forçada ' + forceTab] = await writeTab(forceTab);
     }
 
-    // ── BQ: foto deal-level DIÁRIA (destrava "datas livres" no /forecast-delta) ──
+    // ── BQ: daily (todo dia) + weekly_gold (sexta/mês = espelho da planilha) ──
     // Best-effort: se o BQ falhar, o snapshot do Sheet acima já garantiu a foto.
-    // A foto diária no BQ existe TODO dia (não só sexta), então comparar qualquer
-    // par de datas com snapshot vira um SELECT em api/history.js.
+    // - daily: foto deal-level TODO dia → destrava "datas livres" no /forecast-delta.
+    // - weekly_gold: datamart leve; materializa a foto do dia SÓ na sexta e no
+    //   último dia do mês, exatamente como a planilha grava suas abas. Derivado
+    //   do daily (paridade garantida).
     if (bq.isConfigured()) {
       try {
-        await bq.ensureSnapshotTable();
-        const already = await bq.hasSnapshot(today);
-        if (already) {
-          actions.bq = 'já existia (' + today + ')';
+        await bq.ensureTables();
+        const ehSexta = brtDate.getUTCDay() === 5;
+        const ehFimMes = isLastDayOfMonth(brtDate);
+        const snapType = ehSexta ? 'semanal' : (ehFimMes ? 'mensal' : 'diario');
+
+        // 1) daily — todo dia (idempotente por data)
+        if (await bq.hasSnapshot(today, bq.TABLE_DAILY)) {
+          actions.bq_daily = 'já existia (' + today + ')';
         } else {
-          const snapType = (brtDate.getUTCDay() === 5) ? 'semanal' : (isLastDayOfMonth(brtDate) ? 'mensal' : 'diario');
-          const r = await bq.insertSnapshotRows(today, snapType, rows, capturedAt);
-          actions.bq = 'gravada ' + today + ' (' + r.inserted + ' deals, ' + snapType + ')';
+          const r = await bq.insertSnapshotRows(today, snapType, rows, capturedAt, bq.TABLE_DAILY);
+          actions.bq_daily = 'gravada ' + today + ' (' + r.inserted + ' deals, ' + snapType + ')';
+        }
+
+        // 2) weekly_gold — só na sexta / último dia do mês (espelha a planilha)
+        if (ehSexta || ehFimMes) {
+          if (await bq.hasSnapshot(today, bq.TABLE_WEEKLY)) {
+            actions.bq_weekly = 'já existia (' + today + ')';
+          } else {
+            const rw = await bq.deriveWeeklyFromDaily(today, snapType);
+            actions.bq_weekly = 'materializada ' + today + ' (' + rw.inserted + ' deals, ' + snapType + ')';
+          }
         }
       } catch (e) {
         console.error('[snapshot][bq]', e.message);

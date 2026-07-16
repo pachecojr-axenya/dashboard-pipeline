@@ -44,17 +44,20 @@ async function main() {
   if (!bq.isConfigured()) { console.error('ERRO: GOOGLE_SERVICE_ACCOUNT_JSON nao configurado.'); process.exit(1); }
 
   console.log('[migrate] dataset destino:', bq.dataset(), '| dry-run:', dryRun);
-  await bq.ensureSnapshotTable();
+  await bq.ensureTables();
 
   const tabs = await sheets.listTabs();
   const fotos = fotosFromTabs(tabs);
   console.log('[migrate] fotos encontradas no Sheet:', fotos.map((f) => f.tab + '=>' + f.snapshotDate).join(', '));
 
-  const existentes = dryRun ? [] : (await bq.listSnapshotDates()).map((r) => r.tab);
+  const jaDaily = dryRun ? [] : (await bq.listSnapshotDates(bq.TABLE_DAILY)).map((r) => r.tab);
+  const jaWeekly = dryRun ? [] : (await bq.listSnapshotDates(bq.TABLE_WEEKLY)).map((r) => r.tab);
   let migradas = 0, puladas = 0;
 
   for (const f of fotos) {
-    if (existentes.indexOf(f.snapshotDate) !== -1) { console.log('[skip] ' + f.tab + ' (snapshot_date ' + f.snapshotDate + ' ja existe no BQ)'); puladas++; continue; }
+    const emDaily = jaDaily.indexOf(f.snapshotDate) !== -1;
+    const emWeekly = jaWeekly.indexOf(f.snapshotDate) !== -1;
+    if (emDaily && emWeekly) { console.log('[skip] ' + f.tab + ' (' + f.snapshotDate + ' ja em daily+weekly)'); puladas++; continue; }
     const rows = await sheets.readSnapshot(f.tab);          // [[HEADERS],[...deal rows...]]
     if (!rows.length || rows.length < 2) { console.log('[skip] ' + f.tab + ' (vazia)'); puladas++; continue; }
     const header = rows[0];
@@ -63,10 +66,10 @@ async function main() {
       puladas++; continue;
     }
     const dealRows = rows.slice(1);
-    console.log('[migrate] ' + f.tab + ' -> snapshot_date=' + f.snapshotDate + ' (' + dealRows.length + ' deals)' + (dryRun ? ' [DRY]' : ''));
+    console.log('[migrate] ' + f.tab + ' -> ' + f.snapshotDate + ' (' + dealRows.length + ' deals)' + (dryRun ? ' [DRY]' : ''));
     if (!dryRun) {
-      const r = await bq.insertSnapshotRows(f.snapshotDate, f.tipo, dealRows);
-      console.log('        inseridas ' + r.inserted + ' linhas');
+      if (!emDaily) { const r = await bq.insertSnapshotRows(f.snapshotDate, f.tipo, dealRows, null, bq.TABLE_DAILY); console.log('        daily +' + r.inserted); }
+      if (!emWeekly) { const r = await bq.insertSnapshotRows(f.snapshotDate, f.tipo, dealRows, null, bq.TABLE_WEEKLY); console.log('        weekly +' + r.inserted); }
     }
     migradas++;
   }

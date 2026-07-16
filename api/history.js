@@ -46,13 +46,15 @@ async function _listFotosSheet() {
   fotos.sort((a, b) => b.ord.localeCompare(a.ord));
   return fotos;
 }
-// Fotos do BQ: cada snapshot_date é uma foto (ord=refDate=data literal, diária).
+// Fotos do BQ. Default = weekly_gold (lista "oficial", espelho da planilha).
+// As datas do weekly sao as mesmas abas da planilha → a lista de fotos que as
+// telas legadas (/forecast) mostram NAO muda ao ligar o BQ.
 async function _listFotosBQ() {
-  const dates = await bq.listSnapshotDates();  // [{tab: 'YYYY-MM-DD', tipo, count}]
-  return dates.map(d => ({ tab: d.tab, tipo: d.tipo || 'diario', ord: d.tab, refDate: d.tab, source: 'bq' }));
+  const dates = await bq.listSnapshotDates(bq.TABLE_WEEKLY);  // [{tab:'YYYY-MM-DD',tipo,count}]
+  return dates.map(d => ({ tab: d.tab, tipo: d.tipo || 'semanal', ord: d.tab, refDate: d.tab, source: 'bq' }));
 }
-// Fonte de fotos: BQ tem prioridade (datas livres, diário). Fallback = Sheet.
-// Se o BQ tiver ao menos 2 fotos, usa BQ (comparação precisa de par); senão Sheet.
+// Fonte de fotos: BQ (weekly) tem prioridade; fallback = Sheet.
+// Se o BQ weekly tiver ao menos 2 fotos, usa BQ (comparação precisa de par).
 async function _listFotos() {
   if (bq.isConfigured()) {
     try {
@@ -63,8 +65,16 @@ async function _listFotos() {
   return _listFotosSheet();
 }
 // Lê as linhas de uma foto no formato [[HEADERS],[...]], roteando pela fonte.
+// BQ: lê do DAILY (cobre qualquer data — o backfill/cron grava as datas de foto
+// também no daily), com fallback pro weekly e depois pro Sheet.
 async function _readFotoRows(foto) {
-  if (foto && foto.source === 'bq') return bq.readSnapshotRows(foto.refDate);
+  if (foto && foto.source === 'bq') {
+    const daily = await bq.readSnapshotRows(foto.refDate, bq.TABLE_DAILY);
+    if (daily.length > 1) return daily;
+    const weekly = await bq.readSnapshotRows(foto.refDate, bq.TABLE_WEEKLY);
+    if (weekly.length > 1) return weekly;
+    return daily; // vazio → deixa o chamador tratar
+  }
   return readSnapshot(foto.tab);
 }
 // Foto mais próxima em ou antes de `date` (fotos já vem ordenada desc).
@@ -219,9 +229,23 @@ module.exports = async function handler(req, res) {
     }
 
     if (action === 'snapshot' && tab) {
-      const rows = await readSnapshot(tab);
+      // FIX 2026-07-16 (alerta do Pacheco): a tela de "comparação com foto" do
+      // /forecast lê os deals de uma foto via action=snapshot&tab=<data>. Ao ligar
+      // o BQ, a lista de fotos passa a vir do BQ (datas 'YYYY-MM-DD'); se este
+      // handler só olhasse o Sheet, não acharia a aba e a tela quebraria. Então:
+      // BQ daily (cobre qualquer data) → BQ weekly → Sheet (fallback).
+      let rows = [];
+      if (bq.isConfigured() && /^\d{4}-\d{2}-\d{2}$/.test(tab)) {
+        try {
+          rows = await bq.readSnapshotRows(tab, bq.TABLE_DAILY);
+          if (rows.length <= 1) rows = await bq.readSnapshotRows(tab, bq.TABLE_WEEKLY);
+        } catch (e) { console.error('[history][snapshot bq]', e.message); rows = []; }
+      }
+      if (rows.length <= 1) {
+        try { rows = await readSnapshot(tab); } catch (e) { rows = []; }
+      }
       if (rows.length === 0) {
-        return res.status(404).json({ success: false, error: 'Aba não encontrada ou vazia' });
+        return res.status(404).json({ success: false, error: 'Foto não encontrada (BQ nem planilha): ' + tab });
       }
       const headers = rows[0];
       const deals   = rows.slice(1).map(row => {
