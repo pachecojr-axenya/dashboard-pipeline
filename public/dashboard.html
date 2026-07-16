@@ -3917,11 +3917,11 @@ if (typeof FaturamentoManual !== 'undefined') {
 // Defaults de probabilidade do /forecast (NÃO os do dashboard) — usados só aqui, para o N06B
 // espelhar o Forecast Overall quando a amostra do funil de uma etapa é < 20.
 var NOVO_FC_STAGE_PROB_DEFAULT = window.SEMANTIC_REF.reguas.forecast_flat.valores; // fonte única | semantic-ref.js (Fase 2 do 2.0)
-// Prob. de etapa do jeito do /forecast: funil por pipeline (C07) senão o default do /forecast.
+// DECISÃO DO DONO (2026-07-16): o N06B (Forecast Total) e o N05 (Cobertura, derivado dele)
+// probabilizam a receita com a RÉGUA FLAT, não com o funil C07 — fonte única de receita
+// alinhada ao Forecast Overall / /forecast e ao A07 do painel AE. O funil C07 segue nos
+// gráficos de conversão (C07/C04/pipeline ponderado via _novoStageProbFor), intocados.
 function _novoFcStageProbForwd(stage, pipeline){
-  var pk = pipeline==='Bid' ? 'bid' : 'vendas';
-  var fp = NOVO_FUNNEL_PROB_PIPE && NOVO_FUNNEL_PROB_PIPE[pk];
-  if (fp && fp[stage]!=null) return fp[stage];
   return NOVO_FC_STAGE_PROB_DEFAULT[stage];
 }
 // probAdj por deal, IDÊNTICO ao calcProbInfo do /forecast: Diagnóstico fixo 6%; demais =

@@ -4,6 +4,27 @@ Recurring every 20min (job `55d3b136`). Purpose: identify and close gaps so the 
 
 ---
 
+### Receita probabilizada | DECISÃO DO DONO: régua flat (não funil C07) no N06B do CRO + A07 do AE (2026-07-16)
+
+> Resolvendo o achado da entrada "A07 não bate com o forecast" (abaixo), o dono decidiu: **a probabilização da RECEITA usa a régua flat** (D4/D4b | semantic-ref `forecast_flat`), não o funil C07. Alinhados os dois consumidores que ainda usavam funil:
+>
+> - **`ae.html` A07** e **`dashboard.html` N06B (+ N05 Cobertura, derivado):** `_novoFcStageProbForwd()` agora retorna direto a régua flat (`NOVO_FC_STAGE_PROB_DEFAULT[stage]`), sem consultar `NOVO_FUNNEL_PROB_PIPE`. O mqlConv dos cohorts BDR passa a 6% (RA flat) em vez de ~1,5% (funil). Diagnóstico fixo 6%, BID fixo 0,5%, ajuste ±10% do AE — idêntico ao Forecast Overall (`forecast-stage.html`, que já era flat).
+> - **O funil C07 continua intacto** nos gráficos de CONVERSÃO e ponderação (C07, C04, pipeline ponderado via `_novoStageProbFor`/`_aeProbAdj`) — só a RECEITA deixou de usá-lo.
+> - **Efeito medido (A07, harness com dados ao vivo):** Probabilizada FULL sobe de ~5,5M (funil) para **8,66M** (flat); Real inalterado (95,8M). Reconcilia por construção com o Forecast Overall (mesma régua + BID 0,5% + mesmo motor/conjunto/dedup). Emoji 🟡 do A07 **removido**.
+> - **Pendência residual (fora deste escopo):** a tela `/forecast` (`forecast.html`) ainda dá ao BID a régua cheia (Proposta 28,5%/Negociação 49,3%) em vez dos 0,5% do Overall/A07/N06B — ~11M só nessa tela. `forecast.html`/`forecast-stage.html` estão em edição pela **sessão paralela**, então NÃO toquei; a sessão do forecast deve alinhar o BID de `forecast.html` a 0,5% (`FC_BID_PROB`) para fechar a fonte única.
+>
+> Validado: sintaxe inline OK nos 2 arquivos, `npm run check` PASS, DOM headless (`/novo-ae` sem 🟡 no A07 e renderizando; `/novo` do CRO renderiza sem erro, N06B presente). ⚠ Mudança consciente de número board-facing (N06B/N05 do CRO e A07 do AE sobem a probabilizada). Sem mudança api/lib.
+
+### Forecast | BUG CRÍTICO: quarter do AE sobrescrito pela régua fixa do Bid (Pernambucanas Q4 2026 → Q2 2027) (2026-07-16)
+
+> Bug reportado pelo dono, gravíssimo: **Grupo Pernambucanas** (Bid, Proposta Enviada) tem `qual_quarter_de_fechamento` = **Q4 2026** no HubSpot, mas o `/forecast` exibia **Q2 2027**. **Causa raiz:** o override "régua de receita fixa do Bid" (Negociação → out/2026, Proposta Enviada → jun/2027) — que imputa `data_prevista_para_receita` para colocar a receita dos deals Bid sem data — **também sobrescrevia `d.quarter`** derivando-o da data imputada, ignorando o campo do AE. Isso violava frontalmente a decisão do dono de 2026-07-15 ("campo do AE tem precedência sobre a data prevista"). A API (`/api/forecast-table`) sempre retornou Q4 2026 correto; quem corrompia era o front.
+>
+> **Fix (front-only, 3 blocos):** o override do Bid segue imputando `data_prevista_para_receita` (receita INALTERADA), mas o quarter só é derivado da régua quando o deal **não tem** um (`if (!d.quarter)`) — o quarter do AE ganha precedência. Corrigido no caminho ao vivo E no replay de foto de `public/forecast.html` (2 blocos) e no caminho ao vivo de `public/forecast-stage.html` (`/forecast-overall` + painéis de etapa).
+>
+> **Alcance:** o bug afetava TODOS os deals Bid em Negociação/Proposta com quarter do AE divergente da régua. Provado no DOM real (Edge headless de `/forecast`): Pernambucanas Q2 2027 → **Q4 2026** ✓; **ADM do Brasil** (Bid Negociação) mostrava Q4 2026 e agora **Q1 2027** ✓; APS-Grupo Cosan Q1 2027; Cosan-Raízen/CPFL Q4 2026; Ford Q2 2027 — todos = campo do AE. `npm run check` PASS + `_check-inline-js` nos 2 HTMLs 0 erros. **Não commitado/deployado** (sessão paralela ativa em ae.html/board.html).
+>
+> **Pendência (revenue-only, latente):** `public/forecast-overall-core.js` (`applyBidRevDate`, consumido só por `lib/forecast-compute.js` p/ a série de receita) tem o MESMO clobber de quarter, porém o quarter dali NÃO é exibido (saída = receita mensal). Deixado como está p/ não expandir o raio para shared+lib (restart); corrigir junto numa leva coordenada.
+
 ### AE Performance | leva 2 do dono + ACHADO: A07 não bate com o forecast (funil × flat) (2026-07-16)
 
 > Segunda leva no `/novo-ae`, front-only em `ae.html`. Quatro ajustes feitos + um achado que exige decisão do dono.
