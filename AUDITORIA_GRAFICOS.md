@@ -229,6 +229,35 @@ Validação (16/07): DOM real em Edge headless (contagens, toggle ativo, tabela 
 scorecard renderizada), sintaxe inline OK, `npm run check` PASS. Validação contra o
 HubSpot segue pendente — fila 🟡 abaixo atualizada com os nomes novos.
 
+## Adendo | TCV unificado com o Forecast em C04/C08 (CRO) e B07/B09 (Board) (2026-07-16)
+
+> Pedido do dono: os TCVs por etapa do C04/B07 divergiam da coluna TCV dos painéis
+> Forecast. Causa raiz (medida com dados reais): o `_novoDealTcv` usava **12 meses
+> fixos** + **proxy de Diagnóstico** (vidas × R$/vida × 12 — 44 deals sem régua
+> somavam 72,5MM contra 9,5MM da régua real) e **não aplicava a dedup Fee×Corretagem**.
+> Unificado: TCV = `calcTCV` (régua × período do contrato, 12/24/36; sem período → 12)
+> com dedup do Forecast Overall (`OverallCore.revExcluded`; gêmeo excluído = 0).
+> **Paridade provada com dados de produção** (harness interceptando `_novoMkChart`):
+> C04 = B07 = coluna TCV do Forecast em todas as etapas — Diagnóstico 9,49MM ·
+> Cotação 1,95MM · Proposta 57,13MM · Consultoria 5,61MM (dedup ativa) ·
+> Negociação 7,93MM.
+
+- **B09 | 🟡 removido do título** (decisão do dono, com a unificação acima como lastro).
+  C04/C08 do CRO seguem sem emoji (família validada de 12/06); a semântica de todos os
+  quatro mudou CONSCIENTEMENTE — quem comparar com números antigos verá o Diagnóstico
+  cair de ~72MM para ~9,5MM (o proxy foi aposentado, não é regressão).
+- **Coluna TCV (R$)** adicionada à tabela rica dos modais de CRO e Board (drills das
+  fatias/etapas): valor por deal = a métrica do gráfico (gêmeo dedup mostra 0), com
+  total no tfoot — a lista soma exatamente o que a fatia/barra mostra.
+- **Forecast (`/forecast` + painéis de etapa): coluna 🟡 ARR Pond. (R$)** — ARR
+  estimado (fallback 1ª fatura × 12) × P. Ajust., a mesma leitura de ARR ponderado de
+  B15/B16/P03/B04, para auditoria de paridade entre painéis. Nasce 🟡 (régua desta
+  auditoria): falta validar contra amostra manual e contra o Board no mesmo instante;
+  diferença residual esperada = fonte da probabilidade (flat × C07), documentada na
+  regra `arr_ponderado_forecast` do catálogo.
+- **B15**: nome do AE agora clicável (modal com chips por etapa + tabela rica) — só
+  interação, zero mudança de cálculo; veredito do card inalterado.
+
 ## Adendo | Sincronização de títulos 🟡 com os vereditos desta auditoria (2026-07-14)
 
 > Revisão dos títulos com 🟡: vários gráficos do CRO/Board seguiam com 🟡 no título

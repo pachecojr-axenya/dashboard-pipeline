@@ -1806,7 +1806,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
   </style>
 <link rel="stylesheet" href="/premium.css?v=5">
 <script src="/premium.js?v=5"></script>
-<script src="/semantic-ref.js?v=5"></script>
+<script src="/semantic-ref.js?v=6"></script>
 <script src="/semantic-help.js?v=2"></script>
 <script src="/prob-engine.js?v=2"></script>
 <script src="/revenue-engine.js?v=2"></script>
@@ -3749,7 +3749,11 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
           tcv: (typeof calcTCV === 'function') ? calcTCV(d) : null,
           // ARR × %AE: ARR estimado ponderado SÓ pela probabilidade informada pelo AE.
           // Sem prob. do AE → null (fica em branco, não assume etapa).
-          arr_pae: (d.arr_estimado != null && d.probabilidade != null) ? d.arr_estimado * d.probabilidade : null
+          arr_pae: (d.arr_estimado != null && d.probabilidade != null) ? d.arr_estimado * d.probabilidade : null,
+          // ARR Ponderado (pedido do dono 2026-07-16): ARR estimado (sem ARR → 1ª fatura × 12)
+          // × P. Ajust. — a MESMA leitura de ARR ponderado dos outros painéis (B15/B16, P03/B04),
+          // para auditar paridade entre painéis. Informativa: NÃO altera a receita probabilizada.
+          arr_pond: (function(){ const arr = (d.arr_estimado != null && d.arr_estimado > 0) ? d.arr_estimado : ((d.primeira_fatura > 0) ? d.primeira_fatura * 12 : 0); return (arr > 0 && pInfo.final != null) ? arr * pInfo.final : null; })()
         };
       });
 
@@ -4067,6 +4071,10 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
           tip: 'ARR Estimado × probabilidade informada pelo executivo (Prob. AE). Ponderação só pela % do AE, sem régua/etapa. Em branco quando o AE não informou a probabilidade.'
         },
         {
+          k: 'arr_pond', lbl: '🟡 ARR Pond. (R$)', w: 128, align: 'right', fmt: fmtBRL, hideMobile: true,
+          tip: 'ARR Ponderado = ARR Estimado (sem ARR → 1ª Fatura × 12) × P. Ajust. — a MESMA leitura de ARR ponderado dos outros painéis (Top 5 AEs/Watchlist do Board, Receita Ponderada P03/B04), lado a lado para auditar se os números batem. Informativa: NÃO altera a receita probabilizada. Diferença residual vs CRO/Board vem da fonte da probabilidade (aqui: régua flat + ajuste do AE; lá: C07 ao vivo por pipeline quando há amostra).'
+        },
+        {
           k: 'periodo_contrato', lbl: 'Período', w: 78, align: 'center', hideMobile: true,
           fmt: v => { if (!v || v === 'Não Possui') return '—'; const m = String(v).match(/\d+/); return m ? m[0] + 'm' : v; },
           tip: 'Período do contrato (HubSpot | contrato_atual_e_de_12__24_ou_36_meses_): 12, 24 ou 36 meses. Vazio → o TCV assume 12 meses.'
@@ -4356,6 +4364,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
         else if (c.k === 'primeira_fatura') h += `<td class="${mh}" style="text-align:right">${totalPrimFat > 0 ? fmtBRL(totalPrimFat) : ''}</td>`;
         else if (c.k === 'arr_estimado') h += `<td class="${mh}" style="text-align:right">${fmtBRL(totalArr)}</td>`;
         else if (c.k === 'arr_pae') { const totalArrPae = deals.reduce((s, d) => s + (d.arr_pae || 0), 0); h += `<td class="${mh}" style="text-align:right">${totalArrPae > 0 ? fmtBRL(totalArrPae) : ''}</td>`; }
+        else if (c.k === 'arr_pond') { const totalArrPond = deals.reduce((s, d) => s + (d.arr_pond || 0), 0); h += `<td class="${mh}" style="text-align:right">${totalArrPond > 0 ? fmtBRL(totalArrPond) : ''}</td>`; }
         else if (c.k === 'tcv') { const totalTcvCol = deals.reduce((s, d) => s + (d.tcv || 0), 0); h += `<td class="${mh}" style="text-align:right">${totalTcvCol > 0 ? fmtBRL(totalTcvCol) : ''}</td>`; }
         else if (c.k === 'prob_ajustada') h += `<td class="${mh}" style="text-align:right" data-tip="${esc(effAdjTip)}">${effAdjProb != null ? fmtPct(effAdjProb) : ''}</td>`;
         else h += `<td class="${mh}${c.sticky2 ? ' s2' : ''}"></td>`;
@@ -4434,7 +4443,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       // probabilidades, guardadas como fração (0,078) → número com formato de % do Excel.
       const NUM_Z = {
         dias_no_pipe: '#,##0', colaboradores: '#,##0', vidas: '#,##0',
-        fatura_atual: '#,##0', primeira_fatura: '#,##0', arr_estimado: '#,##0', arr_pae: '#,##0', tcv: '#,##0',
+        fatura_atual: '#,##0', primeira_fatura: '#,##0', arr_estimado: '#,##0', arr_pae: '#,##0', arr_pond: '#,##0', tcv: '#,##0',
         comp_dreal: '#,##0', comp_dprob: '#,##0'
       };
       const PCT_KEYS = { probabilidade: 1, prob_etapa: 1, prob_realtime: 1, prob_ajustada: 1 };

@@ -248,8 +248,9 @@ table.lb tfoot td{font-weight:600;border-top:2px solid var(--border);position:st
 <link rel="stylesheet" href="/premium.css?v=5">
 <script src="/premium.js?v=5"></script>
 <script src="/shared-charts.js?v=1"></script>
-<script src="/semantic-ref.js?v=5"></script>
+<script src="/semantic-ref.js?v=6"></script>
 <script src="/revenue-engine.js?v=1"></script>
+<script src="/forecast-overall-core.js?v=1"></script>
 <script src="/faturamento-manual.js?v=1"></script>
 <script src="/forecast-engine.js?v=1"></script>
 <script src="/prob-engine.js?v=2"></script>
@@ -502,7 +503,8 @@ function _novoTableHeaderTip(label) {
     'p. etapa':'Probabilidade padrão da etapa', 'prob ae':'Probabilidade informada pelo AE', 'bdr':'BDR/origem do negócio',
     'últ. atividade':'Data da última atividade/nota registrada', 'last activity':'Last activity/note date', 'dias sem atividade':'Dias desde a última atividade/nota',
     'days no activity':'Days since last activity/note', 'dias':'Dias no funil ou no recorte indicado', 'receita real':'Receita mensal real calculada pela fórmula do Forecast',
-    'receita probabilizada':'Receita real × probabilidade final ajustada', 'monthly rev calc.':'Monthly revenue used in the calculation', 'receita mensal calc.':'Receita mensal usada no cálculo'
+    'receita probabilizada':'Receita real × probabilidade final ajustada', 'monthly rev calc.':'Monthly revenue used in the calculation', 'receita mensal calc.':'Receita mensal usada no cálculo',
+    'tcv (r$)':'TCV pela régua real ao longo do período do contrato (12/24/36 meses; sem período → 12), com dedup Fee×Corretagem (gêmeo excluído = 0). Mesma conta da coluna TCV dos painéis Forecast.'
   };
   return tips[k] || ('Coluna: ' + label);
 }
@@ -987,8 +989,8 @@ var NOVO_I18N = {
     donut_open_deals:'deals abertos', donut_no_revenue:'Sem receita', donut_no_lives:'Sem vidas', donut_stages_label:'Etapas',
     vf_by_revenue:'Receita', vf_by_lives:'Vidas', vf_by_stage:'Etapa', vf_by_segment:'Segmento',
     t_stageval:'Valor do Pipeline por Etapa (TCV)',
-    tip_stageval:'Soma do TCV (valor do contrato em 12 meses pela régua real, incluindo a corretagem de entrada) por etapa. "Ponderado" multiplica pela probabilidade final de fechamento (C07 por pipeline + ajuste ±10% do AE). Mesma base do C08. Pipelines Vendas + Bid; base ativa: Reunião Agendada/Pré-RFP (toggle), Diagnóstico, Cotação, Proposta Enviada, Consultoria, Negociação e Standby (toggle) | exclui Ganho, Perdido e Implantação. Diagnóstico: vidas × R$/vida × 12.',
-    tip_revbkt:'Dois donuts do TCV (valor do contrato em 12 meses pela régua real — inclui a corretagem de entrada; Diagnóstico = vidas × R$/vida × 12): esquerda por bucket de Receita, direita por bucket de Vidas (faixas do C03). Toggle alterna Bruto × Ponderado (× probabilidade de fechamento por pipeline C07 + ajuste ±10% do AE). Pipelines Vendas + Bid; base ativa (Reunião Agendada/Pré-RFP-toggle, Diagnóstico, Cotação, Proposta Enviada, Consultoria, Negociação, Standby-toggle | exclui Ganho, Perdido e Implantação); só deals com TCV > 0.',
+    tip_stageval:'Soma do TCV por etapa. TCV = régua real (calcTCV) ao longo do período do contrato (12/24/36 meses; sem período → 12), incluindo a corretagem de entrada | a MESMA conta da coluna TCV dos painéis Forecast: os totais por etapa batem 1:1. Dedup Fee×Corretagem: deal duplicado conta uma vez (o gêmeo excluído entra com zero). Sem 1ª fatura/modelo → fica de fora. "Ponderado" multiplica pela probabilidade final de fechamento (C07 por pipeline + ajuste ±10% do AE). Mesma base do C08. Pipelines Vendas + Bid; base ativa: Reunião Agendada/Pré-RFP (toggle), Diagnóstico, Cotação, Proposta Enviada, Consultoria, Negociação e Standby (toggle) | exclui Ganho, Perdido e Implantação.',
+    tip_revbkt:'Dois donuts do TCV (régua real ao longo do período do contrato — 12/24/36 meses; sem período → 12 — com dedup Fee×Corretagem: gêmeo excluído = zero | a mesma conta da coluna TCV dos painéis Forecast): esquerda por bucket de Receita, direita por bucket de Vidas (faixas do C03). Toggle alterna Bruto × Ponderado (× probabilidade de fechamento por pipeline C07 + ajuste ±10% do AE). Pipelines Vendas + Bid; base ativa (Reunião Agendada/Pré-RFP-toggle, Diagnóstico, Cotação, Proposta Enviada, Consultoria, Negociação, Standby-toggle | exclui Ganho, Perdido e Implantação); só deals com TCV > 0.',
     t_segment:'Receita por Segmento',
     tip_segment:'Receita anual estimada (potencial) somada por segmento de tamanho do cliente (vidas). Inclui os pipelines Vendas + Bid.',
     // KPIs primários
@@ -1044,7 +1046,7 @@ var NOVO_I18N = {
     unit_days:'dias', p04_colaboradores:'colaboradores',
     lost_reason_label:'Motivo de Perdido:', lost_reason_all:'Todos os motivos', lost_reason_none:'(sem motivo)',
     tbl_deal:'Deal', tbl_ae:'AE', tbl_pipe:'Pipe', tbl_stage:'Etapa', tbl_close:'Fechamento', tbl_days:'Dias',
-    tbl_collab:'Colab.', tbl_lives:'Vidas', tbl_first_inv:'1\xaa Fatura (R$)', tbl_arr:'ARR Est. (R$)', tbl_model:'Modelo',
+    tbl_collab:'Colab.', tbl_lives:'Vidas', tbl_first_inv:'1\xaa Fatura (R$)', tbl_arr:'ARR Est. (R$)', tbl_tcv:'TCV (R$)', tbl_model:'Modelo',
     tbl_agency:'Agenc.', tbl_lifetime:'Vit.', tbl_prob_ae:'Prob AE', tbl_prob_stage:'P. Etapa', tbl_prob_adj:'P. Ajust.',
     tbl_quarter:'Quarter', tbl_rev_date:'Dt. Receita', tbl_sdr:'BDR', tbl_last_activity:'Últ. Atividade', tbl_days_no_activity:'Dias sem atividade', tbl_total:'Total', tbl_deals_count:'negócios', tbl_won_raw:'Data Ganho', tbl_impl_raw:'Data Impl.', tbl_monthly_rev_calc:'Receita Mensal Calc.',
     impl_won_label:'Implantação = Ganho', impl_won_tip:'Quando ativo, deals em Implantação contam como Ganho. Quando inativo, só Ganho é considerado ganho (Implantação volta a ser tratado como aberto).',
@@ -1104,8 +1106,8 @@ var NOVO_I18N = {
     donut_open_deals:'open deals', donut_no_revenue:'No revenue', donut_no_lives:'No lives', donut_stages_label:'Stages',
     vf_by_revenue:'Revenue', vf_by_lives:'Lives', vf_by_stage:'Stage', vf_by_segment:'Segment',
     t_stageval:'Pipeline Value by Stage (TCV)',
-    tip_stageval:'Sum of TCV (12-month contract value from the real régua, including the entry brokerage) per stage. "Weighted" multiplies by the final win probability (C07 per pipeline + AE ±10% adjustment). Same base as C08. Vendas + Bid pipelines; active base: Reunião Agendada/Pré-RFP (toggle), Diagnóstico, Cotação, Proposta Enviada, Consultoria, Negociação and Standby (toggle) | excludes Ganho, Perdido and Implantação. Diagnóstico: lives × R$/life × 12.',
-    tip_revbkt:'Two donuts of TCV (12-month contract value from the real régua — includes the entry brokerage; Diagnóstico = lives × R$/life × 12): left by Revenue bucket, right by Lives bucket (C03 tiers). Toggle switches Gross × Weighted (× per-pipeline win probability C07 + AE ±10% adjustment). Vendas + Bid pipelines; active base (Reunião Agendada/Pré-RFP-toggle, Diagnóstico, Cotação, Proposta Enviada, Consultoria, Negociação, Standby-toggle | excludes Ganho, Perdido and Implantação); only deals with TCV > 0.',
+    tip_stageval:'Sum of TCV per stage. TCV = real régua (calcTCV) over the contract period (12/24/36 months; no period → 12), including the entry brokerage | the SAME formula as the TCV column in the Forecast panels: per-stage totals match 1:1. Fee×Brokerage dedup: a duplicated deal counts once (the excluded twin counts zero). No 1st invoice/model → left out. "Weighted" multiplies by the final win probability (C07 per pipeline + AE ±10% adjustment). Same base as C08. Vendas + Bid pipelines; active base: Reunião Agendada/Pré-RFP (toggle), Diagnóstico, Cotação, Proposta Enviada, Consultoria, Negociação and Standby (toggle) | excludes Ganho, Perdido and Implantação.',
+    tip_revbkt:'Two donuts of TCV (real régua over the contract period — 12/24/36 months; no period → 12 — with Fee×Brokerage dedup: excluded twin = zero | the same formula as the TCV column in the Forecast panels): left by Revenue bucket, right by Lives bucket (C03 tiers). Toggle switches Gross × Weighted (× per-pipeline win probability C07 + AE ±10% adjustment). Vendas + Bid pipelines; active base (Reunião Agendada/Pré-RFP-toggle, Diagnóstico, Cotação, Proposta Enviada, Consultoria, Negociação, Standby-toggle | excludes Ganho, Perdido and Implantação); only deals with TCV > 0.',
     t_segment:'Revenue by Segment',
     tip_segment:'Estimated annual revenue (potential) summed by customer-size segment (lives). Includes the Vendas + Bid pipelines.',
     // Primary KPIs
@@ -1161,7 +1163,7 @@ var NOVO_I18N = {
     unit_days:'days', p04_colaboradores:'employees',
     lost_reason_label:'Lost Reason:', lost_reason_all:'All reasons', lost_reason_none:'(no reason)',
     tbl_deal:'Deal', tbl_ae:'AE', tbl_pipe:'Pipe', tbl_stage:'Stage', tbl_close:'Close Date', tbl_days:'Days',
-    tbl_collab:'Empl.', tbl_lives:'Lives', tbl_first_inv:'1st Invoice (R$)', tbl_arr:'Est. ARR (R$)', tbl_model:'Model',
+    tbl_collab:'Empl.', tbl_lives:'Lives', tbl_first_inv:'1st Invoice (R$)', tbl_arr:'Est. ARR (R$)', tbl_tcv:'TCV (R$)', tbl_model:'Model',
     tbl_agency:'Agency', tbl_lifetime:'Lifet.', tbl_prob_ae:'AE Prob', tbl_prob_stage:'Stage Prob', tbl_prob_adj:'Adj. Prob',
     tbl_quarter:'Quarter', tbl_rev_date:'Rev. Date', tbl_sdr:'BDR', tbl_last_activity:'Last Activity', tbl_days_no_activity:'Days no activity', tbl_total:'Total', tbl_deals_count:'deals', tbl_won_raw:'Won Date', tbl_impl_raw:'Impl. Date', tbl_monthly_rev_calc:'Monthly Rev Calc.',
     impl_won_label:'Implementation = Won', impl_won_tip:'When on, deals in Implementation count as Won. When off, only Ganho counts as won (Implementation is treated as open again).',
@@ -1258,22 +1260,25 @@ var NOVO_HELP_CHARTS = [
   {
     key: 'stageval',
     title: 'Valor do Pipeline por Etapa (TCV)',
-    desc: 'Soma do TCV (valor do contrato em 12 meses pela régua real, incluindo a corretagem de entrada) por etapa — a mesma base do C08. "Ponderado" multiplica pela probabilidade final de fechamento (C07 por pipeline + ajuste do AE). Diagnóstico: vidas × R$/vida × 12.',
+    desc: 'Soma do TCV por etapa — a mesma base do C08. TCV = régua real (calcTCV) ao longo do período do contrato (12/24/36 meses; sem período → 12), incluindo a corretagem de entrada, com dedup Fee×Corretagem (deal duplicado conta uma vez; o gêmeo excluído entra com zero) | a MESMA conta da coluna TCV dos painéis Forecast: os totais por etapa batem 1:1. Deals sem 1ª fatura/modelo (ex.: a maioria de Diagnóstico) ficam de fora. "Ponderado" multiplica pela probabilidade final de fechamento (C07 por pipeline + ajuste do AE).',
     fields: [
       ['dealstage', 'Agrupa o TCV por etapa.'],
-      ['primeira_fatura + modelo_remuneracao', 'Régua da receita (calcReceitaMes); TCV = soma dos 12 primeiros meses.'],
-      ['vidas', 'No Diagnóstico o TCV = vidas × R$/vida × 12.'],
+      ['primeira_fatura + modelo_remuneracao', 'Régua da receita (calcTCV via calcReceitaMes); sem os dois, o deal fica fora.'],
+      ['periodo_do_contrato___vg', 'Nº de meses somados no TCV (12/24/36; vazio → 12).'],
+      ['dealname', 'Chave da dedup Fee×Corretagem (mesmo cliente com Fee e Corretagem conta uma vez).'],
       ['dealstage + pipeline', 'No modo "Ponderado", peso = probabilidade final (C07 do pipeline do deal + ajuste do AE), ajustável em ⚙.'],
     ],
   },
   {
     key: 'revbkt',
     title: 'TCV do Pipe por Bucket',
-    desc: 'Dois donuts com a distribuição do TCV (valor do contrato em 12 meses pela régua real, incluindo a corretagem de entrada): um por bucket de Receita, outro por bucket de Vidas (faixas do C03). O toggle escolhe a métrica: Bruto = Σ TCV; Ponderado = Σ TCV × probabilidade de fechamento por pipeline (C07). É a receita que a Axenya tem a receber no pipe, e quanto cada bucket representa. Diagnóstico usa vidas × R$/vida × 12. Base: pipeline ativo (Vendas + Bid); só deals com TCV > 0.',
-    note: 'O gráfico usa dois medidores de receita distintos: a FAIXA (bucket, no donut Por Receita) é decidida por <code>_annualRev</code> (arr_estimado, ou primeira_fatura × 12), mas a INCLUSÃO no gráfico e o TAMANHO de cada fatia usam o TCV da régua (calcReceitaMes). Consequência: deals de Diagnóstico, precificados por vida (vidas × R$/vida × 12), têm TCV positivo mas <code>_annualRev</code> = 0 | entram no gráfico e caem na fatia cinza "Sem receita", que por isso carrega uma parcela relevante do TCV total (hoje, quase metade | toda de Diagnóstico). Leia "Sem receita" como "sem arr_estimado/primeira_fatura preenchidos", não como "sem valor". Isso é escolha de leitura, não erro de cálculo | o TCV somado está correto.',
+    desc: 'Dois donuts com a distribuição do TCV (régua real ao longo do período do contrato — 12/24/36 meses; sem período → 12 — incluindo a corretagem de entrada, com dedup Fee×Corretagem: gêmeo excluído = zero | a mesma conta da coluna TCV dos painéis Forecast): um por bucket de Receita, outro por bucket de Vidas (faixas do C03). O toggle escolhe a métrica: Bruto = Σ TCV; Ponderado = Σ TCV × probabilidade de fechamento por pipeline (C07). É a receita que a Axenya tem a receber no pipe, e quanto cada bucket representa. Base: pipeline ativo (Vendas + Bid); só deals com TCV > 0.',
+    note: 'O gráfico usa dois medidores de receita distintos: a FAIXA (bucket, no donut Por Receita) é decidida por <code>_annualRev</code> (arr_estimado, ou primeira_fatura × 12), mas a INCLUSÃO no gráfico e o TAMANHO de cada fatia usam o TCV da régua (calcTCV). Como o TCV exige 1ª fatura + modelo, todo deal considerado tem <code>_annualRev</code> > 0 — a fatia cinza "Sem receita" tende a ficar vazia. (Antes de 2026-07-16, o Diagnóstico usava o proxy vidas × R$/vida × 12 e caía nessa fatia; o proxy foi aposentado para o TCV bater 1:1 com o painel Forecast.)',
     fields: [
-      ['primeira_fatura + modelo_remuneracao', 'Régua da receita (calcReceitaMes); TCV = soma dos 12 primeiros meses, com a entrada da corretagem.'],
-      ['vidas', 'Bucket no modo Vidas; no Diagnóstico o TCV = vidas × R$/vida × 12.'],
+      ['primeira_fatura + modelo_remuneracao', 'Régua da receita (calcTCV via calcReceitaMes); sem os dois, o deal fica fora.'],
+      ['periodo_do_contrato___vg', 'Nº de meses somados no TCV (12/24/36; vazio → 12).'],
+      ['dealname', 'Chave da dedup Fee×Corretagem (mesmo cliente com Fee e Corretagem conta uma vez).'],
+      ['vidas', 'Bucket no modo Vidas.'],
       ['dealstage + pipeline', 'Peso da versão Ponderada = probabilidade de fechamento da etapa do pipeline do deal (C07).'],
     ],
   },
@@ -1768,6 +1773,7 @@ function _novoDealsRows(deals) {
       '<td>'+_ni(d.vidas)+'</td>'+
       '<td>'+_nr(d.primeira_fatura)+'</td>'+
       '<td>'+_nr(d.arr_estimado)+'</td>'+
+      '<td>'+_nr(_novoDealTcv(d))+'</td>'+
       '<td style="white-space:nowrap">'+_ne(d.modelo_remuneracao)+'</td>'+
       '<td>'+_nb(d.possui_agenciamento)+'</td>'+
       '<td>'+_nb(d.possui_vitalicio)+'</td>'+
@@ -1890,6 +1896,7 @@ function _novoSortVal(d, col) {
     case 22: return d.data_ganho||'';
     case 23: return d.data_implantacao||'';
     case 24: return _annualRev(d)/12;
+    case 25: return _novoDealTcv(d);
     default: return null;
   }
 }
@@ -1897,7 +1904,7 @@ function _novoSortVal(d, col) {
 function novoSortDeals(col) {
   if (_novoModalSort.col === col) { _novoModalSort.dir *= -1; }
   else { _novoModalSort.col = col; _novoModalSort.dir = 1; }
-  for (var i = 0; i < 21; i++) {
+  for (var i = 0; i < 26; i++) {
     var ind = document.getElementById('ndsi-'+i);
     if (ind) ind.textContent = i === col ? (_novoModalSort.dir === 1 ? ' ↑' : ' ↓') : '';
   }
@@ -2040,11 +2047,13 @@ function _novoDealsTableHtml(deals) {
   var totalArr    = _novoModalDeals.reduce(function(s,d){ return s+(d.arr_estimado||0); }, 0);
   var avgFinalProb = _novoModalDeals.length ? _novoModalDeals.reduce(function(s,d){ return s+(_calcProbInfo(d).final || 0); }, 0) / _novoModalDeals.length : null;
   var sub = _novoModalDeals.length + ' ' + t('tbl_deals_count');
+  var totalTcv = _novoModalDeals.reduce(function(s,d){ return s+(_novoDealTcv(d)||0); }, 0);
   var tfoot = _novoModalDeals.length > 0
-    ? '<tfoot><tr><td style="text-align:left;font-weight:600" colspan="9">'+t('tbl_total')+'</td>'+ 
-      '<td style="font-weight:600">'+_ni(totalVidas)+'</td>'+ 
-      '<td></td>'+ 
-      '<td style="font-weight:600">'+_nr(totalArr)+'</td>'+ 
+    ? '<tfoot><tr><td style="text-align:left;font-weight:600" colspan="9">'+t('tbl_total')+'</td>'+
+      '<td style="font-weight:600">'+_ni(totalVidas)+'</td>'+
+      '<td></td>'+
+      '<td style="font-weight:600">'+_nr(totalArr)+'</td>'+
+      '<td style="font-weight:600">'+_nr(totalTcv)+'</td>'+
       '<td colspan="5"></td><td style="font-weight:600">'+_np(avgFinalProb)+'</td><td colspan="3"></td></tr></tfoot>'
     : '';
   var ts = 'padding:.4rem .5rem;white-space:nowrap;font-size:.68rem;cursor:pointer;user-select:none';
@@ -2058,6 +2067,7 @@ function _novoDealsTableHtml(deals) {
     '<table class="lb" style="width:100%;font-size:.75rem"><thead><tr>'+
       th(t('tbl_deal'),0,true)+th(t('tbl_ae'),1,true)+th(t('tbl_pipe'),2)+th(t('tbl_stage'),3)+th(t('tbl_last_activity'),19)+th(t('tbl_days_no_activity'),21)+th(t('tbl_close'),4)+
       th(t('tbl_days'),5)+th(t('tbl_collab'),6)+th(t('tbl_lives'),7)+th(t('tbl_first_inv'),8)+th(t('tbl_arr'),9)+
+      th(t('tbl_tcv'),25)+
       th(t('tbl_model'),10)+th(t('tbl_agency'),11)+th(t('tbl_lifetime'),12)+
       th(t('tbl_prob_ae'),13)+th(t('tbl_prob_stage'),14)+th(t('tbl_prob_adj'),15)+
       th(t('tbl_quarter'),16)+th(t('tbl_rev_date'),17)+th(t('tbl_sdr'),18)+
@@ -2920,20 +2930,34 @@ function _novoRevBucketsCard() {
     '</div>' +
   '</div>';
 }
-// TCV (Total Contract Value) de um deal = valor do contrato em 12 meses pela régua real
-// (regra da Cintia: contrato = 12 meses; inclui a corretagem de entrada). Período FECHADO
-// por deal, independe de quando a receita cai no calendário. Diagnóstico: vidas × R$/vida × 12.
-var NOVO_TCV_MESES = 12;
+// TCV (Total Contract Value) de um deal = régua real (calcTCV, fonte única revenue-engine)
+// somada ao longo dos meses do PERÍODO DO CONTRATO (12/24/36; sem período → 12) — a MESMA
+// conta da coluna TCV dos painéis Forecast. Dedup Fee×Corretagem (OverallCore.revExcluded,
+// a mesma do Forecast Overall): o gêmeo excluído conta ZERO, então os totais por etapa (C04)
+// e por bucket (C08) batem 1:1 com o Forecast. Sem base de régua (sem 1ª fatura/modelo) → 0.
+// (Substitui o TCV 12m fixo + proxy de Diagnóstico vidas × R$/vida × 12 | 2026-07-16.)
+var _novoTcvExclCache = null, _novoTcvExclSrc = null;
+function _novoTcvExcl(){
+  var src = _novoDeals || [];
+  if (_novoTcvExclSrc !== src) {
+    _novoTcvExclSrc = src;
+    if (window.OverallCore && typeof calcReceitaMes === 'function') {
+      OverallCore.config({ calcReceita: function(n,d){ var r = calcReceitaMes(n,d); return r ? r.total : null; } });
+      _novoTcvExclCache = OverallCore.revExcluded(src.filter(function(d){ return d.stage !== 'Perdido'; }));
+    } else _novoTcvExclCache = {};
+  }
+  return _novoTcvExclCache;
+}
 function _novoDealTcv(d){
-  if (d.stage === 'Diagnóstico'){ var v=d.vidas||0; return v>0 ? v*_novoFcDiagFee(v)*NOVO_TCV_MESES : 0; }
-  if (typeof calcReceitaMes !== 'function') return 0;
-  var s=0; for (var n=1;n<=NOVO_TCV_MESES;n++){ var r=calcReceitaMes(n,d); if(r) s+=r.total; } return s;
+  if (typeof calcTCV !== 'function') return 0;
+  if (window.OverallCore && _novoTcvExcl()[OverallCore.dealId(d)]) return 0;
+  return calcTCV(d) || 0;
 }
 function buildNovoRevBuckets() {
   if (!document.getElementById('chart-novo-revbkt-receita')) return;
   var L = NOVO_LANG === 'en';
   var weighted = _novoRevBktMode === 'ponderado';
-  // TCV 12m por deal; ponderado usa a probabilidade final (mesma do forecast).
+  // TCV pelo período do contrato + dedup (mesma conta do Forecast); ponderado usa a probabilidade final.
   var metric = weighted
     ? function(d){ var p=_calcProbInfo(d).final; return _novoDealTcv(d)*(p==null?0:p); }
     : function(d){ return _novoDealTcv(d); };

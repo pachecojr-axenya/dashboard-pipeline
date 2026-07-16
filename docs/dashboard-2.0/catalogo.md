@@ -193,7 +193,8 @@ Corte PME: 200 vidas. Fuso canônico: America/Sao_Paulo.
 - **Usa dados:** `primeira_fatura`, `modelo_remuneracao`, `vidas`, `possui_agenciamento`, `periodo_contrato`
 - **Depende de:** `receita_regua_mensal`, `contrato_meses`
 - **Fórmula:** Σ receita_regua_mensal(n) para n = 1..contrato_meses. Bruto, NÃO ponderado por probabilidade.
-- **Código (1.0):** public/revenue-engine.js:73 (calcTCV)
+- **Código (1.0):** public/revenue-engine.js:73 (calcTCV) · public/dashboard.html (_novoDealTcv \| C04/C08) · public/board.html (_novoDealTcv \| B07/B09)
+- **Notas:** 2026-07-16 (pedido do dono): C04/C08 do CRO e B07/B09 do Board passam a usar ESTA regra + dedup_fee_corretagem (gêmeo excluído = 0), no lugar do TCV 12m fixo com proxy de Diagnóstico (vidas × R$/vida × 12, aposentado) — os totais por etapa/bucket batem 1:1 com a coluna TCV dos painéis Forecast.
 
 ### `receita_mensal_deal` | Receita por etapa \| quando e quanto (séries Real e Probabilizada)
 
@@ -252,8 +253,8 @@ Corte PME: 200 vidas. Fuso canônico: America/Sao_Paulo.
 - **Tipo:** calculado · **Grain:** cliente · **Status:** em_revisao · **Vigente desde:** 2026-07-14 · **Dono:** revops
 - **Usa dados:** `dealname`, `modelo_remuneracao`, `vigencia`
 - **Fórmula:** Critério de escolha do deal que fica: 1º etapa mais avançada; empate → menor TCV de 12 meses; novo empate → vigência mais distante (cenário conservador). O deal 'perdedor' continua aparecendo na lista, mas com receita ZERADA (não soma no total).
-- **Código (1.0):** public/forecast.html (dedup do painel Forecast; texto validado na ajuda da aba)
-- **Notas:** As Premissas (doc) diziam 'menor TCV + prazo mais longo'; o comportamento real do código antepõe a ETAPA MAIS AVANÇADA como 1º critério — catálogo segue o código (extração), divergência do doc anotada.
+- **Código (1.0):** public/forecast.html (dedup do painel Forecast; texto validado na ajuda da aba) · public/forecast-stage.html (_fcRevExcluded) · public/forecast-overall-core.js (revExcluded — porta compartilhada, dual-load Node) · public/dashboard.html (_novoTcvExcl \| TCV do C04/C08) · public/board.html (_novoTcvExcl \| TCV do B07/B09)
+- **Notas:** As Premissas (doc) diziam 'menor TCV + prazo mais longo'; o comportamento real do código antepõe a ETAPA MAIS AVANÇADA como 1º critério — catálogo segue o código (extração), divergência do doc anotada. 2026-07-16: CRO/Board consomem a implementação compartilhada (OverallCore.revExcluded); forecast.html/forecast-stage.html ainda mantêm cópias locais idênticas — unificação oportunística pendente.
 
 ### `prob_realtime_forecast` | Prob. Realtime (coluna informativa \| painéis Forecast)
 
@@ -265,6 +266,16 @@ Corte PME: 200 vidas. Fuso canônico: America/Sao_Paulo.
 - **Depende de:** `prob_etapa_calculada`
 - **Fórmula:** = C07 (regra prob_etapa_calculada): deals GANHOS ÷ deals que entraram na etapa, POR PIPELINE, amostra mínima 20 (senão '—'). Cache de 1h no navegador. UNIFICADA com CRO/Board por decisão do dono (2026-07-15, 'os dados precisam conversar') — a variante anterior do Forecast (Implantação ÷ entraram, combinado) foi aposentada. Puramente informativa: NÃO altera a receita probabilizada.
 - **Código (1.0):** public/prob-engine.js (funnelDerivedProbPipe — fonte única) · public/forecast.html (coluna prob_realtime) · public/forecast-stage.html (idem)
+
+### `arr_ponderado_forecast` | ARR Ponderado (coluna informativa \| painéis Forecast)
+
+> Coluna pedida pelo dono (2026-07-16): a MESMA leitura de ARR ponderado usada nos outros painéis (B15/B16 do Board, P03/B04), lado a lado com as colunas do Forecast — para auditar se os números dos painéis batem sem sair da tela.
+
+- **Tipo:** calculado · **Grain:** deal · **Status:** em_revisao · **Vigente desde:** 2026-07-16 · **Dono:** revops
+- **Usa dados:** `arr_estimado`, `primeira_fatura`, `dealstage`, `probabilidade_ae`
+- **Depende de:** `arr_estimado_fallback`, `prob_final_forecast`
+- **Fórmula:** ARR Ponderado = ARR estimado (sem ARR → 1ª fatura × 12, regra arr_estimado_fallback) × P. Ajust. (probabilidade final da etapa + ajuste ±10% do AE, a mesma da coluna P. Ajust. do painel). Puramente informativa: NÃO altera a receita probabilizada nem os totais mensais. Diferenças residuais contra o Board vêm da fonte da probabilidade (Forecast: régua flat; Board: C07 por pipeline quando há amostra) — visíveis nas colunas P. Etapa / P. Realtime.
+- **Código (1.0):** public/forecast.html (coluna arr_pond) · public/forecast-stage.html (idem)
 
 ### `prob_final_forecast` | Probabilidade final no Forecast (régua flat + ajuste do AE)
 

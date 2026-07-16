@@ -1780,7 +1780,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
   </style>
 <link rel="stylesheet" href="/premium.css?v=5">
 <script src="/premium.js?v=5"></script>
-<script src="/semantic-ref.js?v=5"></script>
+<script src="/semantic-ref.js?v=6"></script>
 <script src="/semantic-help.js?v=2"></script>
 <script src="/prob-engine.js?v=2"></script>
 <script src="/revenue-engine.js?v=1"></script>
@@ -3616,7 +3616,11 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
           prob_info: isBid ? { sp: FC_BID_PROB, cp: d.probabilidade, final: FC_BID_PROB, modStr: 'BID | probabilidade fixa conservadora (~0,5%)' } : pInfo,
           // TCV (igual ao painel Forecast principal) e ARR × %AE (só a prob. do executivo).
           tcv: (typeof calcTCV === 'function') ? calcTCV(d) : null,
-          arr_pae: (d.arr_estimado != null && d.probabilidade != null) ? d.arr_estimado * d.probabilidade : null
+          arr_pae: (d.arr_estimado != null && d.probabilidade != null) ? d.arr_estimado * d.probabilidade : null,
+          // ARR Ponderado (pedido do dono 2026-07-16): ARR estimado (sem ARR → 1ª fatura × 12)
+          // × P. Ajust. — a MESMA leitura de ARR ponderado dos outros painéis (B15/B16, P03/B04),
+          // para auditar paridade entre painéis. Informativa: NÃO altera a receita probabilizada.
+          arr_pond: (function(){ const arr = (d.arr_estimado != null && d.arr_estimado > 0) ? d.arr_estimado : ((d.primeira_fatura > 0) ? d.primeira_fatura * 12 : 0); const p = isBid ? FC_BID_PROB : pInfo.final; return (arr > 0 && p != null) ? arr * p : null; })()
         };
       });
 
@@ -3972,6 +3976,10 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
           tip: 'ARR Estimado × probabilidade informada pelo executivo (Prob. AE). Só a % do AE, sem régua/etapa. Em branco quando o AE não informou.'
         },
         {
+          k: 'arr_pond', lbl: '🟡 ARR Pond. (R$)', w: 128, align: 'right', fmt: fmtBRL, hideMobile: true,
+          tip: 'ARR Ponderado = ARR Estimado (sem ARR → 1ª Fatura × 12) × P. Ajust. (BID: probabilidade fixa) — a MESMA leitura de ARR ponderado dos outros painéis (Top 5 AEs/Watchlist do Board, Receita Ponderada P03/B04), lado a lado para auditar se os números batem. Informativa: NÃO altera a receita probabilizada. Diferença residual vs CRO/Board vem da fonte da probabilidade (aqui: régua flat + ajuste do AE; lá: C07 ao vivo por pipeline quando há amostra).'
+        },
+        {
           k: 'tcv', lbl: 'TCV (R$)', w: 118, align: 'right', fmt: fmtBRL, hideMobile: true,
           tip: 'Valor total do contrato = soma da receita projetada pela régua (calcReceitaMes) ao longo dos meses do Período do contrato | bruto, não ponderado por probabilidade. Sem Período → 12 meses. Mesmo cálculo do painel Forecast principal.'
         },
@@ -4275,6 +4283,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
         else if (c.k === 'primeira_fatura') h += `<td class="${mh}" style="text-align:right">${totalPrimFat > 0 ? fmtBRL(totalPrimFat) : ''}</td>`;
         else if (c.k === 'arr_estimado') h += `<td class="${mh}" style="text-align:right">${fmtBRL(totalArr)}</td>`;
         else if (c.k === 'arr_pae') { const tAp = deals.reduce((s, d) => s + (revExcl.has(_fcDealId(d)) ? 0 : (d.arr_pae || 0)), 0); h += `<td class="${mh}" style="text-align:right">${tAp > 0 ? fmtBRL(tAp) : ''}</td>`; }
+        else if (c.k === 'arr_pond') { const tPond = deals.reduce((s, d) => s + (revExcl.has(_fcDealId(d)) ? 0 : (d.arr_pond || 0)), 0); h += `<td class="${mh}" style="text-align:right">${tPond > 0 ? fmtBRL(tPond) : ''}</td>`; }
         else if (c.k === 'tcv') { const tTcv = deals.reduce((s, d) => s + (revExcl.has(_fcDealId(d)) ? 0 : (d.tcv || 0)), 0); h += `<td class="${mh}" style="text-align:right">${tTcv > 0 ? fmtBRL(tTcv) : ''}</td>`; }
         else if (c.k === 'prob_ajustada') h += `<td class="${mh}" style="text-align:right" data-tip="${esc(effAdjTip)}">${effAdjProb != null ? fmtPct(effAdjProb) : ''}</td>`;
         else h += `<td class="${mh}"></td>`;
