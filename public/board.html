@@ -247,9 +247,13 @@ var NOVO_I18N={
 function t(k){ return (NOVO_I18N[NOVO_LANG]||NOVO_I18N.pt)[k]||(NOVO_I18N.pt[k])||k; }
 function novoToggleLang(){ NOVO_LANG=NOVO_LANG==='pt'?'en':'pt'; try{localStorage.setItem('novo_lang',NOVO_LANG);}catch(e){} (function(_e){if(_e)_e.textContent=NOVO_LANG.toUpperCase();})(document.getElementById('novo-lang-label')); if(_novoDeals) novoRender(); }
 
+// Código ÚNICO por painel (renomeação 2026-07-16, de-para na AUDITORIA_GRAFICOS).
+// "Bxx | =Cyy" marca builder GENUINAMENTE compartilhado (shared-charts.js) com o
+// card Cyy/Pyy do CRO — mesma função, não pode driftar. Código sem "=" é fórmula
+// própria deste painel (paridade com o CRO não é garantida por construção).
 var BOARD_CARD_CODES={
-  'kpi-won-arr':'P07','kpi-open-pipe':'B02','kpi-adjusted-conv':'B03','kpi-forecast':'P03',
-  'rev-trend':'B05','pipe-stage':'C04','deal-bench':'C08',
+  'kpi-won-arr':'B01','kpi-open-pipe':'B02','kpi-adjusted-conv':'B03','kpi-forecast':'B04 | =P03',
+  'rev-trend':'B05','pipe-stage':'B07 | =C04','deal-bench':'B09 | =C08',
   'top-ae':'B15','watchlist':'B16',
   'entry-exit':'B11','arr-bridge':'B12'
 };
@@ -492,8 +496,8 @@ function novoRender(){
   var lastM=months[months.length-1];
   var wonLast=won.filter(function(d){return d.close_date&&d.close_date.substring(0,7)===lastM;});
   var wonLastRev=wonLast.reduce(function(s,d){return s+_annualRev(d);},0);
-  // P03 | Receita Ponderada: Σ ARR × prob sobre o pipeline ativo — fonte única
-  // compartilhada com o CRO Dashboard (shared-charts.js) para garantir paridade.
+  // B04 | =P03 | Receita Ponderada: Σ ARR × prob sobre o pipeline ativo — fonte única
+  // compartilhada com o P03 do CRO Dashboard (shared-charts.js) para garantir paridade.
   var weighted=sharedWeightedPipelineARR(_croActivePipeline());
   var adjRate=(won.length+lost.length)>0?Math.round(won.length/(won.length+lost.length)*1000)/10:null;
 
@@ -542,9 +546,9 @@ function novoToggleImplWon(){ _novoImplWon=!_novoImplWon; try{localStorage.setIt
 function novoToggleActiveMeetings(){ _novoActiveMeetings=!_novoActiveMeetings; try{localStorage.setItem('novo_active_meetings',_novoActiveMeetings?'1':'0');}catch(e){} _gsSync(); if(_novoDeals)novoRender(); }
 function novoToggleActiveStandby(){ _novoActiveStandby=!_novoActiveStandby; try{localStorage.setItem('novo_active_standby',_novoActiveStandby?'1':'0');}catch(e){} _gsSync(); if(_novoDeals)novoRender(); }
 
-// ── Modal idêntico ao CRO Dashboard (B01 = P07, B02 = P03) ────────────────────
-// Porta a tabela rica de deals e o grid de stats do CRO para que B01/B02 abram
-// exatamente o mesmo modal de P07/P03. Mesma fonte de dados (/api/forecast-table).
+// ── Modal idêntico ao CRO Dashboard (B01 ← modal do P07; B02/B04 ← modal do P03) ──
+// Porta a tabela rica de deals e o grid de stats do CRO para que os KPIs do board
+// abram exatamente o mesmo modal do CRO. Mesma fonte de dados (/api/forecast-table).
 var _crNd=function(v){ if(!v)return '—'; var p=String(v).slice(0,10).split('-'); return p.length===3?p[2]+'/'+p[1]+'/'+p[0]:v; };
 var _crNr=function(v){ return v!=null?Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}):'—'; };
 var _crNp=function(v){ return v!=null?(v*100).toFixed(1)+'%':'—'; };
@@ -689,13 +693,13 @@ function novoVfPick(kind,i){ if(kind==='rev')_novoVfRevSel=(i===-1)?null:i; else
 function novoOpenDealsFilterModal(title,deals){ _novoVfAll=deals||[]; _novoVfRevBuckets=_novoSizeFilterBuckets(true); _novoVfVidasBuckets=_novoSizeFilterBuckets(false); _novoVfRevSel=null; _novoVfVidasSel=null; openModal(title,'<div id="novo-vf-chips"></div><div id="novo-vf-table"></div>'); _novoVfRender(); }
 
 function boardKpiOpen(kind){
-  // B01 = P07 (Receita Ganha): mesmo modal — grid de stats + tabela rica de ganhos.
+  // B01 (era P07 | Receita Ganha): mesmo modal do P07 do CRO — grid de stats + tabela rica de ganhos.
   if(kind==='won'){ openModal('ARR Ganho no Período', _croKpiStatsHtml(_novoWon())+_croDealsTableHtml(_novoWon())); return; }
-  // B02 = P03 (Pipe Ativo): mesmo modal — tabela rica do pipeline ativo.
+  // B02 (Pipe Ativo): mesmo modal do P03 do CRO — tabela rica do pipeline ativo.
   if(kind==='open'){ openModal('Pipeline Aberto Atual', _croDealsTableHtml(_croActivePipeline())); return; }
-  // B03 = S01 (Conversão Ajustada): mesmo modal — tabela rica de fechados (ganhos + perdidos).
+  // B03 (Conversão Ajustada): mesmo modal — tabela rica de fechados (ganhos + perdidos).
   if(kind==='closed'){ openModal('Conversão Ajustada | Fechados', _croDealsTableHtml(_novoWon().concat(_novoLost()))); return; }
-  // P03 (Receita Ponderada): mesmo modal — tabela rica do pipeline ativo.
+  // B04 (era P03 | Receita Ponderada): mesmo modal — tabela rica do pipeline ativo.
   if(kind==='forecast'){ openModal('Receita Ponderada', _croDealsTableHtml(_croActivePipeline())); return; }
   novoOpenDealsModal('Deals',[]);
 }

@@ -120,6 +120,82 @@ node scripts/_capture-charts.js public/novo-dashboard.html includeLost
 
 - **`bdr-workload.html` (subpágina nova) → 🟡 em auditoria.** KPIs e tabelas reconciliam por construção (todo KPI clicável abre a lista nominal que ele conta). Validação inicial 13/07 com dados de produção: empresas/contatos/transições do dia batem com contagem independente. Pendências declaradas na própria página: motivo de desqualificação (propriedade inexistente no portal), fonte não se aplica a movimentações, primeiro retorno usa proxy CONNECTED.
 
+## Adendo | Renomeação: código único por card em CRO/Board/AE (2026-07-16)
+
+> Decisão do dono: código de card repetido entre painéis não existe mais. A convenção
+> nova: **cada painel tem códigos próprios** (CRO = C/P/S/N, Board = B, AE = A) e, onde
+> o gráfico é **genuinamente compartilhado** (mesmo builder do `shared-charts.js` — não
+> pode driftar), a tag carrega a origem: ex. `B07 | =C04`. Código **sem** `=` é fórmula
+> própria do painel: paridade com o CRO não é garantida por construção. Os códigos do
+> CRO (vocabulário estabelecido: C07, N06B, N05...) não mudaram.
+
+**CRO (`dashboard.html`) — fim dos `N00` repetidos.** Ex-N00 ganharam N30–N41;
+**N13–N29 ficam reservados** (não usar) para nunca colidir com a numeração da tabela
+histórica N01–N26 de 12/06, que segue outra ordem. De-para (com a linha correspondente
+da tabela histórica, quando existe):
+
+| Key | Código antes | Código agora | Nome atual | Linha da tabela de 12/06 |
+|---|---|---|---|---|
+| waterfall | N00 | **N30** | Fluxo Semanal \| Criados · Ganhos · Perdidos | — (card reformulado pós-12/06; segue na fila 🟡) |
+| netflow | N00 | **N31** | Fluxo Líquido de Vidas | N02 🟠 |
+| stageprog | N00 | **N32** | Progressão por Etapa | N03 🔴 |
+| passthru | N00 | **N33** | Taxa de Passagem por Etapa | N08 🔴 |
+| sizewindow | N00 | **N34** | Distribuição por Tamanho \| Janela | N10 🟠 |
+| vidaswindow | N00 | **N35** | Distribuição de Vidas \| Janela | N11 🟠 |
+| segdoughnut | N00 | **N36** | Receita por Segmento \| Donut | N15 🟢 (duplicata do C08) |
+| visibility | N00 | **N37** | Visibilidade de Receita | N16 🟢 |
+| timetomeeting | N00 | **N38** | Reunião Ocorreu \| Cobertura do Campo | ≈ N19 🟠 (reformulado) |
+| financial | N00 | **N39** | Resultados Financeiros | N21 🟢 |
+| receivables | N00 | **N40** | Timeline de Recebíveis | N25 🟠 |
+| risktriage | N00 | **N41** | Triagem de Risco Top 20 | N26 🟢 |
+
+Também sincronizados os títulos do drawer de ajuda que ainda embutiam a numeração de
+12/06 divergindo do mapa: piperev12 `(N14)`→`(N06)`, wonmonthly `(N22)`→`(N10)`,
+weightedrevstage `(N24)`→`(N12)` — e os ex-N00 acima ganharam o código novo no título.
+Antes desta correção a UI exibia `(N01)`/`(N02)`/`(N03)`/`(N08)` DUPLICADOS em cards
+diferentes (waterfall×cohort, netflow×freshness, stageprog×winratesize,
+passthru×speedqualify).
+
+**⚠ Constatação da validação no DOM real (Edge headless, 16/07):** NENHUM dos 12
+ex-N00 está renderizado hoje no `/novo`. Vários constam como "removidos a pedido" nos
+comentários do render (N06, N10/N11, N15/N16 na numeração antiga); os demais
+(waterfall, financial, receivables, risktriage...) têm builder/i18n/ajuda órfãos no
+código — ex.: `buildNovoWeeklyFlow` existe mas nunca é chamado. Os códigos N30–N41
+valem como reserva se os cards forem reativados; a limpeza do código morto é decisão
+separada (não feita aqui). Cards do CRO efetivamente renderizados e verificados com
+tag única no DOM: P01–P09, S01–S05, C01–C04, C06–C08, N01–N09, N06B (+P00/S06/C00
+condicionais).
+
+**Board (`board.html`):**
+
+| Key | Antes | Agora | Observação |
+|---|---|---|---|
+| kpi-won-arr | P07 | **B01** | Fórmula própria (era o mesmo código do P07 do CRO); reusa o modal do P07 |
+| kpi-forecast | P03 | **B04 \| =P03** | Número vem de `sharedWeightedPipelineARR` (shared-charts.js) — paridade por construção |
+| pipe-stage | C04 | **B07 \| =C04** | `buildSharedStageVal`; B07 era o código histórico citado no cabeçalho do shared-charts.js |
+| deal-bench | C08 | **B09 \| =C08** | `buildSharedSizeDonut`; B09 idem (ex-C03 do board) |
+
+B02, B03, B05, B11, B12, B15, B16 inalterados.
+
+**AE (`ae.html`):**
+
+| Key | Antes | Agora | Observação |
+|---|---|---|---|
+| kpi-active-deals | P01 | **A22** | Fórmula própria |
+| kpi-open-lives | P02 | **A23** | Fórmula própria |
+| kpi-won-lives | P08 | **A24** | Fórmula própria |
+| kpi-won-arr | P07 | **A25** | Fórmula própria |
+| kpi-stale | S05 | **A26** | Fórmula própria |
+| kpi-meetings | P04 | **A27** | Fórmula própria |
+| vidas-ae | C01 | **A28 \| =C01** | `buildSharedVidasDealsAE` (shared-charts.js) — paridade por construção |
+
+A07–A21 inalterados. **A01–A06 não foram reutilizados** (códigos históricos do painel;
+A05/A06 foram mesclados no card compartilhado C01).
+
+Fora do escopo: `bdr.html` (códigos R — território do Samuel, coordenar antes) e os
+painéis Forecast (não usam este sistema de tags). Vereditos de validação (emojis) não
+foram alterados — renomeação pura.
+
 ## Adendo | Sincronização de títulos 🟡 com os vereditos desta auditoria (2026-07-14)
 
 > Revisão dos títulos com 🟡: vários gráficos do CRO/Board seguiam com 🟡 no título

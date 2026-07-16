@@ -303,7 +303,12 @@ var NOVO_I18N={
 function t(k){ return (NOVO_I18N[NOVO_LANG]||NOVO_I18N.pt)[k]||(NOVO_I18N.pt[k])||k; }
 function novoToggleLang(){ NOVO_LANG=NOVO_LANG==='pt'?'en':'pt'; try{localStorage.setItem('novo_lang',NOVO_LANG);}catch(e){} (function(_e){if(_e)_e.textContent=NOVO_LANG.toUpperCase();})(document.getElementById('novo-lang-label')); if(_novoDeals) novoRender(); }
 
-var AE_CARD_CODES={'kpi-active-deals':'P01','kpi-open-lives':'P02','kpi-won-lives':'P08','kpi-won-arr':'P07','kpi-stale':'S05','kpi-meetings':'P04','vidas-ae':'C01','arr':'A07','wonrev':'A08','winrate':'A09','monthly-won':'A10','pipeline-stage':'A11','aging':'A12','age-dist':'A13','radar':'A14','loss-reason':'A15','meeting-rate':'A16','efficiency':'A17','meeting-ae':'A18','velocity-stage':'A19','meeting-alert':'A20','stale-alert':'A21'};
+// Código ÚNICO por painel (renomeação 2026-07-16, de-para na AUDITORIA_GRAFICOS).
+// "A28 | =C01" marca builder GENUINAMENTE compartilhado (shared-charts.js) com o C01
+// do CRO. KPIs A22–A27 (eram P01/P02/P08/P07/S05/P04) são fórmulas PRÓPRIAS deste
+// painel — paridade com o CRO não é garantida por construção. A01–A06 não são
+// reutilizados (códigos históricos; A05/A06 foram mesclados no C01).
+var AE_CARD_CODES={'kpi-active-deals':'A22','kpi-open-lives':'A23','kpi-won-lives':'A24','kpi-won-arr':'A25','kpi-stale':'A26','kpi-meetings':'A27','vidas-ae':'A28 | =C01','arr':'A07','wonrev':'A08','winrate':'A09','monthly-won':'A10','pipeline-stage':'A11','aging':'A12','age-dist':'A13','radar':'A14','loss-reason':'A15','meeting-rate':'A16','efficiency':'A17','meeting-ae':'A18','velocity-stage':'A19','meeting-alert':'A20','stale-alert':'A21'};
 var _novoShowInfo=(function(){try{return localStorage.getItem('ae_show_info')!=='0';}catch(e){return true;}})();
 function _codeTag(key){var c=AE_CARD_CODES[key]||'';return c?'<span class="novo-code-tag">'+c+'</span>':'';}
 function novoToggleInfo(){_novoShowInfo=!_novoShowInfo;document.body.classList.toggle('novo-info-on',_novoShowInfo);var b=document.getElementById('btn-info-toggle');if(b)b.classList.toggle('highlighted',_novoShowInfo);try{localStorage.setItem('ae_show_info',_novoShowInfo?'1':'0');}catch(e){}}
@@ -311,7 +316,7 @@ function novoToggleInfo(){_novoShowInfo=!_novoShowInfo;document.body.classList.t
 // ── Help | fichas por gráfico (padrão CRO): hover no "i" = tooltip; CLIQUE = drawer ───────
 // Keys = os keys reais dos cards (AE_CARD_CODES). Conteúdo fiel aos builders vivos.
 var AE_HELP_CHARTS=[
-  {key:'vidas-ae',title:'Vidas e Deals por AE | Ativos (C01)',
+  {key:'vidas-ae',title:'Vidas e Deals por AE | Ativos (A28 | =C01)',
     desc:'Soma de vidas (ou contagem de deals) por AE no pipeline ATIVO — mesma definição do C01 do CRO: exclui sempre Ganho, Perdido e Implantação; Reunião Agendada e Standby entram/saem conforme os toggles globais do drawer de Configurações. Clique numa barra para ver os deals do AE.',
     fields:[['hubspot_owner_id','Define o AE (coluna "AE" do payload).'],['vidas','Somado no modo Vidas; no modo Deals conta 1 por deal.'],['dealstage','Base ativa (exclui Ganho/Perdido/Implantação; RA/Standby por toggle).']]},
   {key:'arr',title:'Receita do Forecast por AE (A07)',

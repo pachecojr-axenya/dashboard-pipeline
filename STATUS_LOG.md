@@ -4,6 +4,14 @@ Recurring every 20min (job `55d3b136`). Purpose: identify and close gaps so the 
 
 ---
 
+### Nomenclatura | código ÚNICO por card em CRO/Board/AE + origem dos compartilhados (2026-07-16)
+
+> Decisão do dono: código de card repetido entre painéis mentia — os KPIs com mesmo código (P07 no CRO, Board E AE) são fórmulas COPIADAS que podem driftar. Convenção nova: **cada painel tem códigos próprios**; onde o builder é genuinamente compartilhado (`shared-charts.js`), a tag mostra a origem (`B07 | =C04`, `A28 | =C01`) — código COM `=` não drifta por construção, código SEM `=` é fórmula própria do painel. Códigos do CRO (C07, N06B, N05, vocabulário do catálogo/STATUS_LOG) preservados.
+>
+> **Mudanças (display-only, mapas `*_CARD_CODES` + títulos do drawer de ajuda; zero lógica):** CRO: 12 cards com `N00` genérico ganharam **N30–N41** (N13–N29 reservados para não colidir com a numeração histórica da AUDITORIA de 12/06) e 3 títulos de ajuda dessincronizados corrigidos (N14→N06, N22→N10, N24→N12) — a UI mostrava (N01)/(N02)/(N03)/(N08) duplicados em cards diferentes. Board: P07→**B01**, P03→**B04 | =P03**, C04→**B07 | =C04**, C08→**B09 | =C08**. AE: P01/P02/P08/P07/S05/P04→**A22–A27**, C01→**A28 | =C01** (A01–A06 não reutilizados — históricos). De-para completo em adendo da **AUDITORIA_GRAFICOS.md**. Fora do escopo: `bdr.html` (Samuel) e painéis Forecast (sem tags). Emojis de veredito intocados.
+>
+> **Validado no DOM real (Edge headless nas 3 rotas):** tags novas renderizando sem duplicata em `/novo` (30 cards), `/novo-board` (11) e `/novo-ae` (22); `npm run check` PASS. **Achado colateral:** os 12 ex-N00 NÃO estão renderizados no `/novo` — são entradas órfãs de cards removidos (alguns "a pedido" nos comentários do render; `buildNovoWeeklyFlow`/`t_waterfall` nunca chamados). Códigos N30–N41 ficam de reserva; limpeza do código morto é decisão separada. ⚠ A fila 🟡 de 14/07 cita "Fluxo Semanal" no `/novo` — o card não está na página hoje.
+
 ### Forecast | Quarter sem ano deixava de aparecer (Canopus) — convenção "Qx = 2026" (2026-07-15)
 
 > Bug reportado pelo dono: Grupo Canopus com Q3 no HubSpot aparecia vazio no `/forecast`. **Causa raiz:** as opções do radio `qual_quarter_de_fechamento` no portal são `Q1..Q4` (SEM ano) + `Q1 2027..Q4 2027`, e o `quarterEmpty()` exigia ano de 4 dígitos — impossível um AE preencher um quarter de 2026 aceito pelo painel. Alcance medido: **114 dos 145** deals ativos com quarter preenchido eram descartados (13 viravam "—"; 39 eram sobrescritos pelo fallback da data prevista DIVERGINDO do quarter que o AE escolheu, ex.: EPTV Q4 → painel mostrava Q1 2027). Receita Real/Probabilizada nunca foi afetada (motor usa data_prevista, não quarter).
