@@ -196,6 +196,39 @@ Fora do escopo: `bdr.html` (códigos R — território do Samuel, coordenar ante
 painéis Forecast (não usam este sistema de tags). Vereditos de validação (emojis) não
 foram alterados — renomeação pura.
 
+## Adendo | AE Performance: leva de correções do dono (2026-07-16)
+
+> Cinco mudanças pedidas pelo dono no `/novo-ae`, todas front-only (o payload já tinha os
+> campos). Nenhum veredito foi promovido — os cards seguem 🟡 na fila abaixo.
+
+- **A11 (Distribuição de Etapas por AE) | mistério "180 de 189" RESOLVIDO:** a diferença
+  para o KPI Deals Ativos (A22) NÃO é o toggle RA/Standby (vale igualmente para os dois
+  números) — são os deals ativos de owners FORA do time de executivos (medição de 16/07:
+  9 deals — Peterson Venancio 4, Aurilia 1, Yokyko 1, Anderson 1, Pacheco 1, sem owner 1).
+  O subtítulo do card agora explicita: "X de Y ativos | fora do time: N".
+- **A12 (Idade Média por AE) | Implantação SEMPRE fora:** base própria (`_aeAgingBase`) —
+  antes, deals em Implantação entravam na média quando o toggle "Implantação = Ganho"
+  estava desligado. Contagem do subtítulo corrigida para a base real do gráfico (antes
+  mostrava todos os abertos, incluindo owners fora do time e deals sem data de RA).
+- **A16+A18 FUNDIDOS | base nova pela DATA DA REUNIÃO:** card único "Reuniões com o
+  Executivo | Occurrence Rate" com toggle Mensal | Executivo. A base conta pela data da
+  reunião com o executivo (`data_do_reagendamento_com_o_executivo` tem precedência sobre
+  `data_da_reuniao_com_executivo`) e SÓ reuniões já vencidas (≤ hoje) — antes contava pela
+  entrada na etapa Reunião Agendada e misturava reuniões futuras como falso "sem
+  preenchimento". Medição de 16/07: 965 reuniões vencidas = 548 Sim | 321 Não | 96 sem
+  preenchimento (Occurrence Rate 63%). Código A18 aposentado (tag do card: A16+A18).
+  Ressalva herdada: valores mistos "Nao;Sim" (checkbox múltiplo) contam como Sim —
+  pendência de higiene do CRM já registrada no STATUS_LOG (15/07).
+- **A14 | radar aposentado → Scorecard multidimensional:** o radar normalizava tudo em
+  0-100 e misturava contagens com porcentagens numa escala só. Virou tabela com cada
+  métrica na SUA unidade (Deals abertos, Vidas abertas, ARR aberto, Win Rate do período,
+  Completude), cor comparando os AEs POR COLUNA, linha "Time" com somas/taxas agregadas
+  (não média das médias) e clique no nome do AE abrindo os deals.
+
+Validação (16/07): DOM real em Edge headless (contagens, toggle ativo, tabela do
+scorecard renderizada), sintaxe inline OK, `npm run check` PASS. Validação contra o
+HubSpot segue pendente — fila 🟡 abaixo atualizada com os nomes novos.
+
 ## Adendo | Sincronização de títulos 🟡 com os vereditos desta auditoria (2026-07-14)
 
 > Revisão dos títulos com 🟡: vários gráficos do CRO/Board seguiam com 🟡 no título
@@ -215,7 +248,7 @@ desta auditoria; tooltip agora carrega o aviso "não é churn").
 
 | Onde | O quê | O que a validação exige |
 |---|---|---|
-| `/novo-ae` | Receita do Forecast por AE · Meeting Rate Evolution · Meeting Effectiveness · Distribuição de Etapas por AE · Idade Média por AE · Radar de Performance · KPI Receita Ganha/Ano | Painel AE nunca entrou nesta auditoria; validar cada card contra contagens independentes do HubSpot (mesmo método do bloco N) |
+| `/novo-ae` | Receita do Forecast por AE (A07) · Reuniões com o Executivo \| Occurrence Rate (A16+A18, base nova 16/07) · Distribuição de Etapas por AE (A11) · Idade Média por AE (A12, base nova 16/07) · Scorecard de Performance (A14, formato novo 16/07) · KPI Receita Ganha/Ano (A25) | Painel AE nunca entrou nesta auditoria; validar cada card contra contagens independentes do HubSpot (mesmo método do bloco N) |
 | `/novo-board` | TCV do Pipe por Bucket (C08) · Top 5 AEs Weighted · Top 10 BoD Watchlist | Conferir TCV pela régua e ponderação global contra amostra manual |
 | `/forecast-delta` | Painel inteiro (pill 🟡) | Invariante Σ Δ = Total B − A PASSA para todos os pares de fotos (reteste 2026-07-14) e drawer gerado do catálogo ✓, MAS falta a prova externa: com a PRÓXIMA foto de sexta, comparar B=foto do dia com o Forecast Overall ao vivo no MESMO momento — se bater, sobe para 🟠/🟢. Não forçar foto fora do cron só para isso (escreve na planilha de produção). |
 | `/novo-bdr/workload` | Página (🟡 em auditoria) | Pendências declaradas acima (adendo 2026-07-13) |

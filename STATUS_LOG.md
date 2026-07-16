@@ -4,6 +4,14 @@ Recurring every 20min (job `55d3b136`). Purpose: identify and close gaps so the 
 
 ---
 
+### AE Performance | leva do dono: A11 explicado, A12 sem Implantação, A16+A18 fundidos, A14 vira scorecard (2026-07-16)
+
+> Cinco pedidos do dono no `/novo-ae`, todos front-only em `ae.html` (o payload já trazia os campos). Detalhe completo no adendo de 16/07 da AUDITORIA_GRAFICOS.
+>
+> **A11:** o "180 de 189" NÃO era o toggle RA/Standby — são 9 deals ativos de owners fora do time (Peterson 4, Aurilia, Yokyko, Anderson, Pacheco, sem owner); subtítulo novo "X de Y ativos | fora do time: N" + fichas atualizadas. **A12:** Implantação SEMPRE fora da idade média (base própria `_aeAgingBase`; antes entrava com o toggle Implantação=Ganho desligado); contagem do card corrigida para a base real do gráfico. **A16+A18:** fundidos num card único "Reuniões com o Executivo | Occurrence Rate" com toggle Mensal | Executivo; base NOVA = data da reunião com o executivo (`data_do_reagendamento_com_o_executivo` tem precedência sobre `data_da_reuniao_com_executivo`), só datas ≤ hoje, filtro de período sobre essa data (antes: entrada na etapa RA, com reuniões futuras como falso "sem preenchimento"). Ao vivo: 965 reuniões = 548 Sim | 321 Não | 96 vazio (Occurrence Rate 63%). Código A18 aposentado (tag: A16+A18); ressalva "Nao;Sim" conta como Sim (pendência CRM de 15/07) declarada na ficha. **A14:** radar aposentado → Scorecard em tabela com cada métrica na SUA unidade (Deals | Vidas | ARR | Win Rate do período | Completude), cor comparando por coluna, linha Time com taxas agregadas, clique no AE abre os deals.
+>
+> Validado: Edge headless no DOM real (toggle ativo, scorecard renderizado, contagens 965 | 176 | "de 187 ativos | fora do time: 9"), sintaxe inline OK, `npm run check` PASS. Sem mudança de api/lib — servidor não reiniciado por esta sessão. Coordenação: este commit de `ae.html` carrega TAMBÉM as duas linhas da leva paralela (nav.js?v=2 + cursor pointer no `_novoMkChart`), conforme nota da entrada abaixo ("a sessão do AE commita junto"). Títulos seguem 🟡 (fila da AUDITORIA atualizada com os nomes novos).
+
 ### Leva do dono | menu enxuto + cursor de clique + H09 Colab. + BDR leads/tooltips (2026-07-16)
 
 > Cinco pedidos executados em lote (autorização explícita do dono, incl. território BDR — Samuel, coordenar ao retomar):

@@ -281,11 +281,11 @@ var NOVO_I18N={
     ae_winrate:'Taxa de Ganho por AE',ae_winrate_tip:'Ganhos ÷ (ganhos + perdidos) por AE, usando close_date no período selecionado.',
     ae_arr:'ARR Potencial por AE (Pipeline Aberto)',ae_arr_tip:'Snapshot atual: ARR estimado de deals abertos por AE. Não usa filtro de período.',
     ae_wonrev:'Receita Ganha por AE (ARR)',ae_wonrev_tip:'ARR dos deals ganhos por AE. Filtro de período usa close_date.',
-    ae_pipeline_stage:'Distribuição de Etapas por AE',ae_pipeline_stage_tip:'Snapshot atual: deals abertos por AE e por etapa. Considera apenas os executivos do time (outros owners ficam fora).',
-    ae_aging:'Idade Média dos Deals por AE',ae_aging_tip:'Snapshot atual: dias médios desde a entrada em Reunião Agendada (data_reuniao_agendada) por AE. Considera APENAS deals abertos | fechados (Ganho e Perdido) ficam fora. Deals sem a data também ficam fora.',
+    ae_pipeline_stage:'Distribuição de Etapas por AE',ae_pipeline_stage_tip:'Snapshot atual: deals abertos por AE e por etapa. Considera apenas os executivos do time — a diferença para o KPI Deals Ativos são os deals de owners fora do time (ops, BDRs, sem proprietário); os toggles de Reunião Agendada e Standby valem para os dois números.',
+    ae_aging:'Idade Média dos Deals por AE',ae_aging_tip:'Snapshot atual: dias médios desde a entrada em Reunião Agendada (data_reuniao_agendada) por AE. Considera APENAS deals abertos | fechados (Ganho e Perdido) e deals em Implantação ficam SEMPRE fora, independente do toggle. Deals sem a data também ficam fora.',
     ae_discipline:'Completude de Dados por AE',ae_discipline_tip:'Snapshot atual: % de deals abertos com vidas e ARR preenchidos por AE.',
     ae_monthly_won:'Deals Ganhos por Mês (por AE)',ae_monthly_won_tip:'Deals ganhos por mês de fechamento, por AE. Filtro usa close_date.',
-    ae_radar:'Radar de Performance por AE',ae_radar_tip:'Snapshot de pipeline aberto + conversão ajustada do período por AE. Só executivos do time. Clique num nome da legenda para isolar o AE; clique de novo para restaurar todos.',
+    ae_radar:'Scorecard de Performance por AE',ae_radar_tip:'Tabela multidimensional por AE com cada métrica na SUA unidade (inteiros, R$ e %): Deals abertos, Vidas abertas, ARR aberto, Win Rate do período e Completude de dados. A intensidade da cor compara os AEs dentro de cada coluna (mais escuro = maior). Só executivos do time; última linha = total/taxa do time. Clique no nome do AE para ver os deals.',
   },
   en:{loading:'Fetching data…',error_prefix:'Error: ',retry:'Try again',updated_at:'Updated at',
     ae_lb_deals:'AE Leaderboard | Open Deals',ae_lb_deals_tip:'Current snapshot: open deals by owner (ae field). Does not use the period filter.',
@@ -293,11 +293,11 @@ var NOVO_I18N={
     ae_winrate:'Win Rate by AE',ae_winrate_tip:'Won ÷ (won + lost) per AE, using close_date inside the selected period.',
     ae_arr:'Potential ARR by AE (Open Pipeline)',ae_arr_tip:'Current snapshot: estimated ARR from open deals by AE. Does not use the period filter.',
     ae_wonrev:'Won Revenue by AE (ARR)',ae_wonrev_tip:'ARR from won deals by AE. Period filter uses close_date.',
-    ae_pipeline_stage:'Stage Distribution by AE',ae_pipeline_stage_tip:'Current snapshot: open deals per AE per stage. Only core team AEs (other owners are excluded).',
-    ae_aging:'Avg Deal Age by AE',ae_aging_tip:'Current snapshot: avg days since entering Reunião Agendada (data_reuniao_agendada) per AE. ONLY open deals | closed (Won and Lost) are excluded. Deals without the date are also excluded.',
+    ae_pipeline_stage:'Stage Distribution by AE',ae_pipeline_stage_tip:'Current snapshot: open deals per AE per stage. Only core team AEs — the gap vs the Active Deals KPI is deals owned outside the team (ops, BDRs, no owner); the Reunião Agendada and Standby toggles apply to both numbers.',
+    ae_aging:'Avg Deal Age by AE',ae_aging_tip:'Current snapshot: avg days since entering Reunião Agendada (data_reuniao_agendada) per AE. ONLY open deals | closed (Won and Lost) and Implantação deals are ALWAYS excluded, regardless of the toggle. Deals without the date are also excluded.',
     ae_discipline:'Data Completeness by AE',ae_discipline_tip:'Current snapshot: % of open deals with both lives and ARR filled, per AE.',
     ae_monthly_won:'Won Deals by Month (per AE)',ae_monthly_won_tip:'Won deals by close month per AE. Filter uses close_date.',
-    ae_radar:'AE Performance Radar',ae_radar_tip:'Open pipeline snapshot + adjusted conversion for the selected period by AE. Core team only. Click a legend name to isolate that AE; click again to restore all.',
+    ae_radar:'AE Performance Scorecard',ae_radar_tip:'Multidimensional table per AE with each metric in its OWN unit (integers, R$ and %): open Deals, open Lives, open ARR, period Win Rate and data Completeness. Color intensity compares AEs within each column (darker = higher). Core team only; last row = team total/rate. Click the AE name to see the deals.',
   }
 };
 function t(k){ return (NOVO_I18N[NOVO_LANG]||NOVO_I18N.pt)[k]||(NOVO_I18N.pt[k])||k; }
@@ -308,7 +308,7 @@ function novoToggleLang(){ NOVO_LANG=NOVO_LANG==='pt'?'en':'pt'; try{localStorag
 // do CRO. KPIs A22–A27 (eram P01/P02/P08/P07/S05/P04) são fórmulas PRÓPRIAS deste
 // painel — paridade com o CRO não é garantida por construção. A01–A06 não são
 // reutilizados (códigos históricos; A05/A06 foram mesclados no C01).
-var AE_CARD_CODES={'kpi-active-deals':'A22','kpi-open-lives':'A23','kpi-won-lives':'A24','kpi-won-arr':'A25','kpi-stale':'A26','kpi-meetings':'A27','vidas-ae':'A28 | =C01','arr':'A07','wonrev':'A08','winrate':'A09','monthly-won':'A10','pipeline-stage':'A11','aging':'A12','age-dist':'A13','radar':'A14','loss-reason':'A15','meeting-rate':'A16','efficiency':'A17','meeting-ae':'A18','velocity-stage':'A19','meeting-alert':'A20','stale-alert':'A21'};
+var AE_CARD_CODES={'kpi-active-deals':'A22','kpi-open-lives':'A23','kpi-won-lives':'A24','kpi-won-arr':'A25','kpi-stale':'A26','kpi-meetings':'A27','vidas-ae':'A28 | =C01','arr':'A07','wonrev':'A08','winrate':'A09','monthly-won':'A10','pipeline-stage':'A11','aging':'A12','age-dist':'A13','radar':'A14','loss-reason':'A15','meeting-rate':'A16+A18','efficiency':'A17','velocity-stage':'A19','meeting-alert':'A20','stale-alert':'A21'};
 var _novoShowInfo=(function(){try{return localStorage.getItem('ae_show_info')!=='0';}catch(e){return true;}})();
 function _codeTag(key){var c=AE_CARD_CODES[key]||'';return c?'<span class="novo-code-tag">'+c+'</span>':'';}
 function novoToggleInfo(){_novoShowInfo=!_novoShowInfo;document.body.classList.toggle('novo-info-on',_novoShowInfo);var b=document.getElementById('btn-info-toggle');if(b)b.classList.toggle('highlighted',_novoShowInfo);try{localStorage.setItem('ae_show_info',_novoShowInfo?'1':'0');}catch(e){}}
@@ -337,13 +337,10 @@ var AE_HELP_CHARTS=[
   {key:'efficiency',title:'AE Efficiency | Deals vs Win Rate (A17)',
     desc:'Bolhas por AE (só executivos do time): eixo X = total de deals do AE (abertos + ganhos + perdidos; folga fixa de ±20 em torno dos dados), eixo Y = win rate ajustado (ganhos ÷ (ganhos + perdidos)), tamanho da bolha = vidas em pipeline aberto. Tooltip: deals | vidas | win rate. Clique numa bolha para ver todos os deals do AE.',
     fields:[['hubspot_owner_id','Define o AE (só time: André, Fausto, Guilherme, Juliana, Rafael, Ágatta).'],['dealstage','Ganho/Perdido no win rate; todos no total.'],['vidas','Tamanho da bolha (abertos).']]},
-  {key:'meeting-rate',title:'Meeting Rate Evolution | Monthly (A16)',
-    desc:'Mês a mês pela ENTRADA em Reunião Agendada (data_reuniao_agendada — não a criação; sem a data o deal fica fora): barras com o total do mês fatiadas por a_reuniao_ocorreu_ (Sim | Não | sem preenchimento) e linha com a Occurrence Rate = Sim ÷ (Sim+Não). SÓ executivos do time. O FILTRO DE PERÍODO do painel aplica sobre data_reuniao_agendada — mesma base e mesma contagem do A18. Hover mostra todas as fatias do mês juntas. Clique para ver os deals do mês.',
-    formula:'Occurrence Rate(mês) = reuniões Sim ÷ (Sim + Não)',
-    fields:[['hs_v2_date_entered_1144746905','Data de entrada em Reunião Agendada (exposta como data_reuniao_agendada) | mês do eixo X.'],['a_reuniao_ocorreu_','Sim / Não / vazio; fatias e Occurrence Rate.']]},
-  {key:'meeting-ae',title:'Meeting Effectiveness by AE (A18)',
-    desc:'Por AE (só executivos do time): deals que ENTRARAM em Reunião Agendada (data_reuniao_agendada preenchida; sem a data ficam fora), fatiados por a_reuniao_ocorreu_ (Sim | Não | sem preenchimento). O FILTRO DE PERÍODO do painel aplica sobre data_reuniao_agendada — mesma base e mesma contagem do A16. Hover mostra todas as fatias do AE juntas. Clique numa fatia para ver os deals.',
-    fields:[['hubspot_owner_id','Define o AE (só time).'],['hs_v2_date_entered_1144746905','Base: deals com entrada em Reunião Agendada registrada.'],['a_reuniao_ocorreu_','Sim / Não / vazio; fatias da barra.']]},
+  {key:'meeting-rate',title:'Reuniões com o Executivo | Occurrence Rate (A16+A18)',
+    desc:'FUSÃO dos antigos A16 (mensal) e A18 (por executivo) num único card com toggle Mensal | Executivo. Base (2026-07-16): conta pela DATA DA REUNIÃO com o executivo — o reagendamento (data_do_reagendamento_com_o_executivo), quando preenchido, tem precedência sobre a data original (data_da_reuniao_com_executivo) — e NÃO mais pela entrada na etapa Reunião Agendada. Entram SÓ reuniões cuja data já venceu (≤ hoje): reunião futura ainda não pode ter ocorrido e ficaria como falso "sem preenchimento". Barras fatiadas por a_reuniao_ocorreu_ (Sim | Não | sem preenchimento) e linha com a Occurrence Rate = Sim ÷ (Sim + Não). SÓ executivos do time. O FILTRO DE PERÍODO do painel aplica sobre a data da reunião. Ressalva: valores mistos do CRM ("Nao;Sim", checkbox múltiplo) contam como Sim — higiene pendente registrada. Hover mostra todas as fatias juntas. Clique para ver os deals.',
+    formula:'data efetiva = data_do_reagendamento_com_o_executivo || data_da_reuniao_com_executivo (só ≤ hoje) | Occurrence Rate = Sim ÷ (Sim + Não)',
+    fields:[['data_da_reuniao_com_executivo','Data agendada da reunião com o executivo | payload: data_reuniao_exec.'],['data_do_reagendamento_com_o_executivo','Data do reagendamento | quando preenchida é a que vale | payload: data_reagendamento_exec.'],['a_reuniao_ocorreu_','Sim / Não / vazio; fatias e Occurrence Rate.'],['hubspot_owner_id','Define o AE (só time) | eixo da visão Executivo.']]},
   {key:'meeting-alert',title:'Higiene de Reuniões Agendadas (A20)',
     desc:'Triagem acionável dos deals na etapa Reunião Agendada (pipeline Vendas), agrupada por executivo. É um SNAPSHOT atual | NÃO segue o filtro de período do painel. Considera TODOS os owners (inclui BDRs e sem proprietário), não só o time. Deals de teste (nome com "teste") ficam fora. Clique num número para abrir os deals da situação. 4 situações: ⚪ Sem status (a data da reunião já passou e "A reunião ocorreu?" está vazio) | ❌ Não ocorreu, sem reagendamento | 🔴 Não ocorreu e reagendamento já vencido | ✅ Ocorreu, mas o deal segue parado na etapa.',
     formula:'⚪ ocorreu=∅ & data_da_reuniao_com_executivo < hoje | ❌ ocorreu=Não & reagendamento=∅ | 🔴 ocorreu=Não & data_do_reagendamento_com_o_executivo < hoje | ✅ ocorreu=Sim & data_da_reuniao_com_executivo < hoje',
@@ -356,21 +353,22 @@ var AE_HELP_CHARTS=[
     desc:'Contagem de deals PERDIDOS por motivo categórico. Considera deals em Perdido com close_date no período. Clique numa barra: a tabela lista os deals com o motivo E a justificativa em texto aberto (Motivo de Declínio/Perdido - Descrição).',
     fields:[['dealstage','Perdido.'],['closedate','Filtro de período.'],['motivo_do_declinio_ou_perdido','Motivo categórico (barras).'],['motivo_de_declinio_perdido___descricao','Texto aberto | coluna "Motivo declínio (texto)" do drill.']]},
   {key:'pipeline-stage',title:'Distribuição de Etapas por AE (A11)',
-    desc:'Barras horizontais 100% empilhadas: composição percentual do pipeline ATIVO de cada AE por etapa. SÓ executivos do time. Base ativa = exclui Ganho/Perdido/Implantação; RA/Standby conforme toggles. Clique numa fatia para ver os deals do AE naquela etapa.',
+    desc:'Barras horizontais 100% empilhadas: composição percentual do pipeline ATIVO de cada AE por etapa. SÓ executivos do time — a diferença para o KPI Deals Ativos (A22) são os deals ativos de owners FORA do time (ops, BDRs, sem proprietário), explicitada no subtítulo do card ("X de Y ativos | fora do time: N"). Os toggles de Reunião Agendada e Standby valem igualmente para o A11 e o A22 (não explicam a diferença). Base ativa = exclui Ganho/Perdido/Implantação; RA/Standby conforme toggles. Clique numa fatia para ver os deals do AE naquela etapa.',
     fields:[['hubspot_owner_id','Define o AE (só time).'],['dealstage','Etapa da fatia (base ativa).'],['pipeline','Vendas + Bid.']]},
   {key:'aging',title:'Idade Média dos Deals por AE (A12)',
-    desc:'Dias médios desde a ENTRADA em Reunião Agendada (data_reuniao_agendada — não a criação) dos deals ABERTOS de cada AE (só executivos do time). Fechados (Ganho/Perdido) ficam FORA; sem a data de RA também. Verde ≤30d, amarelo ≤60d, vermelho acima. Clique numa barra para ver o pipeline do AE.',
-    formula:'idade(deal) = hoje − data_reuniao_agendada, em dias | média por AE',
-    fields:[['hubspot_owner_id','Define o AE (só time).'],['hs_v2_date_entered_1144746905','Data de entrada em RA (data_reuniao_agendada) | base da idade.'],['dealstage','Só abertos (exclui Ganho/Perdido; Implantação=Ganho por toggle).']]},
+    desc:'Dias médios desde a ENTRADA em Reunião Agendada (data_reuniao_agendada — não a criação) dos deals ABERTOS de cada AE (só executivos do time). Fechados (Ganho/Perdido) ficam FORA e deals em IMPLANTAÇÃO também — SEMPRE, independente do toggle "Implantação = Ganho" (implantação não é mais esforço de venda e só inflaria a média). Sem a data de RA também ficam fora. Verde ≤30d, amarelo ≤60d, vermelho acima. Clique numa barra para ver o pipeline do AE.',
+    formula:'idade(deal) = hoje − data_reuniao_agendada, em dias | média por AE (sem Implantação)',
+    fields:[['hubspot_owner_id','Define o AE (só time).'],['hs_v2_date_entered_1144746905','Data de entrada em RA (data_reuniao_agendada) | base da idade.'],['dealstage','Só abertos (exclui Ganho/Perdido e SEMPRE Implantação, independente do toggle).']]},
   {key:'age-dist',title:'Deal Age Distribution | Open (A13)',
     desc:'Deals ABERTOS por faixa de idade em dias desde a entrada em Reunião Agendada: 0-30, 31-60, 61-90, 91-120, 121-180 e +180. Sem a data de RA → fora. Clique numa barra: abre a lista INTEIRA dos abertos com chips de faixa no topo, já filtrada na faixa clicada.',
     fields:[['hs_v2_date_entered_1144746905','Data de entrada em RA (data_reuniao_agendada) | base da idade.'],['dealstage','Só abertos (exclui Ganho/Perdido; Implantação=Ganho por toggle).']]},
   {key:'velocity-stage',title:'AE Deal Velocity by Stage | Avg Days (A19)',
     desc:'Heatmap de dias médios por etapa do pipeline VENDAS, por AE (só time). Cada célula = média de (saída − entrada) da etapa nos deals do AE; a etapa atual conta até hoje. Última linha = média do time. Cor: verde (rápido) → vermelho (lento), normalizada por coluna.',
     fields:[['hubspot_owner_id','Define o AE (só time).'],['hs_v2_date_entered_/exited_<stageId>','Entrada/saída de cada etapa de Vendas (expostas como stage_days).']]},
-  {key:'radar',title:'Radar de Performance por AE (A14)',
-    desc:'SÓ executivos do time (com 2+ deals), em 5 dimensões NORMALIZADAS pelo máximo entre os AEs (100 = líder da dimensão): Deals abertos, Vidas abertas, ARR aberto, Win Rate (ganhos ÷ fechados) e Completude (% de abertos com vidas E receita preenchidos). Dimensões zeradas em todos os AEs são omitidas. Clique num nome da legenda para ISOLAR o AE (clique de novo para restaurar todos).',
-    fields:[['hubspot_owner_id','Define o AE.'],['vidas','Dimensão Vidas + completude.'],['arr_estimado','Dimensão ARR (fallback primeira_fatura × 12) + completude.'],['dealstage','Abertos vs ganhos/perdidos (win rate).']]},
+  {key:'radar',title:'Scorecard de Performance por AE (A14)',
+    desc:'SUBSTITUIU o radar em 2026-07-16 (pedido do dono): o radar normalizava tudo em 0-100 e misturava inteiros com porcentagens numa escala só. Agora é uma tabela multidimensional com cada métrica na SUA unidade: Deals abertos (contagem), Vidas abertas (contagem), ARR aberto (R$), Win Rate do período (ganhos ÷ fechados, %; hover mostra ganhos | perdidos) e Completude (% de abertos com vidas E receita preenchidos). A intensidade da cor compara os AEs DENTRO de cada coluna (mais escuro = maior) — nunca entre colunas. SÓ executivos do time, ordenados por ARR aberto; última linha = TIME com somas e taxas agregadas (não média das médias). Abertos seguem os toggles globais; Win Rate segue o filtro de período (close_date). Clique no nome do AE para ver todos os deals dele.',
+    formula:'win rate(AE) = ganhos ÷ (ganhos + perdidos) no período | completude(AE) = abertos com vidas e receita ÷ abertos',
+    fields:[['hubspot_owner_id','Define o AE (só time).'],['vidas','Coluna Vidas abertas + completude.'],['arr_estimado','Coluna ARR aberto (fallback primeira_fatura × 12) + completude.'],['dealstage','Abertos vs ganhos/perdidos (win rate).'],['closedate','Filtro de período do Win Rate.']]},
 ];
 // Tabela de detalhe comum (colunas do modal padrão de deals).
 var AE_HELP_DETAIL=[
@@ -461,7 +459,7 @@ function _novoWon(){ return _dealsByDate('close_date').filter(_novoIsWon); }
 function _novoLost(){ return _dealsByDate('close_date').filter(function(d){ return d.stage==='Perdido'; }); }
 function _novoTheme(){ var isLight=document.documentElement.getAttribute('data-theme')==='light'; return { cText:isLight?'#1f2328':'#e6edf3', cText2:isLight?'#57606a':'#8b949e', cGrid:isLight?'rgba(0,0,0,.08)':'rgba(255,255,255,.06)', isLight:isLight }; }
 var _novoCharts={};
-function _novoMkChart(id,cfg){ var ctx=document.getElementById(id); if(!ctx)return; if(_novoCharts[id]) _novoCharts[id].destroy(); _novoCharts[id]=new Chart(ctx,cfg); }
+function _novoMkChart(id,cfg){ var ctx=document.getElementById(id); if(!ctx)return; if(cfg&&cfg.options&&cfg.options.onClick&&!cfg.options.onHover){ cfg.options.onHover=function(e,els){ var t=e&&e.native&&e.native.target; if(t) t.style.cursor=(els&&els.length)?'pointer':''; }; } if(_novoCharts[id]) _novoCharts[id].destroy(); _novoCharts[id]=new Chart(ctx,cfg); }
 function _novoDealsRows(deals){ return deals.map(function(d){ var hsUrl=d.hs_id?'https://app.hubspot.com/contacts/44715285/deal/'+d.hs_id:'#'; var nameCell=d.hs_id?'<a href="'+hsUrl+'" target="_blank" rel="noopener" style="color:var(--teal);text-decoration:none">'+_ne(d.dealname)+'</a>':_ne(d.dealname); return '<tr><td style="text-align:left;min-width:150px;max-width:210px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+nameCell+'</td><td style="text-align:left;white-space:nowrap">'+_ne(d.ae)+'</td><td>'+_ne(d.pipeline)+'</td><td style="white-space:nowrap">'+_ne(d.stage)+'</td><td>'+_ni(d.vidas)+'</td><td>'+_revShort(_annualRev(d))+'</td><td style="white-space:nowrap">'+_nd(d.data_reuniao_agendada)+'</td><td style="white-space:nowrap">'+_nd(d.close_date)+'</td><td style="text-align:left">'+_ne(d.lost_reason||'')+'</td></tr>'; }).join(''); }
 function novoOpenDealsModal(title,deals){ if(!deals||!deals.length){ openModal(title,'<p style="color:var(--text2);padding:1rem 0">Nenhum deal.</p>'); return; } var totV=deals.reduce(function(s,d){return s+(d.vidas||0);},0), totA=deals.reduce(function(s,d){return s+_annualRev(d);},0); var foot='<tfoot><tr style="border-top:2px solid var(--border)"><td colspan="4" style="text-align:left;font-weight:700">Total</td><td style="font-weight:700">'+_ni(totV)+'</td><td style="font-weight:700">'+_revShort(totA)+'</td><td></td><td></td><td></td></tr></tfoot>'; var html='<table class="lb"><thead><tr><th style="text-align:left">Deal</th><th style="text-align:left">AE</th><th>Pipe</th><th>Etapa</th><th>Vidas</th><th>ARR</th><th>Reunião Ag.</th><th>Fechado</th><th style="text-align:left">Motivo perda</th></tr></thead><tbody>'+_novoDealsRows(deals)+'</tbody>'+foot+'</table>'; openModal(title+' ('+deals.length+')',html); }
 
@@ -538,6 +536,9 @@ function _aeMap(fn){
   return map;
 }
 function _aeCntSpan(n){ return ' <span style="font-size:.68rem;color:var(--text2);font-weight:600;margin-left:.35rem;white-space:nowrap">'+(n||0).toLocaleString('pt-BR')+' deals</span>'; }
+// A11: a diferença para o KPI Deals Ativos (A22) são os deals ativos de owners FORA do time
+// de executivos (ops, BDRs, sem proprietário) — os toggles RA/Standby valem para os dois.
+function _aeA11CntSpan(){ var all=_aeActivePipeline(), core=all.filter(function(d){return _isCoreAE(d.ae);}), out=all.length-core.length; var txt=NOVO_LANG==='en'?(core.length.toLocaleString('pt-BR')+' of '+all.length.toLocaleString('pt-BR')+' active | outside team: '+out):(core.length.toLocaleString('pt-BR')+' de '+all.length.toLocaleString('pt-BR')+' ativos | fora do time: '+out); return ' <span style="font-size:.68rem;color:var(--text2);font-weight:600;margin-left:.35rem;white-space:nowrap">'+txt+'</span>'; }
 // C01: em Vidas, "preenchidos de total" (só deals com vidas somam); em Deals, conta todos.
 function _c01CountText(deals,mode){ var total=deals.length; if(mode==='deals')return total.toLocaleString('pt-BR')+' deals'; var filled=0; deals.forEach(function(d){ if(d.vidas!=null&&d.vidas>0)filled++; }); return filled.toLocaleString('pt-BR')+' deals preenchidos de '+total.toLocaleString('pt-BR'); }
 
@@ -720,9 +721,11 @@ function _aePipeRevDeals(){ return _aeActivePipeline().filter(function(d){ retur
 var _aeC01Mode='lives';              // C01: 'lives' | 'deals'
 var _aePipeRevValueMode='weighted';  // A07: 'raw' | 'weighted'
 var _aeWonMetric='revenue';          // A08: 'revenue' | 'deals' | 'vidas'
+var _aeMtgView='monthly';            // A16+A18: 'monthly' | 'ae'
 function aeSwitchC01Mode(m){ _aeC01Mode=m; _setActive('ae-c01-tabs',m); buildAEC01(); }
 function aeSwitchPipeRevValue(m){ _aePipeRevValueMode=m; _setActive('ae-arr-tabs',m); buildAEArr(); }
 function aeSwitchWonMetric(m){ _aeWonMetric=m; _setActive('ae-wonrev-tabs',m); buildAEWonRev(); }
+function aeSwitchMtgView(m){ _aeMtgView=m; _setActive('ae-mtg-tabs',m); buildAEMeetingRate(); }
 
 // ── Modal de deals com filtro por AE (usado pelo A07) ───────────────────────────
 var _aeFltAll=[], _aeFltSel=null;
@@ -791,8 +794,7 @@ function novoRender(){
       // Seção Reuniões
       '<div class="section-hdr"><h2>Reuniões</h2></div>'+
       '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header"><h3>Higiene de Reuniões Agendadas</h3>'+_infoBtn('Triagem dos deals na etapa Reunião Agendada (snapshot atual, NÃO segue o filtro de período). 4 situações acionáveis por executivo | clique num número para ver os deals. ⚪ Sem status = data da reunião passou e a_reuniao_ocorreu_ vazio | ❌ Não ocorreu sem reagendamento | 🔴 Não ocorreu e reagendamento vencido | ✅ Ocorreu mas o deal não avançou da etapa.','meeting-alert')+'</div><div id="ae-meeting-alert" style="margin-top:.5rem"></div></div>'+
-      cWide('Meeting Rate Evolution (Monthly) <span id="ae-mr-count" style="font-size:.68rem;color:var(--text2);font-weight:600;margin-left:.35rem;white-space:nowrap"></span>','Mês a mês pela data de ENTRADA em Reunião Agendada: barras com o total do mês fatiadas por a_reuniao_ocorreu_ (Sim | Não | sem preenchimento); linha = Occurrence Rate = Sim ÷ (Sim + Não). SÓ executivos do time; deals sem a data ficam fora. O FILTRO DE PERÍODO do painel aplica sobre data_reuniao_agendada — mesma base e mesma contagem do A18. Hover mostra todas as fatias do mês juntas. Clique numa barra para ver os deals do mês.','meeting-rate',340)+
-      cWide('Meeting Effectiveness by AE <span id="ae-mae-count" style="font-size:.68rem;color:var(--text2);font-weight:600;margin-left:.35rem;white-space:nowrap"></span>','Por AE (só executivos do time): deals que ENTRARAM em Reunião Agendada, fatiados por a_reuniao_ocorreu_ (Sim | Não | sem preenchimento). O FILTRO DE PERÍODO do painel aplica sobre data_reuniao_agendada — mesma base e mesma contagem do A16. Hover mostra todas as fatias do AE juntas. Clique numa barra para ver os deals do AE.','meeting-ae',340)+
+      cWide('Reuniões com o Executivo | Occurrence Rate <span id="ae-mr-count" style="font-size:.68rem;color:var(--text2);font-weight:600;margin-left:.35rem;white-space:nowrap"></span>','Reuniões com o executivo JÁ VENCIDAS (a data do reagendamento, quando houver, vale no lugar da data original; só datas ≤ hoje): barras fatiadas por a_reuniao_ocorreu_ (Sim | Não | sem preenchimento); linha = Occurrence Rate = Sim ÷ (Sim + Não). Toggle alterna a dimensão: Mensal (mês da reunião) × Executivo. SÓ executivos do time. O FILTRO DE PERÍODO do painel aplica sobre a data da reunião. Clique numa barra para ver os deals.','meeting-rate',340,_subTabs('ae-mtg-tabs',_aeMtgView,[{mode:'monthly',label:'Mensal',fn:'aeSwitchMtgView'},{mode:'ae',label:'Executivo',fn:'aeSwitchMtgView'}]))+
       // Seção Higiene de Atividade
       '<div class="section-hdr"><h2>Higiene de Atividade</h2></div>'+
       '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header"><h3>Deals sem Atividade por Executivo</h3>'+_infoBtn('Triagem dos deals ABERTOS (pipeline ativo) sem atividade registrada, por executivo. SNAPSHOT atual | NÃO segue o filtro de período. Faixas exclusivas por dias sem atividade (cada deal conta uma vez): 15–29, 30–44, 45–59, 60–89 e 90+. Só pipeline Vendas | exclui BID, Ganho/Perdido e deals de teste. Clique num número para abrir os deals daquela faixa/executivo (filtros cruzados Executivo × Faixa).','stale-alert')+'</div><div id="ae-stale-alert" style="margin-top:.5rem"></div></div>'+
@@ -801,15 +803,15 @@ function novoRender(){
       cWide('Motivos de Perda por Deals'+_aeCntSpan(lost.length),'Contagem de deals perdidos por motivo (campo HubSpot motivo_do_declinio_ou_perdido). Considera deals em Perdido no período (close_date). Clique numa barra para ver os deals | a tabela inclui a justificativa em texto aberto (motivo_de_declinio_perdido___descricao).','loss-reason',340,'',true)+
       // Seção Pipeline
       '<div class="section-hdr"><h2>Pipeline</h2></div>'+
-      cWide(t('ae_pipeline_stage')+_aeCntSpan(_aeActivePipeline().filter(function(d){return _isCoreAE(d.ae);}).length),t('ae_pipeline_stage_tip'),'pipeline-stage',340)+
-      c(t('ae_aging')+_aeCntSpan(open.length),t('ae_aging_tip'),'aging',300)+
+      cWide(t('ae_pipeline_stage')+_aeA11CntSpan(),t('ae_pipeline_stage_tip'),'pipeline-stage',340)+
+      c(t('ae_aging')+_aeCntSpan(_aeAgingBase().length),t('ae_aging_tip'),'aging',300)+
       c('Deal Age Distribution (Open)'+_aeCntSpan(open.length),'Distribuição dos deals abertos por faixa de idade (dias desde a entrada em Reunião Agendada): 0-30, 31-60, 61-90, 91-120, 121-180 e +180 dias. Deals sem a data ficam fora. Clique numa barra para ver os deals.','age-dist',300,'',true)+
       // Seção Velocidade
       '<div class="section-hdr"><h2>Velocidade por Etapa</h2></div>'+
       '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header"><h3>AE Deal Velocity by Stage (Avg Days)</h3>'+_infoBtn('Tabela (heatmap) de dias médios por etapa do pipeline Vendas, por AE. Cada célula = média de (saída - entrada) da etapa nos deals do AE (hs_v2_date_entered/exited; etapa atual conta até hoje). Última linha = média do time. Só AEs do time.','velocity-stage')+'</div><div id="ae-velocity-table" style="overflow-x:auto;margin-top:.5rem"></div></div>'+
-      // Seção Radar
+      // Seção Scorecard (ex-radar | A14 virou tabela multidimensional em 2026-07-16)
       '<div class="section-hdr"><h2>Visão Multi-Dimensional</h2></div>'+
-      cWide(t('ae_radar'),t('ae_radar_tip'),'radar',380)+
+      '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header"><h3>🟡 '+t('ae_radar')+'</h3>'+_infoBtn(t('ae_radar_tip'),'radar')+'</div><div id="ae-radar-table" style="overflow-x:auto;margin-top:.5rem"></div></div>'+
     '</div>';
 
   buildAEC01();
@@ -821,7 +823,6 @@ function novoRender(){
   buildAEMeetingAlert();
   buildAEStaleAlert();
   buildAEMeetingRate();
-  buildAEMeetingByAE();
   buildAELossReason();
   buildAEPipelineStage();
   buildAEAging();
@@ -1046,32 +1047,6 @@ function buildAEEfficiency(){
       onClick:function(e,el){ if(!el.length)return; var ae=datasets[el[0].datasetIndex].label; novoOpenDealsModal('Deals | '+ae, all.filter(function(d){return d.ae===ae;})); }}});
 }
 
-function buildAEMeetingByAE(){
-  // MESMA base do A16 (_aeMeetingBase): time de executivos + entrada em RA + filtro de período.
-  var th=_novoTheme();
-  var all=_aeMeetingBase();
-  var aes=_getAEs().filter(_isCoreAE).filter(function(ae){return all.some(function(d){return d.ae===ae;});});
-  var cls=function(ae,k){ return all.filter(function(d){return d.ae===ae&&_aeMeetingClass(d)===k;}).length; };
-  var _maeCnt=document.getElementById('ae-mae-count');
-  if(_maeCnt) _maeCnt.textContent=all.length.toLocaleString('pt-BR')+' deals';
-  var occ=aes.map(function(ae){ var s=cls(ae,'sim'), n=cls(ae,'nao'); var den=s+n; return den>0?Math.round(s/den*100):null; });
-  var datasets=[
-    {label:'Sim',data:aes.map(function(ae){return cls(ae,'sim');}),backgroundColor:'rgba(63,185,80,.8)',stack:'s',borderRadius:2,order:2},
-    {label:'Não',data:aes.map(function(ae){return cls(ae,'nao');}),backgroundColor:'rgba(248,81,73,.7)',stack:'s',borderRadius:2,order:2},
-    {label:'Sem preenchimento',data:aes.map(function(ae){return cls(ae,'vazio');}),backgroundColor:'rgba(140,140,150,.5)',stack:'s',borderRadius:2,order:2},
-    {label:'Occurrence Rate',type:'line',data:occ,yAxisID:'y2',borderColor:'rgba(58,184,183,1)',backgroundColor:'rgba(58,184,183,1)',borderWidth:2,tension:.3,pointRadius:3,spanGaps:true,fill:false,order:1,datalabels:{display:false}}
-  ];
-  _novoMkChart('chart-ae-meeting-ae',{type:'bar',plugins:[ChartDataLabels],
-    data:{labels:aes,datasets:datasets},
-    options:{responsive:true,layout:{padding:{top:24}},plugins:{legend:{display:true,labels:{color:th.cText2,font:{family:NOVO_FONT,size:10},padding:8}},
-      // Total de deals considerados no topo de cada barra (soma das 3 fatias visíveis).
-      datalabels:{display:function(c){return c.datasetIndex===2;},anchor:'end',align:'end',color:th.cText,font:{family:NOVO_FONT,size:10,weight:'bold'},formatter:function(v,c){var t=0;[0,1,2].forEach(function(i){if(c.chart.isDatasetVisible(i))t+=(c.chart.data.datasets[i].data[c.dataIndex]||0);});return t||'';}},
-      // Hover em qualquer ponto da barra mostra TODAS as fatias do AE + a Occurrence Rate.
-      tooltip:{mode:'index',callbacks:{label:function(c){ if(c.dataset.label==='Occurrence Rate') return 'Occurrence Rate: '+(c.parsed.y==null?'—':c.parsed.y+'%'); return c.dataset.label+': '+c.parsed.y+' deals'; },footer:function(items){var t=0;items.forEach(function(it){if(it.dataset.label!=='Occurrence Rate')t+=it.parsed.y||0;});return 'Total: '+t+' deals';}}}},
-      scales:{x:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}},stacked:true},y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0},stacked:true,title:{display:true,text:'Deals | entrada em Reunião Agendada',color:th.cText2,font:{family:NOVO_FONT}}},y2:{position:'right',grid:{display:false},min:0,max:100,ticks:{color:th.cText2,font:{family:NOVO_FONT},callback:function(v){return v+'%';}},title:{display:true,text:'Occurrence Rate',color:th.cText2,font:{family:NOVO_FONT}}}},
-      onClick:function(e,el){ if(!el.length)return; var ae=aes[el[0].index]; _aeMeetingByAeModal(ae); }}});
-}
-
 var _AE_VEL_STAGES=['Reunião Agendada','Diagnóstico','Cotação','Consultoria','Negociação','Implantação'];
 function buildAEVelocityStage(){
   var el=document.getElementById('ae-velocity-table'); if(!el)return;
@@ -1093,6 +1068,9 @@ function buildAEVelocityStage(){
   el.innerHTML=html;
 }
 
+// A12 | base própria: abertos do time com data de RA, e Implantação fica SEMPRE fora — deal
+// implantando não é mais esforço de venda e a idade dele só inflaria a média do AE (2026-07-16).
+function _aeAgingBase(){ return _novoOpen().filter(function(d){ return _stageNorm(d.stage)!=='Implantação' && _isCoreAE(d.ae) && _aeRaDays(d)!=null; }); }
 // A12 | modal com filtros de Executivo E Etapa + rodapé (Σ vidas, Σ ARR, média de dias no pipe).
 function _aeAgingRow(d){ var hsUrl=d.hs_id?'https://app.hubspot.com/contacts/44715285/deal/'+d.hs_id:'#'; var nameCell=d.hs_id?'<a href="'+hsUrl+'" target="_blank" rel="noopener" style="color:var(--teal);text-decoration:none">'+_ne(d.dealname)+'</a>':_ne(d.dealname); var dias=_aeRaDays(d); return '<tr><td style="text-align:left;min-width:150px;max-width:210px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+nameCell+'</td><td>'+_ne(d.pipeline)+'</td><td style="white-space:nowrap">'+_ne(d.stage)+'</td><td>'+_ni(d.vidas)+'</td><td>'+_revShort(_annualRev(d))+'</td><td style="white-space:nowrap">'+_nd(d.data_reuniao_agendada)+'</td><td style="color:'+((dias||0)>60?'var(--red)':(dias||0)>30?'var(--yellow)':'var(--text)')+';font-weight:700">'+(dias!=null?_ni(dias):'—')+'</td></tr>'; }
 var _aeAgAll=[], _aeAgAe=null, _aeAgStage=null;
@@ -1112,18 +1090,18 @@ function _aeAgRender(){
   var foot=list.length?'<tfoot><tr style="border-top:2px solid var(--border)"><td colspan="3" style="text-align:left;font-weight:700">Total ('+list.length+')</td><td style="font-weight:700">'+_ni(totV)+'</td><td style="font-weight:700">'+_revShort(totA)+'</td><td></td><td style="font-weight:700">'+(avgD!=null?_ni(avgD)+'d':'—')+'</td></tr></tfoot>':'';
   var tb=document.getElementById('ae-ag-table'); if(tb)tb.innerHTML=list.length?'<table class="lb"><thead><tr><th style="text-align:left">Deal</th><th>Pipe</th><th>Etapa</th><th>Vidas</th><th>ARR</th><th>Reunião Ag.</th><th>Dias no pipe</th></tr></thead><tbody>'+list.map(_aeAgingRow).join('')+'</tbody>'+foot+'</table>':'<p style="color:var(--text2);padding:1rem 0">Nenhum deal.</p>';
 }
-function _aeAgingModal(preAe){ _aeAgAll=_novoOpen().filter(function(d){return _isCoreAE(d.ae)&&_aeRaDays(d)!=null;}); _aeAgAe=preAe||null; _aeAgStage=null; openModal('Idade dos Deals por Executivo e Etapa ('+_aeAgAll.length+')','<div id="ae-ag-chips"></div><div id="ae-ag-table"></div>'); _aeAgRender(); }
+function _aeAgingModal(preAe){ _aeAgAll=_aeAgingBase(); _aeAgAe=preAe||null; _aeAgStage=null; openModal('Idade dos Deals por Executivo e Etapa ('+_aeAgAll.length+')','<div id="ae-ag-chips"></div><div id="ae-ag-table"></div>'); _aeAgRender(); }
 function buildAEAging(){
-  var th=_novoTheme(), open=_novoOpen();
+  var th=_novoTheme(), base=_aeAgingBase();
   var aes=_getAEs().filter(_isCoreAE);
-  var avgs=aes.map(function(ae){ var ds=open.filter(function(d){return d.ae===ae&&_aeRaDays(d)!=null;}); return ds.length?Math.round(ds.reduce(function(s,d){return s+_aeRaDays(d);},0)/ds.length):0; });
+  var avgs=aes.map(function(ae){ var ds=base.filter(function(d){return d.ae===ae;}); return ds.length?Math.round(ds.reduce(function(s,d){return s+_aeRaDays(d);},0)/ds.length):0; });
   var order=aes.map(function(_,i){return i;}).sort(function(a,b){return avgs[b]-avgs[a];});
   var sa=order.map(function(i){return aes[i];}), sv=order.map(function(i){return avgs[i];});
   _novoMkChart('chart-ae-aging',{type:'bar',plugins:[ChartDataLabels],
     data:{labels:sa,datasets:[{data:sv,backgroundColor:sv.map(function(v){return v<=30?'rgba(63,185,80,.75)':v<=60?'rgba(210,153,34,.8)':'rgba(248,81,73,.7)';}),borderRadius:4}]},
     options:{indexAxis:'y',responsive:true,layout:{padding:{right:50}},plugins:{legend:{display:false},
       datalabels:{anchor:'end',align:'right',color:th.cText,font:{family:NOVO_FONT,size:11,weight:'bold'},formatter:function(v){return v+'d';}},
-      tooltip:{callbacks:{label:function(c){return c.parsed.x+' dias médios';},afterLabel:function(c){ var ae=sa[c.dataIndex]; return open.filter(function(d){return d.ae===ae;}).length+' deals';}}}},
+      tooltip:{callbacks:{label:function(c){return c.parsed.x+' dias médios';},afterLabel:function(c){ var ae=sa[c.dataIndex]; return base.filter(function(d){return d.ae===ae;}).length+' deals';}}}},
       scales:{x:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT}}},y:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}}},
       onClick:function(e,el){ if(!el.length)return; var ae=sa[el[0].index]; _aeAgingModal(ae); }}});
 }
@@ -1391,18 +1369,22 @@ function aeStaleDrill(idx,bucket){
   openModal('Deals sem atividade ('+_aeStaleModAll.length+')','<div id="ae-stalemod-kpis"></div><div id="ae-stalemod-chips"></div><div id="ae-stalemod-table"></div>');
   _aeStaleModRender();
 }
-// Base COMUM de A16 e A18 (mesma contagem nos dois): deals do time de executivos com entrada
-// em Reunião Agendada, e o FILTRO DE PERÍODO do painel aplica sobre data_reuniao_agendada.
-function _aeMeetingBase(){ return _rawDeals().filter(function(d){ return d.data_reuniao_agendada && _isCoreAE(d.ae) && _inWinStrict(d.data_reuniao_agendada); }); }
+// Data EFETIVA da reunião com o executivo: o reagendamento, quando preenchido, tem
+// precedência sobre a data original (2026-07-16 | pedido do dono).
+function _aeMeetingDate(d){ return d.data_reagendamento_exec||d.data_reuniao_exec||null; }
+// Base COMUM das duas visões do A16+A18: deals do time com data de reunião JÁ VENCIDA
+// (≤ hoje) — reunião futura ainda não pode ter ocorrido e viraria falso "sem preenchimento".
+// O FILTRO DE PERÍODO do painel aplica sobre essa mesma data efetiva.
+function _aeMeetingBase(){ var today=_aeTodayStr(); return _rawDeals().filter(function(d){ var m=_aeMeetingDate(d); return m && m<=today && _isCoreAE(d.ae) && _inWinStrict(m); }); }
 // Linhas dos modais de reunião (A14/A16): inclui a coluna "Reunião Ocorreu" (a_reuniao_ocorreu_).
-function _aeMeetingRows(deals){ return deals.map(function(d){ var hsUrl=d.hs_id?'https://app.hubspot.com/contacts/44715285/deal/'+d.hs_id:'#'; var nameCell=d.hs_id?'<a href="'+hsUrl+'" target="_blank" rel="noopener" style="color:var(--teal);text-decoration:none">'+_ne(d.dealname)+'</a>':_ne(d.dealname); var mc=_aeMeetingClass(d); var mLbl=mc==='sim'?'Sim':mc==='nao'?'Não':'—'; var mCol=mc==='sim'?'var(--green)':mc==='nao'?'var(--red)':'var(--muted)'; return '<tr><td style="text-align:left;min-width:150px;max-width:210px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+nameCell+'</td><td style="text-align:left;white-space:nowrap">'+_ne(d.ae)+'</td><td>'+_ne(d.pipeline)+'</td><td style="white-space:nowrap">'+_ne(d.stage)+'</td><td>'+_ni(d.vidas)+'</td><td>'+_revShort(_annualRev(d))+'</td><td style="white-space:nowrap">'+_nd(d.data_reuniao_agendada)+'</td><td style="white-space:nowrap;color:'+mCol+';font-weight:600">'+mLbl+'</td></tr>'; }).join(''); }
-function _aeMeetingHead(){ return '<thead><tr><th style="text-align:left">Deal</th><th style="text-align:left">AE</th><th>Pipe</th><th>Etapa</th><th>Vidas</th><th>ARR</th><th>Reunião Ag.</th><th>Reunião Ocorreu</th></tr></thead>'; }
+function _aeMeetingRows(deals){ return deals.map(function(d){ var hsUrl=d.hs_id?'https://app.hubspot.com/contacts/44715285/deal/'+d.hs_id:'#'; var nameCell=d.hs_id?'<a href="'+hsUrl+'" target="_blank" rel="noopener" style="color:var(--teal);text-decoration:none">'+_ne(d.dealname)+'</a>':_ne(d.dealname); var mc=_aeMeetingClass(d); var mLbl=mc==='sim'?'Sim':mc==='nao'?'Não':'—'; var mCol=mc==='sim'?'var(--green)':mc==='nao'?'var(--red)':'var(--muted)'; var reag=d.data_reagendamento_exec?' <span title="reagendada" style="color:var(--yellow);font-weight:700">↻</span>':''; return '<tr><td style="text-align:left;min-width:150px;max-width:210px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+nameCell+'</td><td style="text-align:left;white-space:nowrap">'+_ne(d.ae)+'</td><td>'+_ne(d.pipeline)+'</td><td style="white-space:nowrap">'+_ne(d.stage)+'</td><td>'+_ni(d.vidas)+'</td><td>'+_revShort(_annualRev(d))+'</td><td style="white-space:nowrap">'+_nd(_aeMeetingDate(d))+reag+'</td><td style="white-space:nowrap;color:'+mCol+';font-weight:600">'+mLbl+'</td></tr>'; }).join(''); }
+function _aeMeetingHead(){ return '<thead><tr><th style="text-align:left">Deal</th><th style="text-align:left">AE</th><th>Pipe</th><th>Etapa</th><th>Vidas</th><th>ARR</th><th>Reunião (↻ = reag.)</th><th>Reunião Ocorreu</th></tr></thead>'; }
 // A16 | drill de um mês: lista com a coluna "Reunião Ocorreu".
 function _aeMeetingListModal(title,deals){ if(!deals||!deals.length){ openModal(title,'<p style="color:var(--text2);padding:1rem 0">Nenhum deal.</p>'); return; } openModal(title+' ('+deals.length+')','<table class="lb">'+_aeMeetingHead()+'<tbody>'+_aeMeetingRows(deals)+'</tbody></table>'); }
 // A14 | modal com filtro de executivo + KPIs de reunião (totais | realizadas | taxa) + lista.
 var _aeMtgFltAll=[], _aeMtgFltSel=null;
 function _aeMtgKpis(list){ var s=list.filter(function(d){return _aeMeetingClass(d)==='sim';}).length; var n=list.filter(function(d){return _aeMeetingClass(d)==='nao';}).length; var den=s+n; var rate=den>0?(Math.round(s/den*1000)/10).toFixed(1).replace('.',','):null; return '<div class="kpi-row" style="grid-template-columns:repeat(3,1fr);margin-bottom:1rem">'+
-  '<div class="kpi-card"><div class="kpi-label">Reuniões (entraram em RA)</div><div class="kpi-value">'+_ni(list.length)+'</div></div>'+
+  '<div class="kpi-card"><div class="kpi-label">Reuniões com data vencida</div><div class="kpi-value">'+_ni(list.length)+'</div><div class="kpi-sub">data da reunião (ou reag.) ≤ hoje</div></div>'+
   '<div class="kpi-card"><div class="kpi-label">Reuniões realizadas</div><div class="kpi-value" style="color:var(--green)">'+_ni(s)+'</div><div class="kpi-sub">reunião ocorreu = Sim</div></div>'+
   '<div class="kpi-card"><div class="kpi-label">Taxa de reunião realizada</div><div class="kpi-value" style="color:var(--teal)">'+(rate==null?'—':rate+'%')+'</div><div class="kpi-sub">Sim ÷ (Sim + Não)</div></div>'+
 '</div>'; }
@@ -1416,65 +1398,92 @@ function aeMtgFilter(ae){ _aeMtgFltSel = ae==='__all'?null:ae; var counts={}; _a
   var tb=document.getElementById('ae-mtg-table'); if(tb)tb.innerHTML='<table class="lb">'+_aeMeetingHead()+'<tbody>'+_aeMeetingRows(list)+'</tbody></table>';
 }
 function _aeMeetingByAeModal(preAe){ _aeMtgFltAll=_aeMeetingBase(); _aeMtgFltSel=null; openModal('Reuniões por AE | efetividade ('+_aeMtgFltAll.length+')','<div id="ae-mtg-chips"></div><div id="ae-mtg-kpis"></div><div id="ae-mtg-table"></div>'); aeMtgFilter(preAe||'__all'); }
+// A16+A18 unificado: mesma base e mesmas fatias nas duas visões; o toggle do card só troca
+// a dimensão do eixo X (mês da reunião × executivo). Renderiza sempre no mesmo canvas.
 function buildAEMeetingRate(){
   var th=_novoTheme(), deals=_aeMeetingBase();
-  var byMonth={};
-  deals.forEach(function(d){ var m=String(d.data_reuniao_agendada).substring(0,7); var b=byMonth[m]||(byMonth[m]={sim:0,nao:0,vazio:0}); b[_aeMeetingClass(d)]++; });
-  var months=Object.keys(byMonth).sort();
-  var sim=months.map(function(m){return byMonth[m].sim;});
-  var nao=months.map(function(m){return byMonth[m].nao;});
-  var vaz=months.map(function(m){return byMonth[m].vazio;});
-  var rate=months.map(function(m){ var b=byMonth[m], den=b.sim+b.nao; return den>0?Math.round(b.sim/den*100):null; });
   var _mrCnt=document.getElementById('ae-mr-count');
-  if(_mrCnt) _mrCnt.textContent=deals.length.toLocaleString('pt-BR')+' deals';
+  if(_mrCnt) _mrCnt.textContent=deals.length.toLocaleString('pt-BR')+(NOVO_LANG==='en'?' meetings':' reuniões');
+  var isAe=_aeMtgView==='ae';
+  var keys,lbls,keyOf;
+  if(isAe){
+    keys=_getAEs().filter(_isCoreAE).filter(function(ae){return deals.some(function(d){return d.ae===ae;});});
+    lbls=keys;
+    keyOf=function(d){return d.ae;};
+  }else{
+    var km={}; deals.forEach(function(d){ km[String(_aeMeetingDate(d)).substring(0,7)]=1; });
+    keys=Object.keys(km).sort();
+    lbls=keys.map(_mlbl);
+    keyOf=function(d){return String(_aeMeetingDate(d)).substring(0,7);};
+  }
+  var agg={}; keys.forEach(function(k){ agg[k]={sim:0,nao:0,vazio:0}; });
+  deals.forEach(function(d){ var b=agg[keyOf(d)]; if(b) b[_aeMeetingClass(d)]++; });
+  var sim=keys.map(function(k){return agg[k].sim;});
+  var nao=keys.map(function(k){return agg[k].nao;});
+  var vaz=keys.map(function(k){return agg[k].vazio;});
+  var rate=keys.map(function(k){ var b=agg[k], den=b.sim+b.nao; return den>0?Math.round(b.sim/den*100):null; });
   _novoMkChart('chart-ae-meeting-rate',{type:'bar',plugins:[ChartDataLabels],
-    data:{labels:months.map(_mlbl),datasets:[
+    data:{labels:lbls,datasets:[
       {label:'Sim',data:sim,backgroundColor:'rgba(63,185,80,.8)',stack:'s',borderRadius:2,order:2},
       {label:'Não',data:nao,backgroundColor:'rgba(248,81,73,.7)',stack:'s',borderRadius:2,order:2},
       {label:'Sem preenchimento',data:vaz,backgroundColor:'rgba(140,140,150,.5)',stack:'s',borderRadius:2,order:2},
       {label:'Occurrence Rate',type:'line',data:rate,yAxisID:'y2',borderColor:'rgba(58,184,183,1)',backgroundColor:'rgba(58,184,183,1)',borderWidth:2,tension:.3,pointRadius:3,spanGaps:true,fill:false,order:1,datalabels:{display:false}}
     ]},
     options:{responsive:true,layout:{padding:{top:24}},plugins:{legend:{display:true,labels:{color:th.cText2,font:{family:NOVO_FONT,size:10},padding:8}},
-      datalabels:{display:false},
-      // Hover em qualquer ponto da barra mostra TODAS as fatias do mês + a Occurrence Rate.
-      tooltip:{mode:'index',callbacks:{label:function(c){ if(c.dataset.label==='Occurrence Rate') return 'Occurrence Rate: '+(c.parsed.y==null?'—':c.parsed.y+'%'); return c.dataset.label+': '+c.parsed.y; },footer:function(items){var t=0;items.forEach(function(it){if(it.dataset.label!=='Occurrence Rate')t+=it.parsed.y||0;});return 'Total: '+t+' deals';}}}},
-      scales:{x:{grid:{display:false},ticks:{color:th.cText2,font:{family:NOVO_FONT}},stacked:true},
-        y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0},stacked:true,title:{display:true,text:'Deals | entrada em Reunião Agendada',color:th.cText2,font:{family:NOVO_FONT}}},
+      // Total considerado no topo da pilha (soma das fatias visíveis).
+      datalabels:{display:function(c){return c.datasetIndex===2;},anchor:'end',align:'end',color:th.cText,font:{family:NOVO_FONT,size:10,weight:'bold'},formatter:function(v,c){var t=0;[0,1,2].forEach(function(i){if(c.chart.isDatasetVisible(i))t+=(c.chart.data.datasets[i].data[c.dataIndex]||0);});return t||'';}},
+      // Hover em qualquer ponto da barra mostra TODAS as fatias + a Occurrence Rate.
+      tooltip:{mode:'index',callbacks:{label:function(c){ if(c.dataset.label==='Occurrence Rate') return 'Occurrence Rate: '+(c.parsed.y==null?'—':c.parsed.y+'%'); return c.dataset.label+': '+c.parsed.y+(c.parsed.y===1?' reunião':' reuniões'); },footer:function(items){var t=0;items.forEach(function(it){if(it.dataset.label!=='Occurrence Rate')t+=it.parsed.y||0;});return 'Total: '+t+' reuniões';}}}},
+      scales:{x:{grid:{display:false},ticks:{color:isAe?th.cText:th.cText2,font:{family:NOVO_FONT}},stacked:true},
+        y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0},stacked:true,title:{display:true,text:'Reuniões com o executivo | data vencida',color:th.cText2,font:{family:NOVO_FONT}}},
         y2:{position:'right',grid:{display:false},min:0,max:100,ticks:{color:th.cText2,font:{family:NOVO_FONT},callback:function(v){return v+'%';}},title:{display:true,text:'Occurrence Rate',color:th.cText2,font:{family:NOVO_FONT}}}},
-      onClick:function(e,el){ if(!el.length)return; var m=months[el[0].index]; _aeMeetingListModal('Reunião Agendada | '+_mlbl(m), deals.filter(function(d){return String(d.data_reuniao_agendada).substring(0,7)===m;})); }}});
+      onClick:function(e,el){ if(!el.length)return; var k=keys[el[0].index]; if(isAe){ _aeMeetingByAeModal(k); } else { _aeMeetingListModal('Reuniões | '+_mlbl(k), deals.filter(function(d){return String(_aeMeetingDate(d)).substring(0,7)===k;})); } }}});
 }
 
+// A14 | Scorecard multidimensional por AE (substituiu o radar em 2026-07-16, pedido do dono):
+// cada métrica na SUA unidade (inteiros, R$ e %) em vez da normalização 0-100 que misturava
+// semânticas. A cor compara os AEs DENTRO de cada coluna (teal | mais escuro = maior).
+function aeScorecardOpen(ae){ novoOpenDealsModal('Deals | '+ae, _rawDeals().filter(function(d){return d.ae===ae;})); }
 function buildAERadar(){
-  var th=_novoTheme();
+  var el=document.getElementById('ae-radar-table'); if(!el) return;
   var all=_rawDeals(), open=_novoOpen(), won=_novoWon(), lost=_novoLost();
-  // Só executivos do time. Clique na legenda ISOLA o AE clicado (clique de novo restaura todos).
-  var aes=_getAEs().filter(_isCoreAE).filter(function(ae){ return all.filter(function(d){return d.ae===ae;}).length>=2; }).slice(0,8);
-  if(!aes.length)return;
-  var maxDeals=Math.max.apply(null,aes.map(function(ae){return open.filter(function(d){return d.ae===ae;}).length;}))||1;
-  var maxVidas=Math.max.apply(null,aes.map(function(ae){return open.filter(function(d){return d.ae===ae;}).reduce(function(s,d){return s+(d.vidas||0);},0);}))||1;
-  var maxArr=Math.max.apply(null,aes.map(function(ae){return open.filter(function(d){return d.ae===ae;}).reduce(function(s,d){return s+_annualRev(d);},0);}))||1;
-  var colors=['rgba(88,166,255,.5)','rgba(63,185,80,.5)','rgba(58,184,183,.5)','rgba(210,153,34,.5)','rgba(147,112,219,.5)','rgba(248,81,73,.4)','rgba(230,150,80,.5)','rgba(200,200,100,.5)'];
-  var datasets=aes.map(function(ae,i){
+  var aes=_getAEs().filter(_isCoreAE).filter(function(ae){ return all.some(function(d){return d.ae===ae;}); });
+  if(!aes.length){ el.innerHTML='<p style="color:var(--text2);padding:1rem 0">Nenhum AE.</p>'; return; }
+  var rows=aes.map(function(ae){
+    var op=open.filter(function(d){return d.ae===ae;});
     var w=won.filter(function(d){return d.ae===ae;}).length;
     var l=lost.filter(function(d){return d.ae===ae;}).length;
-    var wr=w+l>0?Math.round(w/(w+l)*100):0;
-    var vidasN=open.filter(function(d){return d.ae===ae;}).reduce(function(s,d){return s+(d.vidas||0);},0);
-    var arrN=open.filter(function(d){return d.ae===ae;}).reduce(function(s,d){return s+_annualRev(d);},0);
-    var deals=open.filter(function(d){return d.ae===ae;}).length;
-    var comp=open.filter(function(d){return d.ae===ae&&d.vidas&&_annualRev(d)>0;}).length;
-    var compPct=deals>0?Math.round(comp/deals*100):0;
-    return {label:ae,data:[Math.round(deals/maxDeals*100),Math.round(vidasN/maxVidas*100),Math.round(arrN/maxArr*100),wr,compPct],backgroundColor:colors[i%colors.length],borderColor:colors[i%colors.length].replace('.5','1').replace('.4','1'),borderWidth:2,pointRadius:3};
+    var comp=op.filter(function(d){return d.vidas&&_annualRev(d)>0;}).length;
+    return {ae:ae,w:w,l:l,deals:op.length,
+      vidas:op.reduce(function(s,d){return s+(d.vidas||0);},0),
+      arr:op.reduce(function(s,d){return s+_annualRev(d);},0),
+      wr:(w+l)>0?Math.round(w/(w+l)*1000)/10:null,
+      comp:op.length>0?Math.round(comp/op.length*100):null};
   });
-  var dimLabels=['Deals','Vidas','ARR','Win Rate','Completude'];
-  var keep=dimLabels.map(function(_,di){ return datasets.some(function(ds){return ds.data[di]>0;}); });
-  var labels2=dimLabels.filter(function(_,di){return keep[di];});
-  datasets.forEach(function(ds){ ds.data=ds.data.filter(function(_,di){return keep[di];}); });
-  _novoMkChart('chart-ae-radar',{type:'radar',
-    data:{labels:labels2,datasets:datasets},
-    options:{responsive:true,plugins:{legend:{display:true,position:'right',labels:{color:th.cText2,font:{family:NOVO_FONT,size:10},padding:10},
-      onClick:function(e,item,legend){ var ch=legend.chart, idx=item.datasetIndex; var isolated=ch.data.datasets.every(function(_,i){ return i===idx?ch.isDatasetVisible(i):!ch.isDatasetVisible(i); }); ch.data.datasets.forEach(function(_,i){ ch.setDatasetVisibility(i, isolated?true:i===idx); }); ch.update(); }},
-      datalabels:{display:false},tooltip:{callbacks:{label:function(c){return c.dataset.label+': '+c.raw+'%';}}}},
-      scales:{r:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT,size:9},backdropColor:'transparent'},pointLabels:{color:th.cText,font:{family:NOVO_FONT,size:10}},min:0,max:100}}}});
+  rows.sort(function(a,b){return b.arr-a.arr;});
+  // Linha do time: somas e taxas AGREGADAS (não média das médias).
+  var tOp=open.filter(function(d){return _isCoreAE(d.ae);});
+  var tW=won.filter(function(d){return _isCoreAE(d.ae);}).length, tL=lost.filter(function(d){return _isCoreAE(d.ae);}).length;
+  var tComp=tOp.filter(function(d){return d.vidas&&_annualRev(d)>0;}).length;
+  var team={deals:tOp.length,vidas:tOp.reduce(function(s,d){return s+(d.vidas||0);},0),arr:tOp.reduce(function(s,d){return s+_annualRev(d);},0),
+    wr:(tW+tL)>0?Math.round(tW/(tW+tL)*1000)/10:null,comp:tOp.length>0?Math.round(tComp/tOp.length*100):null};
+  var COLS=[
+    {k:'deals',lbl:'Deals abertos',fmt:function(v){return _ni(v);}},
+    {k:'vidas',lbl:'Vidas abertas',fmt:function(v){return _ni(v);}},
+    {k:'arr',lbl:'ARR aberto',fmt:function(v){return _revShort(v);}},
+    {k:'wr',lbl:'Win Rate | período',fmt:function(v){return v==null?'—':String(v).replace('.',',')+'%';}},
+    {k:'comp',lbl:'Completude',fmt:function(v){return v==null?'—':v+'%';}}
+  ];
+  var maxOf={}; COLS.forEach(function(c){ maxOf[c.k]=Math.max.apply(null,rows.map(function(r){return r[c.k]||0;}).concat([1])); });
+  var bg=function(v,k){ if(v==null||!v) return ''; return 'background:rgba(58,184,183,'+(Math.round(v/maxOf[k]*35)/100)+')'; };
+  var html='<table class="lb" style="font-size:.82rem;width:100%"><thead><tr><th style="text-align:left">AE</th>'+COLS.map(function(c){return '<th style="text-align:center">'+c.lbl+'</th>';}).join('')+'</tr></thead><tbody>';
+  rows.forEach(function(r){
+    var wrTip=r.wr==null?'sem fechados no período':(r.w+' ganhos | '+r.l+' perdidos no período');
+    html+='<tr><td style="text-align:left;white-space:nowrap;font-weight:600"><a href="javascript:void(0)" onclick="aeScorecardOpen(\''+String(r.ae).replace(/'/g,"\\'")+'\')" style="color:var(--teal);text-decoration:none">'+_ne(r.ae)+'</a></td>'+
+      COLS.map(function(c){ var v=r[c.k]; return '<td style="text-align:center;'+bg(v,c.k)+'"'+(c.k==='wr'?' title="'+wrTip+'"':'')+'>'+c.fmt(v)+'</td>'; }).join('')+'</tr>';
+  });
+  html+='</tbody><tfoot><tr style="border-top:2px solid var(--border)"><td style="text-align:left;font-weight:700">Time</td>'+COLS.map(function(c){return '<td style="text-align:center;font-weight:700">'+c.fmt(team[c.k])+'</td>';}).join('')+'</tr></tfoot></table>';
+  el.innerHTML=html;
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
@@ -1486,6 +1495,6 @@ function buildAERadar(){
   novoLoadData();
 })();
 </script>
-<script src="/nav.js?v=1"></script>
+<script src="/nav.js?v=2"></script>
 </body>
 </html>
