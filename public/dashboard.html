@@ -4265,9 +4265,13 @@ function buildNovoTimeToMeeting() {
   var el=document.getElementById('novo-timetomeeting-body');
   if(!el)return;
   var deals=_novoDealsByDate('createdate');
-  var yes=deals.filter(function(d){ var v=String(d.reuniao_ocorreu||'').toLowerCase(); return v==='true'||v==='sim'||v==='yes'; });
-  var no=deals.filter(function(d){ var v=String(d.reuniao_ocorreu||'').toLowerCase(); return v==='false'||v==='não'||v==='nao'||v==='no'; });
-  var empty=deals.filter(function(d){ return !d.reuniao_ocorreu; });
+  // a_reuniao_ocorreu_ virou seleção única (Sim/Nao) em 16/07; fotos antigas ainda podem trazer o
+  // valor composto do antigo checkbox ("Nao;Sim"). Classifica por substring (Sim vence), igual ao AE,
+  // para que o valor composto não escape dos 3 buckets no replay.
+  function _mtg(d){ var v=String(d.reuniao_ocorreu==null?'':d.reuniao_ocorreu); if(/sim|yes|true/i.test(v)) return 'sim'; if(/n[aã]o|no|false/i.test(v)) return 'nao'; return 'vazio'; }
+  var yes=deals.filter(function(d){ return _mtg(d)==='sim'; });
+  var no=deals.filter(function(d){ return _mtg(d)==='nao'; });
+  var empty=deals.filter(function(d){ return _mtg(d)==='vazio'; });
   function k(label, value, color){ return '<div class="kpi-sec"><span class="kpi-sec-label">'+label+'</span><div class="kpi-sec-value" style="color:'+color+'">'+value+'</div></div>'; }
   el.innerHTML='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.6rem;margin-bottom:.8rem">'+
     k(NOVO_LANG==='en'?'Occurred':'Ocorreu',yes.length,'var(--green)')+

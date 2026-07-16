@@ -16,6 +16,26 @@ Recurring every 20min (job `55d3b136`). Purpose: identify and close gaps so the 
 
 ---
 
+### Forecast | modal de detalhe do deal mostra a variação de TODOS os campos desde a foto (2026-07-16)
+
+> Pedido do dono: no `/forecast`, com o modo "Comparar com fotografia" ligado, o modal de detalhe do deal (`openDealModal`/`renderDealModal`) mostrava só "Mudança" (avançou/regrediu de etapa) + Δs de receita (estes desligados por `COMP_SHOW_REV_DELTAS=false`). Agora mostra a **variação campo a campo, foto → agora**, de todos os campos que a foto captura.
+>
+> **Implementação (front-only, `forecast.html`):** novo catálogo `CMP_MODAL_FIELDS` (19 campos que o `compRowToDeal` captura: Etapa, Executivo, Solução, Vidas, Colaboradores, Fatura atual, 1ª Fatura, Prêmio Mensal, ARR, Modelo, Agenciamento, Vitalício, Prob. AE, Quarter, Dt. Receita, Dt. Vigência, Venc. 1ª Fatura, Dt. Criação, Dt. Fechamento). Seção "Variação desde a foto | {tab}" com contador "N de M campos mudaram" + o texto de movimento de etapa. Cada campo vira uma linha: mudou → `valor da foto → valor atual` (novo em verde/vermelho para numéricos↑↓, teal para texto/data/bool); sem mudança → valor único esmaecido. Deal **novo** (sem par na foto) mostra "Novo | não existia na foto". Comparação por tipo com tolerância (money 0,5 | pct 0,0005 | num exato | Executivo via `compAeEq` tolerante a grafia | Quarter via `quarterEmpty`). Rodapé lista os campos **sem histórico na foto** (fora da comparação): TCV, Período, POC, Prob. Etapa, Prob. Ajustada, Origem, BDR. Reusa os formatadores já existentes do modal (brl/num/pct/dt/boolv/txt) e as classes de delta; CSS próprio `.cmp-row`/`.cmp-ov`/`.cmp-arw`/`.cmp-nv`/`.cmp-note`.
+>
+> **Escopo:** só `forecast.html` — é o ÚNICO painel com o modo de comparação (o `forecast-stage.html`/Overall+etapas tem modal de deal mas NÃO tem comparação com foto). Se o dono quiser a comparação lá também, é tarefa maior (portar `compRowToDeal`/`compAugment`/`compMap`).
+>
+> **Validação:** `npm run check` PASS; `_check-inline-js` em forecast.html 0 erros; harness com foto real (`2026-07-10`) × payload vivo — 138 de 194 deals comuns tiveram algum campo alterado, mudanças reais pareadas corretamente (Dt. Receita, Vidas, Dt. Fechamento, etc.); Edge headless de `/forecast` carrega e renderiza (tabela, botão de comparação e modal presentes, sem erro de JS). Sem mudança api/lib — servidor local NÃO reiniciado. Não commitado/deployado.
+
+### CRM | a_reuniao_ocorreu_ virou seleção única (era checkbox) | verificação de impacto + hardening do N38 (2026-07-16)
+
+> O dono mudou o tipo do campo `a_reuniao_ocorreu_` no HubSpot (checkbox múltiplo → **seleção única** `enumeration`/`select`, opções Sim/Nao; `updatedAt` 16/07 17:11). Isso **resolve** a pendência de 15/07 (o valor composto "Nao;Sim" de 3tentos/Mangels que cada painel tratava diferente). Payload ao vivo agora **limpo**: 153 Sim | 21 Não | 38 vazio, **zero compostos**.
+>
+> **Verificação de impacto (nada quebra ao vivo):** todos os consumidores normalizam sem depender do tipo. **AE** (`_aeMeetingClass`, regex `/sim/i`→`/n[aã]o/i`) robusto. **No-Show** (`bdr-no-show.js` `normalizeMeetingOccurred`, território Samuel) lê só dados ao vivo (sem replay de foto), agora limpos → OK, **não tocado**. **CRO N38** (`buildNovoTimeToMeeting`) usava match exato. **Metadata** (`semantic/dados.json`) já dizia `"unidade":"enum"` — nada a mudar; nenhuma regeneração/cache-buster.
+>
+> **Único risco real (latente): replay de fotos antigas.** O N38 do CRO classificava por igualdade exata; numa foto pré-16/07 um deal `"Nao;Sim"` caía em **nenhum** dos 3 buckets (nem Sim/Não/vazio, pois `!"Nao;Sim"` é `false`) e **evaporava** da contagem. **Fix (front-only, `dashboard.html`):** N38 passou a classificar por substring (Sim vence), igual ao AE — helper `_mtg()`. **AE (`ae.html`):** ficha do A16 atualizada (removida a ressalva stale do checkbox múltiplo; nota de que o campo virou seleção única e a classificação segue robusta a fotos antigas).
+>
+> Validado: `npm run check` PASS; `_check-inline-js` em dashboard.html + ae.html 0 erros; `_smoke-render` do dashboard.html sem exceção (212 deals); harness com deal composto sintético prova que `Nao;Sim` cai em `sim` e a soma dos buckets = total (nada evapora). Zero mudança em api/lib — servidor local NÃO reiniciado. Não commitado/deployado.
+
 ### Forecast | colunas configuráveis (todos os painéis) + Board: B12 removido, B15 chips de AE, B15/B16 sem 🟡 (2026-07-16)
 
 > Leva do dono, front-only (payload já tinha os campos; zero mudança em api/lib — servidor local NÃO reiniciado). Território: Forecast + Board (não tocou ae.html/bdr* da(s) sessão(ões) paralela(s)).
