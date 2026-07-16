@@ -12,6 +12,10 @@ Recurring every 20min (job `55d3b136`). Purpose: identify and close gaps so the 
 >
 > Validado: Edge headless no DOM real (toggle ativo, scorecard renderizado, contagens 965 | 176 | "de 187 ativos | fora do time: 9"), sintaxe inline OK, `npm run check` PASS. Sem mudança de api/lib — servidor não reiniciado por esta sessão. Coordenação: este commit de `ae.html` carrega TAMBÉM as duas linhas da leva paralela (nav.js?v=2 + cursor pointer no `_novoMkChart`), conforme nota da entrada abaixo ("a sessão do AE commita junto"). Títulos seguem 🟡 (fila da AUDITORIA atualizada com os nomes novos).
 
+### BDR | fim do "Top 6 + Outros" nos empilhados + leads restabelecido (2026-07-16)
+
+> Follow-up da leva do dono: (1) **Escopo do token reconcedido pelo dono no portal** → `/api/bdr-leads` voltou (`success:true` validado ao vivo; a seção Cadência de Leads renderiza de novo, sem mudança de código). (2) **Decisão revisada dos empilhados:** em vez de expandir o "Outros" no tooltip (versão anterior desta leva), o colapso foi **REMOVIDO** — R13 (Weekly), R14 (Monthly) e Trabalhados por Dia agora empilham **TODOS os BDRs/grupos como segmentos próprios**, sem bucket "Outros"; o tooltip lista todo mundo naturalmente. Paleta ampliada para 14 cores; onClick simplificado (todo segmento pré-seleciona seu grupo no drill); fichas de ajuda, tooltips de card e comentários sincronizados. Validado: `npm run check` PASS, 3 NULs do bdr.html preservados, Edge headless sem "Outros" no DOM e sem erro de leads.
+
 ### Leva do dono | menu enxuto + cursor de clique + H09 Colab. + BDR leads/tooltips (2026-07-16)
 
 > Cinco pedidos executados em lote (autorização explícita do dono, incl. território BDR — Samuel, coordenar ao retomar):
