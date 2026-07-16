@@ -4,6 +4,21 @@ Recurring every 20min (job `55d3b136`). Purpose: identify and close gaps so the 
 
 ---
 
+### AE Performance | leva 2 do dono + ACHADO: A07 não bate com o forecast (funil × flat) (2026-07-16)
+
+> Segunda leva no `/novo-ae`, front-only em `ae.html`. Quatro ajustes feitos + um achado que exige decisão do dono.
+>
+> **A16 (Reuniões com o Executivo):** base cortada em **set/2025** (`AE_MTG_FLOOR`; reuniões anteriores são de ciclos antigos, ruído) — 965→947 reuniões vencidas ao vivo. 🟡 removido. A18 já estava aposentado (fundido no A16 na leva 1). **A12 (Idade Média):** 🟡 removido. **A14 (Scorecard):** coluna **Completude removida** (sobram Deals abertos, Vidas, ARR, Win Rate); 🟡 removido. **A13 (Age Distribution):** contava 184 e não 173 porque era o ÚNICO card de idade que **não filtrava pelo time** — os 9-11 deals extras são os mesmos owners fora do time do A11 (Peterson 4, Aurilia, Yokyko, Anderson, Pacheco, sem-owner). Religado à **mesma base do A12** (`_aeAgingBase`: time + sem Implantação + com data de RA) → agora A13 == A12 (172 ao vivo).
+>
+> **⛔ ACHADO A07 (emoji 🟡 MANTIDO — NÃO bate com o forecast):** validei por harness (motor real do ae.html, dados ao vivo) + DOM do `/forecast`. A **Receita Real** reconcilia (A07 core+não-core+sem-AE+cohorts ≈ 95,8M vs 96,9M do /forecast, gap ~1%), mas a **Probabilizada diverge muito** (A07 8,7M em modo flat / 5,5M em modo funil vs **20,8M** do /forecast). Causa raiz — inconsistência SISTÊMICA de probabilização entre painéis, não bug do A07:
+> 1. **A07 e o N06B do CRO** probabilizam com o **funil C07 por pipeline** (`_novoFcStageProbForwd` → `NOVO_FUNNEL_PROB_PIPE`); probs baixas (RA Vendas 1,5%).
+> 2. **`/forecast` (forecast.html) e `/forecast-overall` (forecast-stage.html)** probabilizam com a **régua flat** (`_fcStageProbFor` → STAGE_PROB default+manual; RA 6%, Cotação 18,6%…). O funil só alimenta a coluna informativa P. Realtime, não o `prob_ajustada`.
+> 3. **BID diverge ATÉ ENTRE as duas superfícies de forecast:** `forecast-stage.html` usa `FC_BID_PROB=0,5%` (= A07/N06B), mas `forecast.html` dá a régua cheia ao BID (Proposta Enviada 28,5% sobre 33M de Real ≈ 9,5M) — sozinho responde por ~11M do gap.
+>
+> O A07 espelha fielmente o N06B (ambos funil); quem diverge é o par CRO/AE (funil) × Forecast (flat), provável resíduo não migrado da decisão "régua única" de 15/07. **Decisão do dono necessária:** qual probabilização é a canônica (funil C07 ou régua flat) para a receita probabilizada — e alinhar CRO N06B + AE A07 + as DUAS superfícies de forecast (incl. o BID). Não mexi em nada disso: muda número board-facing em vários painéis e é decisão de fonte única (Regra nº 3). Caveat 🟡 anotado na ficha do A07.
+>
+> Validado: sintaxe inline OK, `npm run check` PASS, DOM headless (A13=A12=172, A14 sem Completude, A16 com toggle + piso set/25, 🟡 só em A07/A11). Sem mudança api/lib. ⚠ Sessão paralela ativa (board.html no working tree dela) — commit desta leva toca só `ae.html`, STATUS_LOG e AUDITORIA.
+
 ### AE Performance | leva do dono: A11 explicado, A12 sem Implantação, A16+A18 fundidos, A14 vira scorecard (2026-07-16)
 
 > Cinco pedidos do dono no `/novo-ae`, todos front-only em `ae.html` (o payload já trazia os campos). Detalhe completo no adendo de 16/07 da AUDITORIA_GRAFICOS.

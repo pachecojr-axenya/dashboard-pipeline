@@ -196,6 +196,27 @@ Fora do escopo: `bdr.html` (códigos R — território do Samuel, coordenar ante
 painéis Forecast (não usam este sistema de tags). Vereditos de validação (emojis) não
 foram alterados — renomeação pura.
 
+## Adendo | AE Performance: leva 2 + achado A07 × forecast (2026-07-16)
+
+> Segunda leva no `/novo-ae`. A07, A12, A14, A16 revistos; A13 diagnosticado. Emojis 🟡
+> removidos de A12/A14/A16 (cálculo confirmado); **A07 permanece 🟡** por não bater.
+
+- **A07 (Receita do Forecast por AE) → CONTINUA 🟡 | NÃO bate com o forecast.** Validado por
+  harness (motor real do ae.html + dados ao vivo) e DOM do `/forecast`. A **Receita Real**
+  reconcilia (≈95,8M vs 96,9M, gap ~1%), mas a **Probabilizada não** (A07 flat 8,7M / funil
+  5,5M × **20,8M** do /forecast). **Causa sistêmica, não bug do A07:** A07 e o N06B do CRO
+  probabilizam com o **funil C07 por pipeline** (probs baixas); os painéis `/forecast` e
+  `/forecast-overall` usam a **régua flat** (RA 6%, Cotação 18,6%…). E o BID diverge até
+  entre as superfícies de forecast (`forecast-stage.html` 0,5% × `forecast.html` régua cheia,
+  ~11M do gap). Reconciliação = decisão do dono (qual prob é canônica; afeta CRO + AE +
+  Forecast). Emoji mantido; caveat na ficha do A07. Detalhe no STATUS_LOG de 16/07.
+- **A13 (Deal Age Distribution) | "184 e não 173" RESOLVIDO:** era o único card de idade que
+  não filtrava pelo time — os deals extras são os mesmos owners fora do time do A11 (Peterson,
+  Aurilia, Yokyko, Anderson, Pacheco, sem-owner). Religado à MESMA base do A12 (`_aeAgingBase`:
+  time + sem Implantação + com data de RA) → A13 == A12 (172 ao vivo).
+- **A16:** base cortada em set/2025 (`AE_MTG_FLOOR`); 🟡 removido. **A12:** 🟡 removido.
+  **A14:** coluna Completude removida; 🟡 removido.
+
 ## Adendo | AE Performance: leva de correções do dono (2026-07-16)
 
 > Cinco mudanças pedidas pelo dono no `/novo-ae`, todas front-only (o payload já tinha os
@@ -277,7 +298,7 @@ desta auditoria; tooltip agora carrega o aviso "não é churn").
 
 | Onde | O quê | O que a validação exige |
 |---|---|---|
-| `/novo-ae` | Receita do Forecast por AE (A07) · Reuniões com o Executivo \| Occurrence Rate (A16+A18, base nova 16/07) · Distribuição de Etapas por AE (A11) · Idade Média por AE (A12, base nova 16/07) · Scorecard de Performance (A14, formato novo 16/07) · KPI Receita Ganha/Ano (A25) | Painel AE nunca entrou nesta auditoria; validar cada card contra contagens independentes do HubSpot (mesmo método do bloco N) |
+| `/novo-ae` | **Receita do Forecast por AE (A07)** — 🟡 mantido, NÃO bate com o forecast (funil × flat, ver adendo 16/07) · Distribuição de Etapas por AE (A11) · KPI Receita Ganha/Ano (A25) | Painel AE nunca entrou nesta auditoria; validar cada card contra contagens independentes do HubSpot. **A12, A14, A16 tiveram o 🟡 removido pelo dono em 16/07 (cálculo aceito).** A07 depende da decisão de probabilização canônica antes de validar. |
 | `/novo-board` | TCV do Pipe por Bucket (C08) · Top 5 AEs Weighted · Top 10 BoD Watchlist | Conferir TCV pela régua e ponderação global contra amostra manual |
 | `/forecast-delta` | Painel inteiro (pill 🟡) | Invariante Σ Δ = Total B − A PASSA para todos os pares de fotos (reteste 2026-07-14) e drawer gerado do catálogo ✓, MAS falta a prova externa: com a PRÓXIMA foto de sexta, comparar B=foto do dia com o Forecast Overall ao vivo no MESMO momento — se bater, sobe para 🟠/🟢. Não forçar foto fora do cron só para isso (escreve na planilha de produção). |
 | `/novo-bdr/workload` | Página (🟡 em auditoria) | Pendências declaradas acima (adendo 2026-07-13) |

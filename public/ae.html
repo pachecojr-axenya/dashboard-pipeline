@@ -285,7 +285,7 @@ var NOVO_I18N={
     ae_aging:'Idade Média dos Deals por AE',ae_aging_tip:'Snapshot atual: dias médios desde a entrada em Reunião Agendada (data_reuniao_agendada) por AE. Considera APENAS deals abertos | fechados (Ganho e Perdido) e deals em Implantação ficam SEMPRE fora, independente do toggle. Deals sem a data também ficam fora.',
     ae_discipline:'Completude de Dados por AE',ae_discipline_tip:'Snapshot atual: % de deals abertos com vidas e ARR preenchidos por AE.',
     ae_monthly_won:'Deals Ganhos por Mês (por AE)',ae_monthly_won_tip:'Deals ganhos por mês de fechamento, por AE. Filtro usa close_date.',
-    ae_radar:'Scorecard de Performance por AE',ae_radar_tip:'Tabela multidimensional por AE com cada métrica na SUA unidade (inteiros, R$ e %): Deals abertos, Vidas abertas, ARR aberto, Win Rate do período e Completude de dados. A intensidade da cor compara os AEs dentro de cada coluna (mais escuro = maior). Só executivos do time; última linha = total/taxa do time. Clique no nome do AE para ver os deals.',
+    ae_radar:'Scorecard de Performance por AE',ae_radar_tip:'Tabela multidimensional por AE com cada métrica na SUA unidade (inteiros, R$ e %): Deals abertos, Vidas abertas, ARR aberto e Win Rate do período. A intensidade da cor compara os AEs dentro de cada coluna (mais escuro = maior). Só executivos do time; última linha = total/taxa do time. Clique no nome do AE para ver os deals.',
   },
   en:{loading:'Fetching data…',error_prefix:'Error: ',retry:'Try again',updated_at:'Updated at',
     ae_lb_deals:'AE Leaderboard | Open Deals',ae_lb_deals_tip:'Current snapshot: open deals by owner (ae field). Does not use the period filter.',
@@ -297,7 +297,7 @@ var NOVO_I18N={
     ae_aging:'Avg Deal Age by AE',ae_aging_tip:'Current snapshot: avg days since entering Reunião Agendada (data_reuniao_agendada) per AE. ONLY open deals | closed (Won and Lost) and Implantação deals are ALWAYS excluded, regardless of the toggle. Deals without the date are also excluded.',
     ae_discipline:'Data Completeness by AE',ae_discipline_tip:'Current snapshot: % of open deals with both lives and ARR filled, per AE.',
     ae_monthly_won:'Won Deals by Month (per AE)',ae_monthly_won_tip:'Won deals by close month per AE. Filter uses close_date.',
-    ae_radar:'AE Performance Scorecard',ae_radar_tip:'Multidimensional table per AE with each metric in its OWN unit (integers, R$ and %): open Deals, open Lives, open ARR, period Win Rate and data Completeness. Color intensity compares AEs within each column (darker = higher). Core team only; last row = team total/rate. Click the AE name to see the deals.',
+    ae_radar:'AE Performance Scorecard',ae_radar_tip:'Multidimensional table per AE with each metric in its OWN unit (integers, R$ and %): open Deals, open Lives, open ARR and period Win Rate. Color intensity compares AEs within each column (darker = higher). Core team only; last row = team total/rate. Click the AE name to see the deals.',
   }
 };
 function t(k){ return (NOVO_I18N[NOVO_LANG]||NOVO_I18N.pt)[k]||(NOVO_I18N.pt[k])||k; }
@@ -320,7 +320,7 @@ var AE_HELP_CHARTS=[
     desc:'Soma de vidas (ou contagem de deals) por AE no pipeline ATIVO — mesma definição do C01 do CRO: exclui sempre Ganho, Perdido e Implantação; Reunião Agendada e Standby entram/saem conforme os toggles globais do drawer de Configurações. Clique numa barra para ver os deals do AE.',
     fields:[['hubspot_owner_id','Define o AE (coluna "AE" do payload).'],['vidas','Somado no modo Vidas; no modo Deals conta 1 por deal.'],['dealstage','Base ativa (exclui Ganho/Perdido/Implantação; RA/Standby por toggle).']]},
   {key:'arr',title:'Receita do Forecast por AE (A07)',
-    desc:'MESMO motor e conjunto do Forecast Overall e do N06B do CRO (ForecastEngine | Regra primária nº 3): negócio novo (criados desde set/25) + Ganho/Implantação (faturamento manual digitado) + Bid em Negociação/Proposta Enviada (data imputada e prob fixa 0,5%), com dedup Fee×Corretagem (o gêmeo de maior TCV sai). A métrica NÃO é ARR nem TCV: é a SOMA das receitas mensais projetadas pela régua (calcReceitaMes) na janela jan/2026 → dez/2027, agregada por AE. SÓ executivos do time — deals de outros owners ficam fora do gráfico; barras zeradas são ocultadas. Probabilizado = cada mês × probAdj do deal (Diagnóstico fixo 6%; demais = prob do funil C07 por pipeline, fallback nos defaults do /forecast, com ajuste ±10% do AE). Topo de funil (cohorts BDR) fica FORA por não ter AE. Não segue o filtro de período do painel.',
+    desc:'MESMO motor e conjunto do Forecast Overall e do N06B do CRO (ForecastEngine | Regra primária nº 3): negócio novo (criados desde set/25) + Ganho/Implantação (faturamento manual digitado) + Bid em Negociação/Proposta Enviada (data imputada e prob fixa 0,5%), com dedup Fee×Corretagem (o gêmeo de maior TCV sai). A métrica NÃO é ARR nem TCV: é a SOMA das receitas mensais projetadas pela régua (calcReceitaMes) na janela jan/2026 → dez/2027, agregada por AE. SÓ executivos do time — deals de outros owners ficam fora do gráfico; barras zeradas são ocultadas. Probabilizado = cada mês × probAdj do deal (Diagnóstico fixo 6%; demais = prob do funil C07 por pipeline, fallback nos defaults do /forecast, com ajuste ±10% do AE). Topo de funil (cohorts BDR) fica FORA por não ter AE. Não segue o filtro de período do painel. 🟡 PENDÊNCIA (2026-07-16): a Receita Real bate com o Forecast Overall, mas a Probabilizada NÃO — o A07/N06B probabilizam com o funil C07 (por pipeline), enquanto os painéis /forecast e /forecast-overall usam a régua flat (fixa). Além disso o BID diverge entre superfícies (A07/Overall = 0,5% × /forecast = régua cheia). Reconciliar qual probabilização é a canônica é decisão do dono (afeta CRO + AE + Forecast).',
     formula:'Receita(AE) = Σ deals do AE no conjunto do forecast [ Σ meses jan/26→dez/27 da régua ] | Probabilizada = Σ (mês × probAdj)',
     stages:['Vendas | negócio novo: deals criados desde 01/set/2025, em qualquer etapa aberta do funil (Reunião Agendada, Diagnóstico, Cotação, Consultoria, Negociação, Standby, Implantação) | receita projetada pela régua conforme etapa e modelo.','Ganho e Implantação: entram pela receita REAL (faturamento manual digitado), sem corte de createdate.','Bid: apenas as etapas Negociação e Proposta Enviada (criados desde 01/jan/2025), com probabilidade fixa de 0,5%.','Fora do cálculo: owners que não são do time, topo de funil de BDR (cohorts, sem AE) e o gêmeo de maior TCV no dedup Fee×Corretagem.'],
     fields:[['createdate','Conjunto do forecast (≥ 2025-09-01; Bid ≥ 2025-01-01) e início da régua de Diagnóstico/RA.'],['dealstage','Bloco do deal (Ganho/Impl. | pipe Vendas | BID Neg/Proposta).'],['pipeline','Vendas × Bid (Bid: só Negociação/Proposta, prob 0,5%).'],['modelo_de_remuneracao','Régua da receita (Fee por vida | Corretagem).'],['primeira_fatura','Base da receita mensal na régua.'],['vidas | quantidade_de_colaboradores','Base de Diagnóstico (headcount × R$/vida) e Reunião Agendada (× R$24, +15m).'],['data_prevista_para_receita','Início da régua (Cotação+ | com deslocamentos por modelo).'],['vigencia','Início alternativo no modelo Corretagem.'],['probabilidade','Ajuste ±10% sobre a prob da etapa.'],['dealname','Chave do dedup Fee×Corretagem.']]},
@@ -338,7 +338,7 @@ var AE_HELP_CHARTS=[
     desc:'Bolhas por AE (só executivos do time): eixo X = total de deals do AE (abertos + ganhos + perdidos; folga fixa de ±20 em torno dos dados), eixo Y = win rate ajustado (ganhos ÷ (ganhos + perdidos)), tamanho da bolha = vidas em pipeline aberto. Tooltip: deals | vidas | win rate. Clique numa bolha para ver todos os deals do AE.',
     fields:[['hubspot_owner_id','Define o AE (só time: André, Fausto, Guilherme, Juliana, Rafael, Ágatta).'],['dealstage','Ganho/Perdido no win rate; todos no total.'],['vidas','Tamanho da bolha (abertos).']]},
   {key:'meeting-rate',title:'Reuniões com o Executivo | Occurrence Rate (A16+A18)',
-    desc:'FUSÃO dos antigos A16 (mensal) e A18 (por executivo) num único card com toggle Mensal | Executivo. Base (2026-07-16): conta pela DATA DA REUNIÃO com o executivo — o reagendamento (data_do_reagendamento_com_o_executivo), quando preenchido, tem precedência sobre a data original (data_da_reuniao_com_executivo) — e NÃO mais pela entrada na etapa Reunião Agendada. Entram SÓ reuniões cuja data já venceu (≤ hoje): reunião futura ainda não pode ter ocorrido e ficaria como falso "sem preenchimento". Barras fatiadas por a_reuniao_ocorreu_ (Sim | Não | sem preenchimento) e linha com a Occurrence Rate = Sim ÷ (Sim + Não). SÓ executivos do time. O FILTRO DE PERÍODO do painel aplica sobre a data da reunião. Ressalva: valores mistos do CRM ("Nao;Sim", checkbox múltiplo) contam como Sim — higiene pendente registrada. Hover mostra todas as fatias juntas. Clique para ver os deals.',
+    desc:'FUSÃO dos antigos A16 (mensal) e A18 (por executivo) num único card com toggle Mensal | Executivo. Base (2026-07-16): conta pela DATA DA REUNIÃO com o executivo — o reagendamento (data_do_reagendamento_com_o_executivo), quando preenchido, tem precedência sobre a data original (data_da_reuniao_com_executivo) — e NÃO mais pela entrada na etapa Reunião Agendada. Entram SÓ reuniões cuja data já venceu (≤ hoje) e a partir de set/2025 (reuniões de ciclos anteriores são ruído para a leitura atual): reunião futura ainda não pode ter ocorrido e ficaria como falso "sem preenchimento". Barras fatiadas por a_reuniao_ocorreu_ (Sim | Não | sem preenchimento) e linha com a Occurrence Rate = Sim ÷ (Sim + Não). SÓ executivos do time. O FILTRO DE PERÍODO do painel aplica sobre a data da reunião. Ressalva: valores mistos do CRM ("Nao;Sim", checkbox múltiplo) contam como Sim — higiene pendente registrada. Hover mostra todas as fatias juntas. Clique para ver os deals.',
     formula:'data efetiva = data_do_reagendamento_com_o_executivo || data_da_reuniao_com_executivo (só ≤ hoje) | Occurrence Rate = Sim ÷ (Sim + Não)',
     fields:[['data_da_reuniao_com_executivo','Data agendada da reunião com o executivo | payload: data_reuniao_exec.'],['data_do_reagendamento_com_o_executivo','Data do reagendamento | quando preenchida é a que vale | payload: data_reagendamento_exec.'],['a_reuniao_ocorreu_','Sim / Não / vazio; fatias e Occurrence Rate.'],['hubspot_owner_id','Define o AE (só time) | eixo da visão Executivo.']]},
   {key:'meeting-alert',title:'Higiene de Reuniões Agendadas (A20)',
@@ -360,15 +360,15 @@ var AE_HELP_CHARTS=[
     formula:'idade(deal) = hoje − data_reuniao_agendada, em dias | média por AE (sem Implantação)',
     fields:[['hubspot_owner_id','Define o AE (só time).'],['hs_v2_date_entered_1144746905','Data de entrada em RA (data_reuniao_agendada) | base da idade.'],['dealstage','Só abertos (exclui Ganho/Perdido e SEMPRE Implantação, independente do toggle).']]},
   {key:'age-dist',title:'Deal Age Distribution | Open (A13)',
-    desc:'Deals ABERTOS por faixa de idade em dias desde a entrada em Reunião Agendada: 0-30, 31-60, 61-90, 91-120, 121-180 e +180. Sem a data de RA → fora. Clique numa barra: abre a lista INTEIRA dos abertos com chips de faixa no topo, já filtrada na faixa clicada.',
-    fields:[['hs_v2_date_entered_1144746905','Data de entrada em RA (data_reuniao_agendada) | base da idade.'],['dealstage','Só abertos (exclui Ganho/Perdido; Implantação=Ganho por toggle).']]},
+    desc:'Deals ABERTOS por faixa de idade em dias desde a entrada em Reunião Agendada: 0-30, 31-60, 61-90, 91-120, 121-180 e +180. MESMA base do A12 (Idade Média): SÓ executivos do time e SEM Implantação — antes contava também deals de owners fora do time (Peterson, ops, sem proprietário), por isso divergia da contagem do A12. Sem a data de RA → fora. Clique numa barra: abre a lista INTEIRA dos abertos com chips de faixa no topo, já filtrada na faixa clicada.',
+    fields:[['hs_v2_date_entered_1144746905','Data de entrada em RA (data_reuniao_agendada) | base da idade.'],['hubspot_owner_id','Define o AE (só time).'],['dealstage','Só abertos (exclui Ganho/Perdido e SEMPRE Implantação).']]},
   {key:'velocity-stage',title:'AE Deal Velocity by Stage | Avg Days (A19)',
     desc:'Heatmap de dias médios por etapa do pipeline VENDAS, por AE (só time). Cada célula = média de (saída − entrada) da etapa nos deals do AE; a etapa atual conta até hoje. Última linha = média do time. Cor: verde (rápido) → vermelho (lento), normalizada por coluna.',
     fields:[['hubspot_owner_id','Define o AE (só time).'],['hs_v2_date_entered_/exited_<stageId>','Entrada/saída de cada etapa de Vendas (expostas como stage_days).']]},
   {key:'radar',title:'Scorecard de Performance por AE (A14)',
-    desc:'SUBSTITUIU o radar em 2026-07-16 (pedido do dono): o radar normalizava tudo em 0-100 e misturava inteiros com porcentagens numa escala só. Agora é uma tabela multidimensional com cada métrica na SUA unidade: Deals abertos (contagem), Vidas abertas (contagem), ARR aberto (R$), Win Rate do período (ganhos ÷ fechados, %; hover mostra ganhos | perdidos) e Completude (% de abertos com vidas E receita preenchidos). A intensidade da cor compara os AEs DENTRO de cada coluna (mais escuro = maior) — nunca entre colunas. SÓ executivos do time, ordenados por ARR aberto; última linha = TIME com somas e taxas agregadas (não média das médias). Abertos seguem os toggles globais; Win Rate segue o filtro de período (close_date). Clique no nome do AE para ver todos os deals dele.',
-    formula:'win rate(AE) = ganhos ÷ (ganhos + perdidos) no período | completude(AE) = abertos com vidas e receita ÷ abertos',
-    fields:[['hubspot_owner_id','Define o AE (só time).'],['vidas','Coluna Vidas abertas + completude.'],['arr_estimado','Coluna ARR aberto (fallback primeira_fatura × 12) + completude.'],['dealstage','Abertos vs ganhos/perdidos (win rate).'],['closedate','Filtro de período do Win Rate.']]},
+    desc:'SUBSTITUIU o radar em 2026-07-16 (pedido do dono): o radar normalizava tudo em 0-100 e misturava inteiros com porcentagens numa escala só. Agora é uma tabela multidimensional com cada métrica na SUA unidade: Deals abertos (contagem), Vidas abertas (contagem), ARR aberto (R$) e Win Rate do período (ganhos ÷ fechados, %; hover mostra ganhos | perdidos). A intensidade da cor compara os AEs DENTRO de cada coluna (mais escuro = maior) — nunca entre colunas. SÓ executivos do time, ordenados por ARR aberto; última linha = TIME com somas e taxas agregadas (não média das médias). Abertos seguem os toggles globais; Win Rate segue o filtro de período (close_date). Clique no nome do AE para ver todos os deals dele.',
+    formula:'win rate(AE) = ganhos ÷ (ganhos + perdidos) no período',
+    fields:[['hubspot_owner_id','Define o AE (só time).'],['vidas','Coluna Vidas abertas.'],['arr_estimado','Coluna ARR aberto (fallback primeira_fatura × 12).'],['dealstage','Abertos vs ganhos/perdidos (win rate).'],['closedate','Filtro de período do Win Rate.']]},
 ];
 // Tabela de detalhe comum (colunas do modal padrão de deals).
 var AE_HELP_DETAIL=[
@@ -794,7 +794,7 @@ function novoRender(){
       // Seção Reuniões
       '<div class="section-hdr"><h2>Reuniões</h2></div>'+
       '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header"><h3>Higiene de Reuniões Agendadas</h3>'+_infoBtn('Triagem dos deals na etapa Reunião Agendada (snapshot atual, NÃO segue o filtro de período). 4 situações acionáveis por executivo | clique num número para ver os deals. ⚪ Sem status = data da reunião passou e a_reuniao_ocorreu_ vazio | ❌ Não ocorreu sem reagendamento | 🔴 Não ocorreu e reagendamento vencido | ✅ Ocorreu mas o deal não avançou da etapa.','meeting-alert')+'</div><div id="ae-meeting-alert" style="margin-top:.5rem"></div></div>'+
-      cWide('Reuniões com o Executivo | Occurrence Rate <span id="ae-mr-count" style="font-size:.68rem;color:var(--text2);font-weight:600;margin-left:.35rem;white-space:nowrap"></span>','Reuniões com o executivo JÁ VENCIDAS (a data do reagendamento, quando houver, vale no lugar da data original; só datas ≤ hoje): barras fatiadas por a_reuniao_ocorreu_ (Sim | Não | sem preenchimento); linha = Occurrence Rate = Sim ÷ (Sim + Não). Toggle alterna a dimensão: Mensal (mês da reunião) × Executivo. SÓ executivos do time. O FILTRO DE PERÍODO do painel aplica sobre a data da reunião. Clique numa barra para ver os deals.','meeting-rate',340,_subTabs('ae-mtg-tabs',_aeMtgView,[{mode:'monthly',label:'Mensal',fn:'aeSwitchMtgView'},{mode:'ae',label:'Executivo',fn:'aeSwitchMtgView'}]))+
+      cWide('Reuniões com o Executivo | Occurrence Rate <span id="ae-mr-count" style="font-size:.68rem;color:var(--text2);font-weight:600;margin-left:.35rem;white-space:nowrap"></span>','Reuniões com o executivo JÁ VENCIDAS (a data do reagendamento, quando houver, vale no lugar da data original; só datas ≤ hoje): barras fatiadas por a_reuniao_ocorreu_ (Sim | Não | sem preenchimento); linha = Occurrence Rate = Sim ÷ (Sim + Não). Toggle alterna a dimensão: Mensal (mês da reunião) × Executivo. SÓ executivos do time, a partir de set/2025. O FILTRO DE PERÍODO do painel aplica sobre a data da reunião. Clique numa barra para ver os deals.','meeting-rate',340,_subTabs('ae-mtg-tabs',_aeMtgView,[{mode:'monthly',label:'Mensal',fn:'aeSwitchMtgView'},{mode:'ae',label:'Executivo',fn:'aeSwitchMtgView'}]),true)+
       // Seção Higiene de Atividade
       '<div class="section-hdr"><h2>Higiene de Atividade</h2></div>'+
       '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header"><h3>Deals sem Atividade por Executivo</h3>'+_infoBtn('Triagem dos deals ABERTOS (pipeline ativo) sem atividade registrada, por executivo. SNAPSHOT atual | NÃO segue o filtro de período. Faixas exclusivas por dias sem atividade (cada deal conta uma vez): 15–29, 30–44, 45–59, 60–89 e 90+. Só pipeline Vendas | exclui BID, Ganho/Perdido e deals de teste. Clique num número para abrir os deals daquela faixa/executivo (filtros cruzados Executivo × Faixa).','stale-alert')+'</div><div id="ae-stale-alert" style="margin-top:.5rem"></div></div>'+
@@ -804,14 +804,14 @@ function novoRender(){
       // Seção Pipeline
       '<div class="section-hdr"><h2>Pipeline</h2></div>'+
       cWide(t('ae_pipeline_stage')+_aeA11CntSpan(),t('ae_pipeline_stage_tip'),'pipeline-stage',340)+
-      c(t('ae_aging')+_aeCntSpan(_aeAgingBase().length),t('ae_aging_tip'),'aging',300)+
-      c('Deal Age Distribution (Open)'+_aeCntSpan(open.length),'Distribuição dos deals abertos por faixa de idade (dias desde a entrada em Reunião Agendada): 0-30, 31-60, 61-90, 91-120, 121-180 e +180 dias. Deals sem a data ficam fora. Clique numa barra para ver os deals.','age-dist',300,'',true)+
+      c(t('ae_aging')+_aeCntSpan(_aeAgingBase().length),t('ae_aging_tip'),'aging',300,'',true)+
+      c('Deal Age Distribution (Open)'+_aeCntSpan(_aeAgingBase().length),'Distribuição dos deals abertos por faixa de idade (dias desde a entrada em Reunião Agendada): 0-30, 31-60, 61-90, 91-120, 121-180 e +180 dias. MESMA base do A12 (Idade Média): só executivos do time, sem Implantação, e deals sem a data de RA ficam fora. Clique numa barra para ver os deals.','age-dist',300,'',true)+
       // Seção Velocidade
       '<div class="section-hdr"><h2>Velocidade por Etapa</h2></div>'+
       '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header"><h3>AE Deal Velocity by Stage (Avg Days)</h3>'+_infoBtn('Tabela (heatmap) de dias médios por etapa do pipeline Vendas, por AE. Cada célula = média de (saída - entrada) da etapa nos deals do AE (hs_v2_date_entered/exited; etapa atual conta até hoje). Última linha = média do time. Só AEs do time.','velocity-stage')+'</div><div id="ae-velocity-table" style="overflow-x:auto;margin-top:.5rem"></div></div>'+
       // Seção Scorecard (ex-radar | A14 virou tabela multidimensional em 2026-07-16)
       '<div class="section-hdr"><h2>Visão Multi-Dimensional</h2></div>'+
-      '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header"><h3>🟡 '+t('ae_radar')+'</h3>'+_infoBtn(t('ae_radar_tip'),'radar')+'</div><div id="ae-radar-table" style="overflow-x:auto;margin-top:.5rem"></div></div>'+
+      '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header"><h3>'+t('ae_radar')+'</h3>'+_infoBtn(t('ae_radar_tip'),'radar')+'</div><div id="ae-radar-table" style="overflow-x:auto;margin-top:.5rem"></div></div>'+
     '</div>';
 
   buildAEC01();
@@ -1123,13 +1123,15 @@ function aeAgeDealsFilter(lbl){
   var tb=document.getElementById('ae-age-table'); if(tb)tb.innerHTML='<table class="lb"><thead><tr><th style="text-align:left">Deal</th><th style="text-align:left">AE</th><th>Pipe</th><th>Etapa</th><th>Vidas</th><th>ARR</th><th>Reunião Ag.</th><th>Fechado</th><th style="text-align:left">Motivo perda</th></tr></thead><tbody>'+_novoDealsRows(list)+'</tbody></table>';
 }
 function aeOpenAgeDistModal(preLbl){
-  _aeAgeFltAll=_novoOpen().filter(function(d){return _aeRaDays(d)!=null;});
+  _aeAgeFltAll=_aeAgingBase();
   _aeAgeFltSel=null;
   openModal('Deals Abertos por Idade | dias desde Reunião Agendada ('+_aeAgeFltAll.length+')','<div id="ae-age-chips"></div><div id="ae-age-table"></div>');
   aeAgeDealsFilter(preLbl||'__all');
 }
 function buildAEAgeDist(){
-  var th=_novoTheme(), open=_novoOpen();
+  // MESMA base do A12 (_aeAgingBase): só time, sem Implantação, com data de RA — antes usava
+  // _novoOpen() e contava deals de owners fora do time (pedido do dono, 2026-07-16).
+  var th=_novoTheme(), open=_aeAgingBase();
   var counts=_AE_AGE_BUCKETS.map(function(b){return _aeAgeBucketDeals(open,b).length;});
   var colors=['rgba(63,185,80,.75)','rgba(120,180,90,.75)','rgba(210,153,34,.8)','rgba(230,150,80,.8)','rgba(240,120,70,.8)','rgba(248,81,73,.75)'];
   _novoMkChart('chart-ae-age-dist',{type:'bar',plugins:[ChartDataLabels],
@@ -1374,8 +1376,10 @@ function aeStaleDrill(idx,bucket){
 function _aeMeetingDate(d){ return d.data_reagendamento_exec||d.data_reuniao_exec||null; }
 // Base COMUM das duas visões do A16+A18: deals do time com data de reunião JÁ VENCIDA
 // (≤ hoje) — reunião futura ainda não pode ter ocorrido e viraria falso "sem preenchimento".
-// O FILTRO DE PERÍODO do painel aplica sobre essa mesma data efetiva.
-function _aeMeetingBase(){ var today=_aeTodayStr(); return _rawDeals().filter(function(d){ var m=_aeMeetingDate(d); return m && m<=today && _isCoreAE(d.ae) && _inWinStrict(m); }); }
+// Piso em set/2025: antes disso são reuniões de ciclos antigos, ruído para a leitura atual
+// (pedido do dono, 2026-07-16). O FILTRO DE PERÍODO do painel aplica sobre a data efetiva.
+var AE_MTG_FLOOR='2025-09-01';
+function _aeMeetingBase(){ var today=_aeTodayStr(); return _rawDeals().filter(function(d){ var m=_aeMeetingDate(d); return m && m>=AE_MTG_FLOOR && m<=today && _isCoreAE(d.ae) && _inWinStrict(m); }); }
 // Linhas dos modais de reunião (A14/A16): inclui a coluna "Reunião Ocorreu" (a_reuniao_ocorreu_).
 function _aeMeetingRows(deals){ return deals.map(function(d){ var hsUrl=d.hs_id?'https://app.hubspot.com/contacts/44715285/deal/'+d.hs_id:'#'; var nameCell=d.hs_id?'<a href="'+hsUrl+'" target="_blank" rel="noopener" style="color:var(--teal);text-decoration:none">'+_ne(d.dealname)+'</a>':_ne(d.dealname); var mc=_aeMeetingClass(d); var mLbl=mc==='sim'?'Sim':mc==='nao'?'Não':'—'; var mCol=mc==='sim'?'var(--green)':mc==='nao'?'var(--red)':'var(--muted)'; var reag=d.data_reagendamento_exec?' <span title="reagendada" style="color:var(--yellow);font-weight:700">↻</span>':''; return '<tr><td style="text-align:left;min-width:150px;max-width:210px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+nameCell+'</td><td style="text-align:left;white-space:nowrap">'+_ne(d.ae)+'</td><td>'+_ne(d.pipeline)+'</td><td style="white-space:nowrap">'+_ne(d.stage)+'</td><td>'+_ni(d.vidas)+'</td><td>'+_revShort(_annualRev(d))+'</td><td style="white-space:nowrap">'+_nd(_aeMeetingDate(d))+reag+'</td><td style="white-space:nowrap;color:'+mCol+';font-weight:600">'+mLbl+'</td></tr>'; }).join(''); }
 function _aeMeetingHead(){ return '<thead><tr><th style="text-align:left">Deal</th><th style="text-align:left">AE</th><th>Pipe</th><th>Etapa</th><th>Vidas</th><th>ARR</th><th>Reunião (↻ = reag.)</th><th>Reunião Ocorreu</th></tr></thead>'; }
@@ -1453,26 +1457,22 @@ function buildAERadar(){
     var op=open.filter(function(d){return d.ae===ae;});
     var w=won.filter(function(d){return d.ae===ae;}).length;
     var l=lost.filter(function(d){return d.ae===ae;}).length;
-    var comp=op.filter(function(d){return d.vidas&&_annualRev(d)>0;}).length;
     return {ae:ae,w:w,l:l,deals:op.length,
       vidas:op.reduce(function(s,d){return s+(d.vidas||0);},0),
       arr:op.reduce(function(s,d){return s+_annualRev(d);},0),
-      wr:(w+l)>0?Math.round(w/(w+l)*1000)/10:null,
-      comp:op.length>0?Math.round(comp/op.length*100):null};
+      wr:(w+l)>0?Math.round(w/(w+l)*1000)/10:null};
   });
   rows.sort(function(a,b){return b.arr-a.arr;});
   // Linha do time: somas e taxas AGREGADAS (não média das médias).
   var tOp=open.filter(function(d){return _isCoreAE(d.ae);});
   var tW=won.filter(function(d){return _isCoreAE(d.ae);}).length, tL=lost.filter(function(d){return _isCoreAE(d.ae);}).length;
-  var tComp=tOp.filter(function(d){return d.vidas&&_annualRev(d)>0;}).length;
   var team={deals:tOp.length,vidas:tOp.reduce(function(s,d){return s+(d.vidas||0);},0),arr:tOp.reduce(function(s,d){return s+_annualRev(d);},0),
-    wr:(tW+tL)>0?Math.round(tW/(tW+tL)*1000)/10:null,comp:tOp.length>0?Math.round(tComp/tOp.length*100):null};
+    wr:(tW+tL)>0?Math.round(tW/(tW+tL)*1000)/10:null};
   var COLS=[
     {k:'deals',lbl:'Deals abertos',fmt:function(v){return _ni(v);}},
     {k:'vidas',lbl:'Vidas abertas',fmt:function(v){return _ni(v);}},
     {k:'arr',lbl:'ARR aberto',fmt:function(v){return _revShort(v);}},
-    {k:'wr',lbl:'Win Rate | período',fmt:function(v){return v==null?'—':String(v).replace('.',',')+'%';}},
-    {k:'comp',lbl:'Completude',fmt:function(v){return v==null?'—':v+'%';}}
+    {k:'wr',lbl:'Win Rate | período',fmt:function(v){return v==null?'—':String(v).replace('.',',')+'%';}}
   ];
   var maxOf={}; COLS.forEach(function(c){ maxOf[c.k]=Math.max.apply(null,rows.map(function(r){return r[c.k]||0;}).concat([1])); });
   var bg=function(v,k){ if(v==null||!v) return ''; return 'background:rgba(58,184,183,'+(Math.round(v/maxOf[k]*35)/100)+')'; };
