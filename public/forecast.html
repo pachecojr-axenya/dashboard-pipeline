@@ -1750,18 +1750,14 @@
     td.dneg{color:#f85149;font-weight:600}
     td.dzero{color:var(--text2)}
     .cmp-old-modal{display:block;color:var(--text2);font-size:.7rem;margin-top:.15rem}
-    /* Modal de detalhe | seção "Variação desde a foto" (campo a campo, foto → agora) */
-    .deal-row.cmp-row{grid-column:1/-1}
-    .cmp-row .dr-val{display:flex;align-items:baseline;gap:.4rem;justify-content:flex-end;flex-wrap:wrap}
-    .cmp-ov{color:var(--text2);font-size:.8rem}
-    .cmp-arw{color:var(--text2);font-size:.78rem;flex-shrink:0}
+    /* Modal de detalhe | comparação INLINE com a foto (valor da foto → agora) */
+    .cmp-ov{color:var(--text2);font-size:.7rem;opacity:.6}
+    .cmp-arw{color:var(--text2);font-size:.76rem;margin:0 .3rem}
     .cmp-nv{font-weight:700}
     .cmp-nv.up{color:#3fb950}
     .cmp-nv.down{color:#f85149}
     .cmp-nv.neu{color:var(--teal)}
-    .cmp-row.nochg .cmp-eq{color:var(--text2)}
-    .cmp-count{color:var(--text2);font-weight:400;text-transform:none;letter-spacing:0}
-    .cmp-note{grid-column:1/-1;color:var(--text2);font-size:.7rem;font-style:italic;padding:.45rem .25rem 0;line-height:1.45}
+    .dm-cmp-hint{font-size:.7rem;color:var(--text2);margin-top:.25rem}
     .cmp-exits{margin:1.1rem 0 .3rem;border-top:2px solid var(--border);padding-top:.85rem}
     .cmp-exits h3{font-size:.85rem;color:var(--text);margin:0 0 .55rem}
     .cmp-exits h3 span{color:var(--text2);font-weight:400;font-size:.72rem}
@@ -2578,7 +2574,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       // ── RASTREAMENTO (2 colunas, na ordem pedida) ──
       let h = '<div class="deal-sec">Rastreamento</div>';
       h += cell('BDR', bdrHtml) + cell('Origem', d.origem ? esc(d.origem) : muted);
-      h += cell('Dt. Criação', dt(d.createdate)) + cell('Dias no pipe', d.dias_no_pipe != null ? fmtNum(d.dias_no_pipe) + ' dias' : muted);
+      h += cell('Dt. Criação', cmpInline(d, 'createdate', 'date', dt(d.createdate))) + cell('Dias no pipe', d.dias_no_pipe != null ? fmtNum(d.dias_no_pipe) + ' dias' : muted);
       h += cell('Última atividade', dt(d.ultima_atividade)) + cell('Dias sem atividade', dsaHtml);
 
       // ── TRILHA DE ETAPAS | Etapa | Data | Dias na etapa ──
@@ -2632,30 +2628,42 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
         .catch(() => { const elNow = document.getElementById('dm-owner-hist'); if (elNow) elNow.innerHTML = '<span style="color:var(--text2)">indisponível</span>'; });
     }
 
-    // Campos que a foto (compRowToDeal) captura e que dá para comparar 1:1 com o vivo.
-    // Ordem = leitura de negócio. TCV/Período/POC/Prob. Etapa/Prob. Ajustada/Origem/BDR
-    // NÃO entram: a foto não os guarda (comparação seria contra vazio).
-    const CMP_MODAL_FIELDS = [
-      { k: 'stage', lbl: 'Etapa', kind: 'text' },
-      { k: 'ae', lbl: 'Executivo', kind: 'ae' },
-      { k: 'produto', lbl: 'Solução', kind: 'text' },
-      { k: 'vidas', lbl: 'Vidas', kind: 'num' },
-      { k: 'colaboradores', lbl: 'Colaboradores', kind: 'num' },
-      { k: 'fatura_atual', lbl: 'Fatura atual', kind: 'money' },
-      { k: 'primeira_fatura', lbl: '1ª Fatura', kind: 'money' },
-      { k: 'premio_mensal', lbl: 'Prêmio Mensal', kind: 'money' },
-      { k: 'arr_estimado', lbl: 'ARR', kind: 'money' },
-      { k: 'modelo_remuneracao', lbl: 'Modelo', kind: 'text' },
-      { k: 'possui_agenciamento', lbl: 'Agenciamento', kind: 'bool' },
-      { k: 'possui_vitalicio', lbl: 'Vitalício', kind: 'bool' },
-      { k: 'probabilidade', lbl: 'Prob. AE', kind: 'pct' },
-      { k: 'quarter', lbl: 'Quarter', kind: 'quarter' },
-      { k: 'data_prevista_para_receita', lbl: 'Dt. Receita', kind: 'date' },
-      { k: 'vigencia', lbl: 'Dt. Vigência', kind: 'date' },
-      { k: 'vencimento_primeira_fatura', lbl: 'Venc. 1ª Fatura', kind: 'date' },
-      { k: 'createdate', lbl: 'Dt. Criação', kind: 'date' },
-      { k: 'close_date', lbl: 'Dt. Fechamento', kind: 'date' },
-    ];
+    // ── Comparação INLINE com a foto (modo comparação) ──────────────────────────
+    // Decora o valor de um campo com "valor da foto → agora" DENTRO do próprio dado do
+    // modal (não em seção separada). fk = chave no shape do payload (o compRowToDeal usa
+    // as mesmas chaves na foto). Campos que a foto não captura (TCV, Período, POC, Prob.
+    // Etapa/Ajustada, Origem, BDR) não passam por aqui — ficam com o valor atual puro.
+    function _cmpFmtK(kind, v) {
+      const mut = '<span style="color:var(--text2)">—</span>';
+      if (kind === 'money') return (v != null && !isNaN(v)) ? esc(fmtBRL(v)) : mut;
+      if (kind === 'num') return (v != null) ? esc(fmtNum(v)) : mut;
+      if (kind === 'pct') return (v != null) ? esc(fmtPct(v)) : mut;
+      if (kind === 'date') return v ? esc(fmtDate(v)) : mut;
+      if (kind === 'bool') return v === true ? '<span class="byes">Sim</span>' : (v === false ? '<span class="bno">Não</span>' : mut);
+      if (kind === 'quarter') return (v && !quarterEmpty(v)) ? esc(v) : mut;
+      return v ? esc(v) : mut;
+    }
+    function _cmpN(v) { return (v == null || v === '' || isNaN(parseFloat(v))) ? null : parseFloat(v); }
+    function _cmpChg(kind, ov, cv) {
+      if (kind === 'money') { const a = _cmpN(ov), b = _cmpN(cv); if (a == null && b == null) return false; if (a == null || b == null) return true; return Math.abs(a - b) > 0.5; }
+      if (kind === 'num') { const a = _cmpN(ov), b = _cmpN(cv); if (a == null && b == null) return false; if (a == null || b == null) return true; return a !== b; }
+      if (kind === 'pct') { const a = _cmpN(ov), b = _cmpN(cv); if (a == null && b == null) return false; if (a == null || b == null) return true; return Math.abs(a - b) > 0.0005; }
+      if (kind === 'bool') return (ov == null ? null : ov) !== (cv == null ? null : cv);
+      if (kind === 'ae') return !compAeEq(ov, cv);
+      if (kind === 'quarter') { const a = (ov && !quarterEmpty(ov)) ? ov : null, b = (cv && !quarterEmpty(cv)) ? cv : null; return (a || '') !== (b || ''); }
+      return String(ov == null ? '' : ov) !== String(cv == null ? '' : cv);
+    }
+    function _cmpDir(kind, ov, cv) {
+      if (kind === 'money' || kind === 'num' || kind === 'pct') { const a = _cmpN(ov) || 0, b = _cmpN(cv) || 0; return b > a ? 'up' : (b < a ? 'down' : 'neu'); }
+      return 'neu';
+    }
+    // Fora do modo foto, campo sem mudança ou deal novo sem par → devolve curHtml intacto.
+    function cmpInline(d, fk, kind, curHtml) {
+      if (!(compTab && d._cmp && d._cmp.old)) return curHtml;
+      const ov = d._cmp.old[fk], cv = d[fk];
+      if (!_cmpChg(kind, ov, cv)) return curHtml;
+      return `<span class="cmp-ov">${_cmpFmtK(kind, ov)}</span><span class="cmp-arw">→</span><span class="cmp-nv ${_cmpDir(kind, ov, cv)}">${_cmpFmtK(kind, cv)}</span>`;
+    }
 
     function renderDealModal() {
       const di = currentDealIndex;
@@ -2671,14 +2679,18 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       if (entAtual) { const ms = Date.now() - Date.parse(entAtual); if (!isNaN(ms)) curDays = Math.max(0, Math.floor(ms / 86400000)); }
       else if (d.stage_days && d.stage_days[d.stage] != null) curDays = d.stage_days[d.stage];
       const pipeTag = d.pipeline ? `<span class="dm-pipe">${esc(d.pipeline)}</span>` : '';
-      const stageLine = esc(d.stage || '—') + (curDays != null ? ` <span class="dm-stage-days">há ${fmtNum(curDays)} dias</span>` : '');
+      const stageLine = cmpInline(d, 'stage', 'text', esc(d.stage || '—')) + (curDays != null ? ` <span class="dm-stage-days">há ${fmtNum(curDays)} dias</span>` : '');
+      const compHint = (compTab && d._cmp)
+        ? `<div class="dm-cmp-hint">${d._cmp.old ? 'vs foto ' + esc(compMeta.tab) + ' | valor da foto → agora' : '<span class="cmpb cmpb-new">novo | não existia na foto ' + esc(compMeta.tab) + '</span>'}</div>`
+        : '';
 
       let body = `<div class="deal-modal-head">
         <div style="min-width:0;">
           ${pipeTag}
           <div class="deal-modal-title">${esc(d.dealname || '—')}</div>
           <div class="deal-modal-sub">${stageLine}</div>
-          <div class="deal-modal-exec">${d.ae ? esc(d.ae) : muted}</div>
+          <div class="deal-modal-exec">${cmpInline(d, 'ae', 'ae', d.ae ? esc(d.ae) : muted)}</div>
+          ${compHint}
         </div>
         <div class="deal-modal-nav">
           <button class="dm-nav-btn" onclick="navDealModal(-1)" title="Deal anterior (←)">‹</button>
@@ -2699,68 +2711,19 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       const cell = (lbl, val) => `<div class="deal-row"><span class="dr-lbl">${lbl}</span><span class="dr-val">${val}</span></div>`;
 
       // ── Campos principais (2 colunas, ordem definida) ──
+      // No modo comparação, cmpInline decora o próprio valor com "valor da foto → agora"
+      // quando o campo mudou. TCV/Período/POC/Prob. Etapa/Prob. Ajustada não são capturados
+      // pela foto → mostram só o valor atual.
       body += '<div class="deal-modal-list">';
-      body += cell('Solução', txt(d.produto)) + cell('Fatura atual', brl(d.fatura_atual));
-      body += cell('Colaboradores', num(d.colaboradores)) + cell('Vidas', num(d.vidas));
-      body += cell('1ª Fatura', brl(d.primeira_fatura)) + cell('ARR', brl(d.arr_estimado));
+      body += cell('Solução', cmpInline(d, 'produto', 'text', txt(d.produto))) + cell('Fatura atual', cmpInline(d, 'fatura_atual', 'money', brl(d.fatura_atual)));
+      body += cell('Colaboradores', cmpInline(d, 'colaboradores', 'num', num(d.colaboradores))) + cell('Vidas', cmpInline(d, 'vidas', 'num', num(d.vidas)));
+      body += cell('1ª Fatura', cmpInline(d, 'primeira_fatura', 'money', brl(d.primeira_fatura))) + cell('ARR', cmpInline(d, 'arr_estimado', 'money', brl(d.arr_estimado)));
       body += cell('TCV', brl(d.tcv)) + cell('Período', per(d.periodo_contrato));
-      body += cell('Modelo', txt(d.modelo_remuneracao)) + cell('POC', boolv(d.is_poc));
-      body += cell('Agenciamento', boolv(d.possui_agenciamento)) + cell('Vitalício', boolv(d.possui_vitalicio));
-      body += cell('Prob. Etapa', pct(d.prob_etapa)) + cell('Prob. AE', pct(d.probabilidade));
-      body += cell('Prob. Ajustada', pct(d.prob_ajustada)) + cell('Quarter', (d.quarter && !quarterEmpty(d.quarter)) ? esc(d.quarter) : muted);
-      body += cell('Dt. Receita', dt(d.data_prevista_para_receita)) + cell('Dt. Vigência', dt(d.vigencia));
-
-      // ── Comparação (modo foto): variação de TODOS os campos capturados, foto → agora ──
-      if (compTab && d._cmp) {
-        const stTxt = ({ novo: 'não existia na foto', avancou: 'avançou de etapa', regrediu: 'regrediu de etapa', mudou: 'mudou de etapa', igual: 'sem mudança de etapa' })[d._cmp.st] || '';
-        const old = d._cmp.old;
-        if (!old) {
-          body += `<div class="deal-sec">Variação desde a foto | ${esc(compMeta.tab)}</div>`;
-          body += `<div class="deal-row cmp-row"><span class="dr-lbl">Situação</span><span class="dr-val"><span class="cmp-nv neu">Novo | não existia na foto</span></span></div>`;
-        } else {
-          // valor numérico ('' e null → null); espelha compParseNum do lado da foto.
-          const _n = v => (v == null || v === '' || isNaN(parseFloat(v))) ? null : parseFloat(v);
-          const fmtKind = (kind, v) => {
-            if (kind === 'money') return brl(v);
-            if (kind === 'num') return num(v);
-            if (kind === 'pct') return (v != null ? esc(fmtPct(v)) : muted);
-            if (kind === 'date') return dt(v);
-            if (kind === 'bool') return boolv(v);
-            if (kind === 'quarter') return (v && !quarterEmpty(v)) ? esc(v) : muted;
-            return txt(v);
-          };
-          const isChanged = (f, ov, cv) => {
-            if (f.kind === 'money') { const a = _n(ov), b = _n(cv); if (a == null && b == null) return false; if (a == null || b == null) return true; return Math.abs(a - b) > 0.5; }
-            if (f.kind === 'num') { const a = _n(ov), b = _n(cv); if (a == null && b == null) return false; if (a == null || b == null) return true; return a !== b; }
-            if (f.kind === 'pct') { const a = _n(ov), b = _n(cv); if (a == null && b == null) return false; if (a == null || b == null) return true; return Math.abs(a - b) > 0.0005; }
-            if (f.kind === 'bool') return (ov == null ? null : ov) !== (cv == null ? null : cv);
-            if (f.kind === 'ae') return !compAeEq(ov, cv);
-            if (f.kind === 'quarter') { const a = (ov && !quarterEmpty(ov)) ? ov : null, b = (cv && !quarterEmpty(cv)) ? cv : null; return (a || '') !== (b || ''); }
-            return String(ov == null ? '' : ov) !== String(cv == null ? '' : cv);
-          };
-          const dirCls = (f, ov, cv) => {
-            if (f.kind === 'money' || f.kind === 'num' || f.kind === 'pct') { const a = _n(ov) || 0, b = _n(cv) || 0; return b > a ? 'up' : (b < a ? 'down' : 'neu'); }
-            return 'neu';
-          };
-          let rows = '', nChg = 0;
-          CMP_MODAL_FIELDS.forEach(f => {
-            const ov = old[f.k], cv = d[f.k];
-            if (isChanged(f, ov, cv)) {
-              nChg++;
-              rows += `<div class="deal-row cmp-row"><span class="dr-lbl">${esc(f.lbl)}</span><span class="dr-val"><span class="cmp-ov">${fmtKind(f.kind, ov)}</span><span class="cmp-arw">→</span><span class="cmp-nv ${dirCls(f, ov, cv)}">${fmtKind(f.kind, cv)}</span></span></div>`;
-            } else {
-              rows += `<div class="deal-row cmp-row nochg"><span class="dr-lbl">${esc(f.lbl)}</span><span class="dr-val"><span class="cmp-eq">${fmtKind(f.kind, cv)}</span></span></div>`;
-            }
-          });
-          body += `<div class="deal-sec">Variação desde a foto | ${esc(compMeta.tab)} <span class="cmp-count">| ${nChg} de ${CMP_MODAL_FIELDS.length} campos mudaram${stTxt ? ' | ' + esc(stTxt) : ''}</span></div>`;
-          body += rows;
-          if (COMP_SHOW_REV_DELTAS) {
-            body += `<div class="deal-row cmp-row"><span class="dr-lbl">Δ Receita Real</span><span class="dr-val"><span class="cmp-nv ${d.comp_dreal > 0.5 ? 'up' : (d.comp_dreal < -0.5 ? 'down' : 'neu')}">${fmtDeltaBRL(d.comp_dreal)}</span></span></div>`;
-            body += `<div class="deal-row cmp-row"><span class="dr-lbl">Δ Receita Prob.</span><span class="dr-val"><span class="cmp-nv ${d.comp_dprob > 0.5 ? 'up' : (d.comp_dprob < -0.5 ? 'down' : 'neu')}">${fmtDeltaBRL(d.comp_dprob)}</span></span></div>`;
-          }
-          body += `<div class="cmp-note">Sem histórico na foto (fora da comparação): TCV, Período, POC, Prob. Etapa, Prob. Ajustada, Origem, BDR.</div>`;
-        }
-      }
+      body += cell('Modelo', cmpInline(d, 'modelo_remuneracao', 'text', txt(d.modelo_remuneracao))) + cell('POC', boolv(d.is_poc));
+      body += cell('Agenciamento', cmpInline(d, 'possui_agenciamento', 'bool', boolv(d.possui_agenciamento))) + cell('Vitalício', cmpInline(d, 'possui_vitalicio', 'bool', boolv(d.possui_vitalicio)));
+      body += cell('Prob. Etapa', pct(d.prob_etapa)) + cell('Prob. AE', cmpInline(d, 'probabilidade', 'pct', pct(d.probabilidade)));
+      body += cell('Prob. Ajustada', pct(d.prob_ajustada)) + cell('Quarter', cmpInline(d, 'quarter', 'quarter', (d.quarter && !quarterEmpty(d.quarter)) ? esc(d.quarter) : muted));
+      body += cell('Dt. Receita', cmpInline(d, 'data_prevista_para_receita', 'date', dt(d.data_prevista_para_receita))) + cell('Dt. Vigência', cmpInline(d, 'vigencia', 'date', dt(d.vigencia)));
 
       body += _dealModalExtras(d);
       body += '</div>';

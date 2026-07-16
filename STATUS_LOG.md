@@ -16,6 +16,14 @@ Recurring every 20min (job `55d3b136`). Purpose: identify and close gaps so the 
 
 ---
 
+### Forecast | comparação com foto passou para INLINE no próprio campo do modal (pedido do dono) (2026-07-16)
+
+> Ajuste do pedido anterior: o dono quer a comparação **dentro do próprio dado** do modal ("valor antigo → valor novo"), não numa seção "Variação desde a foto" à parte. Refatorado (front-only, `forecast.html`): a seção separada foi **removida** e cada campo do grid do `renderDealModal` agora é decorado por `cmpInline(d, chave, tipo, htmlAtual)` — quando o campo mudou desde a foto, o valor vira `foto → agora` ali mesmo (foto riscada/esmaecida, seta, novo em verde/vermelho para numéricos↑↓ e teal para texto/data/bool). Sem mudança → só o valor atual (estilo original preservado, ex.: `probCls` da Prob. AE, `per()` do Período). Etapa e Executivo decorados no cabeçalho; Dt. Criação no bloco Rastreamento. Deal novo → dica "novo | não existia na foto {tab}" no cabeçalho. Dica "vs foto {tab} | valor da foto → agora" quando comparando.
+>
+> Campos decorados (os que a foto captura e estão no modal): Etapa, Executivo (via `compAeEq`), Solução, Fatura atual, Colaboradores, Vidas, 1ª Fatura, ARR, Modelo, Agenciamento, Vitalício, Prob. AE, Quarter (via `quarterEmpty`), Dt. Receita, Dt. Vigência, Dt. Criação. Fora (a foto não captura): TCV, Período, POC, Prob. Etapa, Prob. Ajustada, Origem, BDR — mostram só o atual. `premio_mensal`/`vencimento_primeira_fatura`/`close_date` existem na foto mas não são exibidos no modal, então não entram (nenhum campo novo foi adicionado ao modal). Helpers `_cmpFmtK`/`_cmpChg`/`_cmpDir`/`cmpInline` em escopo de módulo; catálogo `CMP_MODAL_FIELDS` e a seção removidos (CSS enxugado: `.cmp-ov`/`.cmp-arw`/`.cmp-nv`/`.dm-cmp-hint`).
+>
+> Validado: `npm run check` PASS; `_check-inline-js` forecast.html 0 erros; sem referências órfãs (`CMP_MODAL_FIELDS`/`cmp-row`/`cmp-note`/`cmp-count`/`cmp-eq` limpos); harness com casos reais (Vidas 10.000→8.000 down, ARR up, Dt. Receita neu; inalterado sem seta; deal novo valor puro); Edge headless de `/forecast` carrega e renderiza. Sem mudança api/lib — servidor local NÃO reiniciado.
+
 ### 🚀 DEPLOY DE PRODUÇÃO | 620cfb6 no ar (variação campo a campo no modal do Forecast + fix reuniao_ocorreu) (2026-07-16)
 
 > Push + deploy autorizados pelo dono. Sincronização limpa: branch própria (`pacheco/forecast-modal-varia-e-reuniao-2026-07-16`) commitada e pushada, **zero conflito** com o Samuel (`comm -12` vazio, `origin/main` inalterado desde `b810860`), fast-forward de `main` (`b810860..620cfb6`) sem force. `HEAD == origin/main == 620cfb6`. Preflight PASS.
