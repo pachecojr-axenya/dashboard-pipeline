@@ -27,6 +27,7 @@ const { writeMonthlySnapshot, listTabs, readRange, appendRow } = require('../lib
 const { setCORSHeaders, getHubspotToken } = require('./_helpers');
 const { verifyRequest } = require('../lib/auth');
 const { PIPELINE_VENDAS, PIPELINE_BID, PROPERTIES, HEADERS, buildRow } = require('../lib/snapshot-format');
+const bq = require('../lib/bigquery');
 
 const MONTHS_PT = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 
@@ -196,6 +197,53 @@ module.exports = async function handler(req, res) {
     // ── Foto forçada (?tab=..., só usuário autenticado) ──────────────────────
     if (forceTab) {
       actions['forçada ' + forceTab] = await writeTab(forceTab);
+    }
+
+    // ── BQ: daily (todo dia) + weekly_gold (sexta/mês = espelho da planilha) ──
+    // Best-effort: se o BQ falhar, o snapshot do Sheet acima já garantiu a foto.
+    // - daily: foto deal-level TODO dia → destrava "datas livres" no /forecast-delta.
+    // - weekly_gold: datamart leve; materializa a foto do dia SÓ na sexta e no
+    //   último dia do mês, exatamente como a planilha grava suas abas. Derivado
+    //   do daily (paridade garantida).
+    if (bq.isConfigured()) {
+      try {
+        await bq.ensureTables();
+        const ehSexta = brtDate.getUTCDay() === 5;
+        const ehFimMes = isLastDayOfMonth(brtDate);
+        const snapType = ehSexta ? 'semanal' : (ehFimMes ? 'mensal' : 'diario');
+
+        // 1) daily — todo dia (idempotente por data)
+        const dailyCount = await bq.snapshotCount(today, bq.TABLE_DAILY);
+        if (dailyCount === rows.length) {
+          actions.bq_daily = 'já existia (' + today + ')';
+        } else if (dailyCount === 0) {
+          const r = await bq.insertSnapshotRows(today, snapType, rows, capturedAt, bq.TABLE_DAILY, HEADERS);
+          actions.bq_daily = 'gravada ' + today + ' (' + r.inserted + ' deals, ' + snapType + ')';
+        } else {
+          throw new Error('BQ daily parcial em ' + today + ': existente=' + dailyCount + ' esperado=' + rows.length);
+        }
+
+        // 2) weekly_gold — só na sexta / último dia do mês (espelha a planilha)
+        if (ehSexta || ehFimMes) {
+          const weeklyCount = await bq.snapshotCount(today, bq.TABLE_WEEKLY);
+          if (weeklyCount === rows.length) {
+            actions.bq_weekly = 'já existia (' + today + ')';
+          } else if (weeklyCount === 0) {
+            // Mesma resposta bruta da HubSpot API alimenta daily e weekly; evita
+            // depender da visibilidade imediata do streaming buffer do daily.
+            const rw = await bq.insertSnapshotRows(today, snapType, rows, capturedAt, bq.TABLE_WEEKLY, HEADERS);
+            actions.bq_weekly = 'materializada ' + today + ' (' + rw.inserted + ' deals, ' + snapType + ')';
+          } else {
+            throw new Error('BQ weekly parcial em ' + today + ': existente=' + weeklyCount + ' esperado=' + rows.length);
+          }
+        }
+      } catch (e) {
+        console.error('[snapshot][bq]', e.message);
+        // Particao parcial e corrupcao de estado, nao indisponibilidade toleravel:
+        // falha o cron para permitir alerta/retry em vez de responder 200 enganoso.
+        if (/BQ (daily|weekly) parcial/.test(e.message)) throw e;
+        actions.bq = 'ERRO (não bloqueante): ' + e.message;
+      }
     }
 
     return res.status(200).json({ success: true, date: today, deals: deals.length, actions });
