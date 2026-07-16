@@ -4,6 +4,18 @@ Recurring every 20min (job `55d3b136`). Purpose: identify and close gaps so the 
 
 ---
 
+### 🚀 DEPLOY DE PRODUÇÃO | 8 commits da leva do dono (16/07) no ar (2026-07-16)
+
+> Push + deploy autorizados pelo dono. Sincronização limpa: working tree limpa, `origin/main` não avançou (Samuel sem trabalho novo no remoto), push **fast-forward** de 8 commits (`2986bf6..6a19de3`) — sem force, sem divergência, sobreposição com o Samuel vazia. `HEAD == origin/main == 6a19de3`.
+>
+> **Commit deployado:** `6a19de3` (feat leva-dono: colunas configuráveis no Forecast + Board B12 removido / B15 chips de AE / B15-B16 sem 🟡). Inclui a leva toda de hoje: nomenclatura de código único por card (a1c5853), menu enxuto + cursor + H09 + BDR leads 403 (9e43661), AE leva 1 e 2 (5752a7e, 345bedf), BDR empilhados sem "Top 6 + Outros" (2a517be), TCV unificado com o Forecast (6afb930), receita probabilizada régua flat no A07/N06B (87bcb4e).
+>
+> **Deployment:** `dpl_8uj9yVT7HVnpi62UpPThmqaeLcLd` → `dashboard-axenya-689zeoa9q-axenya-f1a041f6.vercel.app`, aliado a **project-bsmfu.vercel.app**. Preflight PASS; build READY em ~2s. Produção anterior: `ossv6i148` (15/07 16:42) — rollback disponível.
+>
+> **Smokes pós-deploy (2 domínios, `axenya-pipeline-dashboard` + `project-bsmfu`):** 7/7 rotas do runbook **200** (`/novo`, `/forecast`, `/novo-bdr` + `/treble` `/workload` `/no-show` `/list-attack` — rotas do Samuel intactas), `/api/auth/me` e `/api/forecast-table` **401** (auth ativa, bypass ausente). ⚠ LOCK do Slack: fazer o UNLOCK manualmente.
+
+---
+
 ### Forecast | colunas configuráveis (todos os painéis) + Board: B12 removido, B15 chips de AE, B15/B16 sem 🟡 (2026-07-16)
 
 > Leva do dono, front-only (payload já tinha os campos; zero mudança em api/lib — servidor local NÃO reiniciado). Território: Forecast + Board (não tocou ae.html/bdr* da(s) sessão(ões) paralela(s)).
