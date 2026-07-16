@@ -16,6 +16,18 @@ Recurring every 20min (job `55d3b136`). Purpose: identify and close gaps so the 
 
 ---
 
+### 🚀 DEPLOY DE PRODUÇÃO | 620cfb6 no ar (variação campo a campo no modal do Forecast + fix reuniao_ocorreu) (2026-07-16)
+
+> Push + deploy autorizados pelo dono. Sincronização limpa: branch própria (`pacheco/forecast-modal-varia-e-reuniao-2026-07-16`) commitada e pushada, **zero conflito** com o Samuel (`comm -12` vazio, `origin/main` inalterado desde `b810860`), fast-forward de `main` (`b810860..620cfb6`) sem force. `HEAD == origin/main == 620cfb6`. Preflight PASS.
+>
+> **Commit deployado:** `620cfb6` (feat forecast: variação de todos os campos no modal de detalhe na comparação com foto + fix reuniao_ocorreu tipo único). Front-only, sem mudança em api/lib.
+>
+> **Deployment:** `dpl_8aFfDiGmkFiXpcknTVoX6LzxWwY9` → `dashboard-axenya-6ugove9vk-axenya-f1a041f6.vercel.app`, aliado a **project-bsmfu.vercel.app**. Build READY em ~3s. Produção anterior: `689zeoa9q` (leva do dono 16/07) — rollback disponível.
+>
+> **Smokes pós-deploy (2 domínios, `project-bsmfu` + `axenya-pipeline-dashboard`):** 7/7 rotas do runbook **200** (`/novo`, `/forecast`, `/novo-bdr` + `/treble` `/workload` `/no-show` `/list-attack` — rotas do Samuel intactas), `/api/auth/me` e `/api/forecast-table` **401** (auth ativa, bypass ausente). ⚠ LOCK/UNLOCK do Slack: passo manual do dono.
+
+---
+
 ### Forecast | modal de detalhe do deal mostra a variação de TODOS os campos desde a foto (2026-07-16)
 
 > Pedido do dono: no `/forecast`, com o modo "Comparar com fotografia" ligado, o modal de detalhe do deal (`openDealModal`/`renderDealModal`) mostrava só "Mudança" (avançou/regrediu de etapa) + Δs de receita (estes desligados por `COMP_SHOW_REV_DELTAS=false`). Agora mostra a **variação campo a campo, foto → agora**, de todos os campos que a foto captura.
