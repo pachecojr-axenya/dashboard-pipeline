@@ -16,6 +16,16 @@ Recurring every 20min (job `55d3b136`). Purpose: identify and close gaps so the 
 
 ---
 
+### 🚀 DEPLOY DE PRODUÇÃO | 7a5aa19 no ar (comparação com foto inline no modal do Forecast) (2026-07-16)
+
+> Push + deploy autorizados pelo dono. Sincronização limpa: branch própria commitada/pushada, **zero conflito** com o Samuel (`comm -12` vazio, `origin/main` inalterado desde `ced1039`), fast-forward de `main` (`ced1039..7a5aa19`) sem force. `HEAD == origin/main == 7a5aa19`. Preflight PASS.
+>
+> **Commit deployado:** `7a5aa19` (feat forecast: comparação com foto inline no próprio campo do modal, foto → agora; valor da foto menor e apagado, sem risco). Front-only, sem mudança em api/lib.
+>
+> **Deployment:** `dpl_EuCUWHmNUasZ83y28TqgWRQowSsb` → `dashboard-axenya-mxhsjck3z-axenya-f1a041f6.vercel.app`, aliado a **project-bsmfu.vercel.app**. Build READY. Produção anterior: `620cfb6` — rollback disponível.
+>
+> **Smokes pós-deploy (2 domínios):** 7/7 rotas do runbook **200** (incl. as rotas BDR do Samuel intactas), `/api/auth/me` e `/api/forecast-table` **401** (auth ativa, bypass ausente). ⚠ LOCK/UNLOCK do Slack: passo manual do dono.
+
 ### Forecast | comparação com foto passou para INLINE no próprio campo do modal (pedido do dono) (2026-07-16)
 
 > Ajuste do pedido anterior: o dono quer a comparação **dentro do próprio dado** do modal ("valor antigo → valor novo"), não numa seção "Variação desde a foto" à parte. Refatorado (front-only, `forecast.html`): a seção separada foi **removida** e cada campo do grid do `renderDealModal` agora é decorado por `cmpInline(d, chave, tipo, htmlAtual)` — quando o campo mudou desde a foto, o valor vira `foto → agora` ali mesmo (foto riscada/esmaecida, seta, novo em verde/vermelho para numéricos↑↓ e teal para texto/data/bool). Sem mudança → só o valor atual (estilo original preservado, ex.: `probCls` da Prob. AE, `per()` do Período). Etapa e Executivo decorados no cabeçalho; Dt. Criação no bloco Rastreamento. Deal novo → dica "novo | não existia na foto {tab}" no cabeçalho. Dica "vs foto {tab} | valor da foto → agora" quando comparando.
