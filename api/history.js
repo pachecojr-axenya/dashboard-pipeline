@@ -21,6 +21,7 @@
 const { listMonthlyTabs, readSnapshot, listTabs } = require('../lib/sheets');
 const { setCORSHeaders, requireAuth, getHubspotToken } = require('./_helpers');
 const FC = require('../lib/forecast-compute');
+const bq = require('../lib/bigquery');
 const kv = require('../lib/kv');
 const fs = require('fs'); const os = require('os'); const path = require('path');
 
@@ -34,16 +35,37 @@ async function _readManual() {
   return {};
 }
 const _MESES = { jan: 0, fev: 1, mar: 2, abr: 3, mai: 4, jun: 5, jul: 6, ago: 7, set: 8, out: 9, nov: 10, dez: 11 };
-// Fotos disponíveis (semanais + mensais desde jun/2026), ordenadas da mais recente à mais antiga.
-async function _listFotos() {
+// Fotos do SHEET (semanais + mensais desde jun/2026), da mais recente à mais antiga.
+async function _listFotosSheet() {
   const all = await listTabs(); const fotos = [];
   all.forEach(t => {
-    if (/^\d{4}-\d{2}-\d{2}$/.test(t)) { fotos.push({ tab: t, tipo: 'semanal', ord: t, refDate: t }); return; }
+    if (/^\d{4}-\d{2}-\d{2}$/.test(t)) { fotos.push({ tab: t, tipo: 'semanal', ord: t, refDate: t, source: 'sheet' }); return; }
     const m = t.match(/^([A-Za-zÀ-ÿ]{3}) (\d{4})$/);
-    if (m) { const mo = _MESES[m[1].toLowerCase()]; if (mo == null) return; const ym = m[2] + '-' + String(mo + 1).padStart(2, '0'); const ord = ym + '-31'; if (ord >= '2026-06-01') fotos.push({ tab: t, tipo: 'mensal', ord, refDate: ym + '-15' }); }
+    if (m) { const mo = _MESES[m[1].toLowerCase()]; if (mo == null) return; const ym = m[2] + '-' + String(mo + 1).padStart(2, '0'); const ord = ym + '-31'; if (ord >= '2026-06-01') fotos.push({ tab: t, tipo: 'mensal', ord, refDate: ym + '-15', source: 'sheet' }); }
   });
   fotos.sort((a, b) => b.ord.localeCompare(a.ord));
   return fotos;
+}
+// Fotos do BQ: cada snapshot_date é uma foto (ord=refDate=data literal, diária).
+async function _listFotosBQ() {
+  const dates = await bq.listSnapshotDates();  // [{tab: 'YYYY-MM-DD', tipo, count}]
+  return dates.map(d => ({ tab: d.tab, tipo: d.tipo || 'diario', ord: d.tab, refDate: d.tab, source: 'bq' }));
+}
+// Fonte de fotos: BQ tem prioridade (datas livres, diário). Fallback = Sheet.
+// Se o BQ tiver ao menos 2 fotos, usa BQ (comparação precisa de par); senão Sheet.
+async function _listFotos() {
+  if (bq.isConfigured()) {
+    try {
+      const bqFotos = await _listFotosBQ();
+      if (bqFotos.length >= 2) return bqFotos;
+    } catch (e) { console.error('[history][bq fotos]', e.message); /* fallback */ }
+  }
+  return _listFotosSheet();
+}
+// Lê as linhas de uma foto no formato [[HEADERS],[...]], roteando pela fonte.
+async function _readFotoRows(foto) {
+  if (foto && foto.source === 'bq') return bq.readSnapshotRows(foto.refDate);
+  return readSnapshot(foto.tab);
 }
 // Foto mais próxima em ou antes de `date` (fotos já vem ordenada desc).
 function _resolveFoto(fotos, date) { return fotos.find(f => f.ord <= date) || null; }
@@ -111,25 +133,12 @@ module.exports = async function handler(req, res) {
     }
 
     if (action === 'fotos') {
-      const MESES = { jan: 0, fev: 1, mar: 2, abr: 3, mai: 4, jun: 5, jul: 6, ago: 7, set: 8, out: 9, nov: 10, dez: 11 };
-      const all = await listTabs();
-      const fotos = [];
-      all.forEach(t => {
-        if (/^\d{4}-\d{2}-\d{2}$/.test(t)) {
-          fotos.push({ tab: t, tipo: 'semanal', ord: t });
-          return;
-        }
-        const m = t.match(/^([A-Za-zÀ-ÿ]{3}) (\d{4})$/);
-        if (m) {
-          const mo = MESES[m[1].toLowerCase()];
-          if (mo == null) return;
-          const ord = m[2] + '-' + String(mo + 1).padStart(2, '0') + '-31';
-          // abas mensais anteriores a Jun 2026 estão no formato legado (colunas calculadas) — fora
-          if (ord >= '2026-06-01') fotos.push({ tab: t, tipo: 'mensal', ord });
-        }
-      });
-      fotos.sort((a, b) => b.ord.localeCompare(a.ord));
-      return res.status(200).json({ success: true, fotos });
+      // Fonte única _listFotos: BQ (datas livres, diário) com fallback pro Sheet.
+      // Mantém o contrato { tab, tipo, ord } que o frontend já consome; source
+      // é aditivo (o dropdown/inputs do /forecast-delta não quebram).
+      const fotos = await _listFotos();
+      const source = fotos.length && fotos[0].source === 'bq' ? 'bq' : 'sheet';
+      return res.status(200).json({ success: true, source, fotos });
     }
 
     if (action === 'local') {
@@ -154,7 +163,7 @@ module.exports = async function handler(req, res) {
       if (!fA || !fB) return res.status(422).json({ success: false, error: 'Sem foto em ou antes de uma das datas (foto mais antiga: ' + oldest.tab + ')' });
       if (fA.tab === fB.tab) return res.status(422).json({ success: false, error: 'As duas datas resolvem para a mesma foto (' + fA.tab + ') | escolha datas mais distantes' });
 
-      const [rowsA, rowsB, manual] = await Promise.all([readSnapshot(fA.tab), readSnapshot(fB.tab), _readManual()]);
+      const [rowsA, rowsB, manual] = await Promise.all([_readFotoRows(fA), _readFotoRows(fB), _readManual()]);
       if (!rowsA.length || !rowsB.length) return res.status(404).json({ success: false, error: 'Foto vazia' });
 
       const snapA = FC.computeSnapshot(FC.mapFotoDeals(_rowsToObjs(rowsA)), fA.refDate, manual);
@@ -199,7 +208,7 @@ module.exports = async function handler(req, res) {
       const fA = _resolveFoto(fotos, a); const fB = _resolveFoto(fotos, b);
       if (!fA || !fB) return res.status(422).json({ success: false, error: 'Sem foto em ou antes de uma das datas' });
       if (fA.tab === fB.tab) return res.status(422).json({ success: false, error: 'As duas datas resolvem para a mesma foto' });
-      const [rowsA, rowsB, manual] = await Promise.all([readSnapshot(fA.tab), readSnapshot(fB.tab), _readManual()]);
+      const [rowsA, rowsB, manual] = await Promise.all([_readFotoRows(fA), _readFotoRows(fB), _readManual()]);
       const mappedB = FC.mapFotoDeals(_rowsToObjs(rowsB));
       // etapa bruta de cada deal em B (inclui Perdido/Ganho/fora de escopo) → destino de quem saiu
       const rawBStageById = {}; mappedB.forEach(d => { rawBStageById[FC.dealId(d)] = d.stage; });

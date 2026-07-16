@@ -23,10 +23,40 @@
  */
 
 const { hubspotPost, fetchOwners, STAGE_MAP } = require('../lib/hubspot');
-const { writeMonthlySnapshot, listTabs, readRange, appendRow } = require('../lib/sheets');
+const { writeMonthlySnapshot, listTabs, readRange, appendRow, readSnapshot } = require('../lib/sheets');
 const { setCORSHeaders, getHubspotToken } = require('./_helpers');
 const { verifyRequest } = require('../lib/auth');
 const { PIPELINE_VENDAS, PIPELINE_BID, PROPERTIES, HEADERS, buildRow } = require('../lib/snapshot-format');
+const bq = require('../lib/bigquery');
+
+const MESES_NUM = { jan: 0, fev: 1, mar: 2, abr: 3, mai: 4, jun: 5, jul: 6, ago: 7, set: 8, out: 9, nov: 10, dez: 11 };
+
+// snapshot_date de uma aba do Sheet (espelha _listFotos do api/history.js).
+function tabToSnapshotDate(tab) {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(tab)) return { date: tab, tipo: 'semanal' };
+  const m = tab.match(/^([A-Za-zÀ-ÿ]{3}) (\d{4})$/);
+  if (m) { const mo = MESES_NUM[m[1].toLowerCase()]; if (mo == null) return null; const ym = m[2] + '-' + String(mo + 1).padStart(2, '0'); if (ym + '-31' >= '2026-06-01') return { date: ym + '-15', tipo: 'mensal' }; }
+  return null;
+}
+
+// Grava as fotos historicas do Sheet no BQ (best-effort, idempotente). Roda de
+// dentro do Vercel (credencial GOOGLE_SERVICE_ACCOUNT_JSON ja disponivel ali).
+async function backfillBQFromSheet() {
+  await bq.ensureSnapshotTable();
+  const jaNoBQ = (await bq.listSnapshotDates()).map(r => r.tab);
+  const tabs = await listTabs();
+  const done = [], skip = [];
+  for (const t of tabs) {
+    const meta = tabToSnapshotDate(t);
+    if (!meta) continue;
+    if (jaNoBQ.indexOf(meta.date) !== -1) { skip.push(t + '=' + meta.date); continue; }
+    const rows = await readSnapshot(t);
+    if (rows.length < 2 || rows[0].length !== bq.NUM_COLS) { skip.push(t + ' (formato)'); continue; }
+    const r = await bq.insertSnapshotRows(meta.date, meta.tipo, rows.slice(1));
+    done.push(t + '=>' + meta.date + ' (' + r.inserted + ')');
+  }
+  return { done, skip };
+}
 
 const MONTHS_PT = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 
@@ -196,6 +226,38 @@ module.exports = async function handler(req, res) {
     // ── Foto forçada (?tab=..., só usuário autenticado) ──────────────────────
     if (forceTab) {
       actions['forçada ' + forceTab] = await writeTab(forceTab);
+    }
+
+    // ── BQ: foto deal-level DIÁRIA (destrava "datas livres" no /forecast-delta) ──
+    // Best-effort: se o BQ falhar, o snapshot do Sheet acima já garantiu a foto.
+    // A foto diária no BQ existe TODO dia (não só sexta), então comparar qualquer
+    // par de datas com snapshot vira um SELECT em api/history.js.
+    if (bq.isConfigured()) {
+      try {
+        await bq.ensureSnapshotTable();
+        const already = await bq.hasSnapshot(today);
+        if (already) {
+          actions.bq = 'já existia (' + today + ')';
+        } else {
+          const snapType = (brtDate.getUTCDay() === 5) ? 'semanal' : (isLastDayOfMonth(brtDate) ? 'mensal' : 'diario');
+          const r = await bq.insertSnapshotRows(today, snapType, rows, capturedAt);
+          actions.bq = 'gravada ' + today + ' (' + r.inserted + ' deals, ' + snapType + ')';
+        }
+      } catch (e) {
+        console.error('[snapshot][bq]', e.message);
+        actions.bq = 'ERRO (não bloqueante): ' + e.message;
+      }
+    }
+
+    // ── Backfill do histórico do Sheet → BQ (?backfill=1, só usuário autenticado) ──
+    if (isUser && (req.query?.backfill || new URL('http://x' + req.url).searchParams.get('backfill'))) {
+      try {
+        const bf = await backfillBQFromSheet();
+        actions.backfill = { migradas: bf.done, puladas: bf.skip.length };
+      } catch (e) {
+        console.error('[snapshot][backfill]', e.message);
+        actions.backfill = 'ERRO: ' + e.message;
+      }
     }
 
     return res.status(200).json({ success: true, date: today, deals: deals.length, actions });

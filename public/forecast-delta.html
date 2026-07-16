@@ -176,7 +176,7 @@ table.drill th.sortable:hover{color:var(--text)}
   function fmtBRL(v){ if(v==null||isNaN(v)) return '-'; return 'R$ ' + Math.round(v).toLocaleString('pt-BR'); }
   function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
   function fmtBRLc(v){ var s = Math.abs(v) >= 1e6 ? (v/1e6).toFixed(2)+'M' : Math.round(v).toLocaleString('pt-BR'); return (v>=0?'+':'-')+'R$ '+ s.replace('-',''); }
-  function tipoLbl(t){ return t === 'mensal' ? 'mensal' : 'semanal'; }
+  function tipoLbl(t){ return t === 'mensal' ? 'mensal' : (t === 'diario' ? 'diário' : 'semanal'); }
 
   function loadFotos(){
     return fetch('/api/history?action=fotos', {credentials:'same-origin'})
