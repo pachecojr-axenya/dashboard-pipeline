@@ -64,8 +64,9 @@
     {label:'Ataque à Lista',url:'/novo-bdr/list-attack',file:'bdr-list-attack.html',sub:'bdr',health:'g',icon:'<line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>'},
     {label:'Treble',url:'/novo-bdr/treble',file:'bdr-treble.html',sub:'bdr',health:'y',icon:'<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>'},
     {label:'Last 48h',url:'/novo-48h',file:'48h.html',health:'g',icon:'<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>'},
-    {label:'CS Dashboard',url:'/novo-cs',file:'cs.html',health:'r',icon:'<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>'},
-    {label:'Cotação',url:'/novo-cotacao',file:'cotacao.html',health:'r',icon:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>'},
+    // hidden:true = fora do menu/dropdown, rota continua viva (pedido do dono, 2026-07-16).
+    {label:'CS Dashboard',url:'/novo-cs',file:'cs.html',health:'r',hidden:true,icon:'<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>'},
+    {label:'Cotação',url:'/novo-cotacao',file:'cotacao.html',health:'r',hidden:true,icon:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>'},
     {label:'Forecast',url:'/forecast',file:'forecast.html',health:'g',sec:'Forecast',icon:'<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>'},
     {label:'Comparativo',url:'/forecast-delta',file:'forecast-delta.html',health:'y',icon:'<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>'},
     {label:'Overall',url:'/forecast-overall',acc:'fc',file:'forecast-panel.html',health:'g',icon:'<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>'},
@@ -106,6 +107,7 @@
       '<ul class="nav-menu">';
     for(var i=0;i<PANELS.length;i++){
       var p=PANELS[i];
+      if(p.hidden) continue;
       if(p.sec) h+='<li style="list-style:none;padding:.85rem 1.25rem .3rem;margin-top:.35rem;border-top:1px solid var(--border);font-size:.64rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text2)">'+p.sec+'</li>';
       var accId=p.acc||''; var subId=p.sub||'';
       var chev = accId ? chevron(accId) : '';
@@ -132,7 +134,7 @@
   function buildDropdown(){
     var dd=document.getElementById('panel-dd'); if(!dd) return;
     var html='';
-    for(var i=0;i<PANELS.length;i++){ var p=PANELS[i], act=(p.url===current?' active':''); html+='<a class="panel-dd-item'+act+'" role="menuitem" href="'+p.url+'" data-url="'+p.url+'" style="text-decoration:none">'+svgFor(p)+'<span>'+p.label+'</span>'+dot(p.health)+'</a>'; }
+    for(var i=0;i<PANELS.length;i++){ var p=PANELS[i]; if(p.hidden) continue; var act=(p.url===current?' active':''); html+='<a class="panel-dd-item'+act+'" role="menuitem" href="'+p.url+'" data-url="'+p.url+'" style="text-decoration:none">'+svgFor(p)+'<span>'+p.label+'</span>'+dot(p.health)+'</a>'; }
     dd.innerHTML=html;
   }
   function buildTitleDot(){

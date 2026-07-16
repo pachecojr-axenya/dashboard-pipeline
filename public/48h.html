@@ -281,7 +281,7 @@ var H48_HELP=[
     fields:[['dealstage','Ganho (+ Implantação conforme toggle).'],['close_date','Data de fechamento | janela de 48h.'],['vidas','Coluna "Vidas".'],['arr_estimado','Coluna "ARR" (fallback primeira_fatura × 12).']]},
   {key:'h48-new-table',title:'Todos os Novos Deals | 48h (H09)',
     desc:'Lista completa dos deals criados na janela fixa das últimas 48h, ordenada do mais recente para o mais antigo. Mesma base do gráfico de Originação por AE (H05).',
-    fields:[['createdate','Janela de 48h e ordenação.'],['hubspot_owner_id','Coluna "AE".'],['pipeline','Coluna "Pipeline".'],['dealstage','Coluna "Etapa".'],['vidas','Coluna "Vidas".'],['arr_estimado','Coluna "ARR" (fallback primeira_fatura × 12).']]},
+    fields:[['createdate','Janela de 48h e ordenação.'],['hubspot_owner_id','Coluna "AE".'],['pipeline','Coluna "Pipeline".'],['dealstage','Coluna "Etapa".'],['quantidade_de_colaboradores','Coluna "Colab." (substituiu Vidas em 2026-07-16).'],['arr_estimado','Coluna "ARR" (fallback primeira_fatura × 12).']]},
 ];
 function _h48HelpRow(name,desc){ return '<tr><td style="text-align:left;font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--teal);white-space:nowrap;font-weight:600">'+name+'</td><td style="text-align:left;color:var(--text2);font-weight:400">'+desc+'</td></tr>'; }
 function _h48HelpSection(c){
@@ -344,7 +344,7 @@ function _novoTheme(){ var isLight=document.documentElement.getAttribute('data-t
 
 // ── Chart maker ───────────────────────────────────────────────────────────────
 var _novoCharts={};
-function _novoMkChart(id,cfg){ var ctx=document.getElementById(id); if(!ctx)return; if(_novoCharts[id]) _novoCharts[id].destroy(); _novoCharts[id]=new Chart(ctx,cfg); }
+function _novoMkChart(id,cfg){ var ctx=document.getElementById(id); if(!ctx)return; if(cfg&&cfg.options&&cfg.options.onClick&&!cfg.options.onHover){ cfg.options.onHover=function(e,els){ var t=e&&e.native&&e.native.target; if(t) t.style.cursor=(els&&els.length)?'pointer':''; }; } if(_novoCharts[id]) _novoCharts[id].destroy(); _novoCharts[id]=new Chart(ctx,cfg); }
 
 // ── Deals modal ───────────────────────────────────────────────────────────────
 function _novoDealsRows(deals){ return deals.map(function(d){ var hsUrl=d.hs_id?'https://app.hubspot.com/contacts/44715285/deal/'+d.hs_id:'#'; var nameCell=d.hs_id?'<a href="'+hsUrl+'" target="_blank" rel="noopener" style="color:var(--teal);text-decoration:none">'+_ne(d.dealname)+'</a>':_ne(d.dealname); return '<tr><td style="text-align:left;min-width:150px;max-width:210px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+nameCell+'</td><td style="text-align:left;white-space:nowrap">'+_ne(d.ae)+'</td><td>'+_ne(d.pipeline)+'</td><td style="white-space:nowrap">'+_ne(d.stage)+'</td><td>'+_ni(d.vidas)+'</td><td>'+_revShort(_annualRev(d))+'</td><td style="white-space:nowrap">'+(d.createdate||'—')+'</td><td style="white-space:nowrap">'+(d.close_date||'—')+'</td><td style="white-space:nowrap">'+(d.data_prevista_para_receita||'—')+'</td></tr>'; }).join(''); }
@@ -489,10 +489,10 @@ function buildH48NewTable(newDeals){
   var el=document.getElementById('h48-new-table');
   if(!el)return;
   if(!newDeals.length){ el.innerHTML='<p style="color:var(--text2);font-size:.82rem;padding:.5rem 0">Nenhum deal criado nas últimas 48h.</p>'; return; }
-  var html='<div style="overflow-x:auto"><table class="lb" style="font-size:.78rem"><thead><tr><th style="text-align:left">Deal</th><th style="text-align:left">AE</th><th>Pipeline</th><th>Etapa</th><th>Vidas</th><th>ARR</th><th>Criado</th></tr></thead><tbody>';
+  var html='<div style="overflow-x:auto"><table class="lb" style="font-size:.78rem"><thead><tr><th style="text-align:left">Deal</th><th style="text-align:left">AE</th><th>Pipeline</th><th>Etapa</th><th>Colab.</th><th>ARR</th><th>Criado</th></tr></thead><tbody>';
   newDeals.slice().sort(function(a,b){ return (b.createdate||'').localeCompare(a.createdate||''); }).forEach(function(d){
     var hsUrl=d.hs_id?'https://app.hubspot.com/contacts/44715285/deal/'+d.hs_id:'#';
-    html+='<tr><td style="text-align:left;max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><a href="'+hsUrl+'" target="_blank" rel="noopener" style="color:var(--teal);text-decoration:none">'+_ne(d.dealname)+'</a></td><td style="text-align:left;white-space:nowrap">'+_ne(d.ae)+'</td><td style="white-space:nowrap">'+_ne(d.pipeline)+'</td><td style="white-space:nowrap">'+_ne(d.stage)+'</td><td>'+_ni(d.vidas)+'</td><td>'+_revShort(_annualRev(d))+'</td><td style="white-space:nowrap">'+_nd(d.createdate)+'</td></tr>';
+    html+='<tr><td style="text-align:left;max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><a href="'+hsUrl+'" target="_blank" rel="noopener" style="color:var(--teal);text-decoration:none">'+_ne(d.dealname)+'</a></td><td style="text-align:left;white-space:nowrap">'+_ne(d.ae)+'</td><td style="white-space:nowrap">'+_ne(d.pipeline)+'</td><td style="white-space:nowrap">'+_ne(d.stage)+'</td><td>'+_ni(d.colaboradores)+'</td><td>'+_revShort(_annualRev(d))+'</td><td style="white-space:nowrap">'+_nd(d.createdate)+'</td></tr>';
   });
   html+='</tbody></table></div>';
   el.innerHTML=html;
@@ -507,6 +507,6 @@ function buildH48NewTable(newDeals){
   novoLoadData();
 })();
 </script>
-<script src="/nav.js?v=1"></script>
+<script src="/nav.js?v=2"></script>
 </body>
 </html>

@@ -238,6 +238,7 @@ table.drill th.sortable:hover{color:var(--text)}
       options:{
         responsive:true, maintainAspectRatio:false,
         onClick:function(evt, els){ if(!els||!els.length) return; var i=els[0].index; if(i===0 || i===labels.length-1) return; var w=j.waterfall[i-1]; if(w) openDrill(w.key, w.label); },
+        onHover:function(evt, els){ var t=evt&&evt.native&&evt.native.target; if(!t) return; var i=els&&els.length?els[0].index:-1; t.style.cursor=(i>0&&i<labels.length-1)?'pointer':''; },
         plugins:{
           legend:{display:false},
           tooltip:{ callbacks:{ label:function(ctx){ var i=ctx.dataIndex; var isTot = i===0 || i===labels.length-1; return (isTot?'Total: ':'Δ ') + fmtBRL(dataline[i]); } } },

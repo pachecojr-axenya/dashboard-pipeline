@@ -460,7 +460,7 @@ function _novoLost(){ return _dealsByDate('close_date').filter(function(d){ retu
 function _bdrActivePipeline(){ return _rawDeals().filter(function(d){ if(d.stage==='Ganho'||d.stage==='Perdido'||d.stage==='Implantação')return false; if((d.stage==='Standby'||d.stage==='Stand by')&&!_novoActiveStandby)return false; if(!_novoActiveMeetings&&d.stage==='Reunião Agendada')return false; return true; }); }
 function _novoTheme(){ var isLight=document.documentElement.getAttribute('data-theme')==='light'; return { cText:isLight?'#1f2328':'#e6edf3', cText2:isLight?'#57606a':'#8b949e', cGrid:isLight?'rgba(0,0,0,.08)':'rgba(255,255,255,.06)', isLight:isLight }; }
 var _novoCharts={};
-function _novoMkChart(id,cfg){ var ctx=document.getElementById(id); if(!ctx)return; if(_novoCharts[id]) _novoCharts[id].destroy(); _novoCharts[id]=new Chart(ctx,cfg); }
+function _novoMkChart(id,cfg){ var ctx=document.getElementById(id); if(!ctx)return; if(cfg&&cfg.options&&cfg.options.onClick&&!cfg.options.onHover){ cfg.options.onHover=function(e,els){ var t=e&&e.native&&e.native.target; if(t) t.style.cursor=(els&&els.length)?'pointer':''; }; } if(_novoCharts[id]) _novoCharts[id].destroy(); _novoCharts[id]=new Chart(ctx,cfg); }
 function _novoDealsRows(deals){ return deals.map(function(d){ var hsUrl=d.hs_id?'https://app.hubspot.com/contacts/44715285/deal/'+d.hs_id:'#'; var nameCell=d.hs_id?'<a href="'+hsUrl+'" target="_blank" rel="noopener" style="color:var(--teal);text-decoration:none">'+_ne(d.dealname)+'</a>':_ne(d.dealname); return '<tr><td style="text-align:left;min-width:150px;max-width:210px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+nameCell+'</td><td style="text-align:left;white-space:nowrap">'+_ne(d.sdr||'—')+'</td><td style="text-align:left;white-space:nowrap">'+_ne(d.ae)+'</td><td>'+_ne(d.pipeline)+'</td><td style="white-space:nowrap">'+_ne(d.stage)+'</td><td>'+_ni(d.vidas)+'</td><td>'+(d.colaboradores!=null?d.colaboradores:'—')+'</td><td>'+_revShort(_annualRev(d))+'</td><td style="white-space:nowrap">'+_fmtBR(d.createdate)+'</td><td style="white-space:nowrap">'+_fmtBR(d.data_reuniao_agendada)+'</td><td style="white-space:nowrap">'+_fmtBR(d.close_date)+'</td></tr>'; }).join(''); }
 function novoOpenDealsModal(title,deals){ if(!deals||!deals.length){ openModal(title,'<p style="color:var(--text2);padding:1rem 0">Nenhum deal.</p>'); return; } var html='<table class="lb"><thead><tr><th style="text-align:left">Deal</th><th style="text-align:left">BDR</th><th style="text-align:left">AE</th><th>Pipe</th><th>Etapa</th><th>Vidas</th><th>Colabs</th><th>ARR</th><th>Criado</th><th>Reun. Ag.</th><th>Fechado</th></tr></thead><tbody>'+_novoDealsRows(deals)+'</tbody></table>'; openModal(title+' ('+deals.length+')',html); }
 // Modal de deals com filtros (chips) no topo, baseados na dimensão do gráfico clicado.
@@ -793,11 +793,13 @@ function buildLeadsDaily(){
     });
     return {label:g,data:data,backgroundColor:colors[i%colors.length],stack:'s',borderRadius:2};
   });
+  // Tooltip sem colapso (pedido do dono, 2026-07-16): "Outros" expande em TODOS os BDRs.
+  var rest=days.map(function(d){ return Object.keys(perBdrDay).filter(function(b){return top.indexOf(b)<0;}).map(function(b){return [b,(perBdrDay[b][d]||0)];}).filter(function(r){return r[1]>0;}).sort(function(a,b){return b[1]-a[1];}); });
   _novoMkChart('chart-bdr-leads-daily',{type:'bar',plugins:[ChartDataLabels],
     data:{labels:days.map(function(d){return d.substring(8,10)+'/'+d.substring(5,7);}),datasets:datasets},
     options:{responsive:true,layout:{padding:{top:22}},plugins:{legend:{display:true,labels:{color:th.cText2,font:{family:NOVO_FONT,size:10},padding:8}},
       datalabels:{display:function(c){return c.datasetIndex===c.chart.data.datasets.length-1;},anchor:'end',align:'top',color:th.cText,font:{family:NOVO_FONT,size:9,weight:'bold'},formatter:function(v,c){var t=0;c.chart.data.datasets.forEach(function(ds){t+=(ds.data[c.dataIndex]||0);});return t||'';}},
-      tooltip:{mode:'index',intersect:false,filter:function(i){return i.parsed.y>0;}}},
+      tooltip:{mode:'index',intersect:false,filter:function(i){return i.parsed.y>0;},callbacks:{label:function(c){ if(c.dataset.label!=='Outros') return c.dataset.label+': '+c.parsed.y; var lines=['Outros: '+c.parsed.y]; (rest[c.dataIndex]||[]).forEach(function(r){ lines.push('   '+r[0]+': '+r[1]); }); return lines; }}}},
       scales:{x:{grid:{display:false},ticks:{color:th.cText2,font:{family:NOVO_FONT,size:9},maxRotation:0,autoSkip:true},stacked:true},y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0},stacked:true}},
       onClick:function(e,el){ if(!el.length)return; var d=days[el[0].index]; bdrOpenLeadFacetModal('Trabalhados em '+_fmtBR(d), byDay[d]||[]); }}});
 }
@@ -1055,10 +1057,13 @@ function buildBdrWeekly(){
   var datasets=groups.map(function(g,i){
     return {label:g,data:weeks.map(function(w){ return created.filter(function(d){return _weekKey(_origDate(d))===w&&gOf(d)===g;}).reduce(function(s,d){return s+inc(d);},0); }),backgroundColor:colors[i%colors.length],stack:'s',borderRadius:2};
   });
+  // Tooltip sem colapso (pedido do dono, 2026-07-16): "Outros" expande em TODOS os grupos.
+  var unit=colab?' colaboradores':vidas?' vidas':' deals';
+  var rest=weeks.map(function(w){ var agg={}; created.forEach(function(d){ if(_weekKey(_origDate(d))!==w) return; var b=dimFn(d)||'(sem)'; if(top.indexOf(b)>=0) return; agg[b]=(agg[b]||0)+inc(d); }); return Object.keys(agg).map(function(b){return [b,agg[b]];}).filter(function(r){return r[1]>0;}).sort(function(a,b){return b[1]-a[1];}); });
   _novoMkChart('chart-bdr-weekly-origin',{type:'bar',plugins:[ChartDataLabels],
     data:{labels:weeks.map(_wlbl),datasets:datasets},
     options:{responsive:true,layout:{padding:{top:26}},plugins:{legend:{display:true,labels:{color:th.cText2,font:{family:NOVO_FONT,size:10},padding:8}},datalabels:{display:function(c){return c.datasetIndex===c.chart.data.datasets.length-1;},anchor:'end',align:'top',color:th.cText,font:{family:NOVO_FONT,size:10,weight:'bold'},formatter:function(v,c){var t=0;c.chart.data.datasets.forEach(function(ds){t+=(ds.data[c.dataIndex]||0);});return t?_ni(t):'';}},
-      tooltip:{mode:'index',intersect:false,filter:function(item){return item.parsed.y>0;},callbacks:{label:function(c){return c.dataset.label+': '+_ni(c.parsed.y)+(colab?' colaboradores':vidas?' vidas':' deals');}}}},
+      tooltip:{mode:'index',intersect:false,filter:function(item){return item.parsed.y>0;},callbacks:{label:function(c){ if(c.dataset.label!=='Outros') return c.dataset.label+': '+_ni(c.parsed.y)+unit; var lines=['Outros: '+_ni(c.parsed.y)+unit]; (rest[c.dataIndex]||[]).forEach(function(r){ lines.push('   '+r[0]+': '+_ni(r[1])+unit); }); return lines; }}}},
       scales:{x:{grid:{display:false},ticks:{color:th.cText2,font:{family:NOVO_FONT}},stacked:true},y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0},stacked:true}},
       onClick:function(e,el){ if(!el.length)return; var ds=datasets[el[0].datasetIndex]; var pre=(ds&&ds.label!=='Outros')?ds.label:null; bdrOpenFacetModal('Weekly Origination', created, _dimFacetKey(_bdrWeeklyDim), pre); }}});
 }
@@ -1081,10 +1086,13 @@ function buildBdrLeadsOrigin(){
   var datasets=groups.map(function(g,i){
     return {label:g,data:months.map(function(m){ return created.filter(function(d){return _oym(d)===m&&gOf(d)===g;}).reduce(function(s,d){return s+inc(d);},0); }),backgroundColor:colors[i%colors.length],stack:'s',borderRadius:2};
   });
+  // Tooltip sem colapso (pedido do dono, 2026-07-16): "Outros" expande em TODOS os grupos.
+  var unit=colab?' colaboradores':vidas?' vidas':' deals';
+  var rest=months.map(function(m){ var agg={}; created.forEach(function(d){ if(_oym(d)!==m) return; var b=dimFn(d)||'(sem)'; if(top.indexOf(b)>=0) return; agg[b]=(agg[b]||0)+inc(d); }); return Object.keys(agg).map(function(b){return [b,agg[b]];}).filter(function(r){return r[1]>0;}).sort(function(a,b){return b[1]-a[1];}); });
   _novoMkChart('chart-bdr-leads-origin',{type:'bar',plugins:[ChartDataLabels],
     data:{labels:months.map(_mlbl),datasets:datasets},
     options:{responsive:true,layout:{padding:{top:26}},plugins:{legend:{display:true,labels:{color:th.cText2,font:{family:NOVO_FONT,size:10},padding:8}},datalabels:{display:function(c){return c.datasetIndex===c.chart.data.datasets.length-1;},anchor:'end',align:'top',color:th.cText,font:{family:NOVO_FONT,size:10,weight:'bold'},formatter:function(v,c){var t=0;c.chart.data.datasets.forEach(function(ds){t+=(ds.data[c.dataIndex]||0);});return t?_ni(t):'';}},
-      tooltip:{mode:'index',intersect:false,filter:function(item){return item.parsed.y>0;},callbacks:{label:function(c){return c.dataset.label+': '+_ni(c.parsed.y)+(colab?' colaboradores':vidas?' vidas':' deals');}}}},
+      tooltip:{mode:'index',intersect:false,filter:function(item){return item.parsed.y>0;},callbacks:{label:function(c){ if(c.dataset.label!=='Outros') return c.dataset.label+': '+_ni(c.parsed.y)+unit; var lines=['Outros: '+_ni(c.parsed.y)+unit]; (rest[c.dataIndex]||[]).forEach(function(r){ lines.push('   '+r[0]+': '+_ni(r[1])+unit); }); return lines; }}}},
       scales:{x:{grid:{display:false},ticks:{color:th.cText2,font:{family:NOVO_FONT}},stacked:true},y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0},stacked:true}},
       onClick:function(e,el){ if(!el.length)return; var ds=datasets[el[0].datasetIndex]; var m=months[el[0].index]; bdrOpenFacetModal('Monthly Origination | BDRs', created, (ds&&ds.label!=='Outros')?_dimFacetKey(_bdrMonthlyDim):'mes', (ds&&ds.label!=='Outros')?ds.label:_mlbl(m)); }}});
 }
@@ -1252,6 +1260,6 @@ function buildBdrSizeDist(){
   novoLoadData();
 })();
 </script>
-<script src="/nav.js?v=1"></script>
+<script src="/nav.js?v=2"></script>
 </body>
 </html>

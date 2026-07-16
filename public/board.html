@@ -461,7 +461,7 @@ function _novoLost(){ return _dealsByDate('close_date').filter(function(d){ retu
 function _novoForecastOpen(){ return _rawDeals().filter(function(d){ return _novoIsOpen(d) && _inWinStrict(d.data_prevista_para_receita); }); }
 function _novoTheme(){ var isLight=document.documentElement.getAttribute('data-theme')==='light'; return { cText:isLight?'#1f2328':'#e6edf3', cText2:isLight?'#57606a':'#8b949e', cGrid:isLight?'rgba(0,0,0,.08)':'rgba(255,255,255,.06)', isLight:isLight }; }
 var _novoCharts={};
-function _novoMkChart(id,cfg){ var ctx=document.getElementById(id); if(!ctx)return; if(_novoCharts[id]) _novoCharts[id].destroy(); _novoCharts[id]=new Chart(ctx,cfg); }
+function _novoMkChart(id,cfg){ var ctx=document.getElementById(id); if(!ctx)return; if(cfg&&cfg.options&&cfg.options.onClick&&!cfg.options.onHover){ cfg.options.onHover=function(e,els){ var t=e&&e.native&&e.native.target; if(t) t.style.cursor=(els&&els.length)?'pointer':''; }; } if(_novoCharts[id]) _novoCharts[id].destroy(); _novoCharts[id]=new Chart(ctx,cfg); }
 function _novoDealsRows(deals){ return deals.map(function(d){ var hsUrl=d.hs_id?'https://app.hubspot.com/contacts/44715285/deal/'+d.hs_id:'#'; var nameCell=d.hs_id?'<a href="'+hsUrl+'" target="_blank" rel="noopener" style="color:var(--teal);text-decoration:none">'+_ne(d.dealname)+'</a>':_ne(d.dealname); var p=d.probabilidade!=null?Math.round(d.probabilidade*100)+'%':'—'; return '<tr><td style="text-align:left;min-width:150px;max-width:210px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+nameCell+'</td><td style="text-align:left;white-space:nowrap">'+_ne(d.ae)+'</td><td>'+_ne(d.pipeline)+'</td><td style="white-space:nowrap">'+_ne(d.stage)+'</td><td>'+_ni(d.vidas)+'</td><td>'+_revShort(_annualRev(d))+'</td><td>'+p+'</td><td style="white-space:nowrap">'+(d.createdate||'—')+'</td><td style="white-space:nowrap">'+(d.close_date||'—')+'</td><td style="white-space:nowrap">'+(d.data_prevista_para_receita||'—')+'</td><td style="text-align:left">'+_ne(d.lost_reason||'')+'</td></tr>'; }).join(''); }
 function novoOpenDealsModal(title,deals){ if(!deals||!deals.length){ openModal(title,'<p style="color:var(--text2);padding:1rem 0">Nenhum deal.</p>'); return; } var html='<table class="lb"><thead><tr><th style="text-align:left">Deal</th><th style="text-align:left">AE</th><th>Pipe</th><th>Etapa</th><th>Vidas</th><th>ARR</th><th>Prob.</th><th>Criado</th><th>Fechado</th><th>Dt. Receita</th><th style="text-align:left">Motivo perda</th></tr></thead><tbody>'+_novoDealsRows(deals)+'</tbody></table>'; openModal(title+' ('+deals.length+')',html); }
 function _getMonths(n){ var st=_filterState(), months=[]; if(st.start&&st.end){ var s=new Date(st.start+'T00:00:00'), e=new Date(st.end+'T00:00:00'); var y=s.getFullYear(), m=s.getMonth(); while(y<e.getFullYear()||(y===e.getFullYear()&&m<=e.getMonth())){ months.push(y+'-'+String(m+1).padStart(2,'0')); m++; if(m>11){m=0;y++;} } return months; } var now=new Date(); for(var i=n-1;i>=0;i--){ var dd=new Date(now.getFullYear(),now.getMonth()-i,1); months.push(dd.getFullYear()+'-'+String(dd.getMonth()+1).padStart(2,'0')); } return months; }
@@ -791,6 +791,6 @@ function _stageNorm(s){ return s==='Stand by'?'Standby':s; }
   novoLoadData();
 })();
 </script>
-<script src="/nav.js?v=1"></script>
+<script src="/nav.js?v=2"></script>
 </body>
 </html>

@@ -155,7 +155,7 @@ var NOVO_WON_STAGE='Ganho';
 var NOVO_FONT='Inter,\'Segoe UI\',system-ui,sans-serif';
 var _novoCharts={};
 function _novoTheme(){ var isLight=document.documentElement.getAttribute('data-theme')==='light'; return { cText:isLight?'#1f2328':'#e6edf3', cText2:isLight?'#57606a':'#8b949e', cGrid:isLight?'rgba(0,0,0,.08)':'rgba(255,255,255,.06)', isLight:isLight }; }
-function _novoMkChart(id,cfg){ var ctx=document.getElementById(id); if(!ctx)return; if(_novoCharts[id]) _novoCharts[id].destroy(); _novoCharts[id]=new Chart(ctx,cfg); }
+function _novoMkChart(id,cfg){ var ctx=document.getElementById(id); if(!ctx)return; if(cfg&&cfg.options&&cfg.options.onClick&&!cfg.options.onHover){ cfg.options.onHover=function(e,els){ var t=e&&e.native&&e.native.target; if(t) t.style.cursor=(els&&els.length)?'pointer':''; }; } if(_novoCharts[id]) _novoCharts[id].destroy(); _novoCharts[id]=new Chart(ctx,cfg); }
 var _ne=function(s){ return (s==null?'—':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); };
 var _ni=function(v){ return v!=null?Number(v).toLocaleString('pt-BR'):'—'; };
 function _annualRev(d){ if(d.arr_estimado!=null&&d.arr_estimado>0)return d.arr_estimado; if(d.primeira_fatura!=null&&d.primeira_fatura>0)return d.primeira_fatura*12; return 0; }
@@ -272,7 +272,7 @@ function buildCotVidas(){
   novoLoadData();
 })();
 </script>
-<script src="/nav.js?v=1"></script>
+<script src="/nav.js?v=2"></script>
 </body>
 </html>
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:2000;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s linear;backdrop-filter:blur(5px)}

@@ -4,6 +4,18 @@ Recurring every 20min (job `55d3b136`). Purpose: identify and close gaps so the 
 
 ---
 
+### Leva do dono | menu enxuto + cursor de clique + H09 Colab. + BDR leads/tooltips (2026-07-16)
+
+> Cinco pedidos executados em lote (autorização explícita do dono, incl. território BDR — Samuel, coordenar ao retomar):
+>
+> 1. **CS Dashboard e Cotação OCULTOS do menu** — `hidden:true` no `PANELS` do `nav.js` (drawer + dropdown filtram) e entradas removidas do `NAV_MODEL` do `premium.js` (espelho). Rotas `/novo-cs` e `/novo-cotacao` continuam vivas (só saem da navegação). Cache-busters: `nav.js?v=2` nas 10 páginas (bdr.html via replace byte-safe, 3 NULs preservados) + `premium.js` +1 nas 4 subpáginas BDR.
+> 2. **Cursor "mãozinha" nos gráficos clicáveis** — `_novoMkChart` de board/ae/48h/cs/cotacao/bdr agora injeta `onHover` (pointer só sobre elemento ativo) quando o gráfico tem `onClick`; waterfall do `/forecast-delta` idem (com exclusão das barras de Total, que não drillam). O CRO já tinha pointer no canvas (inalterado).
+> 3. **H09 (Last 48h | Todos os Novos Deals): coluna Vidas → Colab.** (`quantidade_de_colaboradores`, campo `colaboradores` que já vinha no payload). Ficha de ajuda atualizada. H08 (ganhos) mantém Vidas.
+> 4. **BDR | Cadência de Leads: causa raiz do erro diagnosticada** — o token do HubSpot está SEM o escopo `crm.objects.contacts.read` (contacts/search e batch/read retornam **403**; deals, owners e companies OK — provado com sondas diretas na API). Não é bug de código: a seção funcionava em 10/07, o escopo foi perdido depois (rotação do token ou edição do private app). **Ação manual pendente (dono): reconceder o escopo de contatos no private app do portal** (e conferir o token do Vercel prod). Código: `lib/hubspot.js` agora distingue 401 (token inválido) de **403 (falta de escopo, com o endpoint na mensagem)** — o painel deixou de culpar o token falsamente. ⚠ Mudou `lib/` → **servidor local reiniciado** (aviso à sessão paralela).
+> 5. **BDR | tooltips R13/R14/Trabalhados-por-Dia sem colapso** — a linha "Outros" do tooltip agora expande TODOS os grupos restantes (BDR a BDR, com valor), em ordem decrescente; barras/legenda mantêm o desenho Top 6 + Outros. Vale para as 3 stacks com esse padrão (weekly, monthly, daily).
+>
+> Validado: `npm run check` PASS; Edge headless — menu sem CS/Cotação em /novo, /novo-48h, /novo-bdr e /novo-board; H09 com "Colab." no DOM; R13/R14 renderizando; rotas todas 200; `/api/bdr-leads` respondendo a mensagem nova de escopo. **Nota de coordenação:** `public/ae.html` tem trabalho NÃO COMMITADO de sessão paralela (tooltips A11/A12/A14, Radar→Scorecard) — as mudanças desta leva em ae.html (nav v2 + cursor) ficaram FORA do commit para não arrastar trabalho alheio; a sessão do AE commita junto.
+
 ### Nomenclatura | código ÚNICO por card em CRO/Board/AE + origem dos compartilhados (2026-07-16)
 
 > Decisão do dono: código de card repetido entre painéis mentia — os KPIs com mesmo código (P07 no CRO, Board E AE) são fórmulas COPIADAS que podem driftar. Convenção nova: **cada painel tem códigos próprios**; onde o builder é genuinamente compartilhado (`shared-charts.js`), a tag mostra a origem (`B07 | =C04`, `A28 | =C01`) — código COM `=` não drifta por construção, código SEM `=` é fórmula própria do painel. Códigos do CRO (C07, N06B, N05, vocabulário do catálogo/STATUS_LOG) preservados.
