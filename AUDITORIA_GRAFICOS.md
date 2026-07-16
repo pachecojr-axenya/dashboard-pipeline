@@ -279,6 +279,31 @@ HubSpot segue pendente — fila 🟡 abaixo atualizada com os nomes novos.
 - **B15**: nome do AE agora clicável (modal com chips por etapa + tabela rica) — só
   interação, zero mudança de cálculo; veredito do card inalterado.
 
+## Adendo | Colunas configuráveis no Forecast + B12 removido + B15/B16 sem 🟡 (2026-07-16)
+
+> Leva do dono. Núcleo: **mostrar/ocultar colunas** nas Configurações de TODOS os painéis
+> Forecast, com **catálogo idêntico** entre eles.
+
+- **Forecast (`/forecast` + todos os painéis de etapa `forecast-stage.html`): seletor de
+  colunas.** Nova seção "Colunas visíveis" no modal de Configurações (fonte única
+  `forecast-columns.js`): checkbox por coluna, visibilidade POR PAINEL (localStorage
+  `fc_cols_hidden_v1::<painel>`), default tudo visível. Os dois arquivos foram
+  **reconciliados para o MESMO catálogo de 29 colunas alternáveis** (provado por harness:
+  keys idênticas e na mesma ordem) — `createdate`, `periodo_contrato` e
+  `vencimento_primeira_fatura` viraram colunas base em ambos (antes eram splice condicional
+  só no stage / só no forecast). A âncora Deal e as colunas de comparação (comp_*) não são
+  alternáveis. O modal de detalhe do deal SEMPRE mostra todos os campos (esconder é só da
+  tabela). `/forecast-overall` não tem lista → a seção fica oculta. **Hide provado
+  end-to-end** (harness ao vivo no painel Negociação: 30 → 28 th ao ocultar tcv+vidas,
+  resto intacto, 0 erro). Não altera veredito/emoji de nenhuma coluna.
+- **B12 (ARR Bridge | Variação Mensal) REMOVIDO** a pedido do dono — resolve o veredito
+  **🔴** desta auditoria (não era bridge; barra negativa ≠ churn). Card, builder, i18n e
+  entradas de mapa removidos; comentário-âncora deixado no código.
+- **B15 e B16: 🟡 removido do título** (decisão do dono). B15 (Top 5 AEs) ganhou também
+  **chips de filtro por EXECUTIVO no topo do modal** (todos os AEs do pipeline ativo,
+  ranqueados; troca o AE sem fechar) + o sub-filtro por etapa + tabela rica já existentes
+  — provado no harness (12 chips de executivo, 8 de etapa, coluna TCV na tabela).
+
 ## Adendo | Sincronização de títulos 🟡 com os vereditos desta auditoria (2026-07-14)
 
 > Revisão dos títulos com 🟡: vários gráficos do CRO/Board seguiam com 🟡 no título

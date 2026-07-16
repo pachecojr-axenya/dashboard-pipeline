@@ -1782,6 +1782,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
 <script src="/premium.js?v=5"></script>
 <script src="/semantic-ref.js?v=6"></script>
 <script src="/semantic-help.js?v=2"></script>
+<script src="/forecast-columns.js?v=1"></script>
 <script src="/prob-engine.js?v=2"></script>
 <script src="/revenue-engine.js?v=1"></script>
 <script src="/faturamento-manual.js?v=1"></script>
@@ -1990,6 +1991,15 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
         <label>Diagnóstico <span style="opacity:0.5;font-size:0.8em">(conversão)</span></label>
         <input type="text" id="prob-dia">
         <span class="pct">%</span>
+      </div>
+      <div id="fc-cols-section">
+        <div style="height:1px;background:var(--card2);margin:1rem 0 0.6rem;"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin-bottom:.15rem;">
+          <label style="font-weight:600;">Colunas visíveis <span id="fc-cols-count" style="font-weight:400;color:var(--text2);font-size:0.8em;"></span></label>
+          <button onclick="fcColsAllOn()" style="background:none;border:1px solid var(--card2);color:var(--text2);border-radius:6px;padding:.2rem .55rem;cursor:pointer;font-size:.72rem;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text2)'">Mostrar todas</button>
+        </div>
+        <p style="font-size:0.72rem;color:var(--text2);margin:0 0 0.2rem;">Marque as colunas da tabela. Vale só para este painel; o modal de detalhe do deal sempre mostra todos os campos.</p>
+        <div id="fc-cols-toggles"></div>
       </div>
       <div class="prob-actions">
         <button class="prob-cancel" onclick="closeProbEditor()" title="Cancelar">
@@ -2391,7 +2401,12 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
     let sortKey = 'stage';
     let sortDir = 1;
     let currentDeals = [];   // deals atualmente renderizados na tabela
-    let currentInfo = [];    // metadados de colunas (compartilhado com o modal de detalhes)
+    let currentInfo = [];    // metadados das colunas VISÍVEIS (tabela + export)
+    let currentInfoFull = []; // metadados de TODAS as colunas (catálogo das Configurações)
+    // Visibilidade de colunas (pedido do dono 2026-07-16): fonte única forecast-columns.js.
+    // Por painel — a chave é a etapa desta página (Overall não tem lista de deals).
+    const FC_COL_PANEL = 'stage::' + (FC_PANEL_STAGE || 'overall');
+    let FC_HIDDEN_COLS = new Set((window.ForecastColumns ? ForecastColumns.loadHidden(FC_COL_PANEL) : []));
 
     // ── HELPERS ───────────────────────────────────────────────────────────────
     function esc(s) {
@@ -2974,11 +2989,40 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       document.getElementById('prob-gan').value = (STAGE_PROB['Ganho'] * 100).toFixed(1).replace('.', ',');
       document.getElementById('prob-stb').value = (STAGE_PROB['Standby'] * 100).toFixed(1).replace('.', ',');
       document.getElementById('prob-dia').value = (STAGE_PROB['Diagnóstico'] * 100).toFixed(1).replace('.', ',');
+      fcRenderColToggles();
       document.getElementById('prob-overlay').classList.add('open');
     }
 
     function closeProbEditor() {
       document.getElementById('prob-overlay').classList.remove('open');
+    }
+
+    // ── Colunas visíveis (pedido do dono 2026-07-16) ─────────────────────────────
+    // Fonte única forecast-columns.js. Catálogo idêntico ao do /forecast. Visibilidade
+    // por painel (por etapa). Overall não tem lista de deals → esconde a seção.
+    function fcRenderColToggles() {
+      const sec = document.getElementById('fc-cols-section');
+      if (!sec || !window.ForecastColumns) return;
+      if (FC_PANEL_STAGE === 'Overall') { sec.style.display = 'none'; return; }
+      sec.style.display = '';
+      const box = document.getElementById('fc-cols-toggles');
+      const info = currentInfoFull.length ? currentInfoFull : currentInfo;
+      const r = ForecastColumns.togglesHtml(info, Array.from(FC_HIDDEN_COLS), 'fcToggleCol');
+      box.innerHTML = r.html;
+      const cnt = document.getElementById('fc-cols-count');
+      if (cnt) cnt.textContent = r.visible + '/' + r.total + ' visíveis';
+    }
+    function fcToggleCol(k) {
+      if (FC_HIDDEN_COLS.has(k)) FC_HIDDEN_COLS.delete(k); else FC_HIDDEN_COLS.add(k);
+      ForecastColumns.saveHidden(FC_COL_PANEL, Array.from(FC_HIDDEN_COLS));
+      applyAndRender();
+      fcRenderColToggles();
+    }
+    function fcColsAllOn() {
+      FC_HIDDEN_COLS = new Set();
+      ForecastColumns.saveHidden(FC_COL_PANEL, []);
+      applyAndRender();
+      fcRenderColToggles();
     }
 
     function saveProbEditor() {
@@ -3689,17 +3733,20 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
         }
         try { if (manResp && manResp.ok) { const mj = await manResp.json(); if (mj && mj.success && mj.data) FaturamentoManual.setData(mj.data); } } catch (e) { /* mantém {} */ }
         // BID: o mês de início de receita é FIXO por etapa (regra do bloco BID), não a data
-        // por-deal do HubSpot. Sobrescreve data_prevista_para_receita (e o quarter derivado)
-        // para Negociação → out/2026 e Proposta Enviada → jun/2027. Vale no painel BID e no
-        // Overall, e a coluna "Dt. Receita" (vermelha) passa a refletir essa régua.
+        // por-deal do HubSpot. Sobrescreve data_prevista_para_receita para Negociação →
+        // out/2026 e Proposta Enviada → jun/2027 (a coluna "Dt. Receita" vermelha reflete a
+        // régua). O quarter do AE (qual_quarter_de_fechamento) tem precedência (decisão do
+        // dono 2026-07-15): a régua só deriva o quarter quando o deal não tem um.
         const FC_BID_REV_DATE = { 'Negociação': '2026-10-01', 'Proposta Enviada': '2027-06-01' };
         data.deals.forEach(d => {
           if (d.pipeline !== 'Bid') return;
           const rd = FC_BID_REV_DATE[d.stage];
           if (!rd) return;
           d.data_prevista_para_receita = rd;
-          const _mo = parseInt(rd.substring(5, 7), 10) - 1;
-          d.quarter = 'Q' + (Math.floor(_mo / 3) + 1) + ' ' + rd.substring(0, 4);
+          if (!d.quarter) {
+            const _mo = parseInt(rd.substring(5, 7), 10) - 1;
+            d.quarter = 'Q' + (Math.floor(_mo / 3) + 1) + ' ' + rd.substring(0, 4);
+          }
         });
         const _scoped = data.deals.filter(d => d.createdate && d.createdate >= '2025-09-01');
         // Win rate global (S01) = ganhos ÷ (ganhos + perdidos). Os perdidos só servem aqui;
@@ -3926,7 +3973,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
         MONTHS.forEach((m, i) => { mRealTotals[i] += _bdrReal[i]; mTotals[i] += _bdrProb[i]; });  // entra no TOTAL
       }
 
-      const INFO = [
+      let INFO = [
         {
           k: 'dealname', lbl: 'Deal', w: 210, sticky: true,
           tip: 'Nome do negócio no HubSpot'
@@ -3946,6 +3993,10 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
         {
           k: 'dias_no_pipe', lbl: 'Dias', w: 60, align: 'right', fmt: fmtNum,
           tip: 'Dias desde a criação do negócio no pipeline'
+        },
+        {
+          k: 'createdate', lbl: 'Criado', w: 95, align: 'center', fmt: fmtDate, hideMobile: true,
+          tip: 'Data de criação do deal no HubSpot. Base do cálculo de receita das etapas Diagnóstico e Reunião Agendada (+9/14/18 meses da criação).'
         },
         {
           k: 'produto', lbl: 'Solução', w: 145,
@@ -3978,6 +4029,11 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
         {
           k: 'arr_pond', lbl: '🟡 ARR Pond. (R$)', w: 128, align: 'right', fmt: fmtBRL, hideMobile: true,
           tip: 'ARR Ponderado = ARR Estimado (sem ARR → 1ª Fatura × 12) × P. Ajust. (BID: probabilidade fixa) — a MESMA leitura de ARR ponderado dos outros painéis (Top 5 AEs/Watchlist do Board, Receita Ponderada P03/B04), lado a lado para auditar se os números batem. Informativa: NÃO altera a receita probabilizada. Diferença residual vs CRO/Board vem da fonte da probabilidade (aqui: régua flat + ajuste do AE; lá: C07 ao vivo por pipeline quando há amostra).'
+        },
+        {
+          k: 'periodo_contrato', lbl: 'Período', w: 78, align: 'center', hideMobile: true,
+          fmt: v => { if (!v || v === 'Não Possui') return '—'; const m = String(v).match(/\d+/); return m ? m[0] + 'm' : v; },
+          tip: 'Período do contrato (HubSpot): 12, 24 ou 36 meses. Vazio → o TCV assume 12 meses.'
         },
         {
           k: 'tcv', lbl: 'TCV (R$)', w: 118, align: 'right', fmt: fmtBRL, hideMobile: true,
@@ -4028,6 +4084,10 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
           tip: 'Data de Vigência do contrato (HubSpot)'
         },
         {
+          k: 'vencimento_primeira_fatura', lbl: 'Venc. 1ª Fat.', w: 100, align: 'center', fmt: fmtDate, hideMobile: true,
+          tip: 'Vencimento da 1ª fatura (HubSpot). Em Ganho/Implantação: preenchido e já vencido → o deal entra na lista de faturamento manual (Receita Real).'
+        },
+        {
           k: 'ultima_atividade', lbl: 'Últ. Atividade', w: 100, align: 'center', fmt: fmtDate, hideMobile: true,
           tip: 'Data da última atividade/nota registrada no HubSpot (notes_last_updated).'
         },
@@ -4037,16 +4097,12 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
           tip: 'Dias desde a última atividade. Acima de 90 em vermelho, acima de 30 em amarelo.'
         },
       ];
-      if (FC_PANEL_STAGE === 'Diagnóstico' || FC_PANEL_STAGE === 'Reunião Agendada') {
-        // Diagnóstico e Reunião Agendada calculam a receita a partir da data de criação → expõe "Criado".
-        const _ci = INFO.findIndex(c => c.k === 'dias_no_pipe');
-        INFO.splice(_ci >= 0 ? _ci + 1 : INFO.length, 0, { k: 'createdate', lbl: 'Criado', w: 95, align: 'center', fmt: fmtDate, tip: 'Data de criação do deal — base do cálculo de Diagnóstico (receita +9/14/18 meses da criação).' });
-      }
-      if (FC_PANEL_STAGE === 'Ganho') {
-        // Ganho: expõe o vencimento da 1ª fatura (gate do faturamento manual).
-        const _ci = INFO.findIndex(c => c.k === 'vigencia');
-        INFO.splice(_ci >= 0 ? _ci + 1 : INFO.length, 0, { k: 'vencimento_primeira_fatura', lbl: 'Venc. 1ª Fat.', w: 100, align: 'center', fmt: fmtDate, hideMobile: true, tip: 'Vencimento da 1ª fatura (HubSpot). Preenchido e já vencido → deal entra na lista de faturamento manual.' });
-      }
+      // Catálogo de colunas IDÊNTICO ao /forecast (createdate, periodo_contrato e
+      // vencimento_primeira_fatura agora são base em todos os painéis — não mais splice
+      // condicional; a visibilidade por painel decide o que aparece). Filtra p/ a tabela;
+      // currentInfoFull mantém todas p/ o catálogo de colunas nas Configurações.
+      currentInfoFull = INFO.slice();
+      if (FC_HIDDEN_COLS && FC_HIDDEN_COLS.size) INFO = INFO.filter(c => c.sticky || !FC_HIDDEN_COLS.has(c.k));
       currentInfo = INFO;
 
       // ── Build HTML ──────────────────────────────────────────────────────────
