@@ -44,7 +44,9 @@
       var mo = parseInt(rd.substring(5, 7), 10) - 1;
       var nd = {}; for (var k in d) if (Object.prototype.hasOwnProperty.call(d, k)) nd[k] = d[k];
       nd.data_prevista_para_receita = rd;
-      nd.quarter = 'Q' + (Math.floor(mo / 3) + 1) + ' ' + rd.substring(0, 4);
+      // O quarter informado pelo AE tem precedência. A régua fixa do BID imputa
+      // apenas a data de receita; só deriva quarter quando o deal não tem um.
+      if (!nd.quarter) nd.quarter = 'Q' + (Math.floor(mo / 3) + 1) + ' ' + rd.substring(0, 4);
       return nd;
     });
   }
