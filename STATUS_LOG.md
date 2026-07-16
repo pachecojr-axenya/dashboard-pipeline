@@ -4,6 +4,32 @@ Recurring every 20min (job `55d3b136`). Purpose: identify and close gaps so the 
 
 ---
 
+### 🚀 Forecast Delta | Fundação BigQuery ativada em produção (2026-07-16)
+
+> Deploy autorizado da `main` canônica no commit **`4aab7b5`** para o projeto Vercel Pro `dashboard-axenya`, aliado a `project-bsmfu.vercel.app`. Lock/unlock realizados; build e preflight passaram antes do deploy. HubSpot API permanece a única fonte do BigQuery; a Sheet foi usada somente no sanity independente.
+
+- **Backfill PRD:** `scripts/backfill-hubspot-bq.js --from 2026-05-12 --to 2026-07-16 --gold-dates 2026-05-12 --allow-prod`, com `VERCEL_ENV=production`. Resultado: `axenya_forecast_prd.forecast_snapshots_daily` com **66 partições / 83.852 linhas** (12/05–16/07) e `forecast_snapshots_weekly_gold` com **12 partições / 15.116 linhas** (12/05–10/07).
+- **Automação diária ativa:** Vercel Cron `59 2 * * *` chama `/api/snapshot` às **02:59 UTC = 23:59 BRT**. A mesma leitura da HubSpot API grava `daily` todo dia, de forma idempotente, e `weekly_gold` em sextas/fins de mês. Produção tem `CRON_SECRET`, `HUBSPOT_TOKEN` e `GOOGLE_SERVICE_ACCOUNT_JSON` configurados.
+- **Sanity PRD:** `MATCH: TODOS OS CHECKS PASSARAM`, zero FAIL. Evidência SHA-256 `e69d2cefcdcf012eeabfe4300babc69fef0f6a0e558a1112d95e9e9087e521d9`.
+- **Integração PRD:** `action=fotos` via BQ (12 gold), compare não-sexta 08/07→09/07 com resolução exata no daily, snapshot, drill e invariante. Evidência SHA-256 `a27b52dc6e2d38eb5f2577f60f1725ead1d8fb93becc231242dd3a68ee22d612`. Smokes de produção: `/forecast` e `/forecast-delta` 200; APIs sem sessão 401 (auth ativa).
+
+---
+
+### Forecast Delta | Leva 2 UI (datas livres + drills de KPI/etapa/quarter + tabela unificada + acesso "Saiu") (2026-07-16)
+
+> Segunda leva do `/forecast-delta` (request da Auris). Território: `public/forecast-delta.html` (front), `api/history.js` + `lib/forecast-compute.js` (contrato ADITIVO no `action=compare`/`compare-drill`), `package.json` (check) + 2 testes zero-deps novos. **Fonte única de receita intacta** (Regra primária nº 3): tudo reusa `computeSnapshot`/`dealContributions` do motor canônico, então os novos números batem com o waterfall por construção. Zero dependência nova. **Não commitado/deployado.**
+
+- **Inputs de data LIVRE:** Foto A/B trocaram `<select>` por `<input type=date>`. O `/forecast-delta` pede `action=fotos&cadence=daily`, então min/max cobrem o daily até a data mais recente; o default de `action=fotos` continua weekly e preserva o `/forecast` legado. A data resolve para a foto em/antes dela no backend; a UI exibe `Pedido: <requested> → foto <resolvedTab> (<tipo>)`, deixando claro requested × resolved.
+- **KPIs clicáveis:** Vidas, ARR Total e ARR Ponderado viraram drills (`kpi:vidas|arrTotal|arrPond`). O modal mostra conta, valor A, valor B, Δ e classificação Novo/Permaneceu/Saiu; para "Saiu" traz o destino final (etapa bruta em B, incl. Perdido/Ganho) e o valor. Formatador da coluna casa o KPI (vidas = número; ARR = R$).
+- **Funil e etapas clicáveis:** barras do funil e cada linha da nova tabela unificada abrem o drill por etapa (`stage:<Etapa>`), reusando o mesmo modal. Waterfall clicável preservado.
+- **ARR por Quarter previsto:** nova tabela com ARR Total e Ponderado por quarter (toggle), Δ A→B, cada quarter drillável (`quarter:<Q>`) na métrica selecionada. Σ por quarter reconcilia com o KPI de ARR (Total e Ponderado). `applyBidRevDate` passou a preservar o quarter existente do AE e só deriva da régua fixa do BID quando vazio; receita não mudou.
+- **Tabela unificada por etapa:** nº deals + vidas + receita real/ponderada (12M) + Δ por etapa; cada etapa drillável. Cobre as 8 etapas do funil + Stand by/Standby unificado. Deals sem linha de receita e gêmeos zerados pela dedup continuam nas dimensões de deals/vidas/ARR, mas com receita zero, preservando simultaneamente a reconciliação dos KPIs e a fonte única de receita. Σ Δ(etapa, prob12) == Δtotal e Σ deals == KPI deals por construção.
+- **Acesso dedicado "Saiu":** card com contagem + botão que abre o drill de escopo filtrado por Movimentação = Saiu (destino final + valor).
+- **Backend aditivo:** `dealContributions` passou a carregar `vidas`/`arr`/`arrPond`/`quarter` (nada removido); novas funções `stageUnified`, `quarterAgg`, `drillGeneric` (roteia `stage:`/`quarter:`/`kpi:` além dos rowKeys do waterfall — `drillRow` mantido para compat). `action=compare` ganhou `stageUnified` e `quarters`; `compare-drill` ganhou `field` (aditivo). HubSpot segue fonte única do BQ; Sheet só sanity; sem PII além dos deals já autenticados.
+- **Validação:** `npm run check` PASS (inclui os 2 testes novos). **`scripts/test-forecast-delta-leva2.js`**: 26 checks. **`scripts/test-forecast-delta-e2e.js`**: 22 checks. Cobertura: campos aditivos, stageUnified, quarterAgg, drillGeneric (stage/quarter/kpi + saiu/destino/valor), quarter do AE em BID divergente da régua fixa, cadence weekly/daily, ARR Total/Ponderado selecionado, invariante e compatibilidade do waterfall. `scripts/test-delta-invariant.js` atualizado para o contrato daily e passou UNIT + integração completa em 3 pares reais. `_check-inline-js` do `forecast-delta.html`: 0 erros. **PRD real**, porta 3007: default weekly até 10/07 + daily até 16/07, compare 08/07→09/07, requested/resolved exatos, reconciliação de deals/vidas/receita por etapa, ARR Total/Ponderado por quarter, drill quarter/etapa/KPI e 3 deals “Saiu” com destino/valor passaram; evidência SHA-256 `5db6b884fa48644eac4068d4cd2e869b89d7fb7f93b8533c2d9f74e6ff5062fc`. `/forecast` legado preservado: `action=fotos` continua weekly por default. Acessibilidade: modal com semântica/foco/Escape, controles e chips como botões, labels/grupos ARIA, tabelas com caption/scope e suporte a teclado/mobile. `forecast.html`/`forecast-stage.html`/`forecast-engine.js`/`revenue-engine.js`/`faturamento-manual.js`/`forecast-table.js` NÃO tocados; `forecast-overall-core.js` mudou somente para preservar quarter do AE sem alterar receita.
+
+---
+
 ### Forecast Delta | HubSpot API → BQ Forecast (daily + weekly) validado contra Sheet (2026-07-16)
 
 > PR #2 com guardrails concluídos e merge autorizado pelo dono; **deploy não faz parte deste passo**. Linhagem corrigida: **HubSpot API é a única fonte do BQ**; a planilha Forecast é somente sanity check independente. Removidos `?backfill=1` e o migrador Sheet→BQ. Backfill histórico usa `propertiesWithHistory` (`scripts/backfill-hubspot-bq.js`).

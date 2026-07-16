@@ -1,8 +1,8 @@
 # Forecast Delta — Fundação BigQuery
 
-> Estado em 2026-07-16: guardrails concluídos e merge da PR #2 autorizado pelo
-> dono. Fundação validada em `axenya_forecast_dev`; **deploy e backfill de
-> produção continuam etapas separadas e pendentes**.
+> Estado em 2026-07-16: guardrails concluídos, PR #2 mergeada e commit `4aab7b5`
+> deployado com autorização. Fundação validada em `axenya_forecast_dev` e
+> **ativada em `axenya_forecast_prd`** por backfill exclusivo da HubSpot API.
 
 ## Linhagem canônica
 
@@ -109,3 +109,15 @@ Evidências criptográficas finais:
 4. Rodar `VERCEL_ENV=production node scripts/backfill-hubspot-bq.js ...`.
 5. Rodar o sanity com `FORECAST_SANITY_SPREADSHEET_ID=<clone>`.
 6. Só então implementar a UI final de datas livres/drills.
+
+### Concluída em 16/jul/2026
+
+- Deploy: `main` / `4aab7b5`, projeto canônico Vercel Pro.
+- `daily`: 66 partições, 83.852 linhas, 12/05–16/07.
+- `weekly_gold`: 12 partições, 15.116 linhas, 12/05–10/07.
+- Sanity: `MATCH: TODOS OS CHECKS PASSARAM`, zero FAIL.
+- Cron diário ativo: `59 2 * * *` (02:59 UTC / 23:59 BRT), HubSpot API →
+  `daily`; sextas/fins de mês também → `weekly_gold`.
+- Evidências: build `99347e0d070e48d4962d1394ad290b2c83daa1248d530596ef7e9c85c26f135c`;
+  sanity PRD `e69d2cefcdcf012eeabfe4300babc69fef0f6a0e558a1112d95e9e9087e521d9`;
+  integração `a27b52dc6e2d38eb5f2577f60f1725ead1d8fb93becc231242dd3a68ee22d612`.

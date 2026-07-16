@@ -8,7 +8,7 @@
  *
  * Parte 1 (UNIT, sem servidor): lib/forecast-compute sobre deals sintéticos.
  * Parte 2 (INTEGRAÇÃO, se o server 3004 estiver no ar): pares de fotos reais via
- *   /api/history?action=compare + os guard-rails (B>A, mesma foto, data sem foto).
+ *   /api/history?action=compare + os guard-rails (B>A, datas livres, data sem foto).
  *   Se o servidor não responder, a parte 2 é PULADA (não falha o CI).
  *
  * Uso: node scripts/test-delta-invariant.js   (exit 0 = ok, 1 = falha)
@@ -63,14 +63,14 @@ check('deal incompleto nao quebra a soma (implicito em b)', true);
 const PORT = parseInt(process.argv[2], 10) || parseInt(process.env.PORT, 10) || 3004;
 function getJSON(path) {
   return new Promise((resolve, reject) => {
-    const req = http.get({ host: 'localhost', port: PORT, path: encodeURI(path), agent: false, timeout: 4000 }, res => {
+    const req = http.get({ host: 'localhost', port: PORT, path: encodeURI(path), agent: false, timeout: 30000 }, res => {
       let b = ''; res.on('data', c => b += c); res.on('end', () => { try { resolve({ status: res.statusCode, j: JSON.parse(b) }); } catch (e) { reject(e); } });
     });
     req.on('error', reject); req.on('timeout', () => { req.destroy(new Error('timeout')); });
   });
 }
 async function integ() {
-  console.log('\n== INTEGRAÇÃO (/api/history?action=compare @ 3004) ==');
+  console.log('\n== INTEGRAÇÃO (/api/history?action=compare @ ' + PORT + ') ==');
   const pairs = [['2026-06-05', '2026-07-03'], ['2026-06-12', '2026-07-10'], ['2026-05-12', '2026-06-19']];
   for (const [a, b] of pairs) {
     const { j } = await getJSON('/api/history?action=compare&a=' + a + '&b=' + b);
@@ -80,7 +80,9 @@ async function integ() {
   const g1 = await getJSON('/api/history?action=compare&a=2026-07-10&b=2026-06-12');
   check('guard B<A -> 400', g1.status === 400 && !g1.j.success);
   const g2 = await getJSON('/api/history?action=compare&a=2026-07-08&b=2026-07-09');
-  check('guard mesma foto -> 422', g2.status === 422 && !g2.j.success);
+  check('datas não-sextas resolvem no daily', g2.status === 200 && g2.j.success && g2.j.a.resolvedTab === '2026-07-08' && g2.j.b.resolvedTab === '2026-07-09');
+  const gSame = await getJSON('/api/history?action=compare&a=2026-07-08&b=2026-07-08');
+  check('guard A=B -> 400', gSame.status === 400 && !gSame.j.success);
   const g3 = await getJSON('/api/history?action=compare&a=2025-01-01&b=2026-07-10');
   check('guard data < foto mais antiga -> 422', g3.status === 422 && !g3.j.success);
   // drill-down (1F): Σ das contribuições da linha == delta da barra no waterfall

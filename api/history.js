@@ -143,9 +143,12 @@ module.exports = async function handler(req, res) {
       // Fonte única _listFotos: BQ (datas livres, diário) com fallback pro Sheet.
       // Mantém o contrato { tab, tipo, ord } que o frontend já consome; source
       // é aditivo (o dropdown/inputs do /forecast-delta não quebram).
-      const fotos = await _listFotos(false);
+      // O default continua weekly para não alterar o seletor legado do /forecast.
+      // O /forecast-delta pede explicitamente cadence=daily para liberar toda a janela.
+      const useDaily = params.get('cadence') === 'daily';
+      const fotos = await _listFotos(useDaily);
       const source = fotos.length && fotos[0].source === 'bq' ? 'bq' : 'sheet';
-      return res.status(200).json({ success: true, source, fotos });
+      return res.status(200).json({ success: true, source, cadence: useDaily ? 'daily' : 'weekly', fotos });
     }
 
     if (action === 'local') {
@@ -173,8 +176,9 @@ module.exports = async function handler(req, res) {
       const [rowsA, rowsB, manual] = await Promise.all([_readFotoRows(fA), _readFotoRows(fB), _readManual()]);
       if (!rowsA.length || !rowsB.length) return res.status(404).json({ success: false, error: 'Foto vazia' });
 
-      const snapA = FC.computeSnapshot(FC.mapFotoDeals(_rowsToObjs(rowsA)), fA.refDate, manual);
-      const snapB = FC.computeSnapshot(FC.mapFotoDeals(_rowsToObjs(rowsB)), fB.refDate, manual);
+      const objsA = _rowsToObjs(rowsA), objsB = _rowsToObjs(rowsB);
+      const snapA = FC.computeSnapshot(FC.mapFotoDeals(objsA), fA.refDate, manual);
+      const snapB = FC.computeSnapshot(FC.mapFotoDeals(objsB), fB.refDate, manual);
       const byA = {}; snapA.stages.forEach(s => { byA[s.key] = s; });
       const waterfall = snapB.stages.map(s => {
         const pa = byA[s.key] || {};
@@ -188,6 +192,14 @@ module.exports = async function handler(req, res) {
       const sumDelta = waterfall.reduce((x, w) => x + w.delta.prob12, 0);
       const invariantOk = Math.abs(sumDelta - (snapB.totals.prob12 - snapA.totals.prob12)) < 0.01;
 
+      // Agregações aditivas (Leva 2): tabela unificada por etapa e ARR total/ponderado
+      // por quarter, ambas com delta A→B e drilláveis. Mesma fonte de receita (Regra
+      // primária nº 3) — reusa dealContributions, então bate com o waterfall/KPIs.
+      const cA = FC.dealContributions(FC.mapFotoDeals(objsA), fA.refDate, manual);
+      const cB = FC.dealContributions(FC.mapFotoDeals(objsB), fB.refDate, manual);
+      const stageUnified = FC.stageUnified(cA, cB);
+      const quarters = FC.quarterAgg(cA, cB);
+
       return res.status(200).json({
         success: true,
         measure: 'prob12',   // headline: Receita Probabilizada, TCV(12M) rolante
@@ -195,6 +207,8 @@ module.exports = async function handler(req, res) {
         b: { requested: b, resolvedTab: fB.tab, tipo: fB.tipo, refDate: fB.refDate, kpis: snapB.kpis, totals: snapB.totals },
         funnel: { stages: snapB.funnelStages, a: snapA.stageCounts, b: snapB.stageCounts },
         waterfall,
+        stageUnified,
+        quarters,
         totals: { a: snapA.totals, b: snapB.totals, deltaProb12: snapB.totals.prob12 - snapA.totals.prob12 },
         invariant: { sumStageDeltaProb12: sumDelta, totalDeltaProb12: snapB.totals.prob12 - snapA.totals.prob12, ok: invariantOk },
         dealDiff: FC.dealDiff(snapA.scopedDeals, snapB.scopedDeals).counts,
@@ -208,6 +222,7 @@ module.exports = async function handler(req, res) {
     if (action === 'compare-drill') {
       const a = params.get('a'); const b = params.get('b'); const row = params.get('row');
       const measure = params.get('measure') || 'prob12';
+      const field = params.get('field');
       if (!a || !b || !row) return res.status(400).json({ success: false, error: 'informe ?a=&b=&row=' });
       if (!/^\d{4}-\d{2}-\d{2}$/.test(a) || !/^\d{4}-\d{2}-\d{2}$/.test(b)) return res.status(400).json({ success: false, error: 'datas devem estar no formato YYYY-MM-DD' });
       if (!(b > a)) return res.status(400).json({ success: false, error: 'Data B deve ser posterior a Data A' });
@@ -221,8 +236,10 @@ module.exports = async function handler(req, res) {
       const rawBStageById = {}; mappedB.forEach(d => { rawBStageById[FC.dealId(d)] = d.stage; });
       const cA = FC.dealContributions(FC.mapFotoDeals(_rowsToObjs(rowsA)), fA.refDate, manual);
       const cB = FC.dealContributions(mappedB, fB.refDate, manual);
-      const drill = FC.drillRow(cA, cB, row, measure, rawBStageById);
-      return res.status(200).json({ success: true, a: fA.tab, b: fB.tab, row: drill.rowKey, measure: drill.measure, sumDelta: drill.sumDelta, deals: drill.deals });
+      // Drill genérico (Leva 2): row pode ser <rowKey> (compat waterfall), stage:<Etapa>,
+      // quarter:<Q> ou kpi:vidas|arrTotal|arrPond. Sem alteração no contrato existente.
+      const drill = FC.drillGeneric(cA, cB, row, measure, rawBStageById, field);
+      return res.status(200).json({ success: true, a: fA.tab, b: fB.tab, row: drill.rowKey, measure: drill.measure, field: drill.field, sumDelta: drill.sumDelta, deals: drill.deals });
     }
 
     if (action === 'snapshot' && tab) {
