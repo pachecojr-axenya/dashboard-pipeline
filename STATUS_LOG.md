@@ -4,6 +4,17 @@ Recurring every 20min (job `55d3b136`). Purpose: identify and close gaps so the 
 
 ---
 
+### 🚀 DEPLOY DE PRODUÇÃO | Forecast Delta Leva 2 no ar (2026-07-16)
+
+> Autorização explícita do dono. PR **#3** mergeada sem force no commit **`d83aca9`**; `main == origin/main`, working tree limpa e zero avanço concorrente do Pacheco desde `4aab7b5`. Build e preflight PASS antes do deploy. Produção: `dashboard-axenya-rlg0q9sbz-axenya-f1a041f6.vercel.app`, aliada a **`project-bsmfu.vercel.app`**.
+
+- **No ar:** datas livres no Comparativo, requested→resolved, acesso “Saiu”, drills de waterfall/funil/KPIs/quarter/etapa, ARR Total/Ponderado por quarter e visão unificada por etapa. `/forecast` legado continua weekly por default.
+- **Smokes públicos:** 9 rotas 200; HTML da Leva 2 confirmado; `/api/auth/me`, `/api/forecast-table` e `/api/history` sem sessão = 401 (auth ativa). Evidência SHA-256 `18e95cc51323903759227ab7d2b83b4400dd62b68370eddaaf68293f5a163c8b`.
+- **Dados PRD:** weekly (12 gold) + daily até 16/07; compare não-sexta, snapshot, drills e invariante PASS. Evidências `a27b52dc6e2d38eb5f2577f60f1725ead1d8fb93becc231242dd3a68ee22d612`, `86375618611ca58007d57ed38611d9ab8d744077071b1510930e27c74ae8c9fe` e `8b6ae7ac31a9b470aa9ab19bec4ea73dec39260ffa05ed60a17142db3f5ce5aa`.
+- **Automação diária confirmada:** Vercel tem 1 cron ativo, `/api/snapshot`, schedule `59 2 * * *` (23:59 BRT). HubSpot API segue fonte única do BQ; Sheet continua apenas sanity.
+
+---
+
 ### 🚀 Forecast Delta | Fundação BigQuery ativada em produção (2026-07-16)
 
 > Deploy autorizado da `main` canônica no commit **`4aab7b5`** para o projeto Vercel Pro `dashboard-axenya`, aliado a `project-bsmfu.vercel.app`. Lock/unlock realizados; build e preflight passaram antes do deploy. HubSpot API permanece a única fonte do BigQuery; a Sheet foi usada somente no sanity independente.
@@ -17,7 +28,7 @@ Recurring every 20min (job `55d3b136`). Purpose: identify and close gaps so the 
 
 ### Forecast Delta | Leva 2 UI (datas livres + drills de KPI/etapa/quarter + tabela unificada + acesso "Saiu") (2026-07-16)
 
-> Segunda leva do `/forecast-delta` (request da Auris). Território: `public/forecast-delta.html` (front), `api/history.js` + `lib/forecast-compute.js` (contrato ADITIVO no `action=compare`/`compare-drill`), `package.json` (check) + 2 testes zero-deps novos. **Fonte única de receita intacta** (Regra primária nº 3): tudo reusa `computeSnapshot`/`dealContributions` do motor canônico, então os novos números batem com o waterfall por construção. Zero dependência nova. **Não commitado/deployado.**
+> Segunda leva do `/forecast-delta` (request da Auris). Território: `public/forecast-delta.html` (front), `api/history.js` + `lib/forecast-compute.js` (contrato ADITIVO no `action=compare`/`compare-drill`), `package.json` (check) + 2 testes zero-deps novos. **Fonte única de receita intacta** (Regra primária nº 3): tudo reusa `computeSnapshot`/`dealContributions` do motor canônico, então os novos números batem com o waterfall por construção. Zero dependência nova. Commit `adb8556`, merge `d83aca9`, deploy real autorizado e concluído.
 
 - **Inputs de data LIVRE:** Foto A/B trocaram `<select>` por `<input type=date>`. O `/forecast-delta` pede `action=fotos&cadence=daily`, então min/max cobrem o daily até a data mais recente; o default de `action=fotos` continua weekly e preserva o `/forecast` legado. A data resolve para a foto em/antes dela no backend; a UI exibe `Pedido: <requested> → foto <resolvedTab> (<tipo>)`, deixando claro requested × resolved.
 - **KPIs clicáveis:** Vidas, ARR Total e ARR Ponderado viraram drills (`kpi:vidas|arrTotal|arrPond`). O modal mostra conta, valor A, valor B, Δ e classificação Novo/Permaneceu/Saiu; para "Saiu" traz o destino final (etapa bruta em B, incl. Perdido/Ganho) e o valor. Formatador da coluna casa o KPI (vidas = número; ARR = R$).
