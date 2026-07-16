@@ -6,7 +6,7 @@ Recurring every 20min (job `55d3b136`). Purpose: identify and close gaps so the 
 
 ### Forecast Delta | HubSpot API → BQ Forecast (daily + weekly) validado contra Sheet (2026-07-16)
 
-> PR #2 (pré-merge, não deployada). Linhagem corrigida por decisão do dono: **HubSpot API é a única fonte do BQ**; a planilha Forecast é somente sanity check independente. Removidos `?backfill=1` e o migrador Sheet→BQ. Backfill histórico novo usa `propertiesWithHistory` (`scripts/backfill-hubspot-bq.js`).
+> PR #2 com guardrails concluídos e merge autorizado pelo dono; **deploy não faz parte deste passo**. Linhagem corrigida: **HubSpot API é a única fonte do BQ**; a planilha Forecast é somente sanity check independente. Removidos `?backfill=1` e o migrador Sheet→BQ. Backfill histórico usa `propertiesWithHistory` (`scripts/backfill-hubspot-bq.js`).
 
 - **BQ único no Growth Axenya:** projeto `gen-lang-client-0423905839`, datasets próprios `axenya_forecast_dev`/`axenya_forecast_prd`; tabelas Forecast removidas de `axenya_bdr_intraday_*`. `daily` = deal×dia; `weekly_gold` = sextas/fim de mês.
 - **Compatibilidade histórica:** fotos até 10/07 tinham 35 colunas (sem `É POC?`), formato atual tem 36. Insert passou a mapear por **nome do header**, evitando deslocamento silencioso de Probabilidade/Quarter/datas.

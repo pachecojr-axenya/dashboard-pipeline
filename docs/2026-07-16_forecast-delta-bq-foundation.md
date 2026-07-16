@@ -1,7 +1,8 @@
 # Forecast Delta — Fundação BigQuery
 
-> Estado em 2026-07-16: PR #2 aberta, não mergeada/deployada. Fundação validada
-> em `axenya_forecast_dev`; produção criada, mas vazia até merge/backfill.
+> Estado em 2026-07-16: guardrails concluídos e merge da PR #2 autorizado pelo
+> dono. Fundação validada em `axenya_forecast_dev`; **deploy e backfill de
+> produção continuam etapas separadas e pendentes**.
 
 ## Linhagem canônica
 
@@ -93,6 +94,12 @@ Outros gates:
 - `action=fotos`: fonte `bq`;
 - compare 05/jun × 10/jul: sucesso e invariante `ΣΔ = Δtotal` verdadeiro;
 - `scripts/test-delta-invariant.js`: PASS.
+
+Evidências criptográficas finais:
+
+- build gate: `99347e0d070e48d4962d1394ad290b2c83daa1248d530596ef7e9c85c26f135c`;
+- sanity HubSpot/BQ/Sheet: `3e5469b8d50a769ecfdc17cb7d4264094b411813cb898ed3869b60cf572f4330`;
+- integração BQ: `a27b52dc6e2d38eb5f2577f60f1725ead1d8fb93becc231242dd3a68ee22d612`.
 
 ## Ativação em produção
 
