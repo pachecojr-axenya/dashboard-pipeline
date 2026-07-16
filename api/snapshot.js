@@ -23,46 +23,11 @@
  */
 
 const { hubspotPost, fetchOwners, STAGE_MAP } = require('../lib/hubspot');
-const { writeMonthlySnapshot, listTabs, readRange, appendRow, readSnapshot } = require('../lib/sheets');
+const { writeMonthlySnapshot, listTabs, readRange, appendRow } = require('../lib/sheets');
 const { setCORSHeaders, getHubspotToken } = require('./_helpers');
 const { verifyRequest } = require('../lib/auth');
 const { PIPELINE_VENDAS, PIPELINE_BID, PROPERTIES, HEADERS, buildRow } = require('../lib/snapshot-format');
 const bq = require('../lib/bigquery');
-
-const MESES_NUM = { jan: 0, fev: 1, mar: 2, abr: 3, mai: 4, jun: 5, jul: 6, ago: 7, set: 8, out: 9, nov: 10, dez: 11 };
-
-// snapshot_date de uma aba do Sheet (espelha _listFotos do api/history.js).
-function tabToSnapshotDate(tab) {
-  if (/^\d{4}-\d{2}-\d{2}$/.test(tab)) return { date: tab, tipo: 'semanal' };
-  const m = tab.match(/^([A-Za-zÀ-ÿ]{3}) (\d{4})$/);
-  if (m) { const mo = MESES_NUM[m[1].toLowerCase()]; if (mo == null) return null; const ym = m[2] + '-' + String(mo + 1).padStart(2, '0'); if (ym + '-31' >= '2026-06-01') return { date: ym + '-15', tipo: 'mensal' }; }
-  return null;
-}
-
-// Grava as fotos historicas do Sheet no BQ (best-effort, idempotente). Roda de
-// dentro do Vercel (credencial GOOGLE_SERVICE_ACCOUNT_JSON ja disponivel ali).
-// As fotos da planilha sao semanais/mensais → vao para o daily E para o
-// weekly_gold (as datas historicas ficam disponiveis nas duas granularidades).
-async function backfillBQFromSheet() {
-  await bq.ensureTables();
-  const jaNoWeekly = (await bq.listSnapshotDates(bq.TABLE_WEEKLY)).map(r => r.tab);
-  const jaNoDaily = (await bq.listSnapshotDates(bq.TABLE_DAILY)).map(r => r.tab);
-  const tabs = await listTabs();
-  const done = [], skip = [];
-  for (const t of tabs) {
-    const meta = tabToSnapshotDate(t);
-    if (!meta) continue;
-    if (jaNoWeekly.indexOf(meta.date) !== -1 && jaNoDaily.indexOf(meta.date) !== -1) { skip.push(t + '=' + meta.date); continue; }
-    const rows = await readSnapshot(t);
-    if (rows.length < 2 || rows[0].length !== bq.NUM_COLS) { skip.push(t + ' (formato)'); continue; }
-    const dealRows = rows.slice(1);
-    let ins = 0;
-    if (jaNoDaily.indexOf(meta.date) === -1) { const r = await bq.insertSnapshotRows(meta.date, meta.tipo, dealRows, null, bq.TABLE_DAILY); ins = r.inserted; }
-    if (jaNoWeekly.indexOf(meta.date) === -1) { await bq.insertSnapshotRows(meta.date, meta.tipo, dealRows, null, bq.TABLE_WEEKLY); }
-    done.push(t + '=>' + meta.date + ' (' + ins + ')');
-  }
-  return { done, skip };
-}
 
 const MONTHS_PT = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 
@@ -248,36 +213,36 @@ module.exports = async function handler(req, res) {
         const snapType = ehSexta ? 'semanal' : (ehFimMes ? 'mensal' : 'diario');
 
         // 1) daily — todo dia (idempotente por data)
-        if (await bq.hasSnapshot(today, bq.TABLE_DAILY)) {
+        const dailyCount = await bq.snapshotCount(today, bq.TABLE_DAILY);
+        if (dailyCount === rows.length) {
           actions.bq_daily = 'já existia (' + today + ')';
-        } else {
-          const r = await bq.insertSnapshotRows(today, snapType, rows, capturedAt, bq.TABLE_DAILY);
+        } else if (dailyCount === 0) {
+          const r = await bq.insertSnapshotRows(today, snapType, rows, capturedAt, bq.TABLE_DAILY, HEADERS);
           actions.bq_daily = 'gravada ' + today + ' (' + r.inserted + ' deals, ' + snapType + ')';
+        } else {
+          throw new Error('BQ daily parcial em ' + today + ': existente=' + dailyCount + ' esperado=' + rows.length);
         }
 
         // 2) weekly_gold — só na sexta / último dia do mês (espelha a planilha)
         if (ehSexta || ehFimMes) {
-          if (await bq.hasSnapshot(today, bq.TABLE_WEEKLY)) {
+          const weeklyCount = await bq.snapshotCount(today, bq.TABLE_WEEKLY);
+          if (weeklyCount === rows.length) {
             actions.bq_weekly = 'já existia (' + today + ')';
-          } else {
-            const rw = await bq.deriveWeeklyFromDaily(today, snapType);
+          } else if (weeklyCount === 0) {
+            // Mesma resposta bruta da HubSpot API alimenta daily e weekly; evita
+            // depender da visibilidade imediata do streaming buffer do daily.
+            const rw = await bq.insertSnapshotRows(today, snapType, rows, capturedAt, bq.TABLE_WEEKLY, HEADERS);
             actions.bq_weekly = 'materializada ' + today + ' (' + rw.inserted + ' deals, ' + snapType + ')';
+          } else {
+            throw new Error('BQ weekly parcial em ' + today + ': existente=' + weeklyCount + ' esperado=' + rows.length);
           }
         }
       } catch (e) {
         console.error('[snapshot][bq]', e.message);
+        // Particao parcial e corrupcao de estado, nao indisponibilidade toleravel:
+        // falha o cron para permitir alerta/retry em vez de responder 200 enganoso.
+        if (/BQ (daily|weekly) parcial/.test(e.message)) throw e;
         actions.bq = 'ERRO (não bloqueante): ' + e.message;
-      }
-    }
-
-    // ── Backfill do histórico do Sheet → BQ (?backfill=1, só usuário autenticado) ──
-    if (isUser && (req.query?.backfill || new URL('http://x' + req.url).searchParams.get('backfill'))) {
-      try {
-        const bf = await backfillBQFromSheet();
-        actions.backfill = { migradas: bf.done, puladas: bf.skip.length };
-      } catch (e) {
-        console.error('[snapshot][backfill]', e.message);
-        actions.backfill = 'ERRO: ' + e.message;
       }
     }
 

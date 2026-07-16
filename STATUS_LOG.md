@@ -4,6 +4,17 @@ Recurring every 20min (job `55d3b136`). Purpose: identify and close gaps so the 
 
 ---
 
+### Forecast Delta | HubSpot API → BQ Forecast (daily + weekly) validado contra Sheet (2026-07-16)
+
+> PR #2 (pré-merge, não deployada). Linhagem corrigida por decisão do dono: **HubSpot API é a única fonte do BQ**; a planilha Forecast é somente sanity check independente. Removidos `?backfill=1` e o migrador Sheet→BQ. Backfill histórico novo usa `propertiesWithHistory` (`scripts/backfill-hubspot-bq.js`).
+
+- **BQ único no Growth Axenya:** projeto `gen-lang-client-0423905839`, datasets próprios `axenya_forecast_dev`/`axenya_forecast_prd`; tabelas Forecast removidas de `axenya_bdr_intraday_*`. `daily` = deal×dia; `weekly_gold` = sextas/fim de mês.
+- **Compatibilidade histórica:** fotos até 10/07 tinham 35 colunas (sem `É POC?`), formato atual tem 36. Insert passou a mapear por **nome do header**, evitando deslocamento silencioso de Probabilidade/Quarter/datas.
+- **Prova em dev:** HubSpot API → BQ de 12/05 a 16/07 (66 daily, 12 gold). Sanity contra clone autorizado da planilha: **286 PASS, 0 FAIL, 0 SKIP** — 7 fotos com IDs/campos exatos + 14 dias agregados exatos. Exceção transparente: Embraer `36080066857` aparece em 12/05 na planilha num pipeline fora de Vendas/Bid (`803749153`) e é corretamente excluída pelo filtro point-in-time do BQ. `/forecast` e `/forecast-delta` 200; `action=fotos` fonte BQ; compare daily com invariante OK.
+- **Fix integração:** `/forecast` continua listando weekly; `action=compare`/drill usam daily, permitindo datas livres reais; `action=snapshot` roteia daily→weekly→Sheet.
+
+---
+
 ### 🚀 DEPLOY DE PRODUÇÃO | 8 commits da leva do dono (16/07) no ar (2026-07-16)
 
 > Push + deploy autorizados pelo dono. Sincronização limpa: working tree limpa, `origin/main` não avançou (Samuel sem trabalho novo no remoto), push **fast-forward** de 8 commits (`2986bf6..6a19de3`) — sem force, sem divergência, sobreposição com o Samuel vazia. `HEAD == origin/main == 6a19de3`.

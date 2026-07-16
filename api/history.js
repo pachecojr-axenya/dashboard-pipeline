@@ -46,19 +46,16 @@ async function _listFotosSheet() {
   fotos.sort((a, b) => b.ord.localeCompare(a.ord));
   return fotos;
 }
-// Fotos do BQ. Default = weekly_gold (lista "oficial", espelho da planilha).
-// As datas do weekly sao as mesmas abas da planilha → a lista de fotos que as
-// telas legadas (/forecast) mostram NAO muda ao ligar o BQ.
-async function _listFotosBQ() {
-  const dates = await bq.listSnapshotDates(bq.TABLE_WEEKLY);  // [{tab:'YYYY-MM-DD',tipo,count}]
-  return dates.map(d => ({ tab: d.tab, tipo: d.tipo || 'semanal', ord: d.tab, refDate: d.tab, source: 'bq' }));
+// Fotos do BQ. weekly_gold alimenta a lista legada; daily resolve datas livres.
+async function _listFotosBQ(useDaily) {
+  const dates = await bq.listSnapshotDates(useDaily ? bq.TABLE_DAILY : bq.TABLE_WEEKLY);
+  return dates.map(d => ({ tab: d.tab, tipo: d.tipo || (useDaily ? 'diario' : 'semanal'), ord: d.tab, refDate: d.tab, source: 'bq' }));
 }
-// Fonte de fotos: BQ (weekly) tem prioridade; fallback = Sheet.
-// Se o BQ weekly tiver ao menos 2 fotos, usa BQ (comparação precisa de par).
-async function _listFotos() {
+// useDaily=false: lista oficial para /forecast (weekly). useDaily=true: compare.
+async function _listFotos(useDaily) {
   if (bq.isConfigured()) {
     try {
-      const bqFotos = await _listFotosBQ();
+      const bqFotos = await _listFotosBQ(!!useDaily);
       if (bqFotos.length >= 2) return bqFotos;
     } catch (e) { console.error('[history][bq fotos]', e.message); /* fallback */ }
   }
@@ -146,7 +143,7 @@ module.exports = async function handler(req, res) {
       // Fonte única _listFotos: BQ (datas livres, diário) com fallback pro Sheet.
       // Mantém o contrato { tab, tipo, ord } que o frontend já consome; source
       // é aditivo (o dropdown/inputs do /forecast-delta não quebram).
-      const fotos = await _listFotos();
+      const fotos = await _listFotos(false);
       const source = fotos.length && fotos[0].source === 'bq' ? 'bq' : 'sheet';
       return res.status(200).json({ success: true, source, fotos });
     }
@@ -166,7 +163,7 @@ module.exports = async function handler(req, res) {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(a) || !/^\d{4}-\d{2}-\d{2}$/.test(b)) return res.status(400).json({ success: false, error: 'datas devem estar no formato YYYY-MM-DD' });
       if (!(b > a)) return res.status(400).json({ success: false, error: 'Data B deve ser posterior a Data A' });
 
-      const fotos = await _listFotos();
+      const fotos = await _listFotos(true);
       if (!fotos.length) return res.status(422).json({ success: false, error: 'Nenhuma foto disponível' });
       const oldest = fotos[fotos.length - 1];
       const fA = _resolveFoto(fotos, a); const fB = _resolveFoto(fotos, b);
@@ -214,7 +211,7 @@ module.exports = async function handler(req, res) {
       if (!a || !b || !row) return res.status(400).json({ success: false, error: 'informe ?a=&b=&row=' });
       if (!/^\d{4}-\d{2}-\d{2}$/.test(a) || !/^\d{4}-\d{2}-\d{2}$/.test(b)) return res.status(400).json({ success: false, error: 'datas devem estar no formato YYYY-MM-DD' });
       if (!(b > a)) return res.status(400).json({ success: false, error: 'Data B deve ser posterior a Data A' });
-      const fotos = await _listFotos();
+      const fotos = await _listFotos(true);
       const fA = _resolveFoto(fotos, a); const fB = _resolveFoto(fotos, b);
       if (!fA || !fB) return res.status(422).json({ success: false, error: 'Sem foto em ou antes de uma das datas' });
       if (fA.tab === fB.tab) return res.status(422).json({ success: false, error: 'As duas datas resolvem para a mesma foto' });
