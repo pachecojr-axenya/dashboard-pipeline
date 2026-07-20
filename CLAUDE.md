@@ -17,4 +17,5 @@ não existir conteúdo duplicado que possa desatualizar. As regras vivem nos arq
 acima. Em especial, a **fonte única de receita** é a **Regra primária nº 3** do
 `STATUS_LOG.md`, e a **fonte da verdade de deploy** é GitHub/commit pushado
 conforme `docs/github-source-of-truth.md`. Spec de build do Pipeline Coverage:
-`docs/coverage-pipeline-v1-spec.md`.
+`docs/coverage-pipeline-v1-spec.md`. Regras de **receita do Forecast por etapa**
+(motor único, aplicável a todos os painéis): `docs/forecast-revenue-rules.md`.
