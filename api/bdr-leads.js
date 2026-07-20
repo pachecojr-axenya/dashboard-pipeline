@@ -20,29 +20,13 @@
 
 const { hubspotPost, hubspotGet } = require('../lib/hubspot');
 const { setCORSHeaders, requireAuth, getHubspotToken, methodCheck } = require('./_helpers');
-
-// Time canônico | espelho do BDR_LIST de public/settings-modal.js (fonte única de
-// nomes no front). Aqui só os NOMES; os owner-ids são resolvidos ao vivo via
-// fetchOwners + alias, porque há owners duplicados no portal (ex.: duas Cíntias).
-const BDR_TEAM = [
-  'Anderson Souza', 'Cintia Rodrigues', 'Gabriele Almeida', 'Priscilla Feliciello',
-  'Leticia Romão', 'Allan Valença', 'Bruna Reis', 'Emanuelle Braga', 'Felipe Andrade',
-  'Giovana Nunes', 'Marcelli Netto', 'Thauan Pontes', 'Yokyko Muramoto',
-];
-// Grafias do HubSpot -> nome canônico (mesmo mapa do BDR_HS_ALIAS de bdr.html).
-const HS_ALIAS = {
-  'gabriele de almeida silva': 'Gabriele Almeida',
-  'bruna cristina dos reis silva': 'Bruna Reis',
-  'giovana rocha': 'Giovana Nunes',
-};
+const { BDR_TEAM, HS_ALIAS, norm, resolveTeamIds } = require('../lib/bdr-team');
 
 const CONTACT_PROPS = [
   'firstname', 'lastname', 'email', 'jobtitle',
   'hs_lead_status', 'hubspot_owner_id', 'createdate', 'notes_last_contacted',
   'origem', 'axenya_origem_canonica', 'numero_de_colaboradores', 'associatedcompanyid',
 ];
-
-const norm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
 
 // Cache em memória por instância serverless (mesmo padrão do fetchOwners).
 let _cache = { at: 0, data: null };
@@ -77,20 +61,7 @@ async function fetchOwnersRaw(token) {
   return map;
 }
 
-// Resolve owner-ids do time: TODOS os ids cujo nome completo (normalizado + alias) bate
-// com um nome canônico — cobre owners duplicados/arquivados da mesma pessoa (ex.: as
-// duas grafias de Cíntia Rodrigues), sem pegar homônimos parciais.
-function resolveTeamIds(ownerMap) {
-  const canonSet = {};
-  BDR_TEAM.forEach(n => { canonSet[norm(n)] = n; });
-  const idToBdr = {};
-  Object.keys(ownerMap).forEach(id => {
-    const raw = norm(ownerMap[id]);
-    const canonical = canonSet[norm(HS_ALIAS[raw] || raw)];
-    if (canonical) idToBdr[id] = canonical;
-  });
-  return idToBdr;
-}
+
 
 async function searchTeamContacts(token, teamIds) {
   const all = [];

@@ -111,12 +111,12 @@ var WorkloadBDR = (function () {
 
     var html = '';
     html += kpis([
-      { label: 'Empresas inseridas', value: comps.length, cls: 'teal', drill: 'empresas', sub: subFontes(comps) },
-      { label: 'Contatos inseridos', value: conts.length, cls: 'teal', drill: 'contatos', sub: subFontes(conts) },
-      { label: 'Movimentações de status', value: trans.length, cls: '', drill: 'movs', sub: trans.length ? 'em ' + uniq(trans, 'contato_id') + ' contatos' : 'sem movimentação no recorte' },
-      { label: 'Contato efetivo', value: kEfetivo.length, cls: 'good', drill: 'efetivo', sub: 'transições para Contato efetivo' },
-      { label: 'Qualificado', value: kQualif.length, cls: 'good', drill: 'qualificado', sub: 'transições para Qualificado (deal)' },
-      { label: 'Desqualificado | Timing', value: kDesq.length, cls: kDesq.length ? 'bad' : '', drill: 'desq', sub: 'motivos: propriedade pendente no HubSpot' },
+      { label: 'Empresas inseridas', value: comps.length, cls: 'teal', drill: 'empresas', sub: subFontes(comps), help: 'empresas-ins' },
+      { label: 'Contatos inseridos', value: conts.length, cls: 'teal', drill: 'contatos', sub: subFontes(conts), help: 'contatos-ins' },
+      { label: 'Movimentações de status', value: trans.length, cls: '', drill: 'movs', sub: trans.length ? 'em ' + uniq(trans, 'contato_id') + ' contatos' : 'sem movimentação no recorte', help: 'movs-status' },
+      { label: 'Contato efetivo', value: kEfetivo.length, cls: 'good', drill: 'efetivo', sub: 'transições para Contato efetivo', help: 'contato-efetivo' },
+      { label: 'Qualificado por status', value: kQualif.length, cls: 'good', drill: 'qualificado', sub: 'contatos com hs_lead_status = OPEN_DEAL', help: 'qualificado-status' },
+      { label: 'Desqualificado | Timing', value: kDesq.length, cls: kDesq.length ? 'bad' : '', drill: 'desq', sub: 'motivos: propriedade pendente no HubSpot', help: 'desqualificado' },
     ]);
     html += chartInsercoes(conts, trans);
     html += chartRealActivities(fActivities());
@@ -488,7 +488,7 @@ var WorkloadBDR = (function () {
     if (kind === 'contatos') { openModal('Contatos inseridos | detalhe', tabelaContatos(fContacts())); return; }
     if (kind === 'movs') { openModal('Movimentações | detalhe', tabelaMovs(fTransitions())); return; }
     var map = { efetivo: ['CONNECTED'], qualificado: ['OPEN_DEAL'], desq: ['UNQUALIFIED', 'BAD_TIMING'] };
-    var lab = { efetivo: 'Contato efetivo', qualificado: 'Qualificado', desq: 'Desqualificado | Timing' };
+    var lab = { efetivo: 'Contato efetivo', qualificado: 'Qualificado por status', desq: 'Desqualificado | Timing' };
     rows = fTransitions().filter(function (t) { return map[kind].indexOf(t.para) >= 0; });
     openModal(lab[kind] + ' | detalhe', tabelaMovs(rows));
   }
@@ -584,7 +584,8 @@ var WorkloadBDR = (function () {
     var blocks = [
       ['Universo', 'Contatos e empresas cujo dono (hubspot_owner_id) é um dos 13 BDRs do time canônico. Owners duplicados e arquivados são resolvidos por nome + alias.'],
       ['Inserção', 'createdate dentro da janela (fuso America/Sao_Paulo). Fonte via hs_object_source_detail_1: Apollo e Lusha = push do próprio BDR via extensão | Manual = CRM_UI | API interna = chave de automação (não conta como trabalho de BDR; filtre por fonte para excluir).'],
-      ['Movimentação', 'Transições de hs_lead_status dentro da janela, extraídas do histórico nativo (propertiesWithHistory). Contato efetivo = CONNECTED | Qualificado = OPEN_DEAL (deal em Reunião Agendada) | Desqualificado = UNQUALIFIED | Timing ruim = BAD_TIMING.'],
+      ['Movimentação', 'Transições de hs_lead_status dentro da janela, extraídas do histórico nativo (propertiesWithHistory). Contato efetivo = CONNECTED | Qualificado por status = OPEN_DEAL | Desqualificado = UNQUALIFIED | Timing ruim = BAD_TIMING.'],
+      ['Qualificado por status (IMPORTANTE)', 'Conta transições de hs_lead_status do CONTATO para OPEN_DEAL. NÃO é o mesmo que SQL real por deal. Um contato pode ter status OPEN_DEAL sem ter deal criado, ou pode haver deals em andamento sem que o status do contato seja atualizado. SQL real requer consulta ao pipeline de deals.'],
       ['Atividades', 'Engagements do HubSpot (calls, emails, communications, notes, tasks, meetings) com hs_timestamp na janela e dono no time. Ligação com conversa = duração ≥ 1 min (proxy; discagens não atendidas têm duração 0). WhatsApp = communications com canal WHATS_APP (captura Treble). Janelas muito longas podem truncar em 9.800 registros por tipo — a página avisa quando o teto é atingido.'],
       ['Ritmo Real de Atividades', 'Stacked area por dia útil (toggle permite incluir fins de semana). Camadas: Ligações, E-mails, WhatsApp, LinkedIn e Reuniões. Dias úteis zerados são auditados como possível falha de registro/API ou ausência real de atividade.'],
       ['Comparativos WoW/MoM', 'WoW compara a semana que termina no fim da janela contra os 7 dias anteriores, respeitando o filtro de dias úteis. MoM usa o período anterior equivalente ao tamanho da janela visível.'],
@@ -597,6 +598,20 @@ var WorkloadBDR = (function () {
     document.getElementById('help-body').innerHTML = h;
     document.getElementById('help-drawer').classList.add('open');
     document.getElementById('help-backdrop').classList.add('open');
+  }
+  var HELP_MAP = {
+    'empresas-ins': ['Empresas inseridas', 'Empresas criadas na janela com owner do time. Fonte via hs_object_source_detail_1.'],
+    'contatos-ins': ['Contatos inseridos', 'Contatos criados na janela com owner do time, com ou sem hs_lead_status.'],
+    'movs-status': ['Movimentações de status', 'Transições de hs_lead_status dentro da janela, extraídas do histórico nativo.'],
+    'contato-efetivo': ['Contato efetivo', 'Transições para CONNECTED — o BDR conseguiu falar com o contato.'],
+    'qualificado-status': ['Qualificado por status', 'Transições para OPEN_DEAL no contato. IMPORTANTE: não é SQL real por deal. O campo hs_lead_status do contato pode não refletir o estado real do pipeline de deals. SQL real requer consulta separada.'],
+    'desqualificado': ['Desqualificado | Timing', 'Transições para UNQUALIFIED ou BAD_TIMING. Motivo específico ainda não disponível como propriedade.'],
+    'atividades-reais': ['Ritmo Real de Atividades', 'Atividades reais registradas no HubSpot: ligações, e-mails, WhatsApp, LinkedIn e reuniões. Ligações reais = duração ≥ 1 min.'],
+  };
+  function openHelpFor(key) {
+    var block = HELP_MAP[key];
+    if (!block) { openAllHelp(); return; }
+    openHelpBlock(block[0], block[1]);
   }
   function openHelpBlock(title, text) {
     document.getElementById('help-title').textContent = title;
@@ -633,21 +648,7 @@ var WorkloadBDR = (function () {
     setFilter: function (k, v) { state[k] = v; render(); },
     reset: function () { state.bdr = ''; state.porte = ''; state.fonte = ''; render(); },
     toggleDiasUteis: function (v) { state.diasUteis = !!v; render(); },
-    openHelpFor: function (key) {
-      var HELP_BLOCKS = {
-        'atividades-reais': ['Ritmo Real de Atividades', 'Conta ligações, e-mails, WhatsApp, LinkedIn e reuniões registrados no HubSpot por dia' + (state.diasUteis ? ' útil' : '') + '. Ligações reais = duração ≥ 1 min (proxy de conversa atendida). WhatsApp = communications com canal WHATS_APP. LinkedIn = canal LINKEDIN_MESSAGE. Reuniões = meetings registrados. E-mails = e-mails enviados via HubSpot.'],
-        'empresas': ['Empresas inseridas', 'Empresas criadas (createdate) na janela com hubspot_owner_id do time de BDRs. Fonte via hs_object_source_detail_1: Apollo e Lusha = push do próprio BDR via extensão.'],
-        'contatos': ['Contatos inseridos', 'Contatos criados (createdate) na janela com owner do time, com ou sem hs_lead_status.'],
-        'movs': ['Movimentações de status', 'Transições de hs_lead_status dentro da janela, extraídas do histórico nativo (propertiesWithHistory).'],
-        'efetivo': ['Contato efetivo', 'Transições de status para CONNECTED (contato efetivo).'],
-        'qualificado': ['Qualificado', 'Transições para OPEN_DEAL (deal em Reunião Agendada).'],
-        'desq': ['Desqualificado | Timing', 'Transições para UNQUALIFIED ou BAD_TIMING.'],
-        'universo': ['Universo', 'Contatos e empresas com dono no time de BDRs.']
-      };
-      var b = HELP_BLOCKS[key] || HELP_BLOCKS['universo'];
-      openHelpBlock(b[0], b[1]);
-    },
-    drill: drill, drillCalls: drillCalls, closeModal: closeModal, openAllHelp: openAllHelp, closeHelp: closeHelp, toggleTheme: toggleTheme,
+    drill: drill, drillCalls: drillCalls, closeModal: closeModal, openAllHelp: openAllHelp, openHelpFor: openHelpFor, closeHelp: closeHelp, toggleTheme: toggleTheme,
   };
 })();
 window.addEventListener('DOMContentLoaded', function () { WorkloadBDR.init(); });

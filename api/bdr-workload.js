@@ -26,17 +26,7 @@ const { hubspotPost, hubspotGet } = require('../lib/hubspot');
 const { setCORSHeaders, requireAuth, getHubspotToken, methodCheck } = require('./_helpers');
 const kv = require('../lib/kv');
 const env = require('../lib/env');
-
-const BDR_TEAM = [
-  'Anderson Souza', 'Cintia Rodrigues', 'Gabriele Almeida', 'Priscilla Feliciello',
-  'Leticia Romão', 'Allan Valença', 'Bruna Reis', 'Emanuelle Braga', 'Felipe Andrade',
-  'Giovana Nunes', 'Marcelli Netto', 'Thauan Pontes', 'Yokyko Muramoto',
-];
-const HS_ALIAS = {
-  'gabriele de almeida silva': 'Gabriele Almeida',
-  'bruna cristina dos reis silva': 'Bruna Reis',
-  'giovana rocha': 'Giovana Nunes',
-};
+const { BDR_TEAM, HS_ALIAS, norm, resolveTeamIds, findUnresolvedOwners } = require('../lib/bdr-team');
 
 const CONTACT_PROPS = [
   'firstname', 'lastname', 'jobtitle', 'hs_lead_status', 'hubspot_owner_id',
@@ -47,8 +37,6 @@ const COMPANY_PROPS = [
   'name', 'numberofemployees', 'hubspot_owner_id', 'createdate',
   'hs_object_source_label', 'hs_object_source_detail_1',
 ];
-
-const norm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
 
 let _cache = {};
 const CACHE_TTL = 5 * 60 * 1000;
@@ -79,17 +67,7 @@ async function fetchOwnersRaw(token) {
   return map;
 }
 
-function resolveTeamIds(ownerMap) {
-  const canonSet = {};
-  BDR_TEAM.forEach(n => { canonSet[norm(n)] = n; });
-  const idToBdr = {};
-  Object.keys(ownerMap).forEach(id => {
-    const raw = norm(ownerMap[id]);
-    const canonical = canonSet[norm(HS_ALIAS[raw] || raw)];
-    if (canonical) idToBdr[id] = canonical;
-  });
-  return idToBdr;
-}
+
 
 async function searchAll(token, objectType, filters, properties, sortProp) {
   const all = [];
@@ -315,6 +293,22 @@ async function buildPayload(token, sinceMs, untilMs) {
   });
   transitions.sort((a, b) => (a.ts < b.ts ? -1 : 1));
 
+  // Diagnósticos (sem PII) para auditoria de dados
+  const unresolvedOwners = findUnresolvedOwners(ownerMap);
+  const diagnostics = {
+    teamIdsCount: teamIds.length,
+    ownersInHubSpot: Object.keys(ownerMap).length,
+    unresolvedOwnersCount: unresolvedOwners.length,
+    rawCounts: {
+      companiesCreated: companiesRaw.length,
+      contactsCreated: contactsCreatedRaw.length,
+      contactsTouched: contactsTouchedRaw.length,
+      activities: activities.length,
+      transitions: transitions.length,
+    },
+    sqlStatusNote: 'Qualificado conta transição de hs_lead_status para OPEN_DEAL no contato. SQL real por deal requer consulta separada ao pipeline de deals.',
+  };
+
   return {
     success: true,
     generatedAt: new Date().toISOString(),
@@ -323,6 +317,7 @@ async function buildPayload(token, sinceMs, untilMs) {
     contactsCreated,
     transitions,
     activities,
+    diagnostics,
   };
 }
 

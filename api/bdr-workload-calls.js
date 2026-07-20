@@ -23,20 +23,9 @@ const { hubspotPost, hubspotGet } = require('../lib/hubspot');
 const { setCORSHeaders, requireAuth, getHubspotToken, methodCheck } = require('./_helpers');
 const kv = require('../lib/kv');
 const env = require('../lib/env');
+const { BDR_TEAM, HS_ALIAS, norm, resolveTeamIds } = require('../lib/bdr-team');
 
 const MIN_CONVERSA = 60000; // 1 min em ms — mesmo corte da página
-
-const BDR_TEAM = [
-  'Anderson Souza', 'Cintia Rodrigues', 'Gabriele Almeida', 'Priscilla Feliciello',
-  'Leticia Romão', 'Allan Valença', 'Bruna Reis', 'Emanuelle Braga', 'Felipe Andrade',
-  'Giovana Nunes', 'Marcelli Netto', 'Thauan Pontes', 'Yokyko Muramoto',
-];
-const HS_ALIAS = {
-  'gabriele de almeida silva': 'Gabriele Almeida',
-  'bruna cristina dos reis silva': 'Bruna Reis',
-  'giovana rocha': 'Giovana Nunes',
-};
-const norm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
 
 async function fetchOwnersRaw(token) {
   const map = {};
@@ -51,16 +40,7 @@ async function fetchOwnersRaw(token) {
   }
   return map;
 }
-function resolveTeamIds(ownerMap) {
-  const canonSet = {};
-  BDR_TEAM.forEach(n => { canonSet[norm(n)] = n; });
-  const idToBdr = {};
-  Object.keys(ownerMap).forEach(id => {
-    const canonical = canonSet[norm(HS_ALIAS[norm(ownerMap[id])] || ownerMap[id])];
-    if (canonical) idToBdr[id] = canonical;
-  });
-  return idToBdr;
-}
+
 async function searchAll(token, objectType, filters, properties) {
   const all = [];
   let after = 0, hasMore = true;
