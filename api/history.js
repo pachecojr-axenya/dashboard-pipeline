@@ -169,6 +169,9 @@ module.exports = async function handler(req, res) {
       const includeClosedStages = params.get('includeClosedStages') === '1';
       const scopeParam = params.get('scope'); // 'ativos' | 'tudo' | null (aditivo/retrocompat)
       const deltaScoped = scopeParam === 'ativos' || scopeParam === 'tudo';
+      const _setOf = v => v ? new Set(String(v).split('|').filter(Boolean)) : null;
+      const aeSel = _setOf(params.get('ae'));   // filtro Executivo (multiselect)
+      const qSel = _setOf(params.get('q'));      // filtro Quarter (multiselect)
 
       const fotos = await _listFotos(true);
       if (!fotos.length) return res.status(422).json({ success: false, error: 'Nenhuma foto disponível' });
@@ -188,8 +191,13 @@ module.exports = async function handler(req, res) {
       
       // Escopo ANTES do compute. scope=ativos|tudo (remove Bid+Standby) tem
       // precedência; sem ele, mantém o toggle legado includeClosedStages.
-      const scopedInputA = deltaScoped ? FC.applyDeltaScope(mappedA, scopeParam) : (includeClosedStages ? mappedA : FC.excludeClosedStages(mappedA));
-      const scopedInputB = deltaScoped ? FC.applyDeltaScope(mappedB, scopeParam) : (includeClosedStages ? mappedB : FC.excludeClosedStages(mappedB));
+      let scopedInputA = deltaScoped ? FC.applyDeltaScope(mappedA, scopeParam) : (includeClosedStages ? mappedA : FC.excludeClosedStages(mappedA));
+      let scopedInputB = deltaScoped ? FC.applyDeltaScope(mappedB, scopeParam) : (includeClosedStages ? mappedB : FC.excludeClosedStages(mappedB));
+      // Opções dos filtros (união A+B pós-escopo, ANTES do filtro AE/Quarter).
+      const filterOptions = FC.deltaFilterOptions(scopedInputA.concat(scopedInputB));
+      // Filtro Executivo/Quarter (multiselect). Vazio = tudo.
+      scopedInputA = FC.applyAeQuarterFilter(scopedInputA, aeSel, qSel);
+      scopedInputB = FC.applyAeQuarterFilter(scopedInputB, aeSel, qSel);
 
       const snapA = FC.computeSnapshot(scopedInputA, fA.refDate, manual);
       const snapB = FC.computeSnapshot(scopedInputB, fB.refDate, manual);
@@ -224,6 +232,7 @@ module.exports = async function handler(req, res) {
         measure: 'prob12',   // headline: Receita Probabilizada, TCV(12M) rolante
         includeClosedStages,
         scope: scopeParam || null,
+        filters: filterOptions,
         a: { requested: a, resolvedTab: fA.tab, tipo: fA.tipo, refDate: fA.refDate, kpis: snapA.kpis, totals: snapA.totals },
         b: { requested: b, resolvedTab: fB.tab, tipo: fB.tipo, refDate: fB.refDate, kpis: snapB.kpis, totals: snapB.totals },
         funnel: { stages: deltaScoped ? FC.deltaScopeStages(scopeParam) : snapB.funnelStages, a: snapA.stageCounts, b: snapB.stageCounts },
@@ -250,6 +259,9 @@ module.exports = async function handler(req, res) {
       const includeClosedStages = params.get('includeClosedStages') === '1';
       const scopeParam = params.get('scope'); // 'ativos' | 'tudo' | null (aditivo/retrocompat)
       const deltaScoped = scopeParam === 'ativos' || scopeParam === 'tudo';
+      const _setOf = v => v ? new Set(String(v).split('|').filter(Boolean)) : null;
+      const aeSel = _setOf(params.get('ae'));
+      const qSel = _setOf(params.get('q'));
       if (!a || !b || !row) return res.status(400).json({ success: false, error: 'informe ?a=&b=&row=' });
       if (!/^\d{4}-\d{2}-\d{2}$/.test(a) || !/^\d{4}-\d{2}-\d{2}$/.test(b)) return res.status(400).json({ success: false, error: 'datas devem estar no formato YYYY-MM-DD' });
       if (!(b > a)) return res.status(400).json({ success: false, error: 'Data B deve ser posterior a Data A' });
@@ -262,8 +274,10 @@ module.exports = async function handler(req, res) {
       // etapa bruta de cada deal em B (inclui Perdido/Ganho/fora de escopo) → destino de quem saiu
       const rawBStageById = {}; mappedB.forEach(d => { rawBStageById[FC.dealId(d)] = d.stage; });
       // Escopo: scope=ativos|tudo tem precedência; senão, toggle legado.
-      const scopedInputA = deltaScoped ? FC.applyDeltaScope(mappedA, scopeParam) : (includeClosedStages ? mappedA : FC.excludeClosedStages(mappedA));
-      const scopedInputB = deltaScoped ? FC.applyDeltaScope(mappedB, scopeParam) : (includeClosedStages ? mappedB : FC.excludeClosedStages(mappedB));
+      let scopedInputA = deltaScoped ? FC.applyDeltaScope(mappedA, scopeParam) : (includeClosedStages ? mappedA : FC.excludeClosedStages(mappedA));
+      let scopedInputB = deltaScoped ? FC.applyDeltaScope(mappedB, scopeParam) : (includeClosedStages ? mappedB : FC.excludeClosedStages(mappedB));
+      scopedInputA = FC.applyAeQuarterFilter(scopedInputA, aeSel, qSel);
+      scopedInputB = FC.applyAeQuarterFilter(scopedInputB, aeSel, qSel);
       const cA = FC.dealContributions(scopedInputA, fA.refDate, manual);
       const cB = FC.dealContributions(scopedInputB, fB.refDate, manual);
       // Drill genérico (Leva 2): row pode ser <rowKey> (compat waterfall), stage:<Etapa>,
