@@ -1,5 +1,34 @@
 # Dashboard Enhancement Loop — Status Log
 
+### 🚀 DEPLOY DE PRODUÇÃO | Forecast Delta — toggle "Escopo: Ativos/Tudo" + remoção de Bid/Standby (2026-07-20)
+
+> Pedido do Pacheco: o comparativo do `/forecast` deve ignorar Bid e Standby e ter
+> um toggle geral Ativos/Tudo, com Ativos (padrão) considerando só
+> Diagnóstico/Cotação/Consultoria/Negociação.
+
+- Novo parâmetro `scope=ativos|tudo` em `/api/history?action=compare` e
+  `compare-drill`. **Aditivo/retrocompatível**: sem `scope`, mantém o toggle legado
+  `includeClosedStages` — por isso `test-forecast-delta-e2e`/`leva2`/`delta-invariant`
+  seguem verdes.
+- `lib/forecast-compute.js`: `applyDeltaScope`/`deltaScopeStages`/`deltaRowInScope`.
+  Remove **sempre** pipeline Bid e etapa Standby. `ativos` = Diagnóstico, Cotação,
+  Consultoria, Negociação; `tudo` = todas menos Bid/Standby/Perdido (inclui Reunião
+  Agendada + Ganho + Implantação).
+- Waterfall, funil e tabela por etapa alinhados ao escopo; invariante Σ Δ = Δtotal
+  preservado (linhas fora do escopo são zero).
+- `public/forecast-delta.html`: o toggle "Implantação/Ganho" virou o toggle geral
+  **"Escopo: Ativos | Tudo"** (padrão **Ativos**).
+- Teste novo `scripts/test-forecast-delta-scope.js`.
+- **Deploy:** commit `0e191dc` (sobre `c18c1bc` do Samuel, ff sem force) |
+  deployment `dpl_CLvj9cm3ijxS1geUT9Pd1rwFXatW` (READY, production).
+- **Pós-deploy validado:** 7 rotas mínimas 200, `/forecast-delta` 200,
+  `/api/auth/me` 401. Escopo confirmado ao vivo: `ativos`→funil 4 etapas,
+  `tudo`→7 etapas, ambos sem Bid/Standby, invariante ✓.
+- Sem sobreposição de arquivos com a sessão paralela do Samuel (interseção vazia
+  vs `origin/main`).
+
+---
+
 ### BDR | Treble | consumo real do ClickHouse preparado (2026-07-20)
 
 - `/api/bdr-treble-dw` passa a consultar `client_analytics.fact_deployment_status`
