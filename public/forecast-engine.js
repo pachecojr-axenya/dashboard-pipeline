@@ -18,6 +18,8 @@
  *  - Reunião Agendada → (vidas || colaboradores) × R$24; início createdate + 15m.
  *  - Cotação/Consultoria/Negociação → início por modelo (corretagem: vigência+2 ou
  *    prevista+2; fee: prevista+2; sem modelo: prevista) e régua via calcReceita.
+ *    Fallback (2026-07-20): sem base de 1ª Fatura (régua vazia) → vidas×VPV com o
+ *    delay/piso do Diagnóstico, probabilizado pela prob da própria etapa.
  *  - Demais etapas → data prevista de receita + régua via calcReceita (cap 24m).
  */
 (function (root) {
@@ -84,16 +86,39 @@
       return MONTHS.map(function (m) { if (probAdj == null) return null; var diff = (m.y - rsR.y) * 12 + (m.mo - rsR.mo); if (diff < 0) return null; return { val: recR * probAdj, rec: recR, probAdj: probAdj, n: diff + 1 }; });
     }
 
-    // Cotação / Consultoria / Negociação: início da receita depende do modelo.
-    var revStart2;
+    // Cotação / Consultoria / Negociação: início por modelo + régua da 1ª Fatura.
+    // FALLBACK (2026-07-20): se a régua não produz receita (tipicamente sem 1ª
+    // Fatura), o deal cai no vidas×VPV (mesmo delay/piso do Diagnóstico), mas
+    // probabilizado pela prob da PRÓPRIA etapa — pra deal aberto não ficar invisível.
     if (['Cotação', 'Consultoria', 'Negociação'].indexOf(d.stage) !== -1) {
       var modelo = (d.modelo_remuneracao || '').toLowerCase();
-      if (modelo.indexOf('corretagem') !== -1) revStart2 = (d.vigencia && d.vigencia >= todayStr()) ? addMonths(parseRevenueDate(d.vigencia), 2) : addMonths(parseRevenueDate(d.data_prevista_para_receita), 2);
-      else if (modelo.indexOf('fee') !== -1) revStart2 = addMonths(parseRevenueDate(d.data_prevista_para_receita), 2);
-      else revStart2 = parseRevenueDate(d.data_prevista_para_receita);
-    } else {
-      revStart2 = parseRevenueDate(d.data_prevista_para_receita);
+      var revStartCN;
+      if (modelo.indexOf('corretagem') !== -1) revStartCN = (d.vigencia && d.vigencia >= todayStr()) ? addMonths(parseRevenueDate(d.vigencia), 2) : addMonths(parseRevenueDate(d.data_prevista_para_receita), 2);
+      else if (modelo.indexOf('fee') !== -1) revStartCN = addMonths(parseRevenueDate(d.data_prevista_para_receita), 2);
+      else revStartCN = parseRevenueDate(d.data_prevista_para_receita);
+      var reguaCN = MONTHS.map(function (m) {
+        if (!revStartCN || probAdj == null) return null;
+        var diff = (m.y - revStartCN.y) * 12 + (m.mo - revStartCN.mo);
+        if (diff < 0 || diff > 23) return null;
+        var n = diff + 1; var rec = calcReceita(n, d);
+        if (rec == null) return null;
+        return { val: rec * probAdj, rec: rec, probAdj: probAdj, n: n };
+      });
+      if (reguaCN.some(function (x) { return x != null; })) return reguaCN;
+      // Sem base de 1ª Fatura → fallback vidas×VPV (delay/piso do Diagnóstico).
+      var vidasCN = d.vidas || d.colaboradores || 0;
+      if (!vidasCN) return NIL;
+      var delayCN = vidasCN <= 200 ? 9 : vidasCN <= 4999 ? 14 : 18;
+      var rsCN = null;
+      if (d.createdate) { var cdCN = new Date(d.createdate + 'T00:00:00'); var tCN = cdCN.getMonth() + delayCN; rsCN = { y: cdCN.getFullYear() + Math.floor(tCN / 12), mo: tCN % 12 }; }
+      var nowRefCN = _refNow();
+      if (!rsCN || rsCN.y < nowRefCN.y || (rsCN.y === nowRefCN.y && rsCN.mo < nowRefCN.mo)) rsCN = nowRefCN;
+      var recCN = vidasCN * getVpv(vidasCN);
+      return MONTHS.map(function (m) { if (probAdj == null) return null; var diff = (m.y - rsCN.y) * 12 + (m.mo - rsCN.mo); if (diff < 0) return null; return { val: recCN * probAdj, rec: recCN, probAdj: probAdj, n: diff + 1, vpvFallback: true }; });
     }
+
+    // Demais etapas: início na data prevista + régua (cap 24m).
+    var revStart2 = parseRevenueDate(d.data_prevista_para_receita);
     return MONTHS.map(function (m) {
       if (!revStart2 || probAdj == null) return null;
       var diff = (m.y - revStart2.y) * 12 + (m.mo - revStart2.mo);

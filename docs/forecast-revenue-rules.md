@@ -43,6 +43,15 @@ Por etapa (`valor` = receita real do mês; `início` = 1º mês com receita):
   - **fee**: `data_prevista + 2m`.
   - **sem modelo**: `data_prevista` (puro).
   - valor = `calcReceitaMes(n)` (régua da 1ª fatura); **cap 24 meses**.
+  - **Fallback (2026-07-20):** se a régua **não produz receita** (tipicamente **sem 1ª
+    Fatura** lançada), o deal cai no **`(vidas || colaboradores) × VPV`** com o mesmo
+    **delay/piso do Diagnóstico** (9/14/18m + piso na referência), recorrente, mas
+    **probabilizado pela prob da própria etapa** (Cotação 18,6% etc., não os 6% do
+    Diagnóstico). Objetivo: deal aberto de Cot/Cons/Neg **não fica invisível** no
+    forecast só porque a 1ª Fatura não foi preenchida. **Não** se aplica a outras
+    etapas. Observação: a **coluna "ARR Est."** continua vinda do campo
+    (`arr_estimado ‖ 1ª Fatura×12`) e permanece "—" — o fallback afeta a **projeção de
+    caixa**, não a coluna de ARR.
 
 - **Demais etapas** (Proposta Enviada, Standby, Implantação, Ganho, …)
   - início = `data_prevista`; valor = `calcReceitaMes(n)`; **cap 24 meses**.
