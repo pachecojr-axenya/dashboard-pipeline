@@ -21,6 +21,8 @@ var WorkloadBDR = (function () {
   var history = null;
   var historyError = null;
   var CHANNELS = [['todos', 'Todos'], ['calls', 'Ligações'], ['emails', 'E-mails'], ['whatsApp', 'WhatsApp'], ['linkedin', 'LinkedIn']];
+  var sortBy = 'hoje';
+  var sortDir = 'desc';
   var state = { period: 'hoje', since: null, until: null, bdr: '', porte: '', fonte: '', canal: 'todos', diasUteis: true };
 
   // ---------- datas (America/Sao_Paulo = fuso local dos usuários) ----------
@@ -57,6 +59,11 @@ var WorkloadBDR = (function () {
     // Defesa: valor não parseável nunca vira "NaN/NaN NaN:NaN" na UI.
     if (isNaN(d.getTime())) return '—';
     return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + ' ' + hhmm(ts);
+  }
+  function dmhmFull(ts) {
+    var d = new Date(ts);
+    if (isNaN(d.getTime())) return '—';
+    return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear() + ' ' + hhmm(ts);
   }
   function ddmmFromIso(s) { return s.slice(8, 10) + '/' + s.slice(5, 7); }
   function isDiaUtil(date) {
@@ -164,7 +171,31 @@ var WorkloadBDR = (function () {
     var kDesq = trans.filter(function (t) { return t.para === 'UNQUALIFIED' || t.para === 'BAD_TIMING'; });
 
     var prev = previousKpis();
-    var html = bdrFrozenBanner() + '<section class="note"><b>Fonte dos dados:</b> ' + esc(renderFreshness()) + '. <b>' + esc(renderWindowContext()) + '</b>. O snapshot BigQuery roda durante o dia; a série de hoje usa HubSpot live para não mostrar atividade parcial.</section>';
+    var activities = fActivities();
+    var notices = renderQualityChecks(activities);
+    if (historyError) notices += '<div class="note" style="margin-bottom:1rem"><b>Histórico indisponível:</b> ' + esc(historyError) + '</div>';
+    if (historyAvailable() && history.metadata && history.metadata.maxMetricDate && history.metadata.maxMetricDate < state.until) notices += '<div class="note" style="margin-bottom:1rem"><b>Histórico possivelmente defasado:</b> último dia no BigQuery é ' + esc(history.metadata.maxMetricDate) + '.</div>';
+
+    var html = bdrFrozenBanner() + '<section class="note"><b>Fonte dos dados:</b> ' + esc(renderFreshness()) + '. <b>' + esc(renderWindowContext()) + '</b>. O snapshot BigQuery roda durante o dia; a série de hoje usa HubSpot live para não mostrar atividade parcial.</section>' + notices;
+
+    html += '<section class="level-0"><h2 class="level-title">📊 Visão Executiva</h2>';
+    html += '<div class="card span-12"><div class="card-title"><div><h2>Pulso do Dia <span class="source-badge live">LIVE</span></h2><div class="desc">O time está no ritmo hoje? Total de toques, percentual de meta e pace projetado.</div></div></div>';
+    html += kpis([
+      { label: 'Toques hoje', value: activities.length, cls: 'teal', drill: 'atividades', sub: 'Atividades registradas no HubSpot live', help: 'atividades-reais', delta: deltaHtml(activities.length, prev.movs) },
+      { label: '% meta', value: '—', cls: '', drill: 'atividades', sub: 'Meta diária ainda não configurada no front', help: 'atividades-reais', delta: '' },
+      { label: 'Pace projetado', value: activities.length, cls: 'good', drill: 'atividades', sub: 'Projeção conservadora pelos toques já registrados', help: 'atividades-reais', delta: '' },
+    ]);
+    html += '</div>';
+    html += chartRealActivities(activities);
+    html += '</section>';
+
+    html += '<section class="level-1"><h2 class="level-title">👥 Visão de Gestão</h2>';
+    html += tabelaAtividades(activities, comps, conts, trans);
+    html += '<div class="grid">';
+    html += chartPorBdr(comps, conts, trans);
+    html += chartInsercoes(conts, trans);
+    html += '</div>';
+    html += chartFonteResultado(comps, conts, trans);
     html += kpis([
       { label: 'Empresas inseridas', value: comps.length, cls: 'teal', drill: 'empresas', sub: subFontes(comps), help: 'empresas-ins', delta: deltaHtml(comps.length, prev.empresas) },
       { label: 'Contatos inseridos', value: conts.length, cls: 'teal', drill: 'contatos', sub: subFontes(conts), help: 'contatos-ins', delta: deltaHtml(conts.length, prev.contatos) },
@@ -173,20 +204,20 @@ var WorkloadBDR = (function () {
       { label: 'Movimentações de status', value: trans.length, cls: '', drill: 'movs', sub: trans.length ? 'em ' + uniq(trans, 'contato_id') + ' contatos' : 'sem movimentação no recorte', help: 'movs-status', delta: deltaHtml(trans.length, prev.movs) },
       { label: 'Desqualificado | Timing', value: kDesq.length, cls: kDesq.length ? 'bad' : '', drill: 'desq', sub: 'motivos: propriedade pendente no HubSpot', help: 'desqualificado', delta: deltaHtml(kDesq.length, prev.desq) },
     ]);
-    if (historyError) html += '<div class="note" style="margin-bottom:1rem"><b>Histórico indisponível:</b> ' + esc(historyError) + '</div>';
-    if (historyAvailable() && history.metadata && history.metadata.maxMetricDate && history.metadata.maxMetricDate < state.until) html += '<div class="note" style="margin-bottom:1rem"><b>Histórico possivelmente defasado:</b> último dia no BigQuery é ' + esc(history.metadata.maxMetricDate) + '.</div>';
-    html += chartInsercoes(conts, trans);
-    html += chartRealActivities(fActivities());
-    html += chartFonteResultado(comps, conts, trans);
-    html += tabelaAtividades(fActivities(), comps, conts, trans);
-    html += tabelaSqlDeals(sqlDeals);
-    html += '<div class="grid">';
-    html += chartPorBdr(comps, conts, trans);
-    html += chartPorFonte(comps, conts);
-    html += '</div>';
-    html += tabelaMovs(trans);
-    html += tabelaEmpresas(comps, conts);
-    html += tabelaContatos(conts);
+    html += '</section>';
+
+    if (state.bdr) {
+      html += '<section class="level-2"><h2 class="level-title">🎯 Visão do BDR</h2>';
+      html += chartBdrDayWaterfall(activities);
+      html += '<div class="grid">';
+      html += chartPorFonte(comps, conts);
+      html += '</div>';
+      html += tabelaSqlDeals(sqlDeals);
+      html += tabelaMovs(trans);
+      html += tabelaEmpresas(comps, conts);
+      html += tabelaContatos(conts);
+      html += '</section>';
+    }
 
     document.getElementById('content').innerHTML = html;
     document.getElementById('state').classList.add('hidden');
@@ -220,6 +251,52 @@ var WorkloadBDR = (function () {
     arr.forEach(function (x) { var f = x.fonte || 'Outra'; c[f] = (c[f] || 0) + 1; });
     return Object.keys(c).sort(function (a, b) { return c[b] - c[a]; })
       .map(function (f) { return f + ' ' + c[f]; }).join(' | ');
+  }
+
+  function renderQualityChecks(acts) {
+    var checks = [];
+    var rows = aggregateHistoryByDay(state.since, state.until, state.diasUteis, true, acts);
+    var sums = sumActivityRows(rows);
+    var channelSum = sums.calls + sums.emails + sums.whatsApp + sums.linkedin + sums.meetings;
+    var diff = Math.abs((sums.total || 0) - channelSum);
+    var diffPct = sums.total ? diff / sums.total : (channelSum ? 1 : 0);
+    var byBdr = {};
+    raw.team.forEach(function (b) { byBdr[b] = 0; });
+    acts.forEach(function (a) {
+      var b = activityBucket(a);
+      if (b && byBdr[a.bdr] != null) byBdr[a.bdr]++;
+    });
+    var activeBdrs = Object.keys(byBdr).filter(function (b) { return byBdr[b] > 0; });
+    var zeroBdrs = Object.keys(byBdr).filter(function (b) { return byBdr[b] === 0; });
+    if (zeroBdrs.length) checks.push({ status: 'fail', icon: '⚠', text: activeBdrs.length + '/' + raw.team.length + ' BDRs com atividade (' + zeroBdrs.length + ' zerados)' });
+    else checks.push({ status: 'pass', icon: '✓', text: activeBdrs.length + '/' + raw.team.length + ' BDRs com atividade' });
+    if (diffPct > 0.02) checks.push({ status: 'fail', icon: '⚠', text: 'Total diverge dos canais: total ' + sums.total + ' vs soma ' + channelSum + ' (' + Math.round(diffPct * 100) + '%)' });
+    else checks.push({ status: 'pass', icon: '✓', text: 'Total = soma dos canais (' + sums.total + ')' });
+    if (historyAvailable()) {
+      var todayIso = iso(new Date());
+      var bqRows = aggregateHistoryByDay(state.since, state.until, state.diasUteis, false, []);
+      var compareRows = rows.filter(function (r) { return r.date !== todayIso; });
+      var compareBqRows = bqRows.filter(function (r) { return r.date !== todayIso; });
+      if (compareRows.length) {
+        var apiTotal = sumActivityRows(compareRows).total;
+        var bqTotal = sumActivityRows(compareBqRows).total;
+        var recDiff = Math.abs(apiTotal - bqTotal);
+        var recPct = bqTotal ? recDiff / bqTotal : (apiTotal ? 1 : 0);
+        if (recPct > 0.02) checks.push({ status: 'fail', icon: '⚠', text: 'API ' + apiTotal + ' ≠ BQ ' + bqTotal + ' (' + Math.round(recPct * 100) + '%)' });
+        else checks.push({ status: 'pass', icon: '✓', text: 'reconciliado (API ' + apiTotal + ' = BQ ' + bqTotal + ')' });
+      } else {
+        var liveTotal = sumActivityRows(rows).total;
+        checks.push({ status: 'pass', icon: '✓', text: 'reconciliado live (API ' + liveTotal + ')' });
+      }
+    } else {
+      checks.push({ status: 'warn', icon: '⚠', text: 'BQ indisponível para reconciliar' });
+    }
+    var missingBusinessDays = rows.filter(function (r) { return r.total === 0; }).length;
+    if (missingBusinessDays) checks.push({ status: 'warn', icon: '⚠', text: missingBusinessDays + ' dias úteis sem dados' });
+    else checks.push({ status: 'pass', icon: '✓', text: 'Sem gaps de dias úteis' });
+    return '<div class="quality-checks">' + checks.map(function (c) {
+      return '<div class="check-item ' + c.status + '"><span class="check-icon">' + c.icon + '</span><span class="check-text">' + esc(c.text) + '</span></div>';
+    }).join('') + '</div>';
   }
 
   function kpis(items) {
@@ -326,10 +403,80 @@ var WorkloadBDR = (function () {
     rows.forEach(function (r) { Object.keys(s).forEach(function (k) { s[k] += r[k] || 0; }); });
     return s;
   }
+  function latestTs(current, candidate) {
+    var c = new Date(candidate).getTime();
+    if (!isFinite(c)) return current;
+    var p = current ? new Date(current).getTime() : -Infinity;
+    return c > p ? candidate : current;
+  }
+  function bdrDailyTarget() {
+    if (!state.bdr || !historyAvailable()) return null;
+    var keys = ['bdr_daily_target', 'daily_target', 'target', 'activities_target'];
+    for (var i = 0; i < history.dailyRows.length; i++) {
+      var r = history.dailyRows[i];
+      if (r.owner_name !== state.bdr) continue;
+      for (var j = 0; j < keys.length; j++) {
+        var v = Number(r[keys[j]]);
+        if (isFinite(v) && v > 0) return v;
+      }
+    }
+    if (history.metadata && history.metadata.bdrDailyTargets) {
+      var meta = Number(history.metadata.bdrDailyTargets[state.bdr]);
+      if (isFinite(meta) && meta > 0) return meta;
+    }
+    return null;
+  }
+  function chartBdrDayWaterfall(acts) {
+    if (!state.bdr) return '';
+    var rows = aggregateActsByDay(acts, state.since, state.until, false);
+    var s = sumActivityRows(rows);
+    var items = [
+      ['Ligações', s.calls, 'var(--teal)'],
+      ['E-mails', s.emails, 'var(--yellow)'],
+      ['WhatsApp', s.whatsApp, 'var(--green)'],
+      ['LinkedIn', s.linkedin, 'var(--orange)'],
+      ['Reuniões', s.meetings, 'rgba(58,184,183,.72)'],
+    ];
+    var total = items.reduce(function (acc, item) { return acc + item[1]; }, 0);
+    var target = bdrDailyTarget();
+    var gap = target == null ? null : total - target;
+    var max = Math.max(total, target || 0, 1);
+    var W = 520, H = 240, baseY = 172, topY = 38, plotH = baseY - topY, barW = 54, startX = 32, gapX = 34;
+    function y(v) { return baseY - (v / max * plotH); }
+    var h = '<div class="grid"><div class="card span-6"><div class="card-title"><div><h2>Composição do dia por canal</h2>' +
+      '<div class="desc">Como ' + esc(state.bdr) + ' distribuiu o esforço na janela filtrada</div></div>' +
+      '<span class="pill">Total: ' + total + '</span></div>';
+    h += '<svg class="waterfall-svg area-svg" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Waterfall de atividades por canal do BDR filtrado">';
+    h += '<line x1="18" y1="' + baseY + '" x2="500" y2="' + baseY + '"></line>';
+    var running = 0;
+    items.forEach(function (item, i) {
+      var x = startX + i * (barW + gapX), prev = running, next = running + item[1], yy = y(next), hh = Math.max(baseY - yy, item[1] ? 4 : 0);
+      if (i > 0) h += '<line x1="' + (x - gapX) + '" y1="' + y(prev) + '" x2="' + x + '" y2="' + y(prev) + '" stroke-dasharray="4 4"></line>';
+      h += '<rect x="' + x + '" y="' + yy + '" width="' + barW + '" height="' + hh + '" rx="8" fill="' + item[2] + '"><title>' + esc(item[0]) + ': +' + item[1] + '</title></rect>';
+      h += '<text x="' + (x + barW / 2) + '" y="' + (yy - 8) + '" text-anchor="middle" class="wf-val">+' + item[1] + '</text>';
+      h += '<text x="' + (x + barW / 2) + '" y="204" text-anchor="middle">' + esc(item[0]) + '</text>';
+      running = next;
+    });
+    var totalX = startX + items.length * (barW + gapX) + 8, totalY = y(total), totalH = Math.max(baseY - totalY, total ? 4 : 0);
+    h += '<rect x="' + totalX + '" y="' + totalY + '" width="64" height="' + totalH + '" rx="8" fill="var(--teal)"><title>Total: ' + total + '</title></rect>';
+    h += '<text x="' + (totalX + 32) + '" y="' + (totalY - 8) + '" text-anchor="middle" class="wf-val">' + total + '</text><text x="' + (totalX + 32) + '" y="204" text-anchor="middle">Total</text>';
+    if (target != null) {
+      var ty = y(target);
+      h += '<line x1="18" y1="' + ty + '" x2="500" y2="' + ty + '" stroke="var(--text2)" stroke-dasharray="6 5"></line>';
+      h += '<text x="500" y="' + (ty - 6) + '" text-anchor="end">Meta: ' + target + '</text>';
+    }
+    h += '</svg><div class="story-grid"><div class="story-card"><b>Total</b><span>' + total + ' atividades nos canais reais</span></div>';
+    if (gap != null) h += '<div class="story-card"><b>Gap</b><span>' + (gap > 0 ? '+' : '') + gap + ' (meta: ' + target + ')</span></div>';
+    h += '<div class="story-card"><b>Composição</b><span>' + items.map(function (item) { return item[0] + ' ' + item[1]; }).join(' | ') + '</span></div></div></div></div>';
+    return h;
+  }
+  function deltaPctNumber(now, prev) {
+    if (!prev && !now) return 0;
+    if (!prev) return 100;
+    return Math.round((now - prev) / prev * 100);
+  }
   function pctDelta(now, prev) {
-    if (!prev && !now) return '0%';
-    if (!prev) return '+100%';
-    var v = Math.round((now - prev) / prev * 100);
+    var v = deltaPctNumber(now, prev);
     return (v > 0 ? '+' : '') + v + '%';
   }
   function deltaHtml(now, prev) {
@@ -477,58 +624,86 @@ var WorkloadBDR = (function () {
   }
 
   function tabelaAtividades(acts, comps, conts, trans) {
-    var MIN_CONVERSA = 60000;
     var por = {};
     raw.team.forEach(function (b) {
-      por[b] = { calls: 0, calls1m: 0, emails: 0, whats: 0, linkedin: 0, comOutras: 0, notes: 0, tasks: 0, meetings: 0, ins: 0, mov: 0 };
+      por[b] = { hoje: 0, meta: 0, pctMeta: 0, delta7d: 0, calls: 0, emails: 0, whats: 0, linkedin: 0, meetings: 0, lastLoad: null };
     });
     acts.forEach(function (a) {
       var p = por[a.bdr]; if (!p) return;
-      if (a.tipo === 'calls') { p.calls++; if (a.duracao_ms != null && a.duracao_ms >= MIN_CONVERSA) p.calls1m++; }
+      if (a.tipo === 'calls') p.calls++;
       else if (a.tipo === 'emails') p.emails++;
       else if (a.tipo === 'communications') {
         if (a.canal === 'WHATS_APP') p.whats++;
         else if (a.canal === 'LINKEDIN_MESSAGE') p.linkedin++;
-        else p.comOutras++;
       }
-      else if (a.tipo === 'notes') p.notes++;
-      else if (a.tipo === 'tasks') p.tasks++;
       else if (a.tipo === 'meetings') p.meetings++;
+      p.lastLoad = latestTs(p.lastLoad, a.ts);
     });
-    comps.forEach(function (c) { if (por[c.bdr]) por[c.bdr].ins++; });
-    conts.forEach(function (c) { if (por[c.bdr]) por[c.bdr].ins++; });
-    trans.forEach(function (t) { if (por[t.bdr]) por[t.bdr].mov++; });
-    function tot(p) { return p.calls + p.emails + p.whats + p.linkedin + p.comOutras + p.notes + p.tasks + p.meetings; }
-    function totReal(p) { return p.calls + p.emails + p.whats + p.linkedin + p.meetings; }
-    var rows = raw.team.slice().sort(function (a, b) { return tot(por[b]) - tot(por[a]); });
-    var totalActs = 0, totalReal = 0, totalNotasTarefas = 0;
+    comps.forEach(function (c) { if (por[c.bdr]) por[c.bdr].lastLoad = latestTs(por[c.bdr].lastLoad, c.criado); });
+    conts.forEach(function (c) { if (por[c.bdr]) por[c.bdr].lastLoad = latestTs(por[c.bdr].lastLoad, c.criado); });
+    trans.forEach(function (t) { if (por[t.bdr]) por[t.bdr].lastLoad = latestTs(por[t.bdr].lastLoad, t.ts); });
+    function total(p) { return p.calls + p.emails + p.whats + p.linkedin + p.meetings; }
+    var prevSince = shiftIso(state.since, -7), prevUntil = shiftIso(state.since, -1);
+    var prevByBdr = {};
+    if (historyAvailable()) {
+      history.dailyRows.forEach(function (r) {
+        if (r.metric_date < prevSince || r.metric_date > prevUntil) return;
+        if (state.diasUteis && !isDiaUtil(new Date(r.metric_date + 'T00:00:00'))) return;
+        if (!prevByBdr[r.owner_name]) prevByBdr[r.owner_name] = 0;
+        prevByBdr[r.owner_name] += (r.calls_total || 0) + (r.emails_sent_total || 0) + (r.whatsapp_total || 0) + (r.linkedin_total || 0) + (r.meetings_total || 0);
+      });
+    }
+    raw.team.forEach(function (b) {
+      var p = por[b];
+      p.hoje = total(p);
+      p.meta = state.diasUteis ? Math.max(1, countDiasUteis(state.since, state.until) * 50) : Math.max(1, inclusiveCalendarDays(state.since, state.until) * 50);
+      p.pctMeta = Math.round(p.hoje / p.meta * 100);
+      p.delta7d = deltaPctNumber(p.hoje, prevByBdr[b] || 0);
+      if (!p.lastLoad && raw.generatedAt) p.lastLoad = raw.generatedAt;
+    });
+    var rows = raw.team.slice().sort(function (a, b) {
+      var pa = por[a], pb = por[b], va = sortValue(pa, a), vb = sortValue(pb, b);
+      if (typeof va === 'string') return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
+      return sortDir === 'asc' ? va - vb : vb - va;
+    });
+    var totals = { hoje: 0, meta: 0, calls: 0, emails: 0, whats: 0, linkedin: 0, meetings: 0, lastLoad: null };
     rows.forEach(function (b) {
-      totalActs += tot(por[b]);
-      totalReal += totReal(por[b]);
-      totalNotasTarefas += por[b].notes + por[b].tasks + por[b].comOutras;
+      var p = por[b];
+      totals.hoje += p.hoje; totals.meta += p.meta; totals.calls += p.calls; totals.emails += p.emails; totals.whats += p.whats; totals.linkedin += p.linkedin; totals.meetings += p.meetings;
+      totals.lastLoad = latestTs(totals.lastLoad, p.lastLoad);
     });
+    totals.pctMeta = Math.round(totals.hoje / Math.max(1, totals.meta) * 100);
+    totals.delta7d = deltaPctNumber(totals.hoje, Object.keys(prevByBdr).reduce(function (sum, b) { return sum + prevByBdr[b]; }, 0));
 
-    var h = '<div class="grid"><div class="card span-12"><div class="card-title"><div><h2>Atividades | o trabalho além da inserção</h2>' +
-      '<div class="desc">Engagements registrados no HubSpot dentro da janela, por dono | ligação com conversa = duração ≥ 1 min | inserir nada e ligar o dia inteiro aparece aqui, não nos KPIs de inserção</div></div>' +
-      '<span class="pill">' + totalActs + ' atividades</span></div>';
-    h += '<section class="note" style="margin-bottom:.8rem"><b>Dois universos, reconciliados:</b> <b>' + totalActs + ' raw</b> (todos os engagements operacionais) = <b>' + totalReal + ' ritmo real</b> (ligações + e-mails + WhatsApp + LinkedIn + reuniões) + <b>' + totalNotasTarefas + '</b> em notas/tarefas/outras. O gráfico “Ritmo Real de Atividades” usa somente os cinco canais (' + totalReal + '); esta tabela mostra o raw completo.</section>';
-    if (!totalActs) return h + '<div class="desc">Sem atividades registradas no recorte.</div></div></div>';
-    h += '<div class="table-wrap"><table><thead><tr><th>BDR</th><th class="right">Ligações</th><th class="right">Com conversa (≥1 min)</th>' +
-      '<th class="right">E-mails</th><th class="right">WhatsApp</th><th class="right">LinkedIn</th><th class="right">Outras</th><th class="right">Notas</th>' +
-      '<th class="right">Tarefas</th><th class="right">Reuniões</th><th class="right">Total</th><th class="right">Inserções</th><th class="right">Movimentações</th></tr></thead><tbody>';
+    var h = '<div class="grid"><div class="card span-12"><div class="card-title"><div><h2>Ranking de BDRs | atividades reais</h2>' +
+      '<div class="desc">Clique no cabeçalho para ordenar. Hoje = total da janela nos cinco canais reais; meta = 50 atividades por dia visível; Δ 7d compara contra os 7 dias anteriores.</div></div>' +
+      '<span class="pill">' + totals.hoje + ' atividades</span></div>';
+    if (!totals.hoje) return h + '<div class="desc">Sem atividades registradas no recorte.</div></div></div>';
+    h += '<div class="table-wrap"><table><thead><tr>' +
+      sortTh('bdr', 'BDR', '') + sortTh('hoje', 'Hoje', 'right') + sortTh('meta', 'Meta', 'right') + sortTh('pctMeta', '% Meta', 'right') + sortTh('delta7d', 'Δ 7d', 'right') +
+      sortTh('calls', 'Ligações', 'right') + sortTh('emails', 'E-mails', 'right') + sortTh('whats', 'WhatsApp', 'right') + sortTh('linkedin', 'LinkedIn', 'right') + sortTh('meetings', 'Reuniões', 'right') + sortTh('lastLoad', 'Última carga', '') +
+      '</tr></thead><tbody>';
     rows.forEach(function (b) {
-      var p = por[b], t = tot(p);
-      if (!t && !p.ins && !p.mov) return;
-      h += '<tr><td>' + esc(b) + '</td><td class="right">' +
-        (p.calls ? '<span class="calls-link" onclick="WorkloadBDR.drillCalls(\'' + b + '\')" title="Ver detalhe das ligações" style="cursor:pointer;color:var(--teal);text-decoration:underline dotted;text-underline-offset:2px">' + p.calls + '</span>' : '0') + '</td>' +
-        '<td class="right">' + (p.calls ? p.calls1m + ' <span class="muted">(' + Math.round(p.calls1m / p.calls * 100) + '%)</span>' : '0') + '</td>' +
-        '<td class="right">' + p.emails + '</td><td class="right">' + p.whats + '</td><td class="right">' + p.linkedin + '</td><td class="right">' + p.comOutras + '</td>' +
-        '<td class="right">' + p.notes + '</td><td class="right">' + p.tasks + '</td><td class="right">' + p.meetings + '</td>' +
-        '<td class="right"><b>' + t + '</b></td>' +
-        '<td class="right">' + (p.ins || '<span class="muted">0</span>') + '</td>' +
-        '<td class="right">' + (p.mov || '<span class="muted">0</span>') + '</td></tr>';
+      var p = por[b];
+      h += '<tr><td>' + esc(b) + '</td><td class="right"><b>' + p.hoje + '</b></td><td class="right">' + p.meta + '</td><td class="right">' + p.pctMeta + '%</td><td class="right">' + variationHtml(p.delta7d) + '</td>' +
+        '<td class="right">' + (p.calls ? '<span class="calls-link" onclick="WorkloadBDR.drillCalls(\'' + b + '\')" title="Ver detalhe das ligações" style="cursor:pointer;color:var(--teal);text-decoration:underline dotted;text-underline-offset:2px">' + p.calls + '</span>' : '0') + '</td>' +
+        '<td class="right">' + p.emails + '</td><td class="right">' + p.whats + '</td><td class="right">' + p.linkedin + '</td><td class="right">' + p.meetings + '</td><td class="nowrap">' + dmhmFull(p.lastLoad) + '</td></tr>';
     });
-    return h + '</tbody></table></div></div></div>';
+    return h + '</tbody><tfoot><tr><td>Total</td><td class="right">' + totals.hoje + '</td><td class="right">' + totals.meta + '</td><td class="right">' + totals.pctMeta + '%</td><td class="right">' + variationHtml(totals.delta7d) + '</td><td class="right">' + totals.calls + '</td><td class="right">' + totals.emails + '</td><td class="right">' + totals.whats + '</td><td class="right">' + totals.linkedin + '</td><td class="right">' + totals.meetings + '</td><td class="nowrap">' + dmhmFull(totals.lastLoad) + '</td></tr></tfoot></table></div></div></div>';
+  }
+  function sortValue(p, bdr) {
+    if (sortBy === 'bdr') return bdr || '';
+    if (sortBy === 'lastLoad') return p.lastLoad ? new Date(p.lastLoad).getTime() : 0;
+    return p[sortBy] || 0;
+  }
+  function sortTh(col, label, cls) {
+    var active = sortBy === col;
+    return '<th' + (cls ? ' class="' + cls + '"' : '') + ' onclick="WorkloadBDR.sortTable(\'' + col + '\')">' + esc(label) + '<span class="sort-indicator' + (active ? ' active' : '') + '">' + (active ? (sortDir === 'asc' ? '▲' : '▼') : '↕') + '</span></th>';
+  }
+  function variationHtml(v) {
+    var cls = v >= 10 ? 'up' : (v < -10 ? 'down' : 'flat');
+    var arrow = v >= 10 ? '▲' : (v < -10 ? '▼' : '→');
+    return '<span class="delta-arrow ' + cls + '">' + arrow + ' ' + (v > 0 ? '+' : '') + v + '%</span>';
   }
 
   function pillStatus(s) {
@@ -816,6 +991,11 @@ var WorkloadBDR = (function () {
     setChannel: function (v) { state.canal = v || 'todos'; render(); },
     reset: function () { state.bdr = ''; state.porte = ''; state.fonte = ''; state.canal = 'todos'; render(); },
     toggleDiasUteis: function (v) { state.diasUteis = !!v; render(); },
+    sortTable: function (col) {
+      if (sortBy === col) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+      else { sortBy = col; sortDir = 'desc'; }
+      render();
+    },
     drill: drill, drillCalls: drillCalls, closeModal: closeModal, openAllHelp: openAllHelp, openHelpFor: openHelpFor, closeHelp: closeHelp, toggleTheme: toggleTheme,
   };
 })();

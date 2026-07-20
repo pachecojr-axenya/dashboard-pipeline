@@ -62,6 +62,7 @@ function buildHistoryPayload(rows, dealRows, since, until, historySince, sqlSumm
     whatsapp_total: num(r.whatsapp_total),
     linkedin_total: num(r.linkedin_total),
     meetings_total: num(r.meetings_total),
+    bdr_daily_target: num(r.bdr_daily_target),
     sql_deals: 0,
     refreshed_at: timestamp(r.refreshed_at),
   })).filter((row) => isTeamMember(row.owner_name));
@@ -88,6 +89,7 @@ function buildHistoryPayload(rows, dealRows, since, until, historySince, sqlSumm
         whatsapp_total: 0,
         linkedin_total: 0,
         meetings_total: 0,
+        bdr_daily_target: num(summary.bdr_daily_target),
         sql_deals: 0,
         refreshed_at: timestamp(summary.refreshed_at),
       };
@@ -95,6 +97,7 @@ function buildHistoryPayload(rows, dealRows, since, until, historySince, sqlSumm
       dailyByKey.set(key, row);
     }
     row.sql_deals += num(summary.sql_deals);
+    if (!row.bdr_daily_target) row.bdr_daily_target = num(summary.bdr_daily_target);
     if (!row.refreshed_at) row.refreshed_at = timestamp(summary.refreshed_at);
   });
   dailyRows.sort((a, b) => a.metric_date.localeCompare(b.metric_date) || String(a.owner_name).localeCompare(String(b.owner_name)));
@@ -154,6 +157,7 @@ async function fetchHistory(since, until) {
       COUNT(DISTINCT IF(activity_object = 'communications' AND UPPER(COALESCE(communication_channel_type, '')) = 'WHATS_APP', activity_id, NULL)) AS whatsapp_total,
       COUNT(DISTINCT IF(activity_object = 'communications' AND UPPER(COALESCE(communication_channel_type, '')) = 'LINKEDIN_MESSAGE', activity_id, NULL)) AS linkedin_total,
       COUNT(DISTINCT IF(activity_object = 'meetings', activity_id, NULL)) AS meetings_total,
+      MAX(CAST(NULL AS INT64)) AS bdr_daily_target,
       MAX(ingested_at) AS refreshed_at
     FROM \`${PROJECT}.${SILVER}.activities\`
     WHERE activity_date BETWEEN @historySince AND @until
@@ -170,7 +174,7 @@ async function fetchHistory(since, until) {
     WHERE rn = 1
     ORDER BY sql_date ASC, bdr ASC, deal_id ASC`;
   const sqlSummarySql = `
-    SELECT metric_date, owner_name, SUM(sql_deals) AS sql_deals, MAX(refreshed_at) AS refreshed_at
+    SELECT metric_date, owner_name, SUM(sql_deals) AS sql_deals, MAX(bdr_daily_target) AS bdr_daily_target, MAX(refreshed_at) AS refreshed_at
     FROM \`${PROJECT}.${GOLD}.bdr_daily_ops\`
     WHERE metric_date BETWEEN @historySince AND @until
     GROUP BY metric_date, owner_name
