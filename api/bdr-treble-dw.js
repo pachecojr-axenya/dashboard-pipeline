@@ -1,13 +1,8 @@
 'use strict';
 /**
  * GET /api/bdr-treble-dw
- *
- * BDR | Treble Dashboard — Data Warehouse Version
- * 
- * Fonte: Treble Data Warehouse (ClickHouse) via HTTP API
- * Diferença vs API REST: 1 query SQL ao invés de 100+ chamadas API
- * 
- * Segurança: não expõe telefone, email, documento, session_id ou payload bruto.
+ * BDR | Treble Dashboard | ClickHouse deployment fact.
+ * Segurança: não expõe PII nem credenciais; uma linha sanitizada por tentativa.
  */
 
 const { setCORSHeaders, requireAuth, methodCheck } = require('./_helpers');
@@ -16,47 +11,40 @@ const CACHE_TTL_MS = 10 * 60 * 1000;
 const DEFAULT_DAYS = 30;
 const MIN_DAYS = 7;
 const MAX_DAYS = 90;
+const ROW_LIMIT = 10000;
+const QUERY_LIMIT = ROW_LIMIT + 1;
+const SENTINEL_SQL = "toDateTime64('2000-01-01 00:00:00', 6, 'America/Sao_Paulo')";
+const PII_KEYS = {
+  cellphone: true,
+  country_code: true,
+  deployment_id: true,
+  batch_id: true,
+  treble_id: true,
+  phone: true,
+  email: true,
+  document: true,
+  content: true,
+  message: true,
+  text: true,
+  body: true,
+  copy: true,
+  session_id: true
+};
 
 let cacheByKey = {};
 
-// ============================================================
-// BDR Mapping (mesmo do endpoint original)
-// ============================================================
-
 const BDR_ALIASES = {
-  gabi: 'Gabriele',
-  gabriele: 'Gabriele',
-  leticia: 'Letícia',
-  'letícia': 'Letícia',
-  giovana: 'Giovana',
-  thauan: 'Thauan',
-  aline: 'Aline',
-  pri: 'Priscilla',
-  priscilla: 'Priscilla',
-  cynthia: 'Cíntia',
-  cintia: 'Cíntia',
-  'cíntia': 'Cíntia',
-  bru: 'Bruna',
-  bruna: 'Bruna',
-  bruno: 'Bruno',
-  yoky: 'Yoky'
+  gabi: 'Gabriele', gabriele: 'Gabriele', leticia: 'Letícia', 'letícia': 'Letícia', giovana: 'Giovana',
+  thauan: 'Thauan', aline: 'Aline', pri: 'Priscilla', priscilla: 'Priscilla', cynthia: 'Cíntia',
+  cintia: 'Cíntia', 'cíntia': 'Cíntia', bru: 'Bruna', bruna: 'Bruna', bruno: 'Bruno', yoky: 'Yoky'
 };
 
 const REASON_META = {
   responded: { label: 'Respondeu', severity: 'success', action: 'Replicar abordagem | resposta registrada' },
-  not_delivered: { label: 'Sem evidência de entrega', severity: 'danger', action: 'Verificar HSM, número, opt-in e linha de envio' },
-  delivered_not_read: { label: 'Entregue, não lida', severity: 'warning', action: 'Testar horário, primeira linha e remetente' },
-  read_no_reply: { label: 'Lida, sem resposta', severity: 'warning', action: 'Revisar CTA e fricção da pergunta' },
-  no_response: { label: 'Sem resposta', severity: 'warning', action: 'Ajustar follow-up e promessa inicial' },
-  no_outbound: { label: 'Sessão sem envio detectado', severity: 'neutral', action: 'Auditar configuração do flow' },
-  no_history: { label: 'Sem histórico capturado', severity: 'neutral', action: 'Validar sincronização da API Treble' },
-  flow_api_error: { label: 'Flow com erro na API Treble', severity: 'neutral', action: 'Reprocessar no próximo refresh ou auditar o flow na Treble' },
-  unknown: { label: 'Indeterminado', severity: 'neutral', action: 'Falta dado suficiente para diagnóstico' }
+  delivered_no_reply: { label: 'Entregue, sem resposta', severity: 'warning', action: 'Revisar CTA, horário e follow-up' },
+  not_delivered: { label: 'Não entregue', severity: 'danger', action: 'Verificar HSM, número, opt-in e linha de envio' },
+  unknown: { label: 'Indeterminado', severity: 'neutral', action: 'Validar status na Treble' }
 };
-
-// ============================================================
-// ClickHouse HTTP Client
-// ============================================================
 
 function getClickHouseCredentials() {
   const host = process.env.TREBLE_WAREHOUSE_HOST;
@@ -64,41 +52,30 @@ function getClickHouseCredentials() {
   const user = process.env.TREBLE_WAREHOUSE_USER;
   const password = process.env.TREBLE_WAREHOUSE_PASSWORD;
   const database = process.env.TREBLE_WAREHOUSE_DATABASE || 'client_analytics';
-  
-  if (!host || !user || !password) {
-    throw new Error('Credenciais do Treble Data Warehouse não configuradas (TREBLE_WAREHOUSE_HOST, TREBLE_WAREHOUSE_USER, TREBLE_WAREHOUSE_PASSWORD)');
-  }
-  
+  if (!host || !user || !password) throw new Error('clickhouse_config_missing');
   return { host, port, user, password, database };
 }
 
-async function clickhouseQuery(creds, sql) {
-  const url = `https://${creds.host}:${creds.port}/?query=${encodeURIComponent(sql)}&user=${encodeURIComponent(creds.user)}&password=${encodeURIComponent(creds.password)}&database=${encodeURIComponent(creds.database)}`;
-  
-  const res = await fetch(url, {
-    method: 'GET',
-    headers: { Accept: 'application/json' },
-    signal: AbortSignal.timeout(25000)
-  });
-  
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`ClickHouse HTTP ${res.status}: ${text.slice(0, 200)}`);
-  }
-  
-  // ClickHouse retorna JSON com meta, data, rows, statistics
-  const json = await res.json();
-  return {
-    rows: json.data || [],
-    meta: json.meta || [],
-    statistics: json.statistics || {},
-    rowsRead: json.rows || 0
-  };
+function basicAuth(user, password) {
+  return 'Basic ' + Buffer.from(String(user) + ':' + String(password), 'utf8').toString('base64');
 }
 
-// ============================================================
-// Helpers
-// ============================================================
+async function clickhouseQuery(creds, sql) {
+  const base = 'https://' + creds.host + ':' + creds.port + '/?database=' + encodeURIComponent(creds.database);
+  const res = await fetch(base, {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'text/plain; charset=utf-8',
+      Authorization: basicAuth(creds.user, creds.password)
+    },
+    body: sql,
+    signal: AbortSignal.timeout(25000)
+  });
+  if (!res.ok) throw new Error('clickhouse_http_' + res.status);
+  const json = await res.json();
+  return { rows: json.data || [], meta: json.meta || [], statistics: json.statistics || {}, rowsRead: json.rows || 0 };
+}
 
 function clampDays(raw) {
   const n = parseInt(raw, 10);
@@ -106,325 +83,138 @@ function clampDays(raw) {
   return Math.max(MIN_DAYS, Math.min(MAX_DAYS, n));
 }
 
-function inferBdr(name) {
-  const raw = String(name || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-  const first = (raw.match(/[a-z]+/) || [''])[0];
-  return BDR_ALIASES[first] || 'Responsável não inferido';
+function normalizeText(v) { return String(v || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''); }
+function inferBdr(name) { const first = (normalizeText(name).match(/[a-z]+/) || [''])[0]; return BDR_ALIASES[first] || 'Responsável não inferido'; }
+function copyFamily(name) { const s = normalizeText(name); if (/mensagem\s*1|msg\s*1|abertura|inicial|oi\b/.test(s)) return 'Abertura | primeira mensagem'; if (/mensagem\s*2|msg\s*2|follow|retomada|mais cedo|liguei/.test(s)) return 'Follow-up | retomada'; if (/conectado|conexao/.test(s)) return 'Conexão pendente'; if (/workflow|automacao|automatizado/.test(s)) return 'Workflow automatizado'; return 'Outros'; }
+function inferAudience(flowName) { const s = normalizeText(flowName); if (/rh|people|gente|dp|folha|pessoas/.test(s)) return 'RH | People | DP'; if (/beneficio|saude|plano|medico|odonto/.test(s)) return 'Benefícios | Saúde corporativa'; if (/sst|seguranca|ocupacional|epp|epi/.test(s)) return 'SST | Saúde ocupacional'; if (/financeiro|compras|suprimento|payments/.test(s)) return 'Financeiro | Compras'; if (/juri|compliance|legal|regula/.test(s)) return 'Jurídico | Compliance'; return 'Público geral'; }
+function pct(num, den) { if (!den) return null; return Math.round((num / den) * 1000) / 10; }
+function isDeliveredStatus(status) { return String(status || '').toUpperCase() === 'DELIVERED'; }
+function safeDay(v) { return v ? String(v).slice(0, 10) : ''; }
+function reasonFor(delivered, replied) { if (replied) return 'responded'; if (delivered) return 'delivered_no_reply'; return 'not_delivered'; }
+
+function sanitizeMessage(r) {
+  const flow = String(r.flow || 'Flow sem nome');
+  const replied = Number(r.replied_real || 0) > 0;
+  const delivered = Number(r.delivered_real || 0) > 0 || isDeliveredStatus(r.status) || replied;
+  const reason = reasonFor(delivered, replied);
+  const meta = REASON_META[reason] || REASON_META.unknown;
+  const family = copyFamily(flow);
+  const audience = inferAudience(flow);
+  return {
+    flow: flow,
+    pollId: r.poll_id == null ? '' : String(r.poll_id),
+    createdAt: r.created_at || '',
+    createdDay: r.created_day || safeDay(r.created_at),
+    bdr: inferBdr(flow),
+    bdrSource: 'Inferido do nome do flow',
+    family: family,
+    audience: audience,
+    semanticGroup: family + ' | ' + audience + ' | ' + meta.label,
+    sent: true,
+    delivered: delivered,
+    deliveredSource: replied && !(Number(r.delivered_real || 0) > 0 || isDeliveredStatus(r.status)) ? 'inferido_por_resposta' : 'timestamp_or_status',
+    replied: replied,
+    read: false,
+    readAvailable: false,
+    reason: reason,
+    reasonLabel: meta.label,
+    severity: meta.severity,
+    action: meta.action,
+    nonDeliveryReason: delivered ? '' : String(r.status || 'UNKNOWN'),
+    diagnostic: false
+  };
 }
 
-function copyFamily(name) {
-  const s = String(name || '').toLowerCase();
-  if (/mensagem\s*1|msg\s*1|abertura|inicial|oi\b/.test(s)) return 'Abertura | primeira mensagem';
-  if (/mensagem\s*2|msg\s*2|follow|retomada|mais cedo|liguei/.test(s)) return 'Follow-up | retomada';
-  if (/conectado|conexao|conexão/.test(s)) return 'Conexão pendente';
-  if (/workflow|automa[cç][aã]o|automatizado/.test(s)) return 'Workflow automatizado';
-  return 'Outros';
+function assertNoPii(obj) {
+  const bad = [];
+  function walk(x) {
+    if (!x || typeof x !== 'object') return;
+    Object.keys(x).forEach(function (k) {
+      if (PII_KEYS[k.toLowerCase()]) bad.push(k);
+      walk(x[k]);
+    });
+  }
+  walk(obj);
+  if (bad.length) throw new Error('pii_key_in_payload');
 }
 
-function inferAudience(flowName) {
-  const s = String(flowName || '').toLowerCase();
-  if (/rh|people|gente|dp|folha|pessoas/.test(s)) return 'RH | People | DP';
-  if (/benef[ií]cio|sa[uú]de|plano|m[eé]dico|odonto/.test(s)) return 'Benefícios | Saúde corporativa';
-  if (/sst|seguran[cç]a|ocupacional|epp|epi/.test(s)) return 'SST | Saúde ocupacional';
-  if (/financeiro|compras|suprimento|payments/.test(s)) return 'Financeiro | Compras';
-  if (/juri|compliance|legal|regula/.test(s)) return 'Jurídico | Compliance';
-  return 'Público geral';
+function incCounters(a, m) {
+  a.enviadas++;
+  if (a.sent != null) a.sent++;
+  if (m.delivered) { a.entregues++; if (a.delivered != null) a.delivered++; }
+  if (m.replied) { a.respondidas++; if (a.replied != null) a.replied++; }
+  if (!m.delivered && a.deploymentFailures != null) a.deploymentFailures++;
+  if (!m.delivered && a.falhas != null) a.falhas++;
 }
 
-function semanticGroup(family, audience, reason) {
-  const f = family || 'Outros';
-  const a = audience || 'Público geral';
-  return `${f} | ${a} | ${reason}`;
+function aggregateMessages(messages) {
+  const summary = { sessions: messages.length, enviadas: messages.length, sent: messages.length, entregues: 0, delivered: 0, lidas: 0, read: 0, respondidas: 0, replied: 0, falhas: 0, failures: 0, deploymentFailures: 0, flowsCount: 0, bdrsCount: 0 };
+  const flows = {}, bdrs = {}, reasons = {}, days = {}, convDays = {};
+  messages.forEach(function (m) {
+    if (m.delivered) { summary.entregues++; summary.delivered++; }
+    if (m.replied) { summary.respondidas++; summary.replied++; }
+    if (!m.delivered) { summary.falhas++; summary.failures++; summary.deploymentFailures++; }
+    flows[m.flow] = flows[m.flow] || { flow: m.flow, bdr: m.bdr, family: m.family, audience: m.audience, enviadas: 0, entregues: 0, respondidas: 0, falhas: 0, deploymentFailures: 0 };
+    bdrs[m.bdr] = bdrs[m.bdr] || { bdr: m.bdr, enviadas: 0, entregues: 0, respondidas: 0, falhas: 0, deploymentFailures: 0, flows: {} };
+    reasons[m.reasonLabel] = reasons[m.reasonLabel] || { reason: m.reason, label: m.reasonLabel, count: 0, severity: m.severity, action: m.action };
+    days[m.createdDay] = days[m.createdDay] || { dia: m.createdDay, day: m.createdDay, createdDay: m.createdDay, enviadas: 0, sent: 0, entregues: 0, delivered: 0, lidas: 0, read: 0, respondidas: 0, replied: 0, deploymentFailures: 0 };
+    const ck = m.createdDay + '|' + m.flow;
+    convDays[ck] = convDays[ck] || { day: m.createdDay, name: m.flow, conversationId: m.pollId, sent: 0, delivered: 0, deploymentFailures: 0, responded: 0, failureReasons: {} };
+    [flows[m.flow], bdrs[m.bdr], days[m.createdDay]].forEach(function (a) { incCounters(a, m); });
+    convDays[ck].sent++;
+    if (m.delivered) convDays[ck].delivered++;
+    if (m.replied) convDays[ck].responded++;
+    if (!m.delivered) { convDays[ck].deploymentFailures++; convDays[ck].failureReasons[m.nonDeliveryReason || 'UNKNOWN'] = (convDays[ck].failureReasons[m.nonDeliveryReason || 'UNKNOWN'] || 0) + 1; }
+    bdrs[m.bdr].flows[m.flow] = true;
+    reasons[m.reasonLabel].count++;
+  });
+  const byFlow = Object.keys(flows).map(function (k) { const a = flows[k]; a.taxaEntrega = pct(a.entregues, a.enviadas); a.taxaResposta = pct(a.respondidas, a.enviadas); return a; }).sort(function (a, b) { return b.enviadas - a.enviadas; });
+  const byBdr = Object.keys(bdrs).map(function (k) { const a = bdrs[k]; a.flowsCount = Object.keys(a.flows).length; delete a.flows; a.taxaEntrega = pct(a.entregues, a.enviadas); a.taxaResposta = pct(a.respondidas, a.enviadas); return a; }).sort(function (a, b) { return b.enviadas - a.enviadas; });
+  const timeline = Object.keys(days).map(function (k) { return days[k]; }).sort(function (a, b) { return String(a.dia).localeCompare(String(b.dia)); });
+  const byReason = Object.keys(reasons).map(function (k) { return reasons[k]; }).sort(function (a, b) { return b.count - a.count; });
+  const byConversationDay = Object.keys(convDays).map(function (k) { return convDays[k]; }).sort(function (a, b) { return String(b.day).localeCompare(String(a.day)) || b.sent - a.sent; });
+  summary.flowsCount = byFlow.length; summary.bdrsCount = byBdr.length; summary.taxaEntrega = pct(summary.entregues, summary.enviadas); summary.taxaResposta = pct(summary.respondidas, summary.enviadas); summary.taxaLeitura = null; summary.readMetricAvailable = false; summary.deliveryAnalyticsAvailable = true; summary.deliveryAnalyticsStatus = 'clickhouse_fact_deployment_status'; summary.realObservedAttempts = summary.enviadas; summary.realObservedDeliveryRate = summary.enviadas ? summary.entregues / summary.enviadas : null;
+  return { summary: summary, timeline: timeline, byFlow: byFlow, byBdr: byBdr, byReason: byReason, byConversationDay: byConversationDay };
 }
 
-function clamp(val, min, max) {
-  const n = Number(val);
-  if (!Number.isFinite(n)) return 0;
-  return Math.max(min, Math.min(max, n));
+function buildSql(days) {
+  return "SELECT formatDateTime(toTimeZone(timestamps_eta, 'America/Sao_Paulo'), '%Y-%m-%dT%H:%i:%S-03:00') AS created_at, toString(toDate(toTimeZone(timestamps_eta, 'America/Sao_Paulo'))) AS created_day, toString(status) AS status, toString(poll_id) AS poll_id, toString(poll_name) AS flow, if(timestamp_delivered > " + SENTINEL_SQL + " OR status = 'DELIVERED', 1, 0) AS delivered_real, if(timestamp_responded > " + SENTINEL_SQL + ", 1, 0) AS replied_real, toString(origin) AS origin FROM client_analytics.fact_deployment_status WHERE timestamps_eta >= now('America/Sao_Paulo') - INTERVAL " + days + " DAY ORDER BY timestamps_eta DESC LIMIT " + QUERY_LIMIT + " FORMAT JSON";
 }
-
-function pct(num, den) {
-  if (!den) return null;
-  return Math.round((num / den) * 1000) / 10;
-}
-
-// ============================================================
-// Main Query Builder
-// ============================================================
 
 async function buildPayloadFromDW(days) {
   const creds = getClickHouseCredentials();
-  
-  // ============================================================
-  // Query 1: Funil principal (por dia)
-  // ============================================================
-  const funnelSql = `
-    SELECT
-      toDate(timestamps_eta) AS dia,
-      count() AS enviadas,
-      countIf(status = 'DELIVERED') AS entregues,
-      countIf(timestamp_delivered > '2000-01-01') AS lidas,
-      countIf(timestamp_responded IS NOT NULL) AS respondidas
-    FROM fact_deployment_status
-    WHERE timestamps_eta >= now() - INTERVAL ${days} DAY
-    GROUP BY dia
-    ORDER BY dia DESC
-  `;
-  
-  // ============================================================
-  // Query 2: Por Flow/Campanha
-  // ============================================================
-  const byFlowSql = `
-    SELECT
-      poll_id,
-      poll_name AS flow,
-      count() AS enviadas,
-      countIf(status = 'DELIVERED') AS entregues,
-      countIf(timestamp_responded IS NOT NULL) AS respondidas,
-      countIf(status != 'DELIVERED') AS falhas
-    FROM fact_deployment_status
-    WHERE timestamps_eta >= now() - INTERVAL ${days} DAY
-    GROUP BY poll_id, poll_name
-    ORDER BY enviadas DESC
-    LIMIT 100
-  `;
-  
-  // ============================================================
-  // Query 3: Por BDR (inferido do nome do flow)
-  // ============================================================
-  const byBdrSql = `
-    SELECT
-      poll_name AS flow,
-      count() AS enviadas,
-      countIf(status = 'DELIVERED') AS entregues,
-      countIf(timestamp_responded IS NOT NULL) AS respondidas,
-      countIf(status != 'DELIVERED') AS falhas
-    FROM fact_deployment_status
-    WHERE timestamps_eta >= now() - INTERVAL ${days} DAY
-    GROUP BY poll_name
-    ORDER BY enviadas DESC
-  `;
-  
-  // ============================================================
-  // Query 4: Motivos de falha
-  // ============================================================
-  const failuresSql = `
-    SELECT
-      status AS motivo,
-      count() AS total
-    FROM fact_deployment_status
-    WHERE timestamps_eta >= now() - INTERVAL ${days} DAY
-      AND status != 'DELIVERED'
-    GROUP BY status
-    ORDER BY total DESC
-  `;
-  
-  // ============================================================
-  // Query 5: Sessões por flow (transferências para agente)
-  // ============================================================
-  const sessionsSql = `
-    SELECT
-      poll_name AS flow,
-      count() AS sessoes,
-      countIf(status = 'HumanHandover') AS transferidas_agente,
-      countIf(status = 'Finished') AS finalizadas
-    FROM fact_sessions
-    WHERE created_at >= now() - INTERVAL ${days} DAY
-      AND inbound_outbound = 'OUTBOUND'
-    GROUP BY poll_name
-    ORDER BY sessoes DESC
-    LIMIT 50
-  `;
-  
-  // Execute all queries in parallel
-  const [funnelRes, byFlowRes, byBdrRes, failuresRes, sessionsRes] = await Promise.all([
-    clickhouseQuery(creds, funnelSql).catch(e => ({ rows: [], error: e.message })),
-    clickhouseQuery(creds, byFlowSql).catch(e => ({ rows: [], error: e.message })),
-    clickhouseQuery(creds, byBdrSql).catch(e => ({ rows: [], error: e.message })),
-    clickhouseQuery(creds, failuresSql).catch(e => ({ rows: [], error: e.message })),
-    clickhouseQuery(creds, sessionsSql).catch(e => ({ rows: [], error: e.message }))
-  ]);
-  
-  // ============================================================
-  // Process results
-  // ============================================================
-  
-  // Funnel
-  const timeline = (funnelRes.rows || []).map(r => ({
-    dia: r.dia || '',
-    enviadas: clamp(r.enviadas, 0, 1e9),
-    entregues: clamp(r.entregues, 0, 1e9),
-    lidas: clamp(r.lidas, 0, 1e9),
-    respondidas: clamp(r.respondidas, 0, 1e9)
-  }));
-  
-  // By Flow
-  const byFlow = (byFlowRes.rows || []).map(r => {
-    const flow = String(r.flow || 'Flow sem nome');
-    return {
-      flow,
-      bdr: inferBdr(flow),
-      family: copyFamily(flow),
-      audience: inferAudience(flow),
-      enviadas: clamp(r.enviadas, 0, 1e9),
-      entregues: clamp(r.entregues, 0, 1e9),
-      respondidas: clamp(r.respondidas, 0, 1e9),
-      falhas: clamp(r.falhas, 0, 1e9),
-      taxaEntrega: pct(r.entregues, r.enviadas),
-      taxaResposta: pct(r.respondidas, r.entregues)
-    };
-  });
-  
-  // By BDR (aggregate by inferred BDR)
-  const bdrAgg = {};
-  (byBdrRes.rows || []).forEach(r => {
-    const flow = String(r.flow || '');
-    const bdr = inferBdr(flow);
-    if (!bdrAgg[bdr]) {
-      bdrAgg[bdr] = { bdr, enviadas: 0, entregues: 0, respondidas: 0, falhas: 0, flows: new Set() };
-    }
-    bdrAgg[bdr].enviadas += clamp(r.enviadas, 0, 1e9);
-    bdrAgg[bdr].entregues += clamp(r.entregues, 0, 1e9);
-    bdrAgg[bdr].respondidas += clamp(r.respondidas, 0, 1e9);
-    bdrAgg[bdr].falhas += clamp(r.falhas, 0, 1e9);
-    bdrAgg[bdr].flows.add(flow);
-  });
-  
-  const byBdr = Object.values(bdrAgg).map(b => ({
-    bdr: b.bdr,
-    enviadas: b.enviadas,
-    entregues: b.entregues,
-    respondidas: b.respondidas,
-    falhas: b.falhas,
-    flowsCount: b.flows.size,
-    taxaEntrega: pct(b.entregues, b.enviadas),
-    taxaResposta: pct(b.respondidas, b.entregues)
-  })).sort((a, b) => b.enviadas - a.enviadas);
-  
-  // Failures
-  const byReason = (failuresRes.rows || []).map(r => ({
-    reason: r.motivo || 'UNKNOWN',
-    count: clamp(r.total, 0, 1e9)
-  }));
-  
-  // Sessions
-  const sessions = (sessionsRes.rows || []).map(r => {
-    const flow = String(r.flow || 'Flow sem nome');
-    return {
-      flow,
-      bdr: inferBdr(flow),
-      sessoes: clamp(r.sessoes, 0, 1e9),
-      transferidasAgente: clamp(r.transferidas_agente, 0, 1e9),
-      finalizadas: clamp(r.finalizadas, 0, 1e9),
-      taxaTransferencia: pct(r.transferidas_agente, r.sessoes)
-    };
-  });
-  
-  // Summary
-  const summary = {
-    enviadas: timeline.reduce((s, r) => s + r.enviadas, 0),
-    entregues: timeline.reduce((s, r) => s + r.entregues, 0),
-    lidas: timeline.reduce((s, r) => s + r.lidas, 0),
-    respondidas: timeline.reduce((s, r) => s + r.respondidas, 0),
-    falhas: byReason.reduce((s, r) => s + r.count, 0),
-    flowsCount: byFlow.length,
-    bdrsCount: byBdr.length
-  };
-  
-  summary.taxaEntrega = pct(summary.entregues, summary.enviadas);
-  summary.taxaResposta = pct(summary.respondidas, summary.entregues);
-  summary.taxaLeitura = pct(summary.lidas, summary.entregues);
-  
-  return {
-    success: true,
-    source: 'treble_data_warehouse',
-    generatedAt: new Date().toISOString(),
-    cached: false,
-    days,
-    summary,
-    timeline,
-    byFlow,
-    byBdr,
-    byReason,
-    sessions,
-    meta: {
-      sourceLabel: 'Treble Data Warehouse (ClickHouse)',
-      queryTime: '1-5s',
-      coverage: 'Últimos 3 meses',
-      privacy: 'Sem telefone, email, documento ou session_id exposto',
-      limitations: [
-        'Latência de até 3 horas da operação real',
-        'BDR inferido do nome do flow (padronizar nomenclatura para 100% precisão)',
-        'Público e família de copy inferidos do nome do flow'
-      ]
-    },
-    apiMap: [
-      { source: 'ClickHouse', table: 'fact_deployment_status', purpose: 'Envios, entregas, respostas, falhas' },
-      { source: 'ClickHouse', table: 'fact_sessions', purpose: 'Sessões, transferências para agente' }
-    ]
-  };
+  const result = await clickhouseQuery(creds, buildSql(days));
+  const rawRows = result.rows || [];
+  const truncated = rawRows.length > ROW_LIMIT;
+  const messages = rawRows.slice(0, ROW_LIMIT).map(sanitizeMessage);
+  const agg = aggregateMessages(messages);
+  const payload = { success: true, source: 'treble_data_warehouse', generatedAt: new Date().toISOString(), cached: false, days: days, messages: messages, summary: agg.summary, timeline: agg.timeline, byFlow: agg.byFlow, byBdr: agg.byBdr, byReason: agg.byReason, sessions: [], deploymentReport: { available: true, source: 'client_analytics.fact_deployment_status', byDay: agg.timeline, byConversationDay: agg.byConversationDay }, meta: { source: 'Treble Data Warehouse (ClickHouse)', sourceLabel: 'Treble Data Warehouse (ClickHouse)', timezone: 'America/Sao_Paulo', periodDays: days, minDays: MIN_DAYS, maxDays: MAX_DAYS, rowsReturned: messages.length, rowLimit: ROW_LIMIT, rowsTruncated: truncated, sessionsTruncated: truncated, readMetricAvailable: false, readMetricLabel: 'Indisponível nesta fato', privacy: 'Sem telefone, email, documento, deployment_id, batch_id, treble_id, conteúdo ou payload bruto', limitations: ['Retenção máxima disponível: 90 dias', 'BDR, público e família são inferidos do nome do flow', 'Métrica de leitura não existe de forma confiável em fact_deployment_status e fica indisponível', 'Se timestamp_responded é válido sem evidência explícita de entrega, o evento é considerado entregue para consistência do funil de resposta'] }, apiMap: [{ step: 1, method: 'POST', endpoint: 'ClickHouse HTTP | client_analytics.fact_deployment_status', purpose: 'Tentativas reais de deployment Treble', returns: 'Linhas sanitizadas por tentativa', usedFor: 'Envios, entregas, respostas e não entregues sem PII' }] };
+  assertNoPii(payload);
+  return payload;
 }
 
-// ============================================================
-// Cache
-// ============================================================
-
-function cacheKey(req) {
-  const days = clampDays(req.query.days);
-  return `dw-${days}`;
-}
-
-function getFromCache(key) {
-  const entry = cacheByKey[key];
-  if (!entry) return null;
-  if (Date.now() - entry.ts > CACHE_TTL_MS) {
-    delete cacheByKey[key];
-    return null;
-  }
-  return entry.payload;
-}
-
-function setCache(key, payload) {
-  cacheByKey[key] = { payload, ts: Date.now() };
-}
-
-// ============================================================
-// Handler
-// ============================================================
+function cacheKey(req) { return 'dw-' + clampDays(req.query.days); }
+function getFromCache(key) { const entry = cacheByKey[key]; if (!entry) return null; if (Date.now() - entry.ts > CACHE_TTL_MS) { delete cacheByKey[key]; return null; } return entry.payload; }
+function setCache(key, payload) { cacheByKey[key] = { payload: payload, ts: Date.now() }; }
 
 module.exports = async function handler(req, res) {
   setCORSHeaders(req, res);
   if (req.method === 'OPTIONS') return res.status(204).end();
-  
-  // Auth check
-  const auth = requireAuth(req, res);
-  if (!auth) return;
-  
-  // Method check
+  const auth = requireAuth(req, res); if (!auth) return;
   if (!methodCheck(req, res, 'GET')) return;
-  
   const days = clampDays(req.query.days);
   const key = cacheKey(req);
-  
-  // Try cache
-  const cached = getFromCache(key);
-  if (cached) {
-    return res.json({ ...cached, cached: true });
-  }
-  
+  const refresh = String(req.query.refresh || '') === 'true' || String(req.query.refresh || '') === '1';
+  const cached = refresh ? null : getFromCache(key);
+  if (cached) return res.json(Object.assign({}, cached, { cached: true }));
   try {
     const payload = await buildPayloadFromDW(days);
     setCache(key, payload);
     res.json(payload);
   } catch (e) {
-    console.error('[bdr-treble-dw] Error:', e.message);
-    
-    // Fallback response
-    res.status(500).json({
-      success: false,
-      error: 'data_warehouse_error',
-      message: e.message,
-      hint: 'Verificar variáveis TREBLE_WAREHOUSE_HOST, TREBLE_WAREHOUSE_USER, TREBLE_WAREHOUSE_PASSWORD no ambiente'
-    });
+    console.error('[bdr-treble-dw] Error:', e && e.message ? e.message : 'unknown');
+    res.status(500).json({ success: false, error: 'data_warehouse_error', message: 'Falha ao consultar Treble Data Warehouse. Fallback REST disponível no frontend.', hint: 'Verificar configuração do Data Warehouse sem expor credenciais.' });
   }
 };
+
+module.exports._test = { buildSql: buildSql, clickhouseQuery: clickhouseQuery, buildPayloadFromDW: buildPayloadFromDW, clampDays: clampDays, sanitizeMessage: sanitizeMessage, aggregateMessages: aggregateMessages, assertNoPii: assertNoPii, ROW_LIMIT: ROW_LIMIT };

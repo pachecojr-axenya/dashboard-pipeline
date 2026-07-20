@@ -1,5 +1,25 @@
 # Dashboard Enhancement Loop — Status Log
 
+### BDR | Treble | consumo real do ClickHouse preparado (2026-07-20)
+
+- `/api/bdr-treble-dw` passa a consultar `client_analytics.fact_deployment_status`
+  com uma linha sanitizada por tentativa real, em vez de colapsar cada flow em um
+  único booleano no frontend.
+- Transporte endurecido: SQL via `POST`, autenticação Basic em header e nenhuma
+  credencial na URL ou no payload. Telefone, conteúdo e IDs sensíveis não são
+  selecionados nem retornados.
+- Contrato corrigido: resposta usa sentinel temporal, `SUCCESS` sem evidência de
+  entrega não vira `DELIVERED`, não entregues são separados de entregues sem
+  resposta e leitura fica explicitamente indisponível nesta fato.
+- Frontend DW-first preserva fallback REST, respeita retenção de 7–90 dias, aplica
+  filtros às tentativas reais e mostra detalhe por deployment sem PII.
+- Gate novo `scripts/test-bdr-treble-dw.js` cobre transporte, granularidade,
+  sentinel, semântica de entrega e privacidade. As cinco variáveis
+  `TREBLE_WAREHOUSE_*` já estão configuradas no Vercel Production. Estado:
+  **local, sem deploy nesta entrada**; ativação exige commit/push/deploy coordenado.
+
+---
+
 ### 📸 Forecast Delta | botão de captura manual na própria tela (2026-07-20)
 
 - O botão **Capturar agora** também está em `/forecast-delta`, visível somente

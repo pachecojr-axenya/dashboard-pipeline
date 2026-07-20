@@ -55,6 +55,11 @@ No painel do Vercel, o projeto **precisa** ter as seguintes variáveis de ambien
 | `ALLOWED_ORIGIN` | URL exata de produção sem trailing slash (ex: `https://project-bsmfu.vercel.app`). Essencial para o CORS do backend aprovar as requisições. |
 | `ALLOWED_EMAILS` | Lista separada por vírgula de e-mails extras autorizados (além dos 5 hardcoded no `lib/auth.js`). |
 | `TREBLE_API_KEY` | API key Treble usada pelo painel `BDR | Treble` para leitura read-only de flows, sessões e histórico. |
+| `TREBLE_WAREHOUSE_HOST` | Host ClickHouse fornecido pela Treble. |
+| `TREBLE_WAREHOUSE_PORT` | Porta HTTPS/TLS (`8443`). |
+| `TREBLE_WAREHOUSE_DATABASE` | Banco read-only (`client_analytics`). |
+| `TREBLE_WAREHOUSE_USER` | Usuário read-only do ClickHouse. |
+| `TREBLE_WAREHOUSE_PASSWORD` | Senha read-only do ClickHouse. |
 
 > **Nota sobre o `LOCAL_DEV_BYPASS=true`:**
 > Esta variável NUNCA deve ser colocada em produção. Ela existe apenas no `.env.local` para pular a autenticação do Google OAuth e verificar o dashboard rodando com dados locais e mock de usuário.

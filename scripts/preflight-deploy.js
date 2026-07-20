@@ -19,6 +19,7 @@ const REQUIRED_PATHS = [
   'public/bdr-list-attack.html',
   'public/bdr-list-attack.js',
   'api/bdr-treble.js',
+  'api/bdr-treble-dw.js',
   'public/bdr-treble.html',
   'public/bdr-treble.js',
   'api/bdr-workload.js',
