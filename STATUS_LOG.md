@@ -1,5 +1,26 @@
 # Dashboard Enhancement Loop — Status Log
 
+### 🚀 DEPLOY DE PRODUÇÃO | Forecast — 3º fallback de ARR por VPV (Diagnóstico/Cotação/Consultoria/Negociação) (2026-07-20)
+
+> Pedido do Pacheco: o ARR desses deals precisa ser CALCULADO (não só a projeção de
+> caixa) — deals de Cot/Cons/Neg sem 1ª Fatura ficavam com ARR "—".
+
+- Derivação do ARR ganhou 3º nível: `arr_estimado` → `1ª Fatura × 12` →
+  **`(vidas||colaboradores) × VPV × 12`** (faixas 36/24/12) nas etapas Diagnóstico/
+  Cotação/Consultoria/Negociação → senão "—".
+- Aplicado espelhado em `api/forecast-table.js` (coluna "ARR Est." do `/forecast`) e
+  `lib/forecast-compute.js` `mapFotoDeal` (KPIs ARR Total/Ponderado do `/forecast-delta`).
+- Deals com `arr_estimado`/`1ª Fatura`: inalterados. "Fatura Atual" não entra.
+- **Deploy:** commit `132a16a` (branch `pacheco/forecast-arr-vpv-fallback-2026-07-20`,
+  ff sem force) | deployment `dpl_44uCQ4Q84cNP2bHj9WPiMc4xi51C` (READY, production).
+  `npm run check` verde.
+- **Pós-deploy validado ao vivo:** 7 rotas 200, `/forecast-delta` 200, `/api/auth/me`
+  401. `/api/forecast-table`: 59 deals passaram a ter ARR via VPV, matemática conferida
+  (EPTV 1653→476.064; EagleBurgmann 200→86.400; Grupo Malwee 6300→907.200).
+- Doc: `docs/forecast-revenue-rules.md` seção 2b.
+
+---
+
 ### 🚀 DEPLOY DE PRODUÇÃO | Forecast — fallback vidas×VPV em Cotação/Consultoria/Negociação sem 1ª Fatura (2026-07-20)
 
 > Pedido do Pacheco: deal aberto de Cotação+ sem 1ª Fatura não deveria ficar
