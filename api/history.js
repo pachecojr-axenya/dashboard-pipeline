@@ -166,6 +166,8 @@ module.exports = async function handler(req, res) {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(a) || !/^\d{4}-\d{2}-\d{2}$/.test(b)) return res.status(400).json({ success: false, error: 'datas devem estar no formato YYYY-MM-DD' });
       if (!(b > a)) return res.status(400).json({ success: false, error: 'Data B deve ser posterior a Data A' });
 
+      const includeClosedStages = params.get('includeClosedStages') === '1';
+
       const fotos = await _listFotos(true);
       if (!fotos.length) return res.status(422).json({ success: false, error: 'Nenhuma foto disponível' });
       const oldest = fotos[fotos.length - 1];
@@ -177,8 +179,17 @@ module.exports = async function handler(req, res) {
       if (!rowsA.length || !rowsB.length) return res.status(404).json({ success: false, error: 'Foto vazia' });
 
       const objsA = _rowsToObjs(rowsA), objsB = _rowsToObjs(rowsB);
-      const snapA = FC.computeSnapshot(FC.mapFotoDeals(objsA), fA.refDate, manual);
-      const snapB = FC.computeSnapshot(FC.mapFotoDeals(objsB), fB.refDate, manual);
+      const mappedA = FC.mapFotoDeals(objsA), mappedB = FC.mapFotoDeals(objsB);
+      
+      // rawBStageById: etapa bruta em B (inclui Perdido) para stageUnified.movement e drill
+      const rawBStageById = {}; mappedB.forEach(d => { rawBStageById[FC.dealId(d)] = d.stage; });
+      
+      // Aplicar filtro de estágios fechados ANTES do compute
+      const scopedInputA = includeClosedStages ? mappedA : FC.excludeClosedStages(mappedA);
+      const scopedInputB = includeClosedStages ? mappedB : FC.excludeClosedStages(mappedB);
+      
+      const snapA = FC.computeSnapshot(scopedInputA, fA.refDate, manual);
+      const snapB = FC.computeSnapshot(scopedInputB, fB.refDate, manual);
       const byA = {}; snapA.stages.forEach(s => { byA[s.key] = s; });
       const waterfall = snapB.stages.map(s => {
         const pa = byA[s.key] || {};
@@ -192,17 +203,16 @@ module.exports = async function handler(req, res) {
       const sumDelta = waterfall.reduce((x, w) => x + w.delta.prob12, 0);
       const invariantOk = Math.abs(sumDelta - (snapB.totals.prob12 - snapA.totals.prob12)) < 0.01;
 
-      // Agregações aditivas (Leva 2): tabela unificada por etapa e ARR total/ponderado
-      // por quarter, ambas com delta A→B e drilláveis. Mesma fonte de receita (Regra
-      // primária nº 3) — reusa dealContributions, então bate com o waterfall/KPIs.
-      const cA = FC.dealContributions(FC.mapFotoDeals(objsA), fA.refDate, manual);
-      const cB = FC.dealContributions(FC.mapFotoDeals(objsB), fB.refDate, manual);
-      const stageUnified = FC.stageUnified(cA, cB);
+      // Contribuições por deal (mesmo escopo filtrado)
+      const cA = FC.dealContributions(scopedInputA, fA.refDate, manual);
+      const cB = FC.dealContributions(scopedInputB, fB.refDate, manual);
+      const stageUnified = FC.stageUnified(cA, cB, rawBStageById);
       const quarters = FC.quarterAgg(cA, cB);
 
       return res.status(200).json({
         success: true,
         measure: 'prob12',   // headline: Receita Probabilizada, TCV(12M) rolante
+        includeClosedStages,
         a: { requested: a, resolvedTab: fA.tab, tipo: fA.tipo, refDate: fA.refDate, kpis: snapA.kpis, totals: snapA.totals },
         b: { requested: b, resolvedTab: fB.tab, tipo: fB.tipo, refDate: fB.refDate, kpis: snapB.kpis, totals: snapB.totals },
         funnel: { stages: snapB.funnelStages, a: snapA.stageCounts, b: snapB.stageCounts },
@@ -215,6 +225,7 @@ module.exports = async function handler(req, res) {
         caveats: [
           'Probabilidades por etapa e faturamento manual usam o estado ATUAL (não snapshotado) | Fase 1',
           'Ganho/Implantação depende do faturamento manual (gate: vencimento ≤ data da foto) | em datas anteriores ao início do faturamento a etapa aparece subestimada — não é erro, é fidelidade ponto-no-tempo',
+          includeClosedStages ? 'Escopo inclui Implantação e Ganho' : 'Escopo exclui Implantação e Ganho',
         ],
       });
     }
@@ -223,6 +234,7 @@ module.exports = async function handler(req, res) {
       const a = params.get('a'); const b = params.get('b'); const row = params.get('row');
       const measure = params.get('measure') || 'prob12';
       const field = params.get('field');
+      const includeClosedStages = params.get('includeClosedStages') === '1';
       if (!a || !b || !row) return res.status(400).json({ success: false, error: 'informe ?a=&b=&row=' });
       if (!/^\d{4}-\d{2}-\d{2}$/.test(a) || !/^\d{4}-\d{2}-\d{2}$/.test(b)) return res.status(400).json({ success: false, error: 'datas devem estar no formato YYYY-MM-DD' });
       if (!(b > a)) return res.status(400).json({ success: false, error: 'Data B deve ser posterior a Data A' });
@@ -231,11 +243,14 @@ module.exports = async function handler(req, res) {
       if (!fA || !fB) return res.status(422).json({ success: false, error: 'Sem foto em ou antes de uma das datas' });
       if (fA.tab === fB.tab) return res.status(422).json({ success: false, error: 'As duas datas resolvem para a mesma foto' });
       const [rowsA, rowsB, manual] = await Promise.all([_readFotoRows(fA), _readFotoRows(fB), _readManual()]);
-      const mappedB = FC.mapFotoDeals(_rowsToObjs(rowsB));
+      const mappedA = FC.mapFotoDeals(_rowsToObjs(rowsA)), mappedB = FC.mapFotoDeals(_rowsToObjs(rowsB));
       // etapa bruta de cada deal em B (inclui Perdido/Ganho/fora de escopo) → destino de quem saiu
       const rawBStageById = {}; mappedB.forEach(d => { rawBStageById[FC.dealId(d)] = d.stage; });
-      const cA = FC.dealContributions(FC.mapFotoDeals(_rowsToObjs(rowsA)), fA.refDate, manual);
-      const cB = FC.dealContributions(mappedB, fB.refDate, manual);
+      // Aplicar filtro de estágios fechados se necessário
+      const scopedInputA = includeClosedStages ? mappedA : FC.excludeClosedStages(mappedA);
+      const scopedInputB = includeClosedStages ? mappedB : FC.excludeClosedStages(mappedB);
+      const cA = FC.dealContributions(scopedInputA, fA.refDate, manual);
+      const cB = FC.dealContributions(scopedInputB, fB.refDate, manual);
       // Drill genérico (Leva 2): row pode ser <rowKey> (compat waterfall), stage:<Etapa>,
       // quarter:<Q> ou kpi:vidas|arrTotal|arrPond. Sem alteração no contrato existente.
       const drill = FC.drillGeneric(cA, cB, row, measure, rawBStageById, field);

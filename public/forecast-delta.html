@@ -74,6 +74,7 @@ table.drill th.sortable:hover{color:var(--text)}
 .tag.novo{color:var(--green);background:rgba(63,185,80,.14)}
 .tag.saiu{color:var(--red);background:rgba(248,81,73,.14)}
 .tag.permaneceu{color:var(--text2);background:var(--card2)}
+.tag.ganho{color:var(--teal);background:rgba(58,184,183,.14)}
 .state{color:var(--text2);text-align:center;padding:2.5rem}
 .state.err{color:var(--red)}
 .caveat{font-size:.72rem;color:var(--muted);margin-top:.6rem;border-top:1px solid var(--border);padding-top:.6rem}
@@ -145,8 +146,24 @@ table.drill th.sortable:hover{color:var(--text)}
           <button class="tab-sub-btn" data-v="Total" aria-pressed="false">Pipeline total</button>
         </div>
       </div>
+      <div class="ctl">
+        <span class="ctl-label">Implantação/Ganho</span>
+        <div class="tab-sub" id="closed-stage-toggle" role="group" aria-label="Incluir estágios fechados">
+          <button class="tab-sub-btn on" data-v="0" aria-pressed="true">Excluir</button>
+          <button class="tab-sub-btn" data-v="1" aria-pressed="false">Incluir</button>
+        </div>
+      </div>
     </div>
     <div class="reslbl" id="fotos-hint" style="margin-top:.6rem"></div>
+  </div>
+
+  <!-- Fotografia mais recente / selecionada -->
+  <div class="card" id="today-snapshot-card" style="display:none">
+    <div class="sec-hdr">
+      <h3 id="today-snapshot-title">Fotografia do forecast</h3>
+      <span class="sec-note" id="today-snapshot-note"></span>
+    </div>
+    <div class="kpis" id="today-snapshot-kpis"></div>
   </div>
 
   <!-- Waterfall = elemento primário (spec seção 8) -->
@@ -198,7 +215,7 @@ table.drill th.sortable:hover{color:var(--text)}
   <div class="card">
     <div class="sec-hdr">
       <h3>Visão unificada por etapa <span class="pill">🟡</span></h3>
-      <span class="sec-note">Deals + vidas + receita real/ponderada + Δ por etapa | clique numa linha para o drill</span>
+      <span class="sec-note">Deals + vidas + receita real/ponderada + Δ por etapa | clique numa linha para o drill | "Caiu" só conta destino Perdido (Ganho ignorado)</span>
     </div>
     <div style="overflow:auto"><table class="utable" id="stage-table"></table></div>
   </div>
@@ -219,7 +236,7 @@ table.drill th.sortable:hover{color:var(--text)}
   var drillRows = [], drillMeta = { sumDelta: 0, measure: '', field: '' }, drillSort = { key: 'delta', dir: -1 };
   var drillFmt = null;   // formatador dos valores da coluna (BRL ou número, conforme o KPI)
   var drillMov = {};   // filtro de Movimentação: chave->true; vazio = todas
-  var MOV = [ { k: 'novo', label: 'Novo' }, { k: 'permaneceu', label: 'Permaneceu' }, { k: 'saiu', label: 'Saiu' } ];
+  var MOV = [ { k: 'novo', label: 'Novo' }, { k: 'permaneceu', label: 'Permaneceu' }, { k: 'saiu', label: 'Caiu (Perdido)' }, { k: 'ganho', label: 'Foi para Ganho' } ];
   var DRILL_COLS = [
     { key: 'dealname', label: 'Deal', align: 'left', type: 'str' },
     { key: 'stage', label: 'Etapa (A→B) | destino', align: 'left', type: 'str' },
@@ -228,7 +245,7 @@ table.drill th.sortable:hover{color:var(--text)}
     { key: 'delta', label: 'Δ', align: 'right', type: 'num' },
     { key: 'tipo', label: 'Movimentação', align: 'left', type: 'str' }
   ];
-  var metric = 'prob', horizon = '12';   // measure = metric + (horizon==='12'?'12':'Total')
+  var metric = 'prob', horizon = '12', includeClosedStages = false;   // measure = metric + (horizon==='12'?'12':'Total')
   var quarterMetric = 'arr';              // toggle ARR Total / Ponderado da seção de quarter
   var lastJ = null;                        // última resposta de compare (para re-render de toggles)
   var fotoMin = '', fotoMax = '';          // limites de datas com foto disponível
@@ -240,6 +257,7 @@ table.drill th.sortable:hover{color:var(--text)}
   function fmtNumc(v){ v=Math.round(v); return (v>=0?'+':'')+v.toLocaleString('pt-BR'); }
   function dcls(v){ return v>0?'dpos':(v<0?'dneg':'dnul'); }
   function tipoLbl(t){ return t === 'mensal' ? 'mensal' : (t === 'diario' ? 'diário' : 'semanal'); }
+  function brtTodayStr(){ var d = new Date(Date.now() - 3*60*60*1000); return d.toISOString().slice(0,10); }
 
   function loadFotos(){
     return fetch('/api/history?action=fotos&cadence=daily', {credentials:'same-origin'})
@@ -267,7 +285,7 @@ table.drill th.sortable:hover{color:var(--text)}
     if(!a || !b){ cs.style.display='block'; cs.className='state'; cs.textContent='Escolha as duas datas.'; return; }
     if(!(b > a)){ cs.style.display='block'; cs.className='state err'; cs.textContent='A Foto B (depois) precisa ser posterior à Foto A (antes).'; if(chart){chart.destroy();chart=null;} document.getElementById('kpis').innerHTML=''; return; }
     cs.style.display='block'; cs.className='state'; cs.textContent='Calculando…';
-    fetch('/api/history?action=compare&a='+a+'&b='+b, {credentials:'same-origin'})
+    fetch('/api/history?action=compare&a='+a+'&b='+b+'&includeClosedStages='+(includeClosedStages?'1':'0'), {credentials:'same-origin'})
       .then(function(r){ return r.json().then(function(j){ return {ok:r.ok, j:j}; }); })
       .then(function(res){
         var j = res.j;
@@ -345,10 +363,37 @@ table.drill th.sortable:hover{color:var(--text)}
     });
 
     document.getElementById('caveat').textContent = (j.caveats && j.caveats[0]) ? ('⚠ ' + j.caveats[0]) : '';
+    renderTodaySnapshot(j);
     renderFunnel(j);
     renderStageTable(j);
     renderQuarterTable(j);
     renderSaiu(j);
+  }
+  
+  // ── Card de fotografia mais recente / selecionada ──
+  function renderTodaySnapshot(j){
+    var cardEl = document.getElementById('today-snapshot-card');
+    var titleEl = document.getElementById('today-snapshot-title');
+    var noteEl = document.getElementById('today-snapshot-note');
+    var kpisEl = document.getElementById('today-snapshot-kpis');
+    if(!j || !j.b || !j.b.kpis){ cardEl.style.display='none'; return; }
+    
+    var today = brtTodayStr();
+    var ref = j.b.resolvedTab || j.b.refDate;
+    var isToday = ref === today;
+    
+    titleEl.textContent = isToday ? 'Fotografia de hoje do forecast' : 'Fotografia selecionada (B)';
+    noteEl.textContent = 'Foto ' + ref + ' (' + tipoLbl(j.b.tipo) + ')' + (isToday ? ' | capturada hoje' : '');
+    
+    var k = j.b.kpis;
+    kpisEl.innerHTML =
+      '<div class="kpi"><div class="k">Deals abertos</div><div class="v">'+fmtNum(k.deals)+'</div></div>' +
+      '<div class="kpi"><div class="k">Vidas em pipe</div><div class="v">'+fmtNum(k.vidas)+'</div></div>' +
+      '<div class="kpi"><div class="k">ARR Total</div><div class="v">'+fmtBRL(k.arrTotal)+'</div></div>' +
+      '<div class="kpi"><div class="k">ARR Ponderado</div><div class="v">'+fmtBRL(k.arrPond)+'</div></div>' +
+      '<div class="kpi"><div class="k">TCV 12M ponderado</div><div class="v">'+fmtBRL(k.tcv12)+'</div></div>';
+    
+    cardEl.style.display = '';
   }
   function kpiTitle(k){ return k==='vidas'?'Vidas':(k==='arrTotal'?'ARR Total':(k==='arrPond'?'ARR Ponderado':k)); }
   function kpiFmt(k){ return k==='vidas' ? fmtNum : fmtBRL; }
@@ -380,21 +425,24 @@ table.drill th.sortable:hover{color:var(--text)}
   function renderStageTable(j){
     var t = document.getElementById('stage-table');
     if(!j.stageUnified){ t.innerHTML=''; return; }
-    var head = '<caption class="sr-only">Visão unificada por etapa</caption><thead><tr><th scope="col">Etapa</th><th scope="col">Deals A→B</th><th scope="col">Vidas A→B</th><th scope="col" class="stage-real">Receita Real (12M) A→B</th><th scope="col">Receita Ponderada (12M) A→B</th><th scope="col">Δ Ponderada</th></tr></thead>';
-    var tot = { dA:0,dB:0, vA:0,vB:0, rA:0,rB:0, pA:0,pB:0 };
+    var head = '<caption class="sr-only">Visão unificada por etapa</caption><thead><tr><th scope="col">Etapa</th><th scope="col">Deals A→B</th><th scope="col">Novo / Perdido</th><th scope="col">Vidas A→B</th><th scope="col" class="stage-real">Receita Real (12M) A→B</th><th scope="col">Receita Ponderada (12M) A→B</th><th scope="col">Δ Ponderada</th></tr></thead>';
+    var tot = { dA:0,dB:0, vA:0,vB:0, rA:0,rB:0, pA:0,pB:0, novos:0, caiuPerdido:0 };
     var body = j.stageUnified.map(function(r){
       tot.dA+=r.a.deals; tot.dB+=r.b.deals; tot.vA+=r.a.vidas; tot.vB+=r.b.vidas;
       tot.rA+=r.a.real12; tot.rB+=r.b.real12; tot.pA+=r.a.prob12; tot.pB+=r.b.prob12;
+      if(r.movement){ tot.novos+=r.movement.novos || 0; tot.caiuPerdido+=r.movement.caiuPerdido || 0; }
       var dp=r.delta.prob12;
+      var mov = r.movement ? ('<span class="dpos">+'+fmtNum(r.movement.novos)+'</span> / <span class="dneg">-'+fmtNum(r.movement.caiuPerdido)+'</span>') : '—';
       return '<tr data-stage="'+esc(r.stage)+'" role="button" tabindex="0" aria-label="Abrir drill da etapa '+esc(r.stage)+'">'+
         '<td>'+esc(r.stage)+'</td>'+
         '<td>'+fmtNum(r.a.deals)+' → '+fmtNum(r.b.deals)+' <span class="'+dcls(r.delta.deals)+'">('+fmtNumc(r.delta.deals)+')</span></td>'+
+        '<td>'+mov+'</td>'+
         '<td>'+fmtNum(r.a.vidas)+' → '+fmtNum(r.b.vidas)+' <span class="'+dcls(r.delta.vidas)+'">('+fmtNumc(r.delta.vidas)+')</span></td>'+
         '<td class="stage-real">'+fmtBRL(r.a.real12)+' → '+fmtBRL(r.b.real12)+'</td>'+
         '<td>'+fmtBRL(r.a.prob12)+' → '+fmtBRL(r.b.prob12)+'</td>'+
         '<td class="'+dcls(dp)+'">'+fmtBRLc(dp)+'</td></tr>';
     }).join('');
-    var foot = '<tfoot><tr><td>Total</td><td>'+fmtNum(tot.dA)+' → '+fmtNum(tot.dB)+'</td><td>'+fmtNum(tot.vA)+' → '+fmtNum(tot.vB)+'</td><td class="stage-real">'+fmtBRL(tot.rA)+' → '+fmtBRL(tot.rB)+'</td><td>'+fmtBRL(tot.pA)+' → '+fmtBRL(tot.pB)+'</td><td class="'+dcls(tot.pB-tot.pA)+'">'+fmtBRLc(tot.pB-tot.pA)+'</td></tr></tfoot>';
+    var foot = '<tfoot><tr><td>Total</td><td>'+fmtNum(tot.dA)+' → '+fmtNum(tot.dB)+'</td><td><span class="dpos">+'+fmtNum(tot.novos)+'</span> / <span class="dneg">-'+fmtNum(tot.caiuPerdido)+'</span></td><td>'+fmtNum(tot.vA)+' → '+fmtNum(tot.vB)+'</td><td class="stage-real">'+fmtBRL(tot.rA)+' → '+fmtBRL(tot.rB)+'</td><td>'+fmtBRL(tot.pA)+' → '+fmtBRL(tot.pB)+'</td><td class="'+dcls(tot.pB-tot.pA)+'">'+fmtBRLc(tot.pB-tot.pA)+'</td></tr></tfoot>';
     t.innerHTML = head+'<tbody>'+body+'</tbody>'+foot;
     t.querySelectorAll('tbody tr').forEach(function(tr){ var go=function(){ var st=tr.getAttribute('data-stage'); openDrill('stage:'+st, 'Etapa | '+st, null); }; tr.addEventListener('click', go); tr.addEventListener('keydown', function(e){ if(e.key==='Enter'||e.key===' '){e.preventDefault();go();} }); });
   }
@@ -446,7 +494,7 @@ table.drill th.sortable:hover{color:var(--text)}
     modal.style.display='flex'; modal.setAttribute('aria-hidden','false');
     setTimeout(function(){ document.getElementById('drill-x').focus(); },0);
     drillFmt = valFmt || fmtBRL;
-    var q = '/api/history?action=compare-drill&a='+a+'&b='+b+'&row='+encodeURIComponent(target)+'&measure='+m+(field?'&field='+encodeURIComponent(field):'');
+    var q = '/api/history?action=compare-drill&a='+a+'&b='+b+'&row='+encodeURIComponent(target)+'&measure='+m+'&includeClosedStages='+(includeClosedStages?'1':'0')+(field?'&field='+encodeURIComponent(field):'');
     fetch(q, {credentials:'same-origin'})
       .then(function(r){ return r.json(); })
       .then(function(d){ if(!d.success){ body.innerHTML='<div class="state err">'+esc(d.error||'erro')+'</div>'; return; }
@@ -514,6 +562,7 @@ table.drill th.sortable:hover{color:var(--text)}
   wireToggle('metric-toggle', function(v){ metric=v; refresh(); });
   wireToggle('horizon-toggle', function(v){ horizon=v; refresh(); });
   wireToggle('quarter-toggle', function(v){ quarterMetric=v; if(lastJ) renderQuarterTable(lastJ); });
+  wireToggle('closed-stage-toggle', function(v){ includeClosedStages = v === '1'; refresh(); });
   document.getElementById('dateA').addEventListener('change', refresh);
   document.getElementById('dateB').addEventListener('change', refresh);
   document.getElementById('open-saiu').addEventListener('click', openSaiu);
