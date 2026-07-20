@@ -171,22 +171,17 @@ var WorkloadBDR = (function () {
     var kDesq = trans.filter(function (t) { return t.para === 'UNQUALIFIED' || t.para === 'BAD_TIMING'; });
 
     var prev = previousKpis();
-    var activities = fActivities();
+    var activities = (raw.activities || []).filter(passBdr);
     var notices = renderQualityChecks(activities);
     if (historyError) notices += '<div class="note" style="margin-bottom:1rem"><b>Histórico indisponível:</b> ' + esc(historyError) + '</div>';
     if (historyAvailable() && history.metadata && history.metadata.maxMetricDate && history.metadata.maxMetricDate < state.until) notices += '<div class="note" style="margin-bottom:1rem"><b>Histórico possivelmente defasado:</b> último dia no BigQuery é ' + esc(history.metadata.maxMetricDate) + '.</div>';
 
-    var html = bdrFrozenBanner() + '<section class="note"><b>Fonte dos dados:</b> ' + esc(renderFreshness()) + '. <b>' + esc(renderWindowContext()) + '</b>. O snapshot BigQuery roda durante o dia; a série de hoje usa HubSpot live para não mostrar atividade parcial.</section>' + notices;
+    var html = bdrFrozenBanner() + '<section class="note"><b>Fonte dos dados:</b> ' + esc(renderFreshness()) + '. <b>' + esc(renderWindowContext()) + '</b>. Metas vêm de <code>gold.bdr_daily_target</code> e são provisórias/configuráveis. O snapshot BigQuery roda durante o dia; a série de hoje usa HubSpot live para não mostrar atividade parcial.</section>' + notices;
 
-    html += '<section class="level-0"><h2 class="level-title">📊 Visão Executiva</h2>';
-    html += '<div class="card span-12"><div class="card-title"><div><h2>Pulso do Dia <span class="source-badge live">LIVE</span></h2><div class="desc">O time está no ritmo hoje? Total de toques, percentual de meta e pace projetado.</div></div></div>';
-    html += kpis([
-      { label: 'Toques hoje', value: activities.length, cls: 'teal', drill: 'atividades', sub: 'Atividades registradas no HubSpot live', help: 'atividades-reais', delta: deltaHtml(activities.length, prev.movs) },
-      { label: '% meta', value: '—', cls: '', drill: 'atividades', sub: 'Meta diária ainda não configurada no front', help: 'atividades-reais', delta: '' },
-      { label: 'Pace projetado', value: activities.length, cls: 'good', drill: 'atividades', sub: 'Projeção conservadora pelos toques já registrados', help: 'atividades-reais', delta: '' },
-    ]);
-    html += '</div>';
+    html += '<section class="level-0"><h2 class="level-title">Visão Executiva</h2>';
+    html += executivePulse(activities);
     html += chartRealActivities(activities);
+    html += chartChannelComparison(activities);
     html += '</section>';
 
     html += '<section class="level-1"><h2 class="level-title">👥 Visão de Gestão</h2>';
@@ -255,50 +250,86 @@ var WorkloadBDR = (function () {
 
   function renderQualityChecks(acts) {
     var checks = [];
+    var todayIso = iso(new Date());
+    var scope = selectedBdrs();
     var rows = aggregateHistoryByDay(state.since, state.until, state.diasUteis, true, acts);
     var sums = sumActivityRows(rows);
     var channelSum = sums.calls + sums.emails + sums.whatsApp + sums.linkedin + sums.meetings;
-    var diff = Math.abs((sums.total || 0) - channelSum);
-    var diffPct = sums.total ? diff / sums.total : (channelSum ? 1 : 0);
+    if (sums.total !== channelSum) checks.push({ status: 'fail', icon: '!', text: 'Total estrito divergente: total ' + sums.total + ' vs canais ' + channelSum });
+    else checks.push({ status: 'pass', icon: '✓', text: 'Total estrito = soma dos cinco canais (' + channelSum + ')' });
     var byBdr = {};
-    raw.team.forEach(function (b) { byBdr[b] = 0; });
-    acts.forEach(function (a) {
-      var b = activityBucket(a);
-      if (b && byBdr[a.bdr] != null) byBdr[a.bdr]++;
+    scope.forEach(function (b) { byBdr[b] = 0; });
+    rows.forEach(function (r) {
+      if (state.bdr) byBdr[state.bdr] += r.total || 0;
     });
-    var activeBdrs = Object.keys(byBdr).filter(function (b) { return byBdr[b] > 0; });
-    var zeroBdrs = Object.keys(byBdr).filter(function (b) { return byBdr[b] === 0; });
-    if (zeroBdrs.length) checks.push({ status: 'fail', icon: '⚠', text: activeBdrs.length + '/' + raw.team.length + ' BDRs com atividade (' + zeroBdrs.length + ' zerados)' });
-    else checks.push({ status: 'pass', icon: '✓', text: activeBdrs.length + '/' + raw.team.length + ' BDRs com atividade' });
-    if (diffPct > 0.02) checks.push({ status: 'fail', icon: '⚠', text: 'Total diverge dos canais: total ' + sums.total + ' vs soma ' + channelSum + ' (' + Math.round(diffPct * 100) + '%)' });
-    else checks.push({ status: 'pass', icon: '✓', text: 'Total = soma dos canais (' + sums.total + ')' });
+    if (!state.bdr) {
+      aggregateBdrCurrent(acts).forEach(function (row) { if (byBdr[row.bdr] != null) byBdr[row.bdr] = selectedTotal(row); });
+    }
+    var activeBdrs = scope.filter(function (b) { return byBdr[b] > 0; });
+    var zeroBdrs = scope.filter(function (b) { return byBdr[b] === 0; });
+    checks.push({ status: zeroBdrs.length ? 'warn' : 'pass', icon: zeroBdrs.length ? '!' : '✓', text: 'Cobertura: ' + activeBdrs.length + '/' + scope.length + (state.bdr ? ' BDR filtrado' : ' BDRs canônicos') + ' com atividade' });
     if (historyAvailable()) {
-      var todayIso = iso(new Date());
-      var bqRows = aggregateHistoryByDay(state.since, state.until, state.diasUteis, false, []);
-      var compareRows = rows.filter(function (r) { return r.date !== todayIso; });
-      var compareBqRows = bqRows.filter(function (r) { return r.date !== todayIso; });
-      if (compareRows.length) {
-        var apiTotal = sumActivityRows(compareRows).total;
-        var bqTotal = sumActivityRows(compareBqRows).total;
+      var closedSince = state.since;
+      var closedUntil = state.until >= todayIso ? shiftIso(todayIso, -1) : state.until;
+      if (closedUntil >= closedSince) {
+        var apiRows = aggregateActsByDay((raw.activities || []).filter(function (a) { return passBdr(a) && passCanal(a); }), closedSince, closedUntil, state.diasUteis);
+        var bqRows = aggregateHistoryByDay(closedSince, closedUntil, state.diasUteis, false, []);
+        var apiTotal = selectedTotal(sumActivityRows(apiRows));
+        var bqTotal = selectedTotal(sumActivityRows(bqRows));
         var recDiff = Math.abs(apiTotal - bqTotal);
         var recPct = bqTotal ? recDiff / bqTotal : (apiTotal ? 1 : 0);
-        if (recPct > 0.02) checks.push({ status: 'fail', icon: '⚠', text: 'API ' + apiTotal + ' ≠ BQ ' + bqTotal + ' (' + Math.round(recPct * 100) + '%)' });
-        else checks.push({ status: 'pass', icon: '✓', text: 'reconciliado (API ' + apiTotal + ' = BQ ' + bqTotal + ')' });
+        if (recPct > 0.02) checks.push({ status: 'warn', icon: '!', text: 'API live ' + apiTotal + ' vs BQ ' + bqTotal + ' em dias fechados (' + Math.round(recPct * 100) + '%)' });
+        else checks.push({ status: 'pass', icon: '✓', text: 'API live vs BQ reconciliados em dias fechados (' + bqTotal + ')' });
+        var missing = bqRows.filter(function (r) { return r.total === 0; }).length;
+        checks.push({ status: missing ? 'warn' : 'pass', icon: missing ? '!' : '✓', text: missing ? missing + ' dias úteis fechados zerados no BQ' : 'Sem gaps em dias úteis fechados no BQ' });
       } else {
-        var liveTotal = sumActivityRows(rows).total;
-        checks.push({ status: 'pass', icon: '✓', text: 'reconciliado live (API ' + liveTotal + ')' });
+        var liveToday = selectedTotal(sumActivityRows(aggregateActsByDay(acts, state.since, state.until, state.diasUteis)));
+        var bqToday = selectedTotal(sumActivityRows(aggregateHistoryByDay(todayIso, todayIso, false, false, [])));
+        checks.push({ status: 'warn', icon: '!', text: 'Hoje informativo: Live ' + liveToday + ' | BQ ' + bqToday + ' até ' + (history.metadata && history.metadata.refreshedAt ? dmhm(history.metadata.refreshedAt) : '—') });
       }
+      checks.push({ status: 'warn', icon: '!', text: 'LinkedIn live depende do canal de communications; histórico canônico segue taxonomia gold' });
     } else {
-      checks.push({ status: 'warn', icon: '⚠', text: 'BQ indisponível para reconciliar' });
+      checks.push({ status: 'warn', icon: '!', text: 'BQ indisponível para double-check' });
     }
-    var missingBusinessDays = rows.filter(function (r) { return r.total === 0; }).length;
-    if (missingBusinessDays) checks.push({ status: 'warn', icon: '⚠', text: missingBusinessDays + ' dias úteis sem dados' });
-    else checks.push({ status: 'pass', icon: '✓', text: 'Sem gaps de dias úteis' });
     return '<div class="quality-checks">' + checks.map(function (c) {
       return '<div class="check-item ' + c.status + '"><span class="check-icon">' + c.icon + '</span><span class="check-text">' + esc(c.text) + '</span></div>';
     }).join('') + '</div>';
   }
 
+  function aggregateBdrCurrent(acts) {
+    var map = {};
+    selectedBdrs().forEach(function (b) { map[b] = { bdr: b, calls: 0, emails: 0, whats: 0, whatsApp: 0, linkedin: 0, meetings: 0, total: 0, lastLoad: null }; });
+    var todayIso = iso(new Date());
+    if (historyAvailable()) {
+      history.dailyRows.forEach(function (r) {
+        if (r.metric_date < state.since || r.metric_date > state.until) return;
+        if (state.diasUteis && !isDiaUtil(new Date(r.metric_date + 'T00:00:00'))) return;
+        if (r.metric_date === todayIso) return;
+        if (state.bdr && r.owner_name !== state.bdr) return;
+        var p = map[r.owner_name]; if (!p) return;
+        p.calls += r.calls_total || 0; p.emails += r.emails_sent_total || 0; p.whats += r.whatsapp_total || 0; p.whatsApp = p.whats;
+        p.linkedin += r.linkedin_total || 0; p.meetings += r.meetings_total || 0;
+        p.total += (r.calls_total || 0) + (r.emails_sent_total || 0) + (r.whatsapp_total || 0) + (r.linkedin_total || 0) + (r.meetings_total || 0);
+        p.lastLoad = latestTs(p.lastLoad, r.refreshed_at);
+      });
+    }
+    aggregateActsByDayByBdr(acts, todayIso, todayIso, false).forEach(function (r) {
+      var p = map[r.bdr]; if (!p) return;
+      p.calls += r.calls; p.emails += r.emails; p.whats += r.whatsApp; p.whatsApp = p.whats; p.linkedin += r.linkedin; p.meetings += r.meetings; p.total += r.total;
+      p.lastLoad = latestTs(p.lastLoad, r.lastLoad);
+    });
+    return Object.keys(map).map(function (b) { return map[b]; });
+  }
+  function aggregateActsByDayByBdr(acts, since, until, onlyBusinessDays) {
+    var map = {};
+    acts.forEach(function (a) {
+      var d = new Date(a.ts), key = iso(d), b = activityBucket(a);
+      if (!b || key < since || key > until || (onlyBusinessDays && !isDiaUtil(d))) return;
+      if (!map[a.bdr]) map[a.bdr] = { bdr: a.bdr, calls: 0, emails: 0, whatsApp: 0, linkedin: 0, meetings: 0, total: 0, lastLoad: null };
+      map[a.bdr][b]++; map[a.bdr].total++; map[a.bdr].lastLoad = latestTs(map[a.bdr].lastLoad, a.ts);
+    });
+    return Object.keys(map).map(function (b) { return map[b]; });
+  }
   function kpis(items) {
     var h = '<section class="kpis">';
     items.forEach(function (k) {
@@ -394,7 +425,9 @@ var WorkloadBDR = (function () {
         (r.whatsapp_total || 0) + (r.linkedin_total || 0) + (r.meetings_total || 0);
     });
     if (includeLiveToday) aggregateActsByDay(acts, since, until, onlyBusinessDays).forEach(function (r) {
-      if (r.date === todayIso && by[r.date]) by[r.date] = r;
+      if (r.date === todayIso && by[r.date]) {
+        Object.keys(r).forEach(function (key) { by[r.date][key] = r[key]; });
+      }
     });
     return out;
   }
@@ -402,6 +435,65 @@ var WorkloadBDR = (function () {
     var s = { calls: 0, callsReal: 0, emails: 0, whatsApp: 0, linkedin: 0, meetings: 0, total: 0 };
     rows.forEach(function (r) { Object.keys(s).forEach(function (k) { s[k] += r[k] || 0; }); });
     return s;
+  }
+  function targetForBdr(name, canal) {
+    if (!historyAvailable() || !history.metadata || !history.metadata.bdrDailyTargets) return 0;
+    var t = history.metadata.bdrDailyTargets[name] || null;
+    if (!t) return 0;
+    if (!canal || canal === 'todos') return t.total || ((t.calls || 0) + (t.emails || 0) + (t.whatsapp || 0) + (t.linkedin || 0) + (t.meetings || 0));
+    var key = canal === 'whatsApp' ? 'whatsapp' : canal;
+    return t[key] || 0;
+  }
+  function selectedBdrs() { return state.bdr ? [state.bdr] : (raw && raw.team ? raw.team.slice() : []); }
+  function targetForSelection(days) {
+    return selectedBdrs().reduce(function (sum, b) { return sum + targetForBdr(b, state.canal) * days; }, 0);
+  }
+  function businessDaysForRange(s, u) { return state.diasUteis ? countDiasUteis(s, u) : inclusiveCalendarDays(s, u); }
+  function targetDaysForRange(s, u) { return countDiasUteis(s, u); }
+  function selectedTotal(row) {
+    if (!state.canal || state.canal === 'todos') return row.total || 0;
+    if (state.canal === 'whatsApp') return row.whatsApp || row.whats || 0;
+    return row[state.canal] || 0;
+  }
+  function brtHourNow() { return Number(new Intl.DateTimeFormat('en-US', { timeZone: 'America/Sao_Paulo', hour: '2-digit', hour12: false }).format(new Date())); }
+  function projectedPace(total) {
+    var h = brtHourNow();
+    var elapsed = h <= 8 ? 0.25 : (h >= 18 ? 10 : h - 8);
+    return Math.round(total / Math.max(0.25, elapsed) * 10);
+  }
+  function sourceBadgeText() { return state.period === 'hoje' ? '<span class="source-badge live">LIVE</span>' : '<span class="source-badge bq">BQ</span>'; }
+  function executivePulse(acts) {
+    var isToday = state.period === 'hoje' && state.since === state.until;
+    var rows = aggregateHistoryByDay(state.since, state.until, state.diasUteis, true, acts);
+    var total = selectedTotal(sumActivityRows(rows));
+    var displayDays = businessDaysForRange(state.since, state.until);
+    var targetDays = targetDaysForRange(state.since, state.until);
+    var target = targetForSelection(targetDays);
+    var pct = target ? Math.round(total / target * 100) : null;
+    var pace = projectedPace(total);
+    var pacePct = target ? Math.round(pace / target * 100) : null;
+    var title = isToday ? 'Pulso do Dia ' : 'Pulso do Recorte ';
+    var items = isToday ? [
+      { label: 'Toques reais hoje', value: total, cls: 'teal', drill: 'atividades', sub: 'Total estrito dos cinco canais | ' + (state.period === 'hoje' ? 'LIVE' : 'BQ'), help: 'atividades-reais', delta: deltaHtml(total, previousActivityBaseline()) },
+      { label: '% da meta', value: pct == null ? '—' : pct + '%', cls: pct != null && pct >= 100 ? 'good' : (pct != null && pct < 70 ? 'bad' : 'warn'), drill: 'atividades', sub: target ? total + ' de ' + target + ' toques/dia configurados' : 'Meta não configurada no BQ', help: 'atividades-reais', delta: '' },
+      { label: 'Pace projetado', value: pace, cls: pacePct != null && pacePct >= 100 ? 'good' : (pacePct != null && pacePct < 70 ? 'bad' : 'warn'), drill: 'atividades', sub: 'Projeção 08h–18h BRT' + (pacePct == null ? '' : ' | ' + pacePct + '% da meta'), help: 'atividades-reais', delta: '' },
+    ] : [
+      { label: 'Atividades no recorte', value: total, cls: 'teal', drill: 'atividades', sub: 'Fonte BQ + hoje live quando incluso', help: 'atividades-reais', delta: deltaHtml(total, previousActivityBaseline()) },
+      { label: '% da meta do recorte', value: pct == null ? '—' : pct + '%', cls: pct != null && pct >= 100 ? 'good' : (pct != null && pct < 70 ? 'bad' : 'warn'), drill: 'atividades', sub: target ? total + ' de ' + target + ' toques configurados' : 'Meta não configurada no BQ', help: 'atividades-reais', delta: '' },
+      { label: state.diasUteis ? 'Média por dia útil' : 'Média por dia corrido', value: displayDays ? Math.round(total / displayDays) : 0, cls: '', drill: 'atividades', sub: displayDays + ' dias no denominador | fonte BQ', help: 'atividades-reais', delta: '' },
+    ];
+    return '<div class="card span-12"><div class="card-title"><div><h2>' + title + sourceBadgeText() + '</h2><div class="desc">Total estrito: ligações + e-mails enviados + WhatsApp + LinkedIn + reuniões. Selo indica fonte principal e freshness.</div></div></div>' + kpis(items) + '</div>';
+  }
+  function previousActivityBaseline() {
+    var todayIso = iso(new Date());
+    if (state.period === 'hoje') {
+      var end = shiftIso(todayIso, -1), start = shiftIso(end, -10);
+      var rows = aggregateHistoryByDay(start, end, true, false, []);
+      var nonZero = rows.slice(-7);
+      return Math.round(selectedTotal(sumActivityRows(nonZero)) / Math.max(1, nonZero.length));
+    }
+    var days = inclusiveCalendarDays(state.since, state.until);
+    return selectedTotal(sumActivityRows(aggregateHistoryByDay(shiftIso(state.since, -days), shiftIso(state.since, -1), state.diasUteis, false, [])));
   }
   function latestTs(current, candidate) {
     var c = new Date(candidate).getTime();
@@ -411,24 +503,12 @@ var WorkloadBDR = (function () {
   }
   function bdrDailyTarget() {
     if (!state.bdr || !historyAvailable()) return null;
-    var keys = ['bdr_daily_target', 'daily_target', 'target', 'activities_target'];
-    for (var i = 0; i < history.dailyRows.length; i++) {
-      var r = history.dailyRows[i];
-      if (r.owner_name !== state.bdr) continue;
-      for (var j = 0; j < keys.length; j++) {
-        var v = Number(r[keys[j]]);
-        if (isFinite(v) && v > 0) return v;
-      }
-    }
-    if (history.metadata && history.metadata.bdrDailyTargets) {
-      var meta = Number(history.metadata.bdrDailyTargets[state.bdr]);
-      if (isFinite(meta) && meta > 0) return meta;
-    }
-    return null;
+    var v = targetForBdr(state.bdr, state.canal) * targetDaysForRange(state.since, state.until);
+    return v > 0 ? v : null;
   }
   function chartBdrDayWaterfall(acts) {
     if (!state.bdr) return '';
-    var rows = aggregateActsByDay(acts, state.since, state.until, false);
+    var rows = aggregateHistoryByDay(state.since, state.until, false, true, acts);
     var s = sumActivityRows(rows);
     var items = [
       ['Ligações', s.calls, 'var(--teal)'],
@@ -437,14 +517,19 @@ var WorkloadBDR = (function () {
       ['LinkedIn', s.linkedin, 'var(--orange)'],
       ['Reuniões', s.meetings, 'rgba(58,184,183,.72)'],
     ];
+    if (state.canal && state.canal !== 'todos') {
+      var selectedKey = state.canal === 'whatsApp' ? 'WhatsApp' : (state.canal === 'calls' ? 'Ligações' : (state.canal === 'emails' ? 'E-mails' : (state.canal === 'linkedin' ? 'LinkedIn' : 'Reuniões')));
+      items = items.filter(function (item) { return item[0] === selectedKey; });
+    }
     var total = items.reduce(function (acc, item) { return acc + item[1]; }, 0);
     var target = bdrDailyTarget();
     var gap = target == null ? null : total - target;
     var max = Math.max(total, target || 0, 1);
     var W = 520, H = 240, baseY = 172, topY = 38, plotH = baseY - topY, barW = 54, startX = 32, gapX = 34;
     function y(v) { return baseY - (v / max * plotH); }
-    var h = '<div class="grid"><div class="card span-6"><div class="card-title"><div><h2>Composição do dia por canal</h2>' +
-      '<div class="desc">Como ' + esc(state.bdr) + ' distribuiu o esforço na janela filtrada</div></div>' +
+    var scope = state.period === 'hoje' ? 'dia' : 'recorte';
+    var h = '<div class="grid"><div class="card span-6"><div class="card-title"><div><h2>Waterfall do ' + scope + ' por canal</h2>' +
+      '<div class="desc">Como ' + esc(state.bdr) + ' distribuiu o esforço no ' + scope + ' filtrado; meta real do BQ quando configurada.</div></div>' +
       '<span class="pill">Total: ' + total + '</span></div>';
     h += '<svg class="waterfall-svg area-svg" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Waterfall de atividades por canal do BDR filtrado">';
     h += '<line x1="18" y1="' + baseY + '" x2="500" y2="' + baseY + '"></line>';
@@ -472,18 +557,20 @@ var WorkloadBDR = (function () {
   }
   function deltaPctNumber(now, prev) {
     if (!prev && !now) return 0;
-    if (!prev) return 100;
+    if (!prev) return null;
     return Math.round((now - prev) / prev * 100);
   }
   function pctDelta(now, prev) {
     var v = deltaPctNumber(now, prev);
+    if (v == null) return 's/ base';
     return (v > 0 ? '+' : '') + v + '%';
   }
   function deltaHtml(now, prev) {
     if (!historyAvailable()) return '<span class="kpi-delta muted">—</span>';
-    var pct = pctDelta(now, prev), neg = pct.charAt(0) === '-';
-    var cls = neg ? 'down' : 'up';
-    return '<span class="kpi-delta ' + cls + '">' + (neg ? '▼ ' : '▲ ') + pct + '</span>';
+    var v = deltaPctNumber(now, prev);
+    if (v == null) return '<span class="kpi-delta flat">s/ base</span>';
+    var cls = v >= 10 ? 'up' : (v <= -10 ? 'down' : 'flat');
+    return '<span class="kpi-delta ' + cls + '">' + variationText(v) + '</span>';
   }
   function cmpText(now, prev, label) {
     if (!historyAvailable()) return '— ' + label + ' · <b>indisponível</b>';
@@ -496,6 +583,14 @@ var WorkloadBDR = (function () {
   }
   function inclusiveCalendarDays(since, until) {
     return Math.floor((new Date(until + 'T00:00:00') - new Date(since + 'T00:00:00')) / 86400000) + 1;
+  }
+  function rowStrictTotal(r) {
+    var total = (r.calls_total || r.calls || 0) + (r.emails_sent_total || r.emails || 0) + (r.whatsapp_total || r.whatsApp || 0) + (r.linkedin_total || r.linkedin || 0) + (r.meetings_total || r.meetings || 0);
+    if (!state.canal || state.canal === 'todos') return total;
+    if (state.canal === 'emails') return r.emails_sent_total || r.emails || 0;
+    if (state.canal === 'whatsApp') return r.whatsapp_total || r.whatsApp || 0;
+    var key = state.canal === 'calls' ? 'calls_total' : state.canal + '_total';
+    return r[key] || r[state.canal] || 0;
   }
   function rowTotalByCanal(r) {
     if (!state.canal || state.canal === 'todos') return r.total || 0;
@@ -535,14 +630,15 @@ var WorkloadBDR = (function () {
       '<div class="story-card"><div class="story-head"><b>WoW | e-mails</b></div><span>' + cmpText(thisWeek.emails, lastWeek.emails, 'nesta semana') + '</span></div>' +
       '<div class="story-card"><div class="story-head"><b>Período anterior | atividades</b></div><span>' + cmpText(currentPeriod.total, previousPeriod.total, 'na janela') + '</span></div></div>';
     if (!rows.length) return h + '<div class="desc">Sem dias no recorte após filtro.</div></div></div>';
-    var max = 1; rows.forEach(function (r) { max = Math.max(max, r.total); });
+    var moving = movingAverageRows(rows, 7);
+    var max = 1; rows.forEach(function (r, i) { max = Math.max(max, r.total, moving[i] || 0); });
     var W = 1120, H = 260, L = 42, R = 16, T = 18, B = 34, plotW = W - L - R, plotH = H - T - B;
     var keys = [['calls', 'var(--teal)', 'Ligações'], ['emails', 'var(--yellow)', 'E-mails'], ['whatsApp', 'var(--green)', 'WhatsApp'], ['linkedin', 'var(--orange)', 'LinkedIn'], ['meetings', 'rgba(58,184,183,.42)', 'Reuniões']];
     if (state.canal && state.canal !== 'todos') keys = keys.filter(function (k) { return k[0] === state.canal; });
     var cum = rows.map(function () { return 0; });
     function x(i) { return L + (rows.length === 1 ? plotW / 2 : i * plotW / (rows.length - 1)); }
     function y(v) { return T + plotH - (v / max * plotH); }
-    h += '<div class="line-legend">' + keys.map(function (k) { return '<span><i style="background:' + k[1] + '"></i>' + k[2] + '</span>'; }).join('') + '</div>';
+    h += '<div class="line-legend">' + keys.map(function (k) { return '<span><i style="background:' + k[1] + '"></i>' + k[2] + '</span>'; }).join('') + '<span><i style="background:var(--text);height:2px"></i>Média móvel 7d</span></div>';
     h += '<svg class="area-svg" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Ritmo real de atividades por dia">';
     for (var gy = 0; gy <= 4; gy++) { var yy = T + gy * plotH / 4; h += '<line x1="' + L + '" y1="' + yy + '" x2="' + (W - R) + '" y2="' + yy + '"></line><text x="4" y="' + (yy + 4) + '">' + Math.round(max * (4 - gy) / 4) + '</text>'; }
     keys.forEach(function (k) {
@@ -551,6 +647,10 @@ var WorkloadBDR = (function () {
       var d = 'M ' + top.map(function (p) { return p[0].toFixed(1) + ' ' + p[1].toFixed(1); }).join(' L ') + ' L ' + bottom.slice().reverse().map(function (p) { return p[0].toFixed(1) + ' ' + p[1].toFixed(1); }).join(' L ') + ' Z';
       h += '<path class="area-layer" fill="' + k[1] + '" d="' + d + '"><title>' + k[2] + '</title></path>';
     });
+    if (moving.length) {
+      var md = moving.map(function (v, i) { return (i ? ' L ' : 'M ') + x(i).toFixed(1) + ' ' + y(v).toFixed(1); }).join('');
+      h += '<path class="ln" d="' + md + '" stroke="var(--text)" fill="none"><title>Média móvel 7d</title></path>';
+    }
     rows.forEach(function (r, i) { if (i % Math.ceil(rows.length / 12) === 0 || i === rows.length - 1) h += '<text x="' + x(i) + '" y="' + (H - 8) + '" text-anchor="middle">' + ddmmFromIso(r.date) + '</text>'; });
     h += '</svg>';
     var zeros = rows.filter(function (r) { return r.total === 0; });
@@ -558,6 +658,37 @@ var WorkloadBDR = (function () {
     return h + '</div></div>';
   }
 
+  function movingAverageRows(rows, windowSize) {
+    return rows.map(function (_r, i) {
+      var start = Math.max(0, i - windowSize + 1), slice = rows.slice(start, i + 1);
+      return slice.reduce(function (sum, r) { return sum + (r.total || 0); }, 0) / Math.max(1, slice.length);
+    });
+  }
+  function channelTotalsForRange(since, until, includeLiveToday, acts) {
+    var s = sumActivityRows(aggregateHistoryByDay(since, until, state.diasUteis, includeLiveToday, acts));
+    return [
+      ['calls', 'Ligações', s.calls], ['emails', 'E-mails', s.emails], ['whatsApp', 'WhatsApp', s.whatsApp], ['linkedin', 'LinkedIn', s.linkedin], ['meetings', 'Reuniões', s.meetings],
+    ];
+  }
+  function chartChannelComparison(acts) {
+    var days = inclusiveCalendarDays(state.since, state.until);
+    var prevSince = shiftIso(state.since, -days), prevUntil = shiftIso(state.since, -1);
+    var current = channelTotalsForRange(state.since, state.until, true, acts);
+    var previous = channelTotalsForRange(prevSince, prevUntil, false, acts);
+    var prevMap = {}; previous.forEach(function (c) { prevMap[c[0]] = c[2]; });
+    if (state.canal && state.canal !== 'todos') current = current.filter(function (c) { return c[0] === state.canal; });
+    var total = current.reduce(function (sum, c) { return sum + c[2]; }, 0);
+    var max = Math.max(1, current.reduce(function (m, c) { return Math.max(m, c[2], prevMap[c[0]] || 0); }, 0));
+    var h = '<div class="grid"><div class="card span-12"><div class="card-title"><div><h2>Comparativo de canais <span class="source-badge bq">BQ/LIVE</span></h2>' +
+      '<div class="desc">Atual vs período anterior equivalente, contribuição e delta por canal. Leitura descritiva, sem causalidade.</div></div></div><div class="break-list">';
+    current.forEach(function (c) {
+      var prev = prevMap[c[0]] || 0, contrib = total ? Math.round(c[2] / total * 100) : 0;
+      h += '<div class="break-row" style="grid-template-columns:minmax(120px,1fr) 1fr 92px 90px"><span class="break-name">' + esc(c[1]) + '</span>' +
+        '<div class="break-track"><div class="break-fill" style="width:' + Math.round(c[2] / max * 100) + '%"></div></div>' +
+        '<span class="break-val">' + c[2] + ' atual | ' + prev + ' ant.</span><span class="right">' + contrib + '% · ' + variationHtml(deltaPctNumber(c[2], prev)) + '</span></div>';
+    });
+    return h + '</div></div></div>';
+  }
   function chartFonteResultado(comps, conts, trans) {
     return '<div class="story-grid"><div class="story-card"><b>Fonte → resultado | leitura suspensa</b><span>Não exibimos correlação Apollo → SQL sem coorte que associe cada deal à fonte, porte e persona do lead. O gráfico de fonte abaixo permanece apenas descritivo.</span></div>' +
       '<div class="story-card"><b>Por que</b><span>Somar empresas e contatos cria denominador heterogêneo; comparar BDRs sem controlar mix gera conclusão enganosa.</span></div>' +
@@ -625,43 +756,41 @@ var WorkloadBDR = (function () {
 
   function tabelaAtividades(acts, comps, conts, trans) {
     var por = {};
-    raw.team.forEach(function (b) {
-      por[b] = { hoje: 0, meta: 0, pctMeta: 0, delta7d: 0, calls: 0, emails: 0, whats: 0, linkedin: 0, meetings: 0, lastLoad: null };
+    selectedBdrs().forEach(function (b) {
+      por[b] = { hoje: 0, meta: 0, pctMeta: null, delta7d: null, calls: 0, emails: 0, whats: 0, linkedin: 0, meetings: 0, lastLoad: null };
     });
-    acts.forEach(function (a) {
-      var p = por[a.bdr]; if (!p) return;
-      if (a.tipo === 'calls') p.calls++;
-      else if (a.tipo === 'emails') p.emails++;
-      else if (a.tipo === 'communications') {
-        if (a.canal === 'WHATS_APP') p.whats++;
-        else if (a.canal === 'LINKEDIN_MESSAGE') p.linkedin++;
-      }
-      else if (a.tipo === 'meetings') p.meetings++;
-      p.lastLoad = latestTs(p.lastLoad, a.ts);
+    aggregateBdrCurrent(acts).forEach(function (r) {
+      var p = por[r.bdr]; if (!p) return;
+      p.calls = r.calls; p.emails = r.emails; p.whats = r.whats; p.linkedin = r.linkedin; p.meetings = r.meetings; p.hoje = selectedTotal(r); p.lastLoad = r.lastLoad;
     });
     comps.forEach(function (c) { if (por[c.bdr]) por[c.bdr].lastLoad = latestTs(por[c.bdr].lastLoad, c.criado); });
     conts.forEach(function (c) { if (por[c.bdr]) por[c.bdr].lastLoad = latestTs(por[c.bdr].lastLoad, c.criado); });
     trans.forEach(function (t) { if (por[t.bdr]) por[t.bdr].lastLoad = latestTs(por[t.bdr].lastLoad, t.ts); });
-    function total(p) { return p.calls + p.emails + p.whats + p.linkedin + p.meetings; }
-    var prevSince = shiftIso(state.since, -7), prevUntil = shiftIso(state.since, -1);
+    var periodDays = inclusiveCalendarDays(state.since, state.until);
+    var prevSince = state.period === 'hoje' ? shiftIso(state.since, -10) : shiftIso(state.since, -periodDays);
+    var prevUntil = shiftIso(state.since, -1);
     var prevByBdr = {};
     if (historyAvailable()) {
       history.dailyRows.forEach(function (r) {
         if (r.metric_date < prevSince || r.metric_date > prevUntil) return;
         if (state.diasUteis && !isDiaUtil(new Date(r.metric_date + 'T00:00:00'))) return;
-        if (!prevByBdr[r.owner_name]) prevByBdr[r.owner_name] = 0;
-        prevByBdr[r.owner_name] += (r.calls_total || 0) + (r.emails_sent_total || 0) + (r.whatsapp_total || 0) + (r.linkedin_total || 0) + (r.meetings_total || 0);
+        if (state.bdr && r.owner_name !== state.bdr) return;
+        if (!prevByBdr[r.owner_name]) prevByBdr[r.owner_name] = { total: 0, days: {} };
+        prevByBdr[r.owner_name].total += rowStrictTotal(r);
+        prevByBdr[r.owner_name].days[r.metric_date] = 1;
       });
     }
-    raw.team.forEach(function (b) {
+    var days = targetDaysForRange(state.since, state.until);
+    selectedBdrs().forEach(function (b) {
       var p = por[b];
-      p.hoje = total(p);
-      p.meta = state.diasUteis ? Math.max(1, countDiasUteis(state.since, state.until) * 50) : Math.max(1, inclusiveCalendarDays(state.since, state.until) * 50);
-      p.pctMeta = Math.round(p.hoje / p.meta * 100);
-      p.delta7d = deltaPctNumber(p.hoje, prevByBdr[b] || 0);
+      p.meta = targetForBdr(b, state.canal) * days;
+      p.pctMeta = p.meta ? Math.round(p.hoje / p.meta * 100) : null;
+      var prev = prevByBdr[b] || { total: 0, days: {} };
+      var baseline = state.period === 'hoje' ? Math.round(prev.total / Math.max(1, Math.min(7, Object.keys(prev.days).length))) : prev.total;
+      p.delta7d = deltaPctNumber(p.hoje, baseline);
       if (!p.lastLoad && raw.generatedAt) p.lastLoad = raw.generatedAt;
     });
-    var rows = raw.team.slice().sort(function (a, b) {
+    var rows = selectedBdrs().slice().sort(function (a, b) {
       var pa = por[a], pb = por[b], va = sortValue(pa, a), vb = sortValue(pb, b);
       if (typeof va === 'string') return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
       return sortDir === 'asc' ? va - vb : vb - va;
@@ -672,24 +801,25 @@ var WorkloadBDR = (function () {
       totals.hoje += p.hoje; totals.meta += p.meta; totals.calls += p.calls; totals.emails += p.emails; totals.whats += p.whats; totals.linkedin += p.linkedin; totals.meetings += p.meetings;
       totals.lastLoad = latestTs(totals.lastLoad, p.lastLoad);
     });
-    totals.pctMeta = Math.round(totals.hoje / Math.max(1, totals.meta) * 100);
-    totals.delta7d = deltaPctNumber(totals.hoje, Object.keys(prevByBdr).reduce(function (sum, b) { return sum + prevByBdr[b]; }, 0));
+    totals.pctMeta = totals.meta ? Math.round(totals.hoje / totals.meta * 100) : null;
+    totals.delta7d = deltaPctNumber(totals.hoje, Object.keys(prevByBdr).reduce(function (sum, b) { return sum + (prevByBdr[b] ? prevByBdr[b].total : 0); }, 0));
 
-    var h = '<div class="grid"><div class="card span-12"><div class="card-title"><div><h2>Ranking de BDRs | atividades reais</h2>' +
-      '<div class="desc">Clique no cabeçalho para ordenar. Hoje = total da janela nos cinco canais reais; meta = 50 atividades por dia visível; Δ 7d compara contra os 7 dias anteriores.</div></div>' +
+    var colLabel = state.period === 'hoje' ? 'Hoje' : 'Recorte';
+    var h = '<div class="grid"><div class="card span-12"><div class="card-title"><div><h2>Ranking de BDRs | atividades reais ' + sourceBadgeText() + '</h2>' +
+      '<div class="desc">Clique no cabeçalho para ordenar. ' + colLabel + ' = total estrito nos cinco canais; meta vem de gold.bdr_daily_target por BDR/canal × dias no recorte; Δ compara baseline real e mostra s/ base quando baseline é zero.</div></div>' +
       '<span class="pill">' + totals.hoje + ' atividades</span></div>';
     if (!totals.hoje) return h + '<div class="desc">Sem atividades registradas no recorte.</div></div></div>';
     h += '<div class="table-wrap"><table><thead><tr>' +
-      sortTh('bdr', 'BDR', '') + sortTh('hoje', 'Hoje', 'right') + sortTh('meta', 'Meta', 'right') + sortTh('pctMeta', '% Meta', 'right') + sortTh('delta7d', 'Δ 7d', 'right') +
+      sortTh('bdr', 'BDR', '') + sortTh('hoje', colLabel, 'right') + sortTh('meta', 'Meta', 'right') + sortTh('pctMeta', '% Meta', 'right') + sortTh('delta7d', 'Δ', 'right') +
       sortTh('calls', 'Ligações', 'right') + sortTh('emails', 'E-mails', 'right') + sortTh('whats', 'WhatsApp', 'right') + sortTh('linkedin', 'LinkedIn', 'right') + sortTh('meetings', 'Reuniões', 'right') + sortTh('lastLoad', 'Última carga', '') +
       '</tr></thead><tbody>';
     rows.forEach(function (b) {
       var p = por[b];
-      h += '<tr><td>' + esc(b) + '</td><td class="right"><b>' + p.hoje + '</b></td><td class="right">' + p.meta + '</td><td class="right">' + p.pctMeta + '%</td><td class="right">' + variationHtml(p.delta7d) + '</td>' +
+      h += '<tr><td>' + esc(b) + '</td><td class="right"><b>' + p.hoje + '</b></td><td class="right">' + (p.meta || '—') + '</td><td class="right">' + (p.pctMeta == null ? '—' : p.pctMeta + '%') + '</td><td class="right">' + variationHtml(p.delta7d) + '</td>' +
         '<td class="right">' + (p.calls ? '<span class="calls-link" onclick="WorkloadBDR.drillCalls(\'' + b + '\')" title="Ver detalhe das ligações" style="cursor:pointer;color:var(--teal);text-decoration:underline dotted;text-underline-offset:2px">' + p.calls + '</span>' : '0') + '</td>' +
         '<td class="right">' + p.emails + '</td><td class="right">' + p.whats + '</td><td class="right">' + p.linkedin + '</td><td class="right">' + p.meetings + '</td><td class="nowrap">' + dmhmFull(p.lastLoad) + '</td></tr>';
     });
-    return h + '</tbody><tfoot><tr><td>Total</td><td class="right">' + totals.hoje + '</td><td class="right">' + totals.meta + '</td><td class="right">' + totals.pctMeta + '%</td><td class="right">' + variationHtml(totals.delta7d) + '</td><td class="right">' + totals.calls + '</td><td class="right">' + totals.emails + '</td><td class="right">' + totals.whats + '</td><td class="right">' + totals.linkedin + '</td><td class="right">' + totals.meetings + '</td><td class="nowrap">' + dmhmFull(totals.lastLoad) + '</td></tr></tfoot></table></div></div></div>';
+    return h + '</tbody><tfoot><tr><td>Total</td><td class="right">' + totals.hoje + '</td><td class="right">' + (totals.meta || '—') + '</td><td class="right">' + (totals.pctMeta == null ? '—' : totals.pctMeta + '%') + '</td><td class="right">' + variationHtml(totals.delta7d) + '</td><td class="right">' + totals.calls + '</td><td class="right">' + totals.emails + '</td><td class="right">' + totals.whats + '</td><td class="right">' + totals.linkedin + '</td><td class="right">' + totals.meetings + '</td><td class="nowrap">' + dmhmFull(totals.lastLoad) + '</td></tr></tfoot></table></div></div></div>';
   }
   function sortValue(p, bdr) {
     if (sortBy === 'bdr') return bdr || '';
@@ -700,10 +830,15 @@ var WorkloadBDR = (function () {
     var active = sortBy === col;
     return '<th' + (cls ? ' class="' + cls + '"' : '') + ' onclick="WorkloadBDR.sortTable(\'' + col + '\')">' + esc(label) + '<span class="sort-indicator' + (active ? ' active' : '') + '">' + (active ? (sortDir === 'asc' ? '▲' : '▼') : '↕') + '</span></th>';
   }
+  function variationText(v) {
+    if (v == null) return 's/ base';
+    var arrow = v >= 10 ? '▲' : (v <= -10 ? '▼' : '→');
+    return arrow + ' ' + (v > 0 ? '+' : '') + v + '%';
+  }
   function variationHtml(v) {
-    var cls = v >= 10 ? 'up' : (v < -10 ? 'down' : 'flat');
-    var arrow = v >= 10 ? '▲' : (v < -10 ? '▼' : '→');
-    return '<span class="delta-arrow ' + cls + '">' + arrow + ' ' + (v > 0 ? '+' : '') + v + '%</span>';
+    if (v == null) return '<span class="delta-arrow flat">s/ base</span>';
+    var cls = v >= 10 ? 'up' : (v <= -25 ? 'down strong' : (v <= -10 ? 'down' : 'flat'));
+    return '<span class="delta-arrow ' + cls + '">' + variationText(v) + '</span>';
   }
 
   function pillStatus(s) {
