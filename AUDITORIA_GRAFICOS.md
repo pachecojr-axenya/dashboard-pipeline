@@ -1,5 +1,9 @@
 # Auditoria crítica dos gráficos 🟡 | 2026-06-12
 
+## Adendo | BDR No Show (2026-07-20)
+
+> **Estado: 🟠 até validação pós-deploy.** Auditoria encontrou mistura de AEs no gráfico por BDR, semanas sem amostra plotadas como 0%, eixo chegando a 130%, gráfico limitado às últimas 16 semanas e ranking fora SLA incluindo perdidos/reagendados. A correção usa roster canônico, denominador de desfechos conhecidos + cobertura, lacunas sem amostra, eixo 0–100%, média móvel ponderada de 4 semanas e reconciliação `ranking fora SLA = tabela operacional`. Recorte real de 30 dias: 74 reuniões canônicas, 41 com desfecho (55,4% de cobertura), 10 no-shows históricos, 8 abertos/fora SLA. Ver `docs/2026-07-20_no-show-validation-incident.md`.
+
 Análise dos gráficos que estavam marcados com 🟡 (não validados) em `public/novo-dashboard.html` e `public/novo-board.html`. Para cada um, capturei o **dataset real** que o gráfico gera com os dados de produção (interceptando `_novoMkChart` via `scripts/_capture-charts.js`) e comparei com o que o título/tooltip promete.
 
 ## Legenda de cores (substituiu o 🟡 nos títulos dos gráficos)

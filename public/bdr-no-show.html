@@ -80,7 +80,7 @@
     .card-title{display:flex;align-items:flex-start;justify-content:space-between;gap:.75rem;margin-bottom:.65rem}
     .card h2{font-size:.92rem;font-weight:800;letter-spacing:-.01em;margin-bottom:.2rem}
     .card .desc{color:var(--text2);font-size:.74rem;margin-bottom:.9rem}
-    .span-12{grid-column:span 12}.span-8{grid-column:span 8}.span-6{grid-column:span 6}.span-4{grid-column:span 4}
+    .span-12{grid-column:span 12}.span-8{grid-column:span 8}.span-6{grid-column:span 6}.span-4{grid-column:span 4}.span-3{grid-column:span 3}
     .trend{height:260px;position:relative}
     .line-chart{height:auto}.line-svg{width:100%;height:250px;display:block}.line-svg line{stroke:var(--border);stroke-width:1}.line-svg text{fill:var(--muted);font-size:10px}.ln{fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}.ln.scheduled{stroke:var(--teal)}.ln.no-show{stroke:var(--red)}.ln.pending{stroke:var(--yellow)}.line-legend{display:flex;align-items:center;gap:.9rem;flex-wrap:wrap;color:var(--text2);font-size:.72rem;margin:.35rem 0 .55rem}.line-legend span{display:inline-flex;align-items:center;gap:.35rem}.line-legend i{width:18px;height:3px;border-radius:99px;display:inline-block}.line-legend i.scheduled{background:var(--teal)}.line-legend i.no-show{background:var(--red)}.line-legend i.pending{background:var(--yellow)}
     .bars{display:flex;align-items:end;gap:.55rem;height:210px;border-left:1px solid var(--border);border-bottom:1px solid var(--border);padding:.5rem .3rem 0 .7rem}
@@ -110,7 +110,9 @@
     .rate-filter-btn{border:1px solid var(--border);background:var(--card2);color:var(--text2);border-radius:99px;padding:.35rem .7rem;font-size:.75rem;font-weight:700;cursor:pointer;transition:all .15s}.rate-filter-btn:hover{border-color:var(--teal);color:var(--teal)}.rate-filter-btn.active{background:rgba(58,184,183,.18);border-color:var(--teal);color:var(--teal)}
     .rate-legend{display:flex;gap:.75rem;flex-wrap:wrap;margin-top:.5rem;font-size:.72rem;color:var(--text2)}
     .rate-legend-item{display:flex;align-items:center;gap:.25rem;cursor:pointer}.rate-legend-item:hover{color:var(--text)}
+    .rate-legend-item.zero-series{opacity:.55}.rate-legend-item.zero-series .rate-legend-dot{background:var(--muted)!important}
     .rate-legend-dot{width:12px;height:3px;border-radius:99px}
+    .data-scope-warning{display:flex;gap:.75rem;align-items:flex-start;background:var(--card2);border:1px solid var(--yellow);border-radius:12px;padding:.75rem 1rem;margin-bottom:1rem}.data-scope-warning b{color:var(--yellow);white-space:nowrap}.data-scope-warning span{color:var(--text2);font-size:.8rem;line-height:1.45}
     .big-idea{background:linear-gradient(135deg,rgba(248,81,73,.12),rgba(248,81,73,.04));border:2px solid var(--red);border-radius:16px;padding:1.25rem 1.5rem;margin-bottom:1rem;box-shadow:var(--shadow)}.big-idea-text{font-size:1.15rem;font-weight:700;color:var(--text);line-height:1.5;margin-bottom:.5rem}.big-idea-action{font-size:.85rem;color:var(--teal);font-weight:700}.big-idea strong{color:var(--red)}
     .kpis-hero{grid-template-columns:repeat(4,1fr)!important;gap:1rem;margin-bottom:.5rem}
     .kpi.hero{min-height:120px;border-width:2px}.kpi.hero .value{font-size:2rem}.kpi.hero.bad{border-color:var(--red);background:linear-gradient(180deg,var(--card),rgba(248,81,73,.08))}.kpi.hero.good{border-color:var(--green);background:linear-gradient(180deg,var(--card),rgba(63,185,80,.08))}.kpi.hero.warn{border-color:var(--yellow);background:linear-gradient(180deg,var(--card),rgba(227,179,65,.08))}
@@ -175,6 +177,7 @@
     window.addEventListener('scroll',function(){var h=document.getElementById('topbar');if(h)h.classList.toggle('scrolled',window.scrollY>8);});
     window.addEventListener('DOMContentLoaded',function(){try{if(localStorage.getItem('novo_nav_open')==='true'&&!window.matchMedia('(max-width:820px)').matches)openDrawer();}catch(e){}});
   </script>
-  <script src="/bdr-no-show.js?v=12"></script>
+  <script src="/semantic-ref.js?v=3"></script>
+  <script src="/bdr-no-show.js?v=13"></script>
 </body>
 </html>

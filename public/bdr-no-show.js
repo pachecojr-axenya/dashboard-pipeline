@@ -12,11 +12,12 @@
     riskWeights: { noShow: 45, outsideSla: 25, noActivity: 15, value: 15 }
   };
 
-  var state = { raw: [], records: [], filtered: [], filters: { preset: 'all', start: '2025-09-01', end: null } };
+  var state = { raw: [], records: [], filteredAll: [], filtered: [], filters: { preset: 'all', start: '2025-09-01', end: null } };
 
   function $(id) { return document.getElementById(id); }
   function esc(v) { return String(v == null || v === '' ? '—' : v).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   function lower(v) { return String(v || '').toLowerCase(); }
+  function comparableName(v) { return norm(v).replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim(); }
   function fmtInt(n) { return Math.round(Number(n) || 0).toLocaleString('pt-BR'); }
   function fmtPct(n) { return ((Number(n) || 0) * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '%'; }
   function fmtMoney(n) { return (Number(n) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }); }
@@ -24,6 +25,22 @@
   function iso(d) { return d ? d.toISOString().slice(0, 10) : null; }
   function today() { var d = new Date(); d.setHours(12, 0, 0, 0); return d; }
   function addDays(d, n) { var x = new Date(d.getTime()); x.setDate(x.getDate() + n); return x; }
+
+  function bdrRoster() {
+    var times = window.SEMANTIC_REF && window.SEMANTIC_REF.times;
+    return times && Array.isArray(times.bdrs) ? times.bdrs.map(function (x) { return x.nome; }) : [];
+  }
+
+  function canonicalBdrName(raw) {
+    var candidate = comparableName(raw);
+    if (!candidate) return null;
+    var roster = bdrRoster();
+    for (var i = 0; i < roster.length; i += 1) {
+      var tokens = comparableName(roster[i]).split(' ').filter(function (x) { return x.length > 2; });
+      if (tokens.length && tokens.every(function (x) { return candidate.indexOf(x) >= 0; })) return roster[i];
+    }
+    return null;
+  }
 
   function containsAny(text, terms) {
     var t = lower(text);
@@ -151,7 +168,7 @@
   }
 
   function classifyRecovery(deal, meetingDate, occurred, explicit, text) {
-    var explicitNoShow = containsAny(text, CONFIG.noShowTerms) || containsAny(text, CONFIG.lostNoShowTerms);
+    var explicitNoShow = containsAny(text, CONFIG.noShowTerms) || (deal.stage === 'Perdido' && containsAny(text, CONFIG.lostNoShowTerms));
     var pastMeeting = !!(meetingDate && meetingDate < today());
     if (explicit === false && occurred && deal.stage !== 'Perdido') return 'Recuperado';
     if (explicitNoShow && occurred && deal.stage !== 'Perdido') return 'Recuperado';
@@ -178,25 +195,27 @@
     var explicitOccurred = normalizeMeetingOccurred(deal.reuniao_ocorreu);
     var occurred = isMeetingDone(deal);
     var text = evidenceText(deal);
-    var noShowEvidence = containsAny(text, CONFIG.noShowTerms) || containsAny(text, CONFIG.lostNoShowTerms);
+    var noShowEvidence = containsAny(text, CONFIG.noShowTerms) || (deal.stage === 'Perdido' && containsAny(text, CONFIG.lostNoShowTerms));
     var pastMeeting = !!(meetingDate && meetingDate < today());
     var status = classifyRecovery(deal, meetingDate, occurred, explicitOccurred, text);
     var fieldStatus = meetingFieldStatus(explicitOccurred, pastMeeting);
-    var noShow = status === 'Perdido por no-show' || status === 'No-show confirmado' || status === 'No-show aberto' || status === 'Recuperado' || noShowEvidence || explicitOccurred === false;
+    var noShow = status === 'Perdido por no-show' || status === 'No-show confirmado' || status === 'No-show aberto' || status === 'Recuperado' || (status === 'Reagendada' && (noShowEvidence || explicitOccurred === false));
     var lastActivityDate = parseDate(deal.ultima_atividade || deal.close_date || deal.createdate);
     var bd = meetingDate ? businessDaysBetween(meetingDate, today()) : null;
-    var recovered = noShow && (occurred || CONFIG.stagesAfterMeeting.indexOf(deal.stage) >= 0) && deal.stage !== 'Perdido';
+    var recovered = status === 'Recuperado';
     var rescheduled = noShow && status === 'Reagendada';
-    var outsideSla = noShow && !recovered && bd != null && bd > CONFIG.slaBusinessDays;
-    // BDR: usa sdr, com fallback para ae se não tiver sdr
-    var bdrValue = deal.sdr || deal.ae || 'Sem BDR';
+    var openNoShow = status === 'No-show confirmado' || status === 'No-show aberto';
+    var outsideSla = openNoShow && bd != null && bd > CONFIG.slaBusinessDays;
+    var bdrValue = canonicalBdrName(deal.sdr);
     var rec = {
       id: deal.hs_id || '',
       name: deal.dealname || '—',
       meetingDate: meetingDate,
       meetingIso: iso(meetingDate),
       week: weekKey(meetingDate),
-      bdr: bdrValue,
+      bdr: bdrValue || 'Fora do roster BDR',
+      bdrRaw: deal.sdr || null,
+      isCanonicalBdr: !!bdrValue,
       ae: deal.ae || 'Sem AE',
       stage: deal.stage || '—',
       origem: deal.origem || 'Sem origem',
@@ -213,10 +232,12 @@
       pastMeeting: pastMeeting,
       fieldPendingPast: pastMeeting && explicitOccurred === null,
       noShow: noShow,
+      knownOutcome: occurred || noShow,
+      openNoShow: openNoShow,
       rescheduled: rescheduled,
       recovered: recovered,
       outsideSla: outsideSla,
-      withinSla: noShow && !recovered && bd != null && !outsideSla,
+      withinSla: openNoShow && bd != null && !outsideSla,
       status: status,
       lostReason: deal.lost_reason || '—',
       lostDesc: deal.lost_reason_desc || '',
@@ -243,7 +264,10 @@
 
   function uniqueValues(key) {
     var map = {};
-    state.records.forEach(function (r) { map[r[key] || '—'] = true; });
+    state.records.forEach(function (r) {
+      if (key === 'bdr' && !r.isCanonicalBdr) return;
+      map[r[key] || '—'] = true;
+    });
     return Object.keys(map).sort(function (a, b) { return a.localeCompare(b, 'pt-BR'); });
   }
 
@@ -349,6 +373,8 @@
     var scheduled = rows.filter(function (r) { return r.meetingDate; });
     var past = rows.filter(function (r) { return r.pastMeeting; });
     var noShows = rows.filter(function (r) { return r.noShow; });
+    var known = rows.filter(function (r) { return r.knownOutcome; });
+    var openNoShows = rows.filter(function (r) { return r.openNoShow; });
     var recovered = noShows.filter(function (r) { return r.recovered; });
     var lost = noShows.filter(function (r) { return r.status === 'Perdido por no-show'; });
     var out = {
@@ -359,14 +385,16 @@
       fieldYes: past.filter(function (r) { return r.explicitOccurred === true; }).length,
       fieldNo: past.filter(function (r) { return r.explicitOccurred === false; }).length,
       occurred: rows.filter(function (r) { return r.occurred; }).length,
+      knownOutcomes: known.length,
       noShows: noShows.length,
-      noShowRate: rate(noShows.length, scheduled.length),
+      noShowRate: rate(noShows.length, known.length),
+      openNoShows: openNoShows.length,
       rescheduled: noShows.filter(function (r) { return r.rescheduled; }).length,
       recovered: recovered.length,
       recoveryRate: rate(recovered.length, noShows.length),
       withinSla: noShows.filter(function (r) { return r.withinSla; }).length,
       outsideSla: noShows.filter(function (r) { return r.outsideSla; }).length,
-      pipelineRisk: noShows.filter(function (r) { return r.stage !== 'Perdido' && !r.recovered; }).reduce(function (s, r) { return s + (r.arr || 0); }, 0),
+      pipelineRisk: openNoShows.reduce(function (s, r) { return s + (r.arr || 0); }, 0),
       pipelineLost: lost.reduce(function (s, r) { return s + (r.arr || 0); }, 0)
     };
     out.rescheduleRate = rate(out.rescheduled, scheduled.length);
@@ -392,7 +420,7 @@
       kpi('Realizadas', fmtInt(m.occurred), 'a_reuniao_ocorreu_ = Sim ou avançou de etapa', 'good', 'occurred') +
       kpi('Campo Não', fmtInt(m.fieldNo), 'BDR marcou que a reunião NÃO ocorreu', m.fieldNo ? 'bad' : 'good', 'fieldNo') +
       kpi('No-show confirmado', fmtInt(m.noShows), 'Campo Não OU evidência textual de ausência', 'bad', 'noShow') +
-      kpi('Taxa no-show', fmtPct(m.noShowRate), 'No-shows ÷ total de agendadas', m.noShowRate > 0.25 ? 'bad' : 'warn', 'noShowRate') +
+      kpi('Incidência no-show', fmtPct(m.noShowRate), 'No-shows ÷ reuniões com desfecho conhecido', m.noShowRate > 0.25 ? 'bad' : 'warn', 'noShowRate') +
       kpi('Reagendadas', fmtInt(m.rescheduled), 'No-show com nova data marcada', 'warn', 'rescheduled') +
       kpi('Recuperados', fmtInt(m.recovered), 'No-show que virou reunião ou avançou', 'good', 'recovered') +
       kpi('Fora SLA', fmtInt(m.outsideSla), 'No-show há mais de ' + CONFIG.slaBusinessDays + ' dias úteis sem ação', m.outsideSla ? 'bad' : 'good', 'outsideSla') +
@@ -413,7 +441,7 @@
 
   function renderTrend(rows) {
     var g = group(rows.filter(function (r) { return r.meetingDate; }), 'week');
-    var keys = Object.keys(g).sort().slice(-16);
+    var keys = Object.keys(g).sort();
     var scheduled = keys.map(function (k) { return g[k].length; });
     var noShows = keys.map(function (k) { return g[k].filter(function (r) { return r.noShow; }).length; });
     var pending = keys.map(function (k) { return g[k].filter(function (r) { return r.fieldPendingPast; }).length; });
@@ -429,240 +457,170 @@
     return '<div class="card span-8"><div class="card-title"><div><h2>Volume semanal</h2></div>' + infoBtn('timeline') + '</div><div class="line-legend"><span><i class="scheduled"></i>Agendadas</span><span><i class="no-show"></i>No-show</span><span><i class="pending"></i>Pendente</span></div><div class="trend line-chart clickable" data-drill="timeline" data-hover-title="Volume" data-hover-text="Clique para abrir a tabela semanal.">' + svg + '</div></div>';
   }
 
-  // Estado do filtro de taxa
   var currentRateFilter = 'all';
-  
-  function renderRateTrend(rows, m) {
-    // Filtros de visualização
-    var filters = [
-      { key: 'all', label: 'Todos' },
-      { key: 'bdr', label: 'Por BDR' },
-      { key: 'origem', label: 'Por canal' },
-      { key: 'porte', label: 'Por porte' }
-    ];
-    var filterBtns = filters.map(function (f) {
-      return '<button type="button" class="rate-filter-btn' + (f.key === currentRateFilter ? ' active' : '') + '" data-rate-filter="' + f.key + '">' + esc(f.label) + '</button>';
-    }).join('');
-    
-    // Gerar SVG baseado no filtro atual
+  var RATE_COLORS = ['#f85149', '#3ab8b7', '#a371f7', '#3fb950', '#79c0ff', '#ff9f43', '#ff7b72', '#8bd5ca', '#cba6f7', '#89b4fa', '#a6e3a1', '#fab387', '#f5c2e7'];
+
+  function rateAxisMax(values) {
+    var valid = values.filter(function (v) { return v != null; });
+    var peak = valid.length ? Math.max.apply(null, valid) : 0;
+    return Math.min(1, Math.max(0.1, Math.ceil(peak * 1.15 * 10) / 10));
+  }
+
+  function svgRateSeries(values, details, keys, max, width, height, pad, color, dashed) {
+    var segments = [], current = [], circles = [];
+    function flush() { if (current.length > 1) segments.push(current.join(' ')); current = []; }
+    values.forEach(function (value, i) {
+      if (value == null) { flush(); return; }
+      var x = pad + Math.round(i / Math.max(1, keys.length - 1) * (width - pad * 2));
+      var y = height - pad - Math.round(value / max * (height - pad * 2));
+      current.push(x + ',' + y);
+      var d = details[i] || {};
+      circles.push('<circle cx="' + x + '" cy="' + y + '" r="3" fill="' + color + '"><title>' + esc(keys[i].replace('-', ' ') + ' | ' + fmtPct(value) + ' | n=' + (d.known || 0) + ' desfechos | ' + (d.total || 0) + ' agendadas') + '</title></circle>');
+    });
+    flush();
+    return segments.map(function (points) { return '<polyline class="ln" style="stroke:' + color + ';stroke-width:' + (dashed ? '2.5;stroke-dasharray:8 6' : '2.5') + '" points="' + points + '"/>'; }).join('') + circles.join('');
+  }
+
+  function weeklyRateData(rows, keys) {
+    var byWeek = group(rows, 'week');
+    return keys.map(function (key) {
+      var arr = byWeek[key] || [];
+      var known = arr.filter(function (r) { return r.knownOutcome; });
+      var noShows = known.filter(function (r) { return r.noShow; }).length;
+      return { total: arr.length, known: known.length, noShows: noShows, rate: known.length ? noShows / known.length : null };
+    });
+  }
+
+  function rollingRateData(weekData, windowSize) {
+    return weekData.map(function (_, i) {
+      var start = Math.max(0, i - windowSize + 1), known = 0, noShows = 0, total = 0;
+      for (var j = start; j <= i; j += 1) { known += weekData[j].known; noShows += weekData[j].noShows; total += weekData[j].total; }
+      return { total: total, known: known, noShows: noShows, rate: known ? noShows / known : null };
+    });
+  }
+
+  function renderRateTrend(rows) {
+    var filters = [{ key: 'all', label: 'Todos' }, { key: 'bdr', label: 'Por BDR' }, { key: 'origem', label: 'Por canal' }, { key: 'porte', label: 'Por porte' }];
+    var filterBtns = filters.map(function (f) { return '<button type="button" class="rate-filter-btn' + (f.key === currentRateFilter ? ' active' : '') + '" data-rate-filter="' + f.key + '">' + esc(f.label) + '</button>'; }).join('');
     var svgResult = generateRateSvg(rows, currentRateFilter);
-    var svg = svgResult.svg;
-    var trendText = svgResult.trendText;
-    
-    // Calcular taxa média acumulada do período
-    var totalMeetings = rows.filter(function (r) { return r.meetingDate; }).length;
-    var totalNoShows = rows.filter(function (r) { return r.noShow; }).length;
-    var avgRate = totalMeetings ? totalNoShows / totalMeetings : 0;
-    var sampleWarning = totalMeetings < 30 ? '<span class="sample-warning">⚠️ Amostra pequena (' + totalMeetings + ' reuniões). Taxas semanais podem variar muito.</span>' : '';
-    
-    // Debug info
-    var bdrCount = uniqueValues('bdr').length;
-    var debugInfo = '<div class="rate-debug">Total: ' + fmtInt(totalMeetings) + ' reuniões | ' + fmtInt(totalNoShows) + ' no-shows | Taxa média: ' + fmtPct(avgRate) + ' | BDRs ativos: ' + bdrCount + '</div>';
-    
-    return '<div class="card span-12"><div class="card-title"><div><h2 id="rate-title">' + esc(trendText) + '</h2></div>' + infoBtn('rateTrend') + '</div><div class="rate-filters">' + filterBtns + '</div><div id="rate-chart" class="trend line-chart clickable" data-drill="timeline" data-hover-title="Taxa de no-show" data-hover-text="Clique para abrir a tabela semanal com volumes e taxas.">' + svg + '</div><div id="rate-legend" class="rate-legend"></div>' + debugInfo + sampleWarning + '</div>';
+    var coverage = rows.length ? rows.filter(function (r) { return r.knownOutcome; }).length / rows.length : 0;
+    var sampleWarning = coverage < 0.8 ? '<span class="sample-warning">Cobertura baixa | ' + fmtPct(coverage) + ' das reuniões têm desfecho conhecido. A taxa exclui pendências.</span>' : '';
+    var scope = '<div class="rate-debug">Escopo do filtro | ' + fmtInt(rows.length) + ' reuniões | ' + fmtInt(rows.filter(function (r) { return r.knownOutcome; }).length) + ' com desfecho | ' + fmtInt(rows.filter(function (r) { return r.noShow; }).length) + ' no-shows históricos | ' + bdrRoster().length + ' BDRs no roster</div>';
+    return '<div class="card span-12"><div class="card-title"><div><h2 id="rate-title">' + esc(svgResult.trendText) + '</h2></div>' + infoBtn('rateTrend') + '</div><div class="rate-filters">' + filterBtns + '</div><div id="rate-chart" class="trend line-chart clickable" data-drill="timeline" data-hover-title="Taxa de no-show" data-hover-text="Semanas sem desfecho aparecem como lacuna. Passe nos pontos para ver taxa e amostra.">' + svgResult.svg + '</div><div id="rate-legend" class="rate-legend"></div>' + scope + sampleWarning + '</div>';
   }
-  
+
   function generateRateSvg(rows, filterKey) {
-    var g = group(rows.filter(function (r) { return r.meetingDate; }), 'week');
-    var keys = Object.keys(g).sort().slice(-16);
-    var colors = ['#f85149', '#e3b341', '#3ab8b7', '#3fb950', '#a371f7', '#79c0ff', '#ff7b72', '#ffa657'];
-    
-    if (filterKey === 'all') {
-      // Linha única geral - calcular taxas e volumes
-      var weekData = keys.map(function (k) {
-        var arr = g[k];
-        var ns = arr.filter(function (r) { return r.noShow; }).length;
-        return { total: arr.length, noShows: ns, rate: arr.length ? ns / arr.length : 0 };
-      });
-      var rates = weekData.map(function (w) { return w.rate; });
-      var volumes = weekData.map(function (w) { return w.total; });
-      var maxRate = Math.max.apply(null, rates);
-      var max = Math.max(0.1, Math.ceil(maxRate * 1.25 * 10) / 10);
-      var w = 1100, h = 300, p = 44;
-      var points = rates.map(function (r, i) {
-        var x = p + Math.round(i / Math.max(1, keys.length - 1) * (w - p * 2));
-        var y = h - p - Math.round(r / max * (h - p * 2));
-        return x + ',' + y;
-      }).join(' ');
-      var labelStep = Math.ceil(keys.length / 8);
-      var labels = keys.map(function (k, i) {
-        if (i % labelStep !== 0 && i !== keys.length - 1) return '';
-        var x = p + Math.round(i / Math.max(1, keys.length - 1) * (w - p * 2));
-        return '<text x="' + x + '" y="' + (h - 10) + '" text-anchor="middle" fill="var(--muted)">' + esc(k.replace('-', ' ')) + '</text>';
-      }).join('');
-      var rateLabels = rates.map(function (r, i) {
-        var x = p + Math.round(i / Math.max(1, keys.length - 1) * (w - p * 2));
-        var y = h - p - Math.round(r / max * (h - p * 2)) - 8;
-        var vol = volumes[i];
-        // Não mostra label se taxa for 0% (evita ruído visual)
-        if (r === 0) return '';
-        // Mostra taxa + volume se for poucas reuniões (<10)
-        var label = fmtPct(r);
-        if (vol < 10) label += ' (' + vol + ')';
-        return '<text x="' + x + '" y="' + y + '" text-anchor="middle" fill="var(--text)" font-size="11" font-weight="600">' + esc(label) + '</text>';
-      }).join('');
-      // Título com taxa média acumulada
-      var totalNoShowsAll = weekData.reduce(function (s, w) { return s + w.noShows; }, 0);
-      var totalMeetingsAll = weekData.reduce(function (s, w) { return s + w.total; }, 0);
-      var avgRateAll = totalMeetingsAll ? totalNoShowsAll / totalMeetingsAll : 0;
-      var trendText = 'Taxa média: ' + fmtPct(avgRateAll) + ' (' + totalNoShowsAll + '/' + totalMeetingsAll + ')';
-      if (rates.length >= 2) {
-        var last = rates[rates.length - 1];
-        var prev = rates[rates.length - 2];
-        if (last < prev - 0.02) trendText = 'Taxa em queda: ' + fmtPct(prev) + ' → ' + fmtPct(last) + ' | Média: ' + fmtPct(avgRateAll);
-        else if (last > prev + 0.02) trendText = 'Taxa subindo: ' + fmtPct(prev) + ' → ' + fmtPct(last) + ' | Média: ' + fmtPct(avgRateAll);
-        else trendText = 'Taxa estável em ' + fmtPct(last) + ' | Média: ' + fmtPct(avgRateAll);
-      }
-      var svg = keys.length ? '<svg class="line-svg" viewBox="0 0 ' + w + ' ' + h + '" role="img" aria-label="Taxa de no-show semanal"><line x1="' + p + '" y1="30" x2="' + p + '" y2="' + (h - p) + '" stroke="var(--border)" stroke-width="1"/><line x1="' + p + '" y1="' + (h - p) + '" x2="' + (w - 20) + '" y2="' + (h - p) + '" stroke="var(--border)" stroke-width="1"/><text x="8" y="34" fill="var(--muted)" font-size="11">' + fmtPct(max) + '</text><text x="18" y="' + (h - 8) + '" fill="var(--muted)" font-size="11">0%</text><polyline class="ln" style="stroke:var(--red);stroke-width:3" points="' + points + '"/>' + rateLabels + labels + '</svg>' : '<div class="muted">Sem semanas com reunião no filtro atual</div>';
-      return { svg: svg, trendText: trendText };
-    }
-    
-    // Múltiplas linhas por dimensão
-    var dimKey = filterKey;
-    var dimValues = {};
-    rows.forEach(function (r) {
-      var val = r[dimKey] || 'Não informado';
-      dimValues[val] = true;
-    });
-    var dimList = Object.keys(dimValues).slice(0, 8); // Máximo 8 linhas
-    
-    // Calcular taxas por dimensão por semana
-    var linesData = dimList.map(function (dimVal) {
-      var rates = keys.map(function (k) {
-        var arr = g[k].filter(function (r) { return (r[dimKey] || 'Não informado') === dimVal; });
-        var ns = arr.filter(function (r) { return r.noShow; }).length;
-        return arr.length ? ns / arr.length : 0;
-      });
-      return { name: dimVal, rates: rates };
-    });
-    
-    // Escala dinâmica
-    var allRates = linesData.flatMap(function (l) { return l.rates; });
-    var maxRate = Math.max.apply(null, allRates);
-    var max = Math.max(0.1, Math.ceil(maxRate * 1.25 * 10) / 10);
-    var w = 1100, h = 300, p = 44;
-    
-    var labelStep = Math.ceil(keys.length / 8);
-    var labels = keys.map(function (k, i) {
+    var groupedWeeks = group(rows.filter(function (r) { return r.meetingDate; }), 'week');
+    var keys = Object.keys(groupedWeeks).sort();
+    var width = 1100, height = 320, pad = 48;
+    var labelStep = Math.max(1, Math.ceil(keys.length / 9));
+    var labels = keys.map(function (key, i) {
       if (i % labelStep !== 0 && i !== keys.length - 1) return '';
-      var x = p + Math.round(i / Math.max(1, keys.length - 1) * (w - p * 2));
-      return '<text x="' + x + '" y="' + (h - 10) + '" text-anchor="middle" fill="var(--muted)">' + esc(k.replace('-', ' ')) + '</text>';
+      var x = pad + Math.round(i / Math.max(1, keys.length - 1) * (width - pad * 2));
+      return '<text x="' + x + '" y="' + (height - 10) + '" text-anchor="middle" fill="var(--muted)">' + esc(key.replace('-', ' ')) + '</text>';
     }).join('');
-    
-    var polylines = linesData.map(function (line, idx) {
-      var points = line.rates.map(function (r, i) {
-        var x = p + Math.round(i / Math.max(1, keys.length - 1) * (w - p * 2));
-        var y = h - p - Math.round(r / max * (h - p * 2));
-        return x + ',' + y;
-      }).join(' ');
-      return '<polyline class="ln" style="stroke:' + colors[idx % colors.length] + ';stroke-width:2" points="' + points + '"/>';
-    }).join('');
-    
-    var trendText = 'Taxa por ' + (filterKey === 'bdr' ? 'BDR' : filterKey === 'origem' ? 'canal' : 'porte');
-    var svg = keys.length ? '<svg class="line-svg" viewBox="0 0 ' + w + ' ' + h + '" role="img" aria-label="Taxa de no-show por ' + esc(filterKey) + '"><line x1="' + p + '" y1="30" x2="' + p + '" y2="' + (h - p) + '" stroke="var(--border)" stroke-width="1"/><line x1="' + p + '" y1="' + (h - p) + '" x2="' + (w - 20) + '" y2="' + (h - p) + '" stroke="var(--border)" stroke-width="1"/><text x="8" y="34" fill="var(--muted)" font-size="11">' + fmtPct(max) + '</text><text x="18" y="' + (h - 8) + '" fill="var(--muted)" font-size="11">0%</text>' + polylines + labels + '</svg>' : '<div class="muted">Sem semanas com reunião no filtro atual</div>';
-    
-    return { svg: svg, trendText: trendText, linesData: linesData, dimList: dimList, colors: colors };
-  }
-  
-  // Dados para filtros de taxa (cache)
-  var rateFilterData = { all: null, bdr: null, origem: null, porte: null };
-  
-  function buildRateFilterData(rows) {
-    var weeks = {};
-    rows.filter(function (r) { return r.meetingDate; }).forEach(function (r) {
-      if (!weeks[r.week]) weeks[r.week] = { all: [], bdr: {}, origem: {}, porte: {} };
-      weeks[r.week].all.push(r);
-      if (r.bdr) { if (!weeks[r.week].bdr[r.bdr]) weeks[r.week].bdr[r.bdr] = []; weeks[r.week].bdr[r.bdr].push(r); }
-      if (r.origem) { if (!weeks[r.week].origem[r.origem]) weeks[r.week].origem[r.origem] = []; weeks[r.week].origem[r.origem].push(r); }
-      if (r.porte) { if (!weeks[r.week].porte[r.porte]) weeks[r.week].porte[r.porte] = []; weeks[r.week].porte[r.porte].push(r); }
+
+    if (!keys.length) return { svg: '<div class="muted">Sem semanas com reunião no filtro atual</div>', trendText: 'Sem dados no período', linesData: [], colors: RATE_COLORS };
+
+    if (filterKey === 'all') {
+      var weekly = weeklyRateData(rows, keys);
+      var rolling = rollingRateData(weekly, 4);
+      var rates = weekly.map(function (x) { return x.rate; });
+      var rollingRates = rolling.map(function (x) { return x.rate; });
+      var max = rateAxisMax(rates.concat(rollingRates));
+      var totalKnown = weekly.reduce(function (s, x) { return s + x.known; }, 0);
+      var totalNoShows = weekly.reduce(function (s, x) { return s + x.noShows; }, 0);
+      var periodRate = totalKnown ? totalNoShows / totalKnown : 0;
+      var latestRolling = rollingRates.filter(function (x) { return x != null; }).pop();
+      var chart = svgRateSeries(rates, weekly, keys, max, width, height, pad, 'var(--red)', false) + svgRateSeries(rollingRates, rolling, keys, max, width, height, pad, 'var(--teal)', true);
+      var svg = '<svg class="line-svg" viewBox="0 0 ' + width + ' ' + height + '" role="img" aria-label="Taxa semanal e média móvel de no-show"><line x1="' + pad + '" y1="30" x2="' + pad + '" y2="' + (height - pad) + '" stroke="var(--border)"/><line x1="' + pad + '" y1="' + (height - pad) + '" x2="' + (width - 20) + '" y2="' + (height - pad) + '" stroke="var(--border)"/><text x="8" y="34" fill="var(--muted)" font-size="11">' + fmtPct(max) + '</text><text x="18" y="' + (height - pad + 4) + '" fill="var(--muted)" font-size="11">0%</text>' + chart + labels + '</svg>';
+      return { svg: svg, trendText: 'Média móvel 4 semanas: ' + fmtPct(latestRolling) + ' | Período: ' + fmtPct(periodRate), linesData: [], colors: RATE_COLORS };
+    }
+
+    var dimKey = filterKey;
+    var dimList;
+    if (dimKey === 'bdr') {
+      dimList = bdrRoster();
+    } else {
+      var totals = {};
+      rows.forEach(function (r) { var value = r[dimKey] || 'Não informado'; totals[value] = (totals[value] || 0) + 1; });
+      dimList = Object.keys(totals).sort(function (a, b) { return totals[b] - totals[a] || a.localeCompare(b, 'pt-BR'); }).slice(0, 8);
+    }
+
+    var linesData = dimList.map(function (dimValue, idx) {
+      var dimRows = rows.filter(function (r) { return (r[dimKey] || 'Não informado') === dimValue; });
+      var weekly = weeklyRateData(dimRows, keys);
+      var known = dimRows.filter(function (r) { return r.knownOutcome; }).length;
+      var noShows = dimRows.filter(function (r) { return r.knownOutcome && r.noShow; }).length;
+      return { name: dimValue, rates: weekly.map(function (x) { return x.rate; }), details: weekly, total: dimRows.length, known: known, noShows: noShows, rate: known ? noShows / known : null, coverage: dimRows.length ? known / dimRows.length : 0, color: RATE_COLORS[idx % RATE_COLORS.length] };
     });
-    return weeks;
+    var allRates = [];
+    linesData.forEach(function (line) { line.rates.forEach(function (value) { if (value != null) allRates.push(value); }); });
+    var maxMulti = rateAxisMax(allRates);
+    var lineSvg = linesData.map(function (line) { return line.noShows ? svgRateSeries(line.rates, line.details, keys, maxMulti, width, height, pad, line.color, false) : ''; }).join('');
+    var titleDim = dimKey === 'bdr' ? 'BDR' : dimKey === 'origem' ? 'canal' : 'porte';
+    var svgMulti = '<svg class="line-svg" viewBox="0 0 ' + width + ' ' + height + '" role="img" aria-label="Taxa de no-show por ' + esc(titleDim) + '"><line x1="' + pad + '" y1="30" x2="' + pad + '" y2="' + (height - pad) + '" stroke="var(--border)"/><line x1="' + pad + '" y1="' + (height - pad) + '" x2="' + (width - 20) + '" y2="' + (height - pad) + '" stroke="var(--border)"/><text x="8" y="34" fill="var(--muted)" font-size="11">' + fmtPct(maxMulti) + '</text><text x="18" y="' + (height - pad + 4) + '" fill="var(--muted)" font-size="11">0%</text>' + lineSvg + labels + '</svg>';
+    return { svg: svgMulti, trendText: 'Incidência de no-show por ' + titleDim + ' | período filtrado', linesData: linesData, colors: RATE_COLORS };
   }
-  
+
   function renderRateLegend(filterKey, rows, svgResult) {
     var legendEl = $('rate-legend');
     if (!legendEl) return;
-    
     if (filterKey === 'all') {
-      legendEl.innerHTML = '<span class="rate-legend-item"><span class="rate-legend-dot" style="background:var(--red)"></span>Taxa de no-show geral</span>';
+      legendEl.innerHTML = '<span class="rate-legend-item"><span class="rate-legend-dot" style="background:var(--red)"></span>Taxa semanal</span><span class="rate-legend-item"><span class="rate-legend-dot" style="background:var(--teal)"></span>Média móvel ponderada | 4 semanas</span>';
       return;
     }
-    
-    // Usar dados do SVG gerado
-    var linesData = svgResult && svgResult.linesData ? svgResult.linesData : [];
-    var colors = svgResult && svgResult.colors ? svgResult.colors : ['#f85149', '#e3b341', '#3ab8b7', '#3fb950', '#a371f7', '#79c0ff'];
-    
-    // Calcular taxa média por linha
-    var items = linesData.map(function (line, idx) {
-      var avgRate = line.rates.reduce(function (a, b) { return a + b; }, 0) / line.rates.length;
-      return { name: line.name, rate: avgRate, color: colors[idx % colors.length] };
-    }).sort(function (a, b) { return b.rate - a.rate; });
-    
-    legendEl.innerHTML = items.map(function (item) {
-      return '<span class="rate-legend-item" data-filter-key="' + esc(filterKey) + '" data-filter-val="' + esc(item.name) + '"><span class="rate-legend-dot" style="background:' + item.color + '"></span>' + esc(item.name) + ' (' + fmtPct(item.rate) + ')</span>';
+    var lines = svgResult && svgResult.linesData ? svgResult.linesData : [];
+    legendEl.innerHTML = lines.map(function (line) {
+      var rateLabel = line.rate == null ? 'sem desfecho' : fmtPct(line.rate) + ' | n=' + line.known;
+      var zeroClass = line.noShows ? '' : ' zero-series';
+      return '<span class="rate-legend-item' + zeroClass + '" data-filter-key="' + esc(filterKey) + '" data-filter-val="' + esc(line.name) + '"><span class="rate-legend-dot" style="background:' + line.color + '"></span>' + esc(line.name) + ' | ' + esc(rateLabel) + ' | cobertura ' + fmtPct(line.coverage) + '</span>';
     }).join('');
-    
-    // Adicionar click para filtrar
-    var legendItems = legendEl.querySelectorAll('[data-filter-val]');
-    for (var i = 0; i < legendItems.length; i += 1) legendItems[i].onclick = function () {
-      var key = this.getAttribute('data-filter-key');
-      var val = this.getAttribute('data-filter-val');
-      openDealsNoShow(val, key, rows);
-    };
+    var items = legendEl.querySelectorAll('[data-filter-val]');
+    for (var i = 0; i < items.length; i += 1) items[i].onclick = function () { openDealsNoShow(this.getAttribute('data-filter-val'), this.getAttribute('data-filter-key')); };
   }
-  
-  function openDealsNoShow(title, key, rows) {
-    var filtered = state.filtered.filter(function (r) { return r[key] === title && r.noShow; });
-    openDeals(title, filtered);
+
+  function openDealsNoShow(title, key) {
+    openDeals(title, state.filtered.filter(function (r) { return r[key] === title && r.noShow; }));
   }
 
   function rankRows(rows, key, mode) {
     var g = group(rows, key);
-    return Object.keys(g).map(function (k) {
+    var ranked = Object.keys(g).map(function (k) {
       var arr = g[k];
       var ns = arr.filter(function (r) { return r.noShow; }).length;
+      var known = arr.filter(function (r) { return r.knownOutcome; }).length;
+      var open = arr.filter(function (r) { return r.openNoShow; }).length;
       var out = arr.filter(function (r) { return r.outsideSla; }).length;
-      return { name: k, total: arr.length, noShows: ns, outside: out, rate: rate(ns, arr.filter(function (r) { return r.meetingDate; }).length), outRate: rate(out, ns) };
-    }).sort(function (a, b) { return mode === 'outside' ? (b.outside - a.outside || b.outRate - a.outRate) : (b.noShows - a.noShows || b.rate - a.rate); }).slice(0, 8);
+      return { name: k, total: arr.length, known: known, open: open, noShows: ns, outside: out, rate: rate(ns, known), outRate: rate(out, open) };
+    }).filter(function (x) { return mode === 'outside' ? x.open > 0 : x.known > 0; }).sort(function (a, b) { return mode === 'outside' ? (b.outside - a.outside || b.outRate - a.outRate || b.open - a.open) : (b.noShows - a.noShows || b.rate - a.rate); });
+    return mode === 'outside' ? ranked : ranked.slice(0, 8);
   }
 
   function renderRank(title, rows, mode) {
     var infoKey = mode === 'outside' ? 'rankOutside' : 'rankVolume';
     var list = rankRows(rows, 'bdr', mode).map(function (r) {
       var val = mode === 'outside' ? fmtInt(r.outside) : fmtInt(r.noShows);
-      var meta = mode === 'outside' 
-        ? fmtPct(r.outRate) + ' dos no-shows deste BDR estão fora do SLA' 
-        : fmtPct(r.rate) + ' de taxa de no-show';
-      return '<div class="rank-row clickable-row" data-rank-mode="' + esc(mode) + '" data-rank-name="' + esc(r.name) + '" data-hover-title="' + esc(r.name) + '" data-hover-text="Clique para abrir os deals deste BDR no ranking."><div><div class="rank-name">' + esc(r.name) + '</div><div class="rank-meta">' + esc(meta) + '</div></div><span class="pill ' + (mode === 'outside' && r.outside ? 'bad' : 'warn') + '">' + esc(val) + '</span><span class="rank-meta right">n=' + fmtInt(r.total) + '</span></div>';
+      var meta = mode === 'outside'
+        ? fmtInt(r.outside) + ' de ' + fmtInt(r.open) + ' no-shows abertos fora do SLA'
+        : fmtPct(r.rate) + ' dos desfechos conhecidos | cobertura ' + fmtPct(rate(r.known, r.total));
+      var denominator = mode === 'outside' ? 'n abertos=' + fmtInt(r.open) : 'n desfechos=' + fmtInt(r.known);
+      return '<div class="rank-row clickable-row" data-rank-mode="' + esc(mode) + '" data-rank-name="' + esc(r.name) + '" data-hover-title="' + esc(r.name) + '" data-hover-text="Clique para abrir os deals deste BDR no ranking."><div><div class="rank-name">' + esc(r.name) + '</div><div class="rank-meta">' + esc(meta) + '</div></div><span class="pill ' + (mode === 'outside' && r.outside ? 'bad' : 'warn') + '">' + esc(val) + '</span><span class="rank-meta right">' + esc(denominator) + '</span></div>';
     }).join('');
     var descText = mode === 'outside' 
-      ? 'Quantidade de no-shows fora do SLA (mais de ' + CONFIG.slaBusinessDays + ' dias úteis) | n = reuniões agendadas' 
-      : 'Quantidade de no-shows confirmados | n = reuniões agendadas';
-    return '<div class="card span-4"><div class="card-title"><div><h2>' + esc(title) + '</h2><div class="desc">' + esc(descText) + '</div></div>' + infoBtn(infoKey) + '</div>' + (list || '<div class="muted">Sem dados no filtro atual</div>') + '</div>';
+      ? 'Backlog atual | exclui perdidos, recuperados e reagendados | reconcilia com a tabela operacional'
+      : 'Incidência histórica no período | inclui abertos, recuperados e perdidos por no-show';
+    return '<div class="card span-6"><div class="card-title"><div><h2>' + esc(title) + '</h2><div class="desc">' + esc(descText) + '</div></div>' + infoBtn(infoKey) + '</div>' + (list || '<div class="muted">Sem dados no filtro atual</div>') + '</div>';
   }
 
   function renderBigIdea(rows, m) {
-    var bdrRows = rankRows(rows, 'bdr', 'rate');
+    var bdrRows = rankRows(rows, 'bdr', m.outsideSla ? 'outside' : 'rate');
     var top = bdrRows[0];
-    var trendDirection = '';
-    var g = group(rows.filter(function (r) { return r.meetingDate; }), 'week');
-    var keys = Object.keys(g).sort();
-    if (keys.length >= 2) {
-      var last2 = keys.slice(-2);
-      var rates = last2.map(function (k) {
-        var arr = g[k];
-        var ns = arr.filter(function (r) { return r.noShow; }).length;
-        return arr.length ? ns / arr.length : 0;
-      });
-      if (rates[1] < rates[0] - 0.02) trendDirection = 'tendência de queda';
-      else if (rates[1] > rates[0] + 0.02) trendDirection = 'tendência de alta';
-      else trendDirection = 'estável';
-    }
     var bigIdeaText = '';
     if (m.pipelineRisk > 0 && m.outsideSla > 0) {
       bigIdeaText = '<strong>' + fmtMoney(m.pipelineRisk) + '</strong> em no-shows abertos. <strong>' + fmtInt(m.outsideSla) + '</strong> casos fora do prazo esperam ação. ' + (top ? '<strong>' + esc(top.name) + '</strong> concentra a maior fila.' : '');
     } else if (m.noShows > 0) {
-      bigIdeaText = '<strong>' + fmtInt(m.noShows) + '</strong> no-shows confirmados (' + fmtPct(m.noShowRate) + '). Taxa ' + trendDirection + '.';
+      bigIdeaText = '<strong>' + fmtInt(m.noShows) + '</strong> no-shows históricos em <strong>' + fmtInt(m.knownOutcomes) + '</strong> reuniões com desfecho (' + fmtPct(m.noShowRate) + ').';
     } else {
       bigIdeaText = 'Nenhum no-show confirmado no período. Higiene do CRM em ' + fmtPct(m.fieldCoverage) + '.';
     }
@@ -673,7 +631,7 @@
     return '<div class="kpis kpis-hero">' +
       kpi('Pipeline em risco', fmtMoney(m.pipelineRisk), 'Valor anual que pode escapar se não recuperar', 'bad hero', 'pipelineRisk') +
       kpi('Fora do prazo', fmtInt(m.outsideSla), 'No-shows há mais de 2 dias úteis sem ação', m.outsideSla ? 'bad hero' : 'good hero', 'outsideSla') +
-      kpi('Taxa no-show', fmtPct(m.noShowRate), 'No-shows a cada 100 reuniões marcadas', m.noShowRate > 0.25 ? 'bad hero' : 'warn hero', 'noShowRate') +
+      kpi('Incidência no-show', fmtPct(m.noShowRate), fmtInt(m.noShows) + ' de ' + fmtInt(m.knownOutcomes) + ' reuniões com desfecho', m.noShowRate > 0.25 ? 'bad hero' : 'warn hero', 'noShowRate') +
       kpi('Recuperados', fmtInt(m.recovered), 'No-shows que voltaram a andar', 'good hero', 'recovered') +
       '</div>';
   }
@@ -697,14 +655,16 @@
     var currentWeek = keys[keys.length - 1] || '—';
     var lastWeekData = g[keys[keys.length - 1]] || [];
     var lastWeekNoShows = lastWeekData.filter(function (r) { return r.noShow; }).length;
+    var lastWeekKnown = lastWeekData.filter(function (r) { return r.knownOutcome; }).length;
     var lastWeekTotal = lastWeekData.length;
-    var lastWeekRate = lastWeekTotal ? lastWeekNoShows / lastWeekTotal : 0;
+    var lastWeekRate = lastWeekKnown ? lastWeekNoShows / lastWeekKnown : null;
     return '<div class="card span-4"><div class="card-title"><h2>Resumo da semana</h2></div>' +
       '<div class="summary-grid">' +
       '<div class="summary-item"><span class="summary-label">Semana atual</span><span class="summary-value">' + esc(currentWeek.replace('-', ' ')) + '</span></div>' +
       '<div class="summary-item"><span class="summary-label">Reuniões agendadas</span><span class="summary-value">' + fmtInt(lastWeekTotal) + '</span></div>' +
+      '<div class="summary-item"><span class="summary-label">Com desfecho</span><span class="summary-value">' + fmtInt(lastWeekKnown) + '</span></div>' +
       '<div class="summary-item"><span class="summary-label">No-shows</span><span class="summary-value">' + fmtInt(lastWeekNoShows) + '</span></div>' +
-      '<div class="summary-item"><span class="summary-label">Taxa da semana</span><span class="summary-value ' + (lastWeekRate > 0.25 ? 'bad' : 'good') + '">' + fmtPct(lastWeekRate) + '</span></div>' +
+      '<div class="summary-item"><span class="summary-label">Incidência da semana</span><span class="summary-value ' + (lastWeekRate != null && lastWeekRate > 0.25 ? 'bad' : 'good') + '">' + (lastWeekRate == null ? 'sem desfecho' : fmtPct(lastWeekRate)) + '</span></div>' +
       '</div></div>';
   }
 
@@ -716,16 +676,16 @@
     occurred: ['Realizadas', 'Reuniões que aconteceram de fato. Contamos como realizada quando o BDR marcou "Sim" ou quando o deal avançou para uma etapa que só se alcança após a reunião.', 'Etapas que indicam reunião feita: Diagnóstico, Cotação, Consultoria, Negociação, Implantação ou Ganho.'],
     fieldNo: ['Campo Não', 'Reuniões em que o BDR marcou explicitamente que a reunião NÃO ocorreu. É a evidência mais confiável de ausência.', 'Vem da marcação oficial do BDR no HubSpot, não de interpretação de texto.'],
     noShow: ['No-show confirmado', 'Reuniões que foram marcadas mas o cliente não compareceu. Confirmamos quando o BDR marcou "Não" ou quando há registro claro de ausência no motivo/status.', 'O texto do deal só é usado como último recurso, quando não há marcação oficial. Campo vazio sozinho não vira no-show.'],
-    noShowRate: ['Taxa no-show', 'De cada 100 reuniões marcadas no período, quantas viraram no-show confirmado. Quanto menor, melhor.', 'Divide os no-shows confirmados pelo total de reuniões agendadas. Não mistura com as pendentes de preenchimento.'],
+    noShowRate: ['Incidência de no-show', 'De cada 100 reuniões com desfecho conhecido, quantas tiveram no-show em algum momento. Inclui casos depois recuperados ou perdidos.', 'Divide os no-shows históricos pelos desfechos conhecidos. Reuniões pendentes de preenchimento ficam fora do denominador e a cobertura aparece ao lado.'],
     rescheduled: ['Reagendadas', 'No-shows em que há registro de que uma nova data foi combinada. Sinal de recuperação em andamento.', 'Hoje detectamos a remarcação pelo texto do deal; o histórico exato de datas ainda não vem do sistema.'],
     recovered: ['Recuperados', 'No-shows que foram revertidos: a reunião acabou acontecendo depois, ou o negócio avançou de etapa mesmo após a falta.', 'Usamos a marcação da reunião e a trilha de etapas como prova de recuperação.'],
-    outsideSla: ['Fora do prazo (SLA)', 'No-shows que já passaram de ' + CONFIG.slaBusinessDays + ' dias úteis sem nenhuma ação de recuperação. São os casos mais urgentes de cobrar.', 'Contamos os dias úteis entre a data da reunião e hoje.'],
+    outsideSla: ['Fora do prazo (SLA)', 'No-shows ainda abertos que passaram de ' + CONFIG.slaBusinessDays + ' dias úteis sem recuperação.', 'Exclui perdidos, recuperados e reagendados. Este total reconcilia com as linhas fora do SLA na tabela operacional.'],
     pipelineRisk: ['Pipeline em risco', 'Soma do valor anual estimado (ARR) dos negócios que tiveram no-show e ainda estão abertos, sem recuperação. É a receita que pode escapar.', 'Valor por deal: ARR estimado; se não houver, usamos a 1ª fatura × 12 ou o prêmio mensal × 12.'],
     pipelineLost: ['Pipeline perdido', 'Soma do valor anual estimado dos negócios que foram perdidos e têm o no-show registrado como causa. Receita já perdida.', 'Usa o motivo e a descrição da perda como comprovação.'],
     timeline: ['Volume semanal', 'Mostra, semana a semana, quantas reuniões foram agendadas, quantas viraram no-show e quantas ainda estão sem preenchimento.', 'Ajuda a separar problema de comparecimento de problema de registro. Clique para ver a tabela detalhada.'],
-    rateTrend: ['Taxa de no-show ao longo do tempo', 'Mostra se a taxa de no-show está subindo, caindo ou estável nas últimas semanas. É o termômetro principal da página.', 'Para cada semana: no-shows confirmados divididos pelas reuniões agendadas daquela semana.'],
-    rankVolume: ['Ranking por volume de no-show', 'Lista os BDRs com mais no-shows confirmados no período. A ordem é por quantidade, para priorizar onde cobrar primeiro; a taxa aparece como contexto.', '"n" = quantas reuniões aquele BDR tinha agendado no filtro atual.'],
-    rankOutside: ['Ranking por fora do prazo', 'Lista os BDRs com mais no-shows que passaram do prazo de ' + CONFIG.slaBusinessDays + ' dias úteis sem ação. Mostra quem está deixando recuperação atrasar.', 'Ordena por quantidade fora do prazo; a % é dos no-shows daquele BDR.'],
+    rateTrend: ['Incidência de no-show ao longo do tempo', 'A linha semanal mostra no-shows históricos divididos por reuniões com desfecho conhecido. A linha pontilhada é a média móvel ponderada de 4 semanas.', 'Semanas sem desfecho aparecem como lacunas, não como 0%. O eixo sempre começa em 0% e nunca ultrapassa 100%.'],
+    rankVolume: ['Ranking por incidência histórica', 'Lista os BDRs com mais no-shows no período, incluindo abertos, recuperados e perdidos por no-show.', 'A taxa usa apenas reuniões com desfecho conhecido. O card mostra também a cobertura de dados.'],
+    rankOutside: ['Ranking do backlog fora do prazo', 'Lista os BDRs com mais no-shows ainda abertos que passaram de ' + CONFIG.slaBusinessDays + ' dias úteis.', 'Exclui perdidos, recuperados e reagendados. O denominador é o número de no-shows abertos daquele BDR.'],
     breakOrigem: ['Quebra por origem', 'Distribui os no-shows pela origem do lead (de onde o negócio veio). Mostra quais canais trazem mais faltas.', 'Usa o campo de origem do deal. Clique em cada linha para ver os negócios.'],
     breakSegment: ['Quebra por indústria', 'Distribui os no-shows pela indústria/setor da empresa. Mostra em quais setores o cliente falta mais.', 'Vem do setor cadastrado na empresa associada, não de adivinhação pelo nome.'],
     breakPersona: ['Quebra por persona', 'Distribui os no-shows pelo perfil de quem seria o interlocutor (senioridade + área, ex.: "Gestão | RH"). Mostra quais perfis faltam mais.', 'Vem do cargo do contato associado, classificado automaticamente.'],
@@ -762,39 +722,6 @@
     $('help-drawer').classList.remove('open');
   }
 
-  function renderStory(rows, m) {
-    var bdrRows = rankRows(rows, 'bdr', 'rate');
-    var top = bdrRows[0];
-    var trend = '';
-    var g = group(rows.filter(function (r) { return r.meetingDate; }), 'week');
-    var keys = Object.keys(g).sort();
-    if (keys.length >= 2) {
-      var last2 = keys.slice(-2);
-      var rates = last2.map(function (k) {
-        var arr = g[k];
-        var ns = arr.filter(function (r) { return r.noShow; }).length;
-        return arr.length ? ns / arr.length : 0;
-      });
-      if (rates[1] < rates[0]) trend = ' Tendência de queda na taxa de no-show nas últimas semanas.';
-      else if (rates[1] > rates[0]) trend = ' Tendência de alta na taxa de no-show nas últimas semanas.';
-      else trend = ' Taxa de no-show estável nas últimas semanas.';
-    }
-    return '<div class="story-grid">' +
-      '<div class="story-card"><div class="story-head"><b>Leitura executiva</b>' + infoBtn('story') + '</div><span><strong>' + fmtInt(m.noShows) + '</strong> no-shows confirmados de <strong>' + fmtInt(m.scheduled) + '</strong> reuniões agendadas (' + fmtPct(m.noShowRate) + ').' + fmtInt(m.fieldMissingPast) + ' reuniões passadas com campo pendente (higiene de CRM).' + trend + '</span></div>' +
-      '<div class="story-card"><div class="story-head"><b>Onde cobrar primeiro</b>' + infoBtn('rankVolume') + '</div><span>' + (top ? '<strong>' + esc(top.name) + '</strong> concentra <strong>' + fmtInt(top.noShows) + '</strong> no-shows confirmados (' + fmtPct(top.rate) + ' de taxa) no filtro atual.' : 'Sem concentração relevante no filtro atual.') + '</span></div>' +
-      '<div class="story-card"><div class="story-head"><b>Regra de classificação</b>' + infoBtn('noShow') + '</div><span>O no-show é confirmado quando <code>a_reuniao_ocorreu_ = Não</code>. Texto é suporte final para casos ambíguos. Campo vazio não conta como no-show.</span></div>' +
-      '</div>';
-  }
-
-  function renderLegend() {
-    return '<div class="legend-grid">' +
-      '<div class="legend-card"><b>Universo</b><span>Conta somente deals com data_reuniao_agendada entre set/25 e hoje. Deals sem reunião agendada ficam fora da análise.</span></div>' +
-      '<div class="legend-card"><b>No-show confirmado</b><span>Primeiro usa a_reuniao_ocorreu_ = Não. Texto só entra como suporte final quando o campo não resolve.</span></div>' +
-      '<div class="legend-card"><b>Status operacional</b><span>No-show aberto = precisa ação. Reagendada = há evidência textual de remarcação. Recuperado = avançou ou ocorreu depois do no-show.</span></div>' +
-      '<div class="legend-card"><b>Persona e indústria</b><span>Persona = cargo do contato classificado em senioridade e área. Indústria = industry da company associada.</span></div>' +
-      '</div>';
-  }
-
   function renderBreak(title, rows, key) {
     var infoByKey = { origem: 'breakOrigem', segment: 'breakSegment', persona: 'breakPersona', porte: 'breakPorte' };
     var infoKey = infoByKey[key] || 'noShow';
@@ -808,7 +735,7 @@
     var html = items.map(function (x) {
       return '<div class="break-row clickable-row" data-break-key="' + esc(key) + '" data-break-name="' + esc(x.name) + '" data-hover-title="' + esc(x.name) + '" data-hover-text="Clique para abrir os deals desta quebra."><div class="break-name">' + esc(x.name) + '</div><div class="break-val">' + fmtInt(x.ns) + '</div><div class="break-val">' + fmtPct(x.rate) + '</div><div class="break-track"><div class="break-fill" style="width:' + Math.round(x.ns / max * 100) + '%"></div></div></div>';
     }).join('');
-    return '<div class="card span-4"><div class="card-title"><div><h2>' + esc(title) + '</h2><div class="desc">No-shows | volume | taxa</div></div>' + infoBtn(infoKey) + '</div><div class="break-list">' + (html || '<div class="muted">Sem dados</div>') + '</div></div>';
+    return '<div class="card span-3"><div class="card-title"><div><h2>' + esc(title) + '</h2><div class="desc">No-shows | volume | incidência</div></div>' + infoBtn(infoKey) + '</div><div class="break-list">' + (html || '<div class="muted">Sem dados</div>') + '</div></div>';
   }
 
   function hubspotUrl(id) { return id ? 'https://app.hubspot.com/contacts/44715285/deal/' + encodeURIComponent(id) : '#'; }
@@ -847,10 +774,11 @@
     var body = Object.keys(g).sort().map(function (k) {
       var arr = g[k];
       var no = arr.filter(function (r) { return r.noShow; }).length;
+      var known = arr.filter(function (r) { return r.knownOutcome; }).length;
       var pend = arr.filter(function (r) { return r.fieldPendingPast; }).length;
-      return '<tr><td>' + esc(k.replace('-', ' ')) + '</td><td class="right">' + fmtInt(arr.length) + '</td><td class="right">' + fmtInt(no) + '</td><td class="right">' + fmtPct(rate(no, arr.length)) + '</td><td class="right">' + fmtInt(pend) + '</td></tr>';
+      return '<tr><td>' + esc(k.replace('-', ' ')) + '</td><td class="right">' + fmtInt(arr.length) + '</td><td class="right">' + fmtInt(known) + '</td><td class="right">' + fmtInt(no) + '</td><td class="right">' + (known ? fmtPct(rate(no, known)) : 'sem desfecho') + '</td><td class="right">' + fmtInt(pend) + '</td></tr>';
     }).join('');
-    openModal('Linha temporal semanal', '<div class="table-wrap"><table><thead><tr><th>Semana</th><th class="right">Agendadas</th><th class="right">No-show</th><th class="right">Taxa</th><th class="right">Campo pendente</th></tr></thead><tbody>' + (body || '<tr><td colspan="5" class="muted">Sem semanas no filtro atual</td></tr>') + '</tbody></table></div>');
+    openModal('Linha temporal semanal', '<div class="table-wrap"><table><thead><tr><th>Semana</th><th class="right">Agendadas</th><th class="right">Com desfecho</th><th class="right">No-show</th><th class="right">Incidência</th><th class="right">Campo pendente</th></tr></thead><tbody>' + (body || '<tr><td colspan="6" class="muted">Sem semanas no filtro atual</td></tr>') + '</tbody></table></div>');
   }
 
   function drillRows(key) {
@@ -866,7 +794,7 @@
     if (key === 'rescheduled') return rows.filter(function (r) { return r.rescheduled; });
     if (key === 'recovered') return rows.filter(function (r) { return r.recovered; });
     if (key === 'outsideSla') return rows.filter(function (r) { return r.outsideSla; });
-    if (key === 'pipelineRisk') return rows.filter(function (r) { return r.noShow && r.stage !== 'Perdido' && !r.recovered; });
+    if (key === 'pipelineRisk') return rows.filter(function (r) { return r.openNoShow; });
     if (key === 'pipelineLost') return rows.filter(function (r) { return r.status === 'Perdido por no-show'; });
     return [];
   }
@@ -878,7 +806,7 @@
     openDeals(h ? h[0] : 'Detalhe', drillRows(key));
   }
   function renderRecoveryTable(rows) {
-    var arr = rows.filter(function (r) { return r.noShow && r.stage !== 'Perdido' && !r.recovered; }).sort(function (a, b) { return b.risk - a.risk || (b.businessDays || 0) - (a.businessDays || 0); }).slice(0, 100);
+    var arr = rows.filter(function (r) { return r.openNoShow; }).sort(function (a, b) { return b.risk - a.risk || (b.businessDays || 0) - (a.businessDays || 0); }).slice(0, 100);
     var body = arr.map(function (r) {
       var slaLabel = r.businessDays == null ? 'SLA desconhecido' : (r.outsideSla ? 'Fora SLA' : 'Dentro SLA');
       var slaClass = r.businessDays == null ? 'warn' : (r.outsideSla ? 'bad' : 'good');
@@ -903,9 +831,15 @@
     return '<div class="card span-12"><div class="card-title"><div><h2>Perdidos por no-show</h2><div class="desc">Deals perdidos com evidência textual de no-show no motivo ou descrição</div></div>' + infoBtn('lostTable') + '</div><div class="table-wrap"><table><thead><tr><th>Deal</th><th>BDR</th><th>AE</th><th>Reunião</th><th>Origem</th><th>Porte</th><th>Motivo</th><th class="right">Pipeline perdido</th></tr></thead><tbody>' + (body || '<tr><td colspan="8" class="muted">Nenhum perdido por no-show no filtro atual</td></tr>') + '</tbody></table></div></div>';
   }
 
+  function renderDataScope(excluded) {
+    if (!excluded.length) return '';
+    return '<div class="data-scope-warning"><b>Qualidade de atribuição</b><span>' + fmtInt(excluded.length) + ' reuniões têm o campo SDR fora do roster canônico e foram excluídas das métricas por BDR. Nenhum AE é usado como substituto.</span></div>';
+  }
+
   function render() {
     renderFilters();
-    state.filtered = applyFilters(state.records);
+    state.filteredAll = applyFilters(state.records);
+    state.filtered = state.filteredAll.filter(function (r) { return r.isCanonicalBdr; });
     if (!state.records.length) {
       showState('empty', 'Sem reuniões agendadas', 'A API respondeu, mas nenhum deal veio com data_reuniao_agendada entre set/25 e hoje.');
       return;
@@ -919,6 +853,8 @@
     
     // ARCO NARRATIVO: Big Idea → KPIs herói → Gráficos → Rankings → Ação
     var html = '';
+
+    html += renderDataScope(state.filteredAll.filter(function (r) { return !r.isCanonicalBdr; }));
     
     // 1. BIG IDEA (tese + ação recomendada)
     html += renderBigIdea(rows, m);
@@ -949,9 +885,6 @@
     
     $('content').innerHTML = html;
     
-    // Cache de dados para filtros de taxa
-    rateFilterData = buildRateFilterData(rows);
-    
     var helps = $('content').querySelectorAll('[data-help]');
     for (var i = 0; i < helps.length; i += 1) helps[i].onclick = function (ev) { ev.stopPropagation(); openHelp(this.getAttribute('data-help')); };
     var drills = $('content').querySelectorAll('[data-drill]');
@@ -976,6 +909,7 @@
       // Renderizar legenda
       renderRateLegend(filterKey, state.filtered, svgResult);
     };
+    renderRateLegend(currentRateFilter, state.filtered, generateRateSvg(state.filtered, currentRateFilter));
     
     var ranks = $('content').querySelectorAll('[data-rank-name]');
     for (var r = 0; r < ranks.length; r += 1) ranks[r].onclick = function () {
@@ -1057,6 +991,25 @@
     try { localStorage.setItem('axenya_theme', n); } catch (e) {}
   }
 
-  window.NoShowBDR = { load: load, toggleTheme: toggleTheme, openAllHelp: openAllHelp, closeHelp: closeHelp, closeModal: closeModal, config: CONFIG, vidasRange: vidasRange };
+  window.NoShowBDR = {
+    load: load,
+    toggleTheme: toggleTheme,
+    openAllHelp: openAllHelp,
+    closeHelp: closeHelp,
+    closeModal: closeModal,
+    config: CONFIG,
+    vidasRange: vidasRange,
+    _test: {
+      canonicalBdrName: canonicalBdrName,
+      normalizeDeal: normalizeDeal,
+      metrics: metrics,
+      rankRows: rankRows,
+      weeklyRateData: weeklyRateData,
+      rollingRateData: rollingRateData,
+      rateAxisMax: rateAxisMax,
+      generateRateSvg: generateRateSvg,
+      bdrRoster: bdrRoster
+    }
+  };
   document.addEventListener('DOMContentLoaded', load);
 }());
