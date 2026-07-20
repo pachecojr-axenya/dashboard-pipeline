@@ -20,6 +20,11 @@
  *   - ?tab=Nome (só usuário autenticado): força uma foto com nome de aba específico.
  *
  * Abas nunca são sobrescritas: se a aba já tem conteúdo, a gravação é pulada.
+ *
+ * POST /api/snapshot?promote=weekly
+ *   → captura manual autenticada após a reunião de forecast; grava diretamente
+ *     no BQ daily + weekly_gold, independentemente do dia da semana. Não depende
+ *     do Sheets legado. Permitido somente para editores de forecast.
  */
 
 const { hubspotPost, fetchOwners, STAGE_MAP } = require('../lib/hubspot');
@@ -30,6 +35,7 @@ const { PIPELINE_VENDAS, PIPELINE_BID, PROPERTIES, HEADERS, buildRow } = require
 const bq = require('../lib/bigquery');
 
 const MONTHS_PT = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+const MANUAL_SNAPSHOT_EDITORS = new Set(['jpacheco@axenya.com', 'salencar@axenya.com']);
 
 const COUNT_HEADERS = [
   'Data', 'Total Deals',
@@ -136,8 +142,18 @@ module.exports = async function handler(req, res) {
   const querySecret    = (req.query && req.query.secret) || new URL(`http://x${req.url}`).searchParams.get('secret') || '';
   const isCron         = cronSecret     && authHeader  === `Bearer ${cronSecret}`;
   const isZapier       = snapshotSecret && (authHeader === `Bearer ${snapshotSecret}` || querySecret === snapshotSecret);
-  const isUser         = !!verifyRequest(req);
+  const userSession    = verifyRequest(req);
+  const isUser         = !!userSession;
   if (!isCron && !isZapier && !isUser) return res.status(401).json({ success: false, error: 'Não autorizado' });
+
+  const params = new URL(`http://x${req.url}`).searchParams;
+  const manualWeekly = params.get('promote') === 'weekly';
+  if (manualWeekly) {
+    if (req.method !== 'POST') return res.status(405).json({ success: false, error: 'Captura manual exige POST' });
+    const email = String(userSession && userSession.email || '').trim().toLowerCase();
+    if (!MANUAL_SNAPSHOT_EDITORS.has(email)) return res.status(403).json({ success: false, error: 'Sem permissão para capturar foto do forecast' });
+    if (req.headers['x-requested-with'] !== 'forecast-dashboard') return res.status(403).json({ success: false, error: 'Origem da captura manual inválida' });
+  }
 
   let hsToken;
   try { hsToken = getHubspotToken(); }
@@ -159,66 +175,76 @@ module.exports = async function handler(req, res) {
     // ── Legado Sheets ────────────────────────────────────────────────────────
     // A planilha é somente sanity/compatibilidade. Falha de permissão nela não
     // pode bloquear a fonte canônica diária no BigQuery (incidente 17–20/07).
-    try {
-      const tabs = await listTabs();
-      const tabHasContent = async name => {
-        if (!tabs.includes(name)) return false;
-        const v = await readRange(`'${name}'!A2:A2`);
-        return v.length > 0;
-      };
-      const writeTab = async name => {
-        if (await tabHasContent(name)) return 'já existia';
-        for (let i = 0; i < rows.length; i += 400) {
-          await writeMonthlySnapshot(name, HEADERS, rows.slice(i, i + 400));
+    // Captura manual pós-reunião ignora o legado e escreve direto no BQ.
+    if (manualWeekly) {
+      actions.sheets = 'ignorado (captura manual direta no BigQuery)';
+    } else {
+      try {
+        const tabs = await listTabs();
+        const tabHasContent = async name => {
+          if (!tabs.includes(name)) return false;
+          const v = await readRange(`'${name}'!A2:A2`);
+          return v.length > 0;
+        };
+        const writeTab = async name => {
+          if (await tabHasContent(name)) return 'já existia';
+          for (let i = 0; i < rows.length; i += 400) {
+            await writeMonthlySnapshot(name, HEADERS, rows.slice(i, i + 400));
+          }
+          return 'gravada (' + rows.length + ' deals)';
+        };
+
+        await appendRow('Historico Diario', COUNT_HEADERS, countsRow(deals, today));
+        actions.batimento = today;
+
+        if (brtDate.getUTCDay() === 5) {
+          actions['semanal ' + today] = await writeTab(today);
+        } else {
+          const lastFri = dateStr(previousFriday(brtDate));
+          if (!(await tabHasContent(lastFri))) {
+            actions['semanal ' + lastFri + ' (atrasada)'] = await writeTab(lastFri);
+          }
         }
-        return 'gravada (' + rows.length + ' deals)';
-      };
 
-      await appendRow('Historico Diario', COUNT_HEADERS, countsRow(deals, today));
-      actions.batimento = today;
-
-      if (brtDate.getUTCDay() === 5) {
-        actions['semanal ' + today] = await writeTab(today);
-      } else {
-        const lastFri = dateStr(previousFriday(brtDate));
-        if (!(await tabHasContent(lastFri))) {
-          actions['semanal ' + lastFri + ' (atrasada)'] = await writeTab(lastFri);
+        if (isLastDayOfMonth(brtDate)) {
+          actions['mensal ' + monthTabName(brtDate)] = await writeTab(monthTabName(brtDate));
+        } else {
+          const prevMonth = monthTabName(previousMonthEnd(brtDate));
+          if (!(await tabHasContent(prevMonth))) {
+            actions['mensal ' + prevMonth + ' (atrasada)'] = await writeTab(prevMonth);
+          }
         }
-      }
 
-      if (isLastDayOfMonth(brtDate)) {
-        actions['mensal ' + monthTabName(brtDate)] = await writeTab(monthTabName(brtDate));
-      } else {
-        const prevMonth = monthTabName(previousMonthEnd(brtDate));
-        if (!(await tabHasContent(prevMonth))) {
-          actions['mensal ' + prevMonth + ' (atrasada)'] = await writeTab(prevMonth);
+        if (forceTab) {
+          actions['forçada ' + forceTab] = await writeTab(forceTab);
         }
+      } catch (e) {
+        console.error('[snapshot][sheets]', e.message);
+        actions.sheets = 'ERRO (não bloqueante): ' + e.message;
       }
-
-      if (forceTab) {
-        actions['forçada ' + forceTab] = await writeTab(forceTab);
-      }
-    } catch (e) {
-      console.error('[snapshot][sheets]', e.message);
-      actions.sheets = 'ERRO (não bloqueante): ' + e.message;
     }
 
     // ── BQ: daily (todo dia) + weekly_gold (sexta/mês = espelho da planilha) ──
     // Fonte canônica e fail-closed: erro no BQ falha o cron para permitir retry.
     // - daily: foto deal-level TODO dia → destrava "datas livres" no /forecast-delta.
-    // - weekly_gold: datamart leve; materializa a foto do dia SÓ na sexta e no
-    //   último dia do mês, exatamente como a planilha grava suas abas. Derivado
-    //   do daily (paridade garantida).
+    // - weekly_gold: sextas/fim do mês + capturas manuais pós-reunião, para o
+    //   dropdown de comparação do /forecast.
     if (bq.isConfigured()) {
       try {
         await bq.ensureTables();
         const ehSexta = brtDate.getUTCDay() === 5;
         const ehFimMes = isLastDayOfMonth(brtDate);
-        const snapType = ehSexta ? 'semanal' : (ehFimMes ? 'mensal' : 'diario');
+        const snapType = manualWeekly ? 'semanal_manual' : (ehSexta ? 'semanal' : (ehFimMes ? 'mensal' : 'diario'));
+        const shouldWriteWeekly = manualWeekly || ehSexta || ehFimMes;
+        const weeklyMeta = shouldWriteWeekly
+          ? await bq.snapshotMeta(today, bq.TABLE_WEEKLY)
+          : { count: 0, type: null, capturedAt: null };
+        const manualAlreadyCaptured = manualWeekly && weeklyMeta.type === 'semanal_manual';
 
         // 1) daily — todo dia (idempotente por data)
-        const dailyCount = await bq.snapshotCount(today, bq.TABLE_DAILY);
-        if (dailyCount === rows.length) {
+        const dailyMeta = await bq.snapshotMeta(today, bq.TABLE_DAILY);
+        const dailyCount = dailyMeta.count;
+        if (manualAlreadyCaptured || dailyCount === rows.length || dailyMeta.type === 'semanal_manual') {
           actions.bq_daily = 'já existia (' + today + ')';
         } else if (dailyCount === 0) {
           const r = await bq.insertSnapshotRows(today, snapType, rows, capturedAt, bq.TABLE_DAILY, HEADERS);
@@ -227,10 +253,10 @@ module.exports = async function handler(req, res) {
           throw new Error('BQ daily parcial em ' + today + ': existente=' + dailyCount + ' esperado=' + rows.length);
         }
 
-        // 2) weekly_gold — só na sexta / último dia do mês (espelha a planilha)
-        if (ehSexta || ehFimMes) {
-          const weeklyCount = await bq.snapshotCount(today, bq.TABLE_WEEKLY);
-          if (weeklyCount === rows.length) {
+        // 2) weekly_gold — sexta/fim do mês OU captura manual pós-reunião.
+        if (shouldWriteWeekly) {
+          const weeklyCount = weeklyMeta.count;
+          if (weeklyCount === rows.length || weeklyMeta.type === 'semanal_manual') {
             actions.bq_weekly = 'já existia (' + today + ')';
           } else if (weeklyCount === 0) {
             // Mesma resposta bruta da HubSpot API alimenta daily e weekly; evita
@@ -251,7 +277,10 @@ module.exports = async function handler(req, res) {
       throw new Error('BigQuery não configurado: GOOGLE_SERVICE_ACCOUNT_JSON ausente');
     }
 
-    return res.status(200).json({ success: true, date: today, deals: deals.length, actions });
+    return res.status(200).json({
+      success: true, date: today, deals: deals.length,
+      capture: manualWeekly ? 'manual_weekly' : 'automatic', actions,
+    });
 
   } catch (e) {
     console.error('[snapshot]', e.message);

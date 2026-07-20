@@ -134,3 +134,22 @@ Evidências criptográficas finais:
   17–20/07. Resultado: 70 partições daily, última foto 20/07 (1.392 deals), e
   weekly gold restaurado em 17/07.
 - Gate novo: `scripts/test-snapshot-resilience.js` cobre Sheets 403 e BQ 403.
+
+## Captura manual pós-reunião
+
+O comparativo do `/forecast` lista `forecast_snapshots_weekly_gold`; o
+`/forecast-delta` usa `forecast_snapshots_daily`. A captura manual alimenta ambos:
+
+```text
+POST /api/snapshot?promote=weekly
+X-Requested-With: forecast-dashboard
+sessão autenticada de editor
+```
+
+- Busca o estado atual diretamente na HubSpot API.
+- Ignora completamente o Google Sheets legado.
+- Grava `daily` e `weekly_gold` com `snapshot_type=semanal_manual`.
+- É idempotente e imutável por data; uma segunda chamada não duplica nem altera.
+- O botão **Capturar foto** no `/forecast` chama o endpoint, recarrega o dropdown
+  e seleciona a nova foto automaticamente.
+- Editores iniciais: `jpacheco@axenya.com` e `salencar@axenya.com`.

@@ -1972,6 +1972,12 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
           <div class="stage-dd-item" style="color:var(--text2)">Carregando fotos...</div>
         </div>
       </div>
+      <div class="fdd-wrapper" id="capture-forecast-wrap" style="display:none">
+        <button class="fdd-trigger" id="btn-capture-forecast" onclick="captureForecastNow()" data-tooltip="Capturar o pipe agora no BigQuery e disponibilizar no comparativo">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+          <span id="btn-capture-forecast-lbl">Capturar foto</span>
+        </button>
+      </div>
       <div class="fdd-wrapper" id="completeness-dd">
         <button class="fdd-trigger" id="btn-completeness" onclick="toggleCompletenessMenu()" title="Qualidade dos dados" style="min-width:0; width:36px; padding:4px; justify-content:center;">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7"/><path d="m21 21-4.3-4.3"/><path d="m7 10 2 2 4-4"/></svg>
@@ -3410,7 +3416,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
     // Consultoria/Negociação), e overrides locais de probabilidade (Configurações)
     // fazem o delta variar por navegador. Religar: COMP_SHOW_REV_DELTAS = true.
     const COMP_SHOW_REV_DELTAS = false;
-    // A foto (aba da planilha de snapshots) guarda os DADOS BRUTOS dos deals na
+    // A foto (BigQuery weekly_gold) guarda os DADOS BRUTOS dos deals na
     // data; os cálculos de receita rodam AQUI, com o mesmo motor e as regras
     // vigentes — o delta reflete mudança de dado, nunca mudança de regra.
     let compTab = null;        // aba selecionada (null = desligado)
@@ -3419,7 +3425,17 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
     let compExcl = null;       // ids excluídos por dedup Fee×Corretagem NA FOTO
     let compLostNow = null;    // Map hs_id → deal Perdido HOJE (classifica saídas)
     const compCache = {};      // tab → { map, meta, excl }
-    let compFotoList = null;   // lista de abas de foto (lazy)
+    let compFotoList = null;   // lista de fotos do BigQuery (lazy)
+    let compCaptureBusy = false;
+    const COMP_CAPTURE_EDITORS = new Set(['jpacheco@axenya.com', 'salencar@axenya.com']);
+
+    function updateCaptureButtonAccess() {
+      const wrap = document.getElementById('capture-forecast-wrap');
+      if (!wrap) return;
+      const email = String(currentUser && currentUser.email || '').trim().toLowerCase();
+      const local = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+      wrap.style.display = local || COMP_CAPTURE_EDITORS.has(email) ? '' : 'none';
+    }
 
     function toggleCompMenu() {
       const wrap = document.getElementById('btn-comp')?.closest('.fdd-wrapper');
@@ -3441,10 +3457,40 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       compRenderMenu();
     }
 
+    async function captureForecastNow() {
+      if (compCaptureBusy) return;
+      if (!confirm('Capturar o pipe agora? A foto será gravada no BigQuery e entrará no comparativo.')) return;
+      const btn = document.getElementById('btn-capture-forecast');
+      const lbl = document.getElementById('btn-capture-forecast-lbl');
+      compCaptureBusy = true;
+      if (btn) btn.disabled = true;
+      if (lbl) lbl.textContent = 'Capturando...';
+      try {
+        const res = await fetch('/api/snapshot?promote=weekly', {
+          method: 'POST', credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'forecast-dashboard' },
+          body: '{}',
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) throw new Error(data.error || 'falha ao capturar foto');
+        delete compCache[data.date];
+        compFotoList = null;
+        await compLoadList();
+        await setCompTab(data.date);
+        alert('Foto ' + data.date + ' disponível no comparativo (' + Number(data.deals || 0).toLocaleString('pt-BR') + ' deals).');
+      } catch (e) {
+        alert('Erro ao capturar a foto: ' + e.message);
+      } finally {
+        compCaptureBusy = false;
+        if (btn) btn.disabled = false;
+        if (lbl) lbl.textContent = 'Capturar foto';
+      }
+    }
+
     function compFotoLabel(f) {
-      if (f.tipo === 'semanal') {
+      if (f.tipo === 'semanal' || f.tipo === 'semanal_manual') {
         const p = f.tab.split('-');
-        return `${p[2]}/${p[1]}/${p[0]}`;
+        return `${p[2]}/${p[1]}/${p[0]}${f.tipo === 'semanal_manual' ? ' | manual' : ''}`;
       }
       return f.tab + ' | mensal';
     }
@@ -3453,7 +3499,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       const menu = document.getElementById('comp-menu');
       if (!menu) return;
       let h = `<div class="stage-dd-item completeness-opt"${!compTab ? ' style="color:var(--teal); font-weight:700"' : ''} onclick="setCompTab(null); toggleCompMenu()">— Desligado</div>`;
-      if (!compFotoList.length) h += `<div class="stage-dd-item" style="color:var(--text2)">Nenhuma fotografia na planilha</div>`;
+      if (!compFotoList.length) h += `<div class="stage-dd-item" style="color:var(--text2)">Nenhuma fotografia no BigQuery</div>`;
       compFotoList.forEach(f => {
         const on = compTab === f.tab ? ' style="color:var(--teal); font-weight:700"' : '';
         h += `<div class="stage-dd-item completeness-opt"${on} onclick="setCompTab('${esc(f.tab)}'); toggleCompMenu()">${esc(compFotoLabel(f))}</div>`;
@@ -5147,6 +5193,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
         if (kpis) kpis.style.display = 'block';
         const personBtn = document.getElementById('btn-person');
         if (personBtn) personBtn.dataset.tooltip = 'Dev Local — Clique para sair';
+        updateCaptureButtonAccess();
         load();
         return;
       }
@@ -5166,6 +5213,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
 
             const personBtn = document.getElementById('btn-person');
             if (personBtn) personBtn.dataset.tooltip = (currentUser.name || '') + ' — Clique para sair';
+            updateCaptureButtonAccess();
             load();
             return;
           }

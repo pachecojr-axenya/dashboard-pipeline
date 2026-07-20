@@ -1,5 +1,23 @@
 # Dashboard Enhancement Loop — Status Log
 
+### 📸 Forecast | captura manual pós-reunião direto no BigQuery (2026-07-20)
+
+> Necessidade do Pacheco: como a reunião muda de horário, a foto oficial precisa
+> ser disparada manualmente e aparecer imediatamente no comparativo do `/forecast`.
+
+- `POST /api/snapshot?promote=weekly`: captura autenticada e restrita a editores;
+  ignora Sheets e grava `daily` + `weekly_gold` com tipo `semanal_manual`.
+- Botão **Capturar foto** adicionado ao `/forecast`; após sucesso, recarrega o
+  dropdown e seleciona automaticamente a foto criada.
+- Captura é imutável/idempotente por data; o cron posterior não sobrescreve uma
+  foto manual mesmo se o pipe mudar no restante do dia.
+- Fotos 17/07 e 20/07 confirmadas no `weekly_gold`; 20/07 foi promovida a partir
+  da partição daily já reconstruída.
+- `jpacheco@axenya.com`: acesso READER ao dataset `axenya_forecast_prd` + permissão
+  de execução de jobs BigQuery no projeto canônico.
+
+---
+
 ### 🚑 Forecast Delta | cron diário BQ recuperado após falhas de permissão (2026-07-20)
 
 > Incidente confirmado: o front novo estava deployado, mas `forecast_snapshots_daily`
