@@ -1,5 +1,9 @@
 # Dashboard Enhancement Loop — Status Log
 
+### 🚀 BDR No Show | integridade métrica, evals e telemetria em produção (2026-07-20)
+
+> PR **#5** mergeada no commit **`9cc106c`** e deploy canônico concluído em `dashboard-axenya`: `dashboard-axenya-z1kkudsji-axenya-f1a041f6.vercel.app`, aliado a `project-bsmfu.vercel.app` e `axenya-pipeline-dashboard.vercel.app`. O gráfico usa os 13 BDRs do roster sem fallback para AE, incidência sobre desfechos conhecidos + cobertura, média móvel ponderada de 4 semanas, lacunas sem amostra e eixo 0–100%. Fora SLA agora é backlog aberto e reconcilia com a tabela operacional. Gate integrado em `npm run gate:no-show` grava telemetria agregada sem PII em `80_System/Telemetry/no_show_release_gate.jsonl`. Evidências: gate `df4ef02284d80e31507f2269c8b6945fdc33371ae27bbdabf06f38d67559f1f3`, predeploy `63d38cb1720d4adf5d495f7aede9a0cc82b17637304abe57159915f732b3d0a0`, smoke estático de produção `c99778c1dd8c28dcc2851d32f91f2d17a9384d7b578d6c20d58deeab4a26f5f5`.
+
 ### BDR No Show | incidente de validação e correção de integridade métrica (2026-07-20)
 
 > Auditoria após três iterações sem smoke funcional identificou: AEs misturados a BDRs via fallback, gráfico últimas 16 semanas vs rankings no período inteiro, semanas sem dado como 0%, eixo 130% e fora SLA incluindo estados fechados. Correção preparada em branch, sem deploy: roster canônico, incidência sobre desfechos conhecidos + cobertura, média móvel ponderada, lacunas sem amostra, eixo 0–100% e reconciliação ranking/tabela. Gates novos: teste de domínio, auditoria de dados reais, Chrome CDP clicando no filtro e evidence ledger. Incidente completo: `docs/2026-07-20_no-show-validation-incident.md`.

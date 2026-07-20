@@ -80,4 +80,8 @@ O comando integrado `npm run gate:no-show` executa API local, `npm run check`, a
 
 ## Estado
 
-Correção preparada em branch e ainda não deployada. A página fica 🟠 até revisão do dono dos números e validação pós-deploy.
+Correção mergeada na PR #5 e deployada no commit `9cc106c`. O smoke estático confirmou HTML/JS/semantic-ref nos dois aliases e autenticação ativa (API sem sessão = 401). A página permanece 🟠 até revisão visual do dono com sessão autenticada.
+
+### Learning operacional adicional
+
+`verify_evidence.py` executa comandos com cwd fixo na raiz do vault. Portanto, nunca envolver `vercel --prod` sem passar `vercel --cwd <repo>`; caso contrário, a CLI pode selecionar/criar o projeto errado. O deploy canônico desta entrega foi refeito diretamente no repo correto e validado pelo preflight.
