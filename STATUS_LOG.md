@@ -1,5 +1,30 @@
 # Dashboard Enhancement Loop — Status Log
 
+### 🚀 DEPLOY DE PRODUÇÃO | Forecast — fallback vidas×VPV em Cotação/Consultoria/Negociação sem 1ª Fatura (2026-07-20)
+
+> Pedido do Pacheco: deal aberto de Cotação+ sem 1ª Fatura não deveria ficar
+> invisível no forecast — deveria cair na régua de VPV (12/24/36 por vida).
+
+- **Motor único** (`public/forecast-engine.js`, `dealMonthly`): em Cotação/Consultoria/
+  Negociação, quando a régua da 1ª Fatura não produz receita (tipicamente 1ª Fatura
+  vazia), o deal cai em `(vidas||colaboradores) × VPV` (faixas 36/24/12) com o
+  **delay/piso do Diagnóstico** (9/14/18m + piso na referência), recorrente,
+  **probabilizado pela prob da própria etapa** (não os 6% do Diagnóstico).
+- Deals **com** 1ª Fatura: inalterados (régua exata). Vale em **todos os painéis** que
+  usam o motor: `/forecast`, `/forecast-stage`, `/forecast-delta`.
+- Efeito: deals de Cot/Cons/Neg antes zerados (ex.: EPTV, CONSORCIO) passam a
+  contribuir → totais do forecast sobem. A coluna "ARR Est." segue vinda do campo
+  (não muda com o fallback — afeta só a projeção de caixa).
+- Escopo/detalhe decididos com o dono (escopo Cot/Cons/Neg; início/prob = recomendação).
+- Doc canônico atualizado: `docs/forecast-revenue-rules.md` (+ comentário do engine).
+- **Deploy:** commit `3624768` (branch `pacheco/forecast-vpv-fallback-cot-cons-neg-2026-07-20`,
+  ff sem force) | deployment `dpl_FruDMAHs2yGKBxgJHY8zfkP9vWTF` (READY, production).
+  `npm run check` verde (gate completo do CI).
+- **Pós-deploy:** 7 rotas mínimas 200, `/forecast-delta` 200, `/api/auth/me` 401,
+  `compare` ao vivo com invariante Σ Δ = Δtotal ✓.
+
+---
+
 ### 🚀 DEPLOY DE PRODUÇÃO | Forecast Delta — polish de CSS (menu sticky em 2 linhas + dropdowns frosted-glass + remoção card TCV) (2026-07-20)
 
 > Feedback do Pacheco no visual: mover toggles + seletores de foto pro menu sticky;
