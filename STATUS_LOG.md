@@ -1,5 +1,14 @@
 # Dashboard Enhancement Loop — Status Log
 
+### 📸 Forecast Delta | botão de captura manual na própria tela (2026-07-20)
+
+- O botão **Capturar agora** também está em `/forecast-delta`, visível somente
+  para `jpacheco@axenya.com` e `salencar@axenya.com`.
+- Reusa o endpoint seguro `POST /api/snapshot?promote=weekly` e, após sucesso,
+  recarrega as fotos daily e seleciona a data mais recente automaticamente.
+
+---
+
 ### 📸 Forecast | captura manual pós-reunião direto no BigQuery (2026-07-20)
 
 > Necessidade do Pacheco: como a reunião muda de horário, a foto oficial precisa

@@ -153,6 +153,13 @@ table.drill th.sortable:hover{color:var(--text)}
           <button class="tab-sub-btn" data-v="1" aria-pressed="false">Incluir</button>
         </div>
       </div>
+      <div class="ctl" id="capture-snapshot-ctl" style="display:none">
+        <span class="ctl-label">Foto oficial</span>
+        <div class="tab-sub">
+          <button type="button" class="tab-sub-btn on" id="capture-snapshot-btn">📸 Capturar agora</button>
+        </div>
+        <div class="reslbl" id="capture-snapshot-status" aria-live="polite"></div>
+      </div>
     </div>
     <div class="reslbl" id="fotos-hint" style="margin-top:.6rem"></div>
   </div>
@@ -258,6 +265,37 @@ table.drill th.sortable:hover{color:var(--text)}
   function dcls(v){ return v>0?'dpos':(v<0?'dneg':'dnul'); }
   function tipoLbl(t){ return t === 'mensal' ? 'mensal' : (t === 'diario' ? 'diário' : 'semanal'); }
   function brtTodayStr(){ var d = new Date(Date.now() - 3*60*60*1000); return d.toISOString().slice(0,10); }
+
+  function loadCaptureAccess(){
+    var ctl = document.getElementById('capture-snapshot-ctl');
+    if(['localhost','127.0.0.1'].indexOf(window.location.hostname) >= 0){ ctl.style.display=''; return Promise.resolve(); }
+    return fetch('/api/auth/me', {credentials:'same-origin'})
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(j){
+        var email = String(j && j.user && j.user.email || '').toLowerCase();
+        if(email === 'jpacheco@axenya.com' || email === 'salencar@axenya.com') ctl.style.display='';
+      })
+      .catch(function(){ /* mantém oculto sem sessão/permissão */ });
+  }
+
+  function captureSnapshotNow(){
+    if(!confirm('Capturar o pipe agora? A foto será gravada no BigQuery e entrará nos comparativos.')) return;
+    var btn = document.getElementById('capture-snapshot-btn');
+    var status = document.getElementById('capture-snapshot-status');
+    btn.disabled = true; btn.textContent = 'Capturando…'; status.textContent = 'Buscando o pipe no HubSpot…';
+    fetch('/api/snapshot?promote=weekly', {
+      method:'POST', credentials:'same-origin',
+      headers:{'Content-Type':'application/json','X-Requested-With':'forecast-dashboard'}, body:'{}'
+    })
+      .then(function(r){ return r.json().then(function(j){ return {ok:r.ok,j:j}; }); })
+      .then(function(res){
+        if(!res.ok || !res.j.success) throw new Error(res.j.error || 'Falha ao capturar foto');
+        status.textContent = 'Foto '+res.j.date+' salva ('+fmtNum(res.j.deals)+' deals).';
+        return loadFotos().then(refresh);
+      })
+      .catch(function(e){ status.textContent = 'Erro: '+e.message; })
+      .finally(function(){ btn.disabled=false; btn.textContent='📸 Capturar agora'; });
+  }
 
   function loadFotos(){
     return fetch('/api/history?action=fotos&cadence=daily', {credentials:'same-origin'})
@@ -566,8 +604,10 @@ table.drill th.sortable:hover{color:var(--text)}
   document.getElementById('dateA').addEventListener('change', refresh);
   document.getElementById('dateB').addEventListener('change', refresh);
   document.getElementById('open-saiu').addEventListener('click', openSaiu);
+  document.getElementById('capture-snapshot-btn').addEventListener('click', captureSnapshotNow);
   document.getElementById('info-btn').addEventListener('click', function(){ var el=document.getElementById('info'); var open=el.style.display==='none'||!el.style.display; el.style.display=open?'block':'none'; this.setAttribute('aria-expanded',open?'true':'false'); });
 
+  loadCaptureAccess();
   loadFotos().then(refresh).catch(function(e){ var cs=document.getElementById('chart-state'); cs.className='state err'; cs.textContent=e.message; });
 })();
 </script>
