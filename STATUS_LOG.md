@@ -1,5 +1,35 @@
 # Dashboard Enhancement Loop — Status Log
 
+### 🚀 DEPLOY DE PRODUÇÃO | Forecast Delta — drawer + topbar sticky + toggles seg-ctrl + loading + filtros Executivo/Quarter (2026-07-20)
+
+> Pedidos do Pacheco: menu drawer esquerdo no /forecast-delta; visual aid de
+> carregamento; CSS dos toggles igual ao dashboard geral; header sticky; e filtros
+> multiselect de Executivo e Quarter no topo (como no /forecast).
+
+- **Shell:** menu drawer esquerdo via `/nav.js` (mesmo das outras páginas) + topbar
+  sticky (hambúrguer + panel-switcher "Comparativo"), docking em telas largas,
+  glue global (`closeDrawer`/`toggleDrawer`/`toggleTheme`/`logout`), estado em
+  `localStorage`. Espelha o shell canônico do `forecast-stage.html`.
+- **Toggles:** migrados do `.tab-sub` local para o segmented control canônico
+  `.seg-ctrl`/`.seg-btn` (pill deslizante) — Medida/Horizonte/Escopo/ARR-quarter.
+- **Loading:** spinner durante o `compare`.
+- **Filtros Executivo + Quarter (multiselect)** no topo, classes `.fdd`/`.custom-cb`
+  do `/forecast`. Server-side aditivo/retrocompatível: `/api/history` `compare` e
+  `compare-drill` aceitam `ae`/`q` (além de `scope`) e retornam `filters` (opções).
+  `lib/forecast-compute`: `mapFotoDeal` ganhou `executivo`; novos
+  `deltaFilterOptions`/`applyAeQuarterFilter`. Waterfall/KPIs/funil/tabela respeitam
+  o filtro; invariante Σ Δ = Δtotal preservado.
+- **Deploy:** commit `4d45b03` (branch `pacheco/forecast-delta-ui-drawer-2026-07-20`,
+  integrada em main por ff sem force) | deployment `dpl_HMAPv21Y4UtbthVL48TwZaVvHPui`
+  (READY, production). `npm run check` verde (inclui `_check-inline-js` do
+  forecast-delta + e2e/leva2).
+- **Pós-deploy validado:** 7 rotas mínimas 200, `/forecast-delta` 200, `/nav.js` 200,
+  `/api/auth/me` 401. Recurso ao vivo: `compare` retorna `filters` (6 execs, 7 quarters),
+  filtro `ae` reduz o conjunto (113→1 num AE), invariante ✓.
+- Sem sobreposição de arquivos com a sessão paralela do Samuel.
+
+---
+
 ### 🚀 DEPLOY DE PRODUÇÃO | Forecast Delta — toggle "Escopo: Ativos/Tudo" + remoção de Bid/Standby (2026-07-20)
 
 > Pedido do Pacheco: o comparativo do `/forecast` deve ignorar Bid e Standby e ter
