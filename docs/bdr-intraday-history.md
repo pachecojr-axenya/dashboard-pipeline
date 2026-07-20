@@ -47,8 +47,8 @@ Sem criar recursos novos: o dashboard agora lê recursos existentes e read-only.
 
 | Recurso | Região | Uso |
 |---|---:|---|
-| Cloud Run ETL BDR HubSpot | `us-central1` | job acionado pelo scheduler às 08:00 BRT; snapshot de hoje pode estar parcial |
-| Cloud Scheduler ETL | `us-central1` | agenda o ETL diário |
+| Cloud Run ETL BDR HubSpot | `us-central1` | job idempotente acionado pelo scheduler em quatro checkpoints úteis |
+| Cloud Scheduler ETL | `us-central1` | `0 8,12,16,20 * * 1-5`, `America/Sao_Paulo` |
 | `gen-lang-client-0423905839.axenya_sales_hubspot_bdr_prd_sae1_gold.bdr_daily_ops` | `southamerica-east1` | histórico agregado de atividades e SQL diário por BDR |
 | `gen-lang-client-0423905839.axenya_sales_hubspot_bdr_prd_sae1_silver.sql_deals` | `southamerica-east1` | deals SQL deduplicáveis por `deal_id`, sem PII no dashboard |
 

@@ -18,6 +18,7 @@ Recurring every 20min (job `55d3b136`). Purpose: identify and close gaps so the 
 - Nova API read-only `api/bdr-workload-history.js` consulta `gold.bdr_daily_ops` e `silver.sql_deals`, com freshness explícita e fail-closed quando BigQuery não está configurado.
 - KPI principal vira **SQL real (deals)**; `OPEN_DEAL` fica como proxy secundário. Comparativos usam período anterior equivalente via série estendida do BigQuery.
 - Status permanece 🟡 até smoke pós-deploy autenticado confirmar reconciliação live/BQ em produção.
+- Scheduler GCP corrigido de um snapshot único às 08:00 para checkpoints às 08:00, 12:00, 16:00 e 20:00 BRT em dias úteis. Execução manual pós-ajuste concluiu com sucesso; BQ passou a registrar 2 SQLs e 286 atividades no snapshot de 20/07 às 16:30 UTC. Hoje no gráfico continua HubSpot live.
 
 ---
 
