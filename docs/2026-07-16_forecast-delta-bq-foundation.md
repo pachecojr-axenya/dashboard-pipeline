@@ -121,3 +121,16 @@ Evidências criptográficas finais:
 - Evidências: build `99347e0d070e48d4962d1394ad290b2c83daa1248d530596ef7e9c85c26f135c`;
   sanity PRD `e69d2cefcdcf012eeabfe4300babc69fef0f6a0e558a1112d95e9e9087e521d9`;
   integração `a27b52dc6e2d38eb5f2577f60f1725ead1d8fb93becc231242dd3a68ee22d612`.
+
+## Incidente e recuperação | 17–20/jul/2026
+
+- Sintoma: seletor diário do `/forecast-delta` permaneceu em 16/07.
+- 17/07: cron respondeu 200, mas logou BQ 403 como não bloqueante.
+- 18–20/07: cron respondeu 500 por Sheets 403 antes de executar o bloco BQ.
+- Causa estrutural: a fonte canônica BQ dependia da disponibilidade da planilha
+  legada, contrariando a linhagem declarada.
+- Correção: Sheets é best-effort; BQ roda de forma independente e fail-closed.
+- IAM de produção restaurado; backfill exclusivo HubSpot API → BQ executado para
+  17–20/07. Resultado: 70 partições daily, última foto 20/07 (1.392 deals), e
+  weekly gold restaurado em 17/07.
+- Gate novo: `scripts/test-snapshot-resilience.js` cobre Sheets 403 e BQ 403.
