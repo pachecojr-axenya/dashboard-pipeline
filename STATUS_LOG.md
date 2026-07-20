@@ -1,5 +1,9 @@
 # Dashboard Enhancement Loop — Status Log
 
+### BDR No Show | incidente de validação e correção de integridade métrica (2026-07-20)
+
+> Auditoria após três iterações sem smoke funcional identificou: AEs misturados a BDRs via fallback, gráfico últimas 16 semanas vs rankings no período inteiro, semanas sem dado como 0%, eixo 130% e fora SLA incluindo estados fechados. Correção preparada em branch, sem deploy: roster canônico, incidência sobre desfechos conhecidos + cobertura, média móvel ponderada, lacunas sem amostra, eixo 0–100% e reconciliação ranking/tabela. Gates novos: teste de domínio, auditoria de dados reais, Chrome CDP clicando no filtro e evidence ledger. Incidente completo: `docs/2026-07-20_no-show-validation-incident.md`.
+
 Recurring every 20min (job `55d3b136`). Purpose: identify and close gaps so the dashboard is board-ready for CRO/BoD strategic decisions.
 
 ---

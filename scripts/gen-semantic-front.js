@@ -34,6 +34,7 @@ function build() {
     versao: referencia._meta.versao,
     pipelines: referencia.pipelines,
     etapas: referencia.etapas.map(e => ({ id: e.id, pipeline: e.pipeline, nome: e.nome, ordem: e.ordem, ativa_default: e.ativa_default, final: e.final })),
+    times: referencia.times,
     // Régua ÚNICA (D4/D4b, 2026-07-15): forecast_flat é premissa E fallback.
     reguas: {
       forecast_flat: { tipo: 'forcada', valores: ordered(referencia.reguas_probabilidade.forecast_flat.valores, FLAT_ORDER) }
