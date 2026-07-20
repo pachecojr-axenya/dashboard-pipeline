@@ -167,6 +167,8 @@ module.exports = async function handler(req, res) {
       if (!(b > a)) return res.status(400).json({ success: false, error: 'Data B deve ser posterior a Data A' });
 
       const includeClosedStages = params.get('includeClosedStages') === '1';
+      const scopeParam = params.get('scope'); // 'ativos' | 'tudo' | null (aditivo/retrocompat)
+      const deltaScoped = scopeParam === 'ativos' || scopeParam === 'tudo';
 
       const fotos = await _listFotos(true);
       if (!fotos.length) return res.status(422).json({ success: false, error: 'Nenhuma foto disponível' });
@@ -184,38 +186,47 @@ module.exports = async function handler(req, res) {
       // rawBStageById: etapa bruta em B (inclui Perdido) para stageUnified.movement e drill
       const rawBStageById = {}; mappedB.forEach(d => { rawBStageById[FC.dealId(d)] = d.stage; });
       
-      // Aplicar filtro de estágios fechados ANTES do compute
-      const scopedInputA = includeClosedStages ? mappedA : FC.excludeClosedStages(mappedA);
-      const scopedInputB = includeClosedStages ? mappedB : FC.excludeClosedStages(mappedB);
-      
+      // Escopo ANTES do compute. scope=ativos|tudo (remove Bid+Standby) tem
+      // precedência; sem ele, mantém o toggle legado includeClosedStages.
+      const scopedInputA = deltaScoped ? FC.applyDeltaScope(mappedA, scopeParam) : (includeClosedStages ? mappedA : FC.excludeClosedStages(mappedA));
+      const scopedInputB = deltaScoped ? FC.applyDeltaScope(mappedB, scopeParam) : (includeClosedStages ? mappedB : FC.excludeClosedStages(mappedB));
+
       const snapA = FC.computeSnapshot(scopedInputA, fA.refDate, manual);
       const snapB = FC.computeSnapshot(scopedInputB, fB.refDate, manual);
       const byA = {}; snapA.stages.forEach(s => { byA[s.key] = s; });
-      const waterfall = snapB.stages.map(s => {
+      let waterfall = snapB.stages.map(s => {
         const pa = byA[s.key] || {};
         return {
-          key: s.key, label: s.label,
+          key: s.key, label: s.label, isBid: s.isBid, stages: s.stages,
           a: { prob12: pa.prob12 || 0, real12: pa.real12 || 0, probTotal: pa.probTotal || 0, realTotal: pa.realTotal || 0 },
           b: { prob12: s.prob12, real12: s.real12, probTotal: s.probTotal, realTotal: s.realTotal },
           delta: { prob12: s.prob12 - (pa.prob12 || 0), real12: s.real12 - (pa.real12 || 0), probTotal: s.probTotal - (pa.probTotal || 0), realTotal: s.realTotal - (pa.realTotal || 0) },
         };
       });
+      // Escopo Ativos/Tudo: some as barras de Bid (e, em Ativos, as não-ativas) do
+      // waterfall. As linhas removidas são zero (deals já filtrados), então o
+      // invariante Σ Δ = Δtotal continua válido.
+      if (deltaScoped) waterfall = waterfall.filter(w => FC.deltaRowInScope(w, scopeParam));
       const sumDelta = waterfall.reduce((x, w) => x + w.delta.prob12, 0);
       const invariantOk = Math.abs(sumDelta - (snapB.totals.prob12 - snapA.totals.prob12)) < 0.01;
 
       // Contribuições por deal (mesmo escopo filtrado)
       const cA = FC.dealContributions(scopedInputA, fA.refDate, manual);
       const cB = FC.dealContributions(scopedInputB, fB.refDate, manual);
-      const stageUnified = FC.stageUnified(cA, cB, rawBStageById);
+      let stageUnified = FC.stageUnified(cA, cB, rawBStageById);
+      // stageUnified emite linhas fixas por etapa; no escopo Ativos/Tudo mantém só
+      // as etapas do escopo (some Bid/Proposta, Standby e — em Ativos — fechadas/Reunião).
+      if (deltaScoped) { const allow = new Set(FC.deltaScopeStages(scopeParam)); stageUnified = stageUnified.filter(r => allow.has(r.stage)); }
       const quarters = FC.quarterAgg(cA, cB);
 
       return res.status(200).json({
         success: true,
         measure: 'prob12',   // headline: Receita Probabilizada, TCV(12M) rolante
         includeClosedStages,
+        scope: scopeParam || null,
         a: { requested: a, resolvedTab: fA.tab, tipo: fA.tipo, refDate: fA.refDate, kpis: snapA.kpis, totals: snapA.totals },
         b: { requested: b, resolvedTab: fB.tab, tipo: fB.tipo, refDate: fB.refDate, kpis: snapB.kpis, totals: snapB.totals },
-        funnel: { stages: snapB.funnelStages, a: snapA.stageCounts, b: snapB.stageCounts },
+        funnel: { stages: deltaScoped ? FC.deltaScopeStages(scopeParam) : snapB.funnelStages, a: snapA.stageCounts, b: snapB.stageCounts },
         waterfall,
         stageUnified,
         quarters,
@@ -225,7 +236,9 @@ module.exports = async function handler(req, res) {
         caveats: [
           'Probabilidades por etapa e faturamento manual usam o estado ATUAL (não snapshotado) | Fase 1',
           'Ganho/Implantação depende do faturamento manual (gate: vencimento ≤ data da foto) | em datas anteriores ao início do faturamento a etapa aparece subestimada — não é erro, é fidelidade ponto-no-tempo',
-          includeClosedStages ? 'Escopo inclui Implantação e Ganho' : 'Escopo exclui Implantação e Ganho',
+          deltaScoped
+            ? (scopeParam === 'tudo' ? 'Escopo: Tudo (todas as etapas, sem Bid e Standby)' : 'Escopo: Ativos (Diagnóstico, Cotação, Consultoria, Negociação)')
+            : (includeClosedStages ? 'Escopo inclui Implantação e Ganho' : 'Escopo exclui Implantação e Ganho'),
         ],
       });
     }
@@ -235,6 +248,8 @@ module.exports = async function handler(req, res) {
       const measure = params.get('measure') || 'prob12';
       const field = params.get('field');
       const includeClosedStages = params.get('includeClosedStages') === '1';
+      const scopeParam = params.get('scope'); // 'ativos' | 'tudo' | null (aditivo/retrocompat)
+      const deltaScoped = scopeParam === 'ativos' || scopeParam === 'tudo';
       if (!a || !b || !row) return res.status(400).json({ success: false, error: 'informe ?a=&b=&row=' });
       if (!/^\d{4}-\d{2}-\d{2}$/.test(a) || !/^\d{4}-\d{2}-\d{2}$/.test(b)) return res.status(400).json({ success: false, error: 'datas devem estar no formato YYYY-MM-DD' });
       if (!(b > a)) return res.status(400).json({ success: false, error: 'Data B deve ser posterior a Data A' });
@@ -246,9 +261,9 @@ module.exports = async function handler(req, res) {
       const mappedA = FC.mapFotoDeals(_rowsToObjs(rowsA)), mappedB = FC.mapFotoDeals(_rowsToObjs(rowsB));
       // etapa bruta de cada deal em B (inclui Perdido/Ganho/fora de escopo) → destino de quem saiu
       const rawBStageById = {}; mappedB.forEach(d => { rawBStageById[FC.dealId(d)] = d.stage; });
-      // Aplicar filtro de estágios fechados se necessário
-      const scopedInputA = includeClosedStages ? mappedA : FC.excludeClosedStages(mappedA);
-      const scopedInputB = includeClosedStages ? mappedB : FC.excludeClosedStages(mappedB);
+      // Escopo: scope=ativos|tudo tem precedência; senão, toggle legado.
+      const scopedInputA = deltaScoped ? FC.applyDeltaScope(mappedA, scopeParam) : (includeClosedStages ? mappedA : FC.excludeClosedStages(mappedA));
+      const scopedInputB = deltaScoped ? FC.applyDeltaScope(mappedB, scopeParam) : (includeClosedStages ? mappedB : FC.excludeClosedStages(mappedB));
       const cA = FC.dealContributions(scopedInputA, fA.refDate, manual);
       const cB = FC.dealContributions(scopedInputB, fB.refDate, manual);
       // Drill genérico (Leva 2): row pode ser <rowKey> (compat waterfall), stage:<Etapa>,

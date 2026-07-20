@@ -147,10 +147,10 @@ table.drill th.sortable:hover{color:var(--text)}
         </div>
       </div>
       <div class="ctl">
-        <span class="ctl-label">Implantação/Ganho</span>
-        <div class="tab-sub" id="closed-stage-toggle" role="group" aria-label="Incluir estágios fechados">
-          <button class="tab-sub-btn on" data-v="0" aria-pressed="true">Excluir</button>
-          <button class="tab-sub-btn" data-v="1" aria-pressed="false">Incluir</button>
+        <span class="ctl-label">Escopo</span>
+        <div class="tab-sub" id="scope-toggle" role="group" aria-label="Escopo de etapas">
+          <button class="tab-sub-btn on" data-v="ativos" aria-pressed="true" title="Só Diagnóstico, Cotação, Consultoria e Negociação">Ativos</button>
+          <button class="tab-sub-btn" data-v="tudo" aria-pressed="false" title="Todas as etapas, sem Bid e Standby">Tudo</button>
         </div>
       </div>
       <div class="ctl" id="capture-snapshot-ctl" style="display:none">
@@ -252,7 +252,7 @@ table.drill th.sortable:hover{color:var(--text)}
     { key: 'delta', label: 'Δ', align: 'right', type: 'num' },
     { key: 'tipo', label: 'Movimentação', align: 'left', type: 'str' }
   ];
-  var metric = 'prob', horizon = '12', includeClosedStages = false;   // measure = metric + (horizon==='12'?'12':'Total')
+  var metric = 'prob', horizon = '12', scope = 'ativos';   // measure = metric + (horizon==='12'?'12':'Total'); scope = ativos|tudo (remove Bid+Standby)
   var quarterMetric = 'arr';              // toggle ARR Total / Ponderado da seção de quarter
   var lastJ = null;                        // última resposta de compare (para re-render de toggles)
   var fotoMin = '', fotoMax = '';          // limites de datas com foto disponível
@@ -323,7 +323,7 @@ table.drill th.sortable:hover{color:var(--text)}
     if(!a || !b){ cs.style.display='block'; cs.className='state'; cs.textContent='Escolha as duas datas.'; return; }
     if(!(b > a)){ cs.style.display='block'; cs.className='state err'; cs.textContent='A Foto B (depois) precisa ser posterior à Foto A (antes).'; if(chart){chart.destroy();chart=null;} document.getElementById('kpis').innerHTML=''; return; }
     cs.style.display='block'; cs.className='state'; cs.textContent='Calculando…';
-    fetch('/api/history?action=compare&a='+a+'&b='+b+'&includeClosedStages='+(includeClosedStages?'1':'0'), {credentials:'same-origin'})
+    fetch('/api/history?action=compare&a='+a+'&b='+b+'&scope='+scope, {credentials:'same-origin'})
       .then(function(r){ return r.json().then(function(j){ return {ok:r.ok, j:j}; }); })
       .then(function(res){
         var j = res.j;
@@ -532,7 +532,7 @@ table.drill th.sortable:hover{color:var(--text)}
     modal.style.display='flex'; modal.setAttribute('aria-hidden','false');
     setTimeout(function(){ document.getElementById('drill-x').focus(); },0);
     drillFmt = valFmt || fmtBRL;
-    var q = '/api/history?action=compare-drill&a='+a+'&b='+b+'&row='+encodeURIComponent(target)+'&measure='+m+'&includeClosedStages='+(includeClosedStages?'1':'0')+(field?'&field='+encodeURIComponent(field):'');
+    var q = '/api/history?action=compare-drill&a='+a+'&b='+b+'&row='+encodeURIComponent(target)+'&measure='+m+'&scope='+scope+(field?'&field='+encodeURIComponent(field):'');
     fetch(q, {credentials:'same-origin'})
       .then(function(r){ return r.json(); })
       .then(function(d){ if(!d.success){ body.innerHTML='<div class="state err">'+esc(d.error||'erro')+'</div>'; return; }
@@ -600,7 +600,7 @@ table.drill th.sortable:hover{color:var(--text)}
   wireToggle('metric-toggle', function(v){ metric=v; refresh(); });
   wireToggle('horizon-toggle', function(v){ horizon=v; refresh(); });
   wireToggle('quarter-toggle', function(v){ quarterMetric=v; if(lastJ) renderQuarterTable(lastJ); });
-  wireToggle('closed-stage-toggle', function(v){ includeClosedStages = v === '1'; refresh(); });
+  wireToggle('scope-toggle', function(v){ scope = v; refresh(); });
   document.getElementById('dateA').addEventListener('change', refresh);
   document.getElementById('dateB').addEventListener('change', refresh);
   document.getElementById('open-saiu').addEventListener('click', openSaiu);
