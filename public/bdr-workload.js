@@ -47,10 +47,13 @@ var WorkloadBDR = (function () {
 
   function hhmm(ts) {
     var d = new Date(ts);
+    if (isNaN(d.getTime())) return '—';
     return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
   }
   function dmhm(ts) {
     var d = new Date(ts);
+    // Defesa: valor não parseável nunca vira "NaN/NaN NaN:NaN" na UI.
+    if (isNaN(d.getTime())) return '—';
     return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + ' ' + hhmm(ts);
   }
   function ddmmFromIso(s) { return s.slice(8, 10) + '/' + s.slice(5, 7); }
@@ -429,12 +432,19 @@ var WorkloadBDR = (function () {
     conts.forEach(function (c) { if (por[c.bdr]) por[c.bdr].ins++; });
     trans.forEach(function (t) { if (por[t.bdr]) por[t.bdr].mov++; });
     function tot(p) { return p.calls + p.emails + p.whats + p.linkedin + p.comOutras + p.notes + p.tasks + p.meetings; }
+    function totReal(p) { return p.calls + p.emails + p.whats + p.linkedin + p.meetings; }
     var rows = raw.team.slice().sort(function (a, b) { return tot(por[b]) - tot(por[a]); });
-    var totalActs = 0; rows.forEach(function (b) { totalActs += tot(por[b]); });
+    var totalActs = 0, totalReal = 0, totalNotasTarefas = 0;
+    rows.forEach(function (b) {
+      totalActs += tot(por[b]);
+      totalReal += totReal(por[b]);
+      totalNotasTarefas += por[b].notes + por[b].tasks + por[b].comOutras;
+    });
 
     var h = '<div class="grid"><div class="card span-12"><div class="card-title"><div><h2>Atividades | o trabalho além da inserção</h2>' +
       '<div class="desc">Engagements registrados no HubSpot dentro da janela, por dono | ligação com conversa = duração ≥ 1 min | inserir nada e ligar o dia inteiro aparece aqui, não nos KPIs de inserção</div></div>' +
       '<span class="pill">' + totalActs + ' atividades</span></div>';
+    h += '<section class="note" style="margin-bottom:.8rem"><b>Dois universos, reconciliados:</b> <b>' + totalActs + ' raw</b> (todos os engagements operacionais) = <b>' + totalReal + ' ritmo real</b> (ligações + e-mails + WhatsApp + LinkedIn + reuniões) + <b>' + totalNotasTarefas + '</b> em notas/tarefas/outras. O gráfico “Ritmo Real de Atividades” usa somente os cinco canais (' + totalReal + '); esta tabela mostra o raw completo.</section>';
     if (!totalActs) return h + '<div class="desc">Sem atividades registradas no recorte.</div></div></div>';
     h += '<div class="table-wrap"><table><thead><tr><th>BDR</th><th class="right">Ligações</th><th class="right">Com conversa (≥1 min)</th>' +
       '<th class="right">E-mails</th><th class="right">WhatsApp</th><th class="right">LinkedIn</th><th class="right">Outras</th><th class="right">Notas</th>' +
