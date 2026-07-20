@@ -269,7 +269,8 @@ var WorkloadBDR = (function () {
       by[key].whatsApp += r.whatsapp_total || 0;
       by[key].linkedin += r.linkedin_total || 0;
       by[key].meetings += r.meetings_total || 0;
-      by[key].total += r.activities_total || 0;
+      by[key].total += (r.calls_total || 0) + (r.emails_sent_total || 0) +
+        (r.whatsapp_total || 0) + (r.linkedin_total || 0) + (r.meetings_total || 0);
     });
     if (includeLiveToday) aggregateActsByDay(acts, since, until, onlyBusinessDays).forEach(function (r) {
       if (r.date === todayIso && by[r.date]) by[r.date] = r;
