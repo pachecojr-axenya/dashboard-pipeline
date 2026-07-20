@@ -1,5 +1,28 @@
 # Dashboard Enhancement Loop — Status Log
 
+### 🚀 DEPLOY DE PRODUÇÃO | BDR Workload — visões P0/P1 + BigQuery Gold (2026-07-20)
+
+- **PR/merge:** PR `#7`, merge `696ba61` (`31ea06b` funcional).
+- **Deploy canônico:** `dpl_4sHkaX7UEpR31nn2swxhf4ziUVhP` (READY), alias
+  `https://axenya-pipeline-dashboard.vercel.app` reatribuído explicitamente.
+- **Dados:** histórico passou a ler `gold.bdr_daily_ops`; metas vigentes vêm de
+  `gold.bdr_daily_target`; total real é a soma MECE dos cinco canais. Cíntia é
+  consolidada por nome canônico apesar dos dois owner IDs.
+- **Visões:** Pulso Executivo, tendência com média móvel 7d, comparativo de canais,
+  ranking ordenável com metas/deltas, quality checks API×BQ e waterfall por BDR.
+- **Correções críticas:** removida leitura da coluna inexistente
+  `bdr_daily_ops.bdr_daily_target`; timestamps BQ aceitam epoch decimal/científico;
+  asset atualizado para `bdr-workload.js?v=7`.
+- **Evidências:** testes `6bdbc44f9c3c8af3ecd65c8d9541ec661d3c0d046036cab0c75aede6033947a2`;
+  build `713598592aaac66f2b651f20ce3c0494b86072e22dd8d8d2a2aa950bcc0fa0bc`;
+  smoke local HubSpot+BQ `3544ad9e32577a508b993cc91bfb7b8ac1ced17d5427bb646b093e85a50bd060`;
+  predeploy `8137ea7af2956a9823d6de99f2449210dec97a19a936933269b71b6ca4a3e265`.
+- **Pós-deploy:** 7 rotas mínimas = 200; APIs sem sessão = 401; HTML serve `v=7`;
+  JS live contém quality checks, waterfall, níveis 0/1/2, média móvel, comparativo
+  de canais e metas BQ.
+
+---
+
 ### 🚀 DEPLOY DE PRODUÇÃO | Forecast — 3º fallback de ARR por VPV (Diagnóstico/Cotação/Consultoria/Negociação) (2026-07-20)
 
 > Pedido do Pacheco: o ARR desses deals precisa ser CALCULADO (não só a projeção de
