@@ -49,9 +49,23 @@ Por etapa (`valor` = receita real do mês; `início` = 1º mês com receita):
     **probabilizado pela prob da própria etapa** (Cotação 18,6% etc., não os 6% do
     Diagnóstico). Objetivo: deal aberto de Cot/Cons/Neg **não fica invisível** no
     forecast só porque a 1ª Fatura não foi preenchida. **Não** se aplica a outras
-    etapas. Observação: a **coluna "ARR Est."** continua vinda do campo
-    (`arr_estimado ‖ 1ª Fatura×12`) e permanece "—" — o fallback afeta a **projeção de
-    caixa**, não a coluna de ARR.
+    etapas.
+
+## 2b. ARR estimado — fallback por VPV (coluna "ARR Est." e KPIs de ARR)
+
+O **ARR de cada deal** (coluna "ARR Est." do `/forecast` e KPIs ARR Total/Ponderado do
+`/forecast-delta`) é derivado assim (`api/forecast-table.js` + `lib/forecast-compute.js`
+`mapFotoDeal`, iguais por espelho):
+
+1. `arr_estimado` (campo do HubSpot), se > 0; senão
+2. `1ª Fatura × 12`, se > 0; senão
+3. **Fallback VPV (2026-07-20):** nas etapas **Diagnóstico/Cotação/Consultoria/Negociação**,
+   `(vidas || colaboradores) × VPV × 12` (VPV por faixa 36/24/12); senão
+4. `—` (sem ARR).
+
+Assim, um deal de Cot/Cons/Neg sem 1ª Fatura passa a ter **ARR estimado** (coluna + KPIs)
+coerente com a projeção de caixa por VPV. A coluna "Fatura Atual" (plano vigente do
+cliente) continua **não** entrando no ARR.
 
 - **Demais etapas** (Proposta Enviada, Standby, Implantação, Ganho, …)
   - início = `data_prevista`; valor = `calcReceitaMes(n)`; **cap 24 meses**.

@@ -425,6 +425,12 @@ module.exports = async function handler(req, res) {
           if (!isNaN(a) && a > 0) return a;
           const pf = parseFloat(p.primeira_fatura);
           if (!isNaN(pf) && pf > 0) return pf * 12;
+          // Fallback VPV (2026-07-20): sem ARR Estimado nem 1ª Fatura, nas etapas
+          // valoradas por VPV, estima o ARR anual = (vidas||colaboradores) × VPV × 12.
+          if (['Diagnóstico', 'Cotação', 'Consultoria', 'Negociação'].indexOf(stageName) !== -1) {
+            const vidas = parseInt(p.vidas) || parseInt(p.quantidade_de_colaboradores) || 0;
+            if (vidas > 0) { const vpv = vidas <= 200 ? 36 : vidas <= 4999 ? 24 : 12; return vidas * vpv * 12; }
+          }
           return null;
         })();
 
