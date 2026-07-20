@@ -30,6 +30,19 @@
 
 ---
 
+### BDR | Treble Storytelling with Data V2 local (2026-07-20)
+
+> Implementação local, sem commit/push/deploy, para evoluir `/novo-bdr/treble` com filtros de data BRT, atribuição de agente, quebras por status e narrativa executiva.
+
+- `/api/bdr-treble-dw`: contrato V2 com `preset=today|yesterday|7d|30d|90d|custom`, custom inclusivo validado (máx. 90 dias), `dateRange`, `LEFT ANY JOIN` com `dim_agents` sem email/PII e payload sanitizado sem `origin_id`.
+- Atribuição de agente: direta por `origin_id = dim_agents.id` quando houver match; inferência por nome do flow canonicalizada para nomes completos dos agentes ativos; `origin_id=59580` segue não tratado como pessoa.
+- Status bruto preservado: `statusLabel`/`statusGroup` representam o raw status; resposta pode implicar entrega no funil, mas não pinta falha como verde nem renomeia o status.
+- Frontend V2: headline dinâmica, hero Tentativas, KPIs secundários, funil Tentativas→Entregues→Respondidas com deltas, composição 100% por status, ranking “Quem tentou enviar”, timeline SVG acessível e Arquitetura API com contrato/cobertura.
+- Fallback REST normalizado para shape V2 e explicitado como “Fallback REST | últimos 30 dias”; erros 400 de intervalo custom inválido mostram erro humano e não caem silenciosamente para fallback.
+- Testes ampliados em `scripts/test-bdr-treble-dw.js` e smoke browser V2 atualizado em `scripts/smoke-bdr-treble-dw-browser.js`.
+
+---
+
 ### 🚀 DEPLOY DE PRODUÇÃO | Forecast Delta — toggle "Escopo: Ativos/Tudo" + remoção de Bid/Standby (2026-07-20)
 
 > Pedido do Pacheco: o comparativo do `/forecast` deve ignorar Bid e Standby e ter

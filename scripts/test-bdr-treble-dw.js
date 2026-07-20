@@ -4,18 +4,45 @@ const assert = require('assert');
 const endpoint = require('../api/bdr-treble-dw');
 const t = endpoint._test;
 
+function testDateRanges() {
+  const todayRange = t.resolveDateRange({ preset: 'today' });
+  assert.strictEqual(todayRange.days, 1);
+  assert.strictEqual(todayRange.preset, 'today');
+
+  const custom = t.resolveDateRange({ preset: 'custom', from: '2026-07-01', to: '2026-07-02' });
+  assert.strictEqual(custom.days, 2);
+  assert.strictEqual(custom.label, '01/07/2026 a 02/07/2026');
+
+  assert.throws(function () {
+    t.resolveDateRange({ preset: 'custom', from: '2026-01-01', to: '2026-04-15' });
+  }, /date_range_too_large/);
+
+  assert.throws(function () {
+    t.resolveDateRange({ preset: 'custom', from: '2026-01-40', to: '2026-02-01' });
+  }, /invalid_custom_date/);
+}
+
 async function testTransportSecurity() {
   const originalFetch = global.fetch;
   let captured;
+
   global.fetch = async function (url, options) {
     captured = { url: String(url), options: options };
     return { ok: true, json: async function () { return { data: [] }; } };
   };
+
   try {
-    await t.clickhouseQuery({ host: 'warehouse.example', port: '8443', user: 'test_user', password: 'test_password', database: 'client_analytics' }, 'SELECT 1 FORMAT JSON');
+    await t.clickhouseQuery({
+      host: 'warehouse.example',
+      port: '8443',
+      user: 'test_user',
+      password: 'test_password',
+      database: 'client_analytics'
+    }, 'SELECT 1 FORMAT JSON');
   } finally {
     global.fetch = originalFetch;
   }
+
   assert.strictEqual(captured.options.method, 'POST');
   assert.ok(captured.options.headers.Authorization.startsWith('Basic '));
   assert.ok(!captured.url.includes('test_user'));
@@ -24,49 +51,117 @@ async function testTransportSecurity() {
 }
 
 function testSqlContract() {
-  const sql = t.buildSql(30);
-  assert.ok(sql.includes('timestamp_responded >'));
-  assert.ok(!sql.includes('timestamp_responded IS NOT NULL'));
-  assert.ok(sql.includes('LIMIT 10001'));
+  const sql = t.buildSql({ from: '2026-07-01', to: '2026-07-20' });
+  assert.ok(sql.includes('LEFT ANY JOIN client_analytics.dim_agents a ON f.origin_id = a.id'));
+  assert.ok(sql.includes('first_name'));
+  assert.ok(sql.includes('last_name'));
+  assert.ok(!sql.includes('a.email'));
+  assert.ok(!sql.includes('toString(f.origin_id) = toString(a.id)'));
+  assert.ok(sql.includes("toDate('2026-07-01')"));
+  assert.ok(sql.includes("toDate('2026-07-20')"));
   assert.ok(!sql.includes('cellphone'));
   assert.ok(!sql.includes('deployment_id'));
 }
 
-function testEventGranularityAndSentinel() {
-  const base = { flow: 'Gabi | Plano de Saúde', poll_id: '1410169', created_at: '2026-07-20T10:00:00-03:00', created_day: '2026-07-20' };
+function testStatusAgentAndAggregates() {
   const rows = [
-    Object.assign({}, base, { status: 'DELIVERED', delivered_real: 1, replied_real: 0 }),
-    Object.assign({}, base, { status: 'MISSING_PARAMETER', delivered_real: 0, replied_real: 0 }),
-    Object.assign({}, base, { status: 'SUCCESS', delivered_real: 0, replied_real: 1 })
+    {
+      flow: 'Gabi | Plano',
+      poll_id: '1',
+      created_at: '2026-07-20T10:00:00-03:00',
+      created_day: '2026-07-20',
+      status: 'DELIVERED',
+      delivered_real: 1,
+      replied_real: 0,
+      agent_first_name: 'Gabriele',
+      agent_last_name: 'Silva'
+    },
+    {
+      flow: 'Gabi follow-up',
+      poll_id: '2',
+      created_at: '2026-07-20T10:00:00-03:00',
+      created_day: '2026-07-20',
+      status: 'SUCCESS',
+      delivered_real: 0,
+      replied_real: 0
+    },
+    {
+      flow: 'Flow sem nome 59580',
+      poll_id: '3',
+      created_at: '2026-07-20T10:00:00-03:00',
+      created_day: '2026-07-20',
+      status: 'MISSING_PARAMETER',
+      delivered_real: 0,
+      replied_real: 0
+    },
+    {
+      flow: 'Manu follow',
+      poll_id: '4',
+      created_at: '2026-07-20T10:00:00-03:00',
+      created_day: '2026-07-20',
+      status: 'FAILURE_BY_META_CHOSE_NOT_DELIVER',
+      delivered_real: 0,
+      replied_real: 1
+    }
   ];
+
   const messages = rows.map(t.sanitizeMessage);
-  assert.strictEqual(messages.length, 3);
-  assert.strictEqual(messages[0].replied, false, 'sentinela não pode contar resposta');
-  assert.strictEqual(messages[1].delivered, false);
-  assert.strictEqual(messages[2].delivered, true, 'resposta válida implica entrega');
+
+  assert.strictEqual(messages[0].agent, 'Gabriele Silva');
+  assert.strictEqual(messages[0].agentSource, 'direct');
+  assert.strictEqual(messages[1].agent, 'Gabriele Silva');
+  assert.strictEqual(messages[1].agentSource, 'flow_inference');
+  assert.strictEqual(messages[2].agentSource, 'unknown');
+  assert.ok(!Object.prototype.hasOwnProperty.call(messages[0], 'originId'));
+
+  assert.strictEqual(messages[1].statusGroup, 'processed_unconfirmed');
+  assert.strictEqual(messages[1].delivered, false, 'SUCCESS isolado não é entregue');
+  assert.strictEqual(messages[3].delivered, true, 'resposta pode implicar entrega no funil');
+  assert.strictEqual(messages[3].statusGroup, 'not_delivered', 'status bruto continua falha');
+  assert.strictEqual(messages[3].statusLabel, 'Meta não entregou');
+
   const agg = t.aggregateMessages(messages);
-  assert.strictEqual(agg.byFlow.length, 1, 'flow único não pode colapsar eventos');
-  assert.strictEqual(agg.byFlow[0].enviadas, 3);
-  assert.strictEqual(agg.summary.entregues, 2);
-  assert.strictEqual(agg.summary.respondidas, 1);
-  assert.strictEqual(agg.summary.deploymentFailures, 1);
+  assert.strictEqual(agg.byAgent.length, 3, 'direto + inferido de Gabriele unificados');
+  assert.strictEqual(agg.attributionCoverage.direct, 1);
+  assert.strictEqual(agg.attributionCoverage.inferred, 2);
+  assert.strictEqual(agg.attributionCoverage.unknown, 1);
+
+  const pctSum = agg.byStatus.reduce(function (a, b) { return a + b.pct; }, 0);
+  assert.ok(Math.abs(pctSum - 100) <= 0.2, 'byStatus soma 100%');
+  assert.ok(agg.byStatus.some(function (x) {
+    return x.status === 'SUCCESS' && x.statusGroup === 'processed_unconfirmed';
+  }));
 }
 
 function testPrivacyGuard() {
-  const safe = t.sanitizeMessage({ flow: 'Flow teste', poll_id: '1', created_at: '2026-07-20T10:00:00-03:00', created_day: '2026-07-20', status: 'DELIVERED', delivered_real: 1, replied_real: 0 });
+  const safe = t.sanitizeMessage({
+    flow: 'Flow teste',
+    poll_id: '1',
+    created_at: '2026-07-20T10:00:00-03:00',
+    created_day: '2026-07-20',
+    status: 'DELIVERED',
+    delivered_real: 1,
+    replied_real: 0,
+    origin_id: '59580'
+  });
+
   t.assertNoPii({ messages: [safe] });
-  assert.throws(function () { t.assertNoPii({ cellphone: 'redacted' }); }, /pii_key_in_payload/);
-  ['cellphone', 'country_code', 'deployment_id', 'batch_id', 'treble_id', 'content', 'copy', 'session_id'].forEach(function (key) {
+  assert.throws(function () { t.assertNoPii({ originId: '59580' }); }, /pii_key_in_payload/);
+  assert.throws(function () { t.assertNoPii({ origin_id: '59580' }); }, /pii_key_in_payload/);
+  assert.throws(function () { t.assertNoPii({ email: 'redacted' }); }, /pii_key_in_payload/);
+
+  ['cellphone', 'country_code', 'deployment_id', 'batch_id', 'treble_id', 'content', 'copy', 'session_id', 'email', 'originId', 'origin_id'].forEach(function (key) {
     assert.ok(!Object.prototype.hasOwnProperty.call(safe, key));
   });
 }
 
 async function main() {
+  testDateRanges();
   await testTransportSecurity();
   testSqlContract();
-  testEventGranularityAndSentinel();
+  testStatusAgentAndAggregates();
   testPrivacyGuard();
-  console.log('[test-bdr-treble-dw] PASS | transporte, granularidade, sentinela e privacidade');
+  console.log('[test-bdr-treble-dw] PASS | presets, SQL seguro, agentes, status bruto, agregados e PII');
 }
 
 main().catch(function (error) {
