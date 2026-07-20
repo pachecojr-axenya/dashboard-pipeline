@@ -416,13 +416,18 @@
     var noShows = keys.map(function (k) { return g[k].filter(function (r) { return r.noShow; }).length; });
     var pending = keys.map(function (k) { return g[k].filter(function (r) { return r.fieldPendingPast; }).length; });
     var max = Math.max(1, scheduled.concat(noShows).concat(pending).reduce(function (m, n) { return Math.max(m, n); }, 0));
-    var w = 760, h = 240, p = 34;
-    var labels = keys.map(function (k, i) { var x = p + Math.round(i / Math.max(1, keys.length - 1) * (w - p * 2)); return '<text x="' + x + '" y="232" text-anchor="middle">' + esc(k.replace('-', ' ')) + '</text>'; }).join('');
-    var svg = keys.length ? '<svg class="line-svg" viewBox="0 0 ' + w + ' ' + h + '" role="img" aria-label="Linha temporal semanal"><line x1="' + p + '" y1="20" x2="' + p + '" y2="210"/><line x1="' + p + '" y1="210" x2="730" y2="210"/><text x="8" y="24">' + fmtInt(max) + '</text><text x="18" y="214">0</text><polyline class="ln scheduled" points="' + svgPoints(scheduled, max, w, h, p) + '"/><polyline class="ln no-show" points="' + svgPoints(noShows, max, w, h, p) + '"/><polyline class="ln pending" points="' + svgPoints(pending, max, w, h, p) + '"/>' + labels + '</svg>' : '<div class="muted">Sem semanas com reunião no filtro atual</div>';
-    return '<div class="card span-6"><div class="card-title"><div><h2>Volume semanal</h2><div class="desc">Agendadas, no-show confirmado e campo pendente por semana</div></div>' + infoBtn('timeline') + '</div><div class="line-legend"><span><i class="scheduled"></i>Agendadas</span><span><i class="no-show"></i>No-show confirmado</span><span><i class="pending"></i>Campo pendente</span></div><div class="trend line-chart clickable" data-drill="timeline" data-hover-title="Linha temporal" data-hover-text="Clique para abrir a tabela semanal com volumes, taxa de no-show e pendências do campo.">' + svg + '</div></div>';
+    var w = 700, h = 300, p = 44;
+    var labelStep = Math.ceil(keys.length / 8);
+    var labels = keys.map(function (k, i) {
+      if (i % labelStep !== 0 && i !== keys.length - 1) return '';
+      var x = p + Math.round(i / Math.max(1, keys.length - 1) * (w - p * 2));
+      return '<text x="' + x + '" y="' + (h - 8) + '" text-anchor="middle" fill="var(--muted)">' + esc(k.replace('-', ' ')) + '</text>';
+    }).join('');
+    var svg = keys.length ? '<svg class="line-svg" viewBox="0 0 ' + w + ' ' + h + '" role="img" aria-label="Volume semanal"><line x1="' + p + '" y1="30" x2="' + p + '" y2="' + (h - p) + '" stroke="var(--border)" stroke-width="1"/><line x1="' + p + '" y1="' + (h - p) + '" x2="' + (w - 20) + '" y2="' + (h - p) + '" stroke="var(--border)" stroke-width="1"/><text x="8" y="34" fill="var(--muted)" font-size="11">' + fmtInt(max) + '</text><text x="18" y="' + (h - 8) + '" fill="var(--muted)" font-size="11">0</text><polyline class="ln scheduled" points="' + svgPoints(scheduled, max, w, h, p) + '"/><polyline class="ln no-show" points="' + svgPoints(noShows, max, w, h, p) + '"/><polyline class="ln pending" points="' + svgPoints(pending, max, w, h, p) + '"/>' + labels + '</svg>' : '<div class="muted">Sem semanas com reunião no filtro atual</div>';
+    return '<div class="card span-8"><div class="card-title"><div><h2>Volume semanal</h2></div>' + infoBtn('timeline') + '</div><div class="line-legend"><span><i class="scheduled"></i>Agendadas</span><span><i class="no-show"></i>No-show</span><span><i class="pending"></i>Pendente</span></div><div class="trend line-chart clickable" data-drill="timeline" data-hover-title="Volume" data-hover-text="Clique para abrir a tabela semanal.">' + svg + '</div></div>';
   }
 
-  function renderRateTrend(rows) {
+  function renderRateTrend(rows, m) {
     var g = group(rows.filter(function (r) { return r.meetingDate; }), 'week');
     var keys = Object.keys(g).sort().slice(-16);
     var rates = keys.map(function (k) {
@@ -430,24 +435,38 @@
       var ns = arr.filter(function (r) { return r.noShow; }).length;
       return arr.length ? ns / arr.length : 0;
     });
-    var max = 1;
-    var w = 760, h = 240, p = 34;
+    // Escala dinâmica: teto + 25% de margem, mínimo 10%
+    var maxRate = Math.max.apply(null, rates);
+    var max = Math.max(0.1, Math.ceil(maxRate * 1.25 * 10) / 10);
+    var w = 1100, h = 300, p = 44;
     var points = rates.map(function (r, i) {
       var x = p + Math.round(i / Math.max(1, keys.length - 1) * (w - p * 2));
       var y = h - p - Math.round(r / max * (h - p * 2));
       return x + ',' + y;
     }).join(' ');
+    // Rotular apenas 1 a cada N semanas para não sobrepor
+    var labelStep = Math.ceil(keys.length / 8);
     var labels = keys.map(function (k, i) {
+      if (i % labelStep !== 0 && i !== keys.length - 1) return '';
       var x = p + Math.round(i / Math.max(1, keys.length - 1) * (w - p * 2));
-      return '<text x="' + x + '" y="232" text-anchor="middle">' + esc(k.replace('-', ' ')) + '</text>';
+      return '<text x="' + x + '" y="' + (h - 10) + '" text-anchor="middle" fill="var(--muted)">' + esc(k.replace('-', ' ')) + '</text>';
     }).join('');
     var rateLabels = rates.map(function (r, i) {
       var x = p + Math.round(i / Math.max(1, keys.length - 1) * (w - p * 2));
       var y = h - p - Math.round(r / max * (h - p * 2)) - 8;
-      return '<text x="' + x + '" y="' + y + '" text-anchor="middle" fill="var(--text2)" font-size="9">' + fmtPct(r) + '</text>';
+      return '<text x="' + x + '" y="' + y + '" text-anchor="middle" fill="var(--text)" font-size="11" font-weight="600">' + fmtPct(r) + '</text>';
     }).join('');
-    var svg = keys.length ? '<svg class="line-svg" viewBox="0 0 ' + w + ' ' + h + '" role="img" aria-label="Taxa de no-show semanal"><line x1="' + p + '" y1="20" x2="' + p + '" y2="210"/><line x1="' + p + '" y1="210" x2="730" y2="210"/><text x="8" y="24">100%</text><text x="18" y="214">0%</text><polyline class="ln" style="stroke:var(--red)" points="' + points + '"/>' + rateLabels + labels + '</svg>' : '<div class="muted">Sem semanas com reunião no filtro atual</div>';
-    return '<div class="card span-6"><div class="card-title"><div><h2>Taxa de no-show ao longo do tempo</h2><div class="desc">Evolução semanal da taxa de no-show | informe se está diminuindo, aumentando ou estável</div></div>' + infoBtn('rateTrend') + '</div><div class="trend line-chart clickable" data-drill="timeline" data-hover-title="Taxa de no-show" data-hover-text="Clique para abrir a tabela semanal com volumes e taxas.">' + svg + '</div></div>';
+    // Título como conclusão (tendência)
+    var trendText = 'Taxa estável';
+    if (rates.length >= 2) {
+      var last = rates[rates.length - 1];
+      var prev = rates[rates.length - 2];
+      if (last < prev - 0.02) trendText = 'Taxa em queda: ' + fmtPct(prev) + ' → ' + fmtPct(last);
+      else if (last > prev + 0.02) trendText = 'Taxa subindo: ' + fmtPct(prev) + ' → ' + fmtPct(last);
+      else trendText = 'Taxa estável em ' + fmtPct(last);
+    }
+    var svg = keys.length ? '<svg class="line-svg" viewBox="0 0 ' + w + ' ' + h + '" role="img" aria-label="Taxa de no-show semanal"><line x1="' + p + '" y1="30" x2="' + p + '" y2="' + (h - p) + '" stroke="var(--border)" stroke-width="1"/><line x1="' + p + '" y1="' + (h - p) + '" x2="' + (w - 20) + '" y2="' + (h - p) + '" stroke="var(--border)" stroke-width="1"/><text x="8" y="34" fill="var(--muted)" font-size="11">' + fmtPct(max) + '</text><text x="18" y="' + (h - 8) + '" fill="var(--muted)" font-size="11">0%</text><polyline class="ln" style="stroke:var(--red);stroke-width:3" points="' + points + '"/>' + rateLabels + labels + '</svg>' : '<div class="muted">Sem semanas com reunião no filtro atual</div>';
+    return '<div class="card span-12"><div class="card-title"><div><h2>' + esc(trendText) + '</h2></div>' + infoBtn('rateTrend') + '</div><div class="trend line-chart clickable" data-drill="timeline" data-hover-title="Taxa de no-show" data-hover-text="Clique para abrir a tabela semanal com volumes e taxas.">' + svg + '</div></div>';
   }
 
   function rankRows(rows, key, mode) {
@@ -475,32 +494,100 @@
     return '<div class="card span-4"><div class="card-title"><div><h2>' + esc(title) + '</h2><div class="desc">' + esc(descText) + '</div></div>' + infoBtn(infoKey) + '</div>' + (list || '<div class="muted">Sem dados no filtro atual</div>') + '</div>';
   }
 
+  function renderBigIdea(rows, m) {
+    var bdrRows = rankRows(rows, 'bdr', 'rate');
+    var top = bdrRows[0];
+    var trendDirection = '';
+    var g = group(rows.filter(function (r) { return r.meetingDate; }), 'week');
+    var keys = Object.keys(g).sort();
+    if (keys.length >= 2) {
+      var last2 = keys.slice(-2);
+      var rates = last2.map(function (k) {
+        var arr = g[k];
+        var ns = arr.filter(function (r) { return r.noShow; }).length;
+        return arr.length ? ns / arr.length : 0;
+      });
+      if (rates[1] < rates[0] - 0.02) trendDirection = 'tendência de queda';
+      else if (rates[1] > rates[0] + 0.02) trendDirection = 'tendência de alta';
+      else trendDirection = 'estável';
+    }
+    var bigIdeaText = '';
+    if (m.pipelineRisk > 0 && m.outsideSla > 0) {
+      bigIdeaText = '<strong>' + fmtMoney(m.pipelineRisk) + '</strong> em no-shows abertos. <strong>' + fmtInt(m.outsideSla) + '</strong> casos fora do prazo esperam ação. ' + (top ? '<strong>' + esc(top.name) + '</strong> concentra a maior fila.' : '');
+    } else if (m.noShows > 0) {
+      bigIdeaText = '<strong>' + fmtInt(m.noShows) + '</strong> no-shows confirmados (' + fmtPct(m.noShowRate) + '). Taxa ' + trendDirection + '.';
+    } else {
+      bigIdeaText = 'Nenhum no-show confirmado no período. Higiene do CRM em ' + fmtPct(m.fieldCoverage) + '.';
+    }
+    return '<div class="big-idea"><div class="big-idea-text">' + bigIdeaText + '</div><div class="big-idea-action">Ação: abrir a fila de recuperação e atacar os deals fora do SLA</div></div>';
+  }
+
+  function renderHeroKpis(m) {
+    return '<div class="kpis kpis-hero">' +
+      kpi('Pipeline em risco', fmtMoney(m.pipelineRisk), 'Valor anual que pode escapar se não recuperar', 'bad hero', 'pipelineRisk') +
+      kpi('Fora do prazo', fmtInt(m.outsideSla), 'No-shows há mais de 2 dias úteis sem ação', m.outsideSla ? 'bad hero' : 'good hero', 'outsideSla') +
+      kpi('Taxa no-show', fmtPct(m.noShowRate), 'No-shows a cada 100 reuniões marcadas', m.noShowRate > 0.25 ? 'bad hero' : 'warn hero', 'noShowRate') +
+      kpi('Recuperados', fmtInt(m.recovered), 'No-shows que voltaram a andar', 'good hero', 'recovered') +
+      '</div>';
+  }
+
+  function renderHygieneCard(m) {
+    return '<div class="card hygiene-card">' +
+      '<div class="card-title"><h2>Higiene do CRM</h2>' + infoBtn('hygiene') + '</div>' +
+      '<div class="hygiene-grid">' +
+      '<div class="hygiene-item"><span class="hygiene-label">Reuniões agendadas</span><span class="hygiene-value">' + fmtInt(m.scheduled) + '</span></div>' +
+      '<div class="hygiene-item"><span class="hygiene-label">Já passaram</span><span class="hygiene-value">' + fmtInt(m.pastMeetings) + '</span></div>' +
+      '<div class="hygiene-item"><span class="hygiene-label">Campo preenchido</span><span class="hygiene-value ' + (m.fieldCoverage < 0.8 ? 'warn' : 'good') + '">' + fmtPct(m.fieldCoverage) + '</span></div>' +
+      '<div class="hygiene-item"><span class="hygiene-label">Campo pendente</span><span class="hygiene-value ' + (m.fieldMissingPast ? 'bad' : 'good') + '">' + fmtInt(m.fieldMissingPast) + '</span></div>' +
+      '<div class="hygiene-item"><span class="hygiene-label">Realizadas</span><span class="hygiene-value good">' + fmtInt(m.occurred) + '</span></div>' +
+      '<div class="hygiene-item"><span class="hygiene-label">Marcadas como Não</span><span class="hygiene-value ' + (m.fieldNo ? 'bad' : '') + '">' + fmtInt(m.fieldNo) + '</span></div>' +
+      '</div></div>';
+  }
+
+  function renderTrendSummary(rows, m) {
+    var g = group(rows.filter(function (r) { return r.meetingDate; }), 'week');
+    var keys = Object.keys(g).sort();
+    var currentWeek = keys[keys.length - 1] || '—';
+    var lastWeekData = g[keys[keys.length - 1]] || [];
+    var lastWeekNoShows = lastWeekData.filter(function (r) { return r.noShow; }).length;
+    var lastWeekTotal = lastWeekData.length;
+    var lastWeekRate = lastWeekTotal ? lastWeekNoShows / lastWeekTotal : 0;
+    return '<div class="card span-4"><div class="card-title"><h2>Resumo da semana</h2></div>' +
+      '<div class="summary-grid">' +
+      '<div class="summary-item"><span class="summary-label">Semana atual</span><span class="summary-value">' + esc(currentWeek.replace('-', ' ')) + '</span></div>' +
+      '<div class="summary-item"><span class="summary-label">Reuniões agendadas</span><span class="summary-value">' + fmtInt(lastWeekTotal) + '</span></div>' +
+      '<div class="summary-item"><span class="summary-label">No-shows</span><span class="summary-value">' + fmtInt(lastWeekNoShows) + '</span></div>' +
+      '<div class="summary-item"><span class="summary-label">Taxa da semana</span><span class="summary-value ' + (lastWeekRate > 0.25 ? 'bad' : 'good') + '">' + fmtPct(lastWeekRate) + '</span></div>' +
+      '</div></div>';
+  }
+
   var CALC_HELP = {
-    scheduled: ['Agendadas', 'COUNT(deals com data_reuniao_agendada no período)', 'Campo: hs_v2_date_entered_1144746905 normalizado como data_reuniao_agendada.'],
-    past: ['Reuniões passadas', 'COUNT(data_reuniao_agendada < hoje)', 'Se a reunião ainda é futura, não entra nos buckets de higiene do campo.'],
-    fieldCoverage: ['Campo preenchido', 'Reuniões passadas com a_reuniao_ocorreu_ Sim ou Não ÷ reuniões passadas', 'Propriedade primeiro. Não usa texto para preencher o campo.'],
-    fieldMissing: ['Campo pendente', 'COUNT(reunião passada E a_reuniao_ocorreu_ vazio)', 'Este bucket é higiene de CRM. Não é classificado como no-show confirmado sem outra evidência.'],
-    occurred: ['Realizadas', 'a_reuniao_ocorreu_ = Sim OU deal avançou para etapa posterior', 'Etapas posteriores: Diagnóstico, Cotação, Consultoria, Negociação, Implantação ou Ganho.'],
-    fieldNo: ['Campo Não', 'COUNT(a_reuniao_ocorreu_ = Não em reuniões passadas)', 'É a fonte mais forte de no-show confirmado.'],
-    noShow: ['No-show confirmado', 'Campo Não OU evidência final de ausência em motivo/status', 'Texto só entra como suporte final: motivo de perda, descrição e status com termos de ausência.'],
-    noShowRate: ['Taxa no-show', 'No-show confirmado ÷ reuniões agendadas', 'Não mistura campo pendente com no-show confirmado.'],
-    rescheduled: ['Reagendadas', 'No-show com evidência textual de remarcação', 'Limitação: histórico real de mudança de data ainda não vem no payload.'],
-    recovered: ['Recuperados', 'No-show confirmado que ocorreu ou avançou depois', 'Usa a propriedade e a trilha de etapas como evidência de recuperação.'],
-    outsideSla: ['Fora SLA', 'No-show aberto sem recuperação com mais de ' + CONFIG.slaBusinessDays + ' dias úteis', 'Dias úteis entre data_reuniao_agendada e hoje.'],
-    pipelineRisk: ['Pipeline em risco', 'SUM(ARR estimado) de no-shows abertos', 'ARR = arr_estimado, fallback primeira_fatura × 12, fallback premio_mensal × 12.'],
-    pipelineLost: ['Pipeline perdido', 'SUM(ARR estimado) de perdidos com evidência de no-show', 'Usa motivo do declínio e descrição como suporte textual.'],
-    timeline: ['Volume semanal', 'Por semana: agendadas, no-show confirmado e campo pendente', 'Ajuda a separar problema operacional de reunião de problema de preenchimento.']
-    ,rateTrend: ['Taxa de no-show ao longo do tempo', 'Por semana: no-show confirmado ÷ agendadas × 100', 'Responde se o no-show está diminuindo, aumentando ou estável. Clique no gráfico para ver a tabela semanal detalhada.']
-    ,rankVolume: ['Ranking por volume de no-show', 'Por BDR: COUNT(no-show confirmado), desempate por taxa', 'Quantidade vem antes da taxa para priorizar onde cobrar primeiro. n = reuniões agendadas do BDR no filtro.']
-    ,rankOutside: ['Ranking por fora do prazo', 'Por BDR: COUNT(no-show aberto fora do SLA), desempate por % dos no-shows', 'Mostra quem tem mais recuperação atrasada, não quem tem maior taxa em amostra pequena.']
-    ,breakOrigem: ['Quebra por origem', 'Agrupa por origem__originacao_ do deal e calcula no-shows / total do bucket', 'Usa campo estruturado do deal. Clique em cada bucket para ver os deals.']
-    ,breakSegment: ['Quebra por indústria', 'Agrupa por company.industry e calcula no-shows / total do bucket', 'Vem da Company associada; sem inferência por nome/texto do deal.']
-    ,breakPersona: ['Quebra por persona', 'Agrupa por contact.jobtitle classificado em senioridade + área', 'Vem do Contact associado. A classificação é regex determinística sobre o cargo.']
-    ,breakPorte: ['Quebra por porte | vidas', 'Agrupa por faixa de vidas/colaboradores e calcula no-shows / total do bucket', 'Usa vidas como preferência e colaboradores como fallback.']
-    ,fieldTable: ['Tabela de campo pendente', 'Lista reuniões passadas com a_reuniao_ocorreu_ vazio', 'É fila de higiene de CRM: não conta como no-show confirmado sem outra evidência.']
-    ,recoveryTable: ['Tabela operacional de recuperação', 'Lista no-shows confirmados abertos, ordenados por risco', 'Risco combina no-show, fora de SLA, dias sem atividade e valor de pipeline.']
-    ,lostTable: ['Perdidos por no-show', 'Lista deals Perdidos com evidência textual de no-show no motivo/descrição', 'Texto é usado aqui como suporte final porque a perda já aconteceu.']
-    ,story: ['Leitura executiva', 'Resume no-shows confirmados, campo pendente e BDR prioritário', 'É uma camada de storytelling; os números vêm dos mesmos filtros e métricas dos cards.']
+    scheduled: ['Reuniões agendadas', 'Número de reuniões que foram marcadas com data definida no período. Conta todas, independentemente de terem ocorrido ou não.', 'Campo no HubSpot: data da reunião (data_reuniao_agendada). Só entram deals com essa data preenchida.'],
+    past: ['Reuniões passadas', 'Reuniões cuja data já passou (antes de hoje). Só essas podem ser cobradas quanto ao preenchimento e ao no-show.', 'Reuniões com data futura ainda não entram nas contas de higiene ou de ausência.'],
+    fieldCoverage: ['Campo preenchido', 'Percentual de reuniões passadas em que o BDR já registrou no HubSpot se a reunião ocorreu ou não (Sim/Não). Mede a disciplina de preenchimento.', 'Considera só a marcação oficial no campo. Não usamos o texto do deal para adivinhar o resultado.'],
+    fieldMissing: ['Campo pendente', 'Reuniões cuja data já passou, mas o BDR ainda não marcou se ela ocorreu ou não. É uma fila de organização do CRM, não um no-show.', 'Enquanto o campo estiver vazio, não classificamos como ausência sem outra evidência.'],
+    occurred: ['Realizadas', 'Reuniões que aconteceram de fato. Contamos como realizada quando o BDR marcou "Sim" ou quando o deal avançou para uma etapa que só se alcança após a reunião.', 'Etapas que indicam reunião feita: Diagnóstico, Cotação, Consultoria, Negociação, Implantação ou Ganho.'],
+    fieldNo: ['Campo Não', 'Reuniões em que o BDR marcou explicitamente que a reunião NÃO ocorreu. É a evidência mais confiável de ausência.', 'Vem da marcação oficial do BDR no HubSpot, não de interpretação de texto.'],
+    noShow: ['No-show confirmado', 'Reuniões que foram marcadas mas o cliente não compareceu. Confirmamos quando o BDR marcou "Não" ou quando há registro claro de ausência no motivo/status.', 'O texto do deal só é usado como último recurso, quando não há marcação oficial. Campo vazio sozinho não vira no-show.'],
+    noShowRate: ['Taxa no-show', 'De cada 100 reuniões marcadas no período, quantas viraram no-show confirmado. Quanto menor, melhor.', 'Divide os no-shows confirmados pelo total de reuniões agendadas. Não mistura com as pendentes de preenchimento.'],
+    rescheduled: ['Reagendadas', 'No-shows em que há registro de que uma nova data foi combinada. Sinal de recuperação em andamento.', 'Hoje detectamos a remarcação pelo texto do deal; o histórico exato de datas ainda não vem do sistema.'],
+    recovered: ['Recuperados', 'No-shows que foram revertidos: a reunião acabou acontecendo depois, ou o negócio avançou de etapa mesmo após a falta.', 'Usamos a marcação da reunião e a trilha de etapas como prova de recuperação.'],
+    outsideSla: ['Fora do prazo (SLA)', 'No-shows que já passaram de ' + CONFIG.slaBusinessDays + ' dias úteis sem nenhuma ação de recuperação. São os casos mais urgentes de cobrar.', 'Contamos os dias úteis entre a data da reunião e hoje.'],
+    pipelineRisk: ['Pipeline em risco', 'Soma do valor anual estimado (ARR) dos negócios que tiveram no-show e ainda estão abertos, sem recuperação. É a receita que pode escapar.', 'Valor por deal: ARR estimado; se não houver, usamos a 1ª fatura × 12 ou o prêmio mensal × 12.'],
+    pipelineLost: ['Pipeline perdido', 'Soma do valor anual estimado dos negócios que foram perdidos e têm o no-show registrado como causa. Receita já perdida.', 'Usa o motivo e a descrição da perda como comprovação.'],
+    timeline: ['Volume semanal', 'Mostra, semana a semana, quantas reuniões foram agendadas, quantas viraram no-show e quantas ainda estão sem preenchimento.', 'Ajuda a separar problema de comparecimento de problema de registro. Clique para ver a tabela detalhada.'],
+    rateTrend: ['Taxa de no-show ao longo do tempo', 'Mostra se a taxa de no-show está subindo, caindo ou estável nas últimas semanas. É o termômetro principal da página.', 'Para cada semana: no-shows confirmados divididos pelas reuniões agendadas daquela semana.'],
+    rankVolume: ['Ranking por volume de no-show', 'Lista os BDRs com mais no-shows confirmados no período. A ordem é por quantidade, para priorizar onde cobrar primeiro; a taxa aparece como contexto.', '"n" = quantas reuniões aquele BDR tinha agendado no filtro atual.'],
+    rankOutside: ['Ranking por fora do prazo', 'Lista os BDRs com mais no-shows que passaram do prazo de ' + CONFIG.slaBusinessDays + ' dias úteis sem ação. Mostra quem está deixando recuperação atrasar.', 'Ordena por quantidade fora do prazo; a % é dos no-shows daquele BDR.'],
+    breakOrigem: ['Quebra por origem', 'Distribui os no-shows pela origem do lead (de onde o negócio veio). Mostra quais canais trazem mais faltas.', 'Usa o campo de origem do deal. Clique em cada linha para ver os negócios.'],
+    breakSegment: ['Quebra por indústria', 'Distribui os no-shows pela indústria/setor da empresa. Mostra em quais setores o cliente falta mais.', 'Vem do setor cadastrado na empresa associada, não de adivinhação pelo nome.'],
+    breakPersona: ['Quebra por persona', 'Distribui os no-shows pelo perfil de quem seria o interlocutor (senioridade + área, ex.: "Gestão | RH"). Mostra quais perfis faltam mais.', 'Vem do cargo do contato associado, classificado automaticamente.'],
+    breakPorte: ['Quebra por porte', 'Distribui os no-shows pela faixa de vidas/funcionários da empresa. Mostra se empresas maiores ou menores faltam mais.', 'Usa o número de vidas; se não houver, usa o de colaboradores.'],
+    fieldTable: ['Reunião passou sem preenchimento', 'Fila de organização: reuniões cuja data já passou mas o BDR ainda não marcou se ocorreu. Não são no-shows — são pendências de registro.', 'Priorizadas pelas que estão há mais dias úteis sem preenchimento.'],
+    recoveryTable: ['Tabela de recuperação', 'Lista os no-shows ainda abertos, ordenados por risco, para o time saber o que atacar primeiro.', 'O risco combina: ser no-show, estar fora do prazo, dias sem atividade e valor do negócio.'],
+    lostTable: ['Perdidos por no-show', 'Negócios já perdidos em que o no-show consta como causa. Serve para dimensionar o custo real das faltas.', 'Aqui o texto do motivo/descrição é usado como prova, porque a perda já ocorreu.'],
+    story: ['Leitura executiva', 'Resumo em uma frase: quantos no-shows, quantas pendências de preenchimento e qual BDR priorizar.', 'Os números vêm exatamente dos mesmos filtros dos cards acima.'],
+    hygiene: ['Higiene do CRM', 'Disciplina de preenchimento do campo "a reunião ocorreu?". Reuniões passadas devem ter Sim ou Não marcado.', 'Campo vazio após a reunião é pendência de CRM, não é no-show.']
   };
 
   function openHelp(key) {
@@ -683,29 +770,35 @@
     var rows = state.filtered;
     var m = metrics(rows);
     
-    // ESTRUTURA ORGANIZADA: Storytelling → KPIs → Evolução → Rankings → Tabelas
+    // ARCO NARRATIVO: Big Idea → KPIs herói → Gráficos → Rankings → Ação
     var html = '';
     
-    // 1. STORYTELLING EXECUTIVO
-    html += renderStory(rows, m);
+    // 1. BIG IDEA (tese + ação recomendada)
+    html += renderBigIdea(rows, m);
     
-    // 2. KPIs PRINCIPAIS
-    html += renderKpis(m);
+    // 2. KPIs HERÓI (4 cards de decisão)
+    html += renderHeroKpis(m);
     
-    // 3. LEGENDA
-    html += renderLegend();
+    // 3. HIGIENE DE CRM (card composto colapsável)
+    html += renderHygieneCard(m);
     
-    // 4. GRÁFICOS TEMPORAIS (2 colunas: volume + taxa de no-show)
-    html += '<div class="grid">' + renderTrend(rows) + renderRateTrend(rows) + '</div>';
+    // 4. GRÁFICO DE TAXA (full-width, título como conclusão)
+    html += '<div class="grid">' + renderRateTrend(rows, m) + '</div>';
     
-    // 5. RANKINGS (2 colunas)
+    // 5. VOLUME SEMANAL + RESUMO (lado a lado)
+    html += '<div class="grid">' + renderTrend(rows) + renderTrendSummary(rows, m) + '</div>';
+    
+    // 6. RANKINGS (2 colunas lado a lado, preenchendo a linha)
     html += '<div class="grid">' + renderRank('Ranking por volume de no-show', rows, 'rate') + renderRank('Ranking por fora do prazo', rows, 'outside') + '</div>';
     
-    // 6. QUEBRAS POR DIMENSÃO (4 cards por linha)
+    // 7. QUEBRAS POR DIMENSÃO (4 cards por linha)
     html += '<div class="grid">' + renderBreak('Quebra por origem', rows, 'origem') + renderBreak('Quebra por indústria', rows, 'segment') + renderBreak('Quebra por persona', rows, 'persona') + renderBreak('Quebra por porte | vidas', rows, 'porte') + '</div>';
     
-    // 7. TABELAS OPERACIONAIS
-    html += '<div class="grid">' + renderFieldTable(rows) + renderRecoveryTable(rows) + renderLostTable(rows) + '</div>';
+    // 8. FILA DE RECUPERAÇÃO (ação principal)
+    html += '<div class="grid">' + renderRecoveryTable(rows) + '</div>';
+    
+    // 9. DETALHE (campo pendente, perdidos - contexto)
+    html += '<div class="grid">' + renderFieldTable(rows) + renderLostTable(rows) + '</div>';
     
     $('content').innerHTML = html;
     var helps = $('content').querySelectorAll('[data-help]');
