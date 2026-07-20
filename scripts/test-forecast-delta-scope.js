@@ -29,20 +29,20 @@ const names = arr => arr.map(d => d.dealname).sort();
 
 console.log('== applyDeltaScope ==');
 const ativos = FC.applyDeltaScope(deals, 'ativos');
-check('ativos = Diag/Cot/Cons/Neg', JSON.stringify(names(ativos)) === JSON.stringify(['Cons', 'Cot', 'Diag', 'Neg']), names(ativos).join(','));
+check('ativos = Cot/Cons/Neg (SEM Diagnóstico)', JSON.stringify(names(ativos)) === JSON.stringify(['Cons', 'Cot', 'Neg']), names(ativos).join(','));
 check('ativos remove Bid', !ativos.some(d => d.pipeline === 'Bid'));
 check('ativos remove Standby (as duas grafias)', !ativos.some(d => /Sb/.test(d.dealname)));
-check('ativos remove Reunião/Ganho/Implantação', !ativos.some(d => ['Reuniao', 'Ganho', 'Impl'].includes(d.dealname)));
+check('ativos remove Diagnóstico/Reunião/Ganho/Implantação', !ativos.some(d => ['Diag', 'Reuniao', 'Ganho', 'Impl'].includes(d.dealname)));
 
 const tudo = FC.applyDeltaScope(deals, 'tudo');
 check('tudo = Reunião+4+Ganho+Impl (7 Vendas)', JSON.stringify(names(tudo)) === JSON.stringify(['Cons', 'Cot', 'Diag', 'Ganho', 'Impl', 'Neg', 'Reuniao']), names(tudo).join(','));
 check('tudo remove Bid', !tudo.some(d => d.pipeline === 'Bid'));
 check('tudo remove Standby', !tudo.some(d => /Sb/.test(d.dealname)));
 
-check('default (sem scope) = ativos', FC.applyDeltaScope(deals).length === 4);
+check('default (sem scope) = ativos', FC.applyDeltaScope(deals).length === 3);
 
 console.log('== deltaScopeStages ==');
-check('ativos: 4 etapas', JSON.stringify(FC.deltaScopeStages('ativos')) === JSON.stringify(['Diagnóstico', 'Cotação', 'Consultoria', 'Negociação']));
+check('ativos: 3 etapas (sem Diagnóstico)', JSON.stringify(FC.deltaScopeStages('ativos')) === JSON.stringify(['Cotação', 'Consultoria', 'Negociação']));
 check('tudo: 7 etapas, sem Bid/Standby/Proposta', JSON.stringify(FC.deltaScopeStages('tudo')) === JSON.stringify(['Reunião Agendada', 'Diagnóstico', 'Cotação', 'Consultoria', 'Negociação', 'Ganho', 'Implantação']));
 
 console.log('== deltaRowInScope ==');
@@ -50,7 +50,7 @@ const rowDiag = { isBid: false, stages: ['Diagnóstico'] };
 const rowGanho = { isBid: false, stages: ['Ganho', 'Implantação'] };
 const rowMql = { isBid: false, stages: ['Reunião Agendada'] };
 const rowBid = { isBid: true, stages: ['Proposta Enviada'] };
-check('ativos mantém linha Diagnóstico', FC.deltaRowInScope(rowDiag, 'ativos') === true);
+check('ativos descarta Diagnóstico', FC.deltaRowInScope(rowDiag, 'ativos') === false);
 check('ativos descarta Ganho/Implantação', FC.deltaRowInScope(rowGanho, 'ativos') === false);
 check('ativos descarta Reunião', FC.deltaRowInScope(rowMql, 'ativos') === false);
 check('qualquer escopo descarta Bid', FC.deltaRowInScope(rowBid, 'ativos') === false && FC.deltaRowInScope(rowBid, 'tudo') === false);

@@ -246,7 +246,7 @@ module.exports = async function handler(req, res) {
           'Probabilidades por etapa e faturamento manual usam o estado ATUAL (não snapshotado) | Fase 1',
           'Ganho/Implantação depende do faturamento manual (gate: vencimento ≤ data da foto) | em datas anteriores ao início do faturamento a etapa aparece subestimada — não é erro, é fidelidade ponto-no-tempo',
           deltaScoped
-            ? (scopeParam === 'tudo' ? 'Escopo: Tudo (todas as etapas, sem Bid e Standby)' : 'Escopo: Ativos (Diagnóstico, Cotação, Consultoria, Negociação)')
+            ? (scopeParam === 'tudo' ? 'Escopo: Tudo (todas as etapas, sem Bid e Standby)' : 'Escopo: Ativos (Cotação, Consultoria, Negociação)')
             : (includeClosedStages ? 'Escopo inclui Implantação e Ganho' : 'Escopo exclui Implantação e Ganho'),
         ],
       });
