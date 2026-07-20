@@ -20,7 +20,8 @@ var WorkloadBDR = (function () {
   var raw = null;
   var history = null;
   var historyError = null;
-  var state = { period: 'hoje', since: null, until: null, bdr: '', porte: '', fonte: '', diasUteis: true };
+  var CHANNELS = [['todos', 'Todos'], ['calls', 'Ligações'], ['emails', 'E-mails'], ['whatsApp', 'WhatsApp'], ['linkedin', 'LinkedIn']];
+  var state = { period: 'hoje', since: null, until: null, bdr: '', porte: '', fonte: '', canal: 'todos', diasUteis: true };
 
   // ---------- datas (America/Sao_Paulo = fuso local dos usuários) ----------
   function iso(d) {
@@ -80,8 +81,12 @@ var WorkloadBDR = (function () {
   function fContacts() { return raw.contactsCreated.filter(function (c) { return passBdr(c) && passPorte(c) && passFonte(c); }); }
   // fonte não se aplica a transição (movimentação não tem fonte de criação)
   function fTransitions() { return raw.transitions.filter(function (t) { return passBdr(t) && passPorte(t); }); }
-  // atividade não tem empresa nem fonte de criação: só filtro de BDR
-  function fActivities() { return (raw.activities || []).filter(passBdr); }
+  function passCanal(a) {
+    if (!state.canal || state.canal === 'todos') return true;
+    return activityBucket(a) === state.canal;
+  }
+  // atividade não tem empresa nem fonte de criação: só filtro de BDR e canal
+  function fActivities() { return (raw.activities || []).filter(function (a) { return passBdr(a) && passCanal(a); }); }
   function historyAvailable() { return !!(history && Array.isArray(history.dailyRows) && Array.isArray(history.sqlDeals)); }
   function fSqlDeals() { return historyAvailable() ? history.sqlDeals.filter(function (d) { return !state.bdr || d.bdr === state.bdr; }) : []; }
   function renderFreshness() {
@@ -143,14 +148,15 @@ var WorkloadBDR = (function () {
     var kQualif = trans.filter(function (t) { return t.para === 'OPEN_DEAL'; });
     var kDesq = trans.filter(function (t) { return t.para === 'UNQUALIFIED' || t.para === 'BAD_TIMING'; });
 
-    var html = '<section class="note"><b>Fonte dos dados:</b> ' + esc(renderFreshness()) + '. O snapshot BigQuery roda durante o dia; a série de hoje usa HubSpot live para não mostrar atividade parcial.</section>';
+    var prev = previousKpis();
+    var html = bdrFrozenBanner() + '<section class="note"><b>Fonte dos dados:</b> ' + esc(renderFreshness()) + '. O snapshot BigQuery roda durante o dia; a série de hoje usa HubSpot live para não mostrar atividade parcial.</section>';
     html += kpis([
-      { label: 'Empresas inseridas', value: comps.length, cls: 'teal', drill: 'empresas', sub: subFontes(comps), help: 'empresas-ins' },
-      { label: 'Contatos inseridos', value: conts.length, cls: 'teal', drill: 'contatos', sub: subFontes(conts), help: 'contatos-ins' },
-      { label: 'SQL real (deals)', value: historyAvailable() ? sqlDeals.length : '—', cls: 'good', drill: 'sql-real', sub: historyAvailable() ? 'deals SQL no pipeline' + (kQualif.length ? ' | proxy OPEN_DEAL ' + kQualif.length : '') : 'histórico BigQuery indisponível', help: 'sql-real' },
-      { label: 'Contato efetivo', value: kEfetivo.length, cls: 'good', drill: 'efetivo', sub: 'transições para Contato efetivo', help: 'contato-efetivo' },
-      { label: 'Movimentações de status', value: trans.length, cls: '', drill: 'movs', sub: trans.length ? 'em ' + uniq(trans, 'contato_id') + ' contatos' : 'sem movimentação no recorte', help: 'movs-status' },
-      { label: 'Desqualificado | Timing', value: kDesq.length, cls: kDesq.length ? 'bad' : '', drill: 'desq', sub: 'motivos: propriedade pendente no HubSpot', help: 'desqualificado' },
+      { label: 'Empresas inseridas', value: comps.length, cls: 'teal', drill: 'empresas', sub: subFontes(comps), help: 'empresas-ins', delta: deltaHtml(comps.length, prev.empresas) },
+      { label: 'Contatos inseridos', value: conts.length, cls: 'teal', drill: 'contatos', sub: subFontes(conts), help: 'contatos-ins', delta: deltaHtml(conts.length, prev.contatos) },
+      { label: 'SQL real (deals)', value: historyAvailable() ? sqlDeals.length : '—', cls: 'good', drill: 'sql-real', sub: historyAvailable() ? 'deals SQL no pipeline' + (kQualif.length ? ' | proxy OPEN_DEAL ' + kQualif.length : '') : 'histórico BigQuery indisponível', help: 'sql-real', delta: historyAvailable() ? deltaHtml(sqlDeals.length, prev.sql) : '' },
+      { label: 'Contato efetivo', value: kEfetivo.length, cls: 'good', drill: 'efetivo', sub: 'transições para Contato efetivo', help: 'contato-efetivo', delta: deltaHtml(kEfetivo.length, prev.efetivo) },
+      { label: 'Movimentações de status', value: trans.length, cls: '', drill: 'movs', sub: trans.length ? 'em ' + uniq(trans, 'contato_id') + ' contatos' : 'sem movimentação no recorte', help: 'movs-status', delta: deltaHtml(trans.length, prev.movs) },
+      { label: 'Desqualificado | Timing', value: kDesq.length, cls: kDesq.length ? 'bad' : '', drill: 'desq', sub: 'motivos: propriedade pendente no HubSpot', help: 'desqualificado', delta: deltaHtml(kDesq.length, prev.desq) },
     ]);
     if (historyError) html += '<div class="note" style="margin-bottom:1rem"><b>Histórico indisponível:</b> ' + esc(historyError) + '</div>';
     if (historyAvailable() && history.metadata && history.metadata.maxMetricDate && history.metadata.maxMetricDate < state.until) html += '<div class="note" style="margin-bottom:1rem"><b>Histórico possivelmente defasado:</b> último dia no BigQuery é ' + esc(history.metadata.maxMetricDate) + '.</div>';
@@ -174,6 +180,22 @@ var WorkloadBDR = (function () {
     if (gen) gen.textContent = 'Janela ' + state.since + ' a ' + state.until + ' | gerado ' + dmhm(raw.generatedAt) + (raw.cached ? ' | cache' : '') + ' | ' + renderFreshness();
   }
 
+  function previousKpis() {
+    var days = inclusiveCalendarDays(state.since, state.until), until = shiftIso(state.since, -1), since = shiftIso(state.since, -days);
+    function inRange(ts) { var d = iso(new Date(ts)); return d >= since && d <= until; }
+    var comps = raw.companiesCreated.filter(function (c) { return inRange(c.criado) && passBdr(c) && passPorte(c) && passFonte(c); });
+    var conts = raw.contactsCreated.filter(function (c) { return inRange(c.criado) && passBdr(c) && passPorte(c) && passFonte(c); });
+    var trans = raw.transitions.filter(function (t) { return inRange(t.ts) && passBdr(t) && passPorte(t); });
+    var sql = historyAvailable() ? history.sqlDeals.filter(function (d) { return d.sql_date >= since && d.sql_date <= until && (!state.bdr || d.bdr === state.bdr); }) : [];
+    return {
+      empresas: comps.length,
+      contatos: conts.length,
+      sql: sql.length,
+      efetivo: trans.filter(function (t) { return t.para === 'CONNECTED'; }).length,
+      movs: trans.length,
+      desq: trans.filter(function (t) { return t.para === 'UNQUALIFIED' || t.para === 'BAD_TIMING'; }).length,
+    };
+  }
   function uniq(arr, key) {
     var s = {}; arr.forEach(function (x) { s[x[key]] = 1; }); return Object.keys(s).length;
   }
@@ -191,10 +213,14 @@ var WorkloadBDR = (function () {
       var helpKey = k.help || k.drill || 'universo';
       h += '<div class="kpi clickable ' + k.cls + '" onclick="WorkloadBDR.drill(\'' + k.drill + '\')">' +
         '<div class="label"><span>' + esc(k.label) + '</span><span class="calc-btn" onclick="event.stopPropagation();WorkloadBDR.openHelpFor(\'' + helpKey + '\')" title="Ver memória de cálculo">?</span></div>' +
-        '<div class="value">' + k.value + '</div>' +
+        '<div class="value">' + k.value + (k.delta ? k.delta : '') + '</div>' +
         '<div class="sub">' + esc(k.sub) + '</div></div>';
     });
     return h + '</section>';
+  }
+  function bdrFrozenBanner() {
+    if (!state.bdr) return '';
+    return '<section class="note bdr-freeze"><b>BDR congelado:</b> exibindo apenas dados de <b>' + esc(state.bdr) + '</b>. Comparativos, SQL e atividades respeitam este filtro até limpar filtros.</section>';
   }
 
   function chartInsercoes(conts, trans) {
@@ -291,9 +317,15 @@ var WorkloadBDR = (function () {
     var v = Math.round((now - prev) / prev * 100);
     return (v > 0 ? '+' : '') + v + '%';
   }
+  function deltaHtml(now, prev) {
+    if (!historyAvailable()) return '<span class="kpi-delta muted">—</span>';
+    var pct = pctDelta(now, prev), neg = pct.charAt(0) === '-';
+    var cls = neg ? 'down' : 'up';
+    return '<span class="kpi-delta ' + cls + '">' + (neg ? '▼ ' : '▲ ') + pct + '</span>';
+  }
   function cmpText(now, prev, label) {
     if (!historyAvailable()) return '— ' + label + ' · <b>indisponível</b>';
-    return now + ' ' + label + ' vs ' + prev + ' no período anterior equivalente · <b>' + pctDelta(now, prev) + '</b>';
+    return now + ' ' + label + ' vs ' + prev + ' no período anterior equivalente · <b>' + deltaHtml(now, prev) + '</b>';
   }
   function shiftIso(value, days) {
     var d = new Date(value + 'T00:00:00');
@@ -302,6 +334,10 @@ var WorkloadBDR = (function () {
   }
   function inclusiveCalendarDays(since, until) {
     return Math.floor((new Date(until + 'T00:00:00') - new Date(since + 'T00:00:00')) / 86400000) + 1;
+  }
+  function rowTotalByCanal(r) {
+    if (!state.canal || state.canal === 'todos') return r.total || 0;
+    return r[state.canal] || 0;
   }
   function chartRealActivities(acts) {
     var rows = aggregateHistoryByDay(state.since, state.until, state.diasUteis, true, acts);
@@ -316,8 +352,15 @@ var WorkloadBDR = (function () {
     var previousUntil = shiftIso(state.since, -1);
     var previousSince = shiftIso(state.since, -periodDays);
     var previousPeriod = sumActivityRows(aggregateHistoryByDay(previousSince, previousUntil, state.diasUteis, false, acts));
+    if (state.canal && state.canal !== 'todos') {
+      rows.forEach(function (r) { r.total = rowTotalByCanal(r); });
+      currentPeriod.total = currentPeriod[state.canal] || 0;
+      previousPeriod.total = previousPeriod[state.canal] || 0;
+    }
+    var canalLabel = CHANNELS.filter(function (c) { return c[0] === state.canal; })[0];
+    canalLabel = canalLabel ? canalLabel[1] : 'Todos';
     var h = '<div class="grid"><div class="card span-12"><div class="card-title"><div><h2>Ritmo Real de Atividades <span class="calc-btn" onclick="WorkloadBDR.openHelpFor(\'atividades-reais\')" title="Ver memória de cálculo">?</span></h2>' +
-      '<div class="desc">Atividades registradas por dia' + (state.diasUteis ? ' útil' : '') + ': ligações, e-mails, WhatsApp, LinkedIn e reuniões. Conversas ≥ 1 min aparecem separadamente na tabela live.</div></div></div>';
+      '<div class="desc">Atividades registradas por dia' + (state.diasUteis ? ' útil' : '') + ': ligações, e-mails, WhatsApp, LinkedIn e reuniões. Canal ativo: <b>' + esc(canalLabel) + '</b>. Conversas ≥ 1 min aparecem separadamente na tabela live.</div></div></div>';
     h += '<div class="story-grid"><div class="story-card"><div class="story-head"><b>WoW | ligações registradas</b></div><span>' + cmpText(thisWeek.calls, lastWeek.calls, 'nesta semana') + '</span></div>' +
       '<div class="story-card"><div class="story-head"><b>WoW | e-mails</b></div><span>' + cmpText(thisWeek.emails, lastWeek.emails, 'nesta semana') + '</span></div>' +
       '<div class="story-card"><div class="story-head"><b>Período anterior | atividades</b></div><span>' + cmpText(currentPeriod.total, previousPeriod.total, 'na janela') + '</span></div></div>';
@@ -325,6 +368,7 @@ var WorkloadBDR = (function () {
     var max = 1; rows.forEach(function (r) { max = Math.max(max, r.total); });
     var W = 1120, H = 260, L = 42, R = 16, T = 18, B = 34, plotW = W - L - R, plotH = H - T - B;
     var keys = [['calls', 'var(--teal)', 'Ligações'], ['emails', 'var(--yellow)', 'E-mails'], ['whatsApp', 'var(--green)', 'WhatsApp'], ['linkedin', 'var(--orange)', 'LinkedIn'], ['meetings', 'rgba(58,184,183,.42)', 'Reuniões']];
+    if (state.canal && state.canal !== 'todos') keys = keys.filter(function (k) { return k[0] === state.canal; });
     var cum = rows.map(function () { return 0; });
     function x(i) { return L + (rows.length === 1 ? plotW / 2 : i * plotW / (rows.length - 1)); }
     function y(v) { return T + plotH - (v / max * plotH); }
@@ -545,7 +589,8 @@ var WorkloadBDR = (function () {
     var periods = [['hoje', 'Hoje'], ['ontem', 'Ontem'], ['7d', 'Últimos 7 dias'], ['30d', 'Últimos 30 dias'], ['semana', 'Semana atual'], ['mes', 'Mês atual'], ['custom', 'Período custom']];
     var h = '<div class="periodbar"><span class="period-label">Período</span>';
     periods.forEach(function (p) {
-      h += '<button class="period-chip' + (state.period === p[0] ? ' active' : '') + '" onclick="WorkloadBDR.setPeriod(\'' + p[0] + '\')">' + p[1] + '</button>';
+      var src = p[0] === 'hoje' ? ['LIVE', 'live'] : ['BQ', 'bq'];
+      h += '<button class="period-chip' + (state.period === p[0] ? ' active' : '') + '" onclick="WorkloadBDR.setPeriod(\'' + p[0] + '\')">' + p[1] + ' <span class="source-badge ' + src[1] + '">' + src[0] + '</span></button>';
     });
     if (state.period === 'custom') {
       h += '<input type="date" id="f-since" value="' + (state.since || '') + '" style="width:auto;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:.4rem .5rem">' +
@@ -553,6 +598,11 @@ var WorkloadBDR = (function () {
         '<button class="btn primary" onclick="WorkloadBDR.applyCustom()">Aplicar</button>';
     }
     h += '<span class="period-help" id="gen-at"></span><label class="toggle-filter"><input type="checkbox" ' + (state.diasUteis ? 'checked' : '') + ' onchange="WorkloadBDR.toggleDiasUteis(this.checked)"> Mostrar apenas dias úteis</label></div>';
+    h += '<div class="periodbar channelbar"><span class="period-label">Canal</span>';
+    CHANNELS.forEach(function (c) {
+      h += '<button class="period-chip channel-chip' + (state.canal === c[0] ? ' active' : '') + '" onclick="WorkloadBDR.setChannel(\'' + c[0] + '\')">' + c[1] + '</button>';
+    });
+    h += '</div>';
 
     h += sel('BDR', 'bdr', [''].concat((raw ? raw.team : BDRS_FALLBACK)), state.bdr, 'Todos');
     h += sel('Porte (colaboradores)', 'porte', [''].concat(PORTES), state.porte, 'Todos');
@@ -739,7 +789,8 @@ var WorkloadBDR = (function () {
       load(false);
     },
     setFilter: function (k, v) { state[k] = v; render(); },
-    reset: function () { state.bdr = ''; state.porte = ''; state.fonte = ''; render(); },
+    setChannel: function (v) { state.canal = v || 'todos'; render(); },
+    reset: function () { state.bdr = ''; state.porte = ''; state.fonte = ''; state.canal = 'todos'; render(); },
     toggleDiasUteis: function (v) { state.diasUteis = !!v; render(); },
     drill: drill, drillCalls: drillCalls, closeModal: closeModal, openAllHelp: openAllHelp, openHelpFor: openHelpFor, closeHelp: closeHelp, toggleTheme: toggleTheme,
   };
