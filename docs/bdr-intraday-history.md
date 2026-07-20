@@ -41,8 +41,19 @@ Clicar no número de **Ligações** de um BDR abre o detalhe:
 
 Exemplo real (2026-07-13): Anderson = **72 ligações, 4 conversas (6%), 68 discagens** (25 com 0s). O número bruto inflava ~18×. Obs.: `hs_call_disposition` vem vazio ("Sem desfecho") — BDRs não preenchem; o sinal real é duração (conversa ≥ 1 min), coerente com a CI (`enr_call_semantics`: ~16% de conversa real).
 
-## Fase 2 (especificada, não deployada)
+## Fonte GCP canônica do Workload (patch 2026-07-20)
 
-Histórico weekly/mensal via BigQuery: `lib/bq.js` (leitura env-aware) + `api/ingest-bdr-workload.js`
-(foto diária idempotente → `env.bqDataset()`) + cron **só após verificação manual** + seletor de
-granularidade na UI + join com `enr_call_semantics`. Tarefas em `.../tasks.md` Fase 2.
+Sem criar recursos novos: o dashboard agora lê recursos existentes e read-only.
+
+| Recurso | Região | Uso |
+|---|---:|---|
+| Cloud Run ETL BDR HubSpot | `us-central1` | job acionado pelo scheduler às 08:00 BRT; snapshot de hoje pode estar parcial |
+| Cloud Scheduler ETL | `us-central1` | agenda o ETL diário |
+| `gen-lang-client-0423905839.axenya_sales_hubspot_bdr_prd_sae1_gold.bdr_daily_ops` | `southamerica-east1` | histórico agregado de atividades e SQL diário por BDR |
+| `gen-lang-client-0423905839.axenya_sales_hubspot_bdr_prd_sae1_silver.sql_deals` | `southamerica-east1` | deals SQL deduplicáveis por `deal_id`, sem PII no dashboard |
+
+Regra de leitura: hoje usa HubSpot live para atividades; histórico e SQL real usam BigQuery gold/silver com freshness explícita. Se BigQuery não estiver configurado, a API falha fechado (503) e o front não renderiza SQL como zero.
+
+## Fase 2 (histórico)
+
+Implementação mínima aditiva em auditoria: `api/bdr-workload-history.js` + merge no front. Permanece 🟡 até smoke pós-deploy autenticado.

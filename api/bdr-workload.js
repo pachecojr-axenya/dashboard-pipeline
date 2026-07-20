@@ -40,6 +40,9 @@ const COMPANY_PROPS = [
 
 let _cache = {};
 const CACHE_TTL = 5 * 60 * 1000;
+const TODAY_CACHE_TTL = 90 * 1000;
+const MAX_STALE_TODAY = 15 * 60 * 1000;
+const MAX_STALE_HISTORY = 24 * 60 * 60 * 1000;
 
 async function pool(items, size, fn) {
   const out = new Array(items.length);
@@ -221,7 +224,7 @@ async function buildPayload(token, sinceMs, untilMs) {
     searchAll(token, 'contacts', [
       { propertyName: 'hubspot_owner_id', operator: 'IN', values: teamIds },
       { propertyName: 'hs_lead_status', operator: 'HAS_PROPERTY' },
-      { propertyName: 'lastmodifieddate', operator: 'GTE', value: String(sinceMs) },
+      { propertyName: 'lastmodifieddate', operator: 'BETWEEN', value: String(sinceMs), highValue: String(untilMs) },
     ], CONTACT_PROPS),
   ]);
 
@@ -345,6 +348,10 @@ module.exports = async function handler(req, res) {
   const key = `${since}|${until}`;
   const kvKey = env.kvKey(`workload:${key}`); // namespaced por ambiente (dev/prod não colidem)
   const refresh = q.get('refresh') === '1';
+  const todayIso = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const includesToday = since <= todayIso && until >= todayIso;
+  const ttlMs = includesToday ? TODAY_CACHE_TTL : CACHE_TTL;
+  const maxStaleMs = includesToday ? MAX_STALE_TODAY : MAX_STALE_HISTORY;
 
   // Cache em 2 camadas: L1 memória (por instância) + L2 KV (durável, compartilhado).
   // KV é dependência mole: se ausente/erro, degrada para L1 + live sem lançar.
@@ -356,16 +363,16 @@ module.exports = async function handler(req, res) {
     if (!kv.isConfigured()) return;
     try { await kv.setJSON(kvKey, entry); } catch (e) { console.error('[bdr-workload] KV set', e.message); }
   }
-  const fresh = (entry) => entry && (Date.now() - entry.at < CACHE_TTL);
+  const fresh = (entry) => entry && (Date.now() - entry.at < ttlMs);
 
   try {
     if (!refresh) {
       const l1 = _cache[key];
-      if (fresh(l1)) return res.status(200).json({ ...(l1.data), cached: true, cacheLayer: 'memory' });
-      const l2 = await kvGet();
+      if (fresh(l1)) return res.status(200).json({ ...(l1.data), cached: true, cacheLayer: 'memory', staleAgeMs: Date.now() - l1.at });
+      const l2 = includesToday ? null : await kvGet();
       if (fresh(l2)) {
         _cache = { [key]: l2 }; // reidrata L1 após cold start
-        return res.status(200).json({ ...(l2.data), cached: true, cacheLayer: 'kv' });
+        return res.status(200).json({ ...(l2.data), cached: true, cacheLayer: 'kv', staleAgeMs: Date.now() - l2.at });
       }
     }
     const data = await buildPayload(token, sinceMs, untilMs);
@@ -376,9 +383,9 @@ module.exports = async function handler(req, res) {
   } catch (e) {
     console.error('[bdr-workload]', e.message);
     const l1 = _cache[key];
-    if (l1) return res.status(200).json({ ...(l1.data), cached: true, stale: true, staleError: e.message });
+    if (l1 && Date.now() - l1.at <= maxStaleMs) return res.status(200).json({ ...(l1.data), cached: true, stale: true, staleAgeMs: Date.now() - l1.at, staleError: e.message });
     const l2 = await kvGet();
-    if (l2) return res.status(200).json({ ...(l2.data), cached: true, stale: true, cacheLayer: 'kv', staleError: e.message });
+    if (l2 && Date.now() - l2.at <= maxStaleMs) return res.status(200).json({ ...(l2.data), cached: true, stale: true, cacheLayer: 'kv', staleAgeMs: Date.now() - l2.at, staleError: e.message });
     return res.status(500).json({ success: false, error: e.message });
   }
 };

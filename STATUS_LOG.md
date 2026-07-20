@@ -12,6 +12,15 @@ Recurring every 20min (job `55d3b136`). Purpose: identify and close gaps so the 
 
 ---
 
+### BDR Workload | GCP source patch em auditoria 🟡 (2026-07-20)
+
+- Patch funcional sem deploy: `/novo-bdr/workload` passa a buscar HubSpot live para atividades de hoje e BigQuery para histórico/SQL real.
+- Nova API read-only `api/bdr-workload-history.js` consulta `gold.bdr_daily_ops` e `silver.sql_deals`, com freshness explícita e fail-closed quando BigQuery não está configurado.
+- KPI principal vira **SQL real (deals)**; `OPEN_DEAL` fica como proxy secundário. Comparativos usam período anterior equivalente via série estendida do BigQuery.
+- Status permanece 🟡 até smoke pós-deploy autenticado confirmar reconciliação live/BQ em produção.
+
+---
+
 ### 🚀 DEPLOY DE PRODUÇÃO | Forecast Delta Leva 2 no ar (2026-07-16)
 
 > Autorização explícita do dono. PR **#3** mergeada sem force no commit **`d83aca9`**; `main == origin/main`, working tree limpa e zero avanço concorrente do Pacheco desde `4aab7b5`. Build e preflight PASS antes do deploy. Produção: `dashboard-axenya-rlg0q9sbz-axenya-f1a041f6.vercel.app`, aliada a **`project-bsmfu.vercel.app`**.
