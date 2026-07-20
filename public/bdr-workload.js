@@ -18,7 +18,7 @@ var WorkloadBDR = (function () {
   var FONTES = ['Apollo', 'Lusha', 'Manual', 'API interna'];
 
   var raw = null;
-  var state = { period: 'hoje', since: null, until: null, bdr: '', porte: '', fonte: '' };
+  var state = { period: 'hoje', since: null, until: null, bdr: '', porte: '', fonte: '', diasUteis: true };
 
   // ---------- datas (America/Sao_Paulo = fuso local dos usuários) ----------
   function iso(d) {
@@ -50,6 +50,15 @@ var WorkloadBDR = (function () {
   function dmhm(ts) {
     var d = new Date(ts);
     return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + ' ' + hhmm(ts);
+  }
+  function ddmmFromIso(s) { return s.slice(8, 10) + '/' + s.slice(5, 7); }
+  function isDiaUtil(date) {
+    var day = date.getDay();
+    return day !== 0 && day !== 6;
+  }
+  function eachDate(since, until, fn) {
+    var d = new Date(since + 'T00:00:00'), end = new Date(until + 'T00:00:00');
+    while (d <= end) { fn(new Date(d)); d.setDate(d.getDate() + 1); }
   }
   function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
@@ -109,7 +118,9 @@ var WorkloadBDR = (function () {
       { label: 'Qualificado', value: kQualif.length, cls: 'good', drill: 'qualificado', sub: 'transições para Qualificado (deal)' },
       { label: 'Desqualificado | Timing', value: kDesq.length, cls: kDesq.length ? 'bad' : '', drill: 'desq', sub: 'motivos: propriedade pendente no HubSpot' },
     ]);
-    html += chartHoras(conts, trans);
+    html += chartInsercoes(conts, trans);
+    html += chartRealActivities(fActivities());
+    html += chartFonteResultado(comps, conts, trans);
     html += tabelaAtividades(fActivities(), comps, conts, trans);
     html += '<div class="grid">';
     html += chartPorBdr(comps, conts, trans);
@@ -140,15 +151,16 @@ var WorkloadBDR = (function () {
   function kpis(items) {
     var h = '<section class="kpis">';
     items.forEach(function (k) {
+      var helpKey = k.help || k.drill || 'universo';
       h += '<div class="kpi clickable ' + k.cls + '" onclick="WorkloadBDR.drill(\'' + k.drill + '\')">' +
-        '<div class="label">' + esc(k.label) + '</div>' +
+        '<div class="label"><span>' + esc(k.label) + '</span><span class="calc-btn" onclick="event.stopPropagation();WorkloadBDR.openHelpFor(\'' + helpKey + '\')" title="Ver memória de cálculo">?</span></div>' +
         '<div class="value">' + k.value + '</div>' +
         '<div class="sub">' + esc(k.sub) + '</div></div>';
     });
     return h + '</section>';
   }
 
-  function chartHoras(conts, trans) {
+  function chartInsercoes(conts, trans) {
     var multiDay = state.since !== state.until;
     var buckets = {}, order = [];
     function push(ts, tipo) {
@@ -178,6 +190,100 @@ var WorkloadBDR = (function () {
         '</div><span class="bar-label" style="transform:none">' + esc(k) + '</span></div>';
     });
     return h + '</div></div></div>';
+  }
+
+  function activityBucket(a) {
+    if (a.tipo === 'calls') return 'calls';
+    if (a.tipo === 'emails') return 'emails';
+    if (a.tipo === 'communications' && a.canal === 'WHATS_APP') return 'whatsApp';
+    if (a.tipo === 'communications' && a.canal === 'LINKEDIN_MESSAGE') return 'linkedin';
+    if (a.tipo === 'meetings') return 'meetings';
+    return null;
+  }
+  function aggregateActsByDay(acts, since, until, onlyBusinessDays) {
+    var by = {}, out = [];
+    eachDate(since, until, function (d) {
+      if (onlyBusinessDays && !isDiaUtil(d)) return;
+      var key = iso(d);
+      by[key] = { date: key, calls: 0, callsReal: 0, emails: 0, whatsApp: 0, linkedin: 0, meetings: 0, total: 0 };
+      out.push(by[key]);
+    });
+    acts.forEach(function (a) {
+      var d = new Date(a.ts), key = iso(d), b = activityBucket(a);
+      if (!b || !by[key]) return;
+      by[key][b]++;
+      if (b === 'calls' && a.duracao_ms != null && a.duracao_ms >= 60000) by[key].callsReal++;
+      by[key].total++;
+    });
+    return out;
+  }
+  function sumActivityRows(rows) {
+    var s = { calls: 0, callsReal: 0, emails: 0, whatsApp: 0, linkedin: 0, meetings: 0, total: 0 };
+    rows.forEach(function (r) { Object.keys(s).forEach(function (k) { s[k] += r[k] || 0; }); });
+    return s;
+  }
+  function pctDelta(now, prev) {
+    if (!prev && !now) return '0%';
+    if (!prev) return '+100%';
+    var v = Math.round((now - prev) / prev * 100);
+    return (v > 0 ? '+' : '') + v + '%';
+  }
+  function chartRealActivities(acts) {
+    var rows = aggregateActsByDay(acts, state.since, state.until, state.diasUteis);
+    var today = new Date(state.until + 'T00:00:00');
+    var weekStart = new Date(today); weekStart.setDate(weekStart.getDate() - 6);
+    var lastWeekStart = new Date(weekStart); lastWeekStart.setDate(lastWeekStart.getDate() - 7);
+    var lastWeekEnd = new Date(weekStart); lastWeekEnd.setDate(lastWeekEnd.getDate() - 1);
+    var thisWeek = sumActivityRows(aggregateActsByDay(acts, iso(weekStart), iso(today), state.diasUteis));
+    var lastWeek = sumActivityRows(aggregateActsByDay(acts, iso(lastWeekStart), iso(lastWeekEnd), state.diasUteis));
+    var thisMonth = sumActivityRows(rows);
+    var prevMonthEnd = new Date(state.since + 'T00:00:00'); prevMonthEnd.setDate(prevMonthEnd.getDate() - 1);
+    var prevMonthStart = new Date(prevMonthEnd); prevMonthStart.setDate(prevMonthStart.getDate() - rows.length + 1);
+    var lastMonth = sumActivityRows(aggregateActsByDay(acts, iso(prevMonthStart), iso(prevMonthEnd), state.diasUteis));
+    var h = '<div class="grid"><div class="card span-12"><div class="card-title"><div><h2>Ritmo Real de Atividades <span class="calc-btn" onclick="WorkloadBDR.openHelpFor(\'atividades-reais\')" title="Ver memória de cálculo">?</span></h2>' +
+      '<div class="desc">Atividades reais registradas no HubSpot por dia' + (state.diasUteis ? ' útil' : '') + ': ligações, e-mails, WhatsApp, LinkedIn e reuniões. Ligações reais = duração ≥ 1 min.</div></div></div>';
+    h += '<div class="story-grid"><div class="story-card"><div class="story-head"><b>WoW | ligações reais</b></div><span>' + thisWeek.callsReal + ' nesta semana vs ' + lastWeek.callsReal + ' na anterior · <b>' + pctDelta(thisWeek.callsReal, lastWeek.callsReal) + '</b></span></div>' +
+      '<div class="story-card"><div class="story-head"><b>WoW | e-mails</b></div><span>' + thisWeek.emails + ' nesta semana vs ' + lastWeek.emails + ' na anterior · <b>' + pctDelta(thisWeek.emails, lastWeek.emails) + '</b></span></div>' +
+      '<div class="story-card"><div class="story-head"><b>MoM | atividades</b></div><span>' + thisMonth.total + ' na janela vs ' + lastMonth.total + ' no período anterior equivalente · <b>' + pctDelta(thisMonth.total, lastMonth.total) + '</b></span></div></div>';
+    if (!rows.length) return h + '<div class="desc">Sem dias no recorte após filtro.</div></div></div>';
+    var max = 1; rows.forEach(function (r) { max = Math.max(max, r.total); });
+    var W = 1120, H = 260, L = 42, R = 16, T = 18, B = 34, plotW = W - L - R, plotH = H - T - B;
+    var keys = [['calls', 'var(--teal)', 'Ligações'], ['emails', 'var(--yellow)', 'E-mails'], ['whatsApp', 'var(--green)', 'WhatsApp'], ['linkedin', 'var(--orange)', 'LinkedIn'], ['meetings', 'rgba(58,184,183,.42)', 'Reuniões']];
+    var cum = rows.map(function () { return 0; });
+    function x(i) { return L + (rows.length === 1 ? plotW / 2 : i * plotW / (rows.length - 1)); }
+    function y(v) { return T + plotH - (v / max * plotH); }
+    h += '<div class="line-legend">' + keys.map(function (k) { return '<span><i style="background:' + k[1] + '"></i>' + k[2] + '</span>'; }).join('') + '</div>';
+    h += '<svg class="area-svg" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Ritmo real de atividades por dia">';
+    for (var gy = 0; gy <= 4; gy++) { var yy = T + gy * plotH / 4; h += '<line x1="' + L + '" y1="' + yy + '" x2="' + (W - R) + '" y2="' + yy + '"></line><text x="4" y="' + (yy + 4) + '">' + Math.round(max * (4 - gy) / 4) + '</text>'; }
+    keys.forEach(function (k) {
+      var top = [], bottom = [];
+      rows.forEach(function (r, i) { bottom.push([x(i), y(cum[i])]); cum[i] += r[k[0]] || 0; top.push([x(i), y(cum[i])]); });
+      var d = 'M ' + top.map(function (p) { return p[0].toFixed(1) + ' ' + p[1].toFixed(1); }).join(' L ') + ' L ' + bottom.slice().reverse().map(function (p) { return p[0].toFixed(1) + ' ' + p[1].toFixed(1); }).join(' L ') + ' Z';
+      h += '<path class="area-layer" fill="' + k[1] + '" d="' + d + '"><title>' + k[2] + '</title></path>';
+    });
+    rows.forEach(function (r, i) { if (i % Math.ceil(rows.length / 12) === 0 || i === rows.length - 1) h += '<text x="' + x(i) + '" y="' + (H - 8) + '" text-anchor="middle">' + ddmmFromIso(r.date) + '</text>'; });
+    h += '</svg>';
+    var zeros = rows.filter(function (r) { return r.total === 0; });
+    if (zeros.length) h += '<div class="zero-audit">' + zeros.slice(0, 6).map(function (z) { return '<div class="zero-day"><b>' + ddmmFromIso(z.date) + '</b><br>Nenhuma atividade registrada neste dia útil. Provável erro de registro ou API.</div>'; }).join('') + (zeros.length > 6 ? '<div class="zero-day">+' + (zeros.length - 6) + ' dias úteis zerados</div>' : '') + '</div>';
+    return h + '</div></div>';
+  }
+
+  function chartFonteResultado(comps, conts, trans) {
+    var by = {};
+    raw.team.forEach(function (b) { by[b] = { apollo: 0, total: 0, qual: 0 }; });
+    comps.concat(conts).forEach(function (x) { if (by[x.bdr]) { by[x.bdr].total++; if (x.fonte === 'Apollo') by[x.bdr].apollo++; } });
+    trans.forEach(function (t) { if (by[t.bdr] && t.para === 'OPEN_DEAL') by[t.bdr].qual++; });
+    var rows = Object.keys(by).filter(function (b) { return by[b].total || by[b].qual; });
+    if (!rows.length) return '';
+    var avgApollo = rows.reduce(function (s, b) { return s + (by[b].total ? by[b].apollo / by[b].total : 0); }, 0) / rows.length;
+    var high = rows.filter(function (b) { return by[b].total && by[b].apollo / by[b].total >= avgApollo; });
+    var low = rows.filter(function (b) { return high.indexOf(b) < 0; });
+    function rate(list) { var q = 0, t = 0; list.forEach(function (b) { q += by[b].qual; t += by[b].total; }); return t ? q / t : 0; }
+    var rh = rate(high), rl = rate(low), teamRate = rate(rows);
+    var delta = rl ? Math.round((rh - rl) / rl * 100) : (rh ? 100 : 0);
+    return '<div class="story-grid"><div class="story-card"><b>Correlação fonte → resultado</b><span>BDRs com maior uso de Apollo têm taxa de qualificação de <b>' + Math.round(rh * 100) + '%</b> vs <b>' + Math.round(rl * 100) + '%</b> no grupo de menor uso.</span></div>' +
+      '<div class="story-card"><b>Insight MBB</b><span>Diferença estimada: <b>' + (delta > 0 ? '+' : '') + delta + '%</b> sobre o grupo de baixa Apollo. Leitura: fonte parece influenciar qualidade, mas precisa validar mix de porte/persona.</span></div>' +
+      '<div class="story-card"><b>Ação sugerida</b><span>Replicar cadência dos BDRs de alto Apollo e auditar se o ganho vem da fonte ou da disciplina de follow-up. Média do time: <b>' + Math.round(teamRate * 100) + '%</b>.</span></div></div>';
   }
 
   function chartPorBdr(comps, conts, trans) {
@@ -357,7 +463,7 @@ var WorkloadBDR = (function () {
         '<input type="date" id="f-until" value="' + (state.until || '') + '" style="width:auto;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:.4rem .5rem">' +
         '<button class="btn primary" onclick="WorkloadBDR.applyCustom()">Aplicar</button>';
     }
-    h += '<span class="period-help" id="gen-at"></span></div>';
+    h += '<span class="period-help" id="gen-at"></span><label class="toggle-filter"><input type="checkbox" ' + (state.diasUteis ? 'checked' : '') + ' onchange="WorkloadBDR.toggleDiasUteis(this.checked)"> Mostrar apenas dias úteis</label></div>';
 
     h += sel('BDR', 'bdr', [''].concat((raw ? raw.team : BDRS_FALLBACK)), state.bdr, 'Todos');
     h += sel('Porte (colaboradores)', 'porte', [''].concat(PORTES), state.porte, 'Todos');
@@ -480,7 +586,10 @@ var WorkloadBDR = (function () {
       ['Inserção', 'createdate dentro da janela (fuso America/Sao_Paulo). Fonte via hs_object_source_detail_1: Apollo e Lusha = push do próprio BDR via extensão | Manual = CRM_UI | API interna = chave de automação (não conta como trabalho de BDR; filtre por fonte para excluir).'],
       ['Movimentação', 'Transições de hs_lead_status dentro da janela, extraídas do histórico nativo (propertiesWithHistory). Contato efetivo = CONNECTED | Qualificado = OPEN_DEAL (deal em Reunião Agendada) | Desqualificado = UNQUALIFIED | Timing ruim = BAD_TIMING.'],
       ['Atividades', 'Engagements do HubSpot (calls, emails, communications, notes, tasks, meetings) com hs_timestamp na janela e dono no time. Ligação com conversa = duração ≥ 1 min (proxy; discagens não atendidas têm duração 0). WhatsApp = communications com canal WHATS_APP (captura Treble). Janelas muito longas podem truncar em 9.800 registros por tipo — a página avisa quando o teto é atingido.'],
-      ['Limitações declaradas', 'Motivo de desqualificação ainda não existe como propriedade no HubSpot (pendência da spec outbound-hubspot-first). Filtro de fonte não se aplica a movimentações (movimentação não tem fonte de criação). Ligações e e-mails mal registrados não aparecem | o proxy de primeiro retorno é a transição para Contato efetivo.'],
+      ['Ritmo Real de Atividades', 'Stacked area por dia útil (toggle permite incluir fins de semana). Camadas: Ligações, E-mails, WhatsApp, LinkedIn e Reuniões. Dias úteis zerados são auditados como possível falha de registro/API ou ausência real de atividade.'],
+      ['Comparativos WoW/MoM', 'WoW compara a semana que termina no fim da janela contra os 7 dias anteriores, respeitando o filtro de dias úteis. MoM usa o período anterior equivalente ao tamanho da janela visível.'],
+      ['Fonte → Resultado', 'Compara BDRs acima vs abaixo da média de uso de Apollo e calcula taxa de qualificação (OPEN_DEAL ÷ inserções). É insight correlacional, não causal; exige controlar porte/persona e disciplina de follow-up.'],
+      ['Limitações declaradas', 'Motivo de desqualificação ainda não existe como propriedade no HubSpot (pendência da spec outbound-hubspot-first). Filtro de fonte não se aplica a movimentações (movimentação não tem fonte de criação). Ligações e e-mails mal registrados não aparecem | o proxy de primeiro retorno é a transição para Contato efetivo.'], 
       ['Reconciliação', 'Todo KPI clicável abre a tabela nominal com exatamente as mesmas linhas contadas no número. A soma dos pequenos é o todo.'],
     ];
     var h = '';
@@ -489,7 +598,14 @@ var WorkloadBDR = (function () {
     document.getElementById('help-drawer').classList.add('open');
     document.getElementById('help-backdrop').classList.add('open');
   }
+  function openHelpBlock(title, text) {
+    document.getElementById('help-title').textContent = title;
+    document.getElementById('help-body').innerHTML = '<div class="help-block"><b>' + esc(title) + '</b><p>' + esc(text) + '</p></div>';
+    document.getElementById('help-drawer').classList.add('open');
+    document.getElementById('help-backdrop').classList.add('open');
+  }
   function closeHelp() {
+    document.getElementById('help-title').textContent = 'Memória de cálculo';
     document.getElementById('help-drawer').classList.remove('open');
     document.getElementById('help-backdrop').classList.remove('open');
   }
@@ -516,6 +632,21 @@ var WorkloadBDR = (function () {
     },
     setFilter: function (k, v) { state[k] = v; render(); },
     reset: function () { state.bdr = ''; state.porte = ''; state.fonte = ''; render(); },
+    toggleDiasUteis: function (v) { state.diasUteis = !!v; render(); },
+    openHelpFor: function (key) {
+      var HELP_BLOCKS = {
+        'atividades-reais': ['Ritmo Real de Atividades', 'Conta ligações, e-mails, WhatsApp, LinkedIn e reuniões registrados no HubSpot por dia' + (state.diasUteis ? ' útil' : '') + '. Ligações reais = duração ≥ 1 min (proxy de conversa atendida). WhatsApp = communications com canal WHATS_APP. LinkedIn = canal LINKEDIN_MESSAGE. Reuniões = meetings registrados. E-mails = e-mails enviados via HubSpot.'],
+        'empresas': ['Empresas inseridas', 'Empresas criadas (createdate) na janela com hubspot_owner_id do time de BDRs. Fonte via hs_object_source_detail_1: Apollo e Lusha = push do próprio BDR via extensão.'],
+        'contatos': ['Contatos inseridos', 'Contatos criados (createdate) na janela com owner do time, com ou sem hs_lead_status.'],
+        'movs': ['Movimentações de status', 'Transições de hs_lead_status dentro da janela, extraídas do histórico nativo (propertiesWithHistory).'],
+        'efetivo': ['Contato efetivo', 'Transições de status para CONNECTED (contato efetivo).'],
+        'qualificado': ['Qualificado', 'Transições para OPEN_DEAL (deal em Reunião Agendada).'],
+        'desq': ['Desqualificado | Timing', 'Transições para UNQUALIFIED ou BAD_TIMING.'],
+        'universo': ['Universo', 'Contatos e empresas com dono no time de BDRs.']
+      };
+      var b = HELP_BLOCKS[key] || HELP_BLOCKS['universo'];
+      openHelpBlock(b[0], b[1]);
+    },
     drill: drill, drillCalls: drillCalls, closeModal: closeModal, openAllHelp: openAllHelp, closeHelp: closeHelp, toggleTheme: toggleTheme,
   };
 })();
