@@ -427,6 +427,9 @@
     return '<div class="card span-8"><div class="card-title"><div><h2>Volume semanal</h2></div>' + infoBtn('timeline') + '</div><div class="line-legend"><span><i class="scheduled"></i>Agendadas</span><span><i class="no-show"></i>No-show</span><span><i class="pending"></i>Pendente</span></div><div class="trend line-chart clickable" data-drill="timeline" data-hover-title="Volume" data-hover-text="Clique para abrir a tabela semanal.">' + svg + '</div></div>';
   }
 
+  // Estado do filtro de taxa
+  var currentRateFilter = 'all';
+  
   function renderRateTrend(rows, m) {
     // Filtros de visualização
     var filters = [
@@ -436,54 +439,105 @@
       { key: 'porte', label: 'Por porte' }
     ];
     var filterBtns = filters.map(function (f) {
-      return '<button type="button" class="rate-filter-btn' + (f.key === 'all' ? ' active' : '') + '" data-rate-filter="' + f.key + '">' + esc(f.label) + '</button>';
+      return '<button type="button" class="rate-filter-btn' + (f.key === currentRateFilter ? ' active' : '') + '" data-rate-filter="' + f.key + '">' + esc(f.label) + '</button>';
     }).join('');
     
-    // Dados agregados por semana
+    // Gerar SVG baseado no filtro atual
+    var svgResult = generateRateSvg(rows, currentRateFilter);
+    var svg = svgResult.svg;
+    var trendText = svgResult.trendText;
+    
+    return '<div class="card span-12"><div class="card-title"><div><h2 id="rate-title">' + esc(trendText) + '</h2></div>' + infoBtn('rateTrend') + '</div><div class="rate-filters">' + filterBtns + '</div><div id="rate-chart" class="trend line-chart clickable" data-drill="timeline" data-hover-title="Taxa de no-show" data-hover-text="Clique para abrir a tabela semanal com volumes e taxas.">' + svg + '</div><div id="rate-legend" class="rate-legend"></div></div>';
+  }
+  
+  function generateRateSvg(rows, filterKey) {
     var g = group(rows.filter(function (r) { return r.meetingDate; }), 'week');
     var keys = Object.keys(g).sort().slice(-16);
-    var rates = keys.map(function (k) {
-      var arr = g[k];
-      var ns = arr.filter(function (r) { return r.noShow; }).length;
-      return arr.length ? ns / arr.length : 0;
+    var colors = ['#f85149', '#e3b341', '#3ab8b7', '#3fb950', '#a371f7', '#79c0ff', '#ff7b72', '#ffa657'];
+    
+    if (filterKey === 'all') {
+      // Linha única geral
+      var rates = keys.map(function (k) {
+        var arr = g[k];
+        var ns = arr.filter(function (r) { return r.noShow; }).length;
+        return arr.length ? ns / arr.length : 0;
+      });
+      var maxRate = Math.max.apply(null, rates);
+      var max = Math.max(0.1, Math.ceil(maxRate * 1.25 * 10) / 10);
+      var w = 1100, h = 300, p = 44;
+      var points = rates.map(function (r, i) {
+        var x = p + Math.round(i / Math.max(1, keys.length - 1) * (w - p * 2));
+        var y = h - p - Math.round(r / max * (h - p * 2));
+        return x + ',' + y;
+      }).join(' ');
+      var labelStep = Math.ceil(keys.length / 8);
+      var labels = keys.map(function (k, i) {
+        if (i % labelStep !== 0 && i !== keys.length - 1) return '';
+        var x = p + Math.round(i / Math.max(1, keys.length - 1) * (w - p * 2));
+        return '<text x="' + x + '" y="' + (h - 10) + '" text-anchor="middle" fill="var(--muted)">' + esc(k.replace('-', ' ')) + '</text>';
+      }).join('');
+      var rateLabels = rates.map(function (r, i) {
+        var x = p + Math.round(i / Math.max(1, keys.length - 1) * (w - p * 2));
+        var y = h - p - Math.round(r / max * (h - p * 2)) - 8;
+        return '<text x="' + x + '" y="' + y + '" text-anchor="middle" fill="var(--text)" font-size="11" font-weight="600">' + fmtPct(r) + '</text>';
+      }).join('');
+      var trendText = 'Taxa estável';
+      if (rates.length >= 2) {
+        var last = rates[rates.length - 1];
+        var prev = rates[rates.length - 2];
+        if (last < prev - 0.02) trendText = 'Taxa em queda: ' + fmtPct(prev) + ' → ' + fmtPct(last);
+        else if (last > prev + 0.02) trendText = 'Taxa subindo: ' + fmtPct(prev) + ' → ' + fmtPct(last);
+        else trendText = 'Taxa estável em ' + fmtPct(last);
+      }
+      var svg = keys.length ? '<svg class="line-svg" viewBox="0 0 ' + w + ' ' + h + '" role="img" aria-label="Taxa de no-show semanal"><line x1="' + p + '" y1="30" x2="' + p + '" y2="' + (h - p) + '" stroke="var(--border)" stroke-width="1"/><line x1="' + p + '" y1="' + (h - p) + '" x2="' + (w - 20) + '" y2="' + (h - p) + '" stroke="var(--border)" stroke-width="1"/><text x="8" y="34" fill="var(--muted)" font-size="11">' + fmtPct(max) + '</text><text x="18" y="' + (h - 8) + '" fill="var(--muted)" font-size="11">0%</text><polyline class="ln" style="stroke:var(--red);stroke-width:3" points="' + points + '"/>' + rateLabels + labels + '</svg>' : '<div class="muted">Sem semanas com reunião no filtro atual</div>';
+      return { svg: svg, trendText: trendText };
+    }
+    
+    // Múltiplas linhas por dimensão
+    var dimKey = filterKey;
+    var dimValues = {};
+    rows.forEach(function (r) {
+      var val = r[dimKey] || 'Não informado';
+      dimValues[val] = true;
+    });
+    var dimList = Object.keys(dimValues).slice(0, 8); // Máximo 8 linhas
+    
+    // Calcular taxas por dimensão por semana
+    var linesData = dimList.map(function (dimVal) {
+      var rates = keys.map(function (k) {
+        var arr = g[k].filter(function (r) { return (r[dimKey] || 'Não informado') === dimVal; });
+        var ns = arr.filter(function (r) { return r.noShow; }).length;
+        return arr.length ? ns / arr.length : 0;
+      });
+      return { name: dimVal, rates: rates };
     });
     
-    // Escala dinâmica: teto + 25% de margem, mínimo 10%
-    var maxRate = Math.max.apply(null, rates);
+    // Escala dinâmica
+    var allRates = linesData.flatMap(function (l) { return l.rates; });
+    var maxRate = Math.max.apply(null, allRates);
     var max = Math.max(0.1, Math.ceil(maxRate * 1.25 * 10) / 10);
     var w = 1100, h = 300, p = 44;
-    var points = rates.map(function (r, i) {
-      var x = p + Math.round(i / Math.max(1, keys.length - 1) * (w - p * 2));
-      var y = h - p - Math.round(r / max * (h - p * 2));
-      return x + ',' + y;
-    }).join(' ');
     
-    // Rotular apenas 1 a cada N semanas para não sobrepor
     var labelStep = Math.ceil(keys.length / 8);
     var labels = keys.map(function (k, i) {
       if (i % labelStep !== 0 && i !== keys.length - 1) return '';
       var x = p + Math.round(i / Math.max(1, keys.length - 1) * (w - p * 2));
       return '<text x="' + x + '" y="' + (h - 10) + '" text-anchor="middle" fill="var(--muted)">' + esc(k.replace('-', ' ')) + '</text>';
     }).join('');
-    var rateLabels = rates.map(function (r, i) {
-      var x = p + Math.round(i / Math.max(1, keys.length - 1) * (w - p * 2));
-      var y = h - p - Math.round(r / max * (h - p * 2)) - 8;
-      return '<text x="' + x + '" y="' + y + '" text-anchor="middle" fill="var(--text)" font-size="11" font-weight="600">' + fmtPct(r) + '</text>';
+    
+    var polylines = linesData.map(function (line, idx) {
+      var points = line.rates.map(function (r, i) {
+        var x = p + Math.round(i / Math.max(1, keys.length - 1) * (w - p * 2));
+        var y = h - p - Math.round(r / max * (h - p * 2));
+        return x + ',' + y;
+      }).join(' ');
+      return '<polyline class="ln" style="stroke:' + colors[idx % colors.length] + ';stroke-width:2" points="' + points + '"/>';
     }).join('');
     
-    // Título como conclusão (tendência)
-    var trendText = 'Taxa estável';
-    if (rates.length >= 2) {
-      var last = rates[rates.length - 1];
-      var prev = rates[rates.length - 2];
-      if (last < prev - 0.02) trendText = 'Taxa em queda: ' + fmtPct(prev) + ' → ' + fmtPct(last);
-      else if (last > prev + 0.02) trendText = 'Taxa subindo: ' + fmtPct(prev) + ' → ' + fmtPct(last);
-      else trendText = 'Taxa estável em ' + fmtPct(last);
-    }
+    var trendText = 'Taxa por ' + (filterKey === 'bdr' ? 'BDR' : filterKey === 'origem' ? 'canal' : 'porte');
+    var svg = keys.length ? '<svg class="line-svg" viewBox="0 0 ' + w + ' ' + h + '" role="img" aria-label="Taxa de no-show por ' + esc(filterKey) + '"><line x1="' + p + '" y1="30" x2="' + p + '" y2="' + (h - p) + '" stroke="var(--border)" stroke-width="1"/><line x1="' + p + '" y1="' + (h - p) + '" x2="' + (w - 20) + '" y2="' + (h - p) + '" stroke="var(--border)" stroke-width="1"/><text x="8" y="34" fill="var(--muted)" font-size="11">' + fmtPct(max) + '</text><text x="18" y="' + (h - 8) + '" fill="var(--muted)" font-size="11">0%</text>' + polylines + labels + '</svg>' : '<div class="muted">Sem semanas com reunião no filtro atual</div>';
     
-    var svg = keys.length ? '<svg class="line-svg" viewBox="0 0 ' + w + ' ' + h + '" role="img" aria-label="Taxa de no-show semanal"><line x1="' + p + '" y1="30" x2="' + p + '" y2="' + (h - p) + '" stroke="var(--border)" stroke-width="1"/><line x1="' + p + '" y1="' + (h - p) + '" x2="' + (w - 20) + '" y2="' + (h - p) + '" stroke="var(--border)" stroke-width="1"/><text x="8" y="34" fill="var(--muted)" font-size="11">' + fmtPct(max) + '</text><text x="18" y="' + (h - 8) + '" fill="var(--muted)" font-size="11">0%</text><polyline class="ln" style="stroke:var(--red);stroke-width:3" points="' + points + '"/>' + rateLabels + labels + '</svg>' : '<div class="muted">Sem semanas com reunião no filtro atual</div>';
-    
-    return '<div class="card span-12"><div class="card-title"><div><h2>' + esc(trendText) + '</h2></div>' + infoBtn('rateTrend') + '</div><div class="rate-filters">' + filterBtns + '</div><div class="trend line-chart clickable" data-drill="timeline" data-hover-title="Taxa de no-show" data-hover-text="Clique para abrir a tabela semanal com volumes e taxas.">' + svg + '</div><div id="rate-legend" class="rate-legend"></div></div>';
+    return { svg: svg, trendText: trendText, linesData: linesData, dimList: dimList, colors: colors };
   }
   
   // Dados para filtros de taxa (cache)
@@ -501,7 +555,7 @@
     return weeks;
   }
   
-  function renderRateLegend(filterKey, rows) {
+  function renderRateLegend(filterKey, rows, svgResult) {
     var legendEl = $('rate-legend');
     if (!legendEl) return;
     
@@ -510,23 +564,18 @@
       return;
     }
     
-    // Calcular taxa média por dimensão
-    var dimKey = filterKey;
-    var totals = {};
-    var noShows = {};
-    rows.forEach(function (r) {
-      var dimVal = r[dimKey] || 'Não informado';
-      totals[dimVal] = (totals[dimVal] || 0) + 1;
-      if (r.noShow) noShows[dimVal] = (noShows[dimVal] || 0) + 1;
-    });
+    // Usar dados do SVG gerado
+    var linesData = svgResult && svgResult.linesData ? svgResult.linesData : [];
+    var colors = svgResult && svgResult.colors ? svgResult.colors : ['#f85149', '#e3b341', '#3ab8b7', '#3fb950', '#a371f7', '#79c0ff'];
     
-    var items = Object.keys(totals).map(function (k) {
-      return { name: k, total: totals[k], ns: noShows[k] || 0, rate: (noShows[k] || 0) / totals[k] };
-    }).sort(function (a, b) { return b.ns - a.ns || b.rate - a.rate; }).slice(0, 6);
+    // Calcular taxa média por linha
+    var items = linesData.map(function (line, idx) {
+      var avgRate = line.rates.reduce(function (a, b) { return a + b; }, 0) / line.rates.length;
+      return { name: line.name, rate: avgRate, color: colors[idx % colors.length] };
+    }).sort(function (a, b) { return b.rate - a.rate; });
     
-    var colors = ['#f85149', '#e3b341', '#3ab8b7', '#3fb950', '#a371f7', '#79c0ff'];
-    legendEl.innerHTML = items.map(function (item, idx) {
-      return '<span class="rate-legend-item" data-filter-key="' + esc(filterKey) + '" data-filter-val="' + esc(item.name) + '"><span class="rate-legend-dot" style="background:' + colors[idx % colors.length] + '"></span>' + esc(item.name) + ' (' + fmtPct(item.rate) + ')</span>';
+    legendEl.innerHTML = items.map(function (item) {
+      return '<span class="rate-legend-item" data-filter-key="' + esc(filterKey) + '" data-filter-val="' + esc(item.name) + '"><span class="rate-legend-dot" style="background:' + item.color + '"></span>' + esc(item.name) + ' (' + fmtPct(item.rate) + ')</span>';
     }).join('');
     
     // Adicionar click para filtrar
@@ -888,11 +937,20 @@
     var rateFilterBtns = $('content').querySelectorAll('[data-rate-filter]');
     for (var rf = 0; rf < rateFilterBtns.length; rf += 1) rateFilterBtns[rf].onclick = function () {
       var filterKey = this.getAttribute('data-rate-filter');
+      // Atualizar estado
+      currentRateFilter = filterKey;
       // Atualizar botões ativos
       for (var j = 0; j < rateFilterBtns.length; j += 1) rateFilterBtns[j].classList.remove('active');
       this.classList.add('active');
-      // Renderizar nova legenda
-      renderRateLegend(filterKey, rows);
+      // Regenerar SVG usando state.filtered (global) em vez de rows (local)
+      var svgResult = generateRateSvg(state.filtered, filterKey);
+      var rateChart = $('rate-chart');
+      var oldSvg = rateChart.querySelector('svg, .muted');
+      if (oldSvg) oldSvg.outerHTML = svgResult.svg;
+      else rateChart.innerHTML = svgResult.svg;
+      $('rate-title').textContent = svgResult.trendText;
+      // Renderizar legenda
+      renderRateLegend(filterKey, state.filtered, svgResult);
     };
     
     var ranks = $('content').querySelectorAll('[data-rank-name]');
