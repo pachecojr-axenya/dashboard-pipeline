@@ -32,6 +32,7 @@ var WorkloadBDR = (function () {
     if (p === 'ontem') { s.setDate(s.getDate() - 1); u = new Date(s); }
     else if (p === '7d') { s.setDate(s.getDate() - 6); }
     else if (p === '30d') { s.setDate(s.getDate() - 29); } // 30 dias contando hoje
+    else if (p === '90d') { s.setDate(s.getDate() - 89); } // 90 dias contando hoje
     else if (p === 'semana') { var dow = (now.getDay() + 6) % 7; s.setDate(s.getDate() - dow); }
     else if (p === 'mes') { s.setDate(1); }
     return { since: iso(s), until: iso(u) };
@@ -66,6 +67,13 @@ var WorkloadBDR = (function () {
     var d = new Date(since + 'T00:00:00'), end = new Date(until + 'T00:00:00');
     while (d <= end) { fn(new Date(d)); d.setDate(d.getDate() + 1); }
   }
+  function countDiasUteis(since, until) {
+    var count = 0;
+    eachDate(since, until, function (d) {
+      if (isDiaUtil(d)) count++;
+    });
+    return count;
+  }
   function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
@@ -90,11 +98,18 @@ var WorkloadBDR = (function () {
   function historyAvailable() { return !!(history && Array.isArray(history.dailyRows) && Array.isArray(history.sqlDeals)); }
   function fSqlDeals() { return historyAvailable() ? history.sqlDeals.filter(function (d) { return !state.bdr || d.bdr === state.bdr; }) : []; }
   function renderFreshness() {
-    var msg = 'Hoje: HubSpot live | Histórico e SQL: ';
-    if (!historyAvailable()) return msg + 'BigQuery indisponível' + (historyError ? ' (' + historyError + ')' : '');
+    var msg = 'Hoje (1 dia) | HubSpot live | Histórico e SQL: ';
+    if (!historyAvailable()) return msg + 'BigQuery indisponível' + (historyError ? ' (' + historyError + ')' : '') + ' | Lookback ETL: 365 dias';
     var rec = history.metadata && history.metadata.reconciliation;
     return msg + 'BigQuery atualizado ' + (history.metadata && history.metadata.refreshedAt ? dmhm(history.metadata.refreshedAt) : '—') +
-      (rec && rec.matches === false ? ' | ALERTA: SQL não reconciliado' : '');
+      ' | Lookback ETL: 365 dias' + (rec && rec.matches === false ? ' | ALERTA: SQL não reconciliado' : '');
+  }
+
+  function renderWindowContext() {
+    var calendarDays = inclusiveCalendarDays(state.since, state.until);
+    var businessDays = countDiasUteis(state.since, state.until);
+    if (state.diasUteis) return 'Janela: ' + businessDays + ' dias úteis (' + calendarDays + ' dias corridos)';
+    return 'Janela: ' + calendarDays + ' dias corridos';
   }
 
   // ---------- carga ----------
@@ -149,7 +164,7 @@ var WorkloadBDR = (function () {
     var kDesq = trans.filter(function (t) { return t.para === 'UNQUALIFIED' || t.para === 'BAD_TIMING'; });
 
     var prev = previousKpis();
-    var html = bdrFrozenBanner() + '<section class="note"><b>Fonte dos dados:</b> ' + esc(renderFreshness()) + '. O snapshot BigQuery roda durante o dia; a série de hoje usa HubSpot live para não mostrar atividade parcial.</section>';
+    var html = bdrFrozenBanner() + '<section class="note"><b>Fonte dos dados:</b> ' + esc(renderFreshness()) + '. <b>' + esc(renderWindowContext()) + '</b>. O snapshot BigQuery roda durante o dia; a série de hoje usa HubSpot live para não mostrar atividade parcial.</section>';
     html += kpis([
       { label: 'Empresas inseridas', value: comps.length, cls: 'teal', drill: 'empresas', sub: subFontes(comps), help: 'empresas-ins', delta: deltaHtml(comps.length, prev.empresas) },
       { label: 'Contatos inseridos', value: conts.length, cls: 'teal', drill: 'contatos', sub: subFontes(conts), help: 'contatos-ins', delta: deltaHtml(conts.length, prev.contatos) },
@@ -177,7 +192,7 @@ var WorkloadBDR = (function () {
     document.getElementById('state').classList.add('hidden');
     document.getElementById('content').classList.remove('hidden');
     var gen = document.getElementById('gen-at');
-    if (gen) gen.textContent = 'Janela ' + state.since + ' a ' + state.until + ' | gerado ' + dmhm(raw.generatedAt) + (raw.cached ? ' | cache' : '') + ' | ' + renderFreshness();
+    if (gen) gen.textContent = state.since + ' a ' + state.until + ' | ' + renderWindowContext() + ' | gerado ' + dmhm(raw.generatedAt) + (raw.cached ? ' | cache' : '') + ' | ' + renderFreshness();
   }
 
   function previousKpis() {
@@ -338,6 +353,14 @@ var WorkloadBDR = (function () {
   function rowTotalByCanal(r) {
     if (!state.canal || state.canal === 'todos') return r.total || 0;
     return r[state.canal] || 0;
+  }
+  function periodBadgeText(periodKey, periodLabel) {
+    var r = periodKey === 'custom' ? { since: state.since, until: state.until } : periodRange(periodKey);
+    var calendarDays = inclusiveCalendarDays(r.since, r.until);
+    var businessDays = countDiasUteis(r.since, r.until);
+    if (periodKey === 'hoje') return 'Hoje | 1 dia';
+    if (state.diasUteis) return periodLabel + ' | ' + businessDays + ' dias úteis';
+    return periodLabel + ' | ' + calendarDays + ' dias corridos';
   }
   function chartRealActivities(acts) {
     var rows = aggregateHistoryByDay(state.since, state.until, state.diasUteis, true, acts);
@@ -586,11 +609,12 @@ var WorkloadBDR = (function () {
   // ---------- filtros UI ----------
   function renderFilters() {
     var el = document.getElementById('filters');
-    var periods = [['hoje', 'Hoje'], ['ontem', 'Ontem'], ['7d', 'Últimos 7 dias'], ['30d', 'Últimos 30 dias'], ['semana', 'Semana atual'], ['mes', 'Mês atual'], ['custom', 'Período custom']];
+    var periods = [['hoje', 'Hoje'], ['ontem', 'Ontem'], ['7d', 'Últimos 7 dias'], ['30d', 'Últimos 30 dias'], ['90d', 'Últimos 90 dias'], ['semana', 'Semana atual'], ['mes', 'Mês atual'], ['custom', 'Período custom']];
     var h = '<div class="periodbar"><span class="period-label">Período</span>';
     periods.forEach(function (p) {
       var src = p[0] === 'hoje' ? ['LIVE', 'live'] : ['BQ', 'bq'];
-      h += '<button class="period-chip' + (state.period === p[0] ? ' active' : '') + '" onclick="WorkloadBDR.setPeriod(\'' + p[0] + '\')">' + p[1] + ' <span class="source-badge ' + src[1] + '">' + src[0] + '</span></button>';
+      var badgeText = periodBadgeText(p[0], p[1]);
+      h += '<button class="period-chip' + (state.period === p[0] ? ' active' : '') + '" onclick="WorkloadBDR.setPeriod(\'' + p[0] + '\')">' + p[1] + ' <span class="source-badge ' + src[1] + '" title="' + esc(badgeText) + '">' + src[0] + ': ' + esc(badgeText) + '</span></button>';
     });
     if (state.period === 'custom') {
       h += '<input type="date" id="f-since" value="' + (state.since || '') + '" style="width:auto;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:.4rem .5rem">' +
