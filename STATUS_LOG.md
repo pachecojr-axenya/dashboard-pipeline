@@ -1,5 +1,22 @@
 # Dashboard Enhancement Loop — Status Log
 
+### 🚑 Forecast Delta | cron diário BQ recuperado após falhas de permissão (2026-07-20)
+
+> Incidente confirmado: o front novo estava deployado, mas `forecast_snapshots_daily`
+> parou em **16/07**. Logs Vercel mostraram BQ 403 em 17/07 e Sheets 403 em
+> 18–20/07. Como o legado Sheets rodava antes do BQ, o 403 impedia a foto canônica.
+
+- **Correção:** Sheets virou best-effort e não bloqueia BQ; qualquer erro no BQ agora
+  retorna 500 para tornar o cron observável e permitir retry.
+- **IAM:** acesso da credencial de produção restaurado para executar jobs e escrever
+  no BigQuery do projeto canônico.
+- **Backfill:** HubSpot API → BQ restaurou 17–20/07; última foto = **20/07**, com
+  1.392 deals. A sexta 17/07 também foi materializada no `weekly_gold`.
+- **Regressão:** `scripts/test-snapshot-resilience.js` prova Sheets 403 → daily BQ
+  gravado e BQ 403 → HTTP 500; passa também em simulação de sexta.
+
+---
+
 ### 🚀 BDR | Treble → Data Warehouse migration (2026-07-20)
 
 > **Objetivo:** Migrar fonte do dashboard `/novo-bdr/treble` de **API REST** (100+ chamadas, 30-60s) para **Treble Data Warehouse (ClickHouse)** (1-5 queries, < 5s).

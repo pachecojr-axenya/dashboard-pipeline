@@ -154,53 +154,57 @@ module.exports = async function handler(req, res) {
     const ownerMap = await fetchOwners(hsToken);
     const rows     = deals.map(d => buildRow(d, ownerMap, STAGE_MAP, capturedAt));
 
-    const tabs   = await listTabs();
-    const tabHasContent = async name => {
-      if (!tabs.includes(name)) return false;
-      const v = await readRange(`'${name}'!A2:A2`);
-      return v.length > 0;
-    };
-    const writeTab = async name => {
-      if (await tabHasContent(name)) return 'já existia';
-      for (let i = 0; i < rows.length; i += 400) {
-        await writeMonthlySnapshot(name, HEADERS, rows.slice(i, i + 400));
-      }
-      return 'gravada (' + rows.length + ' deals)';
-    };
-
     const actions = {};
 
-    // ── Batimento diário (só contagens) ──────────────────────────────────────
-    await appendRow('Historico Diario', COUNT_HEADERS, countsRow(deals, today));
-    actions.batimento = today;
+    // ── Legado Sheets ────────────────────────────────────────────────────────
+    // A planilha é somente sanity/compatibilidade. Falha de permissão nela não
+    // pode bloquear a fonte canônica diária no BigQuery (incidente 17–20/07).
+    try {
+      const tabs = await listTabs();
+      const tabHasContent = async name => {
+        if (!tabs.includes(name)) return false;
+        const v = await readRange(`'${name}'!A2:A2`);
+        return v.length > 0;
+      };
+      const writeTab = async name => {
+        if (await tabHasContent(name)) return 'já existia';
+        for (let i = 0; i < rows.length; i += 400) {
+          await writeMonthlySnapshot(name, HEADERS, rows.slice(i, i + 400));
+        }
+        return 'gravada (' + rows.length + ' deals)';
+      };
 
-    // ── Foto semanal (sexta) + autocorreção da sexta perdida ─────────────────
-    if (brtDate.getUTCDay() === 5) {
-      actions['semanal ' + today] = await writeTab(today);
-    } else {
-      const lastFri = dateStr(previousFriday(brtDate));
-      if (!(await tabHasContent(lastFri))) {
-        actions['semanal ' + lastFri + ' (atrasada)'] = await writeTab(lastFri);
+      await appendRow('Historico Diario', COUNT_HEADERS, countsRow(deals, today));
+      actions.batimento = today;
+
+      if (brtDate.getUTCDay() === 5) {
+        actions['semanal ' + today] = await writeTab(today);
+      } else {
+        const lastFri = dateStr(previousFriday(brtDate));
+        if (!(await tabHasContent(lastFri))) {
+          actions['semanal ' + lastFri + ' (atrasada)'] = await writeTab(lastFri);
+        }
       }
-    }
 
-    // ── Foto mensal (último dia) + autocorreção do mês perdido ───────────────
-    if (isLastDayOfMonth(brtDate)) {
-      actions['mensal ' + monthTabName(brtDate)] = await writeTab(monthTabName(brtDate));
-    } else {
-      const prevMonth = monthTabName(previousMonthEnd(brtDate));
-      if (!(await tabHasContent(prevMonth))) {
-        actions['mensal ' + prevMonth + ' (atrasada)'] = await writeTab(prevMonth);
+      if (isLastDayOfMonth(brtDate)) {
+        actions['mensal ' + monthTabName(brtDate)] = await writeTab(monthTabName(brtDate));
+      } else {
+        const prevMonth = monthTabName(previousMonthEnd(brtDate));
+        if (!(await tabHasContent(prevMonth))) {
+          actions['mensal ' + prevMonth + ' (atrasada)'] = await writeTab(prevMonth);
+        }
       }
-    }
 
-    // ── Foto forçada (?tab=..., só usuário autenticado) ──────────────────────
-    if (forceTab) {
-      actions['forçada ' + forceTab] = await writeTab(forceTab);
+      if (forceTab) {
+        actions['forçada ' + forceTab] = await writeTab(forceTab);
+      }
+    } catch (e) {
+      console.error('[snapshot][sheets]', e.message);
+      actions.sheets = 'ERRO (não bloqueante): ' + e.message;
     }
 
     // ── BQ: daily (todo dia) + weekly_gold (sexta/mês = espelho da planilha) ──
-    // Best-effort: se o BQ falhar, o snapshot do Sheet acima já garantiu a foto.
+    // Fonte canônica e fail-closed: erro no BQ falha o cron para permitir retry.
     // - daily: foto deal-level TODO dia → destrava "datas livres" no /forecast-delta.
     // - weekly_gold: datamart leve; materializa a foto do dia SÓ na sexta e no
     //   último dia do mês, exatamente como a planilha grava suas abas. Derivado
@@ -239,11 +243,12 @@ module.exports = async function handler(req, res) {
         }
       } catch (e) {
         console.error('[snapshot][bq]', e.message);
-        // Particao parcial e corrupcao de estado, nao indisponibilidade toleravel:
-        // falha o cron para permitir alerta/retry em vez de responder 200 enganoso.
-        if (/BQ (daily|weekly) parcial/.test(e.message)) throw e;
-        actions.bq = 'ERRO (não bloqueante): ' + e.message;
+        // BQ é a fonte canônica. Qualquer falha precisa falhar o cron para ficar
+        // observável e permitir retry, em vez de responder 200 enganoso.
+        throw e;
       }
+    } else {
+      throw new Error('BigQuery não configurado: GOOGLE_SERVICE_ACCOUNT_JSON ausente');
     }
 
     return res.status(200).json({ success: true, date: today, deals: deals.length, actions });
