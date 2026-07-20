@@ -188,13 +188,15 @@
     var recovered = noShow && (occurred || CONFIG.stagesAfterMeeting.indexOf(deal.stage) >= 0) && deal.stage !== 'Perdido';
     var rescheduled = noShow && status === 'Reagendada';
     var outsideSla = noShow && !recovered && bd != null && bd > CONFIG.slaBusinessDays;
+    // BDR: usa sdr, com fallback para ae se não tiver sdr
+    var bdrValue = deal.sdr || deal.ae || 'Sem BDR';
     var rec = {
       id: deal.hs_id || '',
       name: deal.dealname || '—',
       meetingDate: meetingDate,
       meetingIso: iso(meetingDate),
       week: weekKey(meetingDate),
-      bdr: deal.sdr || 'Sem BDR',
+      bdr: bdrValue,
       ae: deal.ae || 'Sem AE',
       stage: deal.stage || '—',
       origem: deal.origem || 'Sem origem',
@@ -492,7 +494,9 @@
         var x = p + Math.round(i / Math.max(1, keys.length - 1) * (w - p * 2));
         var y = h - p - Math.round(r / max * (h - p * 2)) - 8;
         var vol = volumes[i];
-        // Mostra taxa + volume se for poucas reuniões (<10) ou amostra pequena
+        // Não mostra label se taxa for 0% (evita ruído visual)
+        if (r === 0) return '';
+        // Mostra taxa + volume se for poucas reuniões (<10)
         var label = fmtPct(r);
         if (vol < 10) label += ' (' + vol + ')';
         return '<text x="' + x + '" y="' + y + '" text-anchor="middle" fill="var(--text)" font-size="11" font-weight="600">' + esc(label) + '</text>';
