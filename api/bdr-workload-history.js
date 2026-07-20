@@ -2,7 +2,15 @@
 
 const { setCORSHeaders, requireAuth, methodCheck } = require('./_helpers');
 const bq = require('../lib/bigquery');
-const { canonicalizeBdrName } = require('../lib/bdr-team');
+const { canonicalizeBdrName, BDR_TEAM } = require('../lib/bdr-team');
+
+const TEAM_SET = new Set(BDR_TEAM);
+// Guarda de camada semântica: só nomes canônicos do time entram no payload.
+// O silver.activities pode conter owners fora do time (ex.: owner_id vizinho
+// a um BDR) que a canonicalização não resolve; sem este filtro esses registros
+// contaminariam os totais "Todos os BDRs" no front. É filtro semântico no
+// contrato da API, não compensação de bug no browser.
+function isTeamMember(canonName) { return TEAM_SET.has(canonName); }
 
 const PROJECT = 'gen-lang-client-0423905839';
 const GOLD = 'axenya_sales_hubspot_bdr_prd_sae1_gold';
@@ -19,12 +27,29 @@ function inclusiveDays(since, until) { return Math.floor((until - since) / 86400
 function num(v) { return v == null || v === '' ? 0 : Number(v); }
 function str(v) { return v == null ? null : String(v); }
 function ymd(v) { return String(v || '').slice(0, 10); }
+// Normaliza um TIMESTAMP do BigQuery para ISO 8601 UTC (com "Z").
+// O BigQuery REST (endpoint /queries) devolve TIMESTAMP como STRING de
+// epoch em SEGUNDOS com fração (ex.: "1784567311.617586"), NÃO como
+// "YYYY-MM-DD HH:MM:SS". Sem normalizar, o browser faz new Date(epochStr)
+// => Invalid Date => a UI mostra "NaN/NaN NaN:NaN". Tratamos as três formas
+// possíveis: epoch-segundos, "YYYY-MM-DD HH:MM:SS" e ISO já pronta.
 function timestamp(v) {
   if (v == null || v === '') return null;
-  const value = String(v);
-  return /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(\.\d+)?$/.test(value)
-    ? value.replace(' ', 'T') + 'Z'
-    : value;
+  const value = String(v).trim();
+  // 1) epoch em segundos (inteiro ou decimal) — formato do BigQuery REST
+  if (/^\d+(\.\d+)?$/.test(value)) {
+    const ms = Math.round(parseFloat(value) * 1000);
+    const d = new Date(ms);
+    return Number.isNaN(d.getTime()) ? null : d.toISOString();
+  }
+  // 2) "YYYY-MM-DD HH:MM:SS[.ffffff]" (sem timezone) — assume UTC
+  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(\.\d+)?$/.test(value)) {
+    const d = new Date(value.replace(' ', 'T') + 'Z');
+    return Number.isNaN(d.getTime()) ? null : d.toISOString();
+  }
+  // 3) já é ISO 8601 (com T e/ou timezone) — valida e devolve normalizada
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
 }
 
 function buildHistoryPayload(rows, dealRows, since, until, historySince, sqlSummaryRows = []) {
@@ -39,17 +64,18 @@ function buildHistoryPayload(rows, dealRows, since, until, historySince, sqlSumm
     meetings_total: num(r.meetings_total),
     sql_deals: 0,
     refreshed_at: timestamp(r.refreshed_at),
-  }));
+  })).filter((row) => isTeamMember(row.owner_name));
   const sqlDeals = dealRows.map((r) => ({
     deal_id: str(r.deal_id),
     bdr: canonicalizeBdrName(r.bdr),
     sql_date: ymd(r.sql_date),
     deal_stage_id: str(r.deal_stage_id),
-  }));
+  })).filter((row) => isTeamMember(row.bdr));
   const dailyByKey = new Map(dailyRows.map((row) => [`${row.metric_date}|${row.owner_name}`, row]));
   sqlSummaryRows.forEach((summary) => {
     const sqlDate = ymd(summary.metric_date);
     const bdr = canonicalizeBdrName(summary.owner_name);
+    if (!isTeamMember(bdr)) return;
     const key = `${sqlDate}|${bdr}`;
     let row = dailyByKey.get(key);
     if (!row) {
@@ -176,4 +202,4 @@ module.exports = async function handler(req, res) {
   }
 };
 
-module.exports._test = { buildHistoryPayload, parseDate, inclusiveDays, iso, addDays };
+module.exports._test = { buildHistoryPayload, parseDate, inclusiveDays, iso, addDays, timestamp };
