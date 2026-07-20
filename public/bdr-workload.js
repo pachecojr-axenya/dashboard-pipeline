@@ -262,6 +262,7 @@ var WorkloadBDR = (function () {
     if (!historyAvailable()) return includeLiveToday ? aggregateActsByDay(acts, since, until, onlyBusinessDays) : out;
     history.dailyRows.forEach(function (r) {
       var key = r.metric_date;
+      if (state.bdr && r.owner_name !== state.bdr) return;
       if (!by[key] || (includeLiveToday && key === todayIso)) return;
       by[key].calls += r.calls_total || 0;
       by[key].emails += r.emails_sent_total || 0;
