@@ -1,5 +1,54 @@
 # Dashboard Enhancement Loop — Status Log
 
+### 🚀 BDR | Treble → Data Warehouse migration (2026-07-20)
+
+> **Objetivo:** Migrar fonte do dashboard `/novo-bdr/treble` de **API REST** (100+ chamadas, 30-60s) para **Treble Data Warehouse (ClickHouse)** (1-5 queries, < 5s).
+
+**Criados:**
+- `api/bdr-treble-dw.js`: endpoint novo usando ClickHouse HTTP API
+- Queries: funil principal, por flow, por BDR, falhas, sessões
+- Fallback automático: se DW falhar, usa API REST original
+
+**Modificados:**
+- `public/bdr-treble.js`: tenta DW primeiro, fallback para API REST
+- Compatibilidade: converte formato DW para estrutura esperada pelo frontend
+
+**Arquitetura:**
+```
+Browser → /api/bdr-treble-dw (ClickHouse) → fallback → /api/bdr-treble (API REST)
+```
+
+**Variáveis de ambiente necessárias (produção):**
+- `TREBLE_WAREHOUSE_HOST`
+- `TREBLE_WAREHOUSE_USER`
+- `TREBLE_WAREHOUSE_PASSWORD`
+- `TREBLE_WAREHOUSE_PORT` (default: 8443)
+- `TREBLE_WAREHOUSE_DATABASE` (default: client_analytics)
+
+**Spec completa:** `15_Workspaces/Treble_Data_Warehouse/docs/DASHBOARD_MIGRATION_SPEC.md`
+
+---
+
+### 🚀 Forecast Delta | Toggle I/G + "saiu = Perdido" + card fotografia de hoje (2026-07-20)
+
+> **Pedido do Samuel:** 3 fixes no `/forecast-delta`:
+
+- **Toggle Implantação/Ganho:** novo segmented control "Implantação/Ganho [Excluir|Incluir]" filtra estágios fechados do escopo. Default **Excluir**. Backend aceita `includeClosedStages=0|1` em `action=compare` e `compare-drill`. Quando excluídos, Ganho e Implantação não entram em waterfall, KPIs, funil, stageUnified, quarters nem drills.
+- **"Saiu" só conta Perdido:** na tabela "Visão unificada por etapa", a coluna nova **"Novo / Perdido"** mostra `+N / -M` onde `+N` = deals que entraram na etapa e `-M` = deals que saíram PARA PERDIDO. Deals que saíram para **Ganho** são classificados como `ganho` (tag teal) no drill e **não entram** na contagem de "Perdido".
+- **Fotografia de hoje:** card "Fotografia de hoje do forecast" (ou "Fotografia selecionada (B)" se a foto B for antiga) mostra KPIs da foto B: Deals, Vidas, ARR Total, ARR Ponderado, TCV 12M. Título muda automaticamente se `resolvedTab == hoje BRT`.
+
+**Arquivos alterados:**
+
+- `lib/forecast-compute.js`: adicionados `CLOSED_STAGES`, `excludeClosedStages()`, `stageUnified()` recebe `rawBStageById` e retorna `movement: {novos, caiuPerdido, saiuGanhoIgnorado}`, `drillGeneric()` e `drillRow()` classificam `tipo = 'ganho'` quando destino é Ganho.
+- `api/history.js`: `action=compare` e `compare-drill` aceitam `includeClosedStages`, aplicam filtro antes do compute, passam `rawBStageById` para `stageUnified`.
+- `public/forecast-delta.html`: toggle "Implantação/Ganho", card de fotografia, tabela stageUnified com coluna "Novo / Perdido", CSS `.tag.ganho`, tipo `ganho` no drill.
+
+**Testes:** `test-delta-invariant.js` PASS (13 checks), `test-forecast-delta-e2e.js` PASS (22 checks), `_check-inline-js` 0 erros. Syntax check OK.
+
+**Estado da automação BQ:** cron `59 2 * * *` ativo em `vercel.json`,endpoint `/api/snapshot` grava `forecast_snapshots_daily` todo dia às 23:59 BRT. STATUS_LOG 16/07 confirma backfill até 16/07 e automação funcionando. Para verificar última foto em PRD, chamar autenticado: `/api/history?action=fotos&cadence=daily` — deve retornar `source: "bq"` e `fotos[0].tab` com a data mais recente.
+
+---
+
 ### 🚀 BDR No Show | integridade métrica, evals e telemetria em produção (2026-07-20)
 
 > PR **#5** mergeada no commit **`9cc106c`** e deploy canônico concluído em `dashboard-axenya`: `dashboard-axenya-z1kkudsji-axenya-f1a041f6.vercel.app`, aliado a `project-bsmfu.vercel.app` e `axenya-pipeline-dashboard.vercel.app`. O gráfico usa os 13 BDRs do roster sem fallback para AE, incidência sobre desfechos conhecidos + cobertura, média móvel ponderada de 4 semanas, lacunas sem amostra e eixo 0–100%. Fora SLA agora é backlog aberto e reconcilia com a tabela operacional. Gate integrado em `npm run gate:no-show` grava telemetria agregada sem PII em `80_System/Telemetry/no_show_release_gate.jsonl`. Evidências: gate `df4ef02284d80e31507f2269c8b6945fdc33371ae27bbdabf06f38d67559f1f3`, predeploy `63d38cb1720d4adf5d495f7aede9a0cc82b17637304abe57159915f732b3d0a0`, smoke estático de produção `c99778c1dd8c28dcc2851d32f91f2d17a9384d7b578d6c20d58deeab4a26f5f5`.

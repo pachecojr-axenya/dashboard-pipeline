@@ -325,11 +325,69 @@
 
   var api = {
     load: function (refresh) {
-      setState('loading', 'Carregando Treble', 'Buscando flows, sessões e histórico diretamente na API Treble');
-      var url = '/api/bdr-treble?days=' + encodeURIComponent(state.filters.days || '90') + (refresh ? '&refresh=true' : '');
-      fetch(url, { credentials: 'include' }).then(function (r) { if (!r.ok) throw new Error(r.status === 401 ? 'Não autorizado. Faça login novamente.' : 'Erro HTTP ' + r.status); return r.json(); })
-        .then(function (json) { if (!json.success) throw new Error(json.error || 'Resposta inválida'); state.raw = json; state.rows = json.messages || []; render(); })
-        .catch(function (e) { setState('error', 'Erro ao carregar Treble', e.message || 'Falha desconhecida.'); });
+      setState('loading', 'Carregando Treble', 'Buscando dados do Treble Data Warehouse');
+      // Try Data Warehouse endpoint first (faster, 1 query vs 100+ API calls)
+      var dwUrl = '/api/bdr-treble-dw?days=' + encodeURIComponent(state.filters.days || '30');
+      var fallbackUrl = '/api/bdr-treble?days=' + encodeURIComponent(state.filters.days || '90') + (refresh ? '&refresh=true' : '');
+      
+      fetch(dwUrl, { credentials: 'include' }).then(function (r) {
+        if (!r.ok) {
+          // Fallback to original API if DW fails
+          console.log('[bdr-treble] DW endpoint failed, falling back to API REST');
+          return fetch(fallbackUrl, { credentials: 'include' }).then(function (r2) {
+            if (!r2.ok) throw new Error(r2.status === 401 ? 'Não autorizado. Faça login novamente.' : 'Erro HTTP ' + r2.status);
+            return r2.json();
+          });
+        }
+        return r.json();
+      })
+      .then(function (json) {
+        if (!json.success && json.error === 'data_warehouse_error') {
+          // DW error, try fallback
+          console.log('[bdr-treble] DW error, falling back to API REST');
+          return fetch(fallbackUrl, { credentials: 'include' }).then(function (r) {
+            if (!r.ok) throw new Error(r.status === 401 ? 'Não autorizado. Faça login novamente.' : 'Erro HTTP ' + r.status);
+            return r.json();
+          });
+        }
+        if (!json.success) throw new Error(json.error || json.message || 'Resposta inválida');
+        return json;
+      })
+      .then(function (json) {
+        state.raw = json;
+        // DW returns different structure than API REST
+        if (json.source === 'treble_data_warehouse') {
+          // Convert DW format to expected format for compatibility
+          state.rows = (json.byFlow || []).map(function(f) {
+            return {
+              flow: f.flow,
+              bdr: f.bdr,
+              family: f.family,
+              audience: f.audience,
+              sent: f.enviadas > 0,
+              delivered: f.entregues > 0,
+              read: f.lidas > 0,
+              replied: f.respondidas > 0,
+              reason: f.entregues > 0 ? (f.respondidas > 0 ? 'responded' : 'read_no_reply') : 'not_delivered',
+              reasonLabel: f.entregues > 0 ? (f.respondidas > 0 ? 'Respondeu' : 'Lida, sem resposta') : 'Sem evidência de entrega',
+              severity: f.entregues > 0 ? (f.respondidas > 0 ? 'success' : 'warning') : 'danger',
+              action: f.entregues > 0 ? 'Replicar abordagem' : 'Verificar HSM, número, opt-in',
+              createdAt: f.flow, // for display
+              person: 'Pessoa anonimizada',
+              bdrSource: 'Inferido do nome do flow',
+              semanticGroup: f.family + ' | ' + f.audience,
+              nonDeliveryReason: '',
+              copy: ''
+            };
+          });
+          state.dwMode = true;
+        } else {
+          state.rows = json.messages || [];
+          state.dwMode = false;
+        }
+        render();
+      })
+      .catch(function (e) { setState('error', 'Erro ao carregar Treble', e.message || 'Falha desconhecida.'); });
     },
     tab: function (name) { state.tab = name; render(); },
     toggleTheme: function () { var html = document.documentElement; var light = html.getAttribute('data-theme') === 'light'; html.setAttribute('data-theme', light ? 'dark' : 'light'); try { localStorage.setItem('axenya_theme', light ? 'dark' : 'light'); } catch (e) {} },
