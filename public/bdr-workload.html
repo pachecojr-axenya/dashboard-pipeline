@@ -133,7 +133,7 @@
     </header>
 
     <main class="wrap">
-      <section class="note"><b>Memória de cálculo:</b> universo = contatos e empresas com dono no time de BDRs | inserção = <code>createdate</code> na janela (Apollo e Lusha = push do próprio BDR via extensão | API interna = automação, não é trabalho de BDR) | movimentação = transição de <code>hs_lead_status</code> no histórico nativo do HubSpot | contato efetivo = CONNECTED | qualificado = OPEN_DEAL | desqualificado = UNQUALIFIED | timing ruim = BAD_TIMING | atividades = engagements (ligações, e-mails, WhatsApp, notas, tarefas, reuniões) com <code>hs_timestamp</code> na janela | ligação com conversa = duração ≥ 1 min | todo KPI clicável abre a lista nominal que ele conta.</section>
+      <section class="note"><b>Memória de cálculo:</b> universo = contatos e empresas com dono no time de BDRs | inserção = <code>createdate</code> na janela | movimentação = histórico de <code>hs_lead_status</code> | contato efetivo = CONNECTED | SQL real = deal registrado na tabela silver do BigQuery | ritmo real = ligações, e-mails enviados, WhatsApp, LinkedIn enviado e reuniões; notas e tarefas ficam fora | ligação com conversa = duração ≥ 1 min | todo KPI clicável abre a lista nominal que ele conta.</section>
 
       <section class="filters" id="filters"></section>
       <section id="state" class="state"><div class="spinner"></div><strong>Carregando dados</strong>Buscando /api/bdr-workload</section>
@@ -163,6 +163,6 @@
     window.addEventListener('scroll',function(){var h=document.getElementById('topbar');if(h)h.classList.toggle('scrolled',window.scrollY>8);});
     window.addEventListener('DOMContentLoaded',function(){try{if(localStorage.getItem('novo_nav_open')==='true'&&!window.matchMedia('(max-width:820px)').matches)openDrawer();}catch(e){}});
   </script>
-  <script src="/bdr-workload.js?v=4"></script>
+  <script src="/bdr-workload.js?v=5"></script>
 </body>
 </html>

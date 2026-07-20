@@ -342,22 +342,9 @@ var WorkloadBDR = (function () {
   }
 
   function chartFonteResultado(comps, conts, trans) {
-    if (!historyAvailable()) return '<div class="story-grid"><div class="story-card"><b>Correlação fonte → resultado</b><span>Insight indisponível: SQL real por deal depende do histórico BigQuery.</span></div></div>';
-    var by = {};
-    raw.team.forEach(function (b) { by[b] = { apollo: 0, total: 0, qual: 0 }; });
-    comps.concat(conts).forEach(function (x) { if (by[x.bdr]) { by[x.bdr].total++; if (x.fonte === 'Apollo') by[x.bdr].apollo++; } });
-    fSqlDeals().forEach(function (d) { if (by[d.bdr]) by[d.bdr].qual++; });
-    var rows = Object.keys(by).filter(function (b) { return by[b].total || by[b].qual; });
-    if (!rows.length) return '';
-    var avgApollo = rows.reduce(function (s, b) { return s + (by[b].total ? by[b].apollo / by[b].total : 0); }, 0) / rows.length;
-    var high = rows.filter(function (b) { return by[b].total && by[b].apollo / by[b].total >= avgApollo; });
-    var low = rows.filter(function (b) { return high.indexOf(b) < 0; });
-    function rate(list) { var q = 0, t = 0; list.forEach(function (b) { q += by[b].qual; t += by[b].total; }); return t ? q / t : 0; }
-    var rh = rate(high), rl = rate(low), teamRate = rate(rows);
-    var delta = rl ? Math.round((rh - rl) / rl * 100) : (rh ? 100 : 0);
-    return '<div class="story-grid"><div class="story-card"><b>Correlação fonte → resultado</b><span>BDRs com maior uso de Apollo têm taxa de SQL real de <b>' + Math.round(rh * 100) + '%</b> vs <b>' + Math.round(rl * 100) + '%</b> no grupo de menor uso.</span></div>' +
-      '<div class="story-card"><b>Insight MBB</b><span>Diferença estimada: <b>' + (delta > 0 ? '+' : '') + delta + '%</b> sobre o grupo de baixa Apollo. Leitura: fonte parece influenciar qualidade, mas precisa validar mix de porte/persona.</span></div>' +
-      '<div class="story-card"><b>Ação sugerida</b><span>Replicar cadência dos BDRs de alto Apollo e auditar se o ganho vem da fonte ou da disciplina de follow-up. Média do time: <b>' + Math.round(teamRate * 100) + '%</b>.</span></div></div>';
+    return '<div class="story-grid"><div class="story-card"><b>Fonte → resultado | leitura suspensa</b><span>Não exibimos correlação Apollo → SQL sem coorte que associe cada deal à fonte, porte e persona do lead. O gráfico de fonte abaixo permanece apenas descritivo.</span></div>' +
+      '<div class="story-card"><b>Por que</b><span>Somar empresas e contatos cria denominador heterogêneo; comparar BDRs sem controlar mix gera conclusão enganosa.</span></div>' +
+      '<div class="story-card"><b>Próximo gate</b><span>Construir coorte contato → deal SQL, controlar porte/persona e mostrar tamanho da amostra antes de calcular qualquer delta.</span></div></div>';
   }
 
   function chartPorBdr(comps, conts, trans) {
@@ -683,7 +670,7 @@ var WorkloadBDR = (function () {
       ['Atividades', 'Engagements do HubSpot (calls, emails, communications, notes, tasks, meetings) com hs_timestamp na janela e dono no time. Ligação com conversa = duração ≥ 1 min (proxy; discagens não atendidas têm duração 0). WhatsApp = communications com canal WHATS_APP (captura Treble). Janelas muito longas podem truncar em 9.800 registros por tipo — a página avisa quando o teto é atingido.'],
       ['Ritmo Real de Atividades', 'Stacked area por dia útil (toggle permite incluir fins de semana). Hoje usa HubSpot live; datas anteriores usam histórico BigQuery. Dias sem linha no histórico disponível são tratados como 0 registrado.'],
       ['Comparativos WoW/MoM', 'WoW compara a semana que termina no fim da janela contra os 7 dias anteriores, respeitando o filtro de dias úteis. MoM usa o período anterior equivalente ao tamanho da janela visível. Sem histórico BigQuery, comparativos ficam indisponíveis.'],
-      ['Fonte → Resultado', 'Compara BDRs acima vs abaixo da média de uso de Apollo e calcula taxa de SQL real (deals SQL ÷ inserções). É insight correlacional, não causal; exige controlar porte/persona e disciplina de follow-up.'],
+      ['Fonte → Resultado', 'Leitura suspensa até existir coorte contato → deal SQL com controle de porte, persona e tamanho da amostra. Fonte é exibida apenas de forma descritiva.'],
       ['Freshness', renderFreshness() + '. Se o BigQuery estiver defasado, a página exibe banner de stale.'],
       ['Limitações declaradas', 'Motivo de desqualificação ainda não existe como propriedade no HubSpot (pendência da spec outbound-hubspot-first). Filtro de fonte não se aplica a movimentações (movimentação não tem fonte de criação). Ligações e e-mails mal registrados não aparecem | o proxy de primeiro retorno é a transição para Contato efetivo.'], 
       ['Reconciliação', 'Todo KPI clicável abre a tabela nominal com exatamente as mesmas linhas contadas no número. A soma dos pequenos é o todo.'],

@@ -20,6 +20,7 @@ async function getJson(base, path) {
   const base = arg('--base-url', 'http://localhost:3003').replace(/\/+$/, '');
   const since = arg('--since', today());
   const until = arg('--until', today());
+  const bdr = arg('--bdr', '');
   const live = await getJson(base, '/api/bdr-workload?since=' + since + '&until=' + until + '&refresh=1');
   const hist = await getJson(base, '/api/bdr-workload-history?since=' + since + '&until=' + until);
   assert(Array.isArray(live.activities), 'live.activities array');
@@ -27,9 +28,20 @@ async function getJson(base, path) {
   assert.strictEqual(hist.source, 'bigquery');
   assert(Array.isArray(hist.dailyRows), 'history dailyRows array');
   assert(Array.isArray(hist.sqlDeals), 'history sqlDeals array');
+  hist.dailyRows.forEach((row) => {
+    const strictTotal = Number(row.calls_total || 0) + Number(row.emails_sent_total || 0) +
+      Number(row.whatsapp_total || 0) + Number(row.linkedin_total || 0) + Number(row.meetings_total || 0);
+    assert.strictEqual(Number(row.activities_total || 0), strictTotal, 'activities_total deve ser soma MECE das cinco categorias');
+  });
   const dailySql = hist.dailyRows.filter((r) => r.metric_date >= since && r.metric_date <= until).reduce((s, r) => s + Number(r.sql_deals || 0), 0);
   assert.strictEqual(hist.sqlDeals.length, dailySql, 'sqlDeals deve reconciliar com soma diária da janela');
   assert(hist.metadata && hist.metadata.reconciliation && hist.metadata.reconciliation.matches === true, 'metadata reconciliation deve passar');
   assert(!hasPII(hist), 'history não deve conter PII');
+  if (bdr) {
+    const liveByBdr = live.activities.filter((row) => row.bdr === bdr);
+    const historyByBdr = hist.dailyRows.filter((row) => row.owner_name === bdr && row.metric_date >= since && row.metric_date <= until);
+    assert(liveByBdr.length > 0, 'esperado live activities >0 para ' + bdr);
+    assert(historyByBdr.some((row) => Number(row.activities_total) > 0), 'esperado histórico estrito >0 para ' + bdr);
+  }
   console.log('smoke-bdr-workload ok', JSON.stringify({ liveActivities: live.activities.length, sqlDeals: hist.sqlDeals.length, source: hist.source }));
 })().catch((e) => { console.error(e.message); process.exit(1); });

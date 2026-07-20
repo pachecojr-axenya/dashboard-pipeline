@@ -19,6 +19,9 @@ Recurring every 20min (job `55d3b136`). Purpose: identify and close gaps so the 
 - KPI principal vira **SQL real (deals)**; `OPEN_DEAL` fica como proxy secundário. Comparativos usam período anterior equivalente via série estendida do BigQuery.
 - Smokes autenticados locais contra fontes reais: 14–20/07 = 12 SQLs reconciliados e 6.089+ atividades live; 20/07 = 2 SQLs e 1.216+ atividades live. Produção: HTML/JS 200 nos aliases `axenya-pipeline-dashboard` e `project-bsmfu`; API sem sessão 401 (auth ativa). Status permanece 🟡 até confirmação visual autenticada no navegador de produção.
 - Scheduler GCP corrigido de um snapshot único às 08:00 para checkpoints às 08:00, 12:00, 16:00 e 20:00 BRT em dias úteis. Execução manual pós-ajuste concluiu com sucesso; BQ passou a registrar 2 SQLs e 286 atividades no snapshot de 20/07 às 16:30 UTC. Hoje no gráfico continua HubSpot live.
+- **Incidente de cobertura por owner:** o job ainda usava 8 IDs antigos. Thauan tinha 909 atividades live/7D e zero no BQ. Job atualizado para 14 owner IDs dos 13 BDRs vigentes, imagem versionada com timezone `America/Sao_Paulo` e backfill de 365 dias reexecutado.
+- **Auditoria 60D:** silver cobre 22/05–20/07; único dia sem linha no time foi domingo 19/07. Para Thauan, BQ vs HubSpot reconciliou exatamente chamadas 510, e-mails enviados 1.174, WhatsApp 220, LinkedIn 128 e reuniões 12. Nos 13 BDRs × 4 canais comparáveis, 40/52 pares foram exatos e os demais tiveram delta absoluto máximo 3 por atualização/deleção entre snapshot e consulta live.
+- **MECE/MBB:** histórico passa a agregar objetos reais diretamente da silver, excluindo notas, tarefas e `Task LinkedIn`; `activities_total` é a soma das cinco categorias. A correlação Apollo → SQL foi suspensa até existir coorte contato→deal com controle de porte/persona e amostra explícita.
 
 ---
 

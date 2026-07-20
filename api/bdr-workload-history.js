@@ -27,7 +27,7 @@ function timestamp(v) {
     : value;
 }
 
-function buildHistoryPayload(rows, dealRows, since, until, historySince) {
+function buildHistoryPayload(rows, dealRows, since, until, historySince, sqlSummaryRows = []) {
   const dailyRows = rows.map((r) => ({
     metric_date: ymd(r.metric_date),
     owner_name: canonicalizeBdrName(r.owner_name),
@@ -37,7 +37,7 @@ function buildHistoryPayload(rows, dealRows, since, until, historySince) {
     whatsapp_total: num(r.whatsapp_total),
     linkedin_total: num(r.linkedin_total),
     meetings_total: num(r.meetings_total),
-    sql_deals: num(r.sql_deals),
+    sql_deals: 0,
     refreshed_at: timestamp(r.refreshed_at),
   }));
   const sqlDeals = dealRows.map((r) => ({
@@ -46,6 +46,32 @@ function buildHistoryPayload(rows, dealRows, since, until, historySince) {
     sql_date: ymd(r.sql_date),
     deal_stage_id: str(r.deal_stage_id),
   }));
+  const dailyByKey = new Map(dailyRows.map((row) => [`${row.metric_date}|${row.owner_name}`, row]));
+  sqlSummaryRows.forEach((summary) => {
+    const sqlDate = ymd(summary.metric_date);
+    const bdr = canonicalizeBdrName(summary.owner_name);
+    const key = `${sqlDate}|${bdr}`;
+    let row = dailyByKey.get(key);
+    if (!row) {
+      row = {
+        metric_date: sqlDate,
+        owner_name: bdr,
+        activities_total: 0,
+        calls_total: 0,
+        emails_sent_total: 0,
+        whatsapp_total: 0,
+        linkedin_total: 0,
+        meetings_total: 0,
+        sql_deals: 0,
+        refreshed_at: timestamp(summary.refreshed_at),
+      };
+      dailyRows.push(row);
+      dailyByKey.set(key, row);
+    }
+    row.sql_deals += num(summary.sql_deals);
+    if (!row.refreshed_at) row.refreshed_at = timestamp(summary.refreshed_at);
+  });
+  dailyRows.sort((a, b) => a.metric_date.localeCompare(b.metric_date) || String(a.owner_name).localeCompare(String(b.owner_name)));
   const maxDate = dailyRows.reduce((m, r) => (!m || r.metric_date > m ? r.metric_date : m), null);
   const maxRefreshedAt = dailyRows.reduce((m, r) => (!m || (r.refreshed_at && r.refreshed_at > m) ? r.refreshed_at : m), null);
   const dailySqlSum = dailyRows
@@ -88,11 +114,24 @@ async function fetchHistory(since, until) {
   }
   const historySince = iso(addDays(s, -inclusiveDays(s, u)));
   const dailySql = `
-    SELECT metric_date, owner_name,
-      activities_total, calls_total, emails_sent_total, whatsapp_total,
-      linkedin_total, meetings_total, sql_deals, refreshed_at
-    FROM \`${PROJECT}.${GOLD}.bdr_daily_ops\`
-    WHERE metric_date BETWEEN @historySince AND @until
+    SELECT
+      activity_date AS metric_date,
+      owner_name,
+      COUNT(DISTINCT IF(
+        activity_object IN ('calls', 'meetings')
+        OR (activity_object = 'emails' AND UPPER(COALESCE(email_direction, '')) != 'INCOMING_EMAIL')
+        OR (activity_object = 'communications' AND UPPER(COALESCE(communication_channel_type, '')) IN ('WHATS_APP', 'LINKEDIN_MESSAGE')),
+        activity_id, NULL
+      )) AS activities_total,
+      COUNT(DISTINCT IF(activity_object = 'calls', activity_id, NULL)) AS calls_total,
+      COUNT(DISTINCT IF(activity_object = 'emails' AND UPPER(COALESCE(email_direction, '')) != 'INCOMING_EMAIL', activity_id, NULL)) AS emails_sent_total,
+      COUNT(DISTINCT IF(activity_object = 'communications' AND UPPER(COALESCE(communication_channel_type, '')) = 'WHATS_APP', activity_id, NULL)) AS whatsapp_total,
+      COUNT(DISTINCT IF(activity_object = 'communications' AND UPPER(COALESCE(communication_channel_type, '')) = 'LINKEDIN_MESSAGE', activity_id, NULL)) AS linkedin_total,
+      COUNT(DISTINCT IF(activity_object = 'meetings', activity_id, NULL)) AS meetings_total,
+      MAX(ingested_at) AS refreshed_at
+    FROM \`${PROJECT}.${SILVER}.activities\`
+    WHERE activity_date BETWEEN @historySince AND @until
+    GROUP BY activity_date, owner_name
     ORDER BY metric_date ASC, owner_name ASC`;
   const dealsSql = `
     SELECT deal_id, owner_name AS bdr, sql_date, deal_stage_id
@@ -104,13 +143,23 @@ async function fetchHistory(since, until) {
     )
     WHERE rn = 1
     ORDER BY sql_date ASC, bdr ASC, deal_id ASC`;
+  const sqlSummarySql = `
+    SELECT metric_date, owner_name, SUM(sql_deals) AS sql_deals, MAX(refreshed_at) AS refreshed_at
+    FROM \`${PROJECT}.${GOLD}.bdr_daily_ops\`
+    WHERE metric_date BETWEEN @historySince AND @until
+    GROUP BY metric_date, owner_name
+    ORDER BY metric_date ASC, owner_name ASC`;
   const params = [
     { name: 'historySince', type: 'DATE', value: historySince },
     { name: 'since', type: 'DATE', value: since },
     { name: 'until', type: 'DATE', value: until },
   ];
-  const [daily, deals] = await Promise.all([bq.query(dailySql, params), bq.query(dealsSql, params)]);
-  return buildHistoryPayload(daily.rows, deals.rows, since, until, historySince);
+  const [daily, deals, sqlSummary] = await Promise.all([
+    bq.query(dailySql, params),
+    bq.query(dealsSql, params),
+    bq.query(sqlSummarySql, params),
+  ]);
+  return buildHistoryPayload(daily.rows, deals.rows, since, until, historySince, sqlSummary.rows);
 }
 
 module.exports = async function handler(req, res) {
