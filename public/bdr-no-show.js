@@ -428,6 +428,18 @@
   }
 
   function renderRateTrend(rows, m) {
+    // Filtros de visualização
+    var filters = [
+      { key: 'all', label: 'Todos' },
+      { key: 'bdr', label: 'Por BDR' },
+      { key: 'origem', label: 'Por canal' },
+      { key: 'porte', label: 'Por porte' }
+    ];
+    var filterBtns = filters.map(function (f) {
+      return '<button type="button" class="rate-filter-btn' + (f.key === 'all' ? ' active' : '') + '" data-rate-filter="' + f.key + '">' + esc(f.label) + '</button>';
+    }).join('');
+    
+    // Dados agregados por semana
     var g = group(rows.filter(function (r) { return r.meetingDate; }), 'week');
     var keys = Object.keys(g).sort().slice(-16);
     var rates = keys.map(function (k) {
@@ -435,6 +447,7 @@
       var ns = arr.filter(function (r) { return r.noShow; }).length;
       return arr.length ? ns / arr.length : 0;
     });
+    
     // Escala dinâmica: teto + 25% de margem, mínimo 10%
     var maxRate = Math.max.apply(null, rates);
     var max = Math.max(0.1, Math.ceil(maxRate * 1.25 * 10) / 10);
@@ -444,6 +457,7 @@
       var y = h - p - Math.round(r / max * (h - p * 2));
       return x + ',' + y;
     }).join(' ');
+    
     // Rotular apenas 1 a cada N semanas para não sobrepor
     var labelStep = Math.ceil(keys.length / 8);
     var labels = keys.map(function (k, i) {
@@ -456,6 +470,7 @@
       var y = h - p - Math.round(r / max * (h - p * 2)) - 8;
       return '<text x="' + x + '" y="' + y + '" text-anchor="middle" fill="var(--text)" font-size="11" font-weight="600">' + fmtPct(r) + '</text>';
     }).join('');
+    
     // Título como conclusão (tendência)
     var trendText = 'Taxa estável';
     if (rates.length >= 2) {
@@ -465,8 +480,67 @@
       else if (last > prev + 0.02) trendText = 'Taxa subindo: ' + fmtPct(prev) + ' → ' + fmtPct(last);
       else trendText = 'Taxa estável em ' + fmtPct(last);
     }
+    
     var svg = keys.length ? '<svg class="line-svg" viewBox="0 0 ' + w + ' ' + h + '" role="img" aria-label="Taxa de no-show semanal"><line x1="' + p + '" y1="30" x2="' + p + '" y2="' + (h - p) + '" stroke="var(--border)" stroke-width="1"/><line x1="' + p + '" y1="' + (h - p) + '" x2="' + (w - 20) + '" y2="' + (h - p) + '" stroke="var(--border)" stroke-width="1"/><text x="8" y="34" fill="var(--muted)" font-size="11">' + fmtPct(max) + '</text><text x="18" y="' + (h - 8) + '" fill="var(--muted)" font-size="11">0%</text><polyline class="ln" style="stroke:var(--red);stroke-width:3" points="' + points + '"/>' + rateLabels + labels + '</svg>' : '<div class="muted">Sem semanas com reunião no filtro atual</div>';
-    return '<div class="card span-12"><div class="card-title"><div><h2>' + esc(trendText) + '</h2></div>' + infoBtn('rateTrend') + '</div><div class="trend line-chart clickable" data-drill="timeline" data-hover-title="Taxa de no-show" data-hover-text="Clique para abrir a tabela semanal com volumes e taxas.">' + svg + '</div></div>';
+    
+    return '<div class="card span-12"><div class="card-title"><div><h2>' + esc(trendText) + '</h2></div>' + infoBtn('rateTrend') + '</div><div class="rate-filters">' + filterBtns + '</div><div class="trend line-chart clickable" data-drill="timeline" data-hover-title="Taxa de no-show" data-hover-text="Clique para abrir a tabela semanal com volumes e taxas.">' + svg + '</div><div id="rate-legend" class="rate-legend"></div></div>';
+  }
+  
+  // Dados para filtros de taxa (cache)
+  var rateFilterData = { all: null, bdr: null, origem: null, porte: null };
+  
+  function buildRateFilterData(rows) {
+    var weeks = {};
+    rows.filter(function (r) { return r.meetingDate; }).forEach(function (r) {
+      if (!weeks[r.week]) weeks[r.week] = { all: [], bdr: {}, origem: {}, porte: {} };
+      weeks[r.week].all.push(r);
+      if (r.bdr) { if (!weeks[r.week].bdr[r.bdr]) weeks[r.week].bdr[r.bdr] = []; weeks[r.week].bdr[r.bdr].push(r); }
+      if (r.origem) { if (!weeks[r.week].origem[r.origem]) weeks[r.week].origem[r.origem] = []; weeks[r.week].origem[r.origem].push(r); }
+      if (r.porte) { if (!weeks[r.week].porte[r.porte]) weeks[r.week].porte[r.porte] = []; weeks[r.week].porte[r.porte].push(r); }
+    });
+    return weeks;
+  }
+  
+  function renderRateLegend(filterKey, rows) {
+    var legendEl = $('rate-legend');
+    if (!legendEl) return;
+    
+    if (filterKey === 'all') {
+      legendEl.innerHTML = '<span class="rate-legend-item"><span class="rate-legend-dot" style="background:var(--red)"></span>Taxa de no-show geral</span>';
+      return;
+    }
+    
+    // Calcular taxa média por dimensão
+    var dimKey = filterKey;
+    var totals = {};
+    var noShows = {};
+    rows.forEach(function (r) {
+      var dimVal = r[dimKey] || 'Não informado';
+      totals[dimVal] = (totals[dimVal] || 0) + 1;
+      if (r.noShow) noShows[dimVal] = (noShows[dimVal] || 0) + 1;
+    });
+    
+    var items = Object.keys(totals).map(function (k) {
+      return { name: k, total: totals[k], ns: noShows[k] || 0, rate: (noShows[k] || 0) / totals[k] };
+    }).sort(function (a, b) { return b.ns - a.ns || b.rate - a.rate; }).slice(0, 6);
+    
+    var colors = ['#f85149', '#e3b341', '#3ab8b7', '#3fb950', '#a371f7', '#79c0ff'];
+    legendEl.innerHTML = items.map(function (item, idx) {
+      return '<span class="rate-legend-item" data-filter-key="' + esc(filterKey) + '" data-filter-val="' + esc(item.name) + '"><span class="rate-legend-dot" style="background:' + colors[idx % colors.length] + '"></span>' + esc(item.name) + ' (' + fmtPct(item.rate) + ')</span>';
+    }).join('');
+    
+    // Adicionar click para filtrar
+    var legendItems = legendEl.querySelectorAll('[data-filter-val]');
+    for (var i = 0; i < legendItems.length; i += 1) legendItems[i].onclick = function () {
+      var key = this.getAttribute('data-filter-key');
+      var val = this.getAttribute('data-filter-val');
+      openDealsNoShow(val, key, rows);
+    };
+  }
+  
+  function openDealsNoShow(title, key, rows) {
+    var filtered = state.filtered.filter(function (r) { return r[key] === title && r.noShow; });
+    openDeals(title, filtered);
   }
 
   function rankRows(rows, key, mode) {
@@ -801,10 +875,26 @@
     html += '<div class="grid">' + renderFieldTable(rows) + renderLostTable(rows) + '</div>';
     
     $('content').innerHTML = html;
+    
+    // Cache de dados para filtros de taxa
+    rateFilterData = buildRateFilterData(rows);
+    
     var helps = $('content').querySelectorAll('[data-help]');
     for (var i = 0; i < helps.length; i += 1) helps[i].onclick = function (ev) { ev.stopPropagation(); openHelp(this.getAttribute('data-help')); };
     var drills = $('content').querySelectorAll('[data-drill]');
     for (var d = 0; d < drills.length; d += 1) drills[d].onclick = function () { openDrill(this.getAttribute('data-drill')); };
+    
+    // Filtros de visualização do gráfico de taxa
+    var rateFilterBtns = $('content').querySelectorAll('[data-rate-filter]');
+    for (var rf = 0; rf < rateFilterBtns.length; rf += 1) rateFilterBtns[rf].onclick = function () {
+      var filterKey = this.getAttribute('data-rate-filter');
+      // Atualizar botões ativos
+      for (var j = 0; j < rateFilterBtns.length; j += 1) rateFilterBtns[j].classList.remove('active');
+      this.classList.add('active');
+      // Renderizar nova legenda
+      renderRateLegend(filterKey, rows);
+    };
+    
     var ranks = $('content').querySelectorAll('[data-rank-name]');
     for (var r = 0; r < ranks.length; r += 1) ranks[r].onclick = function () {
       var name = this.getAttribute('data-rank-name');
