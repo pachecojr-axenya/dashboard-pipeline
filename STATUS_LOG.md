@@ -1,5 +1,22 @@
 # Dashboard Enhancement Loop — Status Log
 
+### 🚀 DEPLOY DE PRODUÇÃO | BDR Treble Storytelling with Data V2 (2026-07-20)
+
+- Commit `8de1307` promovido por fast-forward para `main` e publicado no projeto
+  Vercel canônico `dashboard-axenya`.
+- Deployment `dpl_3UxaFRRHLHDBM5t8SvpLXPG7qMvQ` ficou `READY` e assumiu os aliases
+  `axenya-pipeline-dashboard.vercel.app` e `project-bsmfu.vercel.app`.
+- Entregue: filtros Hoje/Ontem/7d/30d/90d/custom, atribuição direta/inferida de
+  agente, ranking “Quem tentou enviar”, composição total/% por status bruto,
+  headline narrativa, funil com deltas, timeline acessível e Arquitetura API V2.
+- Build/deploy PASS: evidência SHA-256
+  `1b38abfb3e24064e9ba8fe90c44e2c8d75fe49a409d6a1e67955243f76f17383`.
+- Smoke produção PASS: 8 rotas 200, HTML/asset V2 ativos, APIs sem sessão em 401 e
+  variáveis DW presentes. Evidência SHA-256
+  `cb5c1d2b4677599c3cb4aa7b49dd348ab33a8d059c78492763b4df73aebacebc`.
+
+---
+
 ### 🚀 DEPLOY DE PRODUÇÃO | Forecast Delta — drawer + topbar sticky + toggles seg-ctrl + loading + filtros Executivo/Quarter (2026-07-20)
 
 > Pedidos do Pacheco: menu drawer esquerdo no /forecast-delta; visual aid de
