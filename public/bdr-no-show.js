@@ -447,7 +447,17 @@
     var svg = svgResult.svg;
     var trendText = svgResult.trendText;
     
-    return '<div class="card span-12"><div class="card-title"><div><h2 id="rate-title">' + esc(trendText) + '</h2></div>' + infoBtn('rateTrend') + '</div><div class="rate-filters">' + filterBtns + '</div><div id="rate-chart" class="trend line-chart clickable" data-drill="timeline" data-hover-title="Taxa de no-show" data-hover-text="Clique para abrir a tabela semanal com volumes e taxas.">' + svg + '</div><div id="rate-legend" class="rate-legend"></div></div>';
+    // Calcular taxa média acumulada do período
+    var totalMeetings = rows.filter(function (r) { return r.meetingDate; }).length;
+    var totalNoShows = rows.filter(function (r) { return r.noShow; }).length;
+    var avgRate = totalMeetings ? totalNoShows / totalMeetings : 0;
+    var sampleWarning = totalMeetings < 30 ? '<span class="sample-warning">⚠️ Amostra pequena (' + totalMeetings + ' reuniões). Taxas semanais podem variar muito.</span>' : '';
+    
+    // Debug info
+    var bdrCount = uniqueValues('bdr').length;
+    var debugInfo = '<div class="rate-debug">Total: ' + fmtInt(totalMeetings) + ' reuniões | ' + fmtInt(totalNoShows) + ' no-shows | Taxa média: ' + fmtPct(avgRate) + ' | BDRs ativos: ' + bdrCount + '</div>';
+    
+    return '<div class="card span-12"><div class="card-title"><div><h2 id="rate-title">' + esc(trendText) + '</h2></div>' + infoBtn('rateTrend') + '</div><div class="rate-filters">' + filterBtns + '</div><div id="rate-chart" class="trend line-chart clickable" data-drill="timeline" data-hover-title="Taxa de no-show" data-hover-text="Clique para abrir a tabela semanal com volumes e taxas.">' + svg + '</div><div id="rate-legend" class="rate-legend"></div>' + debugInfo + sampleWarning + '</div>';
   }
   
   function generateRateSvg(rows, filterKey) {
@@ -456,12 +466,14 @@
     var colors = ['#f85149', '#e3b341', '#3ab8b7', '#3fb950', '#a371f7', '#79c0ff', '#ff7b72', '#ffa657'];
     
     if (filterKey === 'all') {
-      // Linha única geral
-      var rates = keys.map(function (k) {
+      // Linha única geral - calcular taxas e volumes
+      var weekData = keys.map(function (k) {
         var arr = g[k];
         var ns = arr.filter(function (r) { return r.noShow; }).length;
-        return arr.length ? ns / arr.length : 0;
+        return { total: arr.length, noShows: ns, rate: arr.length ? ns / arr.length : 0 };
       });
+      var rates = weekData.map(function (w) { return w.rate; });
+      var volumes = weekData.map(function (w) { return w.total; });
       var maxRate = Math.max.apply(null, rates);
       var max = Math.max(0.1, Math.ceil(maxRate * 1.25 * 10) / 10);
       var w = 1100, h = 300, p = 44;
@@ -479,15 +491,23 @@
       var rateLabels = rates.map(function (r, i) {
         var x = p + Math.round(i / Math.max(1, keys.length - 1) * (w - p * 2));
         var y = h - p - Math.round(r / max * (h - p * 2)) - 8;
-        return '<text x="' + x + '" y="' + y + '" text-anchor="middle" fill="var(--text)" font-size="11" font-weight="600">' + fmtPct(r) + '</text>';
+        var vol = volumes[i];
+        // Mostra taxa + volume se for poucas reuniões (<10) ou amostra pequena
+        var label = fmtPct(r);
+        if (vol < 10) label += ' (' + vol + ')';
+        return '<text x="' + x + '" y="' + y + '" text-anchor="middle" fill="var(--text)" font-size="11" font-weight="600">' + esc(label) + '</text>';
       }).join('');
-      var trendText = 'Taxa estável';
+      // Título com taxa média acumulada
+      var totalNoShowsAll = weekData.reduce(function (s, w) { return s + w.noShows; }, 0);
+      var totalMeetingsAll = weekData.reduce(function (s, w) { return s + w.total; }, 0);
+      var avgRateAll = totalMeetingsAll ? totalNoShowsAll / totalMeetingsAll : 0;
+      var trendText = 'Taxa média: ' + fmtPct(avgRateAll) + ' (' + totalNoShowsAll + '/' + totalMeetingsAll + ')';
       if (rates.length >= 2) {
         var last = rates[rates.length - 1];
         var prev = rates[rates.length - 2];
-        if (last < prev - 0.02) trendText = 'Taxa em queda: ' + fmtPct(prev) + ' → ' + fmtPct(last);
-        else if (last > prev + 0.02) trendText = 'Taxa subindo: ' + fmtPct(prev) + ' → ' + fmtPct(last);
-        else trendText = 'Taxa estável em ' + fmtPct(last);
+        if (last < prev - 0.02) trendText = 'Taxa em queda: ' + fmtPct(prev) + ' → ' + fmtPct(last) + ' | Média: ' + fmtPct(avgRateAll);
+        else if (last > prev + 0.02) trendText = 'Taxa subindo: ' + fmtPct(prev) + ' → ' + fmtPct(last) + ' | Média: ' + fmtPct(avgRateAll);
+        else trendText = 'Taxa estável em ' + fmtPct(last) + ' | Média: ' + fmtPct(avgRateAll);
       }
       var svg = keys.length ? '<svg class="line-svg" viewBox="0 0 ' + w + ' ' + h + '" role="img" aria-label="Taxa de no-show semanal"><line x1="' + p + '" y1="30" x2="' + p + '" y2="' + (h - p) + '" stroke="var(--border)" stroke-width="1"/><line x1="' + p + '" y1="' + (h - p) + '" x2="' + (w - 20) + '" y2="' + (h - p) + '" stroke="var(--border)" stroke-width="1"/><text x="8" y="34" fill="var(--muted)" font-size="11">' + fmtPct(max) + '</text><text x="18" y="' + (h - 8) + '" fill="var(--muted)" font-size="11">0%</text><polyline class="ln" style="stroke:var(--red);stroke-width:3" points="' + points + '"/>' + rateLabels + labels + '</svg>' : '<div class="muted">Sem semanas com reunião no filtro atual</div>';
       return { svg: svg, trendText: trendText };
