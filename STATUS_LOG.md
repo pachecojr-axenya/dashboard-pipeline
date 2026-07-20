@@ -1,5 +1,24 @@
 # Dashboard Enhancement Loop — Status Log
 
+### 🚀 DEPLOY DE PRODUÇÃO | Forecast Delta — polish de CSS (menu sticky em 2 linhas + dropdowns frosted-glass + remoção card TCV) (2026-07-20)
+
+> Feedback do Pacheco no visual: mover toggles + seletores de foto pro menu sticky;
+> usar a mesma paleta/efeitos das outras páginas; remover o card TCV 12M da foto de hoje.
+
+- Topbar sticky em 2 linhas: topo (hambúrguer + panel-switcher "Comparativo" + filtros
+  Executivo/Quarter + ações) e linha de controles (Foto A/B + Medida/Horizonte/Escopo +
+  Capturar). O card de controles separado foi removido — tudo fixo no topo ao rolar.
+- Dropdowns de filtro com efeito frosted-glass (`backdrop-filter: blur` + animação
+  `fddIn`), espelhando o `panel-dd`/filtros das outras páginas.
+- `renderTodaySnapshot`: removido o card "TCV 12M ponderado".
+- Só `public/forecast-delta.html` (HTML/CSS/JS); backend inalterado.
+- **Deploy:** commit `d203f62` (branch `pacheco/forecast-delta-ui-polish-2026-07-20`,
+  integrada em main por ff sobre os commits do Samuel, sem force) | deployment
+  `dpl_CqSk6xnnDgHB1nuxu9UJoAWZr6Jw` (READY, production). Inline-JS check verde + delta e2e/leva2.
+- **Pós-deploy:** 7 rotas mínimas 200, `/forecast-delta` 200, `/api/auth/me` 401.
+
+---
+
 ### 🚀 DEPLOY DE PRODUÇÃO | BDR Treble Storytelling with Data V2 (2026-07-20)
 
 - Commit `8de1307` promovido por fast-forward para `main` e publicado no projeto
