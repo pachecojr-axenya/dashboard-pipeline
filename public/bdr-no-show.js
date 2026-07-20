@@ -383,19 +383,19 @@
 
   function renderKpis(m) {
     return '<div class="kpis">' +
-      kpi('Agendadas', fmtInt(m.scheduled), 'Deals com data_reuniao_agendada', 'teal', 'scheduled') +
-      kpi('Reuniões passadas', fmtInt(m.pastMeetings), 'Data da reunião menor que hoje', 'teal', 'past') +
-      kpi('Campo preenchido', fmtPct(m.fieldCoverage), fmtInt(m.fieldFilledPast) + ' de ' + fmtInt(m.pastMeetings) + ' passadas', m.fieldCoverage < 0.8 ? 'warn' : 'good', 'fieldCoverage') +
-      kpi('Campo pendente', fmtInt(m.fieldMissingPast), 'Reunião passou e a_reuniao_ocorreu_ está vazio', m.fieldMissingPast ? 'bad' : 'good', 'fieldMissing') +
-      kpi('Realizadas', fmtInt(m.occurred), 'Campo Sim ou etapa posterior', 'good', 'occurred') +
-      kpi('Campo Não', fmtInt(m.fieldNo), 'No-show confirmado por propriedade', m.fieldNo ? 'bad' : 'good', 'fieldNo') +
-      kpi('No-show confirmado', fmtInt(m.noShows), 'Campo Não ou evidência final de ausência', 'bad', 'noShow') +
-      kpi('Taxa no-show', fmtPct(m.noShowRate), 'No-show confirmado / agendadas', m.noShowRate > 0.25 ? 'bad' : 'warn', 'noShowRate') +
-      kpi('Reagendadas', fmtInt(m.rescheduled), 'Fallback textual de remarcação', 'warn', 'rescheduled') +
-      kpi('Recuperados', fmtInt(m.recovered), 'No-show que avançou ou foi realizado', 'good', 'recovered') +
-      kpi('Fora SLA', fmtInt(m.outsideSla), 'No-show aberto sem recuperação', m.outsideSla ? 'bad' : 'good', 'outsideSla') +
-      kpi('Pipeline em risco', fmtMoney(m.pipelineRisk), 'ARR estimado em no-shows abertos', 'bad', 'pipelineRisk') +
-      kpi('Pipeline perdido', fmtMoney(m.pipelineLost), 'ARR estimado perdido por no-show', 'bad', 'pipelineLost') +
+      kpi('Agendadas', fmtInt(m.scheduled), 'Reuniões com data definida no período', 'teal', 'scheduled') +
+      kpi('Reuniões passadas', fmtInt(m.pastMeetings), 'Data da reunião já ocorreu', 'teal', 'past') +
+      kpi('Campo preenchido', fmtPct(m.fieldCoverage), fmtInt(m.fieldFilledPast) + ' de ' + fmtInt(m.pastMeetings) + ' com campo Sim/Não', m.fieldCoverage < 0.8 ? 'warn' : 'good', 'fieldCoverage') +
+      kpi('Campo pendente', fmtInt(m.fieldMissingPast), 'Reunião passou sem preencher se ocorreu', m.fieldMissingPast ? 'bad' : 'good', 'fieldMissing') +
+      kpi('Realizadas', fmtInt(m.occurred), 'a_reuniao_ocorreu_ = Sim ou avançou de etapa', 'good', 'occurred') +
+      kpi('Campo Não', fmtInt(m.fieldNo), 'BDR marcou que a reunião NÃO ocorreu', m.fieldNo ? 'bad' : 'good', 'fieldNo') +
+      kpi('No-show confirmado', fmtInt(m.noShows), 'Campo Não OU evidência textual de ausência', 'bad', 'noShow') +
+      kpi('Taxa no-show', fmtPct(m.noShowRate), 'No-shows ÷ total de agendadas', m.noShowRate > 0.25 ? 'bad' : 'warn', 'noShowRate') +
+      kpi('Reagendadas', fmtInt(m.rescheduled), 'No-show com nova data marcada', 'warn', 'rescheduled') +
+      kpi('Recuperados', fmtInt(m.recovered), 'No-show que virou reunião ou avançou', 'good', 'recovered') +
+      kpi('Fora SLA', fmtInt(m.outsideSla), 'No-show há mais de ' + CONFIG.slaBusinessDays + ' dias úteis sem ação', m.outsideSla ? 'bad' : 'good', 'outsideSla') +
+      kpi('Pipeline em risco', fmtMoney(m.pipelineRisk), 'ARR potencial em no-shows ainda abertos', 'bad', 'pipelineRisk') +
+      kpi('Pipeline perdido', fmtMoney(m.pipelineLost), 'ARR perdido por deals com no-show', 'bad', 'pipelineLost') +
       '</div>';
   }
 
@@ -419,7 +419,35 @@
     var w = 760, h = 240, p = 34;
     var labels = keys.map(function (k, i) { var x = p + Math.round(i / Math.max(1, keys.length - 1) * (w - p * 2)); return '<text x="' + x + '" y="232" text-anchor="middle">' + esc(k.replace('-', ' ')) + '</text>'; }).join('');
     var svg = keys.length ? '<svg class="line-svg" viewBox="0 0 ' + w + ' ' + h + '" role="img" aria-label="Linha temporal semanal"><line x1="' + p + '" y1="20" x2="' + p + '" y2="210"/><line x1="' + p + '" y1="210" x2="730" y2="210"/><text x="8" y="24">' + fmtInt(max) + '</text><text x="18" y="214">0</text><polyline class="ln scheduled" points="' + svgPoints(scheduled, max, w, h, p) + '"/><polyline class="ln no-show" points="' + svgPoints(noShows, max, w, h, p) + '"/><polyline class="ln pending" points="' + svgPoints(pending, max, w, h, p) + '"/>' + labels + '</svg>' : '<div class="muted">Sem semanas com reunião no filtro atual</div>';
-    return '<div class="card span-8"><div class="card-title"><div><h2>Linha temporal semanal</h2><div class="desc">Agendadas, no-show confirmado e campo pendente por semana</div></div>' + infoBtn('timeline') + '</div><div class="line-legend"><span><i class="scheduled"></i>Agendadas</span><span><i class="no-show"></i>No-show confirmado</span><span><i class="pending"></i>Campo pendente</span></div><div class="trend line-chart clickable" data-drill="timeline" data-hover-title="Linha temporal" data-hover-text="Clique para abrir a tabela semanal com volumes, taxa de no-show e pendências do campo.">' + svg + '</div></div>';
+    return '<div class="card span-6"><div class="card-title"><div><h2>Volume semanal</h2><div class="desc">Agendadas, no-show confirmado e campo pendente por semana</div></div>' + infoBtn('timeline') + '</div><div class="line-legend"><span><i class="scheduled"></i>Agendadas</span><span><i class="no-show"></i>No-show confirmado</span><span><i class="pending"></i>Campo pendente</span></div><div class="trend line-chart clickable" data-drill="timeline" data-hover-title="Linha temporal" data-hover-text="Clique para abrir a tabela semanal com volumes, taxa de no-show e pendências do campo.">' + svg + '</div></div>';
+  }
+
+  function renderRateTrend(rows) {
+    var g = group(rows.filter(function (r) { return r.meetingDate; }), 'week');
+    var keys = Object.keys(g).sort().slice(-16);
+    var rates = keys.map(function (k) {
+      var arr = g[k];
+      var ns = arr.filter(function (r) { return r.noShow; }).length;
+      return arr.length ? ns / arr.length : 0;
+    });
+    var max = 1;
+    var w = 760, h = 240, p = 34;
+    var points = rates.map(function (r, i) {
+      var x = p + Math.round(i / Math.max(1, keys.length - 1) * (w - p * 2));
+      var y = h - p - Math.round(r / max * (h - p * 2));
+      return x + ',' + y;
+    }).join(' ');
+    var labels = keys.map(function (k, i) {
+      var x = p + Math.round(i / Math.max(1, keys.length - 1) * (w - p * 2));
+      return '<text x="' + x + '" y="232" text-anchor="middle">' + esc(k.replace('-', ' ')) + '</text>';
+    }).join('');
+    var rateLabels = rates.map(function (r, i) {
+      var x = p + Math.round(i / Math.max(1, keys.length - 1) * (w - p * 2));
+      var y = h - p - Math.round(r / max * (h - p * 2)) - 8;
+      return '<text x="' + x + '" y="' + y + '" text-anchor="middle" fill="var(--text2)" font-size="9">' + fmtPct(r) + '</text>';
+    }).join('');
+    var svg = keys.length ? '<svg class="line-svg" viewBox="0 0 ' + w + ' ' + h + '" role="img" aria-label="Taxa de no-show semanal"><line x1="' + p + '" y1="20" x2="' + p + '" y2="210"/><line x1="' + p + '" y1="210" x2="730" y2="210"/><text x="8" y="24">100%</text><text x="18" y="214">0%</text><polyline class="ln" style="stroke:var(--red)" points="' + points + '"/>' + rateLabels + labels + '</svg>' : '<div class="muted">Sem semanas com reunião no filtro atual</div>';
+    return '<div class="card span-6"><div class="card-title"><div><h2>Taxa de no-show ao longo do tempo</h2><div class="desc">Evolução semanal da taxa de no-show | informe se está diminuindo, aumentando ou estável</div></div>' + infoBtn('rateTrend') + '</div><div class="trend line-chart clickable" data-drill="timeline" data-hover-title="Taxa de no-show" data-hover-text="Clique para abrir a tabela semanal com volumes e taxas.">' + svg + '</div></div>';
   }
 
   function rankRows(rows, key, mode) {
@@ -436,10 +464,15 @@
     var infoKey = mode === 'outside' ? 'rankOutside' : 'rankVolume';
     var list = rankRows(rows, 'bdr', mode).map(function (r) {
       var val = mode === 'outside' ? fmtInt(r.outside) : fmtInt(r.noShows);
-      var meta = mode === 'outside' ? fmtPct(r.outRate) + ' dos no-shows' : fmtPct(r.rate) + ' de taxa';
+      var meta = mode === 'outside' 
+        ? fmtPct(r.outRate) + ' dos no-shows deste BDR estão fora do SLA' 
+        : fmtPct(r.rate) + ' de taxa de no-show';
       return '<div class="rank-row clickable-row" data-rank-mode="' + esc(mode) + '" data-rank-name="' + esc(r.name) + '" data-hover-title="' + esc(r.name) + '" data-hover-text="Clique para abrir os deals deste BDR no ranking."><div><div class="rank-name">' + esc(r.name) + '</div><div class="rank-meta">' + esc(meta) + '</div></div><span class="pill ' + (mode === 'outside' && r.outside ? 'bad' : 'warn') + '">' + esc(val) + '</span><span class="rank-meta right">n=' + fmtInt(r.total) + '</span></div>';
     }).join('');
-    return '<div class="card span-4"><div class="card-title"><div><h2>' + esc(title) + '</h2><div class="desc">Ordena por quantidade e desempata por taxa | n = reuniões agendadas</div></div>' + infoBtn(infoKey) + '</div>' + (list || '<div class="muted">Sem dados no filtro atual</div>') + '</div>';
+    var descText = mode === 'outside' 
+      ? 'Quantidade de no-shows fora do SLA (mais de ' + CONFIG.slaBusinessDays + ' dias úteis) | n = reuniões agendadas' 
+      : 'Quantidade de no-shows confirmados | n = reuniões agendadas';
+    return '<div class="card span-4"><div class="card-title"><div><h2>' + esc(title) + '</h2><div class="desc">' + esc(descText) + '</div></div>' + infoBtn(infoKey) + '</div>' + (list || '<div class="muted">Sem dados no filtro atual</div>') + '</div>';
   }
 
   var CALC_HELP = {
@@ -456,7 +489,8 @@
     outsideSla: ['Fora SLA', 'No-show aberto sem recuperação com mais de ' + CONFIG.slaBusinessDays + ' dias úteis', 'Dias úteis entre data_reuniao_agendada e hoje.'],
     pipelineRisk: ['Pipeline em risco', 'SUM(ARR estimado) de no-shows abertos', 'ARR = arr_estimado, fallback primeira_fatura × 12, fallback premio_mensal × 12.'],
     pipelineLost: ['Pipeline perdido', 'SUM(ARR estimado) de perdidos com evidência de no-show', 'Usa motivo do declínio e descrição como suporte textual.'],
-    timeline: ['Linha temporal semanal', 'Por semana: agendadas, no-show confirmado e campo pendente', 'Ajuda a separar problema operacional de reunião de problema de preenchimento.']
+    timeline: ['Volume semanal', 'Por semana: agendadas, no-show confirmado e campo pendente', 'Ajuda a separar problema operacional de reunião de problema de preenchimento.']
+    ,rateTrend: ['Taxa de no-show ao longo do tempo', 'Por semana: no-show confirmado ÷ agendadas × 100', 'Responde se o no-show está diminuindo, aumentando ou estável. Clique no gráfico para ver a tabela semanal detalhada.']
     ,rankVolume: ['Ranking por volume de no-show', 'Por BDR: COUNT(no-show confirmado), desempate por taxa', 'Quantidade vem antes da taxa para priorizar onde cobrar primeiro. n = reuniões agendadas do BDR no filtro.']
     ,rankOutside: ['Ranking por fora do prazo', 'Por BDR: COUNT(no-show aberto fora do SLA), desempate por % dos no-shows', 'Mostra quem tem mais recuperação atrasada, não quem tem maior taxa em amostra pequena.']
     ,breakOrigem: ['Quebra por origem', 'Agrupa por origem__originacao_ do deal e calcula no-shows / total do bucket', 'Usa campo estruturado do deal. Clique em cada bucket para ver os deals.']
@@ -497,10 +531,24 @@
   function renderStory(rows, m) {
     var bdrRows = rankRows(rows, 'bdr', 'rate');
     var top = bdrRows[0];
+    var trend = '';
+    var g = group(rows.filter(function (r) { return r.meetingDate; }), 'week');
+    var keys = Object.keys(g).sort();
+    if (keys.length >= 2) {
+      var last2 = keys.slice(-2);
+      var rates = last2.map(function (k) {
+        var arr = g[k];
+        var ns = arr.filter(function (r) { return r.noShow; }).length;
+        return arr.length ? ns / arr.length : 0;
+      });
+      if (rates[1] < rates[0]) trend = ' Tendência de queda na taxa de no-show nas últimas semanas.';
+      else if (rates[1] > rates[0]) trend = ' Tendência de alta na taxa de no-show nas últimas semanas.';
+      else trend = ' Taxa de no-show estável nas últimas semanas.';
+    }
     return '<div class="story-grid">' +
-      '<div class="story-card"><div class="story-head"><b>Leitura executiva</b>' + infoBtn('story') + '</div><span>' + fmtInt(m.noShows) + ' no-shows confirmados e ' + fmtInt(m.fieldMissingPast) + ' reuniões passadas sem campo preenchido. O painel separa performance real de higiene de CRM.</span></div>' +
-      '<div class="story-card"><div class="story-head"><b>Onde cobrar primeiro</b>' + infoBtn('rankVolume') + '</div><span>' + (top ? esc(top.name) + ' concentra ' + fmtInt(top.noShows) + ' no-shows confirmados no filtro atual.' : 'Sem concentração relevante no filtro atual.') + '</span></div>' +
-      '<div class="story-card"><div class="story-head"><b>Regra de classificação</b>' + infoBtn('noShow') + '</div><span>Propriedades e atividades vêm primeiro. Texto só fecha casos ambíguos de no-show, remarcação ou perda.</span></div>' +
+      '<div class="story-card"><div class="story-head"><b>Leitura executiva</b>' + infoBtn('story') + '</div><span><strong>' + fmtInt(m.noShows) + '</strong> no-shows confirmados de <strong>' + fmtInt(m.scheduled) + '</strong> reuniões agendadas (' + fmtPct(m.noShowRate) + ').' + fmtInt(m.fieldMissingPast) + ' reuniões passadas com campo pendente (higiene de CRM).' + trend + '</span></div>' +
+      '<div class="story-card"><div class="story-head"><b>Onde cobrar primeiro</b>' + infoBtn('rankVolume') + '</div><span>' + (top ? '<strong>' + esc(top.name) + '</strong> concentra <strong>' + fmtInt(top.noShows) + '</strong> no-shows confirmados (' + fmtPct(top.rate) + ' de taxa) no filtro atual.' : 'Sem concentração relevante no filtro atual.') + '</span></div>' +
+      '<div class="story-card"><div class="story-head"><b>Regra de classificação</b>' + infoBtn('noShow') + '</div><span>O no-show é confirmado quando <code>a_reuniao_ocorreu_ = Não</code>. Texto é suporte final para casos ambíguos. Campo vazio não conta como no-show.</span></div>' +
       '</div>';
   }
 
@@ -634,10 +682,31 @@
     }
     var rows = state.filtered;
     var m = metrics(rows);
-    var html = renderStory(rows, m);
+    
+    // ESTRUTURA ORGANIZADA: Storytelling → KPIs → Evolução → Rankings → Tabelas
+    var html = '';
+    
+    // 1. STORYTELLING EXECUTIVO
+    html += renderStory(rows, m);
+    
+    // 2. KPIs PRINCIPAIS
     html += renderKpis(m);
+    
+    // 3. LEGENDA
     html += renderLegend();
-    html += '<div class="grid">' + renderTrend(rows) + renderRank('Ranking por volume de no-show', rows, 'rate') + renderRank('Ranking por fora do prazo', rows, 'outside') + renderBreak('Quebra por origem', rows, 'origem') + renderBreak('Quebra por indústria', rows, 'segment') + renderBreak('Quebra por persona', rows, 'persona') + renderBreak('Quebra por porte | vidas', rows, 'porte') + renderFieldTable(rows) + renderRecoveryTable(rows) + renderLostTable(rows) + '</div>';
+    
+    // 4. GRÁFICOS TEMPORAIS (2 colunas: volume + taxa de no-show)
+    html += '<div class="grid">' + renderTrend(rows) + renderRateTrend(rows) + '</div>';
+    
+    // 5. RANKINGS (2 colunas)
+    html += '<div class="grid">' + renderRank('Ranking por volume de no-show', rows, 'rate') + renderRank('Ranking por fora do prazo', rows, 'outside') + '</div>';
+    
+    // 6. QUEBRAS POR DIMENSÃO (4 cards por linha)
+    html += '<div class="grid">' + renderBreak('Quebra por origem', rows, 'origem') + renderBreak('Quebra por indústria', rows, 'segment') + renderBreak('Quebra por persona', rows, 'persona') + renderBreak('Quebra por porte | vidas', rows, 'porte') + '</div>';
+    
+    // 7. TABELAS OPERACIONAIS
+    html += '<div class="grid">' + renderFieldTable(rows) + renderRecoveryTable(rows) + renderLostTable(rows) + '</div>';
+    
     $('content').innerHTML = html;
     var helps = $('content').querySelectorAll('[data-help]');
     for (var i = 0; i < helps.length; i += 1) helps[i].onclick = function (ev) { ev.stopPropagation(); openHelp(this.getAttribute('data-help')); };
