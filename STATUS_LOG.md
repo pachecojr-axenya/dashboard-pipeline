@@ -12,12 +12,12 @@ Recurring every 20min (job `55d3b136`). Purpose: identify and close gaps so the 
 
 ---
 
-### BDR Workload | GCP source patch em auditoria 🟡 (2026-07-20)
+### BDR Workload | GCP source patch em produção, auditoria 🟡 (2026-07-20)
 
-- Patch funcional sem deploy: `/novo-bdr/workload` passa a buscar HubSpot live para atividades de hoje e BigQuery para histórico/SQL real.
+- Patch publicado em produção: `/novo-bdr/workload` busca HubSpot live para atividades de hoje e BigQuery para histórico/SQL real.
 - Nova API read-only `api/bdr-workload-history.js` consulta `gold.bdr_daily_ops` e `silver.sql_deals`, com freshness explícita e fail-closed quando BigQuery não está configurado.
 - KPI principal vira **SQL real (deals)**; `OPEN_DEAL` fica como proxy secundário. Comparativos usam período anterior equivalente via série estendida do BigQuery.
-- Status permanece 🟡 até smoke pós-deploy autenticado confirmar reconciliação live/BQ em produção.
+- Smokes autenticados locais contra fontes reais: 14–20/07 = 12 SQLs reconciliados e 6.089+ atividades live; 20/07 = 2 SQLs e 1.216+ atividades live. Produção: HTML/JS 200 nos aliases `axenya-pipeline-dashboard` e `project-bsmfu`; API sem sessão 401 (auth ativa). Status permanece 🟡 até confirmação visual autenticada no navegador de produção.
 - Scheduler GCP corrigido de um snapshot único às 08:00 para checkpoints às 08:00, 12:00, 16:00 e 20:00 BRT em dias úteis. Execução manual pós-ajuste concluiu com sucesso; BQ passou a registrar 2 SQLs e 286 atividades no snapshot de 20/07 às 16:30 UTC. Hoje no gráfico continua HubSpot live.
 
 ---

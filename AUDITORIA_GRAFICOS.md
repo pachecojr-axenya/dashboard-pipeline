@@ -124,6 +124,7 @@ node scripts/_capture-charts.js public/novo-dashboard.html includeLost
 
 - **`bdr-workload.html` (subpágina nova) → 🟡 em auditoria.** KPIs e tabelas reconciliam por construção (todo KPI clicável abre a lista nominal que ele conta). Validação inicial 13/07 com dados de produção: empresas/contatos/transições do dia batem com contagem independente. Pendências declaradas na própria página: motivo de desqualificação (propriedade inexistente no portal), fonte não se aplica a movimentações, primeiro retorno usa proxy CONNECTED.
 - **Patch GCP source (2026-07-20) → ainda 🟡 até smoke pós-deploy.** SQL principal passa a vir de deals reais no BigQuery silver (`sql_deals`), e atividades históricas do gold (`bdr_daily_ops`); hoje continua HubSpot live para evitar snapshot parcial das 08:00 BRT. `OPEN_DEAL` foi rebaixado para proxy de status. Zero registrado em dia útil não é mais tratado como provável erro de API quando histórico está disponível.
+- **Evidência pós-deploy (2026-07-20):** build Vercel PASS; assets atualizados nos dois aliases; API protegida retorna 401 sem sessão. Smokes locais autenticados contra as mesmas fontes reconciliaram 12 SQLs em 7D e mais de 1.200 atividades hoje. Mantém 🟡 somente porque o smoke visual autenticado de produção depende da sessão do usuário.
 
 ## Adendo | Renomeação: código único por card em CRO/Board/AE (2026-07-16)
 
