@@ -124,8 +124,12 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
 html[data-theme="light"] .nav-drawer{background:var(--card);border-right-color:rgba(0,0,0,.1)}
 html[data-theme="light"] .nav-backdrop{background:rgba(0,0,0,.3)}
 html[data-theme="light"] .nav-item:hover{background:rgba(0,0,0,.04)}
-.app-header{position:sticky;top:0;z-index:400;display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.6rem 1.5rem;background:var(--card);border-bottom:1px solid var(--border);flex-wrap:wrap}
+.app-header{position:sticky;top:0;z-index:400;display:flex;flex-direction:column;gap:.55rem;padding:.6rem 1.5rem .75rem;background:var(--card);border-bottom:1px solid var(--border)}
+.ah-top{display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap}
 .ah-left{display:flex;align-items:center;gap:.9rem;flex-wrap:wrap}
+.app-header .controls{gap:.85rem 1rem}
+.app-header .ctl label,.app-header .ctl-label{margin-bottom:.2rem}
+.app-header input[type=date]{min-width:135px;height:36px}
 .app-header h1{font-size:1.05rem;font-weight:600;margin:0}
 .hdr-btn{width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;background:none;border:none;color:var(--text2);border-radius:99px;cursor:pointer;transition:background .15s,color .15s;flex-shrink:0;position:relative}
 .hdr-btn:hover{background:rgba(255,255,255,.13);color:var(--text)}
@@ -153,8 +157,10 @@ html[data-theme="light"] .fdd-trigger:hover{background:var(--card2)}
 .fdd-arr{width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;background:rgba(255,255,255,.03);border-radius:7px;flex-shrink:0;pointer-events:none;transition:transform .18s cubic-bezier(.4,0,.2,1)}
 html[data-theme="light"] .fdd-arr{background:rgba(0,0,0,.07)}
 .fdd-wrapper.open .fdd-arr{transform:rotate(180deg)}
-.fdd-panel{display:none;position:absolute;top:calc(100% + 6px);left:0;background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:.5rem;z-index:600;min-width:180px;max-height:340px;overflow:auto;flex-direction:column;gap:.3rem;box-shadow:0 16px 40px rgba(0,0,0,.4)}
-.fdd-wrapper.open .fdd-panel{display:flex}
+.fdd-panel{display:none;position:absolute;top:calc(100% + 6px);left:0;background:rgba(23,31,46,.62);backdrop-filter:blur(20px) saturate(1.7);-webkit-backdrop-filter:blur(20px) saturate(1.7);border-radius:12px;padding:.5rem;z-index:600;min-width:180px;max-height:340px;overflow:auto;flex-direction:column;gap:.3rem;box-shadow:0 16px 40px rgba(0,0,0,.4)}
+html[data-theme="light"] .fdd-panel{background:rgba(246,248,250,.72)}
+@keyframes fddIn{from{opacity:0;transform:translateY(-6px) scale(.97)}to{opacity:1;transform:none}}
+.fdd-wrapper.open .fdd-panel{display:flex;animation:fddIn .14s cubic-bezier(.4,0,.2,1) both}
 .custom-cb{display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.85rem;color:var(--text);padding:.35rem .5rem;border-radius:4px;transition:background .12s;white-space:nowrap}
 .custom-cb:hover{background:rgba(255,255,255,.05)}
 html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
@@ -176,27 +182,70 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
 
 <!-- Topbar sticky: menu + trocador de painel + filtros -->
 <div class="app-header" id="app-header">
-  <div class="ah-left">
-    <button class="hdr-btn" onclick="toggleDrawer()" data-tooltip="Menu" aria-label="Menu">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-    </button>
-    <div class="panel-switcher" id="panel-switcher"><button class="panel-switch-btn" type="button" onclick="togglePanelMenu(event)" aria-haspopup="true" aria-expanded="false"><h1>Comparativo</h1><svg class="panel-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button><div class="panel-dd" id="panel-dd" role="menu"></div></div>
-    <div class="hdr-filters">
-      <div class="fdd-wrapper">
-        <button class="fdd-trigger" id="btn-ae" onclick="toggleAeMenu()"><span id="btn-ae-lbl">Executivo</span><span class="fdd-arr"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span></button>
-        <div id="ae-menu" class="fdd-panel"></div>
-      </div>
-      <div class="fdd-wrapper">
-        <button class="fdd-trigger" id="btn-quarter" onclick="toggleQuarterMenu()"><span id="btn-quarter-lbl">Quarter</span><span class="fdd-arr"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span></button>
-        <div id="quarter-menu" class="fdd-panel"></div>
+  <div class="ah-top">
+    <div class="ah-left">
+      <button class="hdr-btn" onclick="toggleDrawer()" data-tooltip="Menu" aria-label="Menu">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <div class="panel-switcher" id="panel-switcher"><button class="panel-switch-btn" type="button" onclick="togglePanelMenu(event)" aria-haspopup="true" aria-expanded="false"><h1>Comparativo</h1><svg class="panel-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button><div class="panel-dd" id="panel-dd" role="menu"></div></div>
+      <div class="hdr-filters">
+        <div class="fdd-wrapper">
+          <button class="fdd-trigger" id="btn-ae" onclick="toggleAeMenu()"><span id="btn-ae-lbl">Executivo</span><span class="fdd-arr"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span></button>
+          <div id="ae-menu" class="fdd-panel"></div>
+        </div>
+        <div class="fdd-wrapper">
+          <button class="fdd-trigger" id="btn-quarter" onclick="toggleQuarterMenu()"><span id="btn-quarter-lbl">Quarter</span><span class="fdd-arr"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span></button>
+          <div id="quarter-menu" class="fdd-panel"></div>
+        </div>
       </div>
     </div>
+    <div class="hdr-actions">
+      <span class="pill" title="Ainda não validado contra o HubSpot">🟡 não validado</span>
+      <button type="button" class="hdr-btn" id="info-btn" title="Memória de cálculo" data-tooltip="Memória de cálculo" aria-expanded="false" aria-controls="info">i</button>
+      <a class="back" href="/forecast-overall" style="font-size:.82rem">← Overall</a>
+    </div>
   </div>
-  <div class="hdr-actions">
-    <span class="pill" title="Ainda não validado contra o HubSpot">🟡 não validado</span>
-    <button type="button" class="hdr-btn" id="info-btn" title="Memória de cálculo" data-tooltip="Memória de cálculo" aria-expanded="false" aria-controls="info">i</button>
-    <a class="back" href="/forecast-overall" style="font-size:.82rem">← Overall</a>
+  <div class="controls">
+    <div class="ctl">
+      <label for="dateA">Foto A (antes)</label>
+      <input type="date" id="dateA" aria-describedby="resA">
+      <div class="reslbl" id="resA" aria-live="polite"></div>
+    </div>
+    <div class="ctl">
+      <label for="dateB">Foto B (depois)</label>
+      <input type="date" id="dateB" aria-describedby="resB">
+      <div class="reslbl" id="resB" aria-live="polite"></div>
+    </div>
+    <div class="ctl">
+      <span class="ctl-label">Medida</span>
+      <div class="seg-ctrl" id="metric-toggle" role="group" aria-label="Medida">
+        <button class="seg-btn active" data-v="prob" aria-pressed="true">Probabilizada</button>
+        <button class="seg-btn" data-v="real" aria-pressed="false">Real</button>
+      </div>
+    </div>
+    <div class="ctl">
+      <span class="ctl-label">Horizonte</span>
+      <div class="seg-ctrl" id="horizon-toggle" role="group" aria-label="Horizonte">
+        <button class="seg-btn active" data-v="12" aria-pressed="true">TCV 12M</button>
+        <button class="seg-btn" data-v="Total" aria-pressed="false">Pipeline total</button>
+      </div>
+    </div>
+    <div class="ctl">
+      <span class="ctl-label">Escopo</span>
+      <div class="seg-ctrl" id="scope-toggle" role="group" aria-label="Escopo de etapas">
+        <button class="seg-btn active" data-v="ativos" aria-pressed="true" title="Só Diagnóstico, Cotação, Consultoria e Negociação">Ativos</button>
+        <button class="seg-btn" data-v="tudo" aria-pressed="false" title="Todas as etapas, sem Bid e Standby">Tudo</button>
+      </div>
+    </div>
+    <div class="ctl" id="capture-snapshot-ctl" style="display:none">
+      <span class="ctl-label">Foto oficial</span>
+      <div class="tab-sub">
+        <button type="button" class="tab-sub-btn on" id="capture-snapshot-btn">📸 Capturar agora</button>
+      </div>
+      <div class="reslbl" id="capture-snapshot-status" aria-live="polite"></div>
+    </div>
   </div>
+  <div class="reslbl" id="fotos-hint" style="margin:0"></div>
 </div>
 
 <div class="wrap" id="app-content">
@@ -205,50 +254,6 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
   <!-- Memória de cálculo GERADA do catálogo (Fase 3 do 2.0, ADR-006) -->
   <div id="info">
     <div data-semantic-help="comparacao_fotos_delta"></div>
-  </div>
-
-  <div class="card">
-    <div class="controls">
-      <div class="ctl">
-        <label for="dateA">Foto A (antes)</label>
-        <input type="date" id="dateA" aria-describedby="resA">
-        <div class="reslbl" id="resA" aria-live="polite"></div>
-      </div>
-      <div class="ctl">
-        <label for="dateB">Foto B (depois)</label>
-        <input type="date" id="dateB" aria-describedby="resB">
-        <div class="reslbl" id="resB" aria-live="polite"></div>
-      </div>
-      <div class="ctl">
-        <span class="ctl-label">Medida</span>
-        <div class="seg-ctrl" id="metric-toggle" role="group" aria-label="Medida">
-          <button class="seg-btn active" data-v="prob" aria-pressed="true">Probabilizada</button>
-          <button class="seg-btn" data-v="real" aria-pressed="false">Real</button>
-        </div>
-      </div>
-      <div class="ctl">
-        <span class="ctl-label">Horizonte</span>
-        <div class="seg-ctrl" id="horizon-toggle" role="group" aria-label="Horizonte">
-          <button class="seg-btn active" data-v="12" aria-pressed="true">TCV 12M</button>
-          <button class="seg-btn" data-v="Total" aria-pressed="false">Pipeline total</button>
-        </div>
-      </div>
-      <div class="ctl">
-        <span class="ctl-label">Escopo</span>
-        <div class="seg-ctrl" id="scope-toggle" role="group" aria-label="Escopo de etapas">
-          <button class="seg-btn active" data-v="ativos" aria-pressed="true" title="Só Diagnóstico, Cotação, Consultoria e Negociação">Ativos</button>
-          <button class="seg-btn" data-v="tudo" aria-pressed="false" title="Todas as etapas, sem Bid e Standby">Tudo</button>
-        </div>
-      </div>
-      <div class="ctl" id="capture-snapshot-ctl" style="display:none">
-        <span class="ctl-label">Foto oficial</span>
-        <div class="tab-sub">
-          <button type="button" class="tab-sub-btn on" id="capture-snapshot-btn">📸 Capturar agora</button>
-        </div>
-        <div class="reslbl" id="capture-snapshot-status" aria-live="polite"></div>
-      </div>
-    </div>
-    <div class="reslbl" id="fotos-hint" style="margin-top:.6rem"></div>
   </div>
 
   <!-- Fotografia mais recente / selecionada -->
@@ -518,8 +523,7 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
       '<div class="kpi"><div class="k">Deals abertos</div><div class="v">'+fmtNum(k.deals)+'</div></div>' +
       '<div class="kpi"><div class="k">Vidas em pipe</div><div class="v">'+fmtNum(k.vidas)+'</div></div>' +
       '<div class="kpi"><div class="k">ARR Total</div><div class="v">'+fmtBRL(k.arrTotal)+'</div></div>' +
-      '<div class="kpi"><div class="k">ARR Ponderado</div><div class="v">'+fmtBRL(k.arrPond)+'</div></div>' +
-      '<div class="kpi"><div class="k">TCV 12M ponderado</div><div class="v">'+fmtBRL(k.tcv12)+'</div></div>';
+      '<div class="kpi"><div class="k">ARR Ponderado</div><div class="v">'+fmtBRL(k.arrPond)+'</div></div>';
     
     cardEl.style.display = '';
   }
