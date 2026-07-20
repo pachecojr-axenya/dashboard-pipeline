@@ -29,6 +29,22 @@
 
 ---
 
+### 🚀 BDR | Treble ClickHouse real em produção (2026-07-20)
+
+- Commit canônico `c18c1bc` promovido por fast-forward para `main` e publicado no
+  projeto Vercel `dashboard-axenya`.
+- Deployment `dpl_H1MPDKa67hi2TwSxQUdfckx6315S` ficou `READY` e assumiu os aliases
+  `axenya-pipeline-dashboard.vercel.app` e `project-bsmfu.vercel.app`.
+- As cinco variáveis `TREBLE_WAREHOUSE_*` estão presentes em Production; valores
+  permanecem criptografados e nunca foram versionados/logados.
+- Smoke público: 7 rotas críticas em HTTP 200, `/api/bdr-treble-dw` sem sessão em
+  401, marker `ClickHouse Treble` presente. Evidência SHA-256
+  `08c5f361032e60724c6797d1290042aa6574cacbd503b4df73cfac7a3d545fa9`.
+- Build/deploy completo PASS: evidência SHA-256
+  `0cc2e3492ed7619e7f665cad3b4833c39f2df93bb434df2ee92a6486039707b7`.
+
+---
+
 ### BDR | Treble | consumo real do ClickHouse preparado (2026-07-20)
 
 - `/api/bdr-treble-dw` passa a consultar `client_analytics.fact_deployment_status`
