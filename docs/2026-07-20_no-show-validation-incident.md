@@ -62,6 +62,8 @@ Executar nesta ordem antes de qualquer deploy da página:
 9. **PR** | nunca deployar direto de uma sequência experimental na `main`.
 10. **Deploy + smoke autenticado** | só após aprovação explícita; se o browser smoke falhar, rollback imediato.
 
+O comando integrado `npm run gate:no-show` executa API local, `npm run check`, auditorias desde mar/26 e 30 dias, smoke Chrome e grava um evento sem PII em `80_System/Telemetry/no_show_release_gate.jsonl` com commit, branch, duração, status, hashes e métricas agregadas.
+
 ## Mudanças implementadas na correção
 
 - Roster vem de `semantic/referencia.json` via `semantic-ref.js`.
