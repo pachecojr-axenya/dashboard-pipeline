@@ -32,9 +32,10 @@ function git(args) {
 
 function run(label, command, args, options) {
   const start = Date.now();
-  const result = spawnSync(command, args, { cwd: root, encoding: 'utf8', env: process.env, maxBuffer: 20 * 1024 * 1024, ...(options || {}) });
+  const printOutput = !options || options.printOutput !== false;
+  const result = spawnSync(command, args, { cwd: root, encoding: 'utf8', env: process.env, maxBuffer: 20 * 1024 * 1024 });
   const output = `${result.stdout || ''}${result.stderr || ''}`;
-  process.stdout.write(output);
+  if (printOutput) process.stdout.write(output);
   event.checks[label] = {
     status: result.status === 0 ? 'pass' : 'fail',
     exit_code: result.status,
@@ -46,7 +47,7 @@ function run(label, command, args, options) {
 }
 
 function audit(label, from, to) {
-  const raw = run(label, process.execPath, ['scripts/audit-bdr-no-show.js', '--api-file', tempFile, '--from', from, '--to', to]);
+  const raw = run(label, process.execPath, ['scripts/audit-bdr-no-show.js', '--api-file', tempFile, '--from', from, '--to', to], { printOutput: false });
   const parsed = JSON.parse(raw);
   event.checks[label].metrics = {
     canonical_meetings: parsed.canonical_meetings,
@@ -57,6 +58,8 @@ function audit(label, from, to) {
     outside_sla: parsed.metrics.outside_sla,
     invariants_pass: Object.values(parsed.invariants).every(Boolean),
   };
+  const m = event.checks[label].metrics;
+  console.log(`[no-show-gate] ${label} | n=${m.canonical_meetings} | cobertura=${m.coverage_pct}% | incidência=${m.incidence_pct}% | abertos=${m.open_no_shows} | fora_sla=${m.outside_sla}`);
 }
 
 async function main() {
