@@ -37,16 +37,8 @@ function sp(q) { return new URL('http://x?' + q).searchParams; }
   assert(!/bdrId\s*[:]/.test(src));
   assert(src.includes('sampleSufficient'));
 })();
-(function testUiMarkersAndAsset() {
-  const js = fs.readFileSync(path.join(__dirname, '..', 'public', 'bdr-workload.js'), 'utf8');
-  const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'bdr-workload.html'), 'utf8');
-  assert(js.includes('/api/bdr-cohort-analytics?since='));
-  assert(js.includes('Inteligência de Coorte | snapshot analítico'));
-  assert(js.includes('Associação observacional | esforço real até a data do SQL'));
-  assert(js.includes('Penetração observada | empresa e contato'));
-  assert(js.includes('Conversão empresa→SQL por porte | 30d'));
-  assert(js.includes('Filtros aplicados:'));
-  assert(js.includes('mínimo analítico de 30 dias'));
-  assert(html.includes('/bdr-workload.js?v=9'));
-})();
+// NOTA: a UI de coorte vivia no bundle v1 (public/bdr-workload.js), removido na
+// migração para visão única v2. A cobertura funcional passou para a aba Penetração
+// do v2 (/api/bdr-workload-penetration). Os testes de contrato do endpoint
+// /api/bdr-cohort-analytics permanecem acima; a asserção de UI v1 foi retirada.
 console.log('PASS bdr-cohort-analytics tests');

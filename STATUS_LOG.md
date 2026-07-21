@@ -1,5 +1,13 @@
 # Dashboard Enhancement Loop — Status Log
 
+### BDR Workload v2 | performance, visão única e correção de design (2026-07-21)
+
+- **Auditoria (usuário reportou: lento, gráficos vazios, blocos brancos na Gestão, sem formatação).** Causas-raiz confirmadas em ambiente local com v2 habilitado.
+- **Performance:** `/api/bdr-workload-semantic` rodava 5 queries BigQuery em série (~21s) e não cacheava resultado — cada troca de aba Pulso/Canais/Gestão refazia tudo. Correção: (1) `Promise.all` nas 5 queries mantendo `currentRows` como 1ª chamada (preserva o dispatch por conteúdo de SQL do stub de teste); (2) cache de `filterOptions` (TTL 10min, DISTINCT full-table); (3) cache curto do payload no handler (TTL 45s, `refresh=1` ignora); (4) front reaproveita `lastSemantic` entre abas com mesmos params. Medido: **21s → 8,9s (fria) → 0,01s (cache)**; troca de aba instantânea. "Gráficos vazios" era consequência da lentidão (populavam só após ~21s).
+- **Design system (blocos brancos):** na Gestão cada célula/cabeçalho da tabela era `<button>` nativo sem CSS (fundo branco do browser sobre a tabela dark); idem o `<select>` "Ranking". Correção: CSS `td button/th button` transparente+inherit+hover turquesa, `.periodbar select` no tema, `.tabs/.v2-tabs` espaçadas. As tabelas `sr-table` (fallback a11y) renderizavam visíveis embaixo de cada gráfico → agora `sr-only` de fato; tabela de componentes da Evolução vira `v2-data-table` (visível).
+- **Visão única (decisão do usuário: "não deveria ter esse V1 fallback"):** removido o bundle v1 `public/bdr-workload.js` (88KB baixado em toda carga), o `?workload=v1`, o `WorkloadBDRRouter` e o help-drawer v1. `WorkloadBDRV2` ganhou `toggleTheme`/`help`; bootstrap sempre inicia v2 (config só resolve o `team`). Gate atualizado: `package.json`, `preflight-deploy.js`, `test-bdr-workload-v2-ui.js` e `test-bdr-cohort-analytics.js` (UI de coorte vivia no v1; cobertura passou p/ aba Penetração). Cache-busters: charts `?v=2`, main `?v=7`.
+- **Validação:** `npm run check` PASS; 5 abas verificadas por screenshot (dados populados, sem blocos brancos, selects no tema). Smoke CDP falha só por timing de cold-load (1,8s de espera < ~9s de BQ), não é regressão de JS.
+
 ### BDR Workload v2 | correção de schema e reconciliação analítica (2026-07-21)
 
 - Auditoria confirmou quatro causas raiz: `CI.lead` parou em 26/06; `silver.activities` não tinha associações company/contact; o merge live descartava a linha BQ inteira de hoje; e Penetração filtrava `company_v2` pelo primeiro eligible_date histórico, subcontando a coorte do período.
