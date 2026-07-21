@@ -16,7 +16,9 @@ const PORTE_VALUES = ['enterprise', 'grande', 'media', 'pme', 'desconhecido'];
 const LIVE_TTL_MS = 90 * 1000;
 let l1 = new Map();
 
-const LIVE_OVERRIDE_FIELDS = ['calls', 'callsConversation', 'callsDial', 'emails', 'whatsapp', 'linkedin', 'meetings', 'activities', 'total', 'attempted', 'crmMovements', 'connected', 'qualified', 'disqualified'];
+const LIVE_RHYTHM_FIELDS = ['calls', 'callsConversation', 'callsDial', 'emails', 'whatsapp', 'linkedin', 'meetings', 'activities', 'total'];
+const LIVE_CRM_FIELDS = ['attempted', 'crmMovements', 'connected', 'qualified', 'disqualified'];
+const LIVE_OVERRIDE_FIELDS = LIVE_RHYTHM_FIELDS.concat(LIVE_CRM_FIELDS);
 const LIVE_TRANSITION_MAP = { ATTEMPTED: 'attempted', ATTEMPTED_TO_CONTACT: 'attempted', OPEN: 'attempted', IN_PROGRESS: 'attempted', CONNECTED: 'connected', OPEN_DEAL: 'qualified', UNQUALIFIED: 'disqualified', BAD_TIMING: 'disqualified' };
 function idOf(value) { return value == null || value === '' ? null : String(value); }
 function transitionBucket(value) { return LIVE_TRANSITION_MAP[String(value || '').toUpperCase()] || null; }
@@ -27,7 +29,17 @@ function addTouched(row, activity) { const sets = liveSets(row); const companyId
 function hasLiveCoverage(live) { return !!(live && live.used && Array.isArray(live.rows) && live.rows.length); }
 function liveRowMap(live) { const map = {}; if (!hasLiveCoverage(live)) return map; live.rows.forEach((row) => { map[`${String(row.date || row.metric_date).slice(0, 10)}|${canonicalizeBdrName(row.bdr || row.owner_name)}`] = row; }); return map; }
 function mergeLiveRow(target, liveRow) { LIVE_OVERRIDE_FIELDS.forEach((field) => { if (Object.prototype.hasOwnProperty.call(liveRow, field)) target[field] = num(liveRow[field]); }); if (Object.prototype.hasOwnProperty.call(liveRow, 'companiesTouched')) target.companiesTouched = num(liveRow.companiesTouched); if (Object.prototype.hasOwnProperty.call(liveRow, 'contactsTouched')) target.contactsTouched = num(liveRow.contactsTouched); return target; }
-function liveLineage(live) { const liveUsed = hasLiveCoverage(live); const bq = 'bq_daily_dimension_v2'; const liveSrc = liveUsed ? 'hubspot_live_aggregate' : bq; const touchedSrc = liveUsed && live.rows.some((r) => Object.prototype.hasOwnProperty.call(r, 'companiesTouched') || Object.prototype.hasOwnProperty.call(r, 'contactsTouched')) ? liveSrc : bq; return { calls: liveSrc, callsConversation: liveSrc, callsDial: liveSrc, emails: liveSrc, whatsapp: liveSrc, linkedin: liveSrc, meetings: liveSrc, activities: liveSrc, total: liveSrc, companiesTouched: touchedSrc, contactsTouched: touchedSrc, companiesInserted: bq, contactsInserted: bq, attempted: liveSrc, crmMovements: liveSrc, connected: liveSrc, qualified: liveSrc, disqualified: liveSrc, sqlDeals: bq, reactivity: 'bq_reactivity_v2' }; }
+function mergeCumulativeLiveRow(base, liveRow, requested) {
+  const merged = Object.assign({}, base);
+  const liveRhythmTotal = selectedTotal(liveRow, requested.channels);
+  if (liveRhythmTotal >= base.total) LIVE_RHYTHM_FIELDS.forEach((field) => { if (Object.prototype.hasOwnProperty.call(liveRow, field)) merged[field] = num(liveRow[field]); });
+  if (num(liveRow.crmMovements) >= base.crmMovements) LIVE_CRM_FIELDS.forEach((field) => { if (Object.prototype.hasOwnProperty.call(liveRow, field)) merged[field] = num(liveRow[field]); });
+  if (Object.prototype.hasOwnProperty.call(liveRow, 'companiesTouched')) merged.companiesTouched = Math.max(base.companiesTouched, num(liveRow.companiesTouched));
+  if (Object.prototype.hasOwnProperty.call(liveRow, 'contactsTouched')) merged.contactsTouched = Math.max(base.contactsTouched, num(liveRow.contactsTouched));
+  merged.source = 'bq_or_live_cumulative';
+  return merged;
+}
+function liveLineage(live) { const liveUsed = hasLiveCoverage(live); const bq = 'bq_daily_dimension_v2'; const hybrid = liveUsed ? 'bq_or_live_cumulative' : bq; const touchedSrc = liveUsed && live.rows.some((r) => Object.prototype.hasOwnProperty.call(r, 'companiesTouched') || Object.prototype.hasOwnProperty.call(r, 'contactsTouched')) ? 'bq_or_live_cumulative' : bq; return { calls: hybrid, callsConversation: hybrid, callsDial: hybrid, emails: hybrid, whatsapp: hybrid, linkedin: hybrid, meetings: hybrid, activities: hybrid, total: hybrid, companiesTouched: touchedSrc, contactsTouched: touchedSrc, companiesInserted: bq, contactsInserted: bq, attempted: hybrid, crmMovements: hybrid, connected: hybrid, qualified: hybrid, disqualified: hybrid, sqlDeals: bq, reactivity: 'bq_reactivity_v2' }; }
 
 function bad(message) { const error = new Error(message); error.statusCode = 400; return error; }
 function parseDate(value, name) { if (!ISO.test(String(value || ''))) throw bad(`${name} obrigatório (YYYY-MM-DD)`); return value; }
@@ -113,13 +125,7 @@ function rowsToAggregates(rows, requested, live) {
     seenKeys.add(key);
     const liveRow = base.date === today ? liveByKey[key] : null;
     if (liveRow) {
-      const merged = liveItem(liveRow, 'bq+live');
-      merged.sqlDeals = base.sqlDeals;
-      merged.companiesInserted = base.companiesInserted;
-      merged.contactsInserted = base.contactsInserted;
-      if (!Object.prototype.hasOwnProperty.call(liveRow, 'companiesTouched')) merged.companiesTouched = base.companiesTouched;
-      if (!Object.prototype.hasOwnProperty.call(liveRow, 'contactsTouched')) merged.contactsTouched = base.contactsTouched;
-      addItem(merged);
+      addItem(mergeCumulativeLiveRow(base, liveRow, requested));
     } else {
       addItem(base);
     }
