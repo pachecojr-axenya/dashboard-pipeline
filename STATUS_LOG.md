@@ -1,5 +1,20 @@
 # Dashboard Enhancement Loop — Status Log
 
+### 🚀 DEPLOY DE PRODUÇÃO | Forecast Delta — "Ativos" deixa de incluir Diagnóstico (2026-07-20)
+
+> Decisão do dono: no Comparativo, o escopo "Ativos" deve considerar só
+> Cotação/Consultoria/Negociação; Diagnóstico só no "Tudo".
+
+- `DELTA_ACTIVE_STAGES` = `['Cotação','Consultoria','Negociação']` (era com Diagnóstico);
+  `deltaScopeStages('ativos')` idem. Ajustados rótulo/tooltip do toggle, caveat da API
+  e o teste `test-forecast-delta-scope.js`. Bid/Standby seguem fora dos dois modos.
+- **Deploy:** commit `d4736c1` (branch `pacheco/delta-ativos-sem-diagnostico-2026-07-20`,
+  ff sem force) | deployment `dpl_4pCcyomLLXRgfEXu6cejvaUb4Mi5` (READY). `npm run check` verde.
+- **Pós-deploy ao vivo:** 7 rotas 200, auth 401. `compare` scope=ativos → funil
+  Cotação/Consultoria/Negociação; scope=tudo → inclui Diagnóstico/Reunião/Ganho/Implantação.
+
+---
+
 ### 🚀 DEPLOY DE PRODUÇÃO | BDR Workload — visões P0/P1 + BigQuery Gold (2026-07-20)
 
 - **PR/merge:** PR `#7`, merge `696ba61` (`31ea06b` funcional).
