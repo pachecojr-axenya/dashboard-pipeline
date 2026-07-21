@@ -19,7 +19,9 @@ var WorkloadBDR = (function () {
 
   var raw = null;
   var history = null;
+  var cohort = null;
   var historyError = null;
+  var cohortError = null;
   var CHANNELS = [['todos', 'Todos'], ['calls', 'Ligações'], ['emails', 'E-mails'], ['whatsApp', 'WhatsApp'], ['linkedin', 'LinkedIn']];
   var sortBy = 'hoje';
   var sortDir = 'desc';
@@ -127,6 +129,7 @@ var WorkloadBDR = (function () {
     document.getElementById('content').classList.add('hidden');
     var url = '/api/bdr-workload?since=' + r.since + '&until=' + r.until + (refresh ? '&refresh=1' : '');
     var histUrl = '/api/bdr-workload-history?since=' + r.since + '&until=' + r.until;
+    var cohortUrl = '/api/bdr-cohort-analytics?since=' + r.since + '&until=' + r.until;
     var liveReq = fetch(url, { credentials: 'same-origin' })
       .then(function (res) {
         if (res.status === 401) { window.location.href = '/'; throw new Error('login'); }
@@ -149,11 +152,26 @@ var WorkloadBDR = (function () {
         historyError = e.message || 'Falha ao carregar histórico';
         return null;
       });
-    Promise.all([liveReq, histReq])
+    var cohortReq = fetch(cohortUrl, { credentials: 'same-origin' })
+      .then(function (res) {
+        if (res.status === 401) { window.location.href = '/'; throw new Error('login'); }
+        return res.json().then(function (data) {
+          if (!res.ok || !data.success) throw new Error(data.error || 'Falha ao carregar coortes');
+          return data;
+        });
+      })
+      .catch(function (e) {
+        if (e.message === 'login') throw e;
+        cohortError = e.message || 'Falha ao carregar coortes';
+        return null;
+      });
+    Promise.all([liveReq, histReq, cohortReq])
       .then(function (results) {
         raw = results[0];
         history = results[1];
+        cohort = results[2];
         if (history) historyError = null;
+        if (cohort) cohortError = null;
         render();
       })
       .catch(function (e) {
@@ -200,6 +218,8 @@ var WorkloadBDR = (function () {
       { label: 'Desqualificado | Timing', value: kDesq.length, cls: kDesq.length ? 'bad' : '', drill: 'desq', sub: 'motivos: propriedade pendente no HubSpot', help: 'desqualificado', delta: deltaHtml(kDesq.length, prev.desq) },
     ]);
     html += '</section>';
+
+    html += renderCohortAnalytics();
 
     if (state.bdr) {
       html += '<section class="level-2"><h2 class="level-title">🎯 Visão do BDR</h2>';
@@ -692,7 +712,64 @@ var WorkloadBDR = (function () {
   function chartFonteResultado(comps, conts, trans) {
     return '<div class="story-grid"><div class="story-card"><b>Fonte → resultado | leitura suspensa</b><span>Não exibimos correlação Apollo → SQL sem coorte que associe cada deal à fonte, porte e persona do lead. O gráfico de fonte abaixo permanece apenas descritivo.</span></div>' +
       '<div class="story-card"><b>Por que</b><span>Somar empresas e contatos cria denominador heterogêneo; comparar BDRs sem controlar mix gera conclusão enganosa.</span></div>' +
-      '<div class="story-card"><b>Próximo gate</b><span>Construir coorte contato → deal SQL, controlar porte/persona e mostrar tamanho da amostra antes de calcular qualquer delta.</span></div></div>';
+      '<div class="story-card"><b>Gate atual</b><span>A coorte Company×BDR já está ativa na seção analítica abaixo. Fonte→SQL segue suspenso até a origem/persona estar ligada à mesma coorte.</span></div></div>';
+  }
+
+  function cohortAvailable() { return !!(cohort && Array.isArray(cohort.effort) && Array.isArray(cohort.penetration) && Array.isArray(cohort.tier)); }
+  function cohortRows(key) { return cohortAvailable() ? cohort[key].filter(function (r) { return !state.bdr || r.bdr === state.bdr; }) : []; }
+  function pct(v) { return Math.round((Number(v) || 0) * 100); }
+  function icText(w) { return w ? 'IC95% ' + pct(w.low) + '–' + pct(w.high) + '%' : 'IC95% —'; }
+  function rateCell(row) { return row.sampleSufficient ? '<b>' + pct(row.rate) + '%</b> <span class="muted">n=' + row.cohorts + ' · ' + icText(row.wilson95) + '</span>' : '<span class="muted">amostra insuficiente · n=' + row.cohorts + ' · ' + icText(row.wilson95) + '</span>'; }
+  function renderCohortBanner() {
+    var m = cohort.metadata || {}, req = cohort.requestedRange || {}, eff = cohort.effectiveRange || {};
+    var txt = '<b>Snapshot analítico:</b> data máxima ' + esc(m.latestDataDate || '—') + '. ';
+    if (cohort.usedFallback) txt += 'Pedido ' + esc(req.since) + '–' + esc(req.until) + ' | exibindo janela analítica equivalente ' + esc(eff.since) + '–' + esc(eff.until) + ' porque o snapshot vai até ' + esc(m.latestDataDate || '—') + '.';
+    else if (cohort.expandedTo30d || (req.until && eff.until && req.until !== eff.until)) txt += 'Pedido ' + esc(req.since) + '–' + esc(req.until) + ' | exibindo janela analítica ' + esc(eff.since) + '–' + esc(eff.until) + ' (snapshot limitado e mínimo de 30 dias).';
+    else txt += 'Janela efetiva ' + esc(eff.since || '—') + '–' + esc(eff.until || '—') + '.';
+    return '<section class="note cohort-banner">' + txt + '<br><b>Regra estatística:</b> mínimo analítico de 30 dias; toda taxa mostra n e IC95%.<br><b>Filtros aplicados:</b> período e BDR; canal/fonte da inserção não se aplicam a esta camada.</section>';
+  }
+  function renderEffortCohort() {
+    var rows = cohortRows('effort').slice().sort(function (a, b) { return a.effortBandOrder - b.effortBandOrder; });
+    if (state.bdr) rows = rows.filter(function (r) { return r.bdr === state.bdr; });
+    var bands = ['1', '2-3', '4-6', '7-12', '13+'];
+    var agg = {};
+    bands.forEach(function (b) { agg[b] = { effortBand: b, effortBandOrder: bands.indexOf(b) + 1, cohorts: 0, converted: 0 }; });
+    rows.forEach(function (r) { var a = agg[r.effortBand]; if (a) { a.cohorts += r.cohorts; a.converted += r.converted; } });
+    var out = bands.map(function (b) { var a = agg[b], w = wilsonFront(a.converted, a.cohorts); return { effortBand: b, cohorts: a.cohorts, converted: a.converted, rate: w.rate, wilson95: w, sampleSufficient: a.cohorts >= ((cohort.metadata && cohort.metadata.minEffortN) || 30) }; });
+    var max = Math.max(1, out.reduce(function (m, r) { return Math.max(m, r.rate); }, 0));
+    var h = '<div class="card span-12"><div class="card-title"><div><h2>Associação observacional | esforço real até a data do SQL</h2><div class="desc">Barras por faixa de toques reais até a data do SQL. Correlação ≠ causalidade; toques posteriores ao SQL no mesmo dia podem permanecer por a fonte ter data, não timestamp.</div></div></div><div class="bars cohort-bars">';
+    out.forEach(function (r) { h += '<div class="bar-wrap"><div class="bar" style="background:linear-gradient(180deg,var(--teal),rgba(58,184,183,.35));height:' + Math.max(3, Math.round(r.rate / max * 150)) + 'px"><small>' + (r.sampleSufficient ? pct(r.rate) + '%' : 'n insuf.') + '</small></div><span class="bar-label" style="transform:none">' + esc(r.effortBand) + '<br>n=' + r.cohorts + '<br>' + icText(r.wilson95) + '</span></div>'; });
+    return h + '</div></div>';
+  }
+  function wilsonFront(successes, n) {
+    var z = 1.959963984540054, s = Number(successes || 0), total = Number(n || 0);
+    if (!total) return { low: 0, high: 0, rate: 0 };
+    var phat = s / total, denom = 1 + z * z / total, center = (phat + z * z / (2 * total)) / denom, margin = z * Math.sqrt((phat * (1 - phat) + z * z / (4 * total)) / total) / denom;
+    return { low: Math.max(0, center - margin), high: Math.min(1, center + margin), rate: phat };
+  }
+  function renderPenetrationCohort() {
+    var rows = cohortRows('penetration');
+    var total = state.bdr ? rows[0] : rows.filter(function (r) { return r.isAll; })[0];
+    if (!total) total = { companiesObserved: 0, companiesReal: 0, contactsObserved: 0, contactsReal: 0, medianDepth: 0, buckets: { '0': 0, '1': 0, '2-3': 0, '4+': 0 } };
+    var med = total.medianDepth || 0;
+    var warn = total.companiesObserved < ((cohort.metadata && cohort.metadata.minPenetrationCompanies) || 20) ? '<div class="desc">amostra insuficiente para leitura comparativa robusta.</div>' : '';
+    return '<div class="card span-6"><div class="card-title"><div><h2>Penetração observada | empresa e contato</h2><div class="desc">Denominador = observado no snapshot, não carteira total/elegíveis.</div></div></div>' + warn + '<div class="story-grid"><div class="story-card"><b>Empresas com toque real</b><span>' + total.companiesReal + ' / ' + total.companiesObserved + '</span></div><div class="story-card"><b>Contatos reais</b><span>' + total.contactsReal + ' / ' + total.contactsObserved + '</span></div><div class="story-card"><b>Mediana profundidade</b><span>' + med.toFixed(1) + ' toques reais</span></div></div><div class="break-list">' + ['0', '1', '2-3', '4+'].map(function (k) { return '<div class="break-row"><span class="break-name">bucket ' + k + '</span><div class="break-track"><div class="break-fill" style="width:' + (total.companiesObserved ? Math.round(total.buckets[k] / total.companiesObserved * 100) : 0) + '%"></div></div><span class="break-val">' + total.buckets[k] + '</span></div>'; }).join('') + '</div></div>';
+  }
+  function renderTierCohort() {
+    var rows = cohortRows('tier');
+    var byPorte = {};
+    rows.forEach(function (r) { var key = (r.porte || 'desconhecido').toLowerCase(); if (!byPorte[key]) byPorte[key] = { porte: key, cohorts: 0, converted: 0 }; byPorte[key].cohorts += r.cohorts || 0; byPorte[key].converted += r.converted || 0; });
+    rows = Object.keys(byPorte).map(function (key) { var r = byPorte[key], w = wilsonFront(r.converted, r.cohorts); r.rate = w.rate; r.wilson95 = w; r.sampleSufficient = r.cohorts >= ((cohort.metadata && cohort.metadata.minTierN) || 20); return r; });
+    var total = rows.reduce(function (a, r) { a.cohorts += r.cohorts || 0; if ((r.porte || '').toLowerCase() !== 'desconhecido') a.known += r.cohorts || 0; return a; }, { cohorts: 0, known: 0 });
+    rows.sort(function (a, b) { return (b.cohorts || 0) - (a.cohorts || 0); });
+    var h = '<div class="card span-6"><div class="card-title"><div><h2>Conversão empresa→SQL por porte | 30d</h2><div class="desc">Taxa descritiva por porte; desconhecido explícito. Cobertura de porte: ' + (total.cohorts ? Math.round(total.known / total.cohorts * 100) : 0) + '%.</div></div></div><div class="break-list">';
+    if (!rows.length) h += '<div class="desc">Sem coortes no recorte.</div>';
+    rows.forEach(function (r) { h += '<div class="break-row" style="grid-template-columns:minmax(120px,1fr) 1fr 220px"><span class="break-name">' + esc(r.porte || 'desconhecido') + '</span><div class="break-track"><div class="break-fill" style="width:' + pct(r.rate) + '%"></div></div><span class="break-val">' + rateCell(r) + '</span></div>'; });
+    return h + '</div></div>';
+  }
+  function renderCohortAnalytics() {
+    if (!cohortAvailable()) return '<section class="level-advanced"><h2 class="level-title">Inteligência de Coorte | snapshot analítico</h2><div class="card span-12"><div class="card-title"><div><h2>Camada indisponível</h2><div class="desc">Não foi possível carregar /api/bdr-cohort-analytics. O restante do dashboard permanece operacional.</div></div></div><div class="note">' + esc(cohortError || 'Falha desconhecida') + '</div></div></section>';
+    return '<section class="level-advanced"><h2 class="level-title">Inteligência de Coorte | snapshot analítico</h2>' + renderCohortBanner() + '<div class="grid">' + renderEffortCohort() + renderPenetrationCohort() + renderTierCohort() + '</div></section>';
   }
 
   function chartPorBdr(comps, conts, trans) {

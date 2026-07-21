@@ -7,8 +7,16 @@ function arg(name, fallback) {
 }
 function today() { return new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString().slice(0, 10); }
 function hasPII(obj) {
-  const s = JSON.stringify(obj);
-  return /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i.test(s) || /\+?55\s?\(?\d{2}\)?\s?9?\d{4}[-\s]?\d{4}/.test(s);
+  let found = false;
+  function walk(value) {
+    if (found) return;
+    if (Array.isArray(value)) return value.forEach(walk);
+    if (value && typeof value === 'object') return Object.values(value).forEach(walk);
+    if (typeof value !== 'string') return;
+    found = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i.test(value) || /\+?55\s?\(?\d{2}\)?\s?9?\d{4}[-\s]?\d{4}/.test(value);
+  }
+  walk(obj);
+  return found;
 }
 async function getJson(base, path) {
   const res = await fetch(base + path, { headers: { 'x-local-dev-bypass': 'true' } });
@@ -23,6 +31,7 @@ async function getJson(base, path) {
   const bdr = arg('--bdr', '');
   const live = await getJson(base, '/api/bdr-workload?since=' + since + '&until=' + until + '&refresh=1');
   const hist = await getJson(base, '/api/bdr-workload-history?since=' + since + '&until=' + until);
+  const cohort = await getJson(base, '/api/bdr-cohort-analytics?since=' + since + '&until=' + until);
   assert(Array.isArray(live.activities), 'live.activities array');
   if (until >= today() && since <= today()) assert(live.activities.length > 0, 'esperado live activities >0 para hoje');
   assert.strictEqual(hist.source, 'bigquery');
@@ -37,11 +46,15 @@ async function getJson(base, path) {
   assert.strictEqual(hist.sqlDeals.length, dailySql, 'sqlDeals deve reconciliar com soma diária da janela');
   assert(hist.metadata && hist.metadata.reconciliation && hist.metadata.reconciliation.matches === true, 'metadata reconciliation deve passar');
   assert(!hasPII(hist), 'history não deve conter PII');
+  assert(Array.isArray(cohort.effort) && Array.isArray(cohort.penetration) && Array.isArray(cohort.tier), 'cohort analytics arrays');
+  assert(cohort.metadata && cohort.metadata.grain === 'company|bdr cohort', 'cohort grain explícito');
+  assert(cohort.metadata.latestDataDate, 'cohort freshness explícita');
+  assert(!hasPII(cohort), 'cohort analytics não deve conter PII');
   if (bdr) {
     const liveByBdr = live.activities.filter((row) => row.bdr === bdr);
     const historyByBdr = hist.dailyRows.filter((row) => row.owner_name === bdr && row.metric_date >= since && row.metric_date <= until);
     assert(liveByBdr.length > 0, 'esperado live activities >0 para ' + bdr);
     assert(historyByBdr.some((row) => Number(row.activities_total) > 0), 'esperado histórico estrito >0 para ' + bdr);
   }
-  console.log('smoke-bdr-workload ok', JSON.stringify({ liveActivities: live.activities.length, sqlDeals: hist.sqlDeals.length, source: hist.source }));
+  console.log('smoke-bdr-workload ok', JSON.stringify({ liveActivities: live.activities.length, sqlDeals: hist.sqlDeals.length, cohortEffortRows: cohort.effort.length, cohortTierRows: cohort.tier.length, source: hist.source, cohortLatest: cohort.metadata.latestDataDate }));
 })().catch((e) => { console.error(e.message); process.exit(1); });

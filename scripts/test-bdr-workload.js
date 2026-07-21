@@ -88,6 +88,6 @@ assert(ui.includes('s/ base'), 'baseline zero deve mostrar s/ base');
 assert(ui.includes('gold.bdr_daily_target'), 'UI deve explicar fonte de metas');
 assert(ui.includes('LinkedIn live depende'), 'quality check deve declarar limitação LinkedIn live');
 assert(ui.includes('Object.keys(r).forEach(function (key) { by[r.date][key] = r[key]; })'), 'today live deve mutar a linha já referenciada pelo array do gráfico');
-assert(html.includes('/bdr-workload.js?v=7'), 'cache busting deve estar em v=7');
+assert(html.includes('/bdr-workload.js?v=8'), 'cache busting deve estar em v=8');
 
 console.log('test-bdr-workload ok');
