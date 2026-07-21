@@ -1,5 +1,13 @@
 # Dashboard Enhancement Loop — Status Log
 
+### BDR Workload v2 | lineage WhatsApp/Treble + coluna de nome congelada (2026-07-21)
+
+- **Treble conta como WhatsApp do BDR? NÃO.** Verificado na API HubSpot: 13.340 communications WHATS_APP no portal = 11.647 `CRM_UI` (manual, logado pelo BDR) + 1.689 `INTEGRATION` (Treble, source_id 26063081). **Todas as 1.689 do Treble têm `hubspot_owner_id = null`** → a camada live agrupa por owner, então Treble não é atribuído a nenhum BDR. Leak check: `INTEGRATION + HAS owner = 0`. WhatsApp por BDR = só CRM_UI manual.
+- **E-mails Gabriele:** os 32 eram de HOJE, não 7 dias. Em 7 dias = 235 e-mails (amostra 99% outbound `EMAIL`, incoming excluído). Sem subcontagem.
+- **UI:** coluna BDR (1ª) agora `position:sticky;left:0` em `.table-wrap` (header, corpo, tfoot, zebra e hover) — nome fica visível ao rolar a tabela larga na horizontal.
+- **Ressalva:** verificação feita na camada LIVE (hoje). Confirmar que o ETL do gold (`whatsapp_total`, janelas fechadas 7/30d) também exclui comms sem owner — como Treble não tem owner, deve cair fora, mas o código do Cloud Run Job não foi auditado nesta sessão.
+- **Validação:** `npm run check` PASS.
+
 ### BDR Workload v2 | Gestão por canal + verificação de cobertura (2026-07-21)
 
 - **Dúvida do usuário:** cobre todos os BDRs? Gestão deveria mostrar atividades quebradas por BDR. "Gabi mostra CRM 0 mas teve e-mails."
