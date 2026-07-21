@@ -14,8 +14,11 @@
   bucket desconhecido.
 - **Guardrails:** conversão nunca usa toque como denominador; correlação não é
   causal; esforço conta até a data do SQL; janela mínima de 30 dias; payload sem PII.
-- **Freshness:** `fact_touch` vai até `2026-07-01` para coortes com Company; a UI
-  mostra a data máxima e usa janela histórica equivalente/expandida sem fingir realtime.
+- **Freshness + automação:** `fact_touch` foi reconstruída sobre `interaction` atual;
+  coortes com Company vão até `2026-07-13` (a interação bruta vai até 20/07). Scheduled
+  Query `ci-fact-touch-daily` (`6a60b9a3-0000-27ae-8cc3-ac3eb14583d8`) roda diariamente
+  às `10:30 UTC` (`07:30 BRT`) via `bdr-etl-runner`; primeira execução `SUCCEEDED`.
+  A UI mostra a data máxima e usa janela histórica equivalente/expandida sem fingir realtime.
 - **Evidências:** tests `b8bfe03c3a12b811bb9aac6054d2c6fb617fe38ec5392ee5652176c521cbaf48`;
   build `feaa7b47c6f93fed1ae88274cacab6a62cc041d20ad0359498b337a106fb3da5`;
   smoke real `4307b30d95ba75a1c518ca0678641cb90707c71e748e2827dbf6ae93df19637b`;
