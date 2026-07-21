@@ -12,7 +12,7 @@ const ISO = /^\d{4}-\d{2}-\d{2}$/;
 const SUPPORTED_DOMAINS = ['ritmo', 'insercao', 'crm', 'contato_efetivo', 'sql'];
 const BREAKDOWNS = ['canal', 'bdr', 'porte', 'segmento', 'persona', 'none'];
 const CHANNELS = [['calls', 'Ligações', 'calls_total'], ['emails', 'E-mails', 'emails_sent_total'], ['whatsapp', 'WhatsApp', 'whatsapp_total'], ['linkedin', 'LinkedIn', 'linkedin_total'], ['meetings', 'Reuniões', 'meetings_total']];
-const DOMAIN_COMPONENTS = { insercao: [['companiesInserted', 'Empresas inseridas', 'companies_inserted'], ['contactsInserted', 'Contatos inseridos', 'contacts_inserted']], crm: [['attempted', 'Tentativas', 'attempted_total'], ['connected', 'Conectados', 'connected_total'], ['qualified', 'Qualificados', 'qualified_total'], ['disqualified', 'Desqualificados', 'disqualified_total']], contato_efetivo: [['connected', 'Conectados', 'connected_total']], sql: [['sql', 'SQL', 'sql_deals']] };
+const DOMAIN_COMPONENTS = { insercao: [['companiesInserted', 'Empresas elegíveis', 'companies_inserted'], ['contactsInserted', 'Contatos elegíveis', 'contacts_inserted']], crm: [['attempted', 'Tentativas', 'attempted_total'], ['connected', 'Conectados', 'connected_total'], ['qualified', 'Qualificados', 'qualified_total'], ['disqualified', 'Desqualificados', 'disqualified_total']], contato_efetivo: [['connected', 'Conectados', 'connected_total']], sql: [['sql', 'SQL', 'sql_deals']] };
 function bad(message) { const error = new Error(message); error.statusCode = 400; return error; }
 function parseDate(value, name) { if (!ISO.test(String(value || ''))) throw bad(`${name} obrigatório (YYYY-MM-DD)`); return value; }
 function days(since, until) { return Math.floor((new Date(`${until}T00:00:00Z`) - new Date(`${since}T00:00:00Z`)) / 86400000) + 1; }

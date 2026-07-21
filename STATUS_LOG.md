@@ -1,5 +1,18 @@
 # Dashboard Enhancement Loop — Status Log
 
+### BDR Workload v2 | correção de schema e reconciliação analítica (2026-07-21)
+
+- Auditoria confirmou quatro causas raiz: `CI.lead` parou em 26/06; `silver.activities` não tinha associações company/contact; o merge live descartava a linha BQ inteira de hoje; e Penetração filtrava `company_v2` pelo primeiro eligible_date histórico, subcontando a coorte do período.
+- GCP corrigido: elegibilidade vem de `silver.leads`; toques vêm da semantic touch base; bridge `silver.activity_associations` no grão activity object + ID; conversão 30D vem de SQL real; Task LinkedIn e e-mail inbound ficam fora dos cinco canais.
+- Cloud Run Job atualizado para a imagem `20260721-workload-v2-schema-fix3`. Execução incremental `bdr-etl-job-ps2x5` concluiu com sucesso; a imagem final preserva lookback semântico anual mesmo quando a extração é incremental.
+- Reconciliação BQ de 20/07: 1.254 atividades = 473 ligações + 472 e-mails + 211 WhatsApp + 93 LinkedIn + 5 reuniões; 338 empresas tocadas; 467 contatos tocados; CRM 332; contato efetivo 118; SQL 10.
+- Penetração de 20/07: 86 coortes empresa+owner, 126 contatos elegíveis, 73 tocados e 154 toques; denominador agora reconcilia com o drill.
+- Quality checks: zero falha MECE, zero chave duplicada na bridge; 7.584 de 7.654 atividades dos cinco canais nos últimos 14 dias tiveram associação company/contact (99,1%). Denominador exclui notes, tasks e e-mails inbound.
+- Consumidor Vercel preparado: merge live por campo preserva SQL/BQ, agrega CRM/inserções/associações live, e mostra estado vazio explícito em vez de seis buckets zerados quando não há lead elegível.
+- **Status:** GCP/BigQuery corrigidos em produção; PR/deploy Vercel desta correção ainda pendentes nesta etapa.
+
+---
+
 ### 🚀 DEPLOY DE PRODUÇÃO | BDR Workload v2 — fallback live A×B e correção visual KPI (2026-07-21)
 
 - Causa raiz: a aba Evolução A×B usa `/api/bdr-workload-compare`, que lia somente BigQuery; quando a janela B continha hoje antes do snapshot Gold existir, B ficava zero embora o Pulso tivesse live do HubSpot.

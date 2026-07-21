@@ -5,6 +5,7 @@ const sem = require('../api/bdr-workload-semantic')._test;
 const pen = require('../api/bdr-workload-penetration')._test;
 const cmp = require('../api/bdr-workload-compare')._test;
 const drill = require('../api/bdr-workload-drill')._test;
+const workload = require('../api/bdr-workload')._test;
 
 function req(q) { return { url: '/?' + q }; }
 async function withBqStub(rows, fn) {
@@ -29,6 +30,12 @@ async function withBqStub(rows, fn) {
   assert.equal(parsedSem.persona, 'RH');
   assert.equal(sem.isBusiness('2026-07-20'), true);
   assert.equal(sem.isBusiness('2026-07-19'), false);
+  const associatedActivities = [{ id: '10', tipo: 'calls' }, { id: '20', tipo: 'calls' }];
+  const associationDiagnostics = await workload.fetchActivityAssociations('stub', associatedActivities, async (_token, url, body) => ({ results: body.inputs.map(({ id }) => ({ from: { id }, to: [{ toObjectId: url.includes('/contacts/') ? String(Number(id) + 100) : String(Number(id) + 200) }] })) }));
+  assert.deepStrictEqual(associationDiagnostics, { attempted: 2, succeeded: 2, errors: 0, available: true });
+  assert.equal(associatedActivities[0].contact_id, '110');
+  assert.equal(associatedActivities[0].company_id, '210');
+  assert.equal(workload.smallestAssociationId({ to: [{ toObjectId: '200' }, { toObjectId: '9' }, { toObjectId: '10' }] }), '9');
   assert.equal(sem.normalizeTimestamp('1784567311.617586'), '2026-07-20T17:08:31.618Z');
   const r = sem.reactivityFromRows([{ has_touch: true, hours_to_first_touch: 0 }, { has_touch: true, hours_to_first_touch: 2 }, { has_touch: false }]);
   assert.equal(r.p50Hours, 1);
@@ -41,9 +48,40 @@ async function withBqStub(rows, fn) {
   assert.equal(liveAggregate[0].contactsInserted, 1);
   assert.equal(liveAggregate[0].leadsCreated, undefined);
   assert(!/não deve vazar|telefone|contato_id|123|456/.test(JSON.stringify(liveAggregate)), 'agregado live não contém PII/IDs nominais');
+  const liveRich = sem.aggregateLivePayload({ team: ['Thauan Pontes'], diagnostics: { activityAssociations: { attempted: 6, succeeded: 6, errors: 0, available: true } }, companiesCreated: [{ bdr: 'Thauan Pontes', id: 'c-new' }], contactsCreated: [{ bdr: 'Thauan Pontes', id: 'ct-new', empresa_id: 'c1' }], activities: [{ tipo: 'calls', duracao_ms: 61000, bdr: 'Thauan Pontes', contact_id: 'ct1', company_id: 'c1' }, { tipo: 'calls', duracao_ms: 10000, bdr: 'Thauan Pontes', contact_id: 'ct2', company_id: 'c1' }, { tipo: 'communications', canal: 'WHATS_APP', bdr: 'Thauan Pontes', contact_id: 'ct2', company_id: 'c1' }], transitions: [{ bdr: 'Thauan Pontes', para: 'CONNECTED', contact_id: 'ct1', company_id: 'c1' }, { bdr: 'Thauan Pontes', para: 'OPEN_DEAL', contact_id: 'ct1', company_id: 'c1' }, { bdr: 'Thauan Pontes', para: 'BAD_TIMING', contact_id: 'ct2', company_id: 'c1' }, { bdr: 'Thauan Pontes', para: 'NEW', contact_id: 'ct3', company_id: 'c2' }, { bdr: 'Thauan Pontes', para: 'ATTEMPTED_TO_CONTACT', contact_id: 'ct3', company_id: 'c2' }] }, '2026-07-21', { bdr: 'Thauan Pontes', channels: sem.CHANNELS });
+  assert.equal(liveRich[0].callsConversation, 1);
+  assert.equal(liveRich[0].callsDial, 1);
+  assert.equal(liveRich[0].activities, 3);
+  assert.equal(liveRich[0].total, 3);
+  assert.equal(liveRich[0].companiesInserted, 1);
+  assert.equal(liveRich[0].contactsInserted, 1);
+  assert.equal(liveRich[0].companiesTouched, 1);
+  assert.equal(liveRich[0].contactsTouched, 2);
+  assert.equal(liveRich[0].crmMovements, 4);
+  assert.equal(liveRich[0].attempted, 1);
+  assert.equal(liveRich[0].connected, 1);
+  assert.equal(liveRich[0].qualified, 1);
+  assert.equal(liveRich[0].disqualified, 1);
+  const mergedToday = sem.rowsToAggregates([{ metric_date: sem.todayIso(), owner_name: 'Thauan Pontes', calls: '9', calls_conversation: '4', calls_dial: '5', emails: '0', whatsapp: '0', linkedin: '0', meetings: '0', activities_total: '12', companies_touched: '7', contacts_touched: '8', companies_inserted: '0', contacts_inserted: '0', attempted: '12', crm_movements: '12', connected: '5', qualified: '0', disqualified: '0', sql_deals: '2' }], { bdr: 'Thauan Pontes', channels: sem.CHANNELS }, { used: true, rows: liveRich });
+  assert.equal(mergedToday.byBdr['Thauan Pontes'].sqlDeals, 2);
+  assert.equal(mergedToday.byBdr['Thauan Pontes'].total, 3);
+  assert.equal(mergedToday.byBdr['Thauan Pontes'].crmMovements, 4);
+  assert.equal(mergedToday.byBdr['Thauan Pontes'].companiesTouched, 1);
+  assert.equal(mergedToday.byBdr['Thauan Pontes'].contactsTouched, 2);
+  assert.equal(mergedToday.byBdr['Thauan Pontes'].companiesInserted, 0);
+  assert.equal(mergedToday.byBdr['Thauan Pontes'].contactsInserted, 0);
+  assert.equal(sem.liveLineage({ used: true, rows: liveRich }).companiesInserted, 'bq_daily_dimension_v2');
+  assert.equal(sem.liveLineage({ used: true, rows: liveRich }).contactsInserted, 'bq_daily_dimension_v2');
+  const liveNoAssoc = sem.aggregateLivePayload({ team: ['Thauan Pontes'], diagnostics: { activityAssociations: { attempted: 2, succeeded: 0, errors: 2, available: false } }, contactsCreated: [{ bdr: 'Thauan Pontes', empresa_id: 'created-company' }], activities: [{ tipo: 'calls', duracao_ms: 61000, bdr: 'Thauan Pontes' }], transitions: [{ bdr: 'Thauan Pontes', para: 'CONNECTED', contact_id: 'crm-contact', company_id: 'crm-company' }] }, sem.todayIso(), { bdr: 'Thauan Pontes', channels: sem.CHANNELS });
+  assert.equal(Object.prototype.hasOwnProperty.call(liveNoAssoc[0], 'companiesTouched'), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(liveNoAssoc[0], 'contactsTouched'), false);
+  const preservedTouched = sem.rowsToAggregates([{ metric_date: sem.todayIso(), owner_name: 'Thauan Pontes', calls: '0', calls_conversation: '0', calls_dial: '0', emails: '0', whatsapp: '0', linkedin: '0', meetings: '0', activities_total: '0', companies_touched: '7', contacts_touched: '8', companies_inserted: '0', contacts_inserted: '0', attempted: '0', crm_movements: '0', connected: '0', qualified: '0', disqualified: '0', sql_deals: '2' }], { bdr: 'Thauan Pontes', channels: sem.CHANNELS }, { used: true, rows: liveNoAssoc });
+  assert.equal(preservedTouched.byBdr['Thauan Pontes'].companiesTouched, 7);
+  assert.equal(preservedTouched.byBdr['Thauan Pontes'].contactsTouched, 8);
   await withBqStub((sql, params, n) => {
     if (sql.includes('bdr_workload_reactivity_v2')) return [{ owner_name: 'Thauan Pontes', has_touch: true, hours_to_first_touch: 0 }, { owner_name: 'Thauan Pontes', has_touch: false }];
     if (sql.includes('ARRAY_AGG')) return [{ portes: ['grande'], segmentos: ['Tech'], personas: ['RH'] }];
+    if (sql.includes('silver') && sql.includes('leads')) return [{ latest_snapshot_date: '2026-07-17', latest_ingested_at: '2026-07-17 12:00:00', latest_created_date: '2026-07-17' }];
     if (n === 1) return [{ metric_date: '2026-07-17', owner_name: 'Thauan Pontes', calls: '2', calls_conversation: '1', calls_dial: '1', emails: '3', whatsapp: '1', linkedin: '0', meetings: '1', activities_total: '7', companies_touched: '2', contacts_touched: '5', companies_inserted: '1', contacts_inserted: '4', attempted: '6', crm_movements: '10', connected: '3', qualified: '2', disqualified: '1', sql_deals: '1', refreshed_at: '2026-07-17T10:00:00Z' }];
     return [];
   }, async (calls) => {
@@ -69,13 +107,61 @@ async function withBqStub(rows, fn) {
   assert.equal(buckets.exact.find((x) => x.label === '0').companies, 2);
   assert.equal(pen.wilson(2, 10).rate, 0.2);
   assert.deepStrictEqual(pen.bdrIds('Cintia Rodrigues').sort(), ['86900152', '87213208']);
-  await withBqStub((sql) => sql.includes('company_owner') ? [{ porte: 'grande', segmento: 'Tech', contacts_touched: '0', companies: '2', converted: '0', contacts_eligible: '3', contacts_touched_sum: '0', touches_real: '0', refreshed_at: '2026-07-17T10:00:00Z' }] : [{ personas: ['RH'], portes: ['grande'], segmentos: ['Tech'] }], async (calls) => {
+  await withBqStub((sql) => {
+    if (sql.includes('company_scope')) return [{ porte: 'grande', segmento: 'Tech', contacts_touched: '0', companies: '2', converted: '0', contacts_eligible: '3', contacts_touched_sum: '0', touches_real: '0', refreshed_at: '2026-07-17T10:00:00Z' }];
+    if (sql.includes('silver') && sql.includes('leads')) return [{ latest_snapshot_date: '2026-07-31', latest_ingested_at: '2026-07-31 12:00:00', latest_created_date: '2026-07-31' }];
+    if (sql.includes('MAX(eligible_date)')) return [{ latest_eligible_date: '2026-07-31', refreshed_at: '2026-07-31 12:00:00' }];
+    return [{ personas: ['RH'], portes: ['grande'], segmentos: ['Tech'] }];
+  }, async (calls) => {
     const out = await pen.build(pen.parse(req('v=2&since=2026-07-01&until=2026-07-31&persona=RH&porte=grande&segmento=Tech')));
     assert.equal(out.coverage.denominatorEligible, 2);
+    assert.equal(out.source.latestDataDate, '2026-07-31');
+    assert.equal(out.source.refreshedAt, '2026-07-31T12:00:00.000Z');
+    assert.equal(out.source.latestEligibleDate, '2026-07-31');
     assert.equal(out.data.bucketsExact.find((x) => x.label === '0').companies, 2);
     assert(calls[0].sql.includes('bdr_workload_company_contact_v2'));
-    assert(calls[0].sql.includes('company_owner'));
+    assert(calls[0].sql.includes('company_scope'));
+    assert(calls[0].sql.includes('COALESCE(NULLIF(cohort_key'));
+    assert(calls[0].sql.includes('GROUP BY denominator_key, owner_id, company_id'));
+    assert(calls[0].sql.includes('COUNT(DISTINCT denominator_key) companies'));
+    assert(!calls[0].sql.includes('bdr_workload_company_v2'));
     assert(!JSON.stringify(calls[0].params).includes('ARRAY'));
+  });
+  await withBqStub((sql) => {
+    if (sql.includes('company_scope')) return [{ porte: 'grande', segmento: 'Tech', contacts_touched: '1', companies: '86', converted: '8', contacts_eligible: '120', contacts_touched_sum: '86', touches_real: '100', refreshed_at: '2026-07-20T10:00:00Z' }];
+    if (sql.includes('silver') && sql.includes('leads')) return [{ latest_snapshot_date: '2026-07-20', latest_ingested_at: '2026-07-20 12:00:00', latest_created_date: '2026-07-20' }];
+    if (sql.includes('MAX(eligible_date)')) return [{ latest_eligible_date: '2026-07-20', refreshed_at: '2026-07-20 12:00:00' }];
+    return [{ personas: ['RH'], portes: ['grande'], segmentos: ['Tech'] }];
+  }, async (calls) => {
+    const out = await pen.build(pen.parse(req('v=2&since=2026-07-20&until=2026-07-20&porte=grande&segmento=Tech')));
+    assert.equal(out.coverage.denominatorEligible, 86);
+    assert(calls[0].sql.includes('FROM `gen-lang-client-0423905839.axenya_sales_hubspot_bdr_prd_sae1_gold.bdr_workload_company_contact_v2` cc'));
+    assert(calls[0].sql.includes('cc.eligible_date BETWEEN @since AND @until'));
+    assert(!calls[0].sql.includes('bdr_workload_company_v2'));
+    assert(calls.some((call) => call.sql.includes('MAX(eligible_date)') && call.sql.includes('bdr_workload_company_contact_v2') && !call.sql.includes('bdr_workload_company_v2')));
+  });
+  await withBqStub((sql) => {
+    if (sql.includes('silver') && sql.includes('leads')) return [{ latest_snapshot_date: '2026-07-31', latest_ingested_at: '2026-07-31 12:00:00', latest_created_date: '2026-07-31' }];
+    if (sql.includes('MAX(eligible_date)')) return [{ latest_eligible_date: '2026-07-31', refreshed_at: '2026-07-31 12:00:00' }];
+    if (sql.includes('ARRAY_AGG')) return [{ personas: ['RH'], portes: ['grande'], segmentos: ['Tech'] }];
+    return [];
+  }, async () => {
+    const out = await pen.build(pen.parse(req('v=2&since=2026-07-01&until=2026-07-31')));
+    assert.equal(out.coverage.denominatorEligible, 0);
+    assert.equal(out.emptyState.message, 'Nenhum lead elegível criado no período');
+    assert.equal(out.data.bucketsExact.length, 0);
+    assert.equal(out.data.association.length, 0);
+    assert.equal(out.quality.status, 'pass');
+  });
+  await withBqStub((sql) => {
+    if (sql.includes('silver') && sql.includes('leads')) return [{}];
+    if (sql.includes('MAX(eligible_date)')) return [{}];
+    if (sql.includes('ARRAY_AGG')) return [{}];
+    return [];
+  }, async () => {
+    const out = await pen.build(pen.parse(req('v=2&since=2026-07-01&until=2026-07-31')));
+    assert.equal(out.quality.status, 'warn');
+    assert.equal(out.emptyState.kind, 'warehouse-unavailable');
   });
 
   assert.equal(cmp.businessDays('2026-07-20', '2026-07-24'), 5);

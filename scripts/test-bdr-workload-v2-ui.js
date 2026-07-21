@@ -29,6 +29,14 @@ assert(js.includes('bdrOverride') && js.includes('p.bdr=bdrOverride') && js.incl
 assert(js.includes("p.context='channel:calls'") && js.includes('Calls detalhado exige BDR selecionado'), 'calls deve exigir BDR e context calls');
 assert(js.includes("e.key==='Enter'||e.key===' '") && js.includes("tagName==='circle'") && js.includes("tagName==='rect'"), 'keyboard SVG Enter/Space ausente');
 assert(js.includes('pageDrill'), 'modal paginação preservada');
+assert(js.includes("unavailable(d,'associative_coverage'))return '—';if(v===0)return 0"), 'metricValue deve mostrar indisponível antes de preservar zero');
+assert(js.includes("if(!cov.denominatorEligible)return panel(cards+note+st"), 'penetração deve renderizar empty state sem rankings quando denominador=0 e disclaimer permanente');
+assert(js.includes("['insercao','Elegibilidade']"), 'domínio insercao deve aparecer como Elegibilidade');
+assert(js.includes('Empresas elegíveis') && js.includes('Contatos elegíveis'), 'labels de gestão devem usar elegibilidade');
+assert(js.includes('lead elegível criado no período; não criação real de company/contact'), 'memória de cálculo deve esclarecer elegibilidade vs criação real');
+assert(js.includes('coorte empresa+owner com lead elegível criado no período, não território total'), 'penetração deve exibir disclaimer permanente de denominador');
+assert(js.includes('mesmo owner em até 30 dias; correlação, não causalidade'), 'associação/conversão 30D deve declarar correlação, não causalidade');
+assert(js.includes("if(!r.eligible)return panel(cards+'<div class=\"grid\"><div class=\"card span-12\">'+st('empty','Nenhum lead elegível criado no período'"), 'pulso deve renderizar empty state de reatividade quando eligible=0');
 assert(js.includes("['crm','CRM']") && js.includes("['contato_efetivo','Contato efetivo']"), 'domínios CRM habilitados');
 assert(html.includes('/bdr-workload-v2-core.js?v=1') && html.includes('/bdr-workload-v2-charts.js?v=1') && html.includes('/bdr-workload-v2.js?v=5'), 'ordem/cache-busters v2 modular');
 assert(html.indexOf('/bdr-workload-v2-core.js') < html.indexOf('/bdr-workload-v2-charts.js') && html.indexOf('/bdr-workload-v2-charts.js') < html.indexOf('/bdr-workload-v2.js?v=5'), 'ordem dos scripts v2 modular inválida');
