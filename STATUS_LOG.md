@@ -8,8 +8,11 @@
 - Reconciliação BQ de 20/07: 1.254 atividades = 473 ligações + 472 e-mails + 211 WhatsApp + 93 LinkedIn + 5 reuniões; 338 empresas tocadas; 467 contatos tocados; CRM 332; contato efetivo 118; SQL 10.
 - Penetração de 20/07: 86 coortes empresa+owner, 126 contatos elegíveis, 73 tocados e 154 toques; denominador agora reconcilia com o drill.
 - Quality checks: zero falha MECE, zero chave duplicada na bridge; 7.584 de 7.654 atividades dos cinco canais nos últimos 14 dias tiveram associação company/contact (99,1%). Denominador exclui notes, tasks e e-mails inbound.
-- Consumidor Vercel preparado: merge live por campo preserva SQL/BQ, agrega CRM/inserções/associações live, e mostra estado vazio explícito em vez de seis buckets zerados quando não há lead elegível.
-- **Status:** GCP/BigQuery corrigidos em produção; PR/deploy Vercel desta correção ainda pendentes nesta etapa.
+- Consumidor Vercel publicado: merge live por campo preserva SQL e elegibilidade BQ, agrega ritmo/CRM/associações live e mostra estado vazio explícito em vez de seis buckets zerados quando não há lead elegível.
+- **PR/merge:** PR `#13`, merge `b638d4d` (`b2aeb87` funcional).
+- **Deploy Vercel:** `dpl_GvE8X55tN6rXcxQf6RHb8zx86XXa` (READY), alias `https://axenya-pipeline-dashboard.vercel.app`.
+- **Evidências:** check `ea2313e56552bcb5ed8bcfb48eff9f8a351e1fb41f924d740d7951429d878c7a`; GCP tests `f67aafa5114f64ef456e964aa360b3ae2e1c4b3ac10a1b1620490aea30364e9c`; predeploy `af9b502aff5b4439b86494e45f06168259a704c63a9493d918e0f0b93e1d1607`; deploy `fdf5dd4d7c932000920452efdf6c7bcf4c77c7d953eef10b6bb1cde51d04a720`; smoke `903a4e3a862bb848a99187401413acd8f155a8d6138295b7a489eb96d6e4620f`.
+- **Quality gates:** reviewer code PASS 9/10; experiment skeptic PASS com ressalvas de associação determinística, escopo do denominador e não causalidade explicitadas na UI.
 
 ---
 
