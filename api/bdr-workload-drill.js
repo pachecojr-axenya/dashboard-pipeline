@@ -33,7 +33,7 @@ function parseContext(raw) {
   const type = parts[0], value = parts[1];
   const allowed = {
     channel: Object.keys(CHANNEL_DB),
-    bucket: ['0', '1', '2', '3', '4', '5', '6+', 'lt_1h', '1_4h', '4_24h', '24_72h', '72h_plus', 'sem_toque'],
+    bucket: ['0', '1', '2', '3', '4', '5', '6+', '2–3', '4–5', 'lt_1h', '1_4h', '4_24h', '24_72h', '72h_plus', 'sem_toque'],
     event: ['attempted', 'connected', 'qualified', 'disqualified'],
     domain: ['ritmo', 'insercao', 'crm', 'contato_efetivo', 'sql'],
   };
@@ -157,9 +157,18 @@ function penetrationQuery(requested, countOnly) {
   const where = addFilters('cc', requested, 'eligible_date', params);
   let bucketWhere = '';
   if (requested.context && requested.context.type === 'bucket') {
-    const bucket = requested.context.value === '6+' ? 6 : Number(requested.context.value);
-    params.push({ name: 'bucketValue', type: 'INT64', value: bucket });
-    bucketWhere = 'WHERE LEAST(CAST(contacts_touched AS INT64), 6) = @bucketValue';
+    const bucket = requested.context.value;
+    if (bucket === '2–3') {
+      params.push({ name: 'bucketMin', type: 'INT64', value: 2 }, { name: 'bucketMax', type: 'INT64', value: 3 });
+      bucketWhere = 'WHERE CAST(contacts_touched AS INT64) BETWEEN @bucketMin AND @bucketMax';
+    } else if (bucket === '4–5') {
+      params.push({ name: 'bucketMin', type: 'INT64', value: 4 }, { name: 'bucketMax', type: 'INT64', value: 5 });
+      bucketWhere = 'WHERE CAST(contacts_touched AS INT64) BETWEEN @bucketMin AND @bucketMax';
+    } else {
+      const bucketValue = bucket === '6+' ? 6 : Number(bucket);
+      params.push({ name: 'bucketValue', type: 'INT64', value: bucketValue });
+      bucketWhere = 'WHERE LEAST(CAST(contacts_touched AS INT64), 6) = @bucketValue';
+    }
   } else if (requested.context && requested.context.type !== 'domain') {
     throw bad('context incompatível com penetration');
   }
