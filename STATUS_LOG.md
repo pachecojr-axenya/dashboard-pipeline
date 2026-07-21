@@ -1,5 +1,30 @@
 # Dashboard Enhancement Loop — Status Log
 
+### 🚀 DEPLOY DE PRODUÇÃO | BDR Workload — inteligência avançada de coorte (2026-07-20)
+
+- **PR/merge:** PR `#8`, merge `7eaf0a8`.
+- **Deploy canônico:** `dpl_3U8NAj5kudSCqQKFK1bDwZYLAZhr` (READY), alias
+  `https://axenya-pipeline-dashboard.vercel.app` reatribuído explicitamente.
+- **Novas views BQ:** `vw_dash_bdr_cohort_base_v1`,
+  `vw_dash_bdr_effort_sql_v1`, `vw_dash_bdr_penetration_v1` e
+  `vw_dash_bdr_sql_by_porte_v1`, todas no grão Company×BDR e com
+  `is_valid_ts=TRUE`.
+- **Novas visões:** associação observacional esforço→SQL, penetração observada por
+  empresa/contato e conversão por porte, sempre com tamanho da amostra, IC95% e
+  bucket desconhecido.
+- **Guardrails:** conversão nunca usa toque como denominador; correlação não é
+  causal; esforço conta até a data do SQL; janela mínima de 30 dias; payload sem PII.
+- **Freshness:** `fact_touch` vai até `2026-07-01` para coortes com Company; a UI
+  mostra a data máxima e usa janela histórica equivalente/expandida sem fingir realtime.
+- **Evidências:** tests `b8bfe03c3a12b811bb9aac6054d2c6fb617fe38ec5392ee5652176c521cbaf48`;
+  build `feaa7b47c6f93fed1ae88274cacab6a62cc041d20ad0359498b337a106fb3da5`;
+  smoke real `4307b30d95ba75a1c518ca0678641cb90707c71e748e2827dbf6ae93df19637b`;
+  predeploy `677fa6952d8877d0c7aca430020b875672617fc683b2dbec16fc2d9a532cc046`.
+- **Pós-deploy:** HTML serve `bdr-workload.js?v=8`; JS live contém as três visões;
+  7 rotas mínimas = 200; APIs sem sessão, inclusive cohort analytics, = 401.
+
+---
+
 ### 🚀 DEPLOY DE PRODUÇÃO | Forecast Delta — "Ativos" deixa de incluir Diagnóstico (2026-07-20)
 
 > Decisão do dono: no Comparativo, o escopo "Ativos" deve considerar só
