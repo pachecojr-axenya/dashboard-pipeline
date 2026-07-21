@@ -7,157 +7,56 @@ const { BDR_TEAM, canonicalizeBdrName } = require('../lib/bdr-team');
 
 const PROJECT = 'gen-lang-client-0423905839';
 const GOLD = 'axenya_sales_hubspot_bdr_prd_sae1_gold';
-const TABLE = `${PROJECT}.${GOLD}.bdr_daily_ops`;
+const TABLE = `${PROJECT}.${GOLD}.bdr_workload_daily_dimension_v2`;
+const REACTIVITY_TABLE = `${PROJECT}.${GOLD}.bdr_workload_reactivity_v2`;
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
 const CHANNELS = ['calls', 'emails', 'whatsapp', 'linkedin', 'meetings'];
 const CHANNEL_SQL = { calls: 'calls_total', emails: 'emails_sent_total', whatsapp: 'whatsapp_total', linkedin: 'linkedin_total', meetings: 'meetings_total' };
-const UNSUPPORTED_METRICS = {
-  companiesCreated: { status: 'unsupported', value: null, reason: 'gold.bdr_daily_ops não possui companies_created.' },
-  statusTransitions: { status: 'unsupported', value: null, reason: 'gold.bdr_daily_ops não possui status_transitions.' },
-  connectedTransitions: { status: 'unsupported', value: null, reason: 'gold.bdr_daily_ops não possui connected_transitions.' },
-};
+const PORTE_VALUES = ['enterprise', 'grande', 'media', 'pme', 'desconhecido'];
 const LIVE_TTL_MS = 90 * 1000;
 let l1 = new Map();
 
 function bad(message) { const error = new Error(message); error.statusCode = 400; return error; }
 function parseDate(value, name) { if (!ISO.test(String(value || ''))) throw bad(`${name} obrigatório (YYYY-MM-DD)`); return value; }
+function parseList(value) { return String(value || '').split(',').map((v) => v.trim()).filter(Boolean); }
 function parse(req) {
   const q = new URL(`http://x${req.url}`).searchParams;
   if (q.get('v') !== '2') throw bad('v=2 obrigatório');
-  if (q.get('porte') || q.get('segmento') || q.get('persona')) throw bad('porte/segmento/persona não suportados no endpoint semantic atual');
   const bdr = q.get('bdr') ? canonicalizeBdrName(q.get('bdr')) : null;
   if (bdr && !BDR_TEAM.includes(bdr)) throw bad('BDR inválido');
-  const channels = (q.get('channels') || CHANNELS.join(',')).split(',').filter(Boolean);
+  const channels = parseList(q.get('channels') || CHANNELS.join(','));
   if (channels.some((channel) => !CHANNELS.includes(channel))) throw bad('canal inválido');
+  const porte = q.get('porte') || null;
+  if (porte && !PORTE_VALUES.includes(porte)) throw bad('porte inválido');
   const since = parseDate(q.get('since'), 'since');
   const until = parseDate(q.get('until'), 'until');
   if (since > until) throw bad('since > until');
-  return { since, until, bdr, channels, businessDays: q.get('businessDays') !== 'false', refresh: q.get('refresh') === '1' };
+  return { since, until, bdr, channels, businessDays: q.get('businessDays') !== 'false', porte, segmento: q.get('segmento') || null, persona: q.get('persona') || null, refresh: q.get('refresh') === '1' };
 }
 function todayIso() { return new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString().slice(0, 10); }
 function includesToday(r) { const t = todayIso(); return r.since <= t && r.until >= t; }
 function liveRangeMs(day) { return { sinceMs: Date.parse(`${day}T00:00:00.000-03:00`), untilMs: Date.parse(`${day}T23:59:59.999-03:00`) }; }
 function isBusiness(date) { const day = new Date(`${date}T00:00:00Z`).getUTCDay(); return day !== 0 && day !== 6; }
 function num(value) { return Number(value || 0); }
-function normalizeTimestamp(value) {
-  if (value == null || value === '') return null;
-  const raw = String(value).trim();
-  if (/^[+-]?\d+(\.\d+)?([eE][+-]?\d+)?$/.test(raw)) { const d = new Date(Math.round(Number(raw) * 1000)); return Number.isNaN(d.getTime()) ? null : d.toISOString(); }
-  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(\.\d+)?$/.test(raw)) { const d = new Date(raw.replace(' ', 'T') + 'Z'); return Number.isNaN(d.getTime()) ? null : d.toISOString(); }
-  const d = new Date(raw); return Number.isNaN(d.getTime()) ? null : d.toISOString();
-}
+function normalizeTimestamp(value) { if (value == null || value === '') return null; const raw = String(value).trim(); if (/^[+-]?\d+(\.\d+)?([eE][+-]?\d+)?$/.test(raw)) { const d = new Date(Math.round(Number(raw) * 1000)); return Number.isNaN(d.getTime()) ? null : d.toISOString(); } if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(\.\d+)?$/.test(raw)) { const d = new Date(raw.replace(' ', 'T') + 'Z'); return Number.isNaN(d.getTime()) ? null : d.toISOString(); } const d = new Date(raw); return Number.isNaN(d.getTime()) ? null : d.toISOString(); }
 function isTeamOwner(name) { return BDR_TEAM.includes(canonicalizeBdrName(name)); }
 function selectedTotal(row, channels) { return channels.reduce((sum, channel) => sum + num(row[channel]), 0); }
-function emptyBdrRow(bdr) { return { bdr, calls: 0, emails: 0, whatsapp: 0, linkedin: 0, meetings: 0, total: 0, leadsCreated: 0, contactsCreated: null, companiesCreated: null, statusTransitions: null, connectedTransitions: null, sqlDeals: 0, previousTotal: null, deltaHistorical: null }; }
-function activityBucket(activity) {
-  if (activity.tipo === 'calls') return 'calls';
-  if (activity.tipo === 'emails') return String(activity.direction || '').toUpperCase() === 'INCOMING_EMAIL' ? null : 'emails';
-  if (activity.tipo === 'communications' && activity.canal === 'WHATS_APP') return 'whatsapp';
-  if (activity.tipo === 'communications' && activity.canal === 'LINKEDIN_MESSAGE') return 'linkedin';
-  if (activity.tipo === 'meetings') return 'meetings';
-  return null;
-}
-function aggregateLivePayload(payload, day, requested) {
-  const byBdr = {};
-  (payload.team || BDR_TEAM).forEach((bdr) => { byBdr[bdr] = emptyBdrRow(bdr); });
-  (payload.activities || []).forEach((activity) => {
-    const bdr = canonicalizeBdrName(activity.bdr);
-    if (!isTeamOwner(bdr) || (requested.bdr && bdr !== requested.bdr)) return;
-    const bucket = activityBucket(activity);
-    if (!bucket) return;
-    if (!byBdr[bdr]) byBdr[bdr] = emptyBdrRow(bdr);
-    byBdr[bdr][bucket] += 1;
-  });
-  (payload.contactsCreated || []).forEach((contact) => {
-    const bdr = canonicalizeBdrName(contact.bdr);
-    if (!isTeamOwner(bdr) || (requested.bdr && bdr !== requested.bdr)) return;
-    if (!byBdr[bdr]) byBdr[bdr] = emptyBdrRow(bdr);
-    byBdr[bdr].leadsCreated += 1;
-  });
-  Object.values(byBdr).forEach((row) => { row.total = selectedTotal(row, requested.channels); });
-  return Object.values(byBdr).filter((row) => !requested.bdr || row.bdr === requested.bdr).map((row) => ({ date: day, source: 'live', ...row }));
-}
-async function liveRowsForToday(requested) {
-  if (!includesToday(requested)) return { rows: [], used: false, error: null };
-  const day = todayIso();
-  const key = `${day}|${requested.bdr || ''}|${requested.channels.join(',')}`;
-  const cached = l1.get(key);
-    if (!requested.refresh && cached && Date.now() - cached.at < LIVE_TTL_MS) return { rows: cached.rows, used: true, cached: true, error: null, generatedAt: cached.generatedAt };
-  try {
-    const token = getHubspotToken();
-    const range = liveRangeMs(day);
-    const payload = await workloadService.buildPayload(token, range.sinceMs, range.untilMs);
-    const rows = aggregateLivePayload(payload, day, requested);
-    const generatedAt = normalizeTimestamp(payload.generatedAt || payload.source && payload.source.generatedAt || payload.refreshedAt) || new Date().toISOString();
-    l1.set(key, { at: Date.now(), rows, generatedAt });
-    return { rows, used: true, cached: false, error: null, generatedAt };
-  } catch (error) {
-    return { rows: [], used: false, error: error.message };
-  }
-}
-function previousRange(requested) {
-  const days = Math.floor((new Date(`${requested.until}T00:00:00Z`) - new Date(`${requested.since}T00:00:00Z`)) / 86400000) + 1;
-  const end = new Date(`${requested.since}T00:00:00Z`); end.setUTCDate(end.getUTCDate() - 1);
-  const start = new Date(end); start.setUTCDate(start.getUTCDate() - days + 1);
-  return { since: start.toISOString().slice(0, 10), until: end.toISOString().slice(0, 10) };
-}
-async function queryRows(since, until) {
-  const sql = `SELECT metric_date, owner_name, SUM(calls_total) AS calls, SUM(emails_sent_total) AS emails, SUM(whatsapp_total) AS whatsapp, SUM(linkedin_total) AS linkedin, SUM(meetings_total) AS meetings, SUM(leads_created) AS leads_created, SUM(sql_deals) AS sql_deals, MAX(refreshed_at) AS refreshed_at FROM \`${TABLE}\` WHERE metric_date BETWEEN @since AND @until GROUP BY metric_date, owner_name ORDER BY metric_date, owner_name`;
-  const { rows } = await bq.query(sql, [{ name: 'since', type: 'DATE', value: since }, { name: 'until', type: 'DATE', value: until }]);
-  return { sql, rows };
-}
-function rowsToAggregates(rows, requested, live) {
-  const today = todayIso();
-  const byBdr = {};
-  const series = [];
-  let refreshedAt = null;
-  rows.forEach((row) => {
-    const date = String(row.metric_date || row.date).slice(0, 10);
-    if (live && date === today) return;
-    const bdr = canonicalizeBdrName(row.owner_name || row.bdr);
-    if (!isTeamOwner(bdr) || (requested.bdr && bdr !== requested.bdr) || (requested.businessDays && !isBusiness(date))) return;
-    if (!byBdr[bdr]) byBdr[bdr] = emptyBdrRow(bdr);
-    const target = byBdr[bdr];
-    CHANNELS.forEach((channel) => { target[channel] += num(row[channel]); });
-    target.total += selectedTotal(row, requested.channels);
-    target.leadsCreated += num(row.leads_created || row.leadsCreated);
-    target.sqlDeals += num(row.sql_deals || row.sqlDeals);
-    const ts = normalizeTimestamp(row.refreshed_at || row.refreshedAt);
-    if (ts && (!refreshedAt || ts > refreshedAt)) refreshedAt = ts;
-    series.push({ date, bdr, total: selectedTotal(row, requested.channels), calls: num(row.calls), emails: num(row.emails), whatsapp: num(row.whatsapp), linkedin: num(row.linkedin), meetings: num(row.meetings), leadsCreated: num(row.leads_created || row.leadsCreated), sqlDeals: num(row.sql_deals || row.sqlDeals), source: row.source || 'bq' });
-  });
-  if (live) live.rows.forEach((row) => {
-    if (requested.businessDays && !isBusiness(row.date)) return;
-    if (!byBdr[row.bdr]) byBdr[row.bdr] = emptyBdrRow(row.bdr);
-    const target = byBdr[row.bdr];
-    CHANNELS.forEach((channel) => { target[channel] += num(row[channel]); });
-    target.total += row.total; target.leadsCreated += row.leadsCreated; target.sqlDeals += row.sqlDeals;
-    series.push({ date: row.date, bdr: row.bdr, total: row.total, calls: row.calls, emails: row.emails, whatsapp: row.whatsapp, linkedin: row.linkedin, meetings: row.meetings, leadsCreated: row.leadsCreated, sqlDeals: row.sqlDeals, source: 'live' });
-  });
-  return { byBdr, series, refreshedAt };
-}
-function addBaseline(current, previous, requested) {
-  Object.keys(current.byBdr).forEach((bdr) => {
-    const prev = previous.byBdr[bdr] ? previous.byBdr[bdr].total : 0;
-    current.byBdr[bdr].previousTotal = prev || null;
-    current.byBdr[bdr].deltaHistorical = prev ? current.byBdr[bdr].total - prev : null;
-  });
-}
-async function build(requested) {
-  if (!bq.isConfigured()) throw Object.assign(new Error('BigQuery não configurado'), { statusCode: 503 });
-  const currentRows = await queryRows(requested.since, requested.until);
-  const prevRange = previousRange(requested);
-  const previousRows = await queryRows(prevRange.since, prevRange.until);
-  const live = await liveRowsForToday(requested);
-  const current = rowsToAggregates(currentRows.rows, requested, live.used ? live : null);
-  const previous = rowsToAggregates(previousRows.rows, requested, null);
-  addBaseline(current, previous, requested);
-  const totals = Object.values(current.byBdr).reduce((acc, row) => { CHANNELS.forEach((channel) => { acc[channel] += row[channel]; }); acc.total += row.total; acc.leadsCreated += row.leadsCreated; acc.sqlDeals += row.sqlDeals; return acc; }, { calls: 0, emails: 0, whatsapp: 0, linkedin: 0, meetings: 0, total: 0, leadsCreated: 0, contactsCreated: null, companiesCreated: null, statusTransitions: null, connectedTransitions: null, sqlDeals: 0 });
-  const selectedSum = requested.channels.reduce((sum, channel) => sum + totals[channel], 0);
-  const sourceKind = live.used ? 'hybrid' : 'bq-operational';
-  const refreshedAt = live.used && live.generatedAt && (!current.refreshedAt || live.generatedAt > current.refreshedAt) ? live.generatedAt : current.refreshedAt;
-  return { success: true, contractVersion: '2.0', requestedRange: { since: requested.since, until: requested.until }, resolvedRange: { since: requested.since, until: requested.until }, baselineRange: prevRange, filtersApplied: { bdr: requested.bdr, channels: requested.channels, businessDays: requested.businessDays }, filtersIgnored: [], source: { kind: sourceKind, table: TABLE, refreshedAt, liveToday: live.used, liveCached: !!live.cached, caveat: live.used ? 'Hoje vem de HubSpot live agregado no servidor e substitui a linha Gold do dia; e-mails incoming são excluídos.' : (live.error || 'Fonte BQ operacional') }, unsupportedMetrics: UNSUPPORTED_METRICS, quality: { status: live.error ? 'warn' : 'pass', checks: [{ key: 'mece_total', status: totals.total === selectedSum ? 'pass' : 'fail', message: 'ritmo real = soma dos canais selecionados' }, { key: 'reactivity_gate', status: 'warn', message: 'Reatividade bloqueada: modelo atual não possui associação auditável entry→first real touch.' }, { key: 'live_merge', status: live.used ? 'pass' : (includesToday(requested) ? 'warn' : 'pass'), message: live.used ? 'Hoje agregado do HubSpot live no servidor.' : (live.error || 'Janela sem hoje.') }] }, coverage: { reactivity: { status: 'blocked', auditableAssociations: 0, totalEligible: null, explanation: 'Silver activities não possui contact/company; não há grão contact_id×owner_assignment_spell auditável.' } }, data: { rhythm: { totals, series: current.series.sort((a, b) => a.date.localeCompare(b.date) || a.bdr.localeCompare(b.bdr)), byBdr: Object.values(current.byBdr).sort((a, b) => a.bdr.localeCompare(b.bdr)) }, reactivity: { status: 'degraded', p50: null, p75: null, withoutFirstTouch: null, coverage: 0, gate: 'Sem associação auditável entry→first real touch no modelo atual; nenhum proxy foi inventado.' }, management: Object.values(current.byBdr) } };
+function emptyBdrRow(bdr) { return { bdr, calls: 0, callsConversation: 0, callsDial: 0, emails: 0, whatsapp: 0, linkedin: 0, meetings: 0, activities: 0, total: 0, companiesTouched: 0, contactsTouched: 0, companiesInserted: 0, contactsInserted: 0, attempted: 0, crmMovements: 0, connected: 0, qualified: 0, disqualified: 0, sqlDeals: 0, previousTotal: null, deltaHistorical: null }; }
+function activityBucket(activity) { if (activity.tipo === 'calls') return 'calls'; if (activity.tipo === 'emails') return String(activity.direction || '').toUpperCase() === 'INCOMING_EMAIL' ? null : 'emails'; if (activity.tipo === 'communications' && activity.canal === 'WHATS_APP') return 'whatsapp'; if (activity.tipo === 'communications' && activity.canal === 'LINKEDIN_MESSAGE') return 'linkedin'; if (activity.tipo === 'meetings') return 'meetings'; return null; }
+function aggregateLivePayload(payload, day, requested) { const byBdr = {}; (payload.team || BDR_TEAM).forEach((bdr) => { byBdr[bdr] = emptyBdrRow(bdr); }); (payload.activities || []).forEach((activity) => { const bdr = canonicalizeBdrName(activity.bdr); if (!isTeamOwner(bdr) || (requested.bdr && bdr !== requested.bdr)) return; const bucket = activityBucket(activity); if (!bucket) return; if (!byBdr[bdr]) byBdr[bdr] = emptyBdrRow(bdr); byBdr[bdr][bucket] += 1; }); (payload.contactsCreated || []).forEach((contact) => { const bdr = canonicalizeBdrName(contact.bdr); if (!isTeamOwner(bdr) || (requested.bdr && bdr !== requested.bdr)) return; if (!byBdr[bdr]) byBdr[bdr] = emptyBdrRow(bdr); byBdr[bdr].contactsInserted += 1; }); Object.values(byBdr).forEach((row) => { row.total = selectedTotal(row, requested.channels); }); return Object.values(byBdr).filter((row) => !requested.bdr || row.bdr === requested.bdr).map((row) => ({ date: day, source: 'live', ...row })); }
+async function liveRowsForToday(requested) { if (!includesToday(requested) || requested.porte || requested.segmento || requested.persona) return { rows: [], used: false, error: null, disabledByFilters: !!(requested.porte || requested.segmento || requested.persona) }; const day = todayIso(); const key = `${day}|${requested.bdr || ''}|${requested.channels.join(',')}`; const cached = l1.get(key); if (!requested.refresh && cached && Date.now() - cached.at < LIVE_TTL_MS) return { rows: cached.rows, used: true, cached: true, error: null, generatedAt: cached.generatedAt }; try { const token = getHubspotToken(); const range = liveRangeMs(day); const payload = await workloadService.buildPayload(token, range.sinceMs, range.untilMs); const rows = aggregateLivePayload(payload, day, requested); const generatedAt = normalizeTimestamp(payload.generatedAt || payload.source && payload.source.generatedAt || payload.refreshedAt) || new Date().toISOString(); l1.set(key, { at: Date.now(), rows, generatedAt }); return { rows, used: true, cached: false, error: null, generatedAt }; } catch (error) { return { rows: [], used: false, error: error.message }; } }
+function previousRange(requested) { const days = Math.floor((new Date(`${requested.until}T00:00:00Z`) - new Date(`${requested.since}T00:00:00Z`)) / 86400000) + 1; const end = new Date(`${requested.since}T00:00:00Z`); end.setUTCDate(end.getUTCDate() - 1); const start = new Date(end); start.setUTCDate(start.getUTCDate() - days + 1); return { since: start.toISOString().slice(0, 10), until: end.toISOString().slice(0, 10) }; }
+function filterSql(alias, requested, params) { const wh = [`${alias}.metric_date BETWEEN @since AND @until`]; if (requested.bdr) wh.push(`${alias}.owner_name = @bdr`); if (requested.porte) wh.push(`COALESCE(NULLIF(${alias}.porte,''),'desconhecido') = @porte`); if (requested.segmento) wh.push(`COALESCE(NULLIF(${alias}.segmento,''),'desconhecido') = @segmento`); if (requested.persona) wh.push(`COALESCE(NULLIF(${alias}.persona,''),'não classificada') = @persona`); if (requested.businessDays) wh.push(`EXTRACT(DAYOFWEEK FROM ${alias}.metric_date) NOT IN (1,7)`); if (params) { if (requested.bdr) params.push({ name: 'bdr', type: 'STRING', value: requested.bdr }); if (requested.porte) params.push({ name: 'porte', type: 'STRING', value: requested.porte }); if (requested.segmento) params.push({ name: 'segmento', type: 'STRING', value: requested.segmento }); if (requested.persona) params.push({ name: 'persona', type: 'STRING', value: requested.persona }); } return wh.join(' AND '); }
+async function queryRows(since, until, requested) { const r = Object.assign({}, requested, { since, until }); const params = [{ name: 'since', type: 'DATE', value: since }, { name: 'until', type: 'DATE', value: until }]; const sql = `SELECT metric_date, owner_id, owner_name, SUM(calls_total) calls, SUM(calls_conversation_total) calls_conversation, SUM(calls_dial_total) calls_dial, SUM(emails_sent_total) emails, SUM(whatsapp_total) whatsapp, SUM(linkedin_total) linkedin, SUM(meetings_total) meetings, SUM(activities_total) activities_total, SUM(companies_touched) companies_touched, SUM(contacts_touched) contacts_touched, SUM(companies_inserted) companies_inserted, SUM(contacts_inserted) contacts_inserted, SUM(attempted_total) attempted, SUM(crm_movements) crm_movements, SUM(connected_total) connected, SUM(qualified_total) qualified, SUM(disqualified_total) disqualified, SUM(sql_deals) sql_deals, MAX(refreshed_at) refreshed_at FROM \`${TABLE}\` d WHERE ${filterSql('d', r, params)} GROUP BY metric_date, owner_id, owner_name ORDER BY metric_date, owner_name`; const { rows } = await bq.query(sql, params); return { sql, rows }; }
+function rowsToAggregates(rows, requested, live) { const today = todayIso(); const byBdr = {}; const series = []; let refreshedAt = null; rows.forEach((row) => { const date = String(row.metric_date || row.date).slice(0, 10); if (live && date === today) return; const bdr = canonicalizeBdrName(row.owner_name || row.bdr); if (!isTeamOwner(bdr) || (requested.bdr && bdr !== requested.bdr)) return; if (!byBdr[bdr]) byBdr[bdr] = emptyBdrRow(bdr); const t = byBdr[bdr]; t.calls += num(row.calls); t.callsConversation += num(row.calls_conversation); t.callsDial += num(row.calls_dial); t.emails += num(row.emails); t.whatsapp += num(row.whatsapp); t.linkedin += num(row.linkedin); t.meetings += num(row.meetings); t.activities += num(row.activities_total); t.total += selectedTotal(t === byBdr[bdr] ? { calls: row.calls, emails: row.emails, whatsapp: row.whatsapp, linkedin: row.linkedin, meetings: row.meetings } : row, requested.channels); t.companiesTouched += num(row.companies_touched); t.contactsTouched += num(row.contacts_touched); t.companiesInserted += num(row.companies_inserted); t.contactsInserted += num(row.contacts_inserted); t.crmMovements += num(row.crm_movements); t.attempted = (t.attempted || 0) + num(row.attempted); t.connected += num(row.connected); t.qualified += num(row.qualified); t.disqualified += num(row.disqualified); t.sqlDeals += num(row.sql_deals); const ts = normalizeTimestamp(row.refreshed_at); if (ts && (!refreshedAt || ts > refreshedAt)) refreshedAt = ts; series.push({ date, bdr, total: selectedTotal({ calls: row.calls, emails: row.emails, whatsapp: row.whatsapp, linkedin: row.linkedin, meetings: row.meetings }, requested.channels), calls: num(row.calls), callsConversation: num(row.calls_conversation), callsDial: num(row.calls_dial), emails: num(row.emails), whatsapp: num(row.whatsapp), linkedin: num(row.linkedin), meetings: num(row.meetings), companiesInserted: num(row.companies_inserted), contactsInserted: num(row.contacts_inserted), attempted: num(row.attempted), crmMovements: num(row.crm_movements), connected: num(row.connected), qualified: num(row.qualified), disqualified: num(row.disqualified), sqlDeals: num(row.sql_deals), source: row.source || 'bq' }); }); if (live) live.rows.forEach((row) => { if (!byBdr[row.bdr]) byBdr[row.bdr] = emptyBdrRow(row.bdr); const t = byBdr[row.bdr]; CHANNELS.forEach((c) => { t[c] += num(row[c]); }); t.total += row.total; t.contactsInserted += row.contactsInserted; series.push({ date: row.date, bdr: row.bdr, total: row.total, calls: row.calls, emails: row.emails, whatsapp: row.whatsapp, linkedin: row.linkedin, meetings: row.meetings, source: 'live' }); }); return { byBdr, series, refreshedAt }; }
+function addBaseline(current, previous) { Object.keys(current.byBdr).forEach((bdr) => { const prev = previous.byBdr[bdr] ? previous.byBdr[bdr].total : 0; current.byBdr[bdr].previousTotal = prev || null; current.byBdr[bdr].deltaHistorical = prev ? current.byBdr[bdr].total - prev : null; }); }
+function percentile(values, p) { const xs = values.map(Number).filter((x) => Number.isFinite(x)).sort((a, b) => a - b); if (!xs.length) return null; const idx = (xs.length - 1) * p; const lo = Math.floor(idx); const hi = Math.ceil(idx); if (lo === hi) return xs[lo]; return xs[lo] + (xs[hi] - xs[lo]) * (idx - lo); }
+function bucketHours(h) { if (h == null || !Number.isFinite(Number(h))) return 'sem_toque'; const x = Number(h); if (x < 1) return 'lt_1h'; if (x < 4) return '1_4h'; if (x < 24) return '4_24h'; if (x < 72) return '24_72h'; return '72h_plus'; }
+function reactivityFromRows(rows) { const touched = rows.filter((r) => String(r.has_touch) === 'true' || r.has_touch === true || Number(r.has_touch) === 1); const hours = touched.map((r) => Number(r.hours_to_first_touch)).filter((x) => Number.isFinite(x)); const buckets = { lt_1h: 0, '1_4h': 0, '4_24h': 0, '24_72h': 0, '72h_plus': 0, sem_toque: 0 }; rows.forEach((r) => { buckets[bucketHours((String(r.has_touch) === 'true' || r.has_touch === true || Number(r.has_touch) === 1) ? Number(r.hours_to_first_touch) : null)] += 1; }); return { p50Hours: percentile(hours, 0.5), p75Hours: percentile(hours, 0.75), withoutFirstTouch: buckets.sem_toque, eligible: rows.length, touched: touched.length, coverage: rows.length ? touched.length / rows.length : 0, buckets }; }
+async function queryReactivity(requested) { const params = [{ name: 'since', type: 'DATE', value: requested.since }, { name: 'until', type: 'DATE', value: requested.until }]; const wh = ['eligible_date BETWEEN @since AND @until']; if (requested.bdr) { wh.push('owner_name = @bdr'); params.push({ name: 'bdr', type: 'STRING', value: requested.bdr }); } if (requested.porte) { wh.push("COALESCE(NULLIF(porte,''),'desconhecido') = @porte"); params.push({ name: 'porte', type: 'STRING', value: requested.porte }); } if (requested.segmento) { wh.push("COALESCE(NULLIF(segmento,''),'desconhecido') = @segmento"); params.push({ name: 'segmento', type: 'STRING', value: requested.segmento }); } if (requested.persona) { wh.push("COALESCE(NULLIF(persona,''),'não classificada') = @persona"); params.push({ name: 'persona', type: 'STRING', value: requested.persona }); } const sql = `SELECT owner_name, eligible_date, hours_to_first_touch, has_touch, porte, segmento, persona FROM \`${REACTIVITY_TABLE}\` WHERE ${wh.join(' AND ')}`; const { rows } = await bq.query(sql, params); return reactivityFromRows(rows.filter((r) => isTeamOwner(r.owner_name))); }
+async function queryFilterOptions() { const sql = `SELECT ARRAY_AGG(DISTINCT COALESCE(NULLIF(porte,''),'desconhecido') IGNORE NULLS ORDER BY COALESCE(NULLIF(porte,''),'desconhecido')) portes, ARRAY_AGG(DISTINCT COALESCE(NULLIF(segmento,''),'desconhecido') IGNORE NULLS ORDER BY COALESCE(NULLIF(segmento,''),'desconhecido')) segmentos, ARRAY_AGG(DISTINCT COALESCE(NULLIF(persona,''),'não classificada') IGNORE NULLS ORDER BY COALESCE(NULLIF(persona,''),'não classificada')) personas FROM \`${TABLE}\``; const { rows } = await bq.query(sql, []); const row = rows[0] || {}; return { bdr: BDR_TEAM, porte: row.portes || PORTE_VALUES, segmento: row.segmentos || [], persona: row.personas || [] }; }
+async function build(requested) { if (!bq.isConfigured()) throw Object.assign(new Error('BigQuery não configurado'), { statusCode: 503 }); const currentRows = await queryRows(requested.since, requested.until, requested); const prevRange = previousRange(requested); const previousRows = await queryRows(prevRange.since, prevRange.until, requested); const live = await liveRowsForToday(requested); const current = rowsToAggregates(currentRows.rows, requested, live.used ? live : null); const previous = rowsToAggregates(previousRows.rows, requested, null); addBaseline(current, previous); const reactivity = await queryReactivity(requested); const filterOptions = await queryFilterOptions(); const totals = Object.values(current.byBdr).reduce((acc, row) => { Object.keys(acc).forEach((k) => { if (typeof acc[k] === 'number') acc[k] += num(row[k]); }); return acc; }, { calls: 0, callsConversation: 0, callsDial: 0, emails: 0, whatsapp: 0, linkedin: 0, meetings: 0, activities: 0, total: 0, companiesTouched: 0, contactsTouched: 0, companiesInserted: 0, contactsInserted: 0, attempted: 0, crmMovements: 0, connected: 0, qualified: 0, disqualified: 0, sqlDeals: 0 }); const selectedSum = requested.channels.reduce((sum, channel) => sum + totals[channel], 0); const refreshedAt = live.used && live.generatedAt && (!current.refreshedAt || live.generatedAt > current.refreshedAt) ? live.generatedAt : current.refreshedAt; return { success: true, contractVersion: '2.1', requestedRange: { since: requested.since, until: requested.until }, resolvedRange: { since: requested.since, until: requested.until }, baselineRange: prevRange, filtersApplied: { bdr: requested.bdr, channels: requested.channels, businessDays: requested.businessDays, porte: requested.porte, segmento: requested.segmento, persona: requested.persona }, filtersIgnored: [], filterOptions, supportedFilters: { pulse: ['bdr', 'channels', 'businessDays', 'porte', 'segmento', 'persona'], channels: ['bdr', 'channels', 'businessDays', 'porte', 'segmento', 'persona'], management: ['bdr', 'channels', 'businessDays', 'porte', 'segmento', 'persona'], penetration: ['bdr', 'porte', 'segmento', 'persona'], evolution: ['bdr', 'channels', 'businessDays', 'porte', 'segmento', 'persona'] }, source: { kind: live.used ? 'hybrid' : 'bq-operational', table: TABLE, refreshedAt, liveToday: live.used, liveCached: !!live.cached, liveOverlay: live.used ? 'HubSpot live usado apenas sem filtros porte/segmento/persona.' : (live.disabledByFilters ? 'HubSpot live desativado porque há filtro porte/segmento/persona; somente Gold v2.' : 'Fonte BQ operacional') }, quality: { status: live.error ? 'warn' : 'pass', checks: [{ key: 'mece_total', status: totals.total === selectedSum ? 'pass' : 'fail', message: 'ritmo real = soma dos canais selecionados' }, { key: 'reactivity', status: 'pass', message: 'Reatividade vem de bdr_workload_reactivity_v2.' }, { key: 'live_merge', status: live.used ? 'pass' : (includesToday(requested) ? 'warn' : 'pass'), message: live.used ? 'Hoje agregado do HubSpot live no servidor.' : (live.disabledByFilters ? 'Live omitido por filtro ICP.' : (live.error || 'Janela sem hoje.')) }] }, coverage: { reactivity: { status: 'available', eligible: reactivity.eligible, touched: reactivity.touched, coverage: reactivity.coverage } }, data: { rhythm: { totals, series: current.series.sort((a, b) => a.date.localeCompare(b.date) || a.bdr.localeCompare(b.bdr)), byBdr: Object.values(current.byBdr).sort((a, b) => a.bdr.localeCompare(b.bdr)) }, reactivity, management: Object.values(current.byBdr).sort((a, b) => a.bdr.localeCompare(b.bdr)) } };
 }
 
 module.exports = async function handler(req, res) { setCORSHeaders(req, res); if (!methodCheck(req, res, ['GET'])) return; const user = requireAuth(req, res); if (!user) return; try { return res.status(200).json(await build(parse(req))); } catch (error) { return res.status(error.statusCode || 500).json({ success: false, error: error.message }); } };
-module.exports._test = { parse, CHANNELS, CHANNEL_SQL, isBusiness, build, UNSUPPORTED_METRICS, TABLE, normalizeTimestamp, aggregateLivePayload, previousRange, activityBucket };
+module.exports._test = { parse, CHANNELS, CHANNEL_SQL, isBusiness, build, TABLE, REACTIVITY_TABLE, normalizeTimestamp, aggregateLivePayload, previousRange, activityBucket, percentile, bucketHours, reactivityFromRows };

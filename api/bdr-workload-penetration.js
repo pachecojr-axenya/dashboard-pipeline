@@ -5,128 +5,29 @@ const bq = require('../lib/bigquery');
 const { BDR_TEAM, BDR_OWNER_MAP, canonicalizeBdrName } = require('../lib/bdr-team');
 
 const PROJECT = 'gen-lang-client-0423905839';
-const DATASET = 'axenya_commercial_intel_prd';
-const VIEW = `${PROJECT}.${DATASET}.vw_dash_bdr_penetration_v1`;
+const GOLD = 'axenya_sales_hubspot_bdr_prd_sae1_gold';
+const COMPANY_VIEW = `${PROJECT}.${GOLD}.bdr_workload_company_v2`;
+const CONTACT_VIEW = `${PROJECT}.${GOLD}.bdr_workload_company_contact_v2`;
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
 const OWNER_IDS = Object.keys(BDR_OWNER_MAP);
-const OWNER_ID_LITERAL = OWNER_IDS.map((id) => `'${id}'`).join(',');
+const PORTE_VALUES = ['enterprise', 'grande', 'media', 'pme', 'desconhecido'];
 
-function bad(message) {
-  const error = new Error(message);
-  error.statusCode = 400;
-  return error;
+function bad(message) { const error = new Error(message); error.statusCode = 400; return error; }
+function parseDate(value, name) { if (!ISO.test(String(value || ''))) throw bad(`${name} obrigatório (YYYY-MM-DD)`); return value; }
+function bdrIds(name) { if (!name) return []; const canon = canonicalizeBdrName(name); if (!BDR_TEAM.includes(canon)) throw bad('BDR inválido'); return OWNER_IDS.filter((id) => BDR_OWNER_MAP[id] === canon); }
+function bucketExact(value) { const n = Number(value || 0); return n >= 6 ? '6+' : String(n); }
+function grouped(key) { if (key === '0' || key === '1' || key === '6+') return key; if (key === '2' || key === '3') return '2–3'; return '4–5'; }
+function wilson(successes, n) { const z = 1.959963984540054; const s = Number(successes || 0); const t = Number(n || 0); if (!t) return null; const p = s / t; const d = 1 + z * z / t; const c = (p + z * z / (2 * t)) / d; const m = z * Math.sqrt((p * (1 - p) + z * z / (4 * t)) / t) / d; return { low: Math.max(0, c - m), high: Math.min(1, c + m), rate: p }; }
+function parse(req) { const q = new URL(`http://x${req.url}`).searchParams; if (q.get('v') !== '2') throw bad('v=2 obrigatório'); const porte = q.get('porte') || null; if (porte && !PORTE_VALUES.includes(porte)) throw bad('porte inválido'); const since = parseDate(q.get('since'), 'since'); const until = parseDate(q.get('until'), 'until'); if (since > until) throw bad('since > until'); return { since, until, cohort: q.get('cohort') || 'eligible_created', bdr: q.get('bdr') || null, bdrIds: bdrIds(q.get('bdr')), porte, segmento: q.get('segmento') || null, persona: q.get('persona') || null }; }
+function buildBuckets(rows) { const exact = ['0', '1', '2', '3', '4', '5', '6+'].map((label) => ({ label, companies: 0, converted: 0 })); const map = Object.fromEntries(exact.map((bucket) => [bucket.label, bucket])); rows.forEach((row) => { const key = bucketExact(row.contacts_touched == null ? row.contacts_real : row.contacts_touched); map[key].companies += Number(row.companies || 0); map[key].converted += Number(row.converted || 0); }); const total = exact.reduce((sum, bucket) => sum + bucket.companies, 0); exact.forEach((bucket) => { bucket.percent = total ? bucket.companies / total : 0; }); const groupedMap = {}; exact.forEach((bucket) => { const key = grouped(bucket.label); if (!groupedMap[key]) groupedMap[key] = { label: key, companies: 0, converted: 0 }; groupedMap[key].companies += bucket.companies; groupedMap[key].converted += bucket.converted; }); const groupedBuckets = ['0', '1', '2–3', '4–5', '6+'].map((key) => { const bucket = groupedMap[key] || { label: key, companies: 0, converted: 0 }; bucket.percent = total ? bucket.companies / total : 0; return bucket; }); return { exact, grouped: groupedBuckets, denominatorEligible: total, denominatorObserved: total };
 }
-function parseDate(value, name) {
-  if (!ISO.test(String(value || ''))) throw bad(`${name} obrigatório (YYYY-MM-DD)`);
-  return value;
-}
-function bdrIds(name) {
-  if (!name) return [];
-  const canon = canonicalizeBdrName(name);
-  if (!BDR_TEAM.includes(canon)) throw bad('BDR inválido');
-  return OWNER_IDS.filter((id) => BDR_OWNER_MAP[id] === canon);
-}
-function bucketExact(value) {
-  const n = Number(value || 0);
-  return n >= 6 ? '6+' : String(n);
-}
-function grouped(key) {
-  if (key === '0' || key === '1' || key === '6+') return key;
-  if (key === '2' || key === '3') return '2–3';
-  return '4–5';
-}
-function wilson(successes, n) {
-  const z = 1.959963984540054;
-  const s = Number(successes || 0);
-  const t = Number(n || 0);
-  if (!t) return null;
-  const p = s / t;
-  const d = 1 + z * z / t;
-  const c = (p + z * z / (2 * t)) / d;
-  const m = z * Math.sqrt((p * (1 - p) + z * z / (4 * t)) / t) / d;
-  return { low: Math.max(0, c - m), high: Math.min(1, c + m), rate: p };
-}
-function parse(req) {
-  const q = new URL(`http://x${req.url}`).searchParams;
-  if (q.get('v') !== '2') throw bad('v=2 obrigatório');
-  if (q.get('segmento') || q.get('persona')) throw bad('segmento/persona unsupported: schema atual da view não possui esses atributos');
-  const cohort = q.get('cohort') || 'observed_snapshot';
-  if (cohort !== 'observed_snapshot') throw bad('cohort suportado apenas: observed_snapshot');
-  return {
-    since: parseDate(q.get('since'), 'since'),
-    until: parseDate(q.get('until'), 'until'),
-    cohort,
-    bdr: q.get('bdr') || null,
-    bdrIds: bdrIds(q.get('bdr')),
-    porte: q.get('porte') || null,
-  };
-}
-function buildBuckets(rows) {
-  const exact = ['0', '1', '2', '3', '4', '5', '6+'].map((label) => ({ label, companies: 0, converted: 0 }));
-  const map = Object.fromEntries(exact.map((bucket) => [bucket.label, bucket]));
-  rows.forEach((row) => {
-    const key = bucketExact(row.contacts_real);
-    map[key].companies += Number(row.companies || 0);
-    map[key].converted += Number(row.converted || 0);
-  });
-  const total = exact.reduce((sum, bucket) => sum + bucket.companies, 0);
-  exact.forEach((bucket) => { bucket.percent = total ? bucket.companies / total : 0; });
-  const groupedMap = {};
-  exact.forEach((bucket) => {
-    const key = grouped(bucket.label);
-    if (!groupedMap[key]) groupedMap[key] = { label: key, companies: 0, converted: 0 };
-    groupedMap[key].companies += bucket.companies;
-    groupedMap[key].converted += bucket.converted;
-  });
-  const groupedBuckets = ['0', '1', '2–3', '4–5', '6+'].map((key) => {
-    const bucket = groupedMap[key] || { label: key, companies: 0, converted: 0 };
-    bucket.percent = total ? bucket.companies / total : 0;
-    return bucket;
-  });
-  return { exact, grouped: groupedBuckets, denominatorObserved: total };
-}
-function association(rows) {
-  return buildBuckets(rows).exact.map((bucket) => {
-    const n = bucket.companies;
-    const converted = bucket.converted;
-    const w = wilson(converted, n);
-    return { bucket: bucket.label, n, converted, rate: n >= 10 ? w.rate : null, wilson95: n >= 10 ? w : null, threshold: n < 10 ? 'insufficient' : (n < 30 ? 'exploratory' : 'descriptive') };
-  });
-}
-async function build(requested) {
-  if (!bq.isConfigured()) throw Object.assign(new Error('BigQuery não configurado'), { statusCode: 503 });
-  if (requested.since > requested.until) throw bad('since > until');
-  const ownerFilter = requested.bdrIds.length ? `AND bdr_id IN (${requested.bdrIds.map((id) => `'${id}'`).join(',')})` : `AND bdr_id IN (${OWNER_ID_LITERAL})`;
-  const porteFilter = requested.porte ? "AND COALESCE(NULLIF(porte,''),'Desconhecido') = @porte" : '';
-  const sql = `SELECT bdr_id, COALESCE(NULLIF(porte,''),'Desconhecido') porte, LEAST(CAST(contacts_real AS INT64),6) contacts_real, COUNT(DISTINCT company_id) companies, SUM(CAST(converted_30d AS INT64)) converted, SUM(CAST(contacts_observed AS INT64)) contacts_observed, SUM(CAST(contacts_real AS INT64)) contacts_real_sum, MAX(last_touch_date) last_touch_date FROM \`${VIEW}\` WHERE first_touch_date BETWEEN @since AND @until ${ownerFilter} ${porteFilter} GROUP BY bdr_id, porte, contacts_real ORDER BY contacts_real`;
-  const params = [{ name: 'since', type: 'DATE', value: requested.since }, { name: 'until', type: 'DATE', value: requested.until }];
-  if (requested.porte) params.push({ name: 'porte', type: 'STRING', value: requested.porte });
-  const { rows } = await bq.query(sql, params);
-  const buckets = buildBuckets(rows);
-  const contactsObserved = rows.reduce((sum, row) => sum + Number(row.contacts_observed || 0), 0);
-  const contactsReal = rows.reduce((sum, row) => sum + Number(row.contacts_real_sum || 0), 0);
-  const latest = rows.reduce((max, row) => String(row.last_touch_date || '') > max ? String(row.last_touch_date) : max, '');
-  return {
-    success: true,
-    contractVersion: '2.0',
-    requestedRange: { since: requested.since, until: requested.until },
-    resolvedRange: { since: requested.since, until: requested.until },
-    filtersApplied: { bdr: requested.bdr ? canonicalizeBdrName(requested.bdr) : null, porte: requested.porte, cohort: requested.cohort },
-    filtersIgnored: [],
-    unsupportedFilters: { segmento: { status: 'disabled', reason: 'vw_dash_bdr_penetration_v1 não possui segmento' }, persona: { status: 'disabled', reason: 'vw_dash_bdr_penetration_v1 não possui cargo/persona' } },
-    source: { kind: 'ci-analytic', view: VIEW, refreshedAt: latest, latestDataDate: latest },
-    quality: { status: 'warn', checks: [{ key: 'denominator', status: 'warn', message: 'Denominador é snapshot observado; não inventa população elegível fora da view atual.' }] },
-    coverage: { denominatorObserved: buckets.denominatorObserved, contactsObserved, contactsReal, attributeCoverage: { porte: rows.length ? rows.filter((row) => row.porte !== 'Desconhecido').reduce((sum, row) => sum + Number(row.companies || 0), 0) / Math.max(1, buckets.denominatorObserved) : 0, segmento: 0, persona: 0 } },
-    data: { bucketsExact: buckets.exact, bucketsGrouped: buckets.grouped, association: association(rows), notes: ['Associação observacional; correlação não implica causalidade.', 'Confundidores não controlados: porte, qualidade da carteira e maturação/timing dos toques.'] },
-  };
+function association(rows) { return buildBuckets(rows).exact.map((bucket) => { const n = bucket.companies; const converted = bucket.converted; const w = wilson(converted, n); return { bucket: bucket.label, n, converted, rate: n >= 10 ? w.rate : null, wilson95: n >= 10 ? w : null, threshold: n < 10 ? 'insufficient' : (n < 30 ? 'exploratory' : 'descriptive') }; }); }
+function wheres(requested, alias, params, useContact) { const wh = [`${alias}.eligible_date BETWEEN @since AND @until`]; if (requested.bdrIds.length) wh.push(`${alias}.owner_id IN (${requested.bdrIds.map((id) => `'${id}'`).join(',')})`); if (requested.porte) { wh.push(`COALESCE(NULLIF(${alias}.porte,''),'desconhecido') = @porte`); params.push({ name: 'porte', type: 'STRING', value: requested.porte }); } if (requested.segmento) { wh.push(`COALESCE(NULLIF(${alias}.segmento,''),'desconhecido') = @segmento`); params.push({ name: 'segmento', type: 'STRING', value: requested.segmento }); } if (requested.persona && useContact) { wh.push(`COALESCE(NULLIF(${alias}.persona,''),'não classificada') = @persona`); params.push({ name: 'persona', type: 'STRING', value: requested.persona }); } return wh.join(' AND '); }
+async function queryFilterOptions() { const sql = `SELECT ARRAY_AGG(DISTINCT COALESCE(NULLIF(porte,''),'desconhecido') IGNORE NULLS ORDER BY COALESCE(NULLIF(porte,''),'desconhecido')) portes, ARRAY_AGG(DISTINCT COALESCE(NULLIF(segmento,''),'desconhecido') IGNORE NULLS ORDER BY COALESCE(NULLIF(segmento,''),'desconhecido')) segmentos FROM \`${COMPANY_VIEW}\``; const { rows } = await bq.query(sql, []); const sql2 = `SELECT ARRAY_AGG(DISTINCT COALESCE(NULLIF(persona,''),'não classificada') IGNORE NULLS ORDER BY COALESCE(NULLIF(persona,''),'não classificada')) personas FROM \`${CONTACT_VIEW}\``; const { rows: rows2 } = await bq.query(sql2, []); return { bdr: BDR_TEAM, porte: (rows[0] && rows[0].portes) || PORTE_VALUES, segmento: (rows[0] && rows[0].segmentos) || [], persona: (rows2[0] && rows2[0].personas) || [] }; }
+async function build(requested) { if (!bq.isConfigured()) throw Object.assign(new Error('BigQuery não configurado'), { statusCode: 503 }); const params = [{ name: 'since', type: 'DATE', value: requested.since }, { name: 'until', type: 'DATE', value: requested.until }]; const sourceView = requested.persona ? CONTACT_VIEW : COMPANY_VIEW; const sql = requested.persona ? `WITH company_owner AS (SELECT owner_id, owner_name, company_id, ANY_VALUE(COALESCE(NULLIF(porte,''),'desconhecido')) porte, ANY_VALUE(COALESCE(NULLIF(segmento,''),'desconhecido')) segmento, COUNT(DISTINCT contact_id) contacts_eligible, COUNT(DISTINCT IF(has_touch, contact_id, NULL)) contacts_touched, SUM(CAST(touches_real AS INT64)) touches_real, MAX(last_touch_at) refreshed_at, MAX(CAST(converted_30d AS INT64)) converted FROM \`${CONTACT_VIEW}\` cc WHERE ${wheres(requested, 'cc', params, true)} GROUP BY owner_id, owner_name, company_id) SELECT porte, segmento, LEAST(CAST(contacts_touched AS INT64),6) contacts_touched, COUNT(DISTINCT company_id) companies, SUM(converted) converted, SUM(contacts_eligible) contacts_eligible, SUM(contacts_touched) contacts_touched_sum, SUM(touches_real) touches_real, MAX(refreshed_at) refreshed_at FROM company_owner GROUP BY porte, segmento, contacts_touched ORDER BY contacts_touched` : `SELECT COALESCE(NULLIF(porte,''),'desconhecido') porte, COALESCE(NULLIF(segmento,''),'desconhecido') segmento, LEAST(CAST(contacts_touched AS INT64),6) contacts_touched, COUNT(DISTINCT company_id) companies, SUM(CAST(converted_30d AS INT64)) converted, SUM(CAST(contacts_eligible AS INT64)) contacts_eligible, SUM(CAST(contacts_touched AS INT64)) contacts_touched_sum, SUM(CAST(touches_real AS INT64)) touches_real, MAX(last_touch_at) refreshed_at FROM \`${COMPANY_VIEW}\` c WHERE ${wheres(requested, 'c', params, false)} GROUP BY porte, segmento, contacts_touched ORDER BY contacts_touched`;
+  const { rows } = await bq.query(sql, params); const contactParams = [{ name: 'since', type: 'DATE', value: requested.since }, { name: 'until', type: 'DATE', value: requested.until }]; const contactSql = `SELECT COALESCE(NULLIF(persona,''),'não classificada') persona, COUNT(DISTINCT contact_id) contacts, COUNT(DISTINCT IF(has_touch, contact_id, NULL)) contacts_touched, COUNT(DISTINCT company_id) companies FROM \`${CONTACT_VIEW}\` cc WHERE ${wheres(requested, 'cc', contactParams, true)} GROUP BY persona`; const { rows: contactRows } = await bq.query(contactSql, contactParams); const buckets = buildBuckets(rows); const denominator = buckets.denominatorEligible; const latest = rows.reduce((max, row) => { const raw = String(row.refreshed_at || ''); return raw > max ? raw : max; }, ''); function breakdown(field) { const map = {}; rows.forEach((row) => { const key = row[field] || 'desconhecido'; if (!map[key]) map[key] = { label: key, companies: 0, converted: 0 }; map[key].companies += Number(row.companies || 0); map[key].converted += Number(row.converted || 0); }); return Object.keys(map).sort().map((k) => Object.assign(map[k], { percent: denominator ? map[k].companies / denominator : 0 })); }
+  const personaBreakdown = contactRows.map((row) => ({ label: row.persona, contacts: Number(row.contacts || 0), contactsTouched: Number(row.contacts_touched || 0), companies: Number(row.companies || 0) })); const contactsEligible = rows.reduce((s, r) => s + Number(r.contacts_eligible || 0), 0); const contactsTouched = rows.reduce((s, r) => s + Number(r.contacts_touched_sum || 0), 0); const touchesReal = rows.reduce((s, r) => s + Number(r.touches_real || 0), 0); const filterOptions = await queryFilterOptions(); return { success: true, contractVersion: '2.1', requestedRange: { since: requested.since, until: requested.until }, resolvedRange: { since: requested.since, until: requested.until }, filtersApplied: { bdr: requested.bdr ? canonicalizeBdrName(requested.bdr) : null, porte: requested.porte, segmento: requested.segmento, persona: requested.persona, cohort: requested.cohort }, filtersIgnored: [], filterOptions, supportedFilters: { penetration: ['bdr', 'porte', 'segmento', 'persona'] }, source: { kind: 'bq-operational', view: sourceView, companyView: COMPANY_VIEW, contactView: CONTACT_VIEW, refreshedAt: latest, latestDataDate: latest }, quality: { status: 'pass', checks: [{ key: 'denominator', status: 'pass', message: 'Denominador = empresas elegíveis por lead criado/atribuído na janela, não primeiro toque.' }, { key: 'bucket_zero', status: 'pass', message: 'Bucket 0 é empresa elegível com contacts_touched=0.' }] }, coverage: { denominatorEligible: denominator, contactsEligible, contactsTouched, touchesReal, attributeCoverage: { porte: denominator ? rows.filter((r) => r.porte !== 'desconhecido').reduce((s, r) => s + Number(r.companies || 0), 0) / denominator : 0, segmento: denominator ? rows.filter((r) => r.segmento !== 'desconhecido').reduce((s, r) => s + Number(r.companies || 0), 0) / denominator : 0, persona: contactRows.reduce((s, r) => s + Number(r.contacts || 0), 0) ? contactRows.filter((r) => r.persona !== 'não classificada').reduce((s, r) => s + Number(r.contacts || 0), 0) / contactRows.reduce((s, r) => s + Number(r.contacts || 0), 0) : 0 } }, data: { bucketsExact: buckets.exact, bucketsGrouped: buckets.grouped, breakdowns: { porte: breakdown('porte'), segmento: breakdown('segmento'), persona: personaBreakdown }, association: association(rows), notes: ['Associação observacional; correlação não implica causalidade.', 'Confundidores não controlados: porte, qualidade da carteira e maturação/timing dos toques.'] } };
 }
 
-module.exports = async function handler(req, res) {
-  setCORSHeaders(req, res);
-  if (!methodCheck(req, res, ['GET'])) return;
-  const user = requireAuth(req, res);
-  if (!user) return;
-  try { return res.status(200).json(await build(parse(req))); }
-  catch (error) { return res.status(error.statusCode || 500).json({ success: false, error: error.message }); }
-};
-module.exports._test = { parse, bdrIds, bucketExact, grouped, buildBuckets, association, wilson, build, VIEW };
+module.exports = async function handler(req, res) { setCORSHeaders(req, res); if (!methodCheck(req, res, ['GET'])) return; const user = requireAuth(req, res); if (!user) return; try { return res.status(200).json(await build(parse(req))); } catch (error) { return res.status(error.statusCode || 500).json({ success: false, error: error.message }); } };
+module.exports._test = { parse, bdrIds, bucketExact, grouped, buildBuckets, association, wilson, build, COMPANY_VIEW, CONTACT_VIEW };
