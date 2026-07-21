@@ -1,5 +1,15 @@
 # Dashboard Enhancement Loop — Status Log
 
+### BDR Workload v2 | storytelling, data-viz e clareza (2026-07-21)
+
+- **Feedback do usuário:** faltam legendas/rótulos/títulos autoexplicativos; barras de ranking vazias (Reatividade, Penetração); ícones (i) pouco claros; Canais demorando; Gestão "não diz nada"; Evolução sem "como ler"; blocos sem storytelling.
+- **Bug de barras vazias (Reatividade/Penetração/Ranking):** `ranking()` reusava `.break-row` cuja `.break-track` tinha `grid-column:1/3`, sobrepondo o rótulo — a barra ficava escondida. Reescrito com layout próprio `.v2-rank` (nome | barra preenchida | valor). Agora todas as barras preenchem.
+- **Data-viz (`charts.js` reescrito):** legendas em stacked/grouped/waterfall/lineArea; rótulos de dados (valor no topo das barras, pico e último ponto nas linhas, delta assinado no waterfall); títulos autoexplicativos + linha "como ler" (`.v2-hint`) sob cada gráfico; stacked agora com comprimento por volume do dia + mix por cor.
+- **Storytelling:** cada aba ganhou um banner `story()` com o headline dos dados — Pulso (ritmo/efetividade/reatividade), Canais (volume/canal dominante/qualidade), Gestão (maior volume, quem caiu vs anterior, time), Penetração (cobertura/sem toque/intensidade), Evolução (variação total/comparação/maior mudança).
+- **Ícones (i):** `INFO` reescrito por aba com Pergunta / Como ler / Fórmula e fonte (título do drawer = nome da aba).
+- **Canais "demorando":** causa real = `channelCompareBox` **nunca era chamado** (box "Carregando comparativo" ficava infinito). Agora é chamado após render. Cache de payload (TTL 45s) adicionado a `/api/bdr-workload-compare` e `/api/bdr-workload-penetration` (semantic já tinha) → re-visitas instantâneas. Cold da compare (~8-16s, 1 query BQ + live quando inclui hoje) fica como follow-up de paralelização.
+- **Validação:** `npm run check` PASS; 5 abas conferidas por screenshot (barras preenchidas, legendas, rótulos, story banners, selects no tema). Cache-busters: charts `?v=3`, main `?v=8`.
+
 ### BDR Workload v2 | performance, visão única e correção de design (2026-07-21)
 
 - **Auditoria (usuário reportou: lento, gráficos vazios, blocos brancos na Gestão, sem formatação).** Causas-raiz confirmadas em ambiente local com v2 habilitado.

@@ -58,5 +58,7 @@ async function build(requested) {
 }
 
 
-module.exports = async function handler(req, res) { setCORSHeaders(req, res); if (!methodCheck(req, res, ['GET'])) return; const user = requireAuth(req, res); if (!user) return; try { return res.status(200).json(await build(parse(req))); } catch (error) { return res.status(error.statusCode || 500).json({ success: false, error: error.message }); } };
+const PAYLOAD_TTL_MS = 45 * 1000;
+let payloadCache = new Map();
+module.exports = async function handler(req, res) { setCORSHeaders(req, res); if (!methodCheck(req, res, ['GET'])) return; const user = requireAuth(req, res); if (!user) return; try { const requested = parse(req); const key = JSON.stringify(requested); if (!/[?&]refresh=1/.test(req.url)) { const hit = payloadCache.get(key); if (hit && Date.now() - hit.at < PAYLOAD_TTL_MS) return res.status(200).json(hit.val); } const val = await build(requested); if (payloadCache.size > 200) payloadCache.clear(); payloadCache.set(key, { at: Date.now(), val }); return res.status(200).json(val); } catch (error) { return res.status(error.statusCode || 500).json({ success: false, error: error.message }); } };
 module.exports._test = { parse, bdrIds, bucketExact, grouped, buildBuckets, association, wilson, build, COMPANY_VIEW, CONTACT_VIEW, LEADS_TABLE, metadataQuality, timestamp, ymd };
