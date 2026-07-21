@@ -126,6 +126,14 @@ node scripts/_capture-charts.js public/novo-dashboard.html includeLost
 - **Patch GCP source (2026-07-20) → ainda 🟡 até smoke pós-deploy.** SQL principal passa a vir de deals reais no BigQuery silver (`sql_deals`), e atividades históricas do gold (`bdr_daily_ops`); hoje continua HubSpot live para evitar snapshot parcial das 08:00 BRT. `OPEN_DEAL` foi rebaixado para proxy de status. Zero registrado em dia útil não é mais tratado como provável erro de API quando histórico está disponível.
 - **Evidência pós-deploy (2026-07-20):** build Vercel PASS; assets atualizados nos dois aliases; API protegida retorna 401 sem sessão. Smokes locais autenticados contra as mesmas fontes reconciliaram 12 SQLs em 7D e mais de 1.200 atividades hoje. Mantém 🟡 somente porque o smoke visual autenticado de produção depende da sessão do usuário.
 - **Reabertura por filtro BDR (2026-07-20):** Thauan zerava porque o ETL GCP não continha seu owner ID. Roster corrigido para 13 BDRs, backfill refeito e teste nominal adicionado. Ritmo histórico agora é MECE estrito (calls + outgoing emails + WhatsApp communications + LinkedIn communications + meetings), sem tarefas/notas. Correlação fonte→resultado removida por denominador heterogêneo. Quality gate permanece 🟡 até confirmação visual pós-deploy do filtro Thauan.
+- **Workload v2 (2026-07-20) → 🟠 com limitações explícitas.** Cinco abas substituem
+  o scroll único; metas saem da experiência; hoje usa live server-side e histórico
+  usa Gold. Gestão ordena por delta do período anterior, canais, leads e SQL. Ligações
+  separam conversa/discagem/desfecho/duração. Penetração é experimental porque o
+  denominador é o snapshot observado, não toda a carteira elegível. Reatividade,
+  CRM, segmento e persona permanecem bloqueados onde falta semantic layer. A×B com
+  hoje mostra aviso de comparação parcial não equivalente. Build, smoke local real,
+  reviewer e skeptic passaram; produção validada publicamente com HTML 200 e APIs 401.
 
 ## Adendo | Renomeação: código único por card em CRO/Board/AE (2026-07-16)
 

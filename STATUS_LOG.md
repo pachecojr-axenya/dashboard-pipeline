@@ -1,5 +1,32 @@
 # Dashboard Enhancement Loop — Status Log
 
+### 🚀 DEPLOY DE PRODUÇÃO | BDR Workload v2 — cinco visões auditáveis (2026-07-20)
+
+- **PR/merge:** PR `#9`, merge `fd7fc4a`; fix de fixture determinística em `c5526a7`.
+- **Deploy canônico:** `dpl_GFgmPDma6Mxo8rFiYUTNKJcirQH2` (READY), aliases
+  `https://axenya-pipeline-dashboard.vercel.app` e `https://project-bsmfu.vercel.app`.
+- **Experiência v2:** cinco abas — Pulso & Reatividade, Atividades & Canais, Gestão
+  por BDR, Penetração & ICP e Evolução A×B. Metas foram removidas da v2; fallback
+  v1 preservado em `?workload=v1`.
+- **Dados:** hoje usa HubSpot live agregado no servidor; histórico usa
+  `gold.bdr_daily_ops`; penetração usa snapshot observado da CI; A×B reconcilia por
+  invariante. Reatividade, CRM, segmento e persona ficam indisponíveis onde não há
+  fonte auditável.
+- **Segurança:** `BDR_FLAG_WORKLOAD_V2` fail-closed e habilitada explicitamente em
+  produção; APIs autenticadas; payload agregado sem PII; drill nominal de ligações
+  paginado em no máximo 50 linhas.
+- **Evidências:** unit `1a5de3eb49babd077b1252e8490f59d06f0dd961c46d65b6d35e5f124625b9ea`;
+  full check `08c33410f059c4e41921ae14666f20a646cb6cbd3759abdc171c34a2b8162210`;
+  predeploy `011251c9d0a343c36eb50ca6993415b57970c3917e8ca1d8be1d2d89110f3afd`;
+  deploy `eba766dd770402e9dd01e227aa0892719c941a510ee5f49588524eb22916cb3d`.
+- **Pós-deploy:** sete rotas HTML críticas + asset v2 = 200; quatro APIs v2 sem
+  sessão = 401 esperado; HTML/JS live confirmam cinco abas, config gate e fallback.
+- **Quality gates:** reviewer code = PASS 9/10; experiment-skeptic = PASS com
+  ressalvas não bloqueantes. Penetração permanece experimental e A×B com hoje é
+  rotulado como comparação parcial não equivalente.
+
+---
+
 ### 🚀 DEPLOY DE PRODUÇÃO | Forecast Delta — Visão Unificada por Etapa = funil completo + avançou×perdido (2026-07-20)
 
 > Decisão do dono: mesmo com o filtro geral em Ativos, a Visão Unificada por Etapa
