@@ -144,6 +144,37 @@ const ACTIVITY_TYPES = {
   meetings: ['hs_timestamp', 'hubspot_owner_id'],
 };
 
+
+function smallestAssociationId(row) {
+  return (row.to || []).map((x) => String(x.toObjectId || '')).filter(Boolean).sort((a, b) => a.length - b.length || a.localeCompare(b))[0] || null;
+}
+async function fetchActivityAssociations(token, activities, post) {
+  post = post || hubspotPost;
+  const objectType = { calls: 'calls', emails: 'emails', communications: 'communications', meetings: 'meetings' };
+  const diagnostics = { attempted: 0, succeeded: 0, errors: 0, available: false };
+  await pool(Object.keys(objectType), 2, async (tipo) => {
+    const typed = activities.filter((a) => a.tipo === tipo && a.id);
+    for (let i = 0; i < typed.length; i += 100) {
+      const batch = typed.slice(i, i + 100);
+      await Promise.all(['contacts', 'companies'].map(async (toType) => {
+        diagnostics.attempted += 1;
+        try {
+          const resp = await post(token, `/crm/v4/associations/${objectType[tipo]}/${toType}/batch/read`, { inputs: batch.map((a) => ({ id: a.id })) });
+          diagnostics.succeeded += 1;
+          (resp.results || []).forEach((r) => {
+            const a = batch.find((x) => String(x.id) === String(r.from && r.from.id));
+            const assocId = smallestAssociationId(r);
+            if (a && assocId && toType === 'contacts') a.contact_id = String(assocId);
+            if (a && assocId && toType === 'companies') a.company_id = String(assocId);
+          });
+        } catch (e) { diagnostics.errors += 1; }
+      }));
+    }
+  });
+  diagnostics.available = diagnostics.attempted > 0 && diagnostics.succeeded === diagnostics.attempted && diagnostics.errors === 0;
+  return diagnostics;
+}
+
 async function fetchCallDispositions(token) {
   try {
     const list = await hubspotGet(token, '/calls/v1/dispositions');
@@ -183,7 +214,7 @@ async function fetchActivities(token, teamIds, idToBdr, sinceMs, untilMs) {
       'hs_timestamp', sinceMs, untilMs, ACTIVITY_TYPES[type]);
     rows.forEach(r => {
       const p = r.properties;
-      const a = { tipo: type, bdr: idToBdr[p.hubspot_owner_id] || null, ts: p.hs_timestamp };
+      const a = { id: r.id, tipo: type, bdr: idToBdr[p.hubspot_owner_id] || null, ts: p.hs_timestamp };
       if (type === 'calls') {
         a.duracao_ms = p.hs_call_duration != null && p.hs_call_duration !== '' ? Number(p.hs_call_duration) : null;
         a.desfecho = dispMap[p.hs_call_disposition] || null;
@@ -193,6 +224,8 @@ async function fetchActivities(token, teamIds, idToBdr, sinceMs, untilMs) {
       out.push(a);
     });
   }));
+  const associationDiagnostics = await fetchActivityAssociations(token, out);
+  Object.defineProperty(out, 'associationDiagnostics', { value: associationDiagnostics, enumerable: false });
   out.sort((a, b) => (a.ts < b.ts ? -1 : 1));
   return out;
 }
@@ -308,6 +341,9 @@ async function buildPayload(token, sinceMs, untilMs) {
       contactsCreated: contactsCreatedRaw.length,
       contactsTouched: contactsTouchedRaw.length,
       activities: activities.length,
+      activitiesWithContactAssociation: activities.filter(a => a.contact_id).length,
+      activitiesWithCompanyAssociation: activities.filter(a => a.company_id).length,
+      activityAssociations: activities.associationDiagnostics || { attempted: 0, succeeded: 0, errors: 0, available: false },
       transitions: transitions.length,
     },
     sqlStatusNote: 'Qualificado conta transição de hs_lead_status para OPEN_DEAL no contato. SQL real por deal requer consulta separada ao pipeline de deals.',
@@ -394,3 +430,4 @@ module.exports = async function handler(req, res) {
 // Serviço interno para consumidores agregados server-side. Nunca expõe o payload
 // nominal diretamente; `/api/bdr-workload-semantic` reduz para métricas antes de responder.
 module.exports._service = { buildPayload };
+module.exports._test = { fetchActivityAssociations, smallestAssociationId };
