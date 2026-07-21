@@ -1106,13 +1106,13 @@ var WorkloadBDR = (function () {
     var calls = callsFor(b);
     openModal('Ligações | ' + b + ' | detalhe', renderCallsBody(b, calls, null));
     var expected = 'Ligações | ' + b + ' | detalhe';
-    fetch('/api/bdr-workload-calls?bdr=' + encodeURIComponent(b) + '&since=' + state.since + '&until=' + state.until, { credentials: 'same-origin' })
+    fetch('/api/bdr-workload-calls?detail=1&limit=50&page=1&bdr=' + encodeURIComponent(b) + '&since=' + state.since + '&until=' + state.until, { credentials: 'same-origin' })
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (d) {
         // só atualiza se o modal ainda é o mesmo (usuário não trocou/fechou)
         if (document.getElementById('modal-title').textContent !== expected) return;
         if (d && d.success && d.enriched) {
-          document.getElementById('modal-body').innerHTML = renderCallsBody(b, calls, d.calls);
+          document.getElementById('modal-body').innerHTML = renderCallsBody(b, calls, d.calls || []);
         } else {
           var note = document.getElementById('calls-enrich-note');
           if (note) note.innerHTML = '<span class="muted">"Para quem" indisponível nesta janela — breakdown por desfecho/duração acima permanece válido.</span>';
@@ -1124,12 +1124,27 @@ var WorkloadBDR = (function () {
         if (note) note.innerHTML = '<span class="muted">"Para quem" indisponível (erro de rede).</span>';
       });
   }
+  var modalFocusBefore = null;
+  document.addEventListener('keydown', function (event) {
+    var overlay = document.getElementById('modal-overlay');
+    if (!overlay || !overlay.classList.contains('open')) return;
+    if (event.key === 'Escape') { event.preventDefault(); closeModal(); return; }
+    if (event.key !== 'Tab') return;
+    var modal = overlay.querySelector('.modal');
+    var focusable = modal.querySelectorAll('button,[href],input,select,textarea,[tabindex]:not([tabindex="-1"])');
+    if (!focusable.length) return;
+    var first = focusable[0], last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+  });
   function openModal(title, html) {
+    modalFocusBefore = document.activeElement;
     document.getElementById('modal-title').textContent = title;
     document.getElementById('modal-body').innerHTML = html;
     document.getElementById('modal-overlay').classList.add('open');
+    window.setTimeout(function () { var close = document.querySelector('#modal-overlay .modal-hdr button'); if (close) close.focus(); }, 0);
   }
-  function closeModal() { document.getElementById('modal-overlay').classList.remove('open'); }
+  function closeModal() { document.getElementById('modal-overlay').classList.remove('open'); if (modalFocusBefore && modalFocusBefore.focus) modalFocusBefore.focus(); }
 
   // ---------- ajuda ----------
   function openAllHelp() {
@@ -1211,4 +1226,14 @@ var WorkloadBDR = (function () {
     drill: drill, drillCalls: drillCalls, closeModal: closeModal, openAllHelp: openAllHelp, openHelpFor: openHelpFor, closeHelp: closeHelp, toggleTheme: toggleTheme,
   };
 })();
-window.addEventListener('DOMContentLoaded', function () { WorkloadBDR.init(); });
+window.addEventListener('DOMContentLoaded', function () {
+  var q = new URLSearchParams(location.search);
+  if (q.get('workload') === 'v1' || window.BDR_WORKLOAD_FORCE_V1) { WorkloadBDR.init(); return; }
+  // Rede de segurança: se o asset v2 faltar ou tiver erro de parse, a página não
+  // fica presa no loading. O asset v2 marca presença antes de iniciar o config gate.
+  window.setTimeout(function () {
+    if (window.BDR_WORKLOAD_V2_ASSET_LOADED) return;
+    if (window.WorkloadBDRRouter) WorkloadBDRRouter.setMode('v1');
+    WorkloadBDR.init();
+  }, 1200);
+});
