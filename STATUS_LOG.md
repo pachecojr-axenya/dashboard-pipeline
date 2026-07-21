@@ -1,20 +1,24 @@
 # Dashboard Enhancement Loop — Status Log
 
-### BDR Workload v2 | fallback live A×B e correção visual KPI (2026-07-21)
+### 🚀 DEPLOY DE PRODUÇÃO | BDR Workload v2 — fallback live A×B e correção visual KPI (2026-07-21)
 
 - Causa raiz: a aba Evolução A×B usa `/api/bdr-workload-compare`, que lia somente BigQuery; quando a janela B continha hoje antes do snapshot Gold existir, B ficava zero embora o Pulso tivesse live do HubSpot.
 - Compare v2 agora aplica fallback live agregado via `_service.liveRowsForToday`, sem PII, apenas para `domain=ritmo` quando A ou B contém hoje e a linha BQ de hoje está ausente/zerada. Linhas históricas anteriores do mesmo período são preservadas; linhas BQ zeradas de hoje são removidas antes do live. CRM/SQL/inserção não recebem zeros inventados; fim de semana com `businessDays=true` não aplica fallback.
 - Filtros dimensionais `porte`/`segmento`/`persona` bloqueiam o fallback live por ausência de dimensão no agregado live; `source`/`quality` indicam `liveFallbackUsed` e mensagem honesta.
 - CSS dos KPIs v2: `.v2-kpi-main` transparente, sem borda, largura 100%, cor herdada, texto à esquerda e foco visível em turquesa.
+- **PR/merge:** PR `#11`, merge `d88b988` (`8c7822e` funcional).
+- **Deploy canônico:** `dpl_H6Bn8kBikbemJsZszUK9o9B2J8pU` (READY), aliases `https://axenya-pipeline-dashboard.vercel.app` e `https://project-bsmfu.vercel.app`.
+- **Evidências:** check `2bb566c14898b97e476f69883c72a251fc06d5b64ceb8a4ba92b8fec5e9ceaef`; predeploy `f5098c54366490e4521579cdb82a1463eddae3327fc85e9a74afef74e4f71884`; deploy `40072f3ec728a7212a092432664501b14957a175c627edbe78214a373c028914`; smoke público `974569c0c0a40fb77c614411f70a41cb89aab4ab02e8edbfd33f2c0bc518e0bc`.
+- **Pós-deploy:** sete rotas críticas = 200; módulos core/charts/main e CSS KPI ativos; APIs sem sessão = 401 esperado. Smoke autenticado de dados permanece dependente de sessão Google do usuário.
 
 ---
 
-### BDR Workload v2 | backlog residual implementado localmente, gate funcional pendente (2026-07-21)
+### BDR Workload v2 | backlog residual implementado e publicado (2026-07-21)
 
-- Sem commit/push/deploy. Território restrito ao Workload v2.
+- Território restrito ao Workload v2; publicado pelo PR `#11`.
 - Canais: período anterior equivalente agora usa a mesma duração da janela atual e aparece no card; memória de cálculo atualizada.
 - Drill: buckets agrupados `2–3` e `4–5` aceitos ponta a ponta com allowlist estrita e query parametrizada; buckets exatos preservados.
-- Gate browser: novo smoke CDP zero-dependency em Chrome headless, por restrição de supply chain, cobrindo cinco abas, drawer, drill e console errors; integrado como script npm e syntax check. Execução funcional em localhost:3002 ainda pendente.
+- Gate browser: novo smoke CDP zero-dependency em Chrome headless, por restrição de supply chain, cobrindo cinco abas, drawer, drill e console errors; integrado como script npm e syntax check. O smoke público pós-deploy passou; a execução autenticada das cinco abas depende de sessão Google.
 - Modularização: core/utilitários e charts/renderers separados em arquivos ES5 estáticos; `WorkloadBDRV2` público preservado no arquivo principal.
 - Compatibilidade: v1 preservado em `?workload=v1`; feature flag/fail-closed e ordem explícita de scripts mantidas.
 
