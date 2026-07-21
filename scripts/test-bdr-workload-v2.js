@@ -43,15 +43,15 @@ async function withBqStub(rows, fn) {
   assert.equal(liveAggregate[0].leadsCreated, 1);
   assert(!/não deve vazar|telefone|contato_id|123|456/.test(JSON.stringify(liveAggregate)), 'agregado live não contém PII/IDs nominais');
   await withBqStub([
-    { metric_date: '2026-07-20', owner_name: 'Thauan Pontes', calls: '2', emails: '3', whatsapp: '1', linkedin: '0', meetings: '1', leads_created: '4', sql_deals: '1', refreshed_at: '2026-07-20T10:00:00Z' },
-    { metric_date: '2026-07-20', owner_name: 'Owner Fora', calls: '99', emails: '99', whatsapp: '99', linkedin: '99', meetings: '99', leads_created: '99', sql_deals: '99', refreshed_at: '2026-07-20T11:00:00Z' },
+    { metric_date: '2026-07-17', owner_name: 'Thauan Pontes', calls: '2', emails: '3', whatsapp: '1', linkedin: '0', meetings: '1', leads_created: '4', sql_deals: '1', refreshed_at: '2026-07-17T10:00:00Z' },
+    { metric_date: '2026-07-17', owner_name: 'Owner Fora', calls: '99', emails: '99', whatsapp: '99', linkedin: '99', meetings: '99', leads_created: '99', sql_deals: '99', refreshed_at: '2026-07-17T11:00:00Z' },
   ], async (calls) => {
-    const out = await sem.build(sem.parse(req('v=2&since=2026-07-20&until=2026-07-20&channels=calls,emails')));
+    const out = await sem.build(sem.parse(req('v=2&since=2026-07-17&until=2026-07-17&channels=calls,emails')));
     assert.equal(out.data.rhythm.totals.total, 5, 'total respeita canais selecionados e owner canônico');
     assert.equal(out.data.rhythm.totals.leadsCreated, 4);
     assert.equal(out.data.rhythm.totals.companiesCreated, null);
     assert.equal(out.unsupportedMetrics.statusTransitions.value, null);
-    assert.equal(out.source.refreshedAt, '2026-07-20T10:00:00.000Z');
+    assert.equal(out.source.refreshedAt, '2026-07-17T10:00:00.000Z');
     assert(!calls[0].sql.includes('companies_created'));
     assert(!calls[0].sql.includes('contacts_created'));
     assert(!calls[0].sql.includes('status_transitions'));
