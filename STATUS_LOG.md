@@ -1,5 +1,14 @@
 # Dashboard Enhancement Loop — Status Log
 
+### BDR Workload v2 | Penetração: toque pré-elegibilidade deixa de zerar (2026-07-21)
+
+- **Sintoma (usuário):** drill de Penetração mostrava Igaratiba/Anderson com `CONTACTS ELIGIBLE 1 · CONTACTS TOUCHED 0 · TOUCHES REAL 0`, mas o Anderson tem chamadas/LinkedIn na conta → "parece erro na base".
+- **Auditoria (BQ, não é dado faltando):** as 7 atividades do Anderson na Igaratiba estão todas na base. O drill filtra coortes por `eligible_date` na janela (22/06→21/07), isolando o único contato criado em 21/07 (`218965005087`). Esse contato virou elegível às **18:53:43**; a chamada foi às **18:51:51** — **112s ANTES**. A regra `ft.occurred_at >= e.eligible_at` no join de toque de `bdr_workload_company_contact_v2` descartava o toque → 0. Grão empresa (`bdr_workload_company_v2`) já mostrava 4 elegíveis / 2 tocados / 3 toques.
+- **Alcance:** ~83 coortes contato×empresa×BDR em 60d apareciam como "sem toque" indevidamente; 93% no padrão "BDR liga e cadastra o lead depois" (toque até 24h antes).
+- **Decisão (usuário):** Penetração conta **qualquer toque do cohort** (sem exigir ordem temporal); Reatividade continua **estrita** (só toque pós-elegibilidade, sem relógio negativo).
+- **Fix (só VIEW, sem reprocessar dados):** em `sql/30_create_workload_v2_views.sql` (repo GCP `hubspot-bdr-medallion`): removido `occurred_at >= eligible_at` do join de toque (afeta `touches_real`/`has_touch`/`last_touch_at`); `first_touch_at`/`hours_to_first_touch` ganharam o corte estrito; `bdr_workload_reactivity_v2.has_touch` passou a ser `first_touch_at IS NOT NULL` (coverage/buckets de reatividade consistentes). Penetração lê a view direto → **sem deploy Vercel**.
+- **Aplicação:** `CREATE OR REPLACE VIEW` rodado no BQ prod (validado: contato 218965005087 → touches_real 1 / has_touch true na Penetração; has_touch false / sem_toque na Reatividade). Imagem ETL rebuildada (`bdr-etl/hubspot-bdr-medallion:20260721-penetration-touch-fix`, digest `sha256:9aa705b…`) e `bdr-etl-job` atualizado, para o Scheduler das 8/12/16/20h não reverter. Commit vault `b533b50`.
+
 ### BDR Workload v2 | lineage WhatsApp/Treble + coluna de nome congelada (2026-07-21)
 
 - **Treble conta como WhatsApp do BDR? NÃO.** Verificado na API HubSpot: 13.340 communications WHATS_APP no portal = 11.647 `CRM_UI` (manual, logado pelo BDR) + 1.689 `INTEGRATION` (Treble, source_id 26063081). **Todas as 1.689 do Treble têm `hubspot_owner_id = null`** → a camada live agrupa por owner, então Treble não é atribuído a nenhum BDR. Leak check: `INTEGRATION + HAS owner = 0`. WhatsApp por BDR = só CRM_UI manual.
