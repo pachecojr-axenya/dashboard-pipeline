@@ -1,5 +1,25 @@
 # Dashboard Enhancement Loop — Status Log
 
+### BDR Workload v2 | fallback live A×B e correção visual KPI (2026-07-21)
+
+- Causa raiz: a aba Evolução A×B usa `/api/bdr-workload-compare`, que lia somente BigQuery; quando a janela B continha hoje antes do snapshot Gold existir, B ficava zero embora o Pulso tivesse live do HubSpot.
+- Compare v2 agora aplica fallback live agregado via `_service.liveRowsForToday`, sem PII, apenas para `domain=ritmo` quando A ou B contém hoje e a linha BQ de hoje está ausente/zerada. Linhas históricas anteriores do mesmo período são preservadas; linhas BQ zeradas de hoje são removidas antes do live. CRM/SQL/inserção não recebem zeros inventados; fim de semana com `businessDays=true` não aplica fallback.
+- Filtros dimensionais `porte`/`segmento`/`persona` bloqueiam o fallback live por ausência de dimensão no agregado live; `source`/`quality` indicam `liveFallbackUsed` e mensagem honesta.
+- CSS dos KPIs v2: `.v2-kpi-main` transparente, sem borda, largura 100%, cor herdada, texto à esquerda e foco visível em turquesa.
+
+---
+
+### BDR Workload v2 | backlog residual implementado localmente, gate funcional pendente (2026-07-21)
+
+- Sem commit/push/deploy. Território restrito ao Workload v2.
+- Canais: período anterior equivalente agora usa a mesma duração da janela atual e aparece no card; memória de cálculo atualizada.
+- Drill: buckets agrupados `2–3` e `4–5` aceitos ponta a ponta com allowlist estrita e query parametrizada; buckets exatos preservados.
+- Gate browser: novo smoke CDP zero-dependency em Chrome headless, por restrição de supply chain, cobrindo cinco abas, drawer, drill e console errors; integrado como script npm e syntax check. Execução funcional em localhost:3002 ainda pendente.
+- Modularização: core/utilitários e charts/renderers separados em arquivos ES5 estáticos; `WorkloadBDRV2` público preservado no arquivo principal.
+- Compatibilidade: v1 preservado em `?workload=v1`; feature flag/fail-closed e ordem explícita de scripts mantidas.
+
+---
+
 ### 🚀 DEPLOY DE PRODUÇÃO | BDR Workload v2 — cinco visões auditáveis (2026-07-20)
 
 - **PR/merge:** PR `#9`, merge `fd7fc4a`; fix de fixture determinística em `c5526a7`.

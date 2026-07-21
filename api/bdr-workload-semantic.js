@@ -59,4 +59,5 @@ async function build(requested) { if (!bq.isConfigured()) throw Object.assign(ne
 }
 
 module.exports = async function handler(req, res) { setCORSHeaders(req, res); if (!methodCheck(req, res, ['GET'])) return; const user = requireAuth(req, res); if (!user) return; try { return res.status(200).json(await build(parse(req))); } catch (error) { return res.status(error.statusCode || 500).json({ success: false, error: error.message }); } };
-module.exports._test = { parse, CHANNELS, CHANNEL_SQL, isBusiness, build, TABLE, REACTIVITY_TABLE, normalizeTimestamp, aggregateLivePayload, previousRange, activityBucket, percentile, bucketHours, reactivityFromRows };
+module.exports._service = { liveRowsForToday };
+module.exports._test = { parse, CHANNELS, CHANNEL_SQL, isBusiness, build, TABLE, REACTIVITY_TABLE, normalizeTimestamp, aggregateLivePayload, liveRowsForToday, previousRange, activityBucket, percentile, bucketHours, reactivityFromRows };

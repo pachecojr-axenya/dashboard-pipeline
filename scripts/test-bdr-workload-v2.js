@@ -79,6 +79,22 @@ async function withBqStub(rows, fn) {
   });
 
   assert.equal(cmp.businessDays('2026-07-20', '2026-07-24'), 5);
+  const liveService = { liveRowsForToday: async () => ({ used: true, rows: [{ date: cmp.todayBrt(), bdr: 'Thauan Pontes', calls: 4, emails: 3, whatsapp: 2, linkedin: 1, meetings: 0 }], generatedAt: '2026-07-21T12:00:00Z' }) };
+  const fallbackRows = await cmp.applyLiveFallback([{ period_key: 'A', metric_date: '2026-07-20', owner_name: 'Thauan Pontes', calls_total: 5, emails_sent_total: 0, whatsapp_total: 0, linkedin_total: 0, meetings_total: 0, metric: 5 }], { domain: 'ritmo', aSince: '2026-07-20', aUntil: '2026-07-20', bSince: cmp.todayBrt(), bUntil: cmp.todayBrt(), bdr: null, channels: ['calls', 'emails'], businessDays: true, porte: null, segmento: null, persona: null }, liveService);
+  assert.equal(fallbackRows.quality.liveFallbackUsed, cmp.isBusiness(cmp.todayBrt()));
+  assert.equal(fallbackRows.rows.filter((r) => r.period_key === 'A').reduce((m, r) => m + Number(r.metric || 0), 0), 5);
+  if (cmp.isBusiness(cmp.todayBrt())) assert.equal(fallbackRows.rows.filter((r) => r.period_key === 'B').reduce((m, r) => m + Number(r.metric || 0), 0), 7);
+  assert(!/phone|telefone|contact_id|email@|@/.test(JSON.stringify(fallbackRows.rows)), 'fallback live agregado não contém PII');
+  const multiDay = await cmp.applyLiveFallback([{ period_key: 'B', metric_date: '2026-07-20', owner_name: 'Thauan Pontes', calls_total: 9, emails_sent_total: 0, whatsapp_total: 0, linkedin_total: 0, meetings_total: 0, metric: 9 }, { period_key: 'B', metric_date: cmp.todayBrt(), owner_name: 'Thauan Pontes', calls_total: 0, emails_sent_total: 0, whatsapp_total: 0, linkedin_total: 0, meetings_total: 0, metric: 0 }], { domain: 'ritmo', aSince: '2026-07-13', aUntil: '2026-07-19', bSince: '2026-07-20', bUntil: cmp.todayBrt(), bdr: null, channels: ['calls', 'emails'], businessDays: true, porte: null, segmento: null, persona: null }, liveService);
+  if (cmp.isBusiness(cmp.todayBrt())) {
+    assert.equal(multiDay.rows.filter((r) => r.period_key === 'B' && String(r.metric_date).slice(0, 10) === '2026-07-20').reduce((m, r) => m + Number(r.metric || 0), 0), 9);
+    assert.equal(multiDay.rows.filter((r) => r.period_key === 'B' && String(r.metric_date).slice(0, 10) === cmp.todayBrt()).reduce((m, r) => m + Number(r.metric || 0), 0), 7);
+  }
+  const blockedFallback = await cmp.applyLiveFallback([], { domain: 'ritmo', aSince: '2026-07-20', aUntil: '2026-07-20', bSince: cmp.todayBrt(), bUntil: cmp.todayBrt(), bdr: null, channels: ['calls'], businessDays: true, porte: 'grande', segmento: null, persona: null }, liveService);
+  assert.equal(blockedFallback.quality.liveFallbackUsed, false);
+  assert.equal(blockedFallback.quality.blockedByFilters, true);
+  const crmNoFallback = await cmp.applyLiveFallback([], { domain: 'crm', aSince: '2026-07-20', aUntil: '2026-07-20', bSince: cmp.todayBrt(), bUntil: cmp.todayBrt(), bdr: null, channels: ['calls'], businessDays: true, porte: null, segmento: null, persona: null }, liveService);
+  assert.equal(crmNoFallback.quality.liveFallbackUsed, false);
   assert.equal(cmp.metricExpression('crm', []), 'SUM(crm_movements)');
   assert.equal(cmp.metricExpression('insercao', []), 'SUM(companies_inserted) + SUM(contacts_inserted)');
   ['ritmo', 'insercao', 'crm', 'contato_efetivo', 'sql'].forEach((domain) => assert(cmp.SUPPORTED_DOMAINS.includes(domain)));
@@ -97,11 +113,16 @@ async function withBqStub(rows, fn) {
   });
 
   assert.deepStrictEqual(drill.parseContext('channel:calls'), { type: 'channel', value: 'calls' });
+  assert.deepStrictEqual(drill.parseContext('bucket:2–3'), { type: 'bucket', value: '2–3' });
   assert.throws(() => drill.parse(req('kind=activity&since=2026-07-01&until=2026-07-02&context=foo:bar')), /context inválido/);
   const dq = drill.queryFor(drill.parse(req('kind=activity&since=2026-07-01&until=2026-07-02&context=channel:calls&limit=500')), false);
   assert(dq.sql.includes('bdr_workload_touch_detail_v2'));
   assert(dq.sql.includes('x.channel = @contextValue'));
   assert.equal(dq.params.find((p) => p.name === 'limit').value, 50);
+  const groupedBucketQ = drill.queryFor(drill.parse(req('kind=penetration&since=2026-07-01&until=2026-07-02&context=bucket:2–3')), false);
+  assert(groupedBucketQ.sql.includes('BETWEEN @bucketMin AND @bucketMax'));
+  assert.equal(groupedBucketQ.params.find((p) => p.name === 'bucketMin').value, 2);
+  assert.equal(groupedBucketQ.params.find((p) => p.name === 'bucketMax').value, 3);
   const crmQ = drill.queryFor(drill.parse(req('kind=crm&since=2026-07-01&until=2026-07-02&context=event:connected')), false);
   assert(crmQ.sql.includes('bdr_workload_crm_events_v2'));
   assert(crmQ.sql.includes('x.event_type = @contextValue'));

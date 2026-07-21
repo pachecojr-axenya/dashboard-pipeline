@@ -71,6 +71,22 @@ Entregue nesta rodada:
 - cards, pontos, barras e células com drill;
 - testes de contrato e UI incluídos no `npm run check`.
 
+### Fallback live A×B e visual KPI | 2026-07-21
+
+- Causa raiz dos gráficos zerados: Evolução A×B usa `/api/bdr-workload-compare`, que lia só BigQuery; quando a janela contém hoje e ainda não existe snapshot, o período ficava zero apesar do Pulso live.
+- Fallback implementado somente para `domain=ritmo` via `_service.liveRowsForToday`: se A ou B contém hoje e a linha BQ de hoje está ausente/zerada, o endpoint injeta linhas agregadas por BDR vindas do live sem PII. Linhas históricas anteriores do mesmo período são preservadas; linhas BQ zeradas de hoje são removidas antes do live. Em fim de semana com `businessDays=true`, o fallback não aplica.
+- O fallback não é aplicado para CRM, SQL ou inserção, nem quando `porte`/`segmento`/`persona` estão ativos, porque o live agregado não carrega essas dimensões com qualidade suficiente.
+- `source` e `quality` retornam `liveFallbackUsed` e mensagens explícitas de uso/bloqueio.
+- `.v2-kpi-main` corrigido para botão transparente, sem bloco branco, com foco acessível.
+
+### Backlog residual | implementação local parcial (2026-07-21)
+
+- Aba Canais agora calcula o período anterior equivalente pela duração completa da janela atual e exibe A/B no subtítulo do card; a memória de cálculo explicita a regra.
+- Drill de penetração aceita buckets agrupados `2–3` e `4–5` ponta a ponta, mantendo buckets exatos `0`, `1`, `2`, `3`, `4`, `5`, `6+`. A API usa allowlist estrita e parâmetros nomeados `@bucketMin`/`@bucketMax`.
+- O release gate browser persistente é `scripts/smoke-bdr-workload-v2-browser.js`: Chrome headless via CDP e zero dependências, por restrição de supply chain. Não usa nem declara Playwright. Default: `http://localhost:3002`; override: `--base-url=http://localhost:3002`.
+- O gate cobre cinco abas, filtros/estado de aba, drawers de memória, drill/modal e ausência de exceções/console errors.
+- Modularização real e limitada aplicada: `bdr-workload-v2-core.js` expõe constantes/utilitários/contexto em `window.WorkloadBDRV2Core`; `bdr-workload-v2-charts.js` expõe renderers SVG/tabela em `window.WorkloadBDRV2Charts`; `bdr-workload-v2.js` preserva `window.WorkloadBDRV2` como API pública e bootstrap/feature flag/fallback v1.
+
 ### Backlog residual documentado
 
 1. Executar release gate Playwright completo e persistente nas cinco abas após deploy;
