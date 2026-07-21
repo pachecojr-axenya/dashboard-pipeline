@@ -6,186 +6,31 @@ const { BDR_TEAM, canonicalizeBdrName } = require('../lib/bdr-team');
 
 const PROJECT = 'gen-lang-client-0423905839';
 const GOLD = 'axenya_sales_hubspot_bdr_prd_sae1_gold';
-const TABLE = `${PROJECT}.${GOLD}.bdr_daily_ops`;
+const TABLE = `${PROJECT}.${GOLD}.bdr_workload_daily_dimension_v2`;
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
-const SUPPORTED_DOMAINS = ['ritmo', 'insercao', 'sql'];
-const UNSUPPORTED_DOMAINS = ['crm', 'contato_efetivo'];
-const BREAKDOWNS = ['canal', 'bdr', 'none'];
-const CHANNELS = [
-  ['calls', 'Ligações', 'calls_total'],
-  ['emails', 'E-mails', 'emails_sent_total'],
-  ['whatsapp', 'WhatsApp', 'whatsapp_total'],
-  ['linkedin', 'LinkedIn', 'linkedin_total'],
-  ['meetings', 'Reuniões', 'meetings_total'],
-];
-
-function bad(message) {
-  const error = new Error(message);
-  error.statusCode = 400;
-  return error;
-}
-function parseDate(value, name) {
-  if (!ISO.test(String(value || ''))) throw bad(`${name} obrigatório (YYYY-MM-DD)`);
-  return value;
-}
-function days(since, until) {
-  return Math.floor((new Date(`${until}T00:00:00Z`) - new Date(`${since}T00:00:00Z`)) / 86400000) + 1;
-}
-function isBusiness(date) {
-  const day = new Date(`${date}T00:00:00Z`).getUTCDay();
-  return day !== 0 && day !== 6;
-}
-function businessDays(since, until) {
-  let count = 0;
-  const current = new Date(`${since}T00:00:00Z`);
-  const end = new Date(`${until}T00:00:00Z`);
-  while (current <= end) {
-    if (isBusiness(current.toISOString().slice(0, 10))) count += 1;
-    current.setUTCDate(current.getUTCDate() + 1);
-  }
-  return count;
-}
+const SUPPORTED_DOMAINS = ['ritmo', 'insercao', 'crm', 'contato_efetivo', 'sql'];
+const BREAKDOWNS = ['canal', 'bdr', 'porte', 'segmento', 'persona', 'none'];
+const CHANNELS = [['calls', 'Ligações', 'calls_total'], ['emails', 'E-mails', 'emails_sent_total'], ['whatsapp', 'WhatsApp', 'whatsapp_total'], ['linkedin', 'LinkedIn', 'linkedin_total'], ['meetings', 'Reuniões', 'meetings_total']];
+const DOMAIN_COMPONENTS = { insercao: [['companiesInserted', 'Empresas inseridas', 'companies_inserted'], ['contactsInserted', 'Contatos inseridos', 'contacts_inserted']], crm: [['attempted', 'Tentativas', 'attempted_total'], ['connected', 'Conectados', 'connected_total'], ['qualified', 'Qualificados', 'qualified_total'], ['disqualified', 'Desqualificados', 'disqualified_total']], contato_efetivo: [['connected', 'Conectados', 'connected_total']], sql: [['sql', 'SQL', 'sql_deals']] };
+function bad(message) { const error = new Error(message); error.statusCode = 400; return error; }
+function parseDate(value, name) { if (!ISO.test(String(value || ''))) throw bad(`${name} obrigatório (YYYY-MM-DD)`); return value; }
+function days(since, until) { return Math.floor((new Date(`${until}T00:00:00Z`) - new Date(`${since}T00:00:00Z`)) / 86400000) + 1; }
+function isBusiness(date) { const day = new Date(`${date}T00:00:00Z`).getUTCDay(); return day !== 0 && day !== 6; }
+function businessDays(since, until) { let count = 0; const current = new Date(`${since}T00:00:00Z`); const end = new Date(`${until}T00:00:00Z`); while (current <= end) { if (isBusiness(current.toISOString().slice(0, 10))) count += 1; current.setUTCDate(current.getUTCDate() + 1); } return count; }
 function todayBrt() { return new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString().slice(0, 10); }
-function parse(req) {
-  const q = new URL(`http://x${req.url}`).searchParams;
-  if (q.get('v') !== '2') throw bad('v=2 obrigatório');
-  const domain = q.get('domain') || 'ritmo';
-  if (UNSUPPORTED_DOMAINS.includes(domain)) throw bad(`${domain} ainda não suportado: gold.bdr_daily_ops não possui camada semântica de CRM/contato efetivo`);
-  if (!SUPPORTED_DOMAINS.includes(domain)) throw bad('domain inválido');
-  const breakdown = q.get('breakdown') || (domain === 'ritmo' ? 'canal' : 'none');
-  if (!BREAKDOWNS.includes(breakdown)) throw bad('breakdown inválido');
-  if (breakdown === 'canal' && domain !== 'ritmo') throw bad('breakdown=canal só é válido para domain=ritmo');
-  if (q.get('porte') || q.get('segmento') || q.get('persona')) throw bad('porte/segmento/persona não suportados no endpoint compare atual');
-  const bdr = q.get('bdr') ? canonicalizeBdrName(q.get('bdr')) : null;
-  if (bdr && !BDR_TEAM.includes(bdr)) throw bad('BDR inválido');
-  const channels = (q.get('channels') || CHANNELS.map((c) => c[0]).join(',')).split(',').filter(Boolean);
-  if (channels.some((channel) => !CHANNELS.some((candidate) => candidate[0] === channel))) throw bad('canal inválido');
-  const parsed = {
-    aSince: parseDate(q.get('aSince'), 'aSince'),
-    aUntil: parseDate(q.get('aUntil'), 'aUntil'),
-    bSince: parseDate(q.get('bSince'), 'bSince'),
-    bUntil: parseDate(q.get('bUntil'), 'bUntil'),
-    domain,
-    breakdown,
-    businessDays: q.get('businessDays') !== 'false',
-    bdr,
-    channels,
-  };
-  if (parsed.aSince > parsed.aUntil || parsed.bSince > parsed.bUntil) throw bad('ranges inválidos');
-  return parsed;
-}
-function metricExpression(domain, channels) {
-  if (domain === 'sql') return 'SUM(sql_deals)';
-  if (domain === 'insercao') return 'SUM(leads_created)';
-  return channels.map((key) => {
-    const channel = CHANNELS.find((candidate) => candidate[0] === key);
-    return `SUM(${channel[2]})`;
-  }).join(' + ') || '0';
-}
+function parse(req) { const q = new URL(`http://x${req.url}`).searchParams; if (q.get('v') !== '2') throw bad('v=2 obrigatório'); const domain = q.get('domain') || 'ritmo'; if (!SUPPORTED_DOMAINS.includes(domain)) throw bad('domain inválido'); const breakdown = q.get('breakdown') || (domain === 'ritmo' ? 'canal' : 'none'); if (!BREAKDOWNS.includes(breakdown)) throw bad('breakdown inválido'); if (breakdown === 'canal' && domain !== 'ritmo') throw bad('breakdown=canal só é válido para domain=ritmo'); const bdr = q.get('bdr') ? canonicalizeBdrName(q.get('bdr')) : null; if (bdr && !BDR_TEAM.includes(bdr)) throw bad('BDR inválido'); const channels = (q.get('channels') || CHANNELS.map((c) => c[0]).join(',')).split(',').filter(Boolean); if (channels.some((channel) => !CHANNELS.some((candidate) => candidate[0] === channel))) throw bad('canal inválido'); const parsed = { aSince: parseDate(q.get('aSince'), 'aSince'), aUntil: parseDate(q.get('aUntil'), 'aUntil'), bSince: parseDate(q.get('bSince'), 'bSince'), bUntil: parseDate(q.get('bUntil'), 'bUntil'), domain, breakdown, businessDays: q.get('businessDays') !== 'false', bdr, channels, porte: q.get('porte') || null, segmento: q.get('segmento') || null, persona: q.get('persona') || null }; if (parsed.aSince > parsed.aUntil || parsed.bSince > parsed.bUntil) throw bad('ranges inválidos'); return parsed; }
+function metricExpression(domain, channels) { if (domain === 'ritmo') return channels.map((key) => `SUM(${CHANNELS.find((candidate) => candidate[0] === key)[2]})`).join(' + ') || '0'; if (domain === 'crm') return 'SUM(crm_movements)'; return (DOMAIN_COMPONENTS[domain] || []).map((c) => `SUM(${c[2]})`).join(' + ') || '0'; }
 function isTeamOwner(name) { return BDR_TEAM.includes(canonicalizeBdrName(name)); }
 function num(value) { return Number(value || 0); }
 function normalizeTimestamp(value) { if (value == null || value === '') return null; const raw = String(value).trim(); if (/^[+-]?\d+(\.\d+)?([eE][+-]?\d+)?$/.test(raw)) { const d = new Date(Math.round(Number(raw) * 1000)); return Number.isNaN(d.getTime()) ? null : d.toISOString(); } if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(\.\d+)?$/.test(raw)) { const d = new Date(raw.replace(' ', 'T') + 'Z'); return Number.isNaN(d.getTime()) ? null : d.toISOString(); } const d = new Date(raw); return Number.isNaN(d.getTime()) ? null : d.toISOString(); }
-function makeComponents(rows, requested) {
-  if (requested.domain === 'ritmo' && requested.breakdown === 'canal') {
-    return CHANNELS.filter((channel) => requested.channels.includes(channel[0])).map((channel) => {
-      const a = rows.filter((row) => row.period_key === 'A').reduce((sum, row) => sum + num(row[channel[2]]), 0);
-      const b = rows.filter((row) => row.period_key === 'B').reduce((sum, row) => sum + num(row[channel[2]]), 0);
-      return { key: channel[0], label: channel[1], a, b, delta: b - a };
-    });
-  }
-  if (requested.breakdown === 'bdr') {
-    return BDR_TEAM.map((name) => {
-      const a = rows.filter((row) => row.period_key === 'A' && canonicalizeBdrName(row.owner_name) === name).reduce((sum, row) => sum + num(row.metric), 0);
-      const b = rows.filter((row) => row.period_key === 'B' && canonicalizeBdrName(row.owner_name) === name).reduce((sum, row) => sum + num(row.metric), 0);
-      return { key: name, label: name, a, b, delta: b - a };
-    }).filter((row) => row.a || row.b);
-  }
-  const a = rows.filter((row) => row.period_key === 'A').reduce((sum, row) => sum + num(row.metric), 0);
-  const b = rows.filter((row) => row.period_key === 'B').reduce((sum, row) => sum + num(row.metric), 0);
-  return [{ key: 'total', label: 'Total', a, b, delta: b - a }];
+function componentDefs(requested) { if (requested.domain === 'ritmo' && requested.breakdown === 'canal') return CHANNELS.filter((c) => requested.channels.includes(c[0])); if (requested.domain === 'crm' && requested.breakdown === 'none') return [['crmMovements', 'Movimentos CRM', 'crm_movements']]; if (requested.breakdown === 'none') return DOMAIN_COMPONENTS[requested.domain] || [['total', 'Total', 'metric']]; return null; }
+function makeComponents(rows, requested) { if (requested.breakdown === 'bdr') return BDR_TEAM.map((name) => { const a = rows.filter((r) => r.period_key === 'A' && canonicalizeBdrName(r.owner_name) === name).reduce((s, r) => s + num(r.metric), 0); const b = rows.filter((r) => r.period_key === 'B' && canonicalizeBdrName(r.owner_name) === name).reduce((s, r) => s + num(r.metric), 0); return { key: name, label: name, a, b, delta: b - a }; }).filter((r) => r.a || r.b); if (['porte', 'segmento', 'persona'].includes(requested.breakdown)) { const map = {}; rows.forEach((r) => { const key = r[requested.breakdown] || 'desconhecido'; if (!map[key]) map[key] = { key, label: key, a: 0, b: 0 }; map[key][r.period_key === 'A' ? 'a' : 'b'] += num(r.metric); }); return Object.keys(map).sort().map((k) => Object.assign(map[k], { delta: map[k].b - map[k].a })); } const defs = componentDefs(requested) || [['total', 'Total', 'metric']]; return defs.map((def) => { const a = rows.filter((r) => r.period_key === 'A').reduce((s, r) => s + num(def[2] === 'metric' ? r.metric : r[def[2]]), 0); const b = rows.filter((r) => r.period_key === 'B').reduce((s, r) => s + num(def[2] === 'metric' ? r.metric : r[def[2]]), 0); return { key: def[0], label: def[1], a, b, delta: b - a }; }); }
+function dateIndex(rows) { const by = {}; rows.forEach((r) => { const key = r.period_key; if (!by[key]) by[key] = []; if (!by[key].includes(String(r.metric_date).slice(0, 10))) by[key].push(String(r.metric_date).slice(0, 10)); }); Object.keys(by).forEach((k) => by[k].sort()); const max = Math.max((by.A || []).length, (by.B || []).length); const out = []; for (let i = 0; i < max; i++) out.push({ index: i + 1, aDate: by.A && by.A[i] || null, bDate: by.B && by.B[i] || null, a: 0, b: 0 }); rows.forEach((r) => { const arr = by[r.period_key] || []; const idx = arr.indexOf(String(r.metric_date).slice(0, 10)); if (idx >= 0) out[idx][r.period_key === 'A' ? 'a' : 'b'] += num(r.metric); }); return out.map((r) => Object.assign(r, { delta: r.b - r.a })); }
+function where(alias, requested, period, params) { const wh = [`${alias}.metric_date BETWEEN @${period}Since AND @${period}Until`]; if (requested.bdr) wh.push(`${alias}.owner_name = @bdr`); if (requested.porte) wh.push(`COALESCE(NULLIF(${alias}.porte,''),'desconhecido') = @porte`); if (requested.segmento) wh.push(`COALESCE(NULLIF(${alias}.segmento,''),'desconhecido') = @segmento`); if (requested.persona) wh.push(`COALESCE(NULLIF(${alias}.persona,''),'não classificada') = @persona`); if (requested.businessDays) wh.push(`EXTRACT(DAYOFWEEK FROM ${alias}.metric_date) NOT IN (1,7)`); if (params && period === 'a') { if (requested.bdr) params.push({ name: 'bdr', type: 'STRING', value: requested.bdr }); if (requested.porte) params.push({ name: 'porte', type: 'STRING', value: requested.porte }); if (requested.segmento) params.push({ name: 'segmento', type: 'STRING', value: requested.segmento }); if (requested.persona) params.push({ name: 'persona', type: 'STRING', value: requested.persona }); } return wh.join(' AND '); }
+async function build(requested) { if (!bq.isConfigured()) throw Object.assign(new Error('BigQuery não configurado'), { statusCode: 503 }); const metric = metricExpression(requested.domain, requested.channels); const params = [{ name: 'aSince', type: 'DATE', value: requested.aSince }, { name: 'aUntil', type: 'DATE', value: requested.aUntil }, { name: 'bSince', type: 'DATE', value: requested.bSince }, { name: 'bUntil', type: 'DATE', value: requested.bUntil }]; const selectFields = `metric_date, owner_name, COALESCE(NULLIF(porte,''),'desconhecido') porte, COALESCE(NULLIF(segmento,''),'desconhecido') segmento, COALESCE(NULLIF(persona,''),'não classificada') persona, SUM(calls_total) calls_total, SUM(emails_sent_total) emails_sent_total, SUM(whatsapp_total) whatsapp_total, SUM(linkedin_total) linkedin_total, SUM(meetings_total) meetings_total, SUM(companies_inserted) companies_inserted, SUM(contacts_inserted) contacts_inserted, SUM(attempted_total) attempted_total, SUM(crm_movements) crm_movements, SUM(connected_total) connected_total, SUM(qualified_total) qualified_total, SUM(disqualified_total) disqualified_total, SUM(sql_deals) sql_deals, ${metric} metric, MAX(refreshed_at) refreshed_at`;
+  const sql = `SELECT 'A' AS period_key, ${selectFields} FROM \`${TABLE}\` d WHERE ${where('d', requested, 'a', params)} GROUP BY metric_date, owner_name, porte, segmento, persona UNION ALL SELECT 'B' AS period_key, ${selectFields} FROM \`${TABLE}\` d WHERE ${where('d', requested, 'b')} GROUP BY metric_date, owner_name, porte, segmento, persona`;
+  const { rows } = await bq.query(sql, params); const filtered = rows.filter((row) => isTeamOwner(row.owner_name)); const components = makeComponents(filtered, requested); const totalA = filtered.filter((r) => r.period_key === 'A').reduce((s, r) => s + num(r.metric), 0); const totalB = filtered.filter((r) => r.period_key === 'B').reduce((s, r) => s + num(r.metric), 0); const deltaTotal = totalB - totalA; const componentsSum = components.reduce((s, c) => s + c.delta, 0); const aBusinessDays = businessDays(requested.aSince, requested.aUntil); const bBusinessDays = businessDays(requested.bSince, requested.bUntil); const refreshedAt = filtered.reduce((latest, row) => { const ts = normalizeTimestamp(row.refreshed_at); return ts && (!latest || ts > latest) ? ts : latest; }, null); const componentsNormalized = components.map((c) => Object.assign({}, c, { aPerBusinessDay: aBusinessDays ? c.a / aBusinessDays : null, bPerBusinessDay: bBusinessDays ? c.b / bBusinessDays : null, deltaPerBusinessDay: (aBusinessDays && bBusinessDays) ? (c.b / bBusinessDays) - (c.a / aBusinessDays) : null })); const sqlImmature = requested.domain === 'sql' && (aBusinessDays < 7 || bBusinessDays < 7); const partial = requested.bUntil === todayBrt(); const waterfall = requested.domain === 'crm' ? makeComponents(filtered, Object.assign({}, requested, { breakdown: 'none', domain: 'crm_components' })).filter(() => false).concat(DOMAIN_COMPONENTS.crm.map((def) => { const a = filtered.filter((r) => r.period_key === 'A').reduce((s, r) => s + num(r[def[2]]), 0); const b = filtered.filter((r) => r.period_key === 'B').reduce((s, r) => s + num(r[def[2]]), 0); return { key: def[0], label: def[1], a, b, delta: b - a }; })) : [];
+  return { success: true, contractVersion: '2.1', requestedRange: requested, resolvedRange: requested, filtersApplied: { bdr: requested.bdr, channels: requested.channels, businessDays: requested.businessDays, porte: requested.porte, segmento: requested.segmento, persona: requested.persona }, filtersIgnored: [], source: { kind: partial ? 'bq-operational-partial' : 'bq-operational', table: TABLE, refreshedAt, partialExplicit: partial }, quality: { status: sqlImmature || partial ? 'warn' : 'pass', checks: [{ key: 'sql_maturity', status: sqlImmature ? 'warn' : 'pass', message: sqlImmature ? 'SQL imaturo em janela <7 dias úteis' : 'ok' }, { key: 'invariant', status: componentsSum === deltaTotal ? 'pass' : 'fail', message: 'Σ deltas dos componentes = delta total' }, { key: 'intraday_comparability', status: partial ? 'warn' : 'pass', message: partial ? 'Período B inclui hoje; dados podem estar parciais' : 'ok' }] }, data: { totalA, totalB, deltaTotal, components, componentsNormalized, waterfall, dateIndex: dateIndex(filtered), domains: SUPPORTED_DOMAINS, breakdowns: BREAKDOWNS }, invariant: { matches: componentsSum === deltaTotal, componentsSum, deltaTotal } };
 }
-async function build(requested) {
-  if (!bq.isConfigured()) throw Object.assign(new Error('BigQuery não configurado'), { statusCode: 503 });
-  const metric = metricExpression(requested.domain, requested.channels);
-  const sql = `
-    SELECT 'A' AS period_key, metric_date, owner_name,
-      SUM(calls_total) AS calls_total,
-      SUM(emails_sent_total) AS emails_sent_total,
-      SUM(whatsapp_total) AS whatsapp_total,
-      SUM(linkedin_total) AS linkedin_total,
-      SUM(meetings_total) AS meetings_total,
-      ${metric} AS metric,
-      MAX(refreshed_at) AS refreshed_at
-    FROM \`${TABLE}\`
-    WHERE metric_date BETWEEN @aSince AND @aUntil
-    GROUP BY period_key, metric_date, owner_name
-    UNION ALL
-    SELECT 'B' AS period_key, metric_date, owner_name,
-      SUM(calls_total) AS calls_total,
-      SUM(emails_sent_total) AS emails_sent_total,
-      SUM(whatsapp_total) AS whatsapp_total,
-      SUM(linkedin_total) AS linkedin_total,
-      SUM(meetings_total) AS meetings_total,
-      ${metric} AS metric,
-      MAX(refreshed_at) AS refreshed_at
-    FROM \`${TABLE}\`
-    WHERE metric_date BETWEEN @bSince AND @bUntil
-    GROUP BY period_key, metric_date, owner_name`;
-  const { rows } = await bq.query(sql, [
-    { name: 'aSince', type: 'DATE', value: requested.aSince },
-    { name: 'aUntil', type: 'DATE', value: requested.aUntil },
-    { name: 'bSince', type: 'DATE', value: requested.bSince },
-    { name: 'bUntil', type: 'DATE', value: requested.bUntil },
-  ]);
-  let filtered = rows.filter((row) => isTeamOwner(row.owner_name) && (!requested.bdr || canonicalizeBdrName(row.owner_name) === requested.bdr));
-  if (requested.businessDays) filtered = filtered.filter((row) => isBusiness(String(row.metric_date).slice(0, 10)));
-  const components = makeComponents(filtered, requested);
-  const totalA = components.reduce((sum, component) => sum + component.a, 0);
-  const totalB = components.reduce((sum, component) => sum + component.b, 0);
-  const deltaTotal = totalB - totalA;
-  const componentsSum = components.reduce((sum, component) => sum + component.delta, 0);
-  const aBusinessDays = businessDays(requested.aSince, requested.aUntil);
-  const bBusinessDays = businessDays(requested.bSince, requested.bUntil);
-  const refreshedAt = filtered.reduce((latest, row) => { const ts = normalizeTimestamp(row.refreshed_at); return ts && (!latest || ts > latest) ? ts : latest; }, null);
-  const componentsNormalized = components.map((component) => ({ ...component, aPerBusinessDay: aBusinessDays ? component.a / aBusinessDays : null, bPerBusinessDay: bBusinessDays ? component.b / bBusinessDays : null, deltaPerBusinessDay: (aBusinessDays && bBusinessDays) ? (component.b / bBusinessDays) - (component.a / aBusinessDays) : null }));
-  const sqlImmature = requested.domain === 'sql' && (aBusinessDays < 7 || bBusinessDays < 7);
-  const partial = requested.bUntil === todayBrt();
-  return {
-    success: true,
-    contractVersion: '2.0',
-    requestedRange: requested,
-    resolvedRange: requested,
-    filtersApplied: { bdr: requested.bdr, channels: requested.channels, businessDays: requested.businessDays },
-    filtersIgnored: [],
-    source: { kind: 'bq-operational', table: TABLE, refreshedAt },
-    quality: {
-      status: sqlImmature || partial ? 'warn' : 'pass',
-      checks: [
-        { key: 'sql_maturity', status: sqlImmature ? 'warn' : 'pass', message: sqlImmature ? 'SQL imaturo em janela <7 dias úteis' : 'ok' },
-        { key: 'intraday_comparability', status: partial ? 'warn' : 'pass', message: partial ? 'Período B inclui hoje e usa o último snapshot Gold; o período A não foi truncado no mesmo horário.' : 'Períodos fechados comparáveis.' },
-      ],
-    },
-    coverage: { aBusinessDays, bBusinessDays, normalizedByBusinessDay: Math.abs(aBusinessDays - bBusinessDays) > 2, partial },
-    data: {
-      domain: requested.domain,
-      breakdown: requested.breakdown,
-      totalA,
-      totalB,
-      deltaTotal,
-      components,
-      componentsNormalized,
-      defaultMode: Math.abs(aBusinessDays - bBusinessDays) > 2 ? 'per_business_day' : 'absolute',
-      normalized: { aPerBusinessDay: aBusinessDays ? totalA / aBusinessDays : null, bPerBusinessDay: bBusinessDays ? totalB / bBusinessDays : null },
-    },
-    invariant: { componentsSum, deltaTotal, matches: componentsSum === deltaTotal },
-  };
-}
-module.exports = async function handler(req, res) {
-  setCORSHeaders(req, res);
-  if (!methodCheck(req, res, ['GET'])) return;
-  const user = requireAuth(req, res);
-  if (!user) return;
-  try { return res.status(200).json(await build(parse(req))); }
-  catch (error) { return res.status(error.statusCode || 500).json({ success: false, error: error.message }); }
-};
-module.exports._test = { parse, days, businessDays, todayBrt, makeComponents, metricExpression, build, CHANNELS, SUPPORTED_DOMAINS, UNSUPPORTED_DOMAINS, TABLE, normalizeTimestamp };
+module.exports = async function handler(req, res) { setCORSHeaders(req, res); if (!methodCheck(req, res, ['GET'])) return; const user = requireAuth(req, res); if (!user) return; try { return res.status(200).json(await build(parse(req))); } catch (error) { return res.status(error.statusCode || 500).json({ success: false, error: error.message }); } };
+module.exports._test = { parse, days, businessDays, todayBrt, makeComponents, metricExpression, build, CHANNELS, SUPPORTED_DOMAINS, TABLE, normalizeTimestamp };
