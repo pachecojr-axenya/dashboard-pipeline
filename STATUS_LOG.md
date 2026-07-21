@@ -5,7 +5,7 @@
 - **Dúvida do usuário:** cobre todos os BDRs? Gestão deveria mostrar atividades quebradas por BDR. "Gabi mostra CRM 0 mas teve e-mails."
 - **Verificação (semantic hoje, live):** os **13 BDRs do roster estão presentes** na management. Gabriele Almeida hoje = total 40 · e-mails 32 · ligações 6 · WhatsApp 2 · CRM 3 · contato efetivo 2. Os e-mails dela SÃO contados; o "CRM 0" era leitura mais cedo (live acumula) e/ou confusão: CRM = mudanças de status/etapa, não atividades enviadas.
 - **Causa da confusão (UI):** a tabela da Gestão não mostrava os canais por BDR — via-se CRM baixo sem enxergar os 32 e-mails. Adicionadas colunas por canal (Ligações, E-mails, WhatsApp, LinkedIn, Reuniões) na tabela — os dados já vinham em `management[].{calls,emails,...}`. Drill por célula de canal usa `context=channel:*`. Hint explicita CRM ≠ atividades enviadas.
-- **Validação:** `npm run check` PASS; screenshot da Gestão mostra as 13 linhas com breakdown por canal. Cache-buster: main `?v=9`.
+- **Validação:** `npm run check` PASS; screenshot da Gestão mostra as 13 linhas com breakdown por canal. Cache-buster: main `?v=9`. Deploy `dashboard-axenya-gvn32ega1` (READY, prod).
 
 ### BDR Workload v2 | storytelling, data-viz e clareza (2026-07-21)
 
