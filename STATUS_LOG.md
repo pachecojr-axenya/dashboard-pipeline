@@ -1,5 +1,26 @@
 # Dashboard Enhancement Loop — Status Log
 
+### 🚀 DEPLOY DE PRODUÇÃO | Forecast Delta — Visão Unificada por Etapa = funil completo + avançou×perdido (2026-07-20)
+
+> Decisão do dono: mesmo com o filtro geral em Ativos, a Visão Unificada por Etapa
+> deve contar TODAS as etapas do funil e distinguir o que saiu por avançar do que foi
+> perdido.
+
+- `stageUnified` passa a contar **todas as etapas do funil** independente do
+  Ativos/Tudo: no app (com escopo) computa sobre o conjunto `tudo` (+filtro AE/Quarter);
+  waterfall/KPIs/funil/quarters continuam no escopo. Sem escopo (legado/testes):
+  inalterado (invariante Σ=headline preservado).
+- Movimento por etapa agora distingue **avancou** (saiu p/ etapa posterior, via `_RANK`,
+  inclui Ganho/Implantação), **regrediu**, **caiuPerdido** (Perdido) e **saiuOutro**.
+- Drill de etapa (`stage:`) usa o funil completo no app; `quarter:`/`kpi:` seguem no escopo.
+- UI: coluna "Novo / Avançou / Perdido", etapas sem atividade ocultas, nota da seção.
+- **Deploy:** commit `5ea9a46` (branch `pacheco/delta-stage-table-full-funnel-2026-07-20`,
+  ff sem force) | deployment `dpl_FR3SRBeMR4ZzpwZ5t5baUzFABqxW` (READY). `npm run check` verde.
+- **Pós-deploy ao vivo (scope=ativos):** waterfall = Cotação/Consultoria/Negociação;
+  stageUnified = funil completo (Reunião→Implantação) com avançou > 0. Rotas 200, auth 401.
+
+---
+
 ### 🚀 DEPLOY DE PRODUÇÃO | BDR Workload — inteligência avançada de coorte (2026-07-20)
 
 - **PR/merge:** PR `#8`, merge `7eaf0a8`.
