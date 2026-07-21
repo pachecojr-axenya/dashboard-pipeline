@@ -9,6 +9,7 @@
 - **Ícones (i):** `INFO` reescrito por aba com Pergunta / Como ler / Fórmula e fonte (título do drawer = nome da aba).
 - **Canais "demorando":** causa real = `channelCompareBox` **nunca era chamado** (box "Carregando comparativo" ficava infinito). Agora é chamado após render. Cache de payload (TTL 45s) adicionado a `/api/bdr-workload-compare` e `/api/bdr-workload-penetration` (semantic já tinha) → re-visitas instantâneas. Cold da compare (~8-16s, 1 query BQ + live quando inclui hoje) fica como follow-up de paralelização.
 - **Validação:** `npm run check` PASS; 5 abas conferidas por screenshot (barras preenchidas, legendas, rótulos, story banners, selects no tema). Cache-busters: charts `?v=3`, main `?v=8`.
+- **PR/merge:** commit direto na main `6db55c8`. **Deploy canônico:** `dpl_4uGBRLAGetau5JKSpFwB6PBSqZzL` (READY, production) via `vercel --scope axenya-f1a041f6`; prod serve `v2.js?v=8` + `v2-charts.js?v=3`, CSS `.v2-rank-fill`/`.v2-legend` ativos.
 
 ### BDR Workload v2 | performance, visão única e correção de design (2026-07-21)
 
