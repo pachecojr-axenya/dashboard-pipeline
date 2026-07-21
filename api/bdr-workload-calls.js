@@ -123,7 +123,36 @@ function bucketOf(ms) {
   return '>10min';
 }
 
-async function build(token, bdrName, sinceMs, untilMs) {
+function paginationOptions(q) {
+  return {
+    detail: q.get('detail') === '1',
+    page: Math.max(1, Number(q.get('page') || 1)),
+    limit: Math.min(50, Math.max(1, Number(q.get('limit') || 50))),
+  };
+}
+
+function summarizeRows(rows, dispMap) {
+  const byDesfecho = {}, byBucket = {};
+  let conversas = 0;
+  rows.forEach(r => {
+    const p = r.properties || {};
+    const ms = p.hs_call_duration != null && p.hs_call_duration !== '' ? Number(p.hs_call_duration) : null;
+    const desfecho = dispMap[p.hs_call_disposition] || 'Sem desfecho';
+    byDesfecho[desfecho] = (byDesfecho[desfecho] || 0) + 1;
+    const bucket = bucketOf(ms); byBucket[bucket] = (byBucket[bucket] || 0) + 1;
+    if (ms != null && ms >= MIN_CONVERSA) conversas++;
+  });
+  return {
+    total: rows.length,
+    conversas,
+    discagens: rows.length - conversas,
+    pctConversa: rows.length ? Math.round(conversas / rows.length * 100) : 0,
+    byDesfecho,
+    byBucket,
+  };
+}
+
+async function build(token, bdrName, sinceMs, untilMs, options = {}) {
   const ownerMap = await fetchOwnersRaw(token);
   const idToBdr = resolveTeamIds(ownerMap);
   const ownerIds = Object.keys(idToBdr).filter(id => idToBdr[id] === bdrName);
@@ -135,17 +164,21 @@ async function build(token, bdrName, sinceMs, untilMs) {
     { propertyName: 'hs_timestamp', operator: 'BETWEEN', value: String(sinceMs), highValue: String(untilMs) },
   ], ['hs_timestamp', 'hs_call_duration', 'hs_call_disposition', 'hs_call_title']);
 
-  const callIds = rows.map(r => r.id);
-  const callToContact = await fetchCallContacts(token, callIds);
+  const detail = options.detail === true;
+  const page = Math.max(1, Number(options.page || 1));
+  const limit = Math.min(50, Math.max(1, Number(options.limit || 50)));
+  const pageRows = detail ? rows.slice((page - 1) * limit, page * limit) : [];
+  const callIds = pageRows.map(r => r.id);
+  const callToContact = detail ? await fetchCallContacts(token, callIds) : {};
   const contactIds = [...new Set(Object.values(callToContact))];
   const contactMap = contactIds.length ? await fetchContactsById(token, contactIds) : {};
   const companyIds = [...new Set(Object.values(contactMap).map(c => c && c.companyId).filter(Boolean))];
   const companyMap = companyIds.length ? await fetchCompanyNames(token, companyIds) : {};
 
-  const enrichAttempted = callIds.length > 0;
+  const enrichAttempted = detail && callIds.length > 0;
   const enrichOk = Object.keys(callToContact).length > 0;
 
-  const calls = rows.map(r => {
+  const calls = pageRows.map(r => {
     const p = r.properties || {};
     const ms = p.hs_call_duration != null && p.hs_call_duration !== '' ? Number(p.hs_call_duration) : null;
     const cid = callToContact[r.id];
@@ -160,25 +193,19 @@ async function build(token, bdrName, sinceMs, untilMs) {
     };
   });
 
-  // agregados (reconciliam com o total)
-  const byDesfecho = {}, byBucket = {};
-  let conversas = 0;
-  calls.forEach(c => {
-    byDesfecho[c.desfecho] = (byDesfecho[c.desfecho] || 0) + 1;
-    const b = bucketOf(c.duracao_ms); byBucket[b] = (byBucket[b] || 0) + 1;
-    if (c.conversa) conversas++;
-  });
+  // Agregados reconciliam com TODAS as linhas; o detalhe nominal é paginado.
+  const summary = summarizeRows(rows, dispMap);
 
   return {
     success: true,
     bdr: bdrName,
-    total: calls.length,
-    conversas,
-    discagens: calls.length - conversas,
-    pctConversa: calls.length ? Math.round(conversas / calls.length * 100) : 0,
-    byDesfecho,
-    byBucket,
-    calls,
+    total: summary.total,
+    conversas: summary.conversas,
+    discagens: summary.discagens,
+    pctConversa: summary.pctConversa,
+    byDesfecho: summary.byDesfecho,
+    byBucket: summary.byBucket,
+    ...(detail ? { calls, pagination: { page, limit, total: rows.length, totalPages: Math.ceil(rows.length / limit) } } : {}),
     enriched: enrichAttempted ? enrichOk : null, // null = sem ligações; false = tentou e não veio "para quem"
     env: env.name,
   };
@@ -208,20 +235,24 @@ module.exports = async function handler(req, res) {
 
   const kvKey = env.kvKey(`workload-calls:${bdr}|${since}|${until}`);
   const refresh = q.get('refresh') === '1';
+  const { detail, page, limit } = paginationOptions(q);
+  const scopedKvKey = `${kvKey}|detail:${detail ? 1 : 0}|page:${page}|limit:${limit}`;
   const CACHE_TTL = 5 * 60 * 1000;
 
   try {
     if (!refresh && kv.isConfigured()) {
       try {
-        const hit = await kv.getJSON(kvKey);
+        const hit = await kv.getJSON(scopedKvKey);
         if (hit && Date.now() - hit.at < CACHE_TTL) return res.status(200).json({ ...hit.data, cached: true });
       } catch (e) { /* segue para live */ }
     }
-    const data = await build(token, bdr, sinceMs, untilMs);
-    if (kv.isConfigured()) { try { await kv.setJSON(kvKey, { at: Date.now(), data }); } catch (e) { /* best-effort */ } }
+    const data = await build(token, bdr, sinceMs, untilMs, { detail, page, limit });
+    if (kv.isConfigured()) { try { await kv.setJSON(scopedKvKey, { at: Date.now(), data }); } catch (e) { /* best-effort */ } }
     return res.status(200).json(data);
   } catch (e) {
     console.error('[bdr-workload-calls]', e.message);
     return res.status(500).json({ success: false, error: e.message });
   }
 };
+
+module.exports._test = { bucketOf, summarizeRows, build, paginationOptions, MIN_CONVERSA };

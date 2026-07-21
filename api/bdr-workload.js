@@ -137,7 +137,7 @@ async function fetchCompaniesById(token, ids) {
 // do search (9800) — janelas muito longas podem truncar o rabo; o front avisa.
 const ACTIVITY_TYPES = {
   calls: ['hs_timestamp', 'hubspot_owner_id', 'hs_call_duration', 'hs_call_disposition'],
-  emails: ['hs_timestamp', 'hubspot_owner_id'],
+  emails: ['hs_timestamp', 'hubspot_owner_id', 'hs_email_direction'],
   communications: ['hs_timestamp', 'hubspot_owner_id', 'hs_communication_channel_type'],
   notes: ['hs_timestamp', 'hubspot_owner_id'],
   tasks: ['hs_timestamp', 'hubspot_owner_id'],
@@ -188,6 +188,7 @@ async function fetchActivities(token, teamIds, idToBdr, sinceMs, untilMs) {
         a.duracao_ms = p.hs_call_duration != null && p.hs_call_duration !== '' ? Number(p.hs_call_duration) : null;
         a.desfecho = dispMap[p.hs_call_disposition] || null;
       }
+      if (type === 'emails') a.direction = p.hs_email_direction || null;
       if (type === 'communications') a.canal = p.hs_communication_channel_type || null;
       out.push(a);
     });
@@ -389,3 +390,7 @@ module.exports = async function handler(req, res) {
     return res.status(500).json({ success: false, error: e.message });
   }
 };
+
+// Serviço interno para consumidores agregados server-side. Nunca expõe o payload
+// nominal diretamente; `/api/bdr-workload-semantic` reduz para métricas antes de responder.
+module.exports._service = { buildPayload };

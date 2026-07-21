@@ -47,6 +47,6 @@ function sp(q) { return new URL('http://x?' + q).searchParams; }
   assert(js.includes('Conversão empresa→SQL por porte | 30d'));
   assert(js.includes('Filtros aplicados:'));
   assert(js.includes('mínimo analítico de 30 dias'));
-  assert(html.includes('/bdr-workload.js?v=8'));
+  assert(html.includes('/bdr-workload.js?v=9'));
 })();
 console.log('PASS bdr-cohort-analytics tests');
