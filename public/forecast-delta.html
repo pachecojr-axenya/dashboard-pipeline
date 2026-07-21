@@ -314,7 +314,7 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
   <div class="card">
     <div class="sec-hdr">
       <h3>Visão unificada por etapa <span class="pill">🟡</span></h3>
-      <span class="sec-note">Deals + vidas + receita real/ponderada + Δ por etapa | clique numa linha para o drill | "Caiu" só conta destino Perdido (Ganho ignorado)</span>
+      <span class="sec-note">Todas as etapas do funil (independe do filtro Ativos/Tudo) | Movimentação: <b>Novo</b> (entrou) / <b>Avançou</b> (saiu p/ etapa posterior) / <b>Perdido</b> | clique numa linha para o drill</span>
     </div>
     <div style="overflow:auto"><table class="utable" id="stage-table"></table></div>
   </div>
@@ -557,24 +557,27 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
   function renderStageTable(j){
     var t = document.getElementById('stage-table');
     if(!j.stageUnified){ t.innerHTML=''; return; }
-    var head = '<caption class="sr-only">Visão unificada por etapa</caption><thead><tr><th scope="col">Etapa</th><th scope="col">Deals A→B</th><th scope="col">Novo / Perdido</th><th scope="col">Vidas A→B</th><th scope="col" class="stage-real">Receita Real (12M) A→B</th><th scope="col">Receita Ponderada (12M) A→B</th><th scope="col">Δ Ponderada</th></tr></thead>';
-    var tot = { dA:0,dB:0, vA:0,vB:0, rA:0,rB:0, pA:0,pB:0, novos:0, caiuPerdido:0 };
-    var body = j.stageUnified.map(function(r){
+    var head = '<caption class="sr-only">Visão unificada por etapa</caption><thead><tr><th scope="col">Etapa</th><th scope="col">Deals A→B</th><th scope="col">Novo / Avançou / Perdido</th><th scope="col">Vidas A→B</th><th scope="col" class="stage-real">Receita Real (12M) A→B</th><th scope="col">Receita Ponderada (12M) A→B</th><th scope="col">Δ Ponderada</th></tr></thead>';
+    var tot = { dA:0,dB:0, vA:0,vB:0, rA:0,rB:0, pA:0,pB:0, novos:0, avancou:0, caiuPerdido:0 };
+    var movStr = function(m){ if(!m) return '—'; return '<span class="dpos" title="Novo (entrou na etapa)">+'+fmtNum(m.novos||0)+'</span> / <span style="color:var(--teal)" title="Avançou (saiu p/ etapa posterior)">→'+fmtNum(m.avancou||0)+'</span> / <span class="dneg" title="Perdido">-'+fmtNum(m.caiuPerdido||0)+'</span>'; };
+    var body = j.stageUnified.filter(function(r){
+      // oculta etapas sem qualquer atividade (ex.: Bid/Standby fora do funil)
+      var m=r.movement||{}; return r.a.deals||r.b.deals||m.novos||m.avancou||m.caiuPerdido||m.regrediu||m.saiuOutro;
+    }).map(function(r){
       tot.dA+=r.a.deals; tot.dB+=r.b.deals; tot.vA+=r.a.vidas; tot.vB+=r.b.vidas;
       tot.rA+=r.a.real12; tot.rB+=r.b.real12; tot.pA+=r.a.prob12; tot.pB+=r.b.prob12;
-      if(r.movement){ tot.novos+=r.movement.novos || 0; tot.caiuPerdido+=r.movement.caiuPerdido || 0; }
+      if(r.movement){ tot.novos+=r.movement.novos || 0; tot.avancou+=r.movement.avancou || 0; tot.caiuPerdido+=r.movement.caiuPerdido || 0; }
       var dp=r.delta.prob12;
-      var mov = r.movement ? ('<span class="dpos">+'+fmtNum(r.movement.novos)+'</span> / <span class="dneg">-'+fmtNum(r.movement.caiuPerdido)+'</span>') : '—';
       return '<tr data-stage="'+esc(r.stage)+'" role="button" tabindex="0" aria-label="Abrir drill da etapa '+esc(r.stage)+'">'+
         '<td>'+esc(r.stage)+'</td>'+
         '<td>'+fmtNum(r.a.deals)+' → '+fmtNum(r.b.deals)+' <span class="'+dcls(r.delta.deals)+'">('+fmtNumc(r.delta.deals)+')</span></td>'+
-        '<td>'+mov+'</td>'+
+        '<td>'+movStr(r.movement)+'</td>'+
         '<td>'+fmtNum(r.a.vidas)+' → '+fmtNum(r.b.vidas)+' <span class="'+dcls(r.delta.vidas)+'">('+fmtNumc(r.delta.vidas)+')</span></td>'+
         '<td class="stage-real">'+fmtBRL(r.a.real12)+' → '+fmtBRL(r.b.real12)+'</td>'+
         '<td>'+fmtBRL(r.a.prob12)+' → '+fmtBRL(r.b.prob12)+'</td>'+
         '<td class="'+dcls(dp)+'">'+fmtBRLc(dp)+'</td></tr>';
     }).join('');
-    var foot = '<tfoot><tr><td>Total</td><td>'+fmtNum(tot.dA)+' → '+fmtNum(tot.dB)+'</td><td><span class="dpos">+'+fmtNum(tot.novos)+'</span> / <span class="dneg">-'+fmtNum(tot.caiuPerdido)+'</span></td><td>'+fmtNum(tot.vA)+' → '+fmtNum(tot.vB)+'</td><td class="stage-real">'+fmtBRL(tot.rA)+' → '+fmtBRL(tot.rB)+'</td><td>'+fmtBRL(tot.pA)+' → '+fmtBRL(tot.pB)+'</td><td class="'+dcls(tot.pB-tot.pA)+'">'+fmtBRLc(tot.pB-tot.pA)+'</td></tr></tfoot>';
+    var foot = '<tfoot><tr><td>Total</td><td>'+fmtNum(tot.dA)+' → '+fmtNum(tot.dB)+'</td><td>'+movStr(tot)+'</td><td>'+fmtNum(tot.vA)+' → '+fmtNum(tot.vB)+'</td><td class="stage-real">'+fmtBRL(tot.rA)+' → '+fmtBRL(tot.rB)+'</td><td>'+fmtBRL(tot.pA)+' → '+fmtBRL(tot.pB)+'</td><td class="'+dcls(tot.pB-tot.pA)+'">'+fmtBRLc(tot.pB-tot.pA)+'</td></tr></tfoot>';
     t.innerHTML = head+'<tbody>'+body+'</tbody>'+foot;
     t.querySelectorAll('tbody tr').forEach(function(tr){ var go=function(){ var st=tr.getAttribute('data-stage'); openDrill('stage:'+st, 'Etapa | '+st, null); }; tr.addEventListener('click', go); tr.addEventListener('keydown', function(e){ if(e.key==='Enter'||e.key===' '){e.preventDefault();go();} }); });
   }

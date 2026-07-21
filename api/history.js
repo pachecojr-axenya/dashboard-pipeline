@@ -218,13 +218,20 @@ module.exports = async function handler(req, res) {
       const sumDelta = waterfall.reduce((x, w) => x + w.delta.prob12, 0);
       const invariantOk = Math.abs(sumDelta - (snapB.totals.prob12 - snapA.totals.prob12)) < 0.01;
 
-      // Contribuições por deal (mesmo escopo filtrado)
+      // Contribuições por deal (mesmo escopo filtrado) — alimentam quarters/drills.
       const cA = FC.dealContributions(scopedInputA, fA.refDate, manual);
       const cB = FC.dealContributions(scopedInputB, fB.refDate, manual);
-      let stageUnified = FC.stageUnified(cA, cB, rawBStageById);
-      // stageUnified emite linhas fixas por etapa; no escopo Ativos/Tudo mantém só
-      // as etapas do escopo (some Bid/Proposta, Standby e — em Ativos — fechadas/Reunião).
-      if (deltaScoped) { const allow = new Set(FC.deltaScopeStages(scopeParam)); stageUnified = stageUnified.filter(r => allow.has(r.stage)); }
+      // Visão Unificada por Etapa: SEMPRE o funil completo (independe de Ativos/Tudo —
+      // requisito do dono 2026-07-20). Conta todas as etapas e distingue avançou×perdido.
+      // Sem escopo (legado/testes): mantém o conjunto de cA/cB (invariante Σ=headline).
+      let suA = cA, suB = cB;
+      if (deltaScoped) {
+        const fullA = FC.applyAeQuarterFilter(FC.applyDeltaScope(mappedA, 'tudo'), aeSel, qSel);
+        const fullB = FC.applyAeQuarterFilter(FC.applyDeltaScope(mappedB, 'tudo'), aeSel, qSel);
+        suA = FC.dealContributions(fullA, fA.refDate, manual);
+        suB = FC.dealContributions(fullB, fB.refDate, manual);
+      }
+      const stageUnified = FC.stageUnified(suA, suB, rawBStageById);
       const quarters = FC.quarterAgg(cA, cB);
 
       return res.status(200).json({
@@ -278,10 +285,19 @@ module.exports = async function handler(req, res) {
       let scopedInputB = deltaScoped ? FC.applyDeltaScope(mappedB, scopeParam) : (includeClosedStages ? mappedB : FC.excludeClosedStages(mappedB));
       scopedInputA = FC.applyAeQuarterFilter(scopedInputA, aeSel, qSel);
       scopedInputB = FC.applyAeQuarterFilter(scopedInputB, aeSel, qSel);
-      const cA = FC.dealContributions(scopedInputA, fA.refDate, manual);
-      const cB = FC.dealContributions(scopedInputB, fB.refDate, manual);
+      let cA = FC.dealContributions(scopedInputA, fA.refDate, manual);
+      let cB = FC.dealContributions(scopedInputB, fB.refDate, manual);
+      // Drill de ETAPA (stage:) espelha a Visão Unificada por Etapa: no app (com
+      // escopo) usa o funil COMPLETO, senão a etapa fora do Ativos viria vazia.
+      // quarter:/kpi:/<rowKey> continuam no conjunto escopado (headline).
+      if (deltaScoped && String(row).indexOf('stage:') === 0) {
+        const fullA = FC.applyAeQuarterFilter(FC.applyDeltaScope(mappedA, 'tudo'), aeSel, qSel);
+        const fullB = FC.applyAeQuarterFilter(FC.applyDeltaScope(mappedB, 'tudo'), aeSel, qSel);
+        cA = FC.dealContributions(fullA, fA.refDate, manual);
+        cB = FC.dealContributions(fullB, fB.refDate, manual);
+      }
       // Drill genérico (Leva 2): row pode ser <rowKey> (compat waterfall), stage:<Etapa>,
-      // quarter:<Q> ou kpi:vidas|arrTotal|arrPond. Sem alteração no contrato existente.
+      // quarter:<Q> ou kpi:vidas|arrTotal|arrPond.
       const drill = FC.drillGeneric(cA, cB, row, measure, rawBStageById, field);
       return res.status(200).json({ success: true, a: fA.tab, b: fB.tab, row: drill.rowKey, measure: drill.measure, field: drill.field, sumDelta: drill.sumDelta, deals: drill.deals });
     }
