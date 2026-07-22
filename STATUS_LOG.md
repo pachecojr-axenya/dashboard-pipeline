@@ -21,8 +21,15 @@
   Adicionado flag `manual` no `data-calc` → manual nunca vira fórmula.
 - Robustez: se a coluna de input (vidas / 1ª fatura) estiver oculta no export, a fórmula usa o
   **valor literal** (ex.: `100*24`) em vez de referência de célula, ficando autossuficiente.
-- Validado: `buildRealFormula` testado em todos os ramos (headless); `/forecast` 200; `z-index:1500`
-  servido. Front-only, sem tocar em `api/`/`lib/`. **Não commitado/deployado ainda.**
+- Validado: `buildRealFormula` e as fórmulas de resumo testados (headless); `/forecast` 200;
+  `z-index:1500`. Front-only, sem tocar em `api/`/`lib/`.
+- **Diagnóstico do "continua não funcionando":** o dono testava em PRODUÇÃO, que ainda servia o
+  código antigo (z-index 300 + fórmulas parciais) — nada disto tinha sido deployado.
+- **🚀 DEPLOY DE PRODUÇÃO (2026-07-22, LOCK confirmado):** commit `e95dc14` (ff sobre
+  `origin/main 788fb8a`, sem rebase — Samuel não avançou). Deployment
+  `dashboard-axenya-ja4bpjj5q` (READY), aliases `project-bsmfu` + `axenya-pipeline-dashboard`
+  servindo z-index 1500 + as 3 fórmulas de resumo. Preflight PASS. Pós-deploy: 7 rotas 200
+  (BDR do Samuel intacto), `/api/auth/me` 401.
 
 ### Meta vs Ach | bloco compartilhado de atingimento de meta do tri por AE (2026-07-22)
 
