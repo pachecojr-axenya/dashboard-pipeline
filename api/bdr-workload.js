@@ -37,6 +37,10 @@ const COMPANY_PROPS = [
   'name', 'numberofemployees', 'hubspot_owner_id', 'createdate',
   'hs_object_source_label', 'hs_object_source_detail_1',
 ];
+// Treble: disparos de WhatsApp via integração (app id 26063081) entram como
+// communications INTEGRATION com hubspot_owner_id NULO. Não vêm no fetch por owner
+// do time; atribuímos ao BDR dono do CONTATO associado. Ver docs/treble-whatsapp-attribution-decision.md.
+const TREBLE_SOURCE_ID = '26063081';
 
 let _cache = {};
 const CACHE_TTL = 5 * 60 * 1000;
@@ -205,6 +209,56 @@ async function searchWindow(token, type, baseFilters, tsProp, sinceMs, untilMs, 
   return merged;
 }
 
+// Dono (owner) de um lote de contatos — usado para atribuir comms Treble ao BDR.
+async function fetchContactOwners(token, ids) {
+  const uniq = [...new Set(ids.filter(Boolean).map(String))];
+  const batches = [];
+  for (let i = 0; i < uniq.length; i += 100) batches.push(uniq.slice(i, i + 100));
+  const map = {};
+  await pool(batches, 3, async batch => {
+    const resp = await hubspotPost(token, '/crm/v3/objects/contacts/batch/read', {
+      inputs: batch.map(id => ({ id })),
+      properties: ['hubspot_owner_id'],
+    });
+    (resp.results || []).forEach(r => { map[r.id] = (r.properties && r.properties.hubspot_owner_id) || null; });
+  });
+  return map;
+}
+
+// WhatsApp do Treble: communications WHATS_APP com owner nulo (INTEGRATION 26063081).
+// Resolve comm → contato associado → dono do contato → BDR do roster. Sem contato de
+// BDR do roster => descartado (não some para "desconhecido" no ritmo). Marca treble=true
+// para segregar manual (CRM_UI) × automático (Treble) sem dupla contagem.
+async function fetchTrebleWhatsapp(token, idToBdr, sinceMs, untilMs) {
+  const diag = { fetched: 0, integration: 0, withContact: 0, attributed: 0, unknown: 0 };
+  const rows = await searchWindow(token, 'communications',
+    [
+      { propertyName: 'hs_communication_channel_type', operator: 'EQ', value: 'WHATS_APP' },
+      { propertyName: 'hubspot_owner_id', operator: 'NOT_HAS_PROPERTY' },
+    ],
+    'hs_timestamp', sinceMs, untilMs,
+    ['hs_timestamp', 'hs_communication_channel_type', 'hs_object_source', 'hs_object_source_id']);
+  diag.fetched = rows.length;
+  // Guarda: só INTEGRATION (Treble). owner-nulo hoje = 100% Treble, mas protege o futuro.
+  const integ = rows.filter(r => String((r.properties || {}).hs_object_source || '') === 'INTEGRATION');
+  diag.integration = integ.length;
+  if (!integ.length) return { comms: [], diagnostics: diag };
+  const comms = integ.map(r => ({
+    id: r.id, tipo: 'communications', canal: 'WHATS_APP', treble: true,
+    ts: r.properties.hs_timestamp, bdr: null, contact_id: null, company_id: null,
+  }));
+  await fetchActivityAssociations(token, comms);
+  const contactIds = comms.map(c => c.contact_id).filter(Boolean);
+  diag.withContact = contactIds.length;
+  const ownerByContact = await fetchContactOwners(token, contactIds);
+  comms.forEach(c => {
+    const ownerId = c.contact_id ? ownerByContact[c.contact_id] : null;
+    c.bdr = ownerId ? (idToBdr[ownerId] || null) : null;
+    if (c.bdr) diag.attributed += 1; else diag.unknown += 1;
+  });
+  return { comms: comms.filter(c => c.bdr), diagnostics: diag };
+}
+
 async function fetchActivities(token, teamIds, idToBdr, sinceMs, untilMs) {
   const dispMap = await fetchCallDispositions(token);
   const out = [];
@@ -226,6 +280,10 @@ async function fetchActivities(token, teamIds, idToBdr, sinceMs, untilMs) {
   }));
   const associationDiagnostics = await fetchActivityAssociations(token, out);
   Object.defineProperty(out, 'associationDiagnostics', { value: associationDiagnostics, enumerable: false });
+  // Treble WhatsApp (owner nulo) atribuído pelo dono do contato — some ao canal WhatsApp.
+  const treble = await fetchTrebleWhatsapp(token, idToBdr, sinceMs, untilMs);
+  treble.comms.forEach(c => out.push(c));
+  Object.defineProperty(out, 'trebleDiagnostics', { value: treble.diagnostics, enumerable: false });
   out.sort((a, b) => (a.ts < b.ts ? -1 : 1));
   return out;
 }
@@ -344,6 +402,7 @@ async function buildPayload(token, sinceMs, untilMs) {
       activitiesWithContactAssociation: activities.filter(a => a.contact_id).length,
       activitiesWithCompanyAssociation: activities.filter(a => a.company_id).length,
       activityAssociations: activities.associationDiagnostics || { attempted: 0, succeeded: 0, errors: 0, available: false },
+      trebleWhatsapp: activities.trebleDiagnostics || { fetched: 0, integration: 0, withContact: 0, attributed: 0, unknown: 0 },
       transitions: transitions.length,
     },
     sqlStatusNote: 'Qualificado conta transição de hs_lead_status para OPEN_DEAL no contato. SQL real por deal requer consulta separada ao pipeline de deals.',
@@ -430,4 +489,4 @@ module.exports = async function handler(req, res) {
 // Serviço interno para consumidores agregados server-side. Nunca expõe o payload
 // nominal diretamente; `/api/bdr-workload-semantic` reduz para métricas antes de responder.
 module.exports._service = { buildPayload };
-module.exports._test = { fetchActivityAssociations, smallestAssociationId };
+module.exports._test = { fetchActivityAssociations, smallestAssociationId, fetchTrebleWhatsapp, fetchContactOwners };

@@ -62,6 +62,19 @@ async function withBqStub(rows, fn) {
   assert.equal(liveRich[0].connected, 1);
   assert.equal(liveRich[0].qualified, 1);
   assert.equal(liveRich[0].disqualified, 1);
+  // Treble WhatsApp (owner nulo, atribuído pelo dono do contato): soma no canal whatsapp
+  // e segrega em whatsappTreble; manual (CRM_UI) fica em whatsappManual. Sem dupla contagem.
+  const trebleAgg = sem.aggregateLivePayload({ team: ['Thauan Pontes'], activities: [
+    { tipo: 'communications', canal: 'WHATS_APP', bdr: 'Thauan Pontes', contact_id: 'ct1', company_id: 'c1' },
+    { tipo: 'communications', canal: 'WHATS_APP', treble: true, bdr: 'Thauan Pontes', contact_id: 'ct2', company_id: 'c1' },
+    { tipo: 'communications', canal: 'WHATS_APP', treble: true, bdr: 'Thauan Pontes', contact_id: 'ct3', company_id: 'c1' },
+  ] }, '2026-07-21', { bdr: 'Thauan Pontes', channels: sem.CHANNELS });
+  assert.equal(trebleAgg[0].whatsapp, 3, 'whatsapp = manual + treble');
+  assert.equal(trebleAgg[0].whatsappManual, 1);
+  assert.equal(trebleAgg[0].whatsappTreble, 2);
+  assert.equal(trebleAgg[0].activities, 3, 'activities não conta treble em dobro');
+  assert.equal(trebleAgg[0].total, 3);
+  assert.equal(typeof workload.fetchTrebleWhatsapp, 'function', 'fetchTrebleWhatsapp exportado');
   const mergedToday = sem.rowsToAggregates([{ metric_date: sem.todayIso(), owner_name: 'Thauan Pontes', calls: '9', calls_conversation: '4', calls_dial: '5', emails: '0', whatsapp: '0', linkedin: '0', meetings: '0', activities_total: '12', companies_touched: '7', contacts_touched: '8', companies_inserted: '0', contacts_inserted: '0', attempted: '12', crm_movements: '12', connected: '5', qualified: '0', disqualified: '0', sql_deals: '2' }], { bdr: 'Thauan Pontes', channels: sem.CHANNELS }, { used: true, rows: liveRich });
   assert.equal(mergedToday.byBdr['Thauan Pontes'].sqlDeals, 2);
   assert.equal(mergedToday.byBdr['Thauan Pontes'].total, 9);
