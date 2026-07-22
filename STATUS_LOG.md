@@ -32,6 +32,12 @@
 - Front-only (arquivo estático + edições no HTML), sem tocar em `api/`/`lib/`. **Não validado
   campo a campo no HubSpot** (números de origem a conferir); marcador visual 🟡 removido do
   título a pedido do dono (ressalva textual mantida no rodapé).
+- **🚀 DEPLOY DE PRODUÇÃO (2026-07-22, LOCK confirmado):** commit `94961ed` (rebase ONTO
+  `origin/main b772bb1` — os 36 commits do Samuel preservados, conflito só em STATUS_LOG/
+  AUDITORIA, resolvido mantendo tudo dele + minha entrada no topo). Deployment
+  `dpl_88yo7M82n36LgGgehtWVUhrV1JAg` (READY), aliases `project-bsmfu` + `axenya-pipeline-dashboard`
+  servindo `meta-ach.js?v=4`. Preflight PASS. Pós-deploy: 7 rotas mínimas 200 (BDR do Samuel
+  intacto), `/api/auth/me` e `/api/forecast-table` 401 (auth ativa, sem bypass).
 
 ### BDR Workload v2 | Multi-seleção de porte/segmento/persona + warehouse temático por aba (2026-07-22)
 
