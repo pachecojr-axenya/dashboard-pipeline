@@ -107,5 +107,53 @@ window.WorkloadBDRV2Charts = (function () {
     return '<div class="v2-stacked">' + body + '</div>' + legend(keys.map(function (k, i) { return { c: PALETTE[i % PALETTE.length], l: C.CHANNEL_LABELS[k] || k }; })) + metricTable(data, [['date', 'Data']].concat(keys.map(function (k) { return [k, C.CHANNEL_LABELS[k] || k]; })));
   }
 
-  return { metricTable: metricTable, lineArea: lineArea, grouped: grouped, waterfall: waterfall, ranking: ranking, stacked: stacked };
+  // Série temporal multi-BDR: uma linha por BDR (cor/legenda própria), rótulo no último ponto,
+  // opção de média móvel (linha tracejada) e linhas de referência mediana/média do conjunto.
+  // series = [{bdr, values:[...]}], dates = [ISO...]. opts: {title, unit, movingAvg (0=off), refs:['median'|'mean'], kind, pct}
+  function multiLine(series, dates, opts) {
+    opts = opts || {};
+    series = (series || []).filter(function (s) { return s && s.values && s.values.length; });
+    if (!series.length || !dates.length) return empty('Sem dados no período', 'Selecione ao menos um BDR com atividade na janela.');
+    var w = 820, h = 300, p = 52, max = 1, unit = opts.unit || '', kind = opts.kind || 'activity';
+    var mavg = Number(opts.movingAvg || 0);
+    var lines = series.map(function (s, i) {
+      var raw = s.values.map(n);
+      var plotted = mavg > 1 ? C.movingAverage(raw, mavg) : raw;
+      return { bdr: s.bdr, color: C.seriesColor(i), raw: raw, plotted: plotted };
+    });
+    lines.forEach(function (ln) { ln.plotted.forEach(function (v) { if (v != null) max = Math.max(max, v); }); });
+    // Referências (mediana/média) calculadas sobre o pool de todos os pontos plotados.
+    var pool = []; lines.forEach(function (ln) { ln.plotted.forEach(function (v) { if (v != null) pool.push(v); }); });
+    var refs = (opts.refs || []).map(function (kindRef) {
+      var val = kindRef === 'mean' ? C.mean(pool) : C.median(pool);
+      return { label: kindRef === 'mean' ? 'Média' : 'Mediana', val: val };
+    }).filter(function (r) { return r.val != null; });
+    refs.forEach(function (r) { max = Math.max(max, r.val); });
+    var y = function (v) { return h - p - (v / max) * (h - p * 2); };
+    var x = function (i) { return p + (dates.length === 1 ? (w - p * 2) / 2 : i * (w - p * 2) / (dates.length - 1)); };
+    var grid = '';
+    for (var g = 0; g < 5; g += 1) { var gy = p + g * (h - p * 2) / 4; var gv = max - g * max / 4; grid += '<line x1="' + p + '" y1="' + gy + '" x2="' + (w - p) + '" y2="' + gy + '"></line><text x="8" y="' + (gy + 4) + '">' + fmt(Math.round(gv)) + (opts.pct ? '%' : '') + '</text>'; }
+    var refSvg = refs.map(function (r) { var ry = y(r.val); return '<line class="v2-ref-line" x1="' + p + '" y1="' + ry + '" x2="' + (w - p) + '" y2="' + ry + '"></line><text class="v2-ref-label" x="' + (w - p) + '" y="' + (ry - 4) + '" text-anchor="end">' + E(r.label) + ' ' + fmt(Math.round(r.val)) + (opts.pct ? '%' : unit) + '</text>'; }).join('');
+    var paths = lines.map(function (ln) {
+      var pts = [], lastIdx = -1;
+      ln.plotted.forEach(function (v, i) { if (v != null) { pts.push((lastIdx < 0 ? 'M' : 'L') + x(i) + ' ' + y(v)); lastIdx = i; } });
+      var dots = ln.plotted.map(function (v, i) {
+        if (v == null) return '';
+        var last = i === lastIdx;
+        var lbl = last ? '<text class="v2-pt-label" x="' + (x(i) + 6) + '" y="' + (y(v) - 6) + '" text-anchor="start" style="fill:' + ln.color + '">' + fmt(Math.round(v)) + (opts.pct ? '%' : unit) + '</text>' : '';
+        return '<circle role="button" tabindex="0" aria-label="' + E(ln.bdr) + ' em ' + E(dates[i]) + ': ' + fmt(ln.raw[i]) + '" cx="' + x(i) + '" cy="' + y(v) + '" r="' + (last ? 4.5 : 3) + '" style="fill:' + ln.color + '" onclick="WorkloadBDRV2.openDrill(\'' + kind + '\',\'\',\'' + dates[i] + '\',1,decodeURIComponent(\'' + encodeURIComponent(ln.bdr) + '\'))"></circle>' + lbl;
+      }).join('');
+      return '<path class="v2-mline" style="stroke:' + ln.color + '" d="' + pts.join(' ') + '"></path>' + dots;
+    }).join('');
+    var step = Math.max(1, Math.ceil(dates.length / 8));
+    var xl = dates.map(function (d, i) { return i % step === 0 || i === dates.length - 1 ? '<text x="' + x(i) + '" y="' + (h - 14) + '" text-anchor="middle">' + E(d.slice(5)) + '</text>' : ''; }).join('');
+    var svg = '<svg class="line-svg v2-multiline" role="img" viewBox="0 0 ' + w + ' ' + h + '"><title>' + E(opts.title || 'Comparação por BDR') + '</title><desc>Série temporal por BDR com eixos, legenda e rótulos.</desc>' + grid + refSvg + '<line x1="' + p + '" y1="' + (h - p) + '" x2="' + (w - p) + '" y2="' + (h - p) + '"></line><line x1="' + p + '" y1="' + p + '" x2="' + p + '" y2="' + (h - p) + '"></line>' + paths + xl + '</svg>';
+    var leg = legend(lines.map(function (ln) { return { c: ln.color, l: ln.bdr }; }));
+    // tabela a11y: data + coluna por BDR (valores brutos)
+    var tblRows = dates.map(function (d, i) { var row = { date: d }; lines.forEach(function (ln) { row[ln.bdr] = ln.raw[i]; }); return row; });
+    var tbl = metricTable(tblRows, [['date', 'Data']].concat(lines.map(function (ln) { return [ln.bdr, ln.bdr]; })));
+    return svg + leg + tbl;
+  }
+
+  return { metricTable: metricTable, lineArea: lineArea, grouped: grouped, waterfall: waterfall, ranking: ranking, stacked: stacked, multiLine: multiLine };
 })();

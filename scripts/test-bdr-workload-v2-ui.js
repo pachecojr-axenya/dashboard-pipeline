@@ -38,12 +38,19 @@ assert(js.includes('coorte empresa+owner com lead elegível criado no período, 
 assert(js.includes('mesmo owner em até 30 dias; correlação, não causalidade'), 'associação/conversão 30D deve declarar correlação, não causalidade');
 assert(js.includes("if(!r.eligible)return panel(head+cards") && js.includes("st('empty','Nenhum lead elegível criado no período'"), 'pulso deve renderizar empty state de reatividade quando eligible=0');
 assert(js.includes("['crm','CRM']") && js.includes("['contato_efetivo','Contato efetivo']"), 'domínios CRM habilitados');
-assert(html.includes('/bdr-workload-v2-core.js?v=1') && html.includes('/bdr-workload-v2-charts.js?v=3') && html.includes('/bdr-workload-v2.js?v=9'), 'ordem/cache-busters v2 modular');
-assert(html.indexOf('/bdr-workload-v2-core.js') < html.indexOf('/bdr-workload-v2-charts.js') && html.indexOf('/bdr-workload-v2-charts.js') < html.indexOf('/bdr-workload-v2.js?v=9'), 'ordem dos scripts v2 modular inválida');
+assert(html.includes('/bdr-workload-v2-core.js?v=2') && html.includes('/bdr-workload-v2-charts.js?v=4') && html.includes('/bdr-workload-v2.js?v=10'), 'ordem/cache-busters v2 modular');
+assert(html.indexOf('/bdr-workload-v2-core.js') < html.indexOf('/bdr-workload-v2-charts.js') && html.indexOf('/bdr-workload-v2-charts.js') < html.indexOf('/bdr-workload-v2.js?v=10'), 'ordem dos scripts v2 modular inválida');
 assert(core.includes('window.WorkloadBDRV2Core') && charts.includes('window.WorkloadBDRV2Charts') && js.includes('WorkloadBDRV2Core') && js.includes('WorkloadBDRV2Charts'), 'namespaces modulares explícitos ausentes');
 assert(js.includes('Período anterior equivalente') && core.includes('previousEquivalent') && core.includes('rangeDays'), 'janela anterior equivalente visível/correta em Canais');
 assert(core.includes('2–3') && core.includes('4–5'), 'drill agrupado 2–3/4–5 ausente no front');
 assert(js.includes('fetch(\'/api/bdr-workload-config\'') && js.includes('WorkloadBDRV2.init()') && !js.includes('WorkloadBDR.init()'), 'visão única v2: config só para team, sem fallback v1');
 assert(js.includes('role="dialog"') && js.includes("e.key==='Escape'") && js.includes("e.key==='Tab'"), 'modal acessível com escape/focus trap');
 assert(js.includes('aria-sort') && js.includes('role="tablist"') && allJs.includes('role="button"'), 'a11y básica');
+// multi-seleção de BDR + armazém de gráficos comparativos por BDR
+assert(charts.includes('function multiLine') && charts.slice(charts.indexOf('function multiLine')).includes('openDrill'), 'renderer multiLine ausente ou sem openDrill');
+['v2-multiline', 'v2-ref-line', 'v2-bdr-menu', 'v2-warehouse'].forEach((cls) => has(cls, `componente multi-BDR ausente: ${cls}`));
+assert(core.includes('function movingAverage') && core.includes('function median') && core.includes('function seriesByBdr') && core.includes('function bdrList'), 'helpers de agregação por BDR ausentes');
+assert(js.includes('function bdrWarehouse') && js.includes('function selectedBdrs') && js.includes('function apiBdr'), 'armazém por BDR / seleção múltipla ausente');
+assert(js.includes('toggleBdr:function') && js.includes('clearBdrs:function') && js.includes('cmpMetric:function') && js.includes('cmpMovingAvg:function') && js.includes('cmpRefs:function'), 'métodos públicos multi-BDR ausentes');
+assert(js.includes("q.set('bdrs'") && js.includes("Core.bdrList(q.get('bdrs'))"), 'persistência de bdrs na URL ausente');
 console.log('PASS bdr-workload-v2 UI static tests');
