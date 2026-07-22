@@ -1,5 +1,13 @@
 # Dashboard Enhancement Loop — Status Log
 
+### BDR Workload v2 | Treble passa a contar como WhatsApp do BDR (2026-07-21)
+
+- **Decisão implementada** (ver `docs/treble-whatsapp-attribution-decision.md`): os disparos WhatsApp do Treble (communications `INTEGRATION`, app 26063081, `hubspot_owner_id` nulo) agora contam como WhatsApp do BDR, atribuídos pelo **dono do contato associado** (restrito ao roster). Sem contato de BDR do roster → descartado (não vira "desconhecido").
+- **Live** (`api/bdr-workload.js`): `fetchTrebleWhatsapp` busca WHATS_APP com owner nulo (`NOT_HAS_PROPERTY`), filtra INTEGRATION, resolve comm→contato→dono→BDR e soma no canal WhatsApp com `treble=true`. Semantic segrega `whatsappManual` (CRM_UI) × `whatsappTreble`, `whatsapp = manual + treble` (sem dupla contagem). Campos novos no overlay live + `queryRows`/`bqItem` (colunas gold abaixo).
+- **Gold/ETL** (repo GCP `hubspot-bdr-medallion`): `extract_treble_whatsapp` grava as comms com `owner_id` do BDR dono; `bdr_workload_touch_base_v2` ganhou ramo `treble` (fora do gate do CI, que nunca tem Treble — owner nulo), excluído do fallback p/ não duplicar; `bdr_workload_activity_daily_v2`/`_dimension_v2` e `daily(_dimension)_v2` ganharam `whatsapp_treble_total`/`whatsapp_manual_total`.
+- **Reprocesso 365d** (Cloud Run Job, imagem `bdr-etl/hubspot-bdr-medallion:20260721-treble-whatsapp`, exec `bdr-etl-job-4kn2j` exit 0): MECE ok (0 linhas com `manual+treble != total`); Treble 365d=1.202, 14d=692 (total WhatsApp 14d 1.780 = 1.088 manual + 692 treble). Atribuição por BDR distribui certo (Gabriele 460, Thauan 415 em 30d).
+- **Validação:** `npm run check` PASS (fixture Treble em `test-bdr-workload-v2.js` assere whatsapp=manual+treble). Commits vault `1c6df7b` (ETL/SQL), dash `4033c64` (live).
+
 ### BDR Workload v2 | Penetração: toque pré-elegibilidade deixa de zerar (2026-07-21)
 
 - **Sintoma (usuário):** drill de Penetração mostrava Igaratiba/Anderson com `CONTACTS ELIGIBLE 1 · CONTACTS TOUCHED 0 · TOUCHES REAL 0`, mas o Anderson tem chamadas/LinkedIn na conta → "parece erro na base".

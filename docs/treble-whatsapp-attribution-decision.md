@@ -46,10 +46,10 @@ Assim o total sobe, mas dá para separar esforço manual de automático em drill
 - KPIs de "Volume", "Canal dominante" e o ranking de Gestão mudam.
 - Necessário refazer o gold (ETL) para as janelas fechadas ficarem consistentes com o live.
 
-## Pendências / follow-up
+## Status: IMPLEMENTADO (2026-07-21)
 
-- Implementar conforme o prompt em `docs/prompts/treble-whatsapp-count.md`.
-- Auditar o ETL do Cloud Run Job (gold `whatsapp_total`) — hoje também exclui por não ter owner.
-- Reprocessar histórico do gold após a mudança.
+- **Live** (`api/bdr-workload.js` → `fetchTrebleWhatsapp`): busca WHATS_APP owner-nulo, resolve pelo dono do contato, soma em WhatsApp com `treble=true`. Semantic segrega `whatsappManual`/`whatsappTreble`.
+- **Gold/ETL** (`hubspot-bdr-medallion`): `extract_treble_whatsapp` + ramo `treble` em `bdr_workload_touch_base_v2` + colunas `whatsapp_treble_total`/`whatsapp_manual_total`. Reprocessado 365d (imagem `20260721-treble-whatsapp`): MECE ok, Treble 365d=1.202.
+- Ver `STATUS_LOG.md` (entrada 2026-07-21 "Treble passa a contar como WhatsApp do BDR").
 
 Ver: [[treble-hubspot-realtime-pipeline]] · `STATUS_LOG.md` (entrada 2026-07-21 lineage WhatsApp/Treble).
