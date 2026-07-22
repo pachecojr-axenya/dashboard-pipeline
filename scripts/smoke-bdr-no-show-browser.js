@@ -59,21 +59,37 @@ async function run() {
   const raw = await evaluate(`JSON.stringify({
     active: document.querySelector('[data-rate-filter].active').textContent,
     legend: document.querySelectorAll('#rate-legend .rate-legend-item').length,
+    historicalBdr: [...document.querySelectorAll('#rate-legend .rate-legend-item')].some(x=>x.textContent.includes('Gabriel Milan Ramos (Histórico | inativo)')),
     axis: [...document.querySelectorAll('#rate-chart svg>text')].slice(0,2).map(x=>x.textContent),
     executives: [...document.querySelectorAll('#rate-legend .rate-legend-item')].some(x=>/André Pontes|Guilherme Gabiatti|Rafael Leite|Fausto|Juliana Dalberto|Ágatta/.test(x.textContent)),
     outsideRank: [...document.querySelectorAll('[data-rank-mode=outside]')].reduce((s,x)=>s+Number(x.querySelector('.pill').textContent.replace(/\\D/g,'')),0),
     recoveryOutside: [...document.querySelectorAll('.table-wrap tbody tr .pill.bad')].filter(x=>x.textContent.includes('Fora SLA')).length,
-    has130: document.querySelector('#rate-chart').textContent.includes('130%')
+    has130: document.querySelector('#rate-chart').textContent.includes('130%'),
+    reconciliation: document.querySelector('.data-scope-warning').textContent
   })`);
   const result = JSON.parse(raw);
   assert.strictEqual(result.active, 'Por BDR');
-  assert.strictEqual(result.legend, 13, 'legenda deve conter os 13 BDRs do roster');
+  assert.strictEqual(result.legend, 14, 'legenda deve conter 13 BDRs atuais + Gabriel histórico');
+  assert.strictEqual(result.historicalBdr, true, 'Gabriel deve aparecer rotulado como histórico/inativo');
   assert.deepStrictEqual(result.axis, ['100%', '0%']);
   assert.strictEqual(result.executives, false, 'AE não pode aparecer na visão por BDR');
   assert.strictEqual(result.has130, false, 'eixo não pode ultrapassar 100%');
-  assert.strictEqual(result.outsideRank, result.recoveryOutside, 'ranking fora SLA deve reconciliar com tabela operacional');
+  assert.ok(result.outsideRank <= result.recoveryOutside, 'ranking BDR fora SLA não pode exceder a fila operacional global');
+  assert.ok(result.reconciliation.includes('A taxa global usa todas as reuniões'), 'disclaimer deve explicar o universo global');
+
+  await evaluate('document.querySelector("[data-rate-filter=ae]").click()');
+  await sleep(300);
+  const aeRaw = await evaluate(`JSON.stringify({
+    active: document.querySelector('[data-rate-filter].active').textContent,
+    legend: document.querySelectorAll('#rate-legend .rate-legend-item').length,
+    executives: [...document.querySelectorAll('#rate-legend .rate-legend-item')].some(x=>/André Pontes|Guilherme Gabiatti|Rafael Leite|Fausto|Juliana Dalberto|Ágatta/.test(x.textContent))
+  })`);
+  const aeResult = JSON.parse(aeRaw);
+  assert.strictEqual(aeResult.active, 'Por AE');
+  assert.ok(aeResult.legend > 0, 'visão por AE deve renderizar séries');
+  assert.strictEqual(aeResult.executives, true, 'visão por AE deve exibir executivos');
   ws.close();
-  console.log(`OK | smoke browser no-show | ${JSON.stringify(result)}`);
+  console.log(`OK | smoke browser no-show | BDR=${JSON.stringify(result)} | AE=${JSON.stringify(aeResult)}`);
 }
 
 run().finally(() => {

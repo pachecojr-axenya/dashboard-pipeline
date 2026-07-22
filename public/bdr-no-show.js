@@ -4,6 +4,7 @@
   var CONFIG = {
     analysisStart: '2025-09-01',
     slaBusinessDays: 2,
+    historicalBdrs: [{ nome: 'Gabriel Milan Ramos', ownerId: '83025539', status: 'Histórico | inativo' }],
     noShowTerms: ['no show', 'no-show', 'noshow', 'não compareceu', 'nao compareceu', 'não veio', 'nao veio', 'faltou', 'ausente'],
     rescheduleTerms: ['remarc', 'reagend', 'nova reunião', 'nova reuniao', 'novo horário', 'novo horario'],
     recoveryTerms: ['diagnóstico', 'diagnostico', 'cotação', 'cotacao', 'consultoria', 'negociação', 'negociacao', 'implantação', 'implantacao', 'ganho'],
@@ -26,9 +27,23 @@
   function today() { var d = new Date(); d.setHours(12, 0, 0, 0); return d; }
   function addDays(d, n) { var x = new Date(d.getTime()); x.setDate(x.getDate() + n); return x; }
 
-  function bdrRoster() {
+  function currentBdrRoster() {
     var times = window.SEMANTIC_REF && window.SEMANTIC_REF.times;
     return times && Array.isArray(times.bdrs) ? times.bdrs.map(function (x) { return x.nome; }) : [];
+  }
+
+  function bdrRoster() {
+    return currentBdrRoster().concat(CONFIG.historicalBdrs.map(function (x) { return x.nome; }));
+  }
+
+  function bdrMeta(name) {
+    var historical = CONFIG.historicalBdrs.filter(function (x) { return x.nome === name; })[0];
+    return historical ? historical : { nome: name, status: 'Ativo' };
+  }
+
+  function bdrDisplayName(name) {
+    var meta = bdrMeta(name);
+    return meta.status === 'Ativo' ? name : name + ' (' + meta.status + ')';
   }
 
   function canonicalBdrName(raw) {
@@ -213,10 +228,13 @@
       meetingDate: meetingDate,
       meetingIso: iso(meetingDate),
       week: weekKey(meetingDate),
-      bdr: bdrValue || 'Fora do roster BDR',
+      bdr: bdrValue || 'Fora do escopo BDR',
+      bdrLabel: bdrValue ? bdrDisplayName(bdrValue) : 'Fora do escopo BDR',
       bdrRaw: deal.sdr || null,
+      hasSdr: !!(deal.sdr && String(deal.sdr).trim()),
       isCanonicalBdr: !!bdrValue,
-      ae: deal.ae || 'Sem AE',
+      isHistoricalBdr: !!(bdrValue && bdrMeta(bdrValue).status !== 'Ativo'),
+      ae: firstFilled([deal.ae, deal.deal_owner, deal.hubspot_owner_name]) || 'Sem AE',
       stage: deal.stage || '—',
       origem: deal.origem || 'Sem origem',
       vidas: deal.vidas || deal.colaboradores || null,
@@ -348,7 +366,7 @@
     return rows.filter(function (r) {
       if (start && (!r.meetingDate || r.meetingDate < start)) return false;
       if (end && (!r.meetingDate || r.meetingDate > end)) return false;
-      if (f.bdr && r.bdr !== f.bdr) return false;
+      if (f.bdr && (!r.isCanonicalBdr || r.bdr !== f.bdr)) return false;
       if (f.ae && r.ae !== f.ae) return false;
       if (f.stage && r.stage !== f.stage) return false;
       if (f.origem && r.origem !== f.origem) return false;
@@ -499,13 +517,28 @@
     });
   }
 
+  function bdrRows(rows) {
+    return rows.filter(function (r) { return r.isCanonicalBdr; });
+  }
+
+  function reconciliation(rows) {
+    var attributed = bdrRows(rows).length;
+    var missingSdr = rows.filter(function (r) { return !r.hasSdr; }).length;
+    return { total: rows.length, attributed: attributed, missingSdr: missingSdr, outsideBdrScope: rows.length - attributed - missingSdr };
+  }
+
+  function renderReconciliation(rows) {
+    var rec = reconciliation(rows);
+    return '<div class="data-scope-warning"><b>Reconciliação dinâmica</b><span>Total global: ' + fmtInt(rec.total) + ' | atribuíveis a BDR: ' + fmtInt(rec.attributed) + ' | sem sdr: ' + fmtInt(rec.missingSdr) + ' | sdr fora do escopo BDR: ' + fmtInt(rec.outsideBdrScope) + '. A taxa global usa todas as reuniões; cortes por BDR usam apenas reuniões atribuíveis. Dados faltantes podem alterar as taxas por responsável, mas não somem da taxa global.</span></div>';
+  }
+
   function renderRateTrend(rows) {
-    var filters = [{ key: 'all', label: 'Todos' }, { key: 'bdr', label: 'Por BDR' }, { key: 'origem', label: 'Por canal' }, { key: 'porte', label: 'Por porte' }];
+    var filters = [{ key: 'all', label: 'Todos' }, { key: 'bdr', label: 'Por BDR' }, { key: 'ae', label: 'Por AE' }, { key: 'origem', label: 'Por canal' }, { key: 'porte', label: 'Por porte' }];
     var filterBtns = filters.map(function (f) { return '<button type="button" class="rate-filter-btn' + (f.key === currentRateFilter ? ' active' : '') + '" data-rate-filter="' + f.key + '">' + esc(f.label) + '</button>'; }).join('');
     var svgResult = generateRateSvg(rows, currentRateFilter);
     var coverage = rows.length ? rows.filter(function (r) { return r.knownOutcome; }).length / rows.length : 0;
     var sampleWarning = coverage < 0.8 ? '<span class="sample-warning">Cobertura baixa | ' + fmtPct(coverage) + ' das reuniões têm desfecho conhecido. A taxa exclui pendências.</span>' : '';
-    var scope = '<div class="rate-debug">Escopo do filtro | ' + fmtInt(rows.length) + ' reuniões | ' + fmtInt(rows.filter(function (r) { return r.knownOutcome; }).length) + ' com desfecho | ' + fmtInt(rows.filter(function (r) { return r.noShow; }).length) + ' no-shows históricos | ' + bdrRoster().length + ' BDRs no roster</div>';
+    var scope = '<div class="rate-debug">Escopo global | ' + fmtInt(rows.length) + ' reuniões | ' + fmtInt(rows.filter(function (r) { return r.knownOutcome; }).length) + ' com desfecho | ' + fmtInt(rows.filter(function (r) { return r.noShow; }).length) + ' no-shows históricos | ' + bdrRoster().length + ' BDRs no escopo, incluindo histórico local</div>';
     return '<div class="card span-12"><div class="card-title"><div><h2 id="rate-title">' + esc(svgResult.trendText) + '</h2></div>' + infoBtn('rateTrend') + '</div><div class="rate-filters">' + filterBtns + '</div><div id="rate-chart" class="trend line-chart clickable" data-drill="timeline" data-hover-title="Taxa de no-show" data-hover-text="Semanas sem desfecho aparecem como lacuna. Passe nos pontos para ver taxa e amostra.">' + svgResult.svg + '</div><div id="rate-legend" class="rate-legend"></div>' + scope + sampleWarning + '</div>';
   }
 
@@ -541,6 +574,7 @@
     var dimList;
     if (dimKey === 'bdr') {
       dimList = bdrRoster();
+      rows = bdrRows(rows);
     } else {
       var totals = {};
       rows.forEach(function (r) { var value = r[dimKey] || 'Não informado'; totals[value] = (totals[value] || 0) + 1; });
@@ -552,13 +586,13 @@
       var weekly = weeklyRateData(dimRows, keys);
       var known = dimRows.filter(function (r) { return r.knownOutcome; }).length;
       var noShows = dimRows.filter(function (r) { return r.knownOutcome && r.noShow; }).length;
-      return { name: dimValue, rates: weekly.map(function (x) { return x.rate; }), details: weekly, total: dimRows.length, known: known, noShows: noShows, rate: known ? noShows / known : null, coverage: dimRows.length ? known / dimRows.length : 0, color: RATE_COLORS[idx % RATE_COLORS.length] };
+      return { name: dimValue, label: dimKey === 'bdr' ? bdrDisplayName(dimValue) : dimValue, rates: weekly.map(function (x) { return x.rate; }), details: weekly, total: dimRows.length, known: known, noShows: noShows, rate: known ? noShows / known : null, coverage: dimRows.length ? known / dimRows.length : 0, color: RATE_COLORS[idx % RATE_COLORS.length] };
     });
     var allRates = [];
     linesData.forEach(function (line) { line.rates.forEach(function (value) { if (value != null) allRates.push(value); }); });
     var maxMulti = rateAxisMax(allRates);
     var lineSvg = linesData.map(function (line) { return line.noShows ? svgRateSeries(line.rates, line.details, keys, maxMulti, width, height, pad, line.color, false) : ''; }).join('');
-    var titleDim = dimKey === 'bdr' ? 'BDR' : dimKey === 'origem' ? 'canal' : 'porte';
+    var titleDim = dimKey === 'bdr' ? 'BDR' : dimKey === 'ae' ? 'AE' : dimKey === 'origem' ? 'canal' : 'porte';
     var svgMulti = '<svg class="line-svg" viewBox="0 0 ' + width + ' ' + height + '" role="img" aria-label="Taxa de no-show por ' + esc(titleDim) + '"><line x1="' + pad + '" y1="30" x2="' + pad + '" y2="' + (height - pad) + '" stroke="var(--border)"/><line x1="' + pad + '" y1="' + (height - pad) + '" x2="' + (width - 20) + '" y2="' + (height - pad) + '" stroke="var(--border)"/><text x="8" y="34" fill="var(--muted)" font-size="11">' + fmtPct(maxMulti) + '</text><text x="18" y="' + (height - pad + 4) + '" fill="var(--muted)" font-size="11">0%</text>' + lineSvg + labels + '</svg>';
     return { svg: svgMulti, trendText: 'Incidência de no-show por ' + titleDim + ' | período filtrado', linesData: linesData, colors: RATE_COLORS };
   }
@@ -574,14 +608,15 @@
     legendEl.innerHTML = lines.map(function (line) {
       var rateLabel = line.rate == null ? 'sem desfecho' : fmtPct(line.rate) + ' | n=' + line.known;
       var zeroClass = line.noShows ? '' : ' zero-series';
-      return '<span class="rate-legend-item' + zeroClass + '" data-filter-key="' + esc(filterKey) + '" data-filter-val="' + esc(line.name) + '"><span class="rate-legend-dot" style="background:' + line.color + '"></span>' + esc(line.name) + ' | ' + esc(rateLabel) + ' | cobertura ' + fmtPct(line.coverage) + '</span>';
+      return '<span class="rate-legend-item' + zeroClass + '" data-filter-key="' + esc(filterKey) + '" data-filter-val="' + esc(line.name) + '"><span class="rate-legend-dot" style="background:' + line.color + '"></span>' + esc(line.label || line.name) + ' | ' + esc(rateLabel) + ' | cobertura ' + fmtPct(line.coverage) + '</span>';
     }).join('');
     var items = legendEl.querySelectorAll('[data-filter-val]');
     for (var i = 0; i < items.length; i += 1) items[i].onclick = function () { openDealsNoShow(this.getAttribute('data-filter-val'), this.getAttribute('data-filter-key')); };
   }
 
   function openDealsNoShow(title, key) {
-    openDeals(title, state.filtered.filter(function (r) { return r[key] === title && r.noShow; }));
+    var universe = key === 'bdr' ? state.filteredBdr : state.filtered;
+    openDeals(title, universe.filter(function (r) { return r[key] === title && r.noShow; }));
   }
 
   function rankRows(rows, key, mode) {
@@ -605,7 +640,7 @@
         ? fmtInt(r.outside) + ' de ' + fmtInt(r.open) + ' no-shows abertos fora do SLA'
         : fmtPct(r.rate) + ' dos desfechos conhecidos | cobertura ' + fmtPct(rate(r.known, r.total));
       var denominator = mode === 'outside' ? 'n abertos=' + fmtInt(r.open) : 'n desfechos=' + fmtInt(r.known);
-      return '<div class="rank-row clickable-row" data-rank-mode="' + esc(mode) + '" data-rank-name="' + esc(r.name) + '" data-hover-title="' + esc(r.name) + '" data-hover-text="Clique para abrir os deals deste BDR no ranking."><div><div class="rank-name">' + esc(r.name) + '</div><div class="rank-meta">' + esc(meta) + '</div></div><span class="pill ' + (mode === 'outside' && r.outside ? 'bad' : 'warn') + '">' + esc(val) + '</span><span class="rank-meta right">' + esc(denominator) + '</span></div>';
+      return '<div class="rank-row clickable-row" data-rank-mode="' + esc(mode) + '" data-rank-name="' + esc(r.name) + '" data-hover-title="' + esc(bdrDisplayName(r.name)) + '" data-hover-text="Clique para abrir os deals deste BDR no ranking."><div><div class="rank-name">' + esc(bdrDisplayName(r.name)) + '</div><div class="rank-meta">' + esc(meta) + '</div></div><span class="pill ' + (mode === 'outside' && r.outside ? 'bad' : 'warn') + '">' + esc(val) + '</span><span class="rank-meta right">' + esc(denominator) + '</span></div>';
     }).join('');
     var descText = mode === 'outside' 
       ? 'Backlog atual | exclui perdidos, recuperados e reagendados | reconcilia com a tabela operacional'
@@ -614,11 +649,11 @@
   }
 
   function renderBigIdea(rows, m) {
-    var bdrRows = rankRows(rows, 'bdr', m.outsideSla ? 'outside' : 'rate');
-    var top = bdrRows[0];
+    var rankedBdrRows = rankRows(bdrRows(rows), 'bdr', m.outsideSla ? 'outside' : 'rate');
+    var top = rankedBdrRows[0];
     var bigIdeaText = '';
     if (m.pipelineRisk > 0 && m.outsideSla > 0) {
-      bigIdeaText = '<strong>' + fmtMoney(m.pipelineRisk) + '</strong> em no-shows abertos. <strong>' + fmtInt(m.outsideSla) + '</strong> casos fora do prazo esperam ação. ' + (top ? '<strong>' + esc(top.name) + '</strong> concentra a maior fila.' : '');
+      bigIdeaText = '<strong>' + fmtMoney(m.pipelineRisk) + '</strong> em no-shows abertos. <strong>' + fmtInt(m.outsideSla) + '</strong> casos fora do prazo esperam ação. ' + (top ? '<strong>' + esc(bdrDisplayName(top.name)) + '</strong> concentra a maior fila BDR atribuível.' : '');
     } else if (m.noShows > 0) {
       bigIdeaText = '<strong>' + fmtInt(m.noShows) + '</strong> no-shows históricos em <strong>' + fmtInt(m.knownOutcomes) + '</strong> reuniões com desfecho (' + fmtPct(m.noShowRate) + ').';
     } else {
@@ -671,26 +706,27 @@
   var CALC_HELP = {
     scheduled: ['Reuniões agendadas', 'Número de reuniões que foram marcadas com data definida no período. Conta todas, independentemente de terem ocorrido ou não.', 'Campo no HubSpot: data da reunião (data_reuniao_agendada). Só entram deals com essa data preenchida.'],
     past: ['Reuniões passadas', 'Reuniões cuja data já passou (antes de hoje). Só essas podem ser cobradas quanto ao preenchimento e ao no-show.', 'Reuniões com data futura ainda não entram nas contas de higiene ou de ausência.'],
-    fieldCoverage: ['Campo preenchido', 'Percentual de reuniões passadas em que o BDR já registrou no HubSpot se a reunião ocorreu ou não (Sim/Não). Mede a disciplina de preenchimento.', 'Considera só a marcação oficial no campo. Não usamos o texto do deal para adivinhar o resultado.'],
-    fieldMissing: ['Campo pendente', 'Reuniões cuja data já passou, mas o BDR ainda não marcou se ela ocorreu ou não. É uma fila de organização do CRM, não um no-show.', 'Enquanto o campo estiver vazio, não classificamos como ausência sem outra evidência.'],
+    fieldCoverage: ['Campo preenchido', 'Percentual de reuniões passadas em que o campo HubSpot de reunião ocorreu foi registrado como Sim/Não. Mede a disciplina de preenchimento no universo global.', 'O campo sdr é o campo HubSpot rotulado BDR; o campo ae é exclusivamente o owner do deal. Não usamos ae como substituto de sdr.'],
+    fieldMissing: ['Campo pendente', 'Reuniões cuja data já passou, mas ainda não têm registro se ocorreram ou não. É uma fila global de organização do CRM, não um no-show.', 'Enquanto o campo estiver vazio, não classificamos como ausência sem outra evidência. Reuniões sem sdr continuam na taxa global.'],
     occurred: ['Realizadas', 'Reuniões que aconteceram de fato. Contamos como realizada quando o BDR marcou "Sim" ou quando o deal avançou para uma etapa que só se alcança após a reunião.', 'Etapas que indicam reunião feita: Diagnóstico, Cotação, Consultoria, Negociação, Implantação ou Ganho.'],
-    fieldNo: ['Campo Não', 'Reuniões em que o BDR marcou explicitamente que a reunião NÃO ocorreu. É a evidência mais confiável de ausência.', 'Vem da marcação oficial do BDR no HubSpot, não de interpretação de texto.'],
-    noShow: ['No-show confirmado', 'Reuniões que foram marcadas mas o cliente não compareceu. Confirmamos quando o BDR marcou "Não" ou quando há registro claro de ausência no motivo/status.', 'O texto do deal só é usado como último recurso, quando não há marcação oficial. Campo vazio sozinho não vira no-show.'],
-    noShowRate: ['Incidência de no-show', 'De cada 100 reuniões com desfecho conhecido, quantas tiveram no-show em algum momento. Inclui casos depois recuperados ou perdidos.', 'Divide os no-shows históricos pelos desfechos conhecidos. Reuniões pendentes de preenchimento ficam fora do denominador e a cobertura aparece ao lado.'],
+    fieldNo: ['Campo Não', 'Reuniões em que foi marcado explicitamente que a reunião NÃO ocorreu. É a evidência mais confiável de ausência.', 'Vem da marcação oficial no HubSpot, não de interpretação de texto. sdr identifica o BDR quando preenchido; ae identifica o owner do deal.'],
+    noShow: ['No-show confirmado', 'Reuniões que foram marcadas mas o cliente não compareceu. Confirmamos quando o campo oficial está como "Não" ou quando há registro claro de ausência no motivo/status.', 'O texto do deal só é usado como último recurso. Campo vazio sozinho não vira no-show e reunião sem sdr não sai da taxa global.'],
+    noShowRate: ['Incidência de no-show', 'De cada 100 reuniões globais com desfecho conhecido, quantas tiveram no-show em algum momento. Inclui casos depois recuperados ou perdidos.', 'A taxa global usa todas as reuniões filtradas. Cortes por BDR usam apenas reuniões atribuíveis ao campo sdr no roster atual + Gabriel histórico; Por AE usa exclusivamente ae, owner do deal.'],
     rescheduled: ['Reagendadas', 'No-shows em que há registro de que uma nova data foi combinada. Sinal de recuperação em andamento.', 'Hoje detectamos a remarcação pelo texto do deal; o histórico exato de datas ainda não vem do sistema.'],
     recovered: ['Recuperados', 'No-shows que foram revertidos: a reunião acabou acontecendo depois, ou o negócio avançou de etapa mesmo após a falta.', 'Usamos a marcação da reunião e a trilha de etapas como prova de recuperação.'],
     outsideSla: ['Fora do prazo (SLA)', 'No-shows ainda abertos que passaram de ' + CONFIG.slaBusinessDays + ' dias úteis sem recuperação.', 'Exclui perdidos, recuperados e reagendados. Este total reconcilia com as linhas fora do SLA na tabela operacional.'],
     pipelineRisk: ['Pipeline em risco', 'Soma do valor anual estimado (ARR) dos negócios que tiveram no-show e ainda estão abertos, sem recuperação. É a receita que pode escapar.', 'Valor por deal: ARR estimado; se não houver, usamos a 1ª fatura × 12 ou o prêmio mensal × 12.'],
     pipelineLost: ['Pipeline perdido', 'Soma do valor anual estimado dos negócios que foram perdidos e têm o no-show registrado como causa. Receita já perdida.', 'Usa o motivo e a descrição da perda como comprovação.'],
     timeline: ['Volume semanal', 'Mostra, semana a semana, quantas reuniões foram agendadas, quantas viraram no-show e quantas ainda estão sem preenchimento.', 'Ajuda a separar problema de comparecimento de problema de registro. Clique para ver a tabela detalhada.'],
-    rateTrend: ['Incidência de no-show ao longo do tempo', 'A linha semanal mostra no-shows históricos divididos por reuniões com desfecho conhecido. A linha pontilhada é a média móvel ponderada de 4 semanas.', 'Semanas sem desfecho aparecem como lacunas, não como 0%. O eixo sempre começa em 0% e nunca ultrapassa 100%.'],
-    rankVolume: ['Ranking por incidência histórica', 'Lista os BDRs com mais no-shows no período, incluindo abertos, recuperados e perdidos por no-show.', 'A taxa usa apenas reuniões com desfecho conhecido. O card mostra também a cobertura de dados.'],
-    rankOutside: ['Ranking do backlog fora do prazo', 'Lista os BDRs com mais no-shows ainda abertos que passaram de ' + CONFIG.slaBusinessDays + ' dias úteis.', 'Exclui perdidos, recuperados e reagendados. O denominador é o número de no-shows abertos daquele BDR.'],
-    breakOrigem: ['Quebra por origem', 'Distribui os no-shows pela origem do lead (de onde o negócio veio). Mostra quais canais trazem mais faltas.', 'Usa o campo de origem do deal. Clique em cada linha para ver os negócios.'],
+    rateTrend: ['Incidência de no-show ao longo do tempo', 'A linha semanal global mostra no-shows históricos divididos por reuniões com desfecho conhecido. A linha pontilhada é a média móvel ponderada de 4 semanas.', 'No filtro Por BDR, só entram reuniões atribuíveis pelo campo sdr. No filtro Por AE, entram todas as reuniões globais agrupadas exclusivamente pelo campo ae, owner do deal, incluindo Sem AE.'],
+    rankVolume: ['Por BDR | incidência histórica', 'Lista BDRs com mais no-shows no período, incluindo abertos, recuperados e perdidos por no-show.', 'Usa apenas reuniões atribuíveis pelo campo sdr ao roster atual + Gabriel Milan Ramos como histórico/inativo. Não usa ae para preencher BDR.'],
+    rankOutside: ['Por BDR | backlog fora do prazo', 'Lista BDRs com mais no-shows ainda abertos que passaram de ' + CONFIG.slaBusinessDays + ' dias úteis.', 'Exclui perdidos, recuperados e reagendados. O denominador é o número de no-shows abertos daquele BDR atribuível por sdr.'],
+    breakAe: ['Por AE', 'Agrupa no-shows pelo campo ae normalizado, que representa exclusivamente o owner do deal.', 'Usa o universo global: reuniões com e sem sdr entram aqui. Quando ae está vazio, o registro cai no bucket Sem AE.'],
+    breakOrigem: ['Quebra por origem', 'Distribui os no-shows pela origem do lead (de onde o negócio veio). Mostra quais canais trazem mais faltas.', 'Usa o campo de origem do deal sobre o universo global. Clique em cada linha para ver os negócios.'],
     breakSegment: ['Quebra por indústria', 'Distribui os no-shows pela indústria/setor da empresa. Mostra em quais setores o cliente falta mais.', 'Vem do setor cadastrado na empresa associada, não de adivinhação pelo nome.'],
     breakPersona: ['Quebra por persona', 'Distribui os no-shows pelo perfil de quem seria o interlocutor (senioridade + área, ex.: "Gestão | RH"). Mostra quais perfis faltam mais.', 'Vem do cargo do contato associado, classificado automaticamente.'],
     breakPorte: ['Quebra por porte', 'Distribui os no-shows pela faixa de vidas/funcionários da empresa. Mostra se empresas maiores ou menores faltam mais.', 'Usa o número de vidas; se não houver, usa o de colaboradores.'],
-    fieldTable: ['Reunião passou sem preenchimento', 'Fila de organização: reuniões cuja data já passou mas o BDR ainda não marcou se ocorreu. Não são no-shows — são pendências de registro.', 'Priorizadas pelas que estão há mais dias úteis sem preenchimento.'],
+    fieldTable: ['Reunião passou sem preenchimento', 'Fila global de organização: reuniões cuja data já passou mas o campo de ocorrência ainda não foi preenchido. Não são no-shows — são pendências de registro.', 'Priorizadas pelas que estão há mais dias úteis sem preenchimento. Registros sem sdr ou fora do escopo BDR permanecem nesta fila global.'],
     recoveryTable: ['Tabela de recuperação', 'Lista os no-shows ainda abertos, ordenados por risco, para o time saber o que atacar primeiro.', 'O risco combina: ser no-show, estar fora do prazo, dias sem atividade e valor do negócio.'],
     lostTable: ['Perdidos por no-show', 'Negócios já perdidos em que o no-show consta como causa. Serve para dimensionar o custo real das faltas.', 'Aqui o texto do motivo/descrição é usado como prova, porque a perda já ocorreu.'],
     story: ['Leitura executiva', 'Resumo em uma frase: quantos no-shows, quantas pendências de preenchimento e qual BDR priorizar.', 'Os números vêm exatamente dos mesmos filtros dos cards acima.'],
@@ -723,7 +759,8 @@
   }
 
   function renderBreak(title, rows, key) {
-    var infoByKey = { origem: 'breakOrigem', segment: 'breakSegment', persona: 'breakPersona', porte: 'breakPorte' };
+    var infoByKey = { origem: 'breakOrigem', ae: 'breakAe', segment: 'breakSegment', persona: 'breakPersona', porte: 'breakPorte' };
+    var spanClass = key === 'ae' ? 'span-4' : 'span-3';
     var infoKey = infoByKey[key] || 'noShow';
     var g = group(rows, key);
     var items = Object.keys(g).map(function (k) {
@@ -735,7 +772,7 @@
     var html = items.map(function (x) {
       return '<div class="break-row clickable-row" data-break-key="' + esc(key) + '" data-break-name="' + esc(x.name) + '" data-hover-title="' + esc(x.name) + '" data-hover-text="Clique para abrir os deals desta quebra."><div class="break-name">' + esc(x.name) + '</div><div class="break-val">' + fmtInt(x.ns) + '</div><div class="break-val">' + fmtPct(x.rate) + '</div><div class="break-track"><div class="break-fill" style="width:' + Math.round(x.ns / max * 100) + '%"></div></div></div>';
     }).join('');
-    return '<div class="card span-3"><div class="card-title"><div><h2>' + esc(title) + '</h2><div class="desc">No-shows | volume | incidência</div></div>' + infoBtn(infoKey) + '</div><div class="break-list">' + (html || '<div class="muted">Sem dados</div>') + '</div></div>';
+    return '<div class="card ' + spanClass + '"><div class="card-title"><div><h2>' + esc(title) + '</h2><div class="desc">No-shows | volume | incidência</div></div>' + infoBtn(infoKey) + '</div><div class="break-list">' + (html || '<div class="muted">Sem dados</div>') + '</div></div>';
   }
 
   function hubspotUrl(id) { return id ? 'https://app.hubspot.com/contacts/44715285/deal/' + encodeURIComponent(id) : '#'; }
@@ -759,7 +796,7 @@
 
   function dealRows(rows) {
     return rows.map(function (r) {
-      return '<tr><td><a class="deal-link" href="' + hubspotUrl(r.id) + '" target="_blank" rel="noopener">' + esc(r.name) + '</a></td><td>' + esc(r.bdr) + '</td><td>' + esc(r.ae) + '</td><td>' + esc(r.meetingIso) + '</td><td>' + esc(r.meetingFieldStatus) + '</td><td>' + esc(r.status) + '</td><td>' + esc(r.stage) + '</td><td>' + esc(r.persona) + '</td><td>' + esc(r.segment) + '</td><td class="right">' + fmtMoney(r.arr) + '</td></tr>';
+      return '<tr><td><a class="deal-link" href="' + hubspotUrl(r.id) + '" target="_blank" rel="noopener">' + esc(r.name) + '</a></td><td>' + esc(r.bdrLabel || r.bdr) + '</td><td>' + esc(r.ae) + '</td><td>' + esc(r.meetingIso) + '</td><td>' + esc(r.meetingFieldStatus) + '</td><td>' + esc(r.status) + '</td><td>' + esc(r.stage) + '</td><td>' + esc(r.persona) + '</td><td>' + esc(r.segment) + '</td><td class="right">' + fmtMoney(r.arr) + '</td></tr>';
     }).join('');
   }
 
@@ -810,7 +847,7 @@
     var body = arr.map(function (r) {
       var slaLabel = r.businessDays == null ? 'SLA desconhecido' : (r.outsideSla ? 'Fora SLA' : 'Dentro SLA');
       var slaClass = r.businessDays == null ? 'warn' : (r.outsideSla ? 'bad' : 'good');
-      return '<tr><td><a class="deal-link" href="' + hubspotUrl(r.id) + '" target="_blank" rel="noopener">' + esc(r.name) + '</a></td><td>' + esc(r.bdr) + '</td><td>' + esc(r.ae) + '</td><td>' + esc(r.meetingIso) + '</td><td>' + esc(r.meetingFieldStatus) + '</td><td>' + esc(r.status) + '</td><td class="right">' + esc(r.businessDays == null ? '—' : r.businessDays) + '</td><td><span class="pill ' + slaClass + '">' + slaLabel + '</span></td><td class="right">' + fmtMoney(r.arr) + '</td><td class="right">' + fmtInt(r.risk) + '</td></tr>';
+      return '<tr><td><a class="deal-link" href="' + hubspotUrl(r.id) + '" target="_blank" rel="noopener">' + esc(r.name) + '</a></td><td>' + esc(r.bdrLabel || r.bdr) + '</td><td>' + esc(r.ae) + '</td><td>' + esc(r.meetingIso) + '</td><td>' + esc(r.meetingFieldStatus) + '</td><td>' + esc(r.status) + '</td><td class="right">' + esc(r.businessDays == null ? '—' : r.businessDays) + '</td><td><span class="pill ' + slaClass + '">' + slaLabel + '</span></td><td class="right">' + fmtMoney(r.arr) + '</td><td class="right">' + fmtInt(r.risk) + '</td></tr>';
     }).join('');
     return '<div class="card span-12"><div class="card-title"><div><h2>Tabela operacional de recuperação</h2><div class="desc">No-shows confirmados priorizados por risco | limitado a 100 linhas</div></div>' + infoBtn('recoveryTable') + '</div><div class="table-wrap"><table><thead><tr><th>Deal</th><th>BDR</th><th>AE</th><th>Reunião</th><th>Campo</th><th>Status</th><th class="right">Dias úteis</th><th>SLA</th><th class="right">Pipeline</th><th class="right">Risco</th></tr></thead><tbody>' + (body || '<tr><td colspan="10" class="muted">Nenhum no-show aberto no filtro atual</td></tr>') + '</tbody></table></div></div>';
   }
@@ -818,7 +855,7 @@
   function renderFieldTable(rows) {
     var arr = rows.filter(function (r) { return r.fieldPendingPast; }).sort(function (a, b) { return (b.businessDays || 0) - (a.businessDays || 0); }).slice(0, 100);
     var body = arr.map(function (r) {
-      return '<tr><td><a class="deal-link" href="' + hubspotUrl(r.id) + '" target="_blank" rel="noopener">' + esc(r.name) + '</a></td><td>' + esc(r.bdr) + '</td><td>' + esc(r.ae) + '</td><td>' + esc(r.meetingIso) + '</td><td class="right">' + esc(r.businessDays == null ? '—' : r.businessDays) + '</td><td>' + esc(r.lastActivity) + '</td><td>' + esc(r.stage) + '</td><td>' + esc(r.persona) + '<div class="muted">' + esc(r.personaSource) + '</div></td><td>' + esc(r.segment) + '<div class="muted">' + esc(r.segmentSource) + '</div></td></tr>';
+      return '<tr><td><a class="deal-link" href="' + hubspotUrl(r.id) + '" target="_blank" rel="noopener">' + esc(r.name) + '</a></td><td>' + esc(r.bdrLabel || r.bdr) + '</td><td>' + esc(r.ae) + '</td><td>' + esc(r.meetingIso) + '</td><td class="right">' + esc(r.businessDays == null ? '—' : r.businessDays) + '</td><td>' + esc(r.lastActivity) + '</td><td>' + esc(r.stage) + '</td><td>' + esc(r.persona) + '<div class="muted">' + esc(r.personaSource) + '</div></td><td>' + esc(r.segment) + '<div class="muted">' + esc(r.segmentSource) + '</div></td></tr>';
     }).join('');
     return '<div class="card span-12"><div class="card-title"><div><h2>Reunião passou | campo sem preenchimento</h2><div class="desc">Fila de higiene de CRM: a data da reunião passou, mas a_reuniao_ocorreu_ ainda não está Sim ou Não</div></div>' + infoBtn('fieldTable') + '</div><div class="table-wrap"><table><thead><tr><th>Deal</th><th>BDR</th><th>AE</th><th>Reunião</th><th class="right">Dias úteis</th><th>Última atividade</th><th>Etapa</th><th>Persona</th><th>Indústria</th></tr></thead><tbody>' + (body || '<tr><td colspan="9" class="muted">Nenhuma reunião passada com campo pendente no filtro atual</td></tr>') + '</tbody></table></div></div>';
   }
@@ -826,35 +863,32 @@
   function renderLostTable(rows) {
     var arr = rows.filter(function (r) { return r.status === 'Perdido por no-show'; }).sort(function (a, b) { return (b.arr || 0) - (a.arr || 0); }).slice(0, 100);
     var body = arr.map(function (r) {
-      return '<tr><td><a class="deal-link" href="' + hubspotUrl(r.id) + '" target="_blank" rel="noopener">' + esc(r.name) + '</a></td><td>' + esc(r.bdr) + '</td><td>' + esc(r.ae) + '</td><td>' + esc(r.meetingIso) + '</td><td>' + esc(r.origem) + '</td><td>' + esc(r.porte) + '</td><td>' + esc(r.lostReason) + '</td><td class="right">' + fmtMoney(r.arr) + '</td></tr>';
+      return '<tr><td><a class="deal-link" href="' + hubspotUrl(r.id) + '" target="_blank" rel="noopener">' + esc(r.name) + '</a></td><td>' + esc(r.bdrLabel || r.bdr) + '</td><td>' + esc(r.ae) + '</td><td>' + esc(r.meetingIso) + '</td><td>' + esc(r.origem) + '</td><td>' + esc(r.porte) + '</td><td>' + esc(r.lostReason) + '</td><td class="right">' + fmtMoney(r.arr) + '</td></tr>';
     }).join('');
     return '<div class="card span-12"><div class="card-title"><div><h2>Perdidos por no-show</h2><div class="desc">Deals perdidos com evidência textual de no-show no motivo ou descrição</div></div>' + infoBtn('lostTable') + '</div><div class="table-wrap"><table><thead><tr><th>Deal</th><th>BDR</th><th>AE</th><th>Reunião</th><th>Origem</th><th>Porte</th><th>Motivo</th><th class="right">Pipeline perdido</th></tr></thead><tbody>' + (body || '<tr><td colspan="8" class="muted">Nenhum perdido por no-show no filtro atual</td></tr>') + '</tbody></table></div></div>';
-  }
-
-  function renderDataScope(excluded) {
-    if (!excluded.length) return '';
-    return '<div class="data-scope-warning"><b>Qualidade de atribuição</b><span>' + fmtInt(excluded.length) + ' reuniões têm o campo SDR fora do roster canônico e foram excluídas das métricas por BDR. Nenhum AE é usado como substituto.</span></div>';
   }
 
   function render() {
     renderFilters();
     state.filteredAll = applyFilters(state.records);
-    state.filtered = state.filteredAll.filter(function (r) { return r.isCanonicalBdr; });
+    state.filtered = state.filteredAll;
+    state.filteredBdr = bdrRows(state.filteredAll);
     if (!state.records.length) {
       showState('empty', 'Sem reuniões agendadas', 'A API respondeu, mas nenhum deal veio com data_reuniao_agendada entre set/25 e hoje.');
       return;
     }
     if (!state.filtered.length) {
-      showState('empty', 'Filtro sem resultados', 'Ajuste período, BDR, origem ou status operacional.');
+      showState('empty', 'Filtro sem resultados', 'Ajuste período, BDR, AE, origem ou status operacional.');
       return;
     }
     var rows = state.filtered;
+    var bdrOnlyRows = state.filteredBdr;
     var m = metrics(rows);
     
     // ARCO NARRATIVO: Big Idea → KPIs herói → Gráficos → Rankings → Ação
     var html = '';
 
-    html += renderDataScope(state.filteredAll.filter(function (r) { return !r.isCanonicalBdr; }));
+    html += renderReconciliation(rows);
     
     // 1. BIG IDEA (tese + ação recomendada)
     html += renderBigIdea(rows, m);
@@ -872,10 +906,10 @@
     html += '<div class="grid">' + renderTrend(rows) + renderTrendSummary(rows, m) + '</div>';
     
     // 6. RANKINGS (2 colunas lado a lado, preenchendo a linha)
-    html += '<div class="grid">' + renderRank('Ranking por volume de no-show', rows, 'rate') + renderRank('Ranking por fora do prazo', rows, 'outside') + '</div>';
+    html += '<div class="grid">' + renderRank('Por BDR | volume de no-show', bdrOnlyRows, 'rate') + renderRank('Por BDR | fora do prazo', bdrOnlyRows, 'outside') + '</div>';
     
     // 7. QUEBRAS POR DIMENSÃO (4 cards por linha)
-    html += '<div class="grid">' + renderBreak('Quebra por origem', rows, 'origem') + renderBreak('Quebra por indústria', rows, 'segment') + renderBreak('Quebra por persona', rows, 'persona') + renderBreak('Quebra por porte | vidas', rows, 'porte') + '</div>';
+    html += '<div class="grid">' + renderBreak('Por AE', rows, 'ae') + renderBreak('Quebra por origem', rows, 'origem') + renderBreak('Quebra por indústria', rows, 'segment') + renderBreak('Quebra por persona', rows, 'persona') + renderBreak('Quebra por porte | vidas', rows, 'porte') + '</div>';
     
     // 8. FILA DE RECUPERAÇÃO (ação principal)
     html += '<div class="grid">' + renderRecoveryTable(rows) + '</div>';
@@ -899,7 +933,6 @@
       // Atualizar botões ativos
       for (var j = 0; j < rateFilterBtns.length; j += 1) rateFilterBtns[j].classList.remove('active');
       this.classList.add('active');
-      // Regenerar SVG usando state.filtered (global) em vez de rows (local)
       var svgResult = generateRateSvg(state.filtered, filterKey);
       var rateChart = $('rate-chart');
       var oldSvg = rateChart.querySelector('svg, .muted');
@@ -915,8 +948,8 @@
     for (var r = 0; r < ranks.length; r += 1) ranks[r].onclick = function () {
       var name = this.getAttribute('data-rank-name');
       var mode = this.getAttribute('data-rank-mode');
-      var rows = state.filtered.filter(function (x) { return x.bdr === name && (mode === 'outside' ? x.outsideSla : x.noShow); });
-      openDeals('BDR | ' + name, rows);
+      var rows = state.filteredBdr.filter(function (x) { return x.bdr === name && (mode === 'outside' ? x.outsideSla : x.noShow); });
+      openDeals('BDR | ' + bdrDisplayName(name), rows);
     };
     var breaks = $('content').querySelectorAll('[data-break-key]');
     for (var b = 0; b < breaks.length; b += 1) breaks[b].onclick = function () {
@@ -1008,7 +1041,12 @@
       rollingRateData: rollingRateData,
       rateAxisMax: rateAxisMax,
       generateRateSvg: generateRateSvg,
-      bdrRoster: bdrRoster
+      bdrRoster: bdrRoster,
+      currentBdrRoster: currentBdrRoster,
+      bdrDisplayName: bdrDisplayName,
+      bdrRows: bdrRows,
+      reconciliation: reconciliation,
+      renderReconciliation: renderReconciliation
     }
   };
   document.addEventListener('DOMContentLoaded', load);
