@@ -1,5 +1,17 @@
 # Dashboard Enhancement Loop — Status Log
 
+### Forecast | fix REAL do menu Exportar atrás (backdrop-filter do header prendia o stacking context) (2026-07-22)
+
+> O deploy anterior subiu o `#export-menu` para z-index 1500, mas o menu CONTINUAVA atrás.
+> Causa real: **`premium.css` põe `backdrop-filter` no `.header`**, o que CRIA um stacking
+> context; sem `z-index` ele fica no nível 0 e a barra de filtros (posterior no DOM) pinta por
+> cima de TODO o header — o z-index:1500 do menu estava confinado dentro do contexto do header,
+> inútil. Fix: **`#app-header { position: relative; z-index: 50 }`** (id vence a especificidade
+> do premium.css) — eleva o contexto do header acima do conteúdo e abaixo dos modais
+> (prob-overlay z-100), sem cobri-los. Vale para todos os dropdowns do header (Exportar, painéis).
+> **🚀 DEPLOY (LOCK):** commit `2870ede` (ff sobre `origin/main 53efa90`) | deployment
+> `dpl_HpaMG1CBRF8WTuoqLTkpUVjse8F5` (READY), ambos os aliases. Preflight PASS. 7 rotas 200, auth 401.
+
 ### Forecast | export Excel com fórmulas em TODAS as células calculadas + fix z-index do menu Exportar (2026-07-22)
 
 - **Bug z-index (pedido do dono):** o menu "Exportar" (CSV/Excel) abria ATRÁS dos elementos.
