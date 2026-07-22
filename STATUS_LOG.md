@@ -1,5 +1,19 @@
 # Dashboard Enhancement Loop — Status Log
 
+### BDR Workload v2 | Multi-seleção de porte/segmento/persona + warehouse temático por aba (2026-07-22)
+
+- **Pedido do usuário:** (1) todos os filtros selecionáveis (Persona, Segmento, Porte) deveriam permitir "Todos" **e** selecionar vários, como o BDR; (2) o "Comparativo por BDR" estava se repetindo idêntico em todas as subpáginas — deveria ser adequado ao tema de cada uma (por setor/dimensão).
+- **(1) Filtros multi-seleção:**
+  - **Backend** (`bdr-workload-semantic.js`, `bdr-workload-penetration.js`, `bdr-workload-compare.js`): `porte`/`segmento`/`persona` agora aceitam **lista CSV** e viram `COALESCE(...) IN (@porte0,@porte1,...)` com **named params** (sem interpolação de valor — SQL injection controlado). `porte` segue validado contra a allowlist (`PORTE_VALUES`), rejeitando inválido com 400. **Retrocompatível:** 1 valor continua funcionando; escalar legado = 1º item da lista. `payloadKey`/cache e guards de live fallback atualizados para as listas (tolerantes a escalar E array).
+  - **Frontend** (`bdr-workload-v2.js`): `dimMulti()` generaliza o multi-select `<details>`+checkbox (BDR reusa via `bdrMulti`); estado ganhou `portes`/`segmentos`/`personas` (arrays) + escalares legados; `MULTI_DIMS` orquestra toggle/clear/serialização; URL persiste CSV (`?portes=grande,media`); `params()`, `channelCompareBox()` e `loadCmp()` enviam CSV às APIs (corrige regressão pega no review: Canais/Evolução perdiam filtro quando ≥2 selecionados).
+- **(2) Warehouse temático (fim do clone):**
+  - `bdrWarehouse(d,wopts)` agora é parametrizado por `WAREHOUSE_BY_TAB`: **Pulso** = ritmo/total/CRM/contato efetivo · **Canais** = 5 canais + total · **Gestão** = SQL/contato efetivo/CRM/total. Cada aba abre na métrica do seu tema (a métrica é resetada se não pertence ao `metricSet` da aba). `warehouseControls(metricSet)` recebe o conjunto da aba.
+  - **Penetração** ganhou `sectorWarehouse(d)`: comparativo **por porte/segmento/persona** (elegíveis por grupo + cobertura de toque), lendo `data.breakdowns.{porte,segmento,persona}` — a leitura por setor/ICP que faz sentido na aba, não por BDR.
+- **Validação:** `npm run check` PASS (exit 0) — novas asserções de parse de listas nas 3 APIs + rejeição de porte inválido em lista; asserções UI de multi-select, warehouse temático e sectorWarehouse. Reviewer modo code **PASS** (8/10 na 1ª passada — pegou a regressão de multi-filtro no compare; **10/10** no re-review após correção).
+- **PR/merge:** PR `#19`, squash `803c9ca` na `main`.
+- **Deploy canônico:** `dashboard-axenya-rkp2igsp6-axenya-f1a041f6` (READY, production), aliases `https://axenya-pipeline-dashboard.vercel.app` e `https://project-bsmfu.vercel.app`. Cache-buster: main `?v=11` (core `?v=2`, charts `?v=4` inalterados).
+- **Smoke produção:** página `/novo-bdr/workload` → 200; `bdr-workload-v2.js?v=11` no ar com `dimMulti`/`sectorWarehouse`/`WAREHOUSE_BY_TAB`; `/api/bdr-workload-semantic` (inclusive com `porte=grande,media`) sem sessão → 401.
+
 ### BDR Workload v2 | Comparativo multi-BDR (armazém de gráficos) em Pulso/Canais/Gestão (2026-07-22)
 
 - **Pedido do usuário:** nas visões que já trazem o geral, oferecer também visões **agrupadas por BDR** — poder **selecionar mais de um BDR** e comparar suas séries ao longo do tempo (linhas/cores/legendas distintas), com médias móveis, medianas, média, total, eixos e rótulos de dados. "Só poder scrollar e ver as informações; combinar múltiplos cenários com os filtros."
