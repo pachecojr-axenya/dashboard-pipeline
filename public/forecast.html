@@ -82,6 +82,11 @@
       padding: 1.5rem 2rem 1rem;
       background: var(--card);
     }
+    /* premium.css põe backdrop-filter no .header → cria um stacking context. Sem z-index
+       ele fica no nível 0 e a barra de filtros (posterior no DOM) pinta por cima — prendendo
+       os dropdowns do header (Exportar, painéis) atrás. Elevamos o contexto acima do conteúdo,
+       mas abaixo dos modais (prob-overlay z-100) para não cobri-los. Id vence o premium.css. */
+    #app-header { position: relative; z-index: 50; }
 
     .header h1 {
       font-size: 1.5rem;
