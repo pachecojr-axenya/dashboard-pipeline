@@ -1,5 +1,20 @@
 # Auditoria crítica dos gráficos 🟡 | 2026-06-12
 
+## Adendo | Meta vs Ach (2026-07-22)
+
+> **Estado: 🟡 não validado contra o HubSpot.** Bloco novo (`public/meta-ach.js`), primeira
+> montagem na aba "Meta vs Ach" do `/forecast`. Mostra atingimento da meta do trimestre por
+> AE. **"Fechado" = Σ (`arr_estimado` × prob. de etapa pela régua GLOBAL) das contas cuja entrada
+> em Implantação (`data_implantacao`, fallback `data_ganho`) cai no tri corrente.** Régua =
+> `SEMANTIC_REF.forecast_flat` (Implantação 0,8 · Ganho 1,0). Meta 300k/AE, time = 5 AEs
+> (Ágatta fora) = 1,5MM.
+> Ressalvas conhecidas a validar: (1) é métrica de **bookings ponderados** (arr_estimado × régua), NÃO a receita
+> canônica da Regra primária nº 3 (Real/Probabilizada) — números podem divergir do resto do
+> forecast por construção, é esperado; (2) `arr_estimado` como fonte de origem ainda não foi
+> conferido campo a campo no HubSpot; (3) contas do pipeline **Bid** não entram (o payload só
+> expõe entrada em Implantação/Ganho de Vendas) — extensão futura se o dono quiser Bid; (4)
+> status "no ritmo/atrás" usa % de dias decorridos do tri como ritmo esperado (proxy linear).
+
 ## Adendo | BDR No Show (2026-07-20)
 
 > **Estado: 🟠 até validação pós-deploy.** Auditoria encontrou mistura de AEs no gráfico por BDR, semanas sem amostra plotadas como 0%, eixo chegando a 130%, gráfico limitado às últimas 16 semanas e ranking fora SLA incluindo perdidos/reagendados. A correção usa roster canônico, denominador de desfechos conhecidos + cobertura, lacunas sem amostra, eixo 0–100%, média móvel ponderada de 4 semanas e reconciliação `ranking fora SLA = tabela operacional`. Recorte real de 30 dias: 74 reuniões canônicas, 41 com desfecho (55,4% de cobertura), 10 no-shows históricos, 8 abertos/fora SLA. Ver `docs/2026-07-20_no-show-validation-incident.md`.

@@ -1,5 +1,38 @@
 # Dashboard Enhancement Loop — Status Log
 
+### Meta vs Ach | bloco compartilhado de atingimento de meta do tri por AE (2026-07-22)
+
+> Pedido do dono: aba "Meta vs Ach" no /forecast, replicável em QUALQUER painel (CRO, Board,
+> Forecast…). Meta do tri = 300k de ARR/executivo; time = 1,5MM. Mede **receita fechada**
+> (conta que entrou em Implantação no tri), não receita que "caiu" no tri.
+
+- **Bloco compartilhado `public/meta-ach.js`** (ES5 autocontido, injeta CSS `ma-*`, sem
+  dependência de globais além do array de deals): `MetaAch.render(el, deals, opts)` + `compute()`
+  puro + `openAeModal()`. Nos moldes do `filter-bar.js` — plugável em qualquer HTML.
+- **Regra de valor:** "Fechado" = Σ (`arr_estimado` × **prob. de etapa pela régua GLOBAL**) das
+  contas cuja `data_implantacao` (fallback `data_ganho`) cai no trimestre corrente (detectado
+  pela data). Régua = fonte única `SEMANTIC_REF.forecast_flat` (espelho do DEFAULT do
+  `prob-engine.js`): **Implantação 0,8 · Ganho 1,0** (decisão do dono 2026-07-22). Métrica de
+  **bookings ponderados**, distinta das duas séries canônicas da Regra primária nº 3 — NÃO passa
+  pelo forecast-engine (a régua do motor zeraria contas recém-fechadas sem faturamento manual);
+  documentado na memória de cálculo do bloco. Ex. Q3 (produção): time R$ 339k / 1,5MM (23%);
+  Juliana 368k×0,8 = R$ 295k (98%).
+- **Roster:** 5 AEs (André, Fausto, Guilherme, Juliana, Rafael); **Ágatta fora** por decisão do
+  dono p/ fechar 5 × 300k = 1,5MM (roster canônico do painel AE tem 6). Match por 1º nome.
+- **UI:** KPIs (Meta do time | Fechado + % | Gap + faltam% | Contas no tri); **barra do time**
+  (total × meta geral) com marcador tracejado de ritmo esperado (= % de dias decorridos do tri);
+  barra por AE com chip de status (batido ≥100% · no ritmo ≥ ritmo · atrás); **drill por AE**
+  (clicar no nome → modal com Deal/Etapa/Vidas/ARR est./Régua/Ponderado + link HubSpot + total);
+  memória de cálculo no rodapé. Sem commit/forecast (só realizado × meta).
+- **Integração `/forecast`:** aba "Meta vs Ach" no segmented control. **Histórico removido do
+  toggle** (pedido do dono; painel e código do Histórico ficam intactos, só sem entrada no
+  toggle) → toggle = Pipeline | Meta vs Ach. O "thumb" do segmented control passou a ser
+  **medido via JS** (`_syncSegThumb`: offsetWidth/offsetLeft do botão ativo) — o `calc(50%)`
+  fixo assumia 2 botões idênticos e saía do centro com labels de tamanhos diferentes.
+- Front-only (arquivo estático + edições no HTML), sem tocar em `api/`/`lib/`. **Não validado
+  campo a campo no HubSpot** (números de origem a conferir); marcador visual 🟡 removido do
+  título a pedido do dono (ressalva textual mantida no rodapé).
+
 ### BDR Workload v2 | Multi-seleção de porte/segmento/persona + warehouse temático por aba (2026-07-22)
 
 - **Pedido do usuário:** (1) todos os filtros selecionáveis (Persona, Segmento, Porte) deveriam permitir "Todos" **e** selecionar vários, como o BDR; (2) o "Comparativo por BDR" estava se repetindo idêntico em todas as subpáginas — deveria ser adequado ao tema de cada uma (por setor/dimensão).
