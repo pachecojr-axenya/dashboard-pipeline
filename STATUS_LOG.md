@@ -1,5 +1,21 @@
 # Dashboard Enhancement Loop — Status Log
 
+### BDR Workload v2 | Comparativo multi-BDR (armazém de gráficos) em Pulso/Canais/Gestão (2026-07-22)
+
+- **Pedido do usuário:** nas visões que já trazem o geral, oferecer também visões **agrupadas por BDR** — poder **selecionar mais de um BDR** e comparar suas séries ao longo do tempo (linhas/cores/legendas distintas), com médias móveis, medianas, média, total, eixos e rótulos de dados. "Só poder scrollar e ver as informações; combinar múltiplos cenários com os filtros."
+- **Entrega (frontend-only):**
+  - **Multi-seleção de BDR** (`state.bdrs`, array) coexistindo com o filtro único legado. URL antiga `?bdr=X` migra para `?bdrs=`. Quando 0 ou ≥2 selecionados, busca todos e filtra client-side; com exatamente 1, envia à API (via `apiBdr()`). Filtro vira um `<details>` com checkboxes + botão "limpar".
+  - Novo renderer **`multiLine`** (`bdr-workload-v2-charts.js`): 1 linha por BDR (cor/legenda própria, paleta de 12 séries), **média móvel** (3/7d, linha suavizada), **linhas de referência mediana/média** do conjunto, rótulo de dado no último ponto de cada série, eixos com grid, tabela a11y (data × BDR) e pontos clicáveis (drill por BDR/dia via `openDrill(kind,'',date,1,bdr)`).
+  - Seção **"Comparativo por BDR"** injetada em **Pulso, Canais e Gestão**, com controles de **métrica** (total/ligações/e-mails/WhatsApp/LinkedIn/reuniões/CRM/contato efetivo/SQL), **média móvel** e **linha de referência**, mais **resumo por BDR** (total, média/dia, mediana/dia, pico/dia). Trunca em 12 séries com aviso para focar via filtro.
+  - Gestão passa a **respeitar a seleção de BDRs** (tabela + ranking filtrados por `filterByBdrs`); `channelCompareBox`/`loadCmp` usam `apiBdr()`.
+  - Helpers novos em core: `movingAverage`, `mean`, `median`, `bdrList`, `uniqueDates`, `seriesByBdr`, `SERIES_PALETTE`/`seriesColor`.
+- **Sem mudança de API/BQ/ETL:** reusa `data.rhythm.series` (grão date×BDR) que `/api/bdr-workload-semantic` já retorna quando não há filtro de BDR único. Decisão de arquitetura: o dado por BDR/dia já existia no payload; só não era consumido no frontend (as views somavam tudo).
+- **Correção de teste (date-drift):** `scripts/test-bdr-workload-v2.js` fixava a data do agregado live em `'2026-07-21'` mas usava `todayIso()` na linha BQ → em qualquer dia ≠ 21/07 o merge tratava live como outro dia e somava em dobro (`total 12 vs 9`). Trocado para `sem.todayIso()` (determinístico; produção sempre agrega live para today). Falhava em `main` antes desta sessão.
+- **Validação:** `npm run check` PASS (exit 0), com novas asserções UI para os componentes multi-BDR (`multiLine`, `v2-multiline`, `v2-ref-line`, `v2-bdr-menu`, `v2-warehouse`, helpers e métodos públicos). Reviewer modo code **PASS 8.5/10** (3 achados baixos, 2 corrigidos na sessão: filtro da Gestão + `apiBdr()` no compare).
+- **PR/merge:** PR `#18`, squash `4669e2b` na `main`.
+- **Deploy canônico:** `dashboard-axenya-6d8cc4gk4-axenya-f1a041f6` (READY, production) via `vercel --prod --scope axenya-f1a041f6`, aliases `https://axenya-pipeline-dashboard.vercel.app` e `https://project-bsmfu.vercel.app`. Cache-busters: core `?v=2`, charts `?v=4`, main `?v=10`.
+- **Smoke produção:** página `/novo-bdr/workload` → 200; assets `?v=2/4/10` servidos (`multiLine` e `bdrWarehouse` confirmados no ar); `/api/bdr-workload-semantic` sem sessão → 401.
+
 ### BDR Workload v2 | Treble passa a contar como WhatsApp do BDR (2026-07-21)
 
 - **Decisão implementada** (ver `docs/treble-whatsapp-attribution-decision.md`): os disparos WhatsApp do Treble (communications `INTEGRATION`, app 26063081, `hubspot_owner_id` nulo) agora contam como WhatsApp do BDR, atribuídos pelo **dono do contato associado** (restrito ao roster). Sem contato de BDR do roster → descartado (não vira "desconhecido").
