@@ -1880,7 +1880,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         </button>
         <div id="export-menu"
-          style="display:none; position:absolute; top:calc(100% + 6px); right:0; background:rgba(22,27,34,0.88); backdrop-filter:blur(20px) saturate(160%); -webkit-backdrop-filter:blur(20px) saturate(160%); border-radius:12px; padding:0.4rem; z-index:300; flex-direction:column; gap:0.3rem; min-width:130px;">
+          style="display:none; position:absolute; top:calc(100% + 6px); right:0; background:rgba(22,27,34,0.88); backdrop-filter:blur(20px) saturate(160%); -webkit-backdrop-filter:blur(20px) saturate(160%); border-radius:12px; padding:0.4rem; z-index:1500; flex-direction:column; gap:0.3rem; min-width:130px;">
           <button class="fbtn" style="width:100%; justify-content:center;"
             onclick="exportData('csv'); toggleExportMenu()">CSV (.csv)</button>
           <button class="fbtn" style="width:100%; justify-content:center;"
@@ -4454,6 +4454,8 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
               n: mObj.n,
               ym: m.label,
               rec: mObj.rec,
+              manual: mObj.manual,       // faturamento manual (dado digitado, não cálculo)
+              fb: mObj.vpvFallback,      // fallback vidas×VPV (Cot/Cons/Neg sem base de régua)
             };
             h += `<td class="m real m-hide v${sep}${now}" data-col="${ci}" data-calc="${esc(JSON.stringify(realCalcData))}">${fmtBRL(mObj.rec)}</td>`;
           } else {
@@ -4550,13 +4552,26 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
 
     // Reproduz a fórmula da Receita Real de um mês (mesma lógica de calcReceita /
     // Diagnóstico), referenciando as células de 1ª Fatura (pf) e Vidas da mesma linha.
+    // Fórmula Excel auditável da célula de Receita Real. Cobre TODAS as células que o
+    // forecast CALCULA (a régua/motor): Reunião Agendada (vidas×24), Diagnóstico e o
+    // fallback vidas×VPV (vidas×R$/vida), Fee por vida (=1ª fatura) e Corretagem (variantes
+    // sobre a 1ª fatura). Faturamento manual (Ganho/Implantação) NÃO é cálculo, é dado
+    // digitado → retorna null e a célula fica com o valor. Quando a coluna de input (vidas
+    // ou 1ª fatura) não está visível no export, usa o valor literal para a fórmula ficar
+    // autossuficiente.
     function buildRealFormula(data, R, pfCol, vidasCol) {
-      const pf = pfCol + R, vd = vidasCol + R;
-      const vidas = data.vidas || 0, n = data.n, mod = data.mod;
-      if (data.stage === 'Diagnóstico') {
-        if (vidas > 0 && data.rec != null) return vd + '*' + Math.round(data.rec / vidas);
+      if (data.manual) return null;   // faturamento manual = dado, não cálculo
+      const vidas = data.vidas || 0, n = data.n, mod = data.mod, rec = data.rec;
+      const vd = vidasCol ? (vidasCol + R) : String(vidas);
+      const pf = pfCol ? (pfCol + R) : (data.pf != null ? String(data.pf) : null);
+      // Base em vidas
+      if (data.stage === 'Reunião Agendada') return vidas > 0 ? vd + '*24' : null;
+      if (data.stage === 'Diagnóstico' || data.fb) {   // Diagnóstico ou fallback vidas×VPV
+        if (vidas > 0 && rec != null) return vd + '*' + Math.round(rec / vidas);
         return null;
       }
+      // Base na 1ª fatura (régua)
+      if (pf == null) return null;
       if (mod === 'Fee por vida') return pf;
       if (mod === 'Corretagem') {
         if (data.ag === true) {
@@ -4634,7 +4649,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
           // Fórmulas auditáveis dos meses; aplicadas depois dos numOverrides, sobrescrevem.
           if (isXlsx && calc) {
             if (type === 'real') {
-              const f = buildRealFormula(calc, di + 2, colL(idxPf), colL(idxVidas));
+              const f = buildRealFormula(calc, di + 2, idxPf >= 0 ? colL(idxPf) : '', idxVidas >= 0 ? colL(idxVidas) : '');
               if (f) { formulaCells.push({ r: di + 1, c: ci, f, z: '#,##0' }); realFormulaCols.add(ci); }
             } else if (type === 'prob') {
               const realCi = ci - nMonths;
@@ -4656,6 +4671,26 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
             if (raw != null && raw !== '' && isFinite(Number(raw))) numOverrides.push({ r: di + 1, c: ci, v: Number(raw), z: isPct ? '0.0%' : zNum });
             else numOverrides.push({ r: di + 1, c: ci, blank: true });  // sem dado: limpa o "-" da célula numérica
           });
+          // Fórmulas das colunas CALCULADAS de resumo (referenciam as colunas-fonte da
+          // mesma linha; se a coluna-fonte não estiver visível, cai no número já posto).
+          const R = di + 2;
+          const infoIdx = k => (currentInfo || []).findIndex(c => c.k === k);
+          const infoColL = k => { const i = infoIdx(k); return i >= 0 ? colL(i) : ''; };
+          const arrC = infoColL('arr_estimado'), pfC = infoColL('primeira_fatura'),
+                probAeC = infoColL('probabilidade'), probAjC = infoColL('prob_ajustada');
+          const pushInfoF = (key, f) => { const i = infoIdx(key); if (i >= 0 && f) formulaCells.push({ r: di + 1, c: i, f, z: '#,##0' }); };
+          // ARR × %AE = ARR Estimado × Prob. AE
+          if (d.arr_pae != null && arrC && probAeC) pushInfoF('arr_pae', `${arrC}${R}*${probAeC}${R}`);
+          // ARR Ponderado = base × P. Ajust.; base = ARR Est. (>0) senão 1ª Fatura × 12
+          if (d.arr_pond != null && probAjC) {
+            const base = (d.arr_estimado > 0 && arrC) ? `${arrC}${R}`
+                       : (d.primeira_fatura > 0 && pfC) ? `${pfC}${R}*12` : null;
+            if (base) pushInfoF('arr_pond', `${base}*${probAjC}${R}`);
+          }
+          // TCV = régua (calcReceitaMes) somada no período → 1ª Fatura × (TCV / 1ª Fatura)
+          if (d.tcv != null && d.tcv > 0 && d.primeira_fatura > 0 && pfC) {
+            pushInfoF('tcv', `${pfC}${R}*${Number((d.tcv / d.primeira_fatura).toFixed(6))}`);
+          }
         }
         rows.push(row);
       });

@@ -1,5 +1,29 @@
 # Dashboard Enhancement Loop — Status Log
 
+### Forecast | export Excel com fórmulas em TODAS as células calculadas + fix z-index do menu Exportar (2026-07-22)
+
+- **Bug z-index (pedido do dono):** o menu "Exportar" (CSV/Excel) abria ATRÁS dos elementos.
+  Estava em `z-index:300`; o dropdown do seletor de painéis (`#panel-dd`, mesmo header) já
+  usa `1500` e funciona → subi o `#export-menu` para **1500** (consistente). Aparece na frente.
+- **Fórmulas para TODAS as células calculadas (pedido do dono):** `buildRealFormula` agora cobre
+  todo cálculo da régua/motor, não só Diagnóstico/Fee/Corretagem: **Reunião Agendada** (`vidas×24`),
+  **fallback vidas×VPV** (Cot/Cons/Neg sem base de régua, flag `vpvFallback`) e Diagnóstico
+  (`vidas×R$/vida`), além de Fee por vida (`=1ª fatura`) e Corretagem (variantes). A Probabilizada
+  correspondente vira `=<célula Real>×probAdj` para todas elas. Faturamento manual
+  (Ganho/Implantação) fica como **valor** (é dado digitado, não cálculo).
+- **Colunas de RESUMO calculadas também viram fórmula** (o dono viu que TCV/ARR pond. iam como
+  número): **ARR × %AE** = `ARR Est. × Prob. AE`; **ARR Pond.** = `(ARR Est. | 1ª Fatura×12) × P.
+  Ajust.`; **TCV** = `1ª Fatura × (TCV/1ª Fatura)` (liga à régua). Referenciam as colunas-fonte da
+  mesma linha; se a coluna-fonte estiver oculta, cai no número. `ARR Est.`, `Vidas`, `1ª Fatura`
+  seguem como número (são INPUT do HubSpot, não cálculo). Totais das colunas = `SUM`.
+- **Bug latente corrigido:** célula de faturamento **manual** de deal com `modelo=Corretagem`
+  recebia uma fórmula de régua ERRADA sobre o valor manual (buildRealFormula só olhava stage/mod).
+  Adicionado flag `manual` no `data-calc` → manual nunca vira fórmula.
+- Robustez: se a coluna de input (vidas / 1ª fatura) estiver oculta no export, a fórmula usa o
+  **valor literal** (ex.: `100*24`) em vez de referência de célula, ficando autossuficiente.
+- Validado: `buildRealFormula` testado em todos os ramos (headless); `/forecast` 200; `z-index:1500`
+  servido. Front-only, sem tocar em `api/`/`lib/`. **Não commitado/deployado ainda.**
+
 ### Meta vs Ach | bloco compartilhado de atingimento de meta do tri por AE (2026-07-22)
 
 > Pedido do dono: aba "Meta vs Ach" no /forecast, replicável em QUALQUER painel (CRO, Board,
