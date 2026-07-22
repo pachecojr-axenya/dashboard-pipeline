@@ -135,6 +135,26 @@
     .v2-pt-label{fill:var(--text);font-size:10px;font-weight:800}
     .v2-stackbar{transition:width .2s}
     .v2-hint{color:var(--muted);font-size:.72rem;margin:.15rem 0 .5rem;line-height:1.45}
+    /* multi-série por BDR (armazém de gráficos) */
+    .v2-multiline{width:100%;height:auto;display:block}
+    .v2-multiline .v2-mline{fill:none;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+    .v2-multiline circle:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+    .v2-ref-line{stroke:var(--muted);stroke-dasharray:5 4;stroke-width:1.2}
+    .v2-ref-label{fill:var(--muted);font-size:10px;font-weight:800}
+    .v2-warehouse .desc{margin-bottom:.7rem}
+    .v2-warehouse-controls{grid-template-columns:repeat(3,minmax(150px,1fr));margin-bottom:.7rem;padding:.7rem}
+    .v2-swatch{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:.45rem;vertical-align:middle}
+    /* multi-select de BDR (chips + checkbox) */
+    .v2-bdr-multi label .v2-bdr-clear{margin-left:.5rem;background:none;border:0;color:var(--teal);font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;cursor:pointer;padding:0}
+    .v2-bdr-details{position:relative}
+    .v2-bdr-details>summary{list-style:none;cursor:pointer;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:.55rem .65rem;font-size:.82rem;user-select:none}
+    .v2-bdr-details>summary::-webkit-details-marker{display:none}
+    .v2-bdr-details>summary::after{content:'▾';float:right;color:var(--text2)}
+    .v2-bdr-details[open]>summary{border-color:var(--teal);box-shadow:0 0 0 3px rgba(58,184,183,.13)}
+    .v2-bdr-menu{position:absolute;z-index:60;margin-top:.35rem;left:0;right:0;max-height:280px;overflow:auto;background:var(--card);border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow);padding:.35rem}
+    .v2-bdr-opt{display:flex;align-items:center;gap:.5rem;padding:.4rem .5rem;border-radius:8px;font-size:.8rem;color:var(--text);cursor:pointer}
+    .v2-bdr-opt:hover{background:var(--hover-s)}
+    .v2-bdr-opt input{width:auto;accent-color:var(--teal)}
     /* coluna de nome congelada ao rolar a tabela na horizontal */
     .table-wrap thead th:first-child{position:sticky;left:0;z-index:4;background:var(--card)}
     .table-wrap tbody td:first-child{position:sticky;left:0;z-index:3;background:var(--card)}
@@ -198,8 +218,8 @@
     window.addEventListener('scroll',function(){var h=document.getElementById('topbar');if(h)h.classList.toggle('scrolled',window.scrollY>8);});
     window.addEventListener('DOMContentLoaded',function(){try{if(localStorage.getItem('novo_nav_open')==='true'&&!window.matchMedia('(max-width:820px)').matches)openDrawer();}catch(e){}});
   </script>
-  <script src="/bdr-workload-v2-core.js?v=1"></script>
-  <script src="/bdr-workload-v2-charts.js?v=3"></script>
-  <script src="/bdr-workload-v2.js?v=9"></script>
+  <script src="/bdr-workload-v2-core.js?v=2"></script>
+  <script src="/bdr-workload-v2-charts.js?v=4"></script>
+  <script src="/bdr-workload-v2.js?v=10"></script>
 </body>
 </html>
