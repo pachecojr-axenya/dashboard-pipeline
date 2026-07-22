@@ -28,6 +28,22 @@ async function withBqStub(rows, fn) {
   assert.equal(parsedSem.porte, 'grande');
   assert.equal(parsedSem.segmento, 'Tech');
   assert.equal(parsedSem.persona, 'RH');
+  // multi-seleção: porte/segmento/persona aceitam lista (retrocompatível: escalar = 1º item)
+  const parsedMulti = sem.parse(req('v=2&since=2026-07-01&until=2026-07-02&porte=grande,media&segmento=Tech,Saude&persona=RH,DP'));
+  assert.deepStrictEqual(parsedMulti.portes, ['grande', 'media']);
+  assert.deepStrictEqual(parsedMulti.segmentos, ['Tech', 'Saude']);
+  assert.deepStrictEqual(parsedMulti.personas, ['RH', 'DP']);
+  assert.equal(parsedMulti.porte, 'grande');
+  assert.throws(() => sem.parse(req('v=2&since=2026-07-01&until=2026-07-02&porte=grande,xxx')), /porte inválido/, 'porte inválido em lista deve ser rejeitado');
+  // compare: porte/segmento/persona também aceitam lista
+  const parsedCmp = cmp.parse(req('v=2&aSince=2026-07-20&aUntil=2026-07-20&bSince=2026-07-21&bUntil=2026-07-21&domain=ritmo&breakdown=canal&porte=grande,media&segmento=Tech,Saude&persona=RH,DP'));
+  assert.deepStrictEqual(parsedCmp.portes, ['grande', 'media']);
+  assert.deepStrictEqual(parsedCmp.segmentos, ['Tech', 'Saude']);
+  assert.deepStrictEqual(parsedCmp.personas, ['RH', 'DP']);
+  // penetration: idem
+  const parsedPen = pen.parse(req('v=2&since=2026-07-20&until=2026-07-21&porte=grande,media&segmento=Tech&persona=RH,DP'));
+  assert.deepStrictEqual(parsedPen.portes, ['grande', 'media']);
+  assert.deepStrictEqual(parsedPen.personas, ['RH', 'DP']);
   assert.equal(sem.isBusiness('2026-07-20'), true);
   assert.equal(sem.isBusiness('2026-07-19'), false);
   const associatedActivities = [{ id: '10', tipo: 'calls' }, { id: '20', tipo: 'calls' }];

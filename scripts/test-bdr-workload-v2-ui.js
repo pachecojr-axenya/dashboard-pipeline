@@ -11,7 +11,7 @@ const html = fs.readFileSync(path.join(ROOT, 'public/bdr-workload.html'), 'utf8'
 function has(s, m) { assert(allJs.includes(s) || html.includes(s), m || `missing ${s}`); }
 assert.equal((core.match(/\['(pulse|channels|management|penetration|evolution)'/g) || []).length, 5, '5 abas v2');
 ['bloquead', 'experimental', 'desabilitad', 'indisponível', 'bdr_daily_ops', 'snapshot observado'].forEach((word) => assert(!new RegExp(word, 'i').test(js), `texto proibido em strings v2: ${word}`));
-assert(js.includes("sel('Porte','porte'") && js.includes("sel('Segmento','segmento'") && js.includes("sel('Persona','persona'"), 'selects porte/segmento/persona reais ausentes');
+assert(js.includes("dimMulti('Porte','porte','portes'") && js.includes("dimMulti('Segmento','segmento','segmentos'") && js.includes("dimMulti('Persona','persona','personas'"), 'multi-select porte/segmento/persona ausente');
 ['v2-line-area', 'v2-waterfall', 'v2-grouped', 'v2-ranking', 'v2-stacked'].forEach((cls) => has(cls, `componente SVG/lista ausente: ${cls}`));
 ['lineArea', 'waterfall', 'grouped', 'ranking', 'stacked'].forEach((fn) => { const ix = charts.indexOf('function ' + fn); assert(ix >= 0, `renderer ${fn}`); assert(charts.slice(ix, ix + 2200).includes('openDrill'), `${fn} sem openDrill`); });
 assert(js.includes('loadSeq') && js.includes('currentLoad(token)') && js.includes('loadSemantic(token)') && js.includes('loadPen(token)') && js.includes('loadCmp(token)'), 'request token/loadSeq ausente');
@@ -22,7 +22,7 @@ assert(js.includes('v2-kpi-main') && !js.includes('<button class="kpi v2-kpi'), 
 assert(html.includes('.v2-kpi-main{width:100%;background:transparent;border:0;color:inherit;text-align:left') && html.includes('.v2-kpi-main:focus-visible{outline:2px solid var(--teal)'), 'CSS do botão KPI v2 deve ser transparente e acessível');
 assert(js.includes('openInfo:function') && js.includes('this.info(k)'), 'alias openInfo ausente');
 assert(js.includes("'none'") && !js.includes("'total'];"), 'compare breakdown deve usar none, não total');
-assert(js.includes("comparePreset==='7d'") && js.includes('porte:state.porte') && js.includes('segmento:state.segmento') && js.includes('persona:state.persona'), 'compare filtros/preset semana ausentes');
+assert(js.includes("comparePreset==='7d'") && js.includes("porte:dimArr('portes').join(',')") && js.includes("segmento:dimArr('segmentos').join(',')") && js.includes("persona:dimArr('personas').join(',')"), 'compare filtros multi/preset semana ausentes');
 assert(js.includes('function cmpRows') && js.includes('aPerBusinessDay') && js.includes('bPerBusinessDay'), 'normalização compare ausente');
 assert(js.includes('function coveragePct') && js.includes('coveragePct(cov') && js.includes('wilson95.low') && js.includes('wilson95.high'), 'penetração coverage/association não corrigidos');
 assert(js.includes('bdrOverride') && js.includes('p.bdr=bdrOverride') && js.includes('pageDrill:function(p){var d=state.drill;this.openDrill(d.kind,d.context,d.day,p,d.bdrOverride);'), 'override seguro BDR/paginação ausente');
@@ -38,8 +38,8 @@ assert(js.includes('coorte empresa+owner com lead elegível criado no período, 
 assert(js.includes('mesmo owner em até 30 dias; correlação, não causalidade'), 'associação/conversão 30D deve declarar correlação, não causalidade');
 assert(js.includes("if(!r.eligible)return panel(head+cards") && js.includes("st('empty','Nenhum lead elegível criado no período'"), 'pulso deve renderizar empty state de reatividade quando eligible=0');
 assert(js.includes("['crm','CRM']") && js.includes("['contato_efetivo','Contato efetivo']"), 'domínios CRM habilitados');
-assert(html.includes('/bdr-workload-v2-core.js?v=2') && html.includes('/bdr-workload-v2-charts.js?v=4') && html.includes('/bdr-workload-v2.js?v=10'), 'ordem/cache-busters v2 modular');
-assert(html.indexOf('/bdr-workload-v2-core.js') < html.indexOf('/bdr-workload-v2-charts.js') && html.indexOf('/bdr-workload-v2-charts.js') < html.indexOf('/bdr-workload-v2.js?v=10'), 'ordem dos scripts v2 modular inválida');
+assert(html.includes('/bdr-workload-v2-core.js?v=2') && html.includes('/bdr-workload-v2-charts.js?v=4') && html.includes('/bdr-workload-v2.js?v=11'), 'ordem/cache-busters v2 modular');
+assert(html.indexOf('/bdr-workload-v2-core.js') < html.indexOf('/bdr-workload-v2-charts.js') && html.indexOf('/bdr-workload-v2-charts.js') < html.indexOf('/bdr-workload-v2.js?v=11'), 'ordem dos scripts v2 modular inválida');
 assert(core.includes('window.WorkloadBDRV2Core') && charts.includes('window.WorkloadBDRV2Charts') && js.includes('WorkloadBDRV2Core') && js.includes('WorkloadBDRV2Charts'), 'namespaces modulares explícitos ausentes');
 assert(js.includes('Período anterior equivalente') && core.includes('previousEquivalent') && core.includes('rangeDays'), 'janela anterior equivalente visível/correta em Canais');
 assert(core.includes('2–3') && core.includes('4–5'), 'drill agrupado 2–3/4–5 ausente no front');
@@ -52,5 +52,10 @@ assert(charts.includes('function multiLine') && charts.slice(charts.indexOf('fun
 assert(core.includes('function movingAverage') && core.includes('function median') && core.includes('function seriesByBdr') && core.includes('function bdrList'), 'helpers de agregação por BDR ausentes');
 assert(js.includes('function bdrWarehouse') && js.includes('function selectedBdrs') && js.includes('function apiBdr'), 'armazém por BDR / seleção múltipla ausente');
 assert(js.includes('toggleBdr:function') && js.includes('clearBdrs:function') && js.includes('cmpMetric:function') && js.includes('cmpMovingAvg:function') && js.includes('cmpRefs:function'), 'métodos públicos multi-BDR ausentes');
-assert(js.includes("q.set('bdrs'") && js.includes("Core.bdrList(q.get('bdrs'))"), 'persistência de bdrs na URL ausente');
+assert(js.includes("q.set(arrKey,s.join(','))") && js.includes("Core.bdrList(q.get(arrKey))"), 'persistência de dimensões multi na URL ausente');
+// multi-seleção de porte/segmento/persona + warehouse temático por aba + comparativo por setor
+assert(js.includes('function dimMulti') && js.includes('toggleDim:function') && js.includes('clearDim:function'), 'multi-select genérico de dimensão ausente');
+assert(js.includes('MULTI_DIMS') && js.includes("['porte','portes']") && js.includes("['segmento','segmentos']") && js.includes("['persona','personas']"), 'dimensões multi (portes/segmentos/personas) ausentes no estado/URL');
+assert(js.includes('WAREHOUSE_BY_TAB') && js.includes('bdrWarehouse(d,WAREHOUSE_BY_TAB.pulse)') && js.includes('bdrWarehouse(d,WAREHOUSE_BY_TAB.channels)') && js.includes('bdrWarehouse(d,WAREHOUSE_BY_TAB.management)'), 'warehouse por BDR deve ser temático por aba (não clone)');
+assert(js.includes('function sectorWarehouse') && js.includes('sectorWarehouse(d)'), 'comparativo por setor na Penetração ausente');
 console.log('PASS bdr-workload-v2 UI static tests');
