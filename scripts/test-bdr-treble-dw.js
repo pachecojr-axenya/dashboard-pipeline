@@ -161,8 +161,8 @@ function testFlowRuleAttribution() {
   assert.strictEqual(t.agentFromFlowRule('pesquisa rh msg 2'), 'Samuel Alencar');
   assert.strictEqual(t.agentFromFlowRule('Exp Outbound v3'), 'Samuel Alencar');
   assert.strictEqual(t.agentFromFlowRule('experimento outbound'), 'Samuel Alencar');
-  assert.strictEqual(t.agentFromFlowRule('Deal4b follow'), 'Gabriele Almeida');
-  assert.strictEqual(t.agentFromFlowRule('deal 4b abertura'), 'Gabriele Almeida');
+  assert.strictEqual(t.agentFromFlowRule('Deal4b follow'), 'Gabriel Milan');
+  assert.strictEqual(t.agentFromFlowRule('deal 4b abertura'), 'Gabriel Milan');
   assert.strictEqual(t.agentFromFlowRule('Flow generico'), '');
 
   // Precedência: match direto em dim_agents vence a regra de flow.
@@ -184,7 +184,7 @@ function testFlowRuleAttribution() {
   const byGabriele = t.sanitizeMessage({
     flow: 'Deal4b abertura', status: 'DELIVERED', delivered_real: 1, replied_real: 0, created_day: '2026-07-20'
   });
-  assert.strictEqual(byGabriele.agent, 'Gabriele Almeida');
+  assert.strictEqual(byGabriele.agent, 'Gabriel Milan');
   assert.strictEqual(byGabriele.agentSource, 'flow_rule');
 
   // Cobertura de atribuição contabiliza a fonte de regra.
