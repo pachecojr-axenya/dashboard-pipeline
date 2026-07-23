@@ -46,12 +46,26 @@ const PII_KEYS = {
 // Regras de atribuição por CONSTRUTOR do flow (declaradas pelo negócio, não inferência).
 // Quem construiu o flow é o responsável, independentemente de o nome aparecer no flow.
 // Precedência: match direto em dim_agents > regra de flow > inferência por nome no flow.
-// normalizeText remove acentos e caixa; os matchers usam substring normalizada.
+// normalizeText remove acentos e caixa; separadores (espaço, _, -, .) são tratados como
+// um único delimitador (SEP) para casar nomes de flow como PESQUISA_RH_CONARH_... .
+const SEP = '[\\s._-]*';
 const FLOW_AGENT_RULES = [
-  { agent: 'Samuel Alencar', match: function (s) { return /pesquisa\s*rh/.test(s) || /\bexp\b.*outbound|outbound.*\bexp\b|experimento.*outbound|exp[\s._-]*outbound/.test(s); } },
-  { agent: 'Gabriel Milan', match: function (s) { return /deal\s*4\s*b/.test(s); } }
+  {
+    agent: 'Samuel Alencar',
+    match: function (s) {
+      return new RegExp('pesquisa' + SEP + 'rh').test(s) ||
+        new RegExp('exp' + SEP + 'outbound').test(s) ||
+        new RegExp('outbound' + SEP + 'exp').test(s) ||
+        new RegExp('experimento' + SEP + 'outbound').test(s);
+    }
+  },
+  { agent: 'Gabriel Milan', match: function (s) { return new RegExp('deal' + SEP + '4' + SEP + 'b').test(s); } }
 ];
 
+// Apelidos/primeiros nomes que aparecem no poll_name -> nome canônico do roster
+// (lib/bdr-team.js). Alinhado ao roster para não duplicar o mesmo BDR com nomes
+// diferentes entre painéis. Samuel/Gabriel Milan não são BDRs do roster, mas
+// constroem flows (mesma lógica de autoria).
 const AGENT_ALIASES = {
   gabi: 'Gabriele Almeida',
   gabriele: 'Gabriele Almeida',
@@ -59,14 +73,15 @@ const AGENT_ALIASES = {
   giovana: 'Giovana Nunes',
   thauan: 'Thauan Pontes',
   felipe: 'Felipe Andrade',
-  cintia: 'Cíntia Rodrigues',
-  cynthia: 'Cíntia Rodrigues',
+  cintia: 'Cintia Rodrigues',
+  cynthia: 'Cintia Rodrigues',
   marcelli: 'Marcelli Netto',
   yoky: 'Yokyko Muramoto',
   yokyko: 'Yokyko Muramoto',
-  bruna: 'Bruna Cristina Dos Reis Silva',
-  bru: 'Bruna Cristina Dos Reis Silva',
+  bruna: 'Bruna Reis',
+  bru: 'Bruna Reis',
   anderson: 'Anderson Souza',
+  andy: 'Anderson Souza',
   manu: 'Emanuelle Braga',
   emanuelle: 'Emanuelle Braga',
   pri: 'Priscilla Feliciello',
@@ -81,10 +96,10 @@ const CANONICAL_AGENT_BY_FIRST_NAME = {
   giovana: 'Giovana Nunes',
   thauan: 'Thauan Pontes',
   felipe: 'Felipe Andrade',
-  cintia: 'Cíntia Rodrigues',
+  cintia: 'Cintia Rodrigues',
   marcelli: 'Marcelli Netto',
   yokyko: 'Yokyko Muramoto',
-  bruna: 'Bruna Cristina Dos Reis Silva',
+  bruna: 'Bruna Reis',
   anderson: 'Anderson Souza',
   emanuelle: 'Emanuelle Braga',
   priscilla: 'Priscilla Feliciello',

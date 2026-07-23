@@ -156,7 +156,7 @@ function testPrivacyGuard() {
 }
 
 function testFlowRuleAttribution() {
-  // Regra de negócio pelo construtor do flow (pesquisa RH / exp outbound = Samuel; deal4b = Gabriele Almeida).
+  // Regra de negócio pelo construtor do flow (pesquisa RH / exp outbound = Samuel; deal4b = Gabriel Milan).
   assert.strictEqual(t.agentFromFlowRule('Pesquisa RH - abertura'), 'Samuel Alencar');
   assert.strictEqual(t.agentFromFlowRule('pesquisa rh msg 2'), 'Samuel Alencar');
   assert.strictEqual(t.agentFromFlowRule('Exp Outbound v3'), 'Samuel Alencar');
@@ -164,6 +164,14 @@ function testFlowRuleAttribution() {
   assert.strictEqual(t.agentFromFlowRule('Deal4b follow'), 'Gabriel Milan');
   assert.strictEqual(t.agentFromFlowRule('deal 4b abertura'), 'Gabriel Milan');
   assert.strictEqual(t.agentFromFlowRule('Flow generico'), '');
+
+  // Separadores flexíveis (_ - . espaço) no poll_name real da Treble.
+  assert.strictEqual(t.agentFromFlowRule('PESQUISA_RH_CONARH_2026W30_V3_SALESAI2'), 'Samuel Alencar');
+  assert.strictEqual(t.agentFromFlowRule('exp_outbound_teste'), 'Samuel Alencar');
+  assert.strictEqual(t.agentFromFlowRule('deal_4_b'), 'Gabriel Milan');
+
+  // Apelido no nome do flow (inferência por nome, não regra de negócio).
+  assert.strictEqual(t.inferAgentFromFlow('Modelo_24_Andy_RH'), 'Anderson Souza');
 
   // Precedência: match direto em dim_agents vence a regra de flow.
   const direct = t.sanitizeMessage({
