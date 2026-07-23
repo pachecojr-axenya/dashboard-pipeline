@@ -43,9 +43,18 @@ const PII_KEYS = {
   session_id: true
 };
 
+// Regras de atribuição por CONSTRUTOR do flow (declaradas pelo negócio, não inferência).
+// Quem construiu o flow é o responsável, independentemente de o nome aparecer no flow.
+// Precedência: match direto em dim_agents > regra de flow > inferência por nome no flow.
+// normalizeText remove acentos e caixa; os matchers usam substring normalizada.
+const FLOW_AGENT_RULES = [
+  { agent: 'Samuel Alencar', match: function (s) { return /pesquisa\s*rh/.test(s) || /\bexp\b.*outbound|outbound.*\bexp\b|experimento.*outbound|exp[\s._-]*outbound/.test(s); } },
+  { agent: 'Gabriele Almeida', match: function (s) { return /deal\s*4\s*b/.test(s); } }
+];
+
 const AGENT_ALIASES = {
-  gabi: 'Gabriele Silva',
-  gabriele: 'Gabriele Silva',
+  gabi: 'Gabriele Almeida',
+  gabriele: 'Gabriele Almeida',
   leticia: 'Leticia Romão',
   giovana: 'Giovana Nunes',
   thauan: 'Thauan Pontes',
@@ -67,7 +76,7 @@ const AGENT_ALIASES = {
 };
 
 const CANONICAL_AGENT_BY_FIRST_NAME = {
-  gabriele: 'Gabriele Silva',
+  gabriele: 'Gabriele Almeida',
   leticia: 'Leticia Romão',
   giovana: 'Giovana Nunes',
   thauan: 'Thauan Pontes',
@@ -300,6 +309,15 @@ function canonicalAgentName(name) {
   return CANONICAL_AGENT_BY_FIRST_NAME[first] || raw;
 }
 
+function agentFromFlowRule(flow) {
+  const s = normalizeText(flow);
+  if (!s) return '';
+  for (let i = 0; i < FLOW_AGENT_RULES.length; i += 1) {
+    if (FLOW_AGENT_RULES[i].match(s)) return FLOW_AGENT_RULES[i].agent;
+  }
+  return '';
+}
+
 function inferAgentFromFlow(flow) {
   const s = normalizeText(flow);
   const keys = Object.keys(AGENT_ALIASES);
@@ -320,6 +338,12 @@ function agentForRow(r) {
   const direct = canonicalAgentName(fullName(r));
   if (direct) {
     return { agent: direct, agentSource: 'direct', agentConfidence: 1 };
+  }
+
+  // Regra de negócio por construtor do flow (alta confiança, não é palpite).
+  const byRule = agentFromFlowRule(r.flow);
+  if (byRule) {
+    return { agent: byRule, agentSource: 'flow_rule', agentConfidence: 0.95 };
   }
 
   const inferred = inferAgentFromFlow(r.flow);
@@ -380,7 +404,9 @@ function sanitizeMessage(r) {
     bdr: agent.agent,
     bdrSource: agent.agentSource === 'direct'
       ? 'Match direto em dim_agents por origin_id'
-      : (agent.agentSource === 'flow_inference' ? 'Inferido do nome do flow' : 'Não identificado'),
+      : (agent.agentSource === 'flow_rule'
+        ? 'Regra de negócio pelo construtor do flow'
+        : (agent.agentSource === 'flow_inference' ? 'Inferido do nome do flow' : 'Não identificado')),
     family,
     audience,
     semanticGroup: family + ' | ' + audience + ' | ' + meta.label,
@@ -421,6 +447,7 @@ function assertNoPii(obj) {
 function sourceLabelForAgent(a) {
   const counts = [
     { key: 'direct', value: a.direct },
+    { key: 'flow_rule', value: a.rule },
     { key: 'flow_inference', value: a.inferred },
     { key: 'unknown', value: a.unknown }
   ].sort(function (x, y) { return y.value - x.value; });
@@ -509,7 +536,8 @@ function aggregateMessages(messages) {
       flows: {},
       direct: 0,
       inferred: 0,
-      unknown: 0
+      unknown: 0,
+      rule: 0
     };
     agents[m.agent].attempts += 1;
     if (m.delivered) agents[m.agent].delivered += 1;
@@ -517,6 +545,7 @@ function aggregateMessages(messages) {
     if (m.replied) agents[m.agent].replied += 1;
     agents[m.agent].flows[m.flow] = true;
     if (m.agentSource === 'direct') agents[m.agent].direct += 1;
+    else if (m.agentSource === 'flow_rule') agents[m.agent].rule += 1;
     else if (m.agentSource === 'flow_inference') agents[m.agent].inferred += 1;
     else agents[m.agent].unknown += 1;
 
@@ -588,8 +617,9 @@ function aggregateMessages(messages) {
     .sort(function (a, b) { return b.count - a.count; });
 
   const direct = messages.filter(function (m) { return m.agentSource === 'direct'; }).length;
+  const rule = messages.filter(function (m) { return m.agentSource === 'flow_rule'; }).length;
   const inferred = messages.filter(function (m) { return m.agentSource === 'flow_inference'; }).length;
-  const unknown = total - direct - inferred;
+  const unknown = total - direct - rule - inferred;
 
   summary.flowsCount = byFlow.length;
   summary.bdrsCount = byAgent.length;
@@ -625,12 +655,14 @@ function aggregateMessages(messages) {
     attributionCoverage: {
       total,
       direct,
+      rule,
       inferred,
       unknown,
       directPct: pct(direct, total),
+      rulePct: pct(rule, total),
       inferredPct: pct(inferred, total),
       unknownPct: pct(unknown, total),
-      attributedPct: pct(direct + inferred, total)
+      attributedPct: pct(direct + rule + inferred, total)
     }
   };
 }
@@ -754,6 +786,7 @@ async function buildPayloadFromDW(range) {
         'Retenção e filtros limitados a no máximo 90 dias',
         'Leitura continua indisponível em fact_deployment_status',
         'Atribuição direta só quando origin_id faz match com dim_agents.id',
+        'Flows de regra de negócio (pesquisa RH / experimento outbound = Samuel Alencar; deal4b = Gabriele Almeida) são atribuídos pelo construtor do flow, com precedência sobre a inferência por nome',
         'Demais responsáveis são inferidos pelo nome do flow; origin_id sem match, como 59580, não vira pessoa'
       ]
     },
@@ -825,5 +858,7 @@ module.exports._test = {
   sanitizeMessage,
   aggregateMessages,
   assertNoPii,
+  agentFromFlowRule,
+  inferAgentFromFlow,
   ROW_LIMIT
 };

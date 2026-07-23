@@ -107,9 +107,9 @@ function testStatusAgentAndAggregates() {
 
   const messages = rows.map(t.sanitizeMessage);
 
-  assert.strictEqual(messages[0].agent, 'Gabriele Silva');
+  assert.strictEqual(messages[0].agent, 'Gabriele Almeida');
   assert.strictEqual(messages[0].agentSource, 'direct');
-  assert.strictEqual(messages[1].agent, 'Gabriele Silva');
+  assert.strictEqual(messages[1].agent, 'Gabriele Almeida');
   assert.strictEqual(messages[1].agentSource, 'flow_inference');
   assert.strictEqual(messages[2].agentSource, 'unknown');
   assert.ok(!Object.prototype.hasOwnProperty.call(messages[0], 'originId'));
@@ -155,13 +155,54 @@ function testPrivacyGuard() {
   });
 }
 
+function testFlowRuleAttribution() {
+  // Regra de negócio pelo construtor do flow (pesquisa RH / exp outbound = Samuel; deal4b = Gabriele Almeida).
+  assert.strictEqual(t.agentFromFlowRule('Pesquisa RH - abertura'), 'Samuel Alencar');
+  assert.strictEqual(t.agentFromFlowRule('pesquisa rh msg 2'), 'Samuel Alencar');
+  assert.strictEqual(t.agentFromFlowRule('Exp Outbound v3'), 'Samuel Alencar');
+  assert.strictEqual(t.agentFromFlowRule('experimento outbound'), 'Samuel Alencar');
+  assert.strictEqual(t.agentFromFlowRule('Deal4b follow'), 'Gabriele Almeida');
+  assert.strictEqual(t.agentFromFlowRule('deal 4b abertura'), 'Gabriele Almeida');
+  assert.strictEqual(t.agentFromFlowRule('Flow generico'), '');
+
+  // Precedência: match direto em dim_agents vence a regra de flow.
+  const direct = t.sanitizeMessage({
+    flow: 'Pesquisa RH', status: 'DELIVERED', delivered_real: 1, replied_real: 0,
+    created_day: '2026-07-20', agent_first_name: 'Leticia', agent_last_name: 'Romão'
+  });
+  assert.strictEqual(direct.agent, 'Leticia Romão');
+  assert.strictEqual(direct.agentSource, 'direct');
+
+  // Sem match direto, a regra de flow atribui e marca a fonte flow_rule.
+  const bySamuel = t.sanitizeMessage({
+    flow: 'Pesquisa RH', status: 'DELIVERED', delivered_real: 1, replied_real: 0, created_day: '2026-07-20'
+  });
+  assert.strictEqual(bySamuel.agent, 'Samuel Alencar');
+  assert.strictEqual(bySamuel.agentSource, 'flow_rule');
+  assert.strictEqual(bySamuel.bdrSource, 'Regra de negócio pelo construtor do flow');
+
+  const byGabriele = t.sanitizeMessage({
+    flow: 'Deal4b abertura', status: 'DELIVERED', delivered_real: 1, replied_real: 0, created_day: '2026-07-20'
+  });
+  assert.strictEqual(byGabriele.agent, 'Gabriele Almeida');
+  assert.strictEqual(byGabriele.agentSource, 'flow_rule');
+
+  // Cobertura de atribuição contabiliza a fonte de regra.
+  const agg = t.aggregateMessages([bySamuel, byGabriele, direct]);
+  assert.strictEqual(agg.attributionCoverage.rule, 2);
+  assert.strictEqual(agg.attributionCoverage.direct, 1);
+  assert.strictEqual(agg.attributionCoverage.unknown, 0);
+  assert.strictEqual(agg.attributionCoverage.attributedPct, 100);
+}
+
 async function main() {
   testDateRanges();
   await testTransportSecurity();
   testSqlContract();
   testStatusAgentAndAggregates();
+  testFlowRuleAttribution();
   testPrivacyGuard();
-  console.log('[test-bdr-treble-dw] PASS | presets, SQL seguro, agentes, status bruto, agregados e PII');
+  console.log('[test-bdr-treble-dw] PASS | presets, SQL seguro, agentes, status bruto, regra de flow, agregados e PII');
 }
 
 main().catch(function (error) {
