@@ -59,6 +59,7 @@
 
   function sourceBadge(source) {
     if (source === 'direct') return 'direto';
+    if (source === 'flow_rule') return 'regra do flow (construtor)';
     if (source === 'flow_inference') return 'inferido do flow';
     return 'não identificado';
   }
@@ -247,19 +248,23 @@
   function attributionCoverage(rows) {
     var total = rows.length;
     var direct = 0;
+    var rule = 0;
     var inferred = 0;
     var unknown = 0;
     rows.forEach(function (r) {
       if (r.agentSource === 'direct') direct += 1;
+      else if (r.agentSource === 'flow_rule') rule += 1;
       else if (r.agentSource === 'flow_inference') inferred += 1;
       else unknown += 1;
     });
     return {
       total: total,
       direct: direct,
+      rule: rule,
       inferred: inferred,
       unknown: unknown,
       directPct: total ? direct / total * 100 : null,
+      rulePct: total ? rule / total * 100 : null,
       inferredPct: total ? inferred / total * 100 : null,
       unknownPct: total ? unknown / total * 100 : null
     };
@@ -310,7 +315,8 @@
         flows: {},
         direct: 0,
         inferred: 0,
-        unknown: 0
+        unknown: 0,
+        rule: 0
       };
       m[k].attempts += 1;
       if (r.delivered) m[k].delivered += 1;
@@ -318,6 +324,7 @@
       if (r.replied) m[k].replied += 1;
       m[k].flows[r.flow] = true;
       if (r.agentSource === 'direct') m[k].direct += 1;
+      else if (r.agentSource === 'flow_rule') m[k].rule += 1;
       else if (r.agentSource === 'flow_inference') m[k].inferred += 1;
       else m[k].unknown += 1;
     });
@@ -550,7 +557,7 @@
       }).join('') + '</tbody></table></div></div><div class="card span-6"><h2>Contrato de métricas</h2><p>' + esc(meta.metricContract || '') +
       '</p><p>Timezone: <b>' + esc(meta.timezone || 'America/Sao_Paulo') + '</b></p><p>Freshness: <b>' + esc(meta.freshness || 'cache 10 min') +
       '</b></p><p>Privacidade: ' + esc(meta.privacy || '') + '</p></div><div class="card span-6"><h2>Qualidade da atribuição no filtro</h2>' +
-      '<p>Direto: <b>' + pctNum(cov.directPct) + '</b></p><p>Inferido do flow: <b>' + pctNum(cov.inferredPct) + '</b></p>' +
+      '<p>Direto: <b>' + pctNum(cov.directPct) + '</b></p><p>Regra do flow (construtor): <b>' + pctNum(cov.rulePct) + '</b></p><p>Inferido do flow: <b>' + pctNum(cov.inferredPct) + '</b></p>' +
       '<p>Não identificado: <b>' + pctNum(cov.unknownPct) + '</b></p>' +
       (meta.limitations || []).map(function (x) { return '<p class="muted">' + esc(x) + '</p>'; }).join('') + '</div></div>';
   }
