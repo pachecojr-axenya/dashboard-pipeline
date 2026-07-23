@@ -256,16 +256,16 @@ function novoToggleInfo(){_novoShowInfo=!_novoShowInfo;document.body.classList.t
 // HubSpot mapeadas (BDR_HS_ALIAS). Filtro de período do painel (AxFilter) = data de ENTRADA
 // em Reunião Agendada (data_reuniao_agendada), salvo indicação na ficha.
 var BDR_HELP_CHARTS=[
-  {key:'kpi-orig-deals',title:'Deals Originados no Mês | BDRs (R01)',
-    desc:'Nº de deals originados no MÊS CORRENTE apenas pelo time de BDRs (os 13 nomes do drawer de Configurações). Originado = data de ENTRADA na etapa Reunião Agendada (pipeline Vendas), não a data de criação. Deals sem essa data não contam. Mês corrente fixo | NÃO segue o filtro de período. Clique no card para ver os deals.',
-    formula:'R01 = COUNT(deals com sdr no time E data_reuniao_agendada no mês corrente)',
+  {key:'kpi-orig-deals',title:'Deals Originados no Período | BDRs (R01)',
+    desc:'Nº de deals originados na JANELA DO FILTRO de período apenas pelo time de BDRs (os 13 nomes do drawer de Configurações). Sem filtro ativo, usa o mês corrente. Originado = data de ENTRADA na etapa Reunião Agendada (pipeline Vendas), não a data de criação. Deals sem essa data não contam. Segue o filtro de período. Clique no card para ver os deals.',
+    formula:'R01 = COUNT(deals com sdr no time E mês de data_reuniao_agendada dentro da janela do filtro; sem filtro = mês corrente)',
     fields:[['sdr','Origem BDR; comparado (com tolerância de acento/grafia) aos 13 nomes do drawer.'],['hs_v2_date_entered_1144746905','Data de entrada em Reunião Agendada (exposta como data_reuniao_agendada). Define o mês da originação.']]},
-  {key:'kpi-orig-colabs',title:'Colaboradores Originados no Mês | BDRs (R02)',
-    desc:'Soma do campo colaboradores dos MESMOS deals do R01: originados no mês corrente pelo time de BDRs. Deals sem o campo contam 0. Mês corrente fixo | NÃO segue o filtro de período.',
+  {key:'kpi-orig-colabs',title:'Colaboradores Originados no Período | BDRs (R02)',
+    desc:'Soma do campo colaboradores dos MESMOS deals do R01: originados na janela do filtro (sem filtro = mês corrente) pelo time de BDRs. Deals sem o campo contam 0. Segue o filtro de período.',
     formula:'R02 = Σ quantidade_de_colaboradores dos deals do R01',
     fields:[['quantidade_de_colaboradores','Somado por deal (0 quando vazio).'],['sdr','Origem BDR (time do drawer).'],['hs_v2_date_entered_1144746905','Mês da originação (data_reuniao_agendada).']]},
   {key:'kpi-ra-stale',title:'Reunião Agendada há +30 dias (R03)',
-    desc:'Deals cujo estágio ATUAL é Reunião Agendada e que entraram na etapa há mais de 30 dias — reuniões marcadas paradas sem avanço. APENAS deals originados pelo time de BDRs. Sem a data de entrada registrada → fora. NÃO segue o filtro de período. Amarelo quando > 0.',
+    desc:'Deals cujo estágio ATUAL é Reunião Agendada e que entraram na etapa há mais de 30 dias — reuniões marcadas paradas sem avanço. APENAS deals originados pelo time de BDRs. Sem a data de entrada registrada → fora. Snapshot vivo | NÃO segue o filtro de período. Amarelo quando > 0.',
     formula:'R03 = COUNT(deals do time com dealstage = Reunião Agendada E data_reuniao_agendada ≤ hoje − 30 dias)',
     fields:[['dealstage','Estágio atual = Reunião Agendada (Vendas).'],['hs_v2_date_entered_1144746905','Data de entrada na etapa; hoje − entrada > 30 dias.'],['sdr','Origem BDR (time do drawer).']]},
   {key:'origin-bdr',title:'Originação por BDR (R12)',
@@ -396,6 +396,29 @@ var BDR_ORIG_DATE='data_reuniao_agendada';
 function _origDate(d){ return d[BDR_ORIG_DATE]||null; }
 function _oym(d){ var x=_origDate(d); return x?x.substring(0,7):null; }
 function _origDeals(){ return _dealsByDate(BDR_ORIG_DATE).filter(_origDate); }
+// Janela dos KPIs de originação do topo (R01/R02): segue o filtro de período quando
+// há um ativo; sem filtro, cai no MÊS CORRENTE (comportamento padrão histórico).
+// Retorna { start, end, label, filtered } com start/end em YYYY-MM (inclusivos).
+function _bdrKpiWindow(){
+  var s=_filterState();
+  if(s&&s.start&&s.end){
+    var a=s.start.substring(0,7), b=s.end.substring(0,7);
+    return { start:a, end:b, label:(s.label||(a===b?_mlbl(a):(_mlbl(a)+' → '+_mlbl(b)))), filtered:true };
+  }
+  var _n=new Date(); var ym=_n.getFullYear()+'-'+String(_n.getMonth()+1).padStart(2,'0');
+  return { start:ym, end:ym, label:_mlbl(ym), filtered:false };
+}
+// Deals originados pelo time de BDRs dentro da janela dos KPIs (por entrada em RA).
+// Usa exatamente o mesmo critério de janela dos gráficos (_inWinStrict, nível dia)
+// para garantir que o big number reconcilie com a soma das quebras abaixo. Sem
+// filtro ativo, restringe ao mês corrente (comportamento padrão histórico).
+function _bdrKpiOrigDeals(){
+  var w=_bdrKpiWindow();
+  if(w.filtered){
+    return _origDeals().filter(_isTeamBdr);
+  }
+  return _rawDeals().filter(function(d){ if(!_isTeamBdr(d))return false; var ym=_oym(d); return ym===w.start; });
+}
 // Alias para owners de BDR que não vêm resolvidos no ownerMap da API (id cru).
 var BDR_ALIAS={'76060683':'Fernando Henrique','83684312':'Beatriz Honorato'};
 function _bdrName(d){ var s=d.sdr; if(!s)return null; return BDR_ALIAS[s]||s; }
@@ -864,19 +887,20 @@ function novoRender(){
   var created=_origDeals();
   var createdBdr=created.filter(_isBdr).length;
   var createdTeam=created.filter(_isTeamBdr).length;
-  // ── KPIs (R01/R02/R03): originação do MÊS CORRENTE pelo time de BDRs + reuniões paradas ──
+  // ── KPIs (R01/R02/R03): originação do time de BDRs na janela do filtro + reuniões paradas ──
   // "Originado" = data de ENTRADA em Reunião Agendada (BDR_ORIG_DATE), não createdate.
   // Time de BDRs = exatamente os nomes do drawer de Configurações (window.BDR_LIST).
-  var _now=new Date();
-  var nowYM=_now.getFullYear()+'-'+String(_now.getMonth()+1).padStart(2,'0');
-  var origMonthDeals=deals.filter(function(d){ return _isTeamBdr(d) && _origDate(d) && _origDate(d).substring(0,7)===nowYM; });
+  // R01/R02 seguem o filtro de período (sem filtro = mês corrente); R03 é snapshot vivo.
+  var _kpiWin=_bdrKpiWindow();
+  var origMonthDeals=_bdrKpiOrigDeals();
   var origMonthColabs=origMonthDeals.reduce(function(s,d){ return s+(d.colaboradores||0); },0);
   var _cut=new Date(); _cut.setDate(_cut.getDate()-30);
   var cutStr=_cut.getFullYear()+'-'+String(_cut.getMonth()+1).padStart(2,'0')+'-'+String(_cut.getDate()).padStart(2,'0');
   var raStale=deals.filter(function(d){ return _isTeamBdr(d) && d.stage==='Reunião Agendada' && _origDate(d) && _origDate(d)<=cutStr; });
-  var tipOrigDeals='Nº de deals originados no mês corrente ('+_mlbl(nowYM)+') APENAS pelo time de BDRs (os 13 nomes do drawer de Configurações; grafias do HubSpot mapeadas para o drawer). Originado = data de ENTRADA na etapa Reunião Agendada, não a data de criação. Deals sem essa data não contam. Mês corrente fixo | não segue o filtro de período. Clique para ver os deals.';
-  var tipOrigColabs='Soma do campo colaboradores (quantidade_de_colaboradores no HubSpot) dos MESMOS deals do KPI R01: originados no mês corrente ('+_mlbl(nowYM)+') pelo time de BDRs (drawer de Configurações). Deals sem o campo contam 0. Mês corrente fixo | não segue o filtro de período. Clique para ver os deals.';
-  var tipRaStale='Deals cujo estágio ATUAL é Reunião Agendada e que ENTRARAM na etapa há mais de 30 dias — reuniões marcadas paradas sem avanço. APENAS deals originados pelo time de BDRs (os 13 nomes do drawer de Configurações). Deals em Reunião Agendada sem a data de entrada registrada ficam de fora. Não segue o filtro de período. Clique para ver os deals.';
+  var _winSuf=_kpiWin.filtered?'no período':'no mês corrente';
+  var tipOrigDeals='Nº de deals originados '+_winSuf+' ('+_kpiWin.label+') APENAS pelo time de BDRs (os 13 nomes do drawer de Configurações; grafias do HubSpot mapeadas para o drawer). Originado = data de ENTRADA na etapa Reunião Agendada, não a data de criação. Deals sem essa data não contam. Segue o filtro de período (sem filtro = mês corrente). Clique para ver os deals.';
+  var tipOrigColabs='Soma do campo colaboradores (quantidade_de_colaboradores no HubSpot) dos MESMOS deals do KPI R01: originados '+_winSuf+' ('+_kpiWin.label+') pelo time de BDRs (drawer de Configurações). Deals sem o campo contam 0. Segue o filtro de período (sem filtro = mês corrente). Clique para ver os deals.';
+  var tipRaStale='Deals cujo estágio ATUAL é Reunião Agendada e que ENTRARAM na etapa há mais de 30 dias — reuniões marcadas paradas sem avanço. APENAS deals originados pelo time de BDRs (os 13 nomes do drawer de Configurações). Deals em Reunião Agendada sem a data de entrada registrada ficam de fora. Snapshot vivo | não segue o filtro de período. Clique para ver os deals.';
 
   var kpi=function(lbl,val,sub,col,key,kind,tip){ return '<div class="kpi-card'+(kind?' kpi-click':'')+'" '+(kind?'onclick="bdrKpiOpen(\''+kind+'\')"':'')+'><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.35rem"><div class="kpi-label">'+lbl+'</div>'+(tip?_infoBtn(tip,key):_codeTag(key))+'</div><div class="kpi-value" style="color:'+(col||'var(--text)')+'">'+val+'</div><div class="kpi-sub">'+sub+'</div></div>'; };
   var c=function(title,tip,id,h,tabs,noEmoji){ return '<div class="novo-card"><div class="novo-card-header"><h3>'+(noEmoji?'':'🟡 ')+title+'</h3>'+_infoBtn(tip,id)+(tabs||'')+'</div><canvas id="chart-bdr-'+id+'" style="max-height:'+(h||340)+'px"></canvas></div>'; };
@@ -885,8 +909,8 @@ function novoRender(){
   document.getElementById('novo-content').innerHTML=(window.AxFilter?AxFilter.barHtml():'')+
     '<div style="font-size:.78rem;color:var(--text2);margin-bottom:.75rem">'+t('updated_at')+' '+ts+' | '+deals.length+' deals totais | '+bdrDeals.length+' com BDR (sdr) | '+bdrOpen.length+' abertos atuais</div>'+ 
     '<div class="kpi-row">'+
-      kpi('Deals Originados no Mês | BDRs',_ni(origMonthDeals.length),'entrada em Reunião Agendada em '+_mlbl(nowYM)+' | só time de BDRs','var(--teal)','kpi-orig-deals','origMonth',tipOrigDeals)+
-      kpi('Colaboradores Originados no Mês | BDRs',_ni(origMonthColabs),origMonthDeals.length+' deals originados em '+_mlbl(nowYM),'var(--teal)','kpi-orig-colabs','origColabs',tipOrigColabs)+
+      kpi(_kpiWin.filtered?'Deals Originados no Período | BDRs':'Deals Originados no Mês | BDRs',_ni(origMonthDeals.length),'entrada em Reunião Agendada em '+_kpiWin.label+' | só time de BDRs','var(--teal)','kpi-orig-deals','origMonth',tipOrigDeals)+
+      kpi(_kpiWin.filtered?'Colaboradores Originados no Período | BDRs':'Colaboradores Originados no Mês | BDRs',_ni(origMonthColabs),origMonthDeals.length+' deals originados em '+_kpiWin.label,'var(--teal)','kpi-orig-colabs','origColabs',tipOrigColabs)+
       kpi('Reunião Agendada há +30 dias',_ni(raStale.length),'paradas na etapa | só time de BDRs',raStale.length>0?'var(--yellow)':'var(--text)','kpi-ra-stale','raStale',tipRaStale)+
     '</div>'+
     '<div class="novo-cards">'+
@@ -959,11 +983,11 @@ function _lCnt(n){ return ' <span style="font-size:.68rem;color:var(--text2);fon
 
 function bdrKpiOpen(kind){
   var deals=_rawDeals();
-  var _now=new Date();
-  var nowYM=_now.getFullYear()+'-'+String(_now.getMonth()+1).padStart(2,'0');
-  var origMonth=deals.filter(function(d){ return _isTeamBdr(d) && _origDate(d) && _origDate(d).substring(0,7)===nowYM; });
-  if(kind==='origMonth') return novoOpenDealsModal('Deals Originados no Mês | BDRs', origMonth);
-  if(kind==='origColabs') return novoOpenDealsModal('Colaboradores Originados no Mês | BDRs', origMonth);
+  var w=_bdrKpiWindow();
+  var origMonth=_bdrKpiOrigDeals();
+  var _lbl=w.filtered?(' | '+w.label):(' | '+w.label);
+  if(kind==='origMonth') return novoOpenDealsModal((w.filtered?'Deals Originados no Período | BDRs':'Deals Originados no Mês | BDRs')+_lbl, origMonth);
+  if(kind==='origColabs') return novoOpenDealsModal((w.filtered?'Colaboradores Originados no Período | BDRs':'Colaboradores Originados no Mês | BDRs')+_lbl, origMonth);
   if(kind==='raStale'){
     var _cut=new Date(); _cut.setDate(_cut.getDate()-30);
     var cutStr=_cut.getFullYear()+'-'+String(_cut.getMonth()+1).padStart(2,'0')+'-'+String(_cut.getDate()).padStart(2,'0');
