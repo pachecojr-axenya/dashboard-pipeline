@@ -269,13 +269,13 @@ var BDR_HELP_CHARTS=[
     formula:'R03 = COUNT(deals do time com dealstage = Reunião Agendada E data_reuniao_agendada ≤ hoje − 30 dias)',
     fields:[['dealstage','Estágio atual = Reunião Agendada (Vendas).'],['hs_v2_date_entered_1144746905','Data de entrada na etapa; hoje − entrada > 30 dias.'],['sdr','Origem BDR (time do drawer).']]},
   {key:'origin-bdr',title:'Originação por BDR ou por Canal (R12)',
-    desc:'Deals (ou vidas, ou colaboradores) originados por cada BDR do TIME (13 do drawer; rótulo usa o nome canônico) OU por CANAL (origem__originacao_ do deal). Originação = entrada em Reunião Agendada; o filtro de período usa essa data. No modo Por BDR × Deals, a cor da barra indica o atingimento da META do BDR no período (verde ≥100% · amarelo ≥85% · laranja ≥70% · vermelho abaixo); no modo Por Canal não há cor de meta (metas são por BDR). Metas: botão "Metas" no card abre a tabela mês × BDR (edição GLOBAL, persistida no servidor); com filtro ativo, a meta comparada = SOMA das metas mensais dos meses da janela (meses sem meta mensal usam a meta padrão do BDR); sem filtro, a soma de todas as metas mensais cadastradas. Clique numa barra para ver os deals.',
-    formula:'meta(BDR, janela) = Σ meta_mensal[mês][BDR] para cada mês da janela do filtro | fallback: meta padrão do BDR nos meses sem meta mensal',
-    fields:[['sdr','Define o BDR; grafias do HubSpot mapeadas ao drawer (ex.: Gabriele de Almeida Silva → Gabriele Almeida).'],['origem__originacao_','Dimensão Por Canal (fonte do deal: inbound, outbound, evento etc.). Preenchimento parcial no HubSpot — "(sem origem)" agrupa os deals sem essa propriedade preenchida.'],['hs_v2_date_entered_1144746905','Data da originação (data_reuniao_agendada) | dimensão do filtro de período.'],['vidas','Somado no modo Vidas.'],['quantidade_de_colaboradores','Somado no modo Colaboradores.']]},
+    desc:'Deals (ou vidas, ou colaboradores) originados por cada BDR do TIME (13 do drawer; rótulo usa o nome canônico) OU por CANAL (origem__originacao_ do deal). Originação = entrada em Reunião Agendada; o filtro de período usa essa data. No modo Por BDR × Deals, a cor da barra indica o atingimento da META do BDR no período (verde ≥100% · amarelo ≥85% · laranja ≥70% · vermelho abaixo); no modo Por Canal não há cor de meta (metas são por BDR). REGRA DA META (2026-07-23): só conta para a meta em deals o deal com vidas PREENCHIDO e ≥ 30 — a barra continua mostrando o total de deals, mas o % de atingimento (cor + tooltip) usa só os deals que passam esse corte. Metas: botão "Metas" no card abre a tabela mês × BDR (edição GLOBAL, persistida no servidor); com filtro ativo, a meta comparada = SOMA das metas mensais dos meses da janela (meses sem meta mensal usam a meta padrão do BDR); sem filtro, a soma de todas as metas mensais cadastradas. Clique numa barra para ver os deals.',
+    formula:'meta(BDR, janela) = Σ meta_mensal[mês][BDR] para cada mês da janela do filtro | fallback: meta padrão do BDR nos meses sem meta mensal | realizado_meta(BDR) = COUNT(deals do BDR com vidas != null E vidas >= 30)',
+    fields:[['sdr','Define o BDR; grafias do HubSpot mapeadas ao drawer (ex.: Gabriele de Almeida Silva → Gabriele Almeida).'],['vidas','Corte da meta em deals: só conta vidas != null e >= 30. Também somado no modo Vidas (sem o corte).'],['origem__originacao_','Dimensão Por Canal (fonte do deal: inbound, outbound, evento etc.). Preenchimento parcial no HubSpot — "(sem origem)" agrupa os deals sem essa propriedade preenchida.'],['hs_v2_date_entered_1144746905','Data da originação (data_reuniao_agendada) | dimensão do filtro de período.'],['quantidade_de_colaboradores','Somado no modo Colaboradores.']]},
   {key:'metas-attainment',title:'Atingimento de Meta | Time de BDRs (R23)',
-    desc:'% da meta em DEALS atingida pelo time de BDRs em 3 janelas fixas, independentes do filtro de período do painel: Mês atual, Mês passado e Últimos 3 meses. Realizado = deals do time (13 do drawer) originados (entrada em Reunião Agendada) nos meses da janela. Meta = Σ das metas mensais cadastradas por BDR nesses meses; mês sem meta mensal cadastrada usa a meta padrão do BDR (drawer de Configurações). Clique num card para ver o detalhe por BDR (realizado × meta) do período.',
-    formula:'atingimento(janela) = Σ deals_originados(BDR, janela) ÷ Σ meta(BDR, janela) | meta(BDR, mês) = meta_mensal[mês][BDR] ou meta padrão do BDR na falta',
-    fields:[['sdr','Define o BDR do deal (time do drawer).'],['hs_v2_date_entered_1144746905','Data da originação (data_reuniao_agendada); define o mês do deal para a janela.']]},
+    desc:'% da meta em DEALS atingida pelo time de BDRs em 3 janelas fixas, independentes do filtro de período do painel: Mês atual, Mês passado e Últimos 3 meses. Realizado = deals do time (13 do drawer) originados (entrada em Reunião Agendada) nos meses da janela, CONTANDO SÓ deals com vidas preenchido e ≥ 30 (regra do dono, 2026-07-23 — evita inflar a meta com deals sem porte qualificado). Meta = Σ das metas mensais cadastradas por BDR nesses meses; mês sem meta mensal cadastrada usa a meta padrão do BDR (drawer de Configurações). Clique num card para ver o detalhe por BDR (realizado × meta) do período.',
+    formula:'atingimento(janela) = Σ deals_originados_com_vidas>=30(BDR, janela) ÷ Σ meta(BDR, janela) | meta(BDR, mês) = meta_mensal[mês][BDR] ou meta padrão do BDR na falta',
+    fields:[['sdr','Define o BDR do deal (time do drawer).'],['vidas','Corte de elegibilidade: só entra no realizado se != null e >= 30.'],['hs_v2_date_entered_1144746905','Data da originação (data_reuniao_agendada); define o mês do deal para a janela.']]},
   {key:'weekly-origin',title:'Weekly Origination (R13)',
     desc:'Geração semanal do time de BDRs: barras empilhadas com TODOS os BDRs/grupos (sem colapso em "Outros" desde 2026-07-16), últimas 13 semanas (segunda a domingo), pela semana de ENTRADA em Reunião Agendada. Alterna a métrica (Deals | Vidas | Colaboradores) e a DIMENSÃO do empilhamento: Por BDR (padrão), Por Origem (campo origem__originacao_ do deal) ou Por Porte (mesma faixa do R11). Filtro de período pela mesma data.',
     fields:[['sdr','Define o BDR (time do drawer).'],['origem__originacao_','Dimensão "Por Origem" (fonte do deal: outbound, evento, inbound…).'],['hs_v2_date_entered_1144746905','Semana da originação (data_reuniao_agendada).'],['vidas','Peso no modo Vidas.'],['quantidade_de_colaboradores','Peso no modo Colaboradores | faixa da dimensão Por Porte.']]},
@@ -446,6 +446,12 @@ function _teamBdrByName(s){
 }
 function _teamBdrName(d){ return _teamBdrByName(_bdrName(d)); }
 function _isTeamBdr(d){ return !!_teamBdrName(d); }
+// Regra de negócio (pedido do dono, 2026-07-23): um deal só conta para a META EM DEALS
+// de originação (R12 modo Deals/cor de meta, R23 Atingimento de Meta) se tiver o campo
+// vidas PREENCHIDO e >= 30. Deal sem vidas ou com vidas < 30 não entra nesse realizado —
+// evita inflar a meta com deals pequenos/sem qualificação de porte. NÃO afeta as somas
+// literais de Vidas/Colaboradores nem os demais gráficos de originação (R05/R13/R14 etc.).
+function _bdrCountsForGoal(d){ return d.vidas!=null && d.vidas>=30; }
 // Toggle segmentado (Apple-style), portado do painel AE.
 function _subTabs(id,current,opts){ return '<div id="'+id+'" class="tab-sub">'+opts.map(function(o){ return '<button class="tab-sub-btn'+(current===o.mode?' active':'')+'" data-mode="'+o.mode+'" onclick="'+o.fn+'(\''+o.mode+'\')">'+o.label+'</button>'; }).join('')+'</div>'; }
 function _setActive(containerId,mode){ var c=document.getElementById(containerId); if(!c)return; c.querySelectorAll('.tab-sub-btn').forEach(function(b){ b.classList.toggle('active', b.getAttribute('data-mode')===mode); }); _moveTabSubThumb(c,true); }
@@ -610,9 +616,10 @@ function _teamGoalForMonths(months){
   return has?sum:null;
 }
 // Deals originados (nº) pelo time de BDRs cujos meses de entrada em RA estão no conjunto.
+// Conta só deals com vidas preenchido e >= 30 (_bdrCountsForGoal) — regra da meta em deals.
 function _teamDealsForMonths(months){
   var set={}; months.forEach(function(m){set[m]=1;});
-  return _rawDeals().filter(function(d){ if(!_isTeamBdr(d))return false; var ym=_oym(d); return !!ym && set[ym]===1; }).length;
+  return _rawDeals().filter(function(d){ if(!_isTeamBdr(d))return false; if(!_bdrCountsForGoal(d))return false; var ym=_oym(d); return !!ym && set[ym]===1; }).length;
 }
 // Card de atingimento: {label, realizado, meta, pct|null, months}.
 function _bdrAttainment(label,months){
@@ -956,8 +963,8 @@ function novoRender(){
     '</div>'+
     '<div class="novo-cards">'+
       '<div class="section-hdr"><h2>Originação</h2></div>'+
-      cWide('Originação por BDR'+_cntSpan(createdTeam),'Quantos deals (ou vidas, ou colaboradores) foram originados por cada BDR do TIME (os 13 nomes do drawer de Configurações; grafias do HubSpot mapeadas para o drawer) OU por CANAL (origem__originacao_ do deal: inbound, outbound, evento etc., conforme preenchido no HubSpot). Originação = data de ENTRADA em Reunião Agendada (não createdate); o filtro de período usa essa data. No modo Por BDR × Deals, a cor da barra indica o atingimento da META do BDR no período (verde ≥100% · amarelo ≥85% · laranja ≥70% · vermelho abaixo); no modo Por Canal a meta não se aplica (metas são por BDR, não por canal). Metas: botão "Metas" no card abre a tabela mês × BDR (edição GLOBAL, persistida no servidor); com filtro ativo, a meta comparada = SOMA das metas mensais dos meses da janela (meses sem meta mensal usam a meta padrão do BDR); sem filtro, a soma de todas as metas mensais cadastradas. Clique numa barra para ver os deals.','origin-bdr',320,_subTabs('bdr-origin-tabs',_bdrOriginMode,[{mode:'deals',label:'Deals',fn:'bdrSwitchOrigin'},{mode:'vidas',label:'Vidas',fn:'bdrSwitchOrigin'},{mode:'colaboradores',label:'Colaboradores',fn:'bdrSwitchOrigin'}])+'<span style="width:.15rem"></span>'+_subTabs('bdr-origin-dim-tabs',_bdrOriginDim,[{mode:'bdr',label:'Por BDR',fn:'bdrSwitchOriginDim'},{mode:'canal',label:'Por Canal',fn:'bdrSwitchOriginDim'}])+'<button onclick="bdrOpenMetasModal()" style="background:var(--card2);color:var(--teal);border:1px solid var(--border);border-radius:8px;padding:.3rem .7rem;font-size:.74rem;font-weight:600;cursor:pointer;margin-left:.4rem" title="Editar metas mensais por BDR (global)">Metas</button>',true)+
-      '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header"><h3>Atingimento de Meta | Time de BDRs</h3>'+_infoBtn('% da meta em DEALS atingida pelo time de BDRs em 3 janelas fixas (independem do filtro de período do painel): Mês atual, Mês passado e Últimos 3 meses. Realizado = deals do time originados (entrada em Reunião Agendada) nos meses da janela. Meta = Σ das metas mensais cadastradas por BDR nesses meses (fallback: meta padrão do BDR quando o mês não tem meta cadastrada). Clique num card para ver o detalhe por BDR do período.','metas-attainment')+'</div><div id="bdr-metas-attainment" style="margin-top:.5rem"></div></div>'+
+      cWide('Originação por BDR'+_cntSpan(createdTeam),'Quantos deals (ou vidas, ou colaboradores) foram originados por cada BDR do TIME (os 13 nomes do drawer de Configurações; grafias do HubSpot mapeadas para o drawer) OU por CANAL (origem__originacao_ do deal: inbound, outbound, evento etc., conforme preenchido no HubSpot). Originação = data de ENTRADA em Reunião Agendada (não createdate); o filtro de período usa essa data. No modo Por BDR × Deals, a cor da barra indica o atingimento da META do BDR no período (verde ≥100% · amarelo ≥85% · laranja ≥70% · vermelho abaixo) — REGRA: só conta para a meta o deal com vidas preenchido e ≥ 30 (a barra em si mostra o total de deals); no modo Por Canal a meta não se aplica (metas são por BDR, não por canal). Metas: botão "Metas" no card abre a tabela mês × BDR (edição GLOBAL, persistida no servidor); com filtro ativo, a meta comparada = SOMA das metas mensais dos meses da janela (meses sem meta mensal usam a meta padrão do BDR); sem filtro, a soma de todas as metas mensais cadastradas. Clique numa barra para ver os deals.','origin-bdr',320,_subTabs('bdr-origin-tabs',_bdrOriginMode,[{mode:'deals',label:'Deals',fn:'bdrSwitchOrigin'},{mode:'vidas',label:'Vidas',fn:'bdrSwitchOrigin'},{mode:'colaboradores',label:'Colaboradores',fn:'bdrSwitchOrigin'}])+'<span style="width:.15rem"></span>'+_subTabs('bdr-origin-dim-tabs',_bdrOriginDim,[{mode:'bdr',label:'Por BDR',fn:'bdrSwitchOriginDim'},{mode:'canal',label:'Por Canal',fn:'bdrSwitchOriginDim'}])+'<button onclick="bdrOpenMetasModal()" style="background:var(--card2);color:var(--teal);border:1px solid var(--border);border-radius:8px;padding:.3rem .7rem;font-size:.74rem;font-weight:600;cursor:pointer;margin-left:.4rem" title="Editar metas mensais por BDR (global)">Metas</button>',true)+
+      '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header"><h3>Atingimento de Meta | Time de BDRs</h3>'+_infoBtn('% da meta em DEALS atingida pelo time de BDRs em 3 janelas fixas (independem do filtro de período do painel): Mês atual, Mês passado e Últimos 3 meses. Realizado = deals do time originados (entrada em Reunião Agendada) nos meses da janela, CONTANDO SÓ deals com vidas preenchido e ≥ 30. Meta = Σ das metas mensais cadastradas por BDR nesses meses (fallback: meta padrão do BDR quando o mês não tem meta cadastrada). Clique num card para ver o detalhe por BDR do período.','metas-attainment')+'</div><div id="bdr-metas-attainment" style="margin-top:.5rem"></div></div>'+
       cWide('Weekly Origination'+_cntSpan(createdTeam),'Geração semanal APENAS do time de BDRs (drawer de Configurações): barras empilhadas com TODOS os BDRs/grupos (sem colapso), últimas 13 semanas pela data de ENTRADA em Reunião Agendada (não createdate); o filtro de período usa essa data. Alterna a métrica (Deals | Vidas | Colaboradores) e a DIMENSÃO do empilhamento: por BDR, por Origem do deal (origem__originacao_) ou por Porte.','weekly-origin',320,_subTabs('bdr-weekly-tabs',_bdrWeeklyMode,[{mode:'deals',label:'Deals',fn:'bdrSwitchWeekly'},{mode:'vidas',label:'Vidas',fn:'bdrSwitchWeekly'},{mode:'colaboradores',label:'Colaboradores',fn:'bdrSwitchWeekly'}])+'<span style="width:.15rem"></span>'+_DIM_TABS('bdr-weekly-dim-tabs',_bdrWeeklyDim,'bdrSwitchWeeklyDim'),true)+
       cWide('Monthly Origination'+_cntSpan(createdTeam),'Geração mensal APENAS do time de BDRs (drawer de Configurações), empilhada com TODOS os BDRs/grupos (sem colapso, mesmo desenho do Weekly): últimos 12 meses pela data de ENTRADA em Reunião Agendada (não createdate); o filtro de período usa essa data. AEs não entram. Alterna a métrica (Deals | Vidas | Colaboradores) e a DIMENSÃO do empilhamento: por BDR, por Origem do deal (origem__originacao_) ou por Porte. Clique num segmento para ver os deals.','leads-origin',300,_subTabs('bdr-leads-tabs',_bdrLeadsMode,[{mode:'deals',label:'Deals',fn:'bdrSwitchLeads'},{mode:'vidas',label:'Vidas',fn:'bdrSwitchLeads'},{mode:'colaboradores',label:'Colaboradores',fn:'bdrSwitchLeads'}])+'<span style="width:.15rem"></span>'+_DIM_TABS('bdr-leads-dim-tabs',_bdrMonthlyDim,'bdrSwitchMonthlyDim'),true)+
       '<div class="section-hdr"><h2>Handoff BDR → AE</h2></div>'+
@@ -1044,37 +1051,66 @@ function buildBdrOrigin(){
   var colab=_bdrOriginMode==='colaboradores';
   var vidas=_bdrOriginMode==='vidas';
   var byCanal=_bdrOriginDim==='canal';
-  // Pre-compute all three aggregations for rich tooltip, agrupadas pela dimensão ativa
-  // (Por BDR = nome canônico do drawer; Por Canal = origem__originacao_, campo _fFonte).
-  var dimFn=byCanal?_fFonte:function(d){ return _teamBdrName(d); };
-  var aggDeals={}, aggVidas={}, aggColab={};
+  var inc=function(d){ return vidas?(d.vidas||0):colab?(d.colaboradores||0):1; };
+  // Eixo Y é SEMPRE por BDR (não troca ao ligar "Por Canal" — o que muda é a cor da
+  // barra: Por BDR = barra sólida colorida pela meta; Por Canal = barra EMPILHADA por
+  // canal (origem__originacao_), mostrando o share de cada canal dentro do BDR).
+  var aggDeals={}, aggVidas={}, aggColab={}, aggGoalDeals={};
   created.forEach(function(d){
-    var b=dimFn(d);
+    var b=_teamBdrName(d);
     aggDeals[b]=(aggDeals[b]||0)+1;
     aggVidas[b]=(aggVidas[b]||0)+(d.vidas||0);
     aggColab[b]=(aggColab[b]||0)+(d.colaboradores||0);
+    if(_bdrCountsForGoal(d)) aggGoalDeals[b]=(aggGoalDeals[b]||0)+1;
   });
   var agg=colab?aggColab:vidas?aggVidas:aggDeals;
   var ranked=Object.keys(agg).map(function(b){return {bdr:b,n:agg[b]};}).filter(function(r){return r.n>0;}).sort(function(a,b){return b.n-a.n;}).slice(0,15);
   // Meta por BDR = _bdrGoalFor (metas MENSAIS da janela do filtro; fallback na flat legada).
-  // Só aplicável no modo Por BDR — metas são cadastradas por BDR, não por canal.
   var bdrInfo={};
-  if(!byCanal){
-    ranked.forEach(function(r){
-      var level=null;
-      (window.BDR_LIST||[]).forEach(function(b){ if(b.name===r.bdr) level=b.level; });
-      bdrInfo[r.bdr]={goal:_bdrGoalFor(r.bdr),level:level};
-    });
-  }
+  ranked.forEach(function(r){
+    var level=null;
+    (window.BDR_LIST||[]).forEach(function(b){ if(b.name===r.bdr) level=b.level; });
+    bdrInfo[r.bdr]={goal:_bdrGoalFor(r.bdr),level:level};
+  });
   var canvas=document.getElementById('chart-bdr-origin-bdr');
   if(canvas) canvas.style.height=Math.max(ranked.length*36+48,160)+'px';
-  // Color bars by goal attainment | só no modo Por BDR × Deals (Por Canal não tem meta).
+
+  if(byCanal){
+    // ── Por Canal: barra empilhada horizontal, uma linha por BDR, um segmento por
+    // canal (origem__originacao_) — mostra o SHARE de cada canal dentro do BDR.
+    // Sem colapso em "Outros" (mesmo padrão do Weekly/Monthly R13/R14): todo canal
+    // que aparece ganha segmento próprio; "(sem origem)" é um canal como outro.
+    var canais={};
+    created.forEach(function(d){ var c=_fFonte(d); canais[c]=(canais[c]||0)+inc(d); });
+    var canalGroups=Object.keys(canais).sort(function(a,b){return canais[b]-canais[a];});
+    var colors=['rgba(88,166,255,.8)','rgba(63,185,80,.75)','rgba(58,184,183,.8)','rgba(210,153,34,.85)','rgba(147,112,219,.8)','rgba(248,81,73,.7)','rgba(255,140,105,.8)','rgba(236,72,153,.75)','rgba(132,204,22,.7)','rgba(56,189,248,.7)'];
+    var byBdrCanal={}; // byBdrCanal[bdr][canal] = valor na métrica ativa
+    created.forEach(function(d){ var b=_teamBdrName(d), c=_fFonte(d); byBdrCanal[b]=byBdrCanal[b]||{}; byBdrCanal[b][c]=(byBdrCanal[b][c]||0)+inc(d); });
+    var datasets=canalGroups.map(function(g,i){
+      return {label:g,data:ranked.map(function(r){ return (byBdrCanal[r.bdr]&&byBdrCanal[r.bdr][g])||0; }),backgroundColor:colors[i%colors.length],stack:'s',borderRadius:2};
+    });
+    _novoMkChart('chart-bdr-origin-bdr',{type:'bar',plugins:[ChartDataLabels],
+      data:{labels:ranked.map(function(r){return r.bdr;}),datasets:datasets},
+      options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,layout:{padding:{right:54}},plugins:{legend:{display:true,position:'top',labels:{color:th.cText2,font:{family:NOVO_FONT,size:10},padding:6,boxWidth:11}},
+        datalabels:{display:function(c){return c.datasetIndex===c.chart.data.datasets.length-1;},anchor:'end',align:'right',color:th.cText,font:{family:NOVO_FONT,size:11,weight:'bold'},formatter:function(v,c){ var t=0; c.chart.data.datasets.forEach(function(ds){t+=(ds.data[c.dataIndex]||0);}); return t?_ni(t):''; }},
+        tooltip:{mode:'index',intersect:false,filter:function(item){return item.parsed.x>0;},callbacks:{
+          title:function(items){ var r=ranked[items[0].dataIndex]; var info=bdrInfo[r.bdr]||{}; return r.bdr+(info.level?' | '+info.level:''); },
+          label:function(c){ var r=ranked[c.dataIndex]; var tot=agg[r.bdr]||0; var v=c.parsed.x; var pct=tot?Math.round(v/tot*100):0; return c.dataset.label+': '+_ni(v)+' ('+pct+'%)'; }
+        }}},
+        scales:{x:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0},stacked:true},y:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT},autoSkip:false},stacked:true}},
+        onClick:function(e,el){ if(!el.length)return; var r=ranked[el[0].index]; var ds=datasets[el[0].datasetIndex]; bdrOpenFacetModal('Originação por BDR × Canal', created, 'bdr', r.bdr); if(ds&&_bdrFacet){ _bdrFacet.sel.fonte=ds.label; _bdrFacetRender(); } }}});
+    return;
+  }
+
+  // ── Por BDR: barra sólida, cor = atingimento da meta (só no modo Deals). O atingimento
+  // usa aggGoalDeals (deals com vidas preenchido e >= 30) — regra da meta em deals; a
+  // barra em si continua mostrando o TOTAL de deals (r.n), sem esconder volume.
   var bgColors;
-  if (!byCanal && !colab && !vidas) {
+  if (!colab && !vidas) {
     bgColors=ranked.map(function(r){
       var goal=bdrInfo[r.bdr] && bdrInfo[r.bdr].goal;
       if(goal==null||goal<=0) return 'rgba(147,112,219,.75)';
-      var pct=r.n/goal;
+      var pct=(aggGoalDeals[r.bdr]||0)/goal;
       if(pct>=1.0)  return 'rgba(63,185,80,.8)';
       if(pct>=0.85) return 'rgba(210,153,34,.85)';
       if(pct>=0.70) return 'rgba(248,160,40,.85)';
@@ -1097,14 +1133,14 @@ function buildBdrOrigin(){
           var r=ranked[c.dataIndex];
           var info=bdrInfo[r.bdr]||{};
           return [
-            (byCanal?'Deals: ':'Deals: ')+_ni(aggDeals[r.bdr]||0)+(info.goal!=null?' | Meta: '+info.goal:''),
+            'Deals: '+_ni(aggDeals[r.bdr]||0)+(info.goal!=null?' | Meta: '+_ni(aggGoalDeals[r.bdr]||0)+'/'+info.goal+' (vidas ≥ 30)':''),
             'Colaboradores: '+_ni(aggColab[r.bdr]||0),
             'Vidas: '+_ni(aggVidas[r.bdr]||0)
           ];
         }
       }}},
       scales:{x:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0}},y:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT},autoSkip:false}}},
-      onClick:function(e,el){ if(!el.length)return; var b=ranked[el[0].index].bdr; bdrOpenFacetModal('Originação por '+(byCanal?'Canal':'BDR'), created, byCanal?'fonte':'bdr', b); }}});
+      onClick:function(e,el){ if(!el.length)return; var b=ranked[el[0].index].bdr; bdrOpenFacetModal('Originação por BDR', created, 'bdr', b); }}});
 }
 
 // R23 | Atingimento de Meta (Time de BDRs): 3 janelas fixas em DEALS, independentes do
@@ -1114,7 +1150,7 @@ function _bdrAttainmentCard(att){
   var pct=att.pct;
   var pctTxt=pct==null?'—':Math.round(pct*100)+'%';
   var color=pct==null?'var(--text2)':(pct>=1.0?'var(--green,#3fb950)':pct>=0.85?'var(--yellow,#d29922)':pct>=0.70?'#f8a028':'var(--red,#f85149)');
-  var metaTxt=att.meta==null?'sem meta cadastrada':(_ni(att.realizado)+' / '+_ni(att.meta)+' deals');
+  var metaTxt=att.meta==null?'sem meta cadastrada':(_ni(att.realizado)+' / '+_ni(att.meta)+' deals (vidas ≥ 30)');
   return '<button class="kpi-card kpi-click" style="text-align:left;cursor:pointer;border:none" onclick="bdrOpenAttainmentModal(\''+att.label.replace(/'/g,"\\'")+'\')">'+
     '<div class="kpi-label">'+att.label+'</div>'+
     '<div class="kpi-value" style="color:'+color+'">'+pctTxt+'</div>'+
@@ -1139,7 +1175,7 @@ function bdrOpenAttainmentModal(label){
   var att=_bdrAttMemo.filter(function(a){return a.label===label;})[0]; if(!att)return;
   var months=att.months, mm=window.BDR_METAS_MONTHLY||{}, list=window.BDR_LIST||[];
   var set={}; months.forEach(function(m){set[m]=1;});
-  var deals=_rawDeals().filter(function(d){ if(!_isTeamBdr(d))return false; var ym=_oym(d); return !!ym && set[ym]===1; });
+  var deals=_rawDeals().filter(function(d){ if(!_isTeamBdr(d))return false; if(!_bdrCountsForGoal(d))return false; var ym=_oym(d); return !!ym && set[ym]===1; });
   var byBdr={}; deals.forEach(function(d){ var b=_teamBdrName(d); byBdr[b]=(byBdr[b]||0)+1; });
   var rows=list.map(function(b){
     var flat=_bdrFlatGoal(b.name), sum=0, has=false;
