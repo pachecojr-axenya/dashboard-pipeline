@@ -49,7 +49,7 @@ const PII_KEYS = {
 // normalizeText remove acentos e caixa; os matchers usam substring normalizada.
 const FLOW_AGENT_RULES = [
   { agent: 'Samuel Alencar', match: function (s) { return /pesquisa\s*rh/.test(s) || /\bexp\b.*outbound|outbound.*\bexp\b|experimento.*outbound|exp[\s._-]*outbound/.test(s); } },
-  { agent: 'Gabriele Almeida', match: function (s) { return /deal\s*4\s*b/.test(s); } }
+  { agent: 'Gabriel Milan', match: function (s) { return /deal\s*4\s*b/.test(s); } }
 ];
 
 const AGENT_ALIASES = {
@@ -786,7 +786,7 @@ async function buildPayloadFromDW(range) {
         'Retenção e filtros limitados a no máximo 90 dias',
         'Leitura continua indisponível em fact_deployment_status',
         'Atribuição direta só quando origin_id faz match com dim_agents.id',
-        'Flows de regra de negócio (pesquisa RH / experimento outbound = Samuel Alencar; deal4b = Gabriele Almeida) são atribuídos pelo construtor do flow, com precedência sobre a inferência por nome',
+        'Flows de regra de negócio (pesquisa RH / experimento outbound = Samuel Alencar; deal4b = Gabriel Milan) são atribuídos pelo construtor do flow, com precedência sobre a inferência por nome',
         'Demais responsáveis são inferidos pelo nome do flow; origin_id sem match, como 59580, não vira pessoa'
       ]
     },
