@@ -9,6 +9,8 @@ const charts = fs.readFileSync(path.join(ROOT, 'public/bdr-workload-v2-charts.js
 const info = fs.readFileSync(path.join(ROOT, 'public/bdr-workload-info.js'), 'utf8');
 const bdrHtml = fs.readFileSync(path.join(ROOT, 'public/bdr.html'), 'utf8');
 const nav = fs.readFileSync(path.join(ROOT, 'public/nav.js'), 'utf8');
+const premium = fs.readFileSync(path.join(ROOT, 'public/premium.js'), 'utf8');
+const bdrPages = ['bdr.html', 'bdr-workload.html', 'bdr-no-show.html', 'bdr-list-attack.html', 'bdr-treble.html'].map((file) => fs.readFileSync(path.join(ROOT, 'public', file), 'utf8'));
 const allJs = js + '\n' + core + '\n' + charts + '\n' + info;
 const html = fs.readFileSync(path.join(ROOT, 'public/bdr-workload.html'), 'utf8');
 function has(s, m) { assert(allJs.includes(s) || html.includes(s), m || `missing ${s}`); }
@@ -41,7 +43,7 @@ assert(js.includes('coorte empresa+owner com lead elegível criado no período, 
 assert(js.includes('mesmo owner em até 30 dias; correlação, não causalidade'), 'associação/conversão 30D deve declarar correlação, não causalidade');
 assert(js.includes("if(!r.eligible)return panel(head+cards") && js.includes("st('empty','Nenhum lead elegível criado no período'"), 'pulso deve renderizar empty state de reatividade quando eligible=0');
 assert(js.includes("['crm','CRM']") && js.includes("['contato_efetivo','Contato efetivo']"), 'domínios CRM habilitados');
-assert(html.includes('/bdr-workload-v2-core.js?v=2') && html.includes('/bdr-workload-v2-charts.js?v=4') && html.includes('/bdr-workload-v2.js?v=11') && html.includes('/bdr-workload-info.js?v=1'), 'ordem/cache-busters v2 modular');
+assert(html.includes('/bdr-workload-v2-core.js?v=2') && html.includes('/bdr-workload-v2-charts.js?v=4') && html.includes('/bdr-workload-v2.js?v=11') && html.includes('/bdr-workload-info.js?v=2'), 'ordem/cache-busters v2 modular');
 assert(html.indexOf('/bdr-workload-v2-core.js') < html.indexOf('/bdr-workload-v2-charts.js') && html.indexOf('/bdr-workload-v2-charts.js') < html.indexOf('/bdr-workload-v2.js?v=11'), 'ordem dos scripts v2 modular inválida');
 assert(core.includes('window.WorkloadBDRV2Core') && charts.includes('window.WorkloadBDRV2Charts') && js.includes('WorkloadBDRV2Core') && js.includes('WorkloadBDRV2Charts'), 'namespaces modulares explícitos ausentes');
 assert(js.includes('Período anterior equivalente') && core.includes('previousEquivalent') && core.includes('rangeDays'), 'janela anterior equivalente visível/correta em Canais');
@@ -62,9 +64,10 @@ assert(js.includes('MULTI_DIMS') && js.includes("['porte','portes']") && js.incl
 assert(js.includes('WAREHOUSE_BY_TAB') && js.includes('bdrWarehouse(d,WAREHOUSE_BY_TAB.pulse)') && js.includes('bdrWarehouse(d,WAREHOUSE_BY_TAB.channels)') && js.includes('bdrWarehouse(d,WAREHOUSE_BY_TAB.management)'), 'warehouse por BDR deve ser temático por aba (não clone)');
 assert(js.includes('function sectorWarehouse') && js.includes('sectorWarehouse(d)'), 'comparativo por setor na Penetração ausente');
 // Memórias de cálculo específicas e definição inequívoca de cobertura.
-['Cobertura de toque = contatos elegíveis tocados ÷ contatos elegíveis', 'Cobertura de porte', 'Cobertura de segmento', 'Cobertura de persona', 'p50 = mediana', 'data-workload-info-bound'].forEach((text) => assert(info.includes(text), `memória específica ausente: ${text}`));
+['Contato elegível', 'virou Lead no HubSpot', 'Empresa elegível', 'Contato tocado', 'Cobertura de toque', 'Cobertura de porte', 'Cobertura de segmento', 'Cobertura de persona', 'p50 ou mediana', 'Glossário essencial', 'data-workload-info-bound'].forEach((text) => assert(info.includes(text), `memória ou glossário ausente: ${text}`));
 assert(info.includes("querySelectorAll('.v2-kpi')") && info.includes("querySelectorAll('.card h2')"), 'todos os KPIs e gráficos devem receber memória específica');
-assert(info.includes('Não é a taxa de contatos tocados') && info.includes('Não mede preenchimento de porte, segmento ou persona'), 'cobertura de toque e completude de atributo devem permanecer distintas');
+assert(info.includes('Não mede se porte, segmento ou persona estão preenchidos') && info.includes('Não informa se os contatos receberam abordagem'), 'cobertura de toque e completude de atributo devem permanecer distintas');
+assert(info.includes("'CRM': 'Movimentos no CRM'") && info.includes("'SQL': 'Leads qualificados (SQL)'") && info.includes("'Elegíveis': 'Empresas elegíveis'"), 'rótulos técnicos devem ser traduzidos para linguagem de negócio');
 // Regra temporária de meta: julho/2026 tem piso e teto inclusivos; outros meses só piso.
 assert(bdrHtml.includes("var BDR_GOAL_CAPPED_MONTH='2026-07'"), 'mês excepcional da meta ausente');
 assert(bdrHtml.includes("_oym(d)===BDR_GOAL_CAPPED_MONTH ? d.colaboradores<=2000 : true"), 'teto de 2.000 deve valer somente em julho/2026');
@@ -83,4 +86,8 @@ assert.strictEqual(counts(2001, '2026-08'), true, 'fora de julho, preserva regra
 assert(nav.includes("url:'/novo-bdr/workload',file:'bdr-workload.html',sub:'bdr',health:'y'"), 'Workload deve estar amarelo');
 assert(nav.includes("url:'/novo-bdr/list-attack',file:'bdr-list-attack.html',sub:'bdr',health:'r'"), 'Ataque à Lista deve estar vermelho');
 assert(nav.includes("url:'/novo-bdr/treble',file:'bdr-treble.html',sub:'bdr',health:'g'"), 'Treble deve estar verde');
+assert(premium.includes("href: '/novo-bdr/workload', label: 'Workload | Intraday', health: 'y'"), 'Workload deve estar amarelo no menu interno');
+assert(premium.includes("href: '/novo-bdr/list-attack', label: 'Ataque à Lista', health: 'r'"), 'Ataque à Lista deve estar vermelho no menu interno');
+assert(premium.includes("href: '/novo-bdr/treble', label: 'Treble', health: 'g'"), 'Treble deve estar verde no menu interno');
+bdrPages.forEach((page, index) => assert(page.includes('/premium.js?v=10'), `página BDR ${index} sem cache-buster canônico do menu`));
 console.log('PASS bdr-workload-v2 UI static tests');

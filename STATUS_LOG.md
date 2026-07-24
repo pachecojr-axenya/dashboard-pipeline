@@ -1,5 +1,12 @@
 # Dashboard Enhancement Loop — Status Log
 
+### BDR | menu interno reconciliado + glossário para leitura sem contexto (2026-07-24)
+
+- **Causa das cores divergentes:** páginas gerais usam `nav.js`, mas as páginas internas de BDR regeneram o menu por `premium.js`. O PR anterior atualizou somente `nav.js`; `premium.js` ainda marcava Ataque à Lista como verde e Treble como amarelo. Os dois modelos agora usam exatamente Workload amarelo | Ataque à Lista vermelho | Treble verde. As cinco páginas BDR usam `premium.js?v=10` para invalidar o cache antigo.
+- **Linguagem para primeira leitura:** todo ícone do Workload abre primeiro um glossário com BDR, contato elegível, empresa elegível, toque, contato tocado, cobertura de toque, contato efetivo, SQL, p50/mediana e ICP. “Contato elegível” agora é definido pela regra real: virou Lead no HubSpot, está ligado a uma empresa, pertence a um BDR ativo e entrou no período selecionado; não é toda a carteira nem todo contato do CRM.
+- **Rótulos traduzidos:** CRM → Movimentos no CRM | SQL → Leads qualificados (SQL) | p50 reatividade → Tempo mediano até o 1º toque | Cobertura → Cobertura de toque | Elegíveis → Empresas elegíveis.
+- **Cache-buster:** `bdr-workload-info.js?v=2`.
+
 ### BDR | semáforo, meta excepcional de julho e memórias únicas do Workload (2026-07-24)
 
 - **Semáforo:** `nav.js` alinhado para Treble verde, Ataque à Lista vermelho e Workload amarelo. O título standalone de Ataque à Lista também passa a vermelho.

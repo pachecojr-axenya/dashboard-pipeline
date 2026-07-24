@@ -7,26 +7,47 @@
     return String(value || '').replace(/\s+i\s*$/i, '').replace(/\s+/g, ' ').trim();
   }
 
+  var FRIENDLY_LABELS = {
+    'CRM': 'Movimentos no CRM',
+    'SQL': 'Leads qualificados (SQL)',
+    'p50 reatividade': 'Tempo mediano até o 1º toque',
+    'Cobertura': 'Cobertura de toque',
+    'Elegíveis': 'Empresas elegíveis'
+  };
+
+  var GLOSSARY = [
+    ['BDR', 'Pessoa do time comercial responsável por pesquisar empresas, abordar contatos e gerar oportunidades para os executivos de vendas.'],
+    ['Contato elegível', 'Contato que virou Lead no HubSpot, está ligado a uma empresa e tem como dono um BDR do roster ativo do time. A data em que esse Lead foi criado precisa estar dentro do período selecionado. Não significa todos os contatos do HubSpot nem toda a carteira do BDR.'],
+    ['Empresa elegível', 'Empresa que tem pelo menos um contato elegível para aquele BDR. A mesma empresa com dois BDRs diferentes é analisada separadamente para cada BDR.'],
+    ['Toque', 'Tentativa comercial registrada: ligação, e-mail enviado, WhatsApp enviado, mensagem de LinkedIn enviada ou reunião. Notas e tarefas internas não contam.'],
+    ['Contato tocado', 'Contato elegível que recebeu pelo menos um toque. Mesmo com várias tentativas, ele conta uma única vez nesta métrica.'],
+    ['Cobertura de toque', 'Percentual dos contatos elegíveis que receberam ao menos um toque: contatos tocados dividido por contatos elegíveis.'],
+    ['Contato efetivo', 'Contato cujo status foi alterado para CONNECTED no CRM, indicando que houve retorno ou conversa, e não apenas uma tentativa.'],
+    ['SQL', 'Oportunidade comercial qualificada que virou um negócio registrado para o time de vendas.'],
+    ['p50 ou mediana', 'Valor que divide o grupo ao meio. Exemplo: p50 de 3 horas significa que metade recebeu o primeiro toque em até 3 horas e metade demorou mais.'],
+    ['ICP', 'Perfil de empresa que a Axenya considera mais adequado para vender, analisado aqui por porte, segmento e persona.']
+  ];
+
   function entry(title) {
     var t = clean(title);
     var lower = t.toLowerCase();
-    var sourceRhythm = 'Fonte: bdr_workload_daily_dimension_v2, com overlay live quando a janela inclui hoje.';
-    var sourceEligible = 'Fonte: bdr_workload_reactivity_v2 e bdr_workload_company_contact_v2, respeitando os filtros ativos.';
+    var sourceRhythm = 'Os dados vêm das atividades registradas no HubSpot e consolidadas no BigQuery; quando o período inclui hoje, as atividades mais recentes são somadas em tempo real.';
+    var sourceEligible = 'Os dados vêm dos Leads e das atividades do HubSpot consolidados no BigQuery, sempre respeitando período, BDR e demais filtros selecionados.';
     var exact = {
-      'Atividades': ['Quantas ações operacionais o time executou?', 'Soma ligações, e-mails enviados, WhatsApp, LinkedIn e reuniões. Notas e tarefas não entram.', 'Atividades = ligações + e-mails enviados + WhatsApp + LinkedIn + reuniões. ' + sourceRhythm],
-      'Empresas tocadas': ['Quantas empresas distintas receberam ao menos uma atividade?', 'Uma empresa conta uma vez, mesmo que tenha vários contatos ou atividades no período.', 'Empresas tocadas = COUNT DISTINCT company_id associado às atividades. ' + sourceRhythm],
-      'Contatos tocados': ['Quantos contatos distintos receberam ao menos uma atividade?', 'Um contato conta uma vez, independentemente da quantidade de tentativas.', 'Contatos tocados = COUNT DISTINCT contact_id associado às atividades. ' + sourceRhythm],
-      'CRM': ['Quantas movimentações de funil foram registradas?', 'Conta mudanças de status ou etapa. Não é o total de mensagens, ligações ou e-mails enviados.', 'CRM = contagem de transições de status/etapa na janela. Fonte: camada semântica de CRM do Workload.'],
-      'Contato efetivo': ['Quantos contatos chegaram a uma interação efetiva?', 'Conta a entrada no estado CONNECTED; é um resultado de CRM, não uma tentativa de contato.', 'Contato efetivo = COUNT de transições para CONNECTED na janela. Fonte: camada semântica de CRM do Workload.'],
-      'SQL': ['Quantos negócios qualificados foram registrados?', 'Conta SQL real associado ao BDR e à janela selecionada.', 'SQL = COUNT de deals qualificados na tabela silver do BigQuery. Não usa OPEN_DEAL como realizado.'],
-      'p50 reatividade': ['Em quanto tempo metade dos leads elegíveis recebeu o primeiro toque?', 'p50 é a mediana: 50% receberam o primeiro toque em até esse tempo e 50% demoraram mais.', 'p50 = mediana de horas entre eligible_at e o primeiro toque posterior. ' + sourceEligible],
-      'Cobertura': ['Qual parcela dos contatos elegíveis recebeu pelo menos um toque?', 'É cobertura de toque. Não mede preenchimento de porte, segmento ou persona.', 'Cobertura de toque = contatos elegíveis tocados ÷ contatos elegíveis × 100. ' + sourceEligible],
-      'Elegíveis': ['Quantas empresas da coorte podem ser analisadas nesta aba?', 'O denominador é empresa + owner com lead elegível criado na janela, não o território total do BDR.', 'Elegíveis = COUNT DISTINCT company_id + owner_id na coorte do período. Fonte: bdr_workload_company_v2.'],
-      'Contatos elegíveis': ['Quantos contatos pertencem à coorte elegível?', 'É o universo usado para calcular toque e distribuição; não significa contato criado manualmente pelo BDR.', 'Contatos elegíveis = COUNT de contatos vinculados às empresas elegíveis. ' + sourceEligible],
-      'Toques reais': ['Quantas atividades válidas atingiram a coorte elegível?', 'Diferentemente de contatos tocados, aqui cada toque conta; um contato pode contribuir várias vezes.', 'Toques reais = soma de atividades associadas aos contatos da coorte. ' + sourceEligible],
-      'Cobertura porte': ['Quanto do universo elegível tem o porte preenchido?', 'É completude do atributo porte. Não é a taxa de contatos tocados.', 'Cobertura de porte = elegíveis com porte preenchido ÷ total de elegíveis × 100. Fonte: bdr_workload_company_v2.'],
-      'Cobertura segmento': ['Quanto do universo elegível tem o segmento preenchido?', 'É completude do atributo segmento. Não é a taxa de contatos tocados.', 'Cobertura de segmento = elegíveis com segmento preenchido ÷ total de elegíveis × 100. Fonte: bdr_workload_company_v2.'],
-      'Cobertura persona': ['Quanto do universo elegível tem a persona preenchida?', 'É completude do atributo persona. Não é a taxa de contatos tocados.', 'Cobertura de persona = contatos elegíveis com persona preenchida ÷ contatos elegíveis × 100. Fonte: bdr_workload_company_contact_v2.']
+      'Atividades': ['Quantas ações comerciais foram registradas?', 'Soma todas as tentativas dos cinco canais. Uma ligação e um e-mail para a mesma pessoa contam como duas atividades.', 'Atividades = ligações + e-mails enviados + WhatsApp enviados + mensagens de LinkedIn enviadas + reuniões. Notas e tarefas internas ficam fora. ' + sourceRhythm],
+      'Empresas tocadas': ['Com quantas empresas diferentes o time tentou falar?', 'Cada empresa conta uma única vez, mesmo que vários contatos dela tenham recebido várias tentativas.', 'Contamos uma vez cada empresa associada a pelo menos uma atividade válida. ' + sourceRhythm],
+      'Contatos tocados': ['Com quantas pessoas diferentes o time tentou falar?', 'Cada contato conta uma única vez, mesmo que tenha recebido ligação, e-mail e WhatsApp.', 'Contamos uma vez cada contato associado a pelo menos uma atividade válida. ' + sourceRhythm],
+      'Movimentos no CRM': ['Quantas vezes o time atualizou o avanço dos contatos no funil?', 'Conta mudanças de status ou etapa, como passar de “tentativa” para “conectado”. Não representa mensagens ou ligações.', 'Somamos cada mudança de status ou etapa registrada no período. Os dados vêm do histórico do CRM.'],
+      'Contato efetivo': ['Com quantas pessoas houve retorno ou conversa registrada?', 'Conta quando o contato chega ao status CONNECTED. Uma tentativa sem retorno não entra.', 'Contamos cada contato que mudou para CONNECTED no período. Os dados vêm do histórico de status do HubSpot.'],
+      'Leads qualificados (SQL)': ['Quantas oportunidades qualificadas foram entregues para vendas?', 'Conta negócios reais classificados como SQL, não apenas contatos que avançaram de status.', 'Contamos os negócios qualificados associados ao BDR e ao período. A fonte é a base comercial consolidada no BigQuery.'],
+      'Tempo mediano até o 1º toque': ['Quanto tempo o time leva para abordar um contato elegível pela primeira vez?', 'É a mediana: metade dos contatos foi abordada nesse tempo ou menos; a outra metade demorou mais.', 'Para cada contato elegível, calculamos as horas entre a criação do Lead e o primeiro toque posterior; depois usamos a mediana. ' + sourceEligible],
+      'Cobertura de toque': ['Que parte dos contatos que deveriam ser trabalhados recebeu alguma abordagem?', '100% significa que todos os contatos elegíveis receberam ao menos um toque. Não mede se porte, segmento ou persona estão preenchidos.', 'Cobertura de toque = contatos elegíveis com pelo menos um toque ÷ todos os contatos elegíveis × 100. ' + sourceEligible],
+      'Empresas elegíveis': ['Quantas empresas entraram no universo de trabalho dos BDRs?', 'Uma empresa entra quando tem pelo menos um contato que virou Lead, está ligado a ela e pertence a um BDR ativo no período.', 'Contamos uma vez cada combinação de empresa e BDR que tenha ao menos um contato elegível. Não é toda a carteira do BDR. ' + sourceEligible],
+      'Contatos elegíveis': ['Quantas pessoas entraram no universo que deveria ser trabalhado?', 'Um contato é elegível quando virou Lead no HubSpot, está ligado a uma empresa, pertence a um BDR ativo e entrou no período selecionado.', 'Contamos cada contato que atende aos quatro critérios do glossário. Não é todo contato existente no HubSpot. ' + sourceEligible],
+      'Toques reais': ['Quantas tentativas comerciais foram feitas nos contatos elegíveis?', 'Aqui cada tentativa conta. Se a mesma pessoa recebeu uma ligação e dois e-mails, são três toques.', 'Somamos ligações, e-mails enviados, WhatsApp enviados, mensagens de LinkedIn enviadas e reuniões ligados aos contatos elegíveis. ' + sourceEligible],
+      'Cobertura porte': ['Quanto das empresas elegíveis tem o porte conhecido?', 'Mostra qualidade de preenchimento do cadastro. Não informa se os contatos receberam abordagem.', 'Cobertura de porte = empresas elegíveis com porte preenchido ÷ empresas elegíveis × 100.'],
+      'Cobertura segmento': ['Quanto das empresas elegíveis tem o segmento conhecido?', 'Mostra qualidade de preenchimento do cadastro. Não informa se os contatos receberam abordagem.', 'Cobertura de segmento = empresas elegíveis com segmento preenchido ÷ empresas elegíveis × 100.'],
+      'Cobertura persona': ['Quanto dos contatos elegíveis tem a função ou perfil profissional classificado?', 'Mostra qualidade de preenchimento da persona. Não informa se o contato recebeu abordagem.', 'Cobertura de persona = contatos elegíveis com persona classificada ÷ contatos elegíveis × 100.']
     };
     if (exact[t]) return [t].concat(exact[t]);
 
@@ -47,7 +68,7 @@
     if (lower.indexOf('gestão por bdr') >= 0 || lower.indexOf('ranking') >= 0) return [t, 'Como o volume e os resultados se distribuem entre BDRs?', 'Ordene pela métrica desejada e clique no BDR ou célula para abrir o detalhe nominal.', 'Cada célula agrega a métrica por owner canônico no período. Fonte: camada semântica do Workload.'];
     if (lower.indexOf('comparação') >= 0 || lower.indexOf('evolução') >= 0) return [t, 'O que mudou entre as duas janelas?', 'A é a janela de referência e B é a janela atual; leia o delta junto do total de cada período.', 'Delta = total B − total A, com os mesmos filtros e domínio. Fonte: /api/bdr-workload-compare.'];
 
-    return [t, 'O que este card informa?', 'Mostra ' + t.toLowerCase() + ' dentro do período, BDRs e dimensões selecionados. Clique no dado para abrir o drill nominal quando disponível.', 'A agregação segue a definição exibida no título e os filtros ativos. Fonte: API semântica do Workload correspondente à aba.'];
+    return [t, 'Que informação este card mostra?', 'Mostra ' + t.toLowerCase() + ' considerando o período, os BDRs e os demais filtros escolhidos. Clique no número ou no gráfico para ver os registros que formam o total, quando essa lista estiver disponível.', 'O total é calculado com os registros do HubSpot consolidados no BigQuery, sempre usando os filtros visíveis na tela.'];
   }
 
   function open(title) {
@@ -59,7 +80,23 @@
     if (!drawer || !heading || !body) return;
     heading.textContent = data[0];
     body.textContent = '';
-    ['Pergunta', 'Como ler', 'Fórmula e fonte'].forEach(function (label, index) {
+    var glossary = document.createElement('div');
+    var glossaryTitle = document.createElement('b');
+    glossary.className = 'help-block';
+    glossaryTitle.textContent = 'Glossário essencial';
+    glossary.appendChild(glossaryTitle);
+    GLOSSARY.forEach(function (item) {
+      var line = document.createElement('p');
+      var term = document.createElement('span');
+      term.style.fontWeight = '800';
+      term.style.color = 'var(--text)';
+      term.textContent = item[0] + ': ';
+      line.appendChild(term);
+      line.appendChild(document.createTextNode(item[1]));
+      glossary.appendChild(line);
+    });
+    body.appendChild(glossary);
+    ['O que isso responde', 'Como interpretar', 'Como é calculado e de onde vêm os dados'].forEach(function (label, index) {
       var block = document.createElement('div');
       var strong = document.createElement('b');
       var paragraph = document.createElement('p');
@@ -91,10 +128,15 @@
     var intro = document.getElementById('workload-intro');
     if (intro && intro.getAttribute('data-coverage-defined') !== '1') {
       intro.setAttribute('data-coverage-defined', '1');
-      intro.textContent = 'Workload v2 | Cobertura de toque = contatos elegíveis tocados ÷ contatos elegíveis. Cobertura de porte, segmento ou persona = percentual do universo elegível com aquele atributo preenchido. São conceitos diferentes. Todo KPI e gráfico tem memória de cálculo própria no ícone i e drill auditável quando disponível.';
+      intro.textContent = 'Como ler | Contato elegível é a pessoa que virou Lead no HubSpot, está ligada a uma empresa, pertence a um BDR ativo e entrou no período selecionado. Cobertura de toque mostra quantos desses contatos receberam ao menos uma abordagem. Cobertura de porte, segmento ou persona mostra apenas se o cadastro tem aquela informação preenchida. Abra o ícone i de qualquer card para ver o glossário, o cálculo e a origem dos dados.';
     }
     Array.prototype.forEach.call(scope.querySelectorAll('.v2-kpi'), function (card) {
-      var title = clean((card.querySelector('.label') || {}).textContent);
+      var label = card.querySelector('.label');
+      var title = clean((label || {}).textContent);
+      if (FRIENDLY_LABELS[title]) {
+        title = FRIENDLY_LABELS[title];
+        label.textContent = title;
+      }
       Array.prototype.forEach.call(card.querySelectorAll('button:not(.v2-kpi-main)'), function (button) { bindButton(button, title); });
     });
     Array.prototype.forEach.call(scope.querySelectorAll('.card h2'), function (heading) {
