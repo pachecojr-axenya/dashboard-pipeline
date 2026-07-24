@@ -1,5 +1,12 @@
 # Dashboard Enhancement Loop — Status Log
 
+### BDR | semáforo, meta excepcional de julho e memórias únicas do Workload (2026-07-24)
+
+- **Semáforo:** `nav.js` alinhado para Treble verde, Ataque à Lista vermelho e Workload amarelo. O título standalone de Ataque à Lista também passa a vermelho.
+- **Meta BDR (R12/R23):** piso normal permanece em 30 colaboradores. Excepcionalmente para deals originados em julho/2026, o realizado aceita somente 30 a 2.000 colaboradores, inclusive. O teto não vale em outros meses. A ressalva aparece no ícone de informação, fórmula, campos, tooltip do gráfico e mini-cards.
+- **Workload | cobertura:** cobertura de toque = contatos elegíveis tocados ÷ contatos elegíveis; cobertura de porte/segmento/persona = completude do atributo no universo elegível. O novo `bdr-workload-info.js` vincula cada KPI e gráfico a uma memória própria com pergunta, leitura, fórmula, denominador e fonte.
+- **Teste:** `test-bdr-workload-v2-ui.js` cobre 29/30/2.000/2.001, preservação fora de julho, semáforo e distinção entre as duas coberturas.
+
 ### 🚀 DEPLOY DE PRODUÇÃO | levas do Delta + Meta (2026-07-24)
 
 > Autorização explícita do dono nesta data ("já preciso do commit e deploy").

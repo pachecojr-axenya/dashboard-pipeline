@@ -6,7 +6,10 @@ const ROOT = path.resolve(__dirname, '..');
 const js = fs.readFileSync(path.join(ROOT, 'public/bdr-workload-v2.js'), 'utf8');
 const core = fs.readFileSync(path.join(ROOT, 'public/bdr-workload-v2-core.js'), 'utf8');
 const charts = fs.readFileSync(path.join(ROOT, 'public/bdr-workload-v2-charts.js'), 'utf8');
-const allJs = js + '\n' + core + '\n' + charts;
+const info = fs.readFileSync(path.join(ROOT, 'public/bdr-workload-info.js'), 'utf8');
+const bdrHtml = fs.readFileSync(path.join(ROOT, 'public/bdr.html'), 'utf8');
+const nav = fs.readFileSync(path.join(ROOT, 'public/nav.js'), 'utf8');
+const allJs = js + '\n' + core + '\n' + charts + '\n' + info;
 const html = fs.readFileSync(path.join(ROOT, 'public/bdr-workload.html'), 'utf8');
 function has(s, m) { assert(allJs.includes(s) || html.includes(s), m || `missing ${s}`); }
 assert.equal((core.match(/\['(pulse|channels|management|penetration|evolution)'/g) || []).length, 5, '5 abas v2');
@@ -38,7 +41,7 @@ assert(js.includes('coorte empresa+owner com lead elegível criado no período, 
 assert(js.includes('mesmo owner em até 30 dias; correlação, não causalidade'), 'associação/conversão 30D deve declarar correlação, não causalidade');
 assert(js.includes("if(!r.eligible)return panel(head+cards") && js.includes("st('empty','Nenhum lead elegível criado no período'"), 'pulso deve renderizar empty state de reatividade quando eligible=0');
 assert(js.includes("['crm','CRM']") && js.includes("['contato_efetivo','Contato efetivo']"), 'domínios CRM habilitados');
-assert(html.includes('/bdr-workload-v2-core.js?v=2') && html.includes('/bdr-workload-v2-charts.js?v=4') && html.includes('/bdr-workload-v2.js?v=11'), 'ordem/cache-busters v2 modular');
+assert(html.includes('/bdr-workload-v2-core.js?v=2') && html.includes('/bdr-workload-v2-charts.js?v=4') && html.includes('/bdr-workload-v2.js?v=11') && html.includes('/bdr-workload-info.js?v=1'), 'ordem/cache-busters v2 modular');
 assert(html.indexOf('/bdr-workload-v2-core.js') < html.indexOf('/bdr-workload-v2-charts.js') && html.indexOf('/bdr-workload-v2-charts.js') < html.indexOf('/bdr-workload-v2.js?v=11'), 'ordem dos scripts v2 modular inválida');
 assert(core.includes('window.WorkloadBDRV2Core') && charts.includes('window.WorkloadBDRV2Charts') && js.includes('WorkloadBDRV2Core') && js.includes('WorkloadBDRV2Charts'), 'namespaces modulares explícitos ausentes');
 assert(js.includes('Período anterior equivalente') && core.includes('previousEquivalent') && core.includes('rangeDays'), 'janela anterior equivalente visível/correta em Canais');
@@ -58,4 +61,26 @@ assert(js.includes('function dimMulti') && js.includes('toggleDim:function') && 
 assert(js.includes('MULTI_DIMS') && js.includes("['porte','portes']") && js.includes("['segmento','segmentos']") && js.includes("['persona','personas']"), 'dimensões multi (portes/segmentos/personas) ausentes no estado/URL');
 assert(js.includes('WAREHOUSE_BY_TAB') && js.includes('bdrWarehouse(d,WAREHOUSE_BY_TAB.pulse)') && js.includes('bdrWarehouse(d,WAREHOUSE_BY_TAB.channels)') && js.includes('bdrWarehouse(d,WAREHOUSE_BY_TAB.management)'), 'warehouse por BDR deve ser temático por aba (não clone)');
 assert(js.includes('function sectorWarehouse') && js.includes('sectorWarehouse(d)'), 'comparativo por setor na Penetração ausente');
+// Memórias de cálculo específicas e definição inequívoca de cobertura.
+['Cobertura de toque = contatos elegíveis tocados ÷ contatos elegíveis', 'Cobertura de porte', 'Cobertura de segmento', 'Cobertura de persona', 'p50 = mediana', 'data-workload-info-bound'].forEach((text) => assert(info.includes(text), `memória específica ausente: ${text}`));
+assert(info.includes("querySelectorAll('.v2-kpi')") && info.includes("querySelectorAll('.card h2')"), 'todos os KPIs e gráficos devem receber memória específica');
+assert(info.includes('Não é a taxa de contatos tocados') && info.includes('Não mede preenchimento de porte, segmento ou persona'), 'cobertura de toque e completude de atributo devem permanecer distintas');
+// Regra temporária de meta: julho/2026 tem piso e teto inclusivos; outros meses só piso.
+assert(bdrHtml.includes("var BDR_GOAL_CAPPED_MONTH='2026-07'"), 'mês excepcional da meta ausente');
+assert(bdrHtml.includes("_oym(d)===BDR_GOAL_CAPPED_MONTH ? d.colaboradores<=2000 : true"), 'teto de 2.000 deve valer somente em julho/2026');
+assert(bdrHtml.includes('d.colaboradores==null || d.colaboradores<30'), 'piso inclusivo de 30 ausente');
+assert(bdrHtml.includes('REGRA EXCEPCIONAL DE JULHO/2026') && bdrHtml.includes('O teto de 2.000 não se aplica a nenhum outro mês'), 'caveat mensal deve estar explícito no ícone de informação');
+const goalMatch = bdrHtml.match(/function _bdrCountsForGoal\(d\)\{([\s\S]*?)\n\}/);
+assert(goalMatch, 'função real de elegibilidade da meta não encontrada');
+const goal = new Function('d', '_oym', 'BDR_GOAL_CAPPED_MONTH', goalMatch[1]);
+const counts = (colaboradores, month) => goal({ colaboradores }, () => month, '2026-07');
+assert.strictEqual(counts(29, '2026-07'), false, '29 não conta em julho');
+assert.strictEqual(counts(30, '2026-07'), true, '30 conta em julho');
+assert.strictEqual(counts(2000, '2026-07'), true, '2.000 conta em julho');
+assert.strictEqual(counts(2001, '2026-07'), false, '2.001 não conta em julho');
+assert.strictEqual(counts(2001, '2026-08'), true, 'fora de julho, preserva regra vigente sem teto');
+// Semáforo solicitado no menu canônico.
+assert(nav.includes("url:'/novo-bdr/workload',file:'bdr-workload.html',sub:'bdr',health:'y'"), 'Workload deve estar amarelo');
+assert(nav.includes("url:'/novo-bdr/list-attack',file:'bdr-list-attack.html',sub:'bdr',health:'r'"), 'Ataque à Lista deve estar vermelho');
+assert(nav.includes("url:'/novo-bdr/treble',file:'bdr-treble.html',sub:'bdr',health:'g'"), 'Treble deve estar verde');
 console.log('PASS bdr-workload-v2 UI static tests');

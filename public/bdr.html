@@ -269,13 +269,13 @@ var BDR_HELP_CHARTS=[
     formula:'R03 = COUNT(deals do time com dealstage = Reunião Agendada E data_reuniao_agendada ≤ hoje − 30 dias)',
     fields:[['dealstage','Estágio atual = Reunião Agendada (Vendas).'],['hs_v2_date_entered_1144746905','Data de entrada na etapa; hoje − entrada > 30 dias.'],['sdr','Origem BDR (time do drawer).']]},
   {key:'origin-bdr',title:'Originação por BDR ou por Canal (R12)',
-    desc:'Deals (ou vidas, ou colaboradores) originados por cada BDR do TIME (13 do drawer; rótulo usa o nome canônico) OU por CANAL (origem__originacao_ do deal). Originação = entrada em Reunião Agendada; o filtro de período usa essa data. No modo Por BDR × Deals, a cor da barra indica o atingimento da META do BDR no período (verde ≥100% · amarelo ≥85% · laranja ≥70% · vermelho abaixo); no modo Por Canal não há cor de meta (metas são por BDR). REGRA DA META (2026-07-23, ajustada de vidas para colaboradores): só conta para a meta em deals o deal com colaboradores PREENCHIDO e ≥ 30 — a barra continua mostrando o total de deals, mas o % de atingimento (cor + tooltip) usa só os deals que passam esse corte. Metas: botão "Metas" no card abre a tabela mês × BDR (edição GLOBAL, persistida no servidor); com filtro ativo, a meta comparada = SOMA das metas mensais dos meses da janela (meses sem meta mensal usam a meta padrão do BDR); sem filtro, a soma de todas as metas mensais cadastradas. Clique numa barra para ver os deals.',
-    formula:'meta(BDR, janela) = Σ meta_mensal[mês][BDR] para cada mês da janela do filtro | fallback: meta padrão do BDR nos meses sem meta mensal | realizado_meta(BDR) = COUNT(deals do BDR com colaboradores != null E colaboradores >= 30)',
-    fields:[['sdr','Define o BDR; grafias do HubSpot mapeadas ao drawer (ex.: Gabriele de Almeida Silva → Gabriele Almeida).'],['quantidade_de_colaboradores','Corte da meta em deals: só conta colaboradores != null e >= 30. Também somado no modo Colaboradores (sem o corte).'],['origem__originacao_','Dimensão Por Canal (fonte do deal: inbound, outbound, evento etc.). Preenchimento parcial no HubSpot — "(sem origem)" agrupa os deals sem essa propriedade preenchida.'],['hs_v2_date_entered_1144746905','Data da originação (data_reuniao_agendada) | dimensão do filtro de período.'],['vidas','Somado no modo Vidas.']]},
+    desc:'Deals (ou vidas, ou colaboradores) originados por cada BDR do TIME (13 do drawer; rótulo usa o nome canônico) OU por CANAL (origem__originacao_ do deal). Originação = entrada em Reunião Agendada; o filtro de período usa essa data. No modo Por BDR × Deals, a cor da barra indica o atingimento da META do BDR no período (verde ≥100% | amarelo ≥85% | laranja ≥70% | vermelho abaixo); no modo Por Canal não há cor de meta. REGRA EXCEPCIONAL DE JULHO/2026: só conta no realizado da meta o deal com colaboradores entre 30 e 2.000, inclusive. Esse teto de 2.000 vale somente para julho de 2026; nos demais meses permanece o piso de colaboradores ≥ 30, sem teto. A barra continua mostrando todos os deals, enquanto o percentual e a cor usam apenas os elegíveis. Metas: botão "Metas" abre a tabela mês × BDR; a meta da janela é a soma das metas mensais, com fallback para a meta padrão. Clique numa barra para ver os deals.',
+    formula:'meta(BDR, janela) = Σ meta_mensal[mês][BDR] | realizado_meta(BDR) = COUNT(deals com colaboradores >= 30) | exceção 2026-07: colaboradores >= 30 E <= 2000',
+    fields:[['sdr','Define o BDR; grafias do HubSpot são mapeadas ao nome canônico.'],['quantidade_de_colaboradores','Elegibilidade da meta: mínimo de 30 em todos os meses; em julho/2026 também há teto inclusivo de 2.000. O teto não altera outros meses nem a soma exibida no modo Colaboradores.'],['origem__originacao_','Dimensão Por Canal. "(sem origem)" reúne deals sem preenchimento.'],['hs_v2_date_entered_1144746905','Data da originação; também define em qual mês a regra de elegibilidade é aplicada.'],['vidas','Somado apenas no modo Vidas; não define elegibilidade da meta.']]},
   {key:'metas-attainment',title:'Atingimento de Meta | Time de BDRs (R23)',
-    desc:'% da meta em DEALS atingida pelo time de BDRs em 3 janelas fixas, independentes do filtro de período do painel: Mês atual, Mês passado e Últimos 3 meses. Realizado = deals do time (13 do drawer) originados (entrada em Reunião Agendada) nos meses da janela, CONTANDO SÓ deals com colaboradores preenchido e ≥ 30 (regra do dono, 2026-07-23, ajustada de vidas para colaboradores — evita inflar a meta com deals sem porte qualificado). Meta = Σ das metas mensais cadastradas por BDR nesses meses; mês sem meta mensal cadastrada usa a meta padrão do BDR (drawer de Configurações). Clique num card para ver o detalhe por BDR (realizado × meta) do período.',
-    formula:'atingimento(janela) = Σ deals_originados_com_colaboradores>=30(BDR, janela) ÷ Σ meta(BDR, janela) | meta(BDR, mês) = meta_mensal[mês][BDR] ou meta padrão do BDR na falta',
-    fields:[['sdr','Define o BDR do deal (time do drawer).'],['quantidade_de_colaboradores','Corte de elegibilidade: só entra no realizado se != null e >= 30.'],['hs_v2_date_entered_1144746905','Data da originação (data_reuniao_agendada); define o mês do deal para a janela.']]},
+    desc:'Percentual da meta em deals atingida pelo time em Mês atual, Mês passado e Últimos 3 meses. Realizado = deals originados pela entrada em Reunião Agendada. Elegibilidade normal: colaboradores preenchido e ≥ 30. Exceção temporária: em julho de 2026, contam apenas deals entre 30 e 2.000 colaboradores, inclusive. O teto de 2.000 não se aplica a nenhum outro mês. Meta = soma das metas mensais dos BDRs; mês sem meta cadastrada usa a meta padrão. Clique num card para abrir o realizado e a meta por BDR.',
+    formula:'atingimento(janela) = Σ deals elegíveis ÷ Σ metas mensais | elegível normal = colaboradores >= 30 | elegível em 2026-07 = colaboradores >= 30 E <= 2000',
+    fields:[['sdr','Define o BDR do deal no time canônico.'],['quantidade_de_colaboradores','Piso inclusivo de 30; teto inclusivo de 2.000 somente para deals originados em julho/2026.'],['hs_v2_date_entered_1144746905','Data de entrada em Reunião Agendada; define o mês e, portanto, se a exceção de julho/2026 vale.']]},
   {key:'weekly-origin',title:'Weekly Origination (R13)',
     desc:'Geração semanal do time de BDRs: barras empilhadas com TODOS os BDRs/grupos (sem colapso em "Outros" desde 2026-07-16), últimas 13 semanas (segunda a domingo), pela semana de ENTRADA em Reunião Agendada. Alterna a métrica (Deals | Vidas | Colaboradores) e a DIMENSÃO do empilhamento: Por BDR (padrão), Por Origem (campo origem__originacao_ do deal) ou Por Porte (mesma faixa do R11). Filtro de período pela mesma data.',
     fields:[['sdr','Define o BDR (time do drawer).'],['origem__originacao_','Dimensão "Por Origem" (fonte do deal: outbound, evento, inbound…).'],['hs_v2_date_entered_1144746905','Semana da originação (data_reuniao_agendada).'],['vidas','Peso no modo Vidas.'],['quantidade_de_colaboradores','Peso no modo Colaboradores | faixa da dimensão Por Porte.']]},
@@ -379,7 +379,7 @@ document.addEventListener('mouseover',function(e){ var btn=e.target.closest('.no
 document.addEventListener('mouseout',function(e){ if(!e.target.closest('.novo-info-btn')) document.getElementById('novo-tip').classList.remove('nt-show'); });
 document.addEventListener('mousemove',function(e){ var tip=document.getElementById('novo-tip'); if(!tip.classList.contains('nt-show'))return; var r=tip.getBoundingClientRect(); var x=e.clientX+14; var y=e.clientY+14; if(x+r.width>window.innerWidth-8) x=e.clientX-r.width-10; if(y+r.height>window.innerHeight-8) y=e.clientY-r.height-10; tip.style.left=x+'px'; tip.style.top=y+'px'; });
 // Hover no "i" = tooltip; CLIQUE no "i" = drawer com a ficha completa (padrão do CRO).
-function _infoBtn(tip,code){ var hasHelp=BDR_HELP_CHARTS.some(function(x){return x.key===code;}); return _codeTag(code)+'<button class="novo-info-btn" data-tip="'+_ne(tip)+'" data-code="'+(BDR_CARD_CODES[code]||code||'')+'"'+(hasHelp?' onclick="event.stopPropagation();bdrHelpChart(\''+code+'\')"':'')+' aria-label="Campos do HubSpot">i</button>'; }
+function _infoBtn(tip,code){ var help=BDR_HELP_CHARTS.find(function(x){return x.key===code;}); if(help)tip=help.desc; return _codeTag(code)+'<button class="novo-info-btn" data-tip="'+_ne(tip)+'" data-code="'+(BDR_CARD_CODES[code]||code||'')+'"'+(help?' onclick="event.stopPropagation();bdrHelpChart(\''+code+'\')"':'')+' aria-label="Memória de cálculo | '+_ne(help?help.title:(code||'card'))+'">i</button>'; }
 window.addEventListener('scroll',function(){ document.getElementById('novo-hdr').classList.toggle('scrolled',window.scrollY>10); },{passive:true});
 
 var _ne=function(s){ return (s==null?'—':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); };
@@ -446,14 +446,15 @@ function _teamBdrByName(s){
 }
 function _teamBdrName(d){ return _teamBdrByName(_bdrName(d)); }
 function _isTeamBdr(d){ return !!_teamBdrName(d); }
-// Regra de negócio (pedido do dono, 2026-07-23; ajustado 2026-07-23 de vidas para
-// COLABORADORES): um deal só conta para a META EM DEALS de originação (R12 modo
-// Deals/cor de meta, R23 Atingimento de Meta) se tiver o campo colaboradores
-// PREENCHIDO e >= 30. Deal sem colaboradores ou com colaboradores < 30 não entra
-// nesse realizado — evita inflar a meta com deals pequenos/sem qualificação de porte.
-// NÃO afeta as somas literais de Vidas/Colaboradores nem os demais gráficos de
-// originação (R05/R13/R14 etc.).
-function _bdrCountsForGoal(d){ return d.colaboradores!=null && d.colaboradores>=30; }
+// Elegibilidade da meta em deals (R12/R23): colaboradores >= 30 em todos os meses.
+// Exceção temporária solicitada em 2026-07-24: deals originados em julho/2026 também
+// precisam ter colaboradores <= 2.000. O teto não retroage nem avança para outros meses.
+// A regra não altera as somas literais nem os demais gráficos de originação.
+var BDR_GOAL_CAPPED_MONTH='2026-07';
+function _bdrCountsForGoal(d){
+  if(d.colaboradores==null || d.colaboradores<30)return false;
+  return _oym(d)===BDR_GOAL_CAPPED_MONTH ? d.colaboradores<=2000 : true;
+}
 // Toggle segmentado (Apple-style), portado do painel AE.
 function _subTabs(id,current,opts){ return '<div id="'+id+'" class="tab-sub">'+opts.map(function(o){ return '<button class="tab-sub-btn'+(current===o.mode?' active':'')+'" data-mode="'+o.mode+'" onclick="'+o.fn+'(\''+o.mode+'\')">'+o.label+'</button>'; }).join('')+'</div>'; }
 function _setActive(containerId,mode){ var c=document.getElementById(containerId); if(!c)return; c.querySelectorAll('.tab-sub-btn').forEach(function(b){ b.classList.toggle('active', b.getAttribute('data-mode')===mode); }); _moveTabSubThumb(c,true); }
@@ -1135,7 +1136,7 @@ function buildBdrOrigin(){
           var r=ranked[c.dataIndex];
           var info=bdrInfo[r.bdr]||{};
           return [
-            'Deals: '+_ni(aggDeals[r.bdr]||0)+(info.goal!=null?' | Meta: '+_ni(aggGoalDeals[r.bdr]||0)+'/'+info.goal+' (colaboradores ≥ 30)':''),
+            'Deals: '+_ni(aggDeals[r.bdr]||0)+(info.goal!=null?' | Meta: '+_ni(aggGoalDeals[r.bdr]||0)+'/'+info.goal+' (jul/2026: 30–2.000 colaboradores; demais meses: ≥ 30)':''),
             'Colaboradores: '+_ni(aggColab[r.bdr]||0),
             'Vidas: '+_ni(aggVidas[r.bdr]||0)
           ];
@@ -1152,7 +1153,7 @@ function _bdrAttainmentCard(att){
   var pct=att.pct;
   var pctTxt=pct==null?'—':Math.round(pct*100)+'%';
   var color=pct==null?'var(--text2)':(pct>=1.0?'var(--green,#3fb950)':pct>=0.85?'var(--yellow,#d29922)':pct>=0.70?'#f8a028':'var(--red,#f85149)');
-  var metaTxt=att.meta==null?'sem meta cadastrada':(_ni(att.realizado)+' / '+_ni(att.meta)+' deals (colaboradores ≥ 30)');
+  var metaTxt=att.meta==null?'sem meta cadastrada':(_ni(att.realizado)+' / '+_ni(att.meta)+' deals | jul/2026: 30–2.000 colab.; demais: ≥ 30');
   return '<button class="kpi-card kpi-click" style="text-align:left;cursor:pointer;border:none" onclick="bdrOpenAttainmentModal(\''+att.label.replace(/'/g,"\\'")+'\')">'+
     '<div class="kpi-label">'+att.label+'</div>'+
     '<div class="kpi-value" style="color:'+color+'">'+pctTxt+'</div>'+
