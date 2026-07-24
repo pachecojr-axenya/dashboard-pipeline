@@ -1,5 +1,27 @@
 # Dashboard Enhancement Loop — Status Log
 
+### Delta | D08 Pipe de Bid + remoção dos 🟡 por card (2026-07-24)
+
+- **🟡 removidos dos 6 cards** (pedido do dono; o pill **"🟡 não validado" do PAINEL
+  permanece no header** — a regra "nada nasce verde" segue sinalizada no nível certo).
+- **D08 | Pipe de Bid por etapa (card novo):** o escopo do Delta remove Bid de todas as
+  visões (decisão de 2026-07-20); o dono pediu as informações do Bid de volta → visão
+  DEDICADA, sem misturar pipelines nos gráficos de Vendas (a auditoria já criticou
+  funis que misturam Vendas+Bid). Mesma mecânica do D07 (renderer único
+  `renderUnifiedTable`): deals A→B, Novo/Avançou/Perdido, vidas, ARR Total/Ponderado.
+  - **Backend:** `compare` retorna `bidUnified` (aditivo) = `stageUnified` sobre
+    contribuições SÓ do pipeline Bid (independe de Ativos/Tudo; AE/Quarter respeitados);
+    `compare-drill` ganhou prefixo **`bidstage:<Etapa>`** (novo branch no `drillGeneric`
+    do `lib/forecast-compute.js`). Régua do Bid = a canônica do motor (prob fixa 0,5%,
+    receita só Proposta/Negociação; demais etapas com receita zerada, ARR presente).
+  - D07 renomeia a nota para "etapas de Vendas … Bid no D08"; help D08 documenta régua,
+    escopo (Bid ≥ jan/2025 via scopeDeals) e movimentação.
+- **Validação:** `npm run check` PASS (exit 0, 68 PASS) com asserts novos (unit:
+  drill `bidstage:` só retorna Bid + agregação Bid-only; e2e: `bidUnified` presente e
+  não vaza Vendas); live: bidUnified real (Consultoria 1→1 · Negociação 3→2 ·
+  Proposta Enviada 3→4 · Stand by 1→1), drill `bidstage:Negociação` com destino/tipos;
+  screenshot headless conferido. ⚠ `api/`+`lib/` mudaram → **servidor :3002 reiniciado**.
+
 ### Delta | tipografia Inter de verdade + alinhamento do CSS aos globais (2026-07-24)
 
 - **Causa do "muito Arial":** o painel declarava `font-family:Inter,...` mas (1) **nunca

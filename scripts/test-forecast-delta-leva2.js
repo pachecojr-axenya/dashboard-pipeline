@@ -110,6 +110,14 @@ check('Beta classificado como SAIU (foi p/ Perdido)', betaRow && betaRow.tipo ==
 check('SAIU traz destino final (Perdido)', betaRow && betaRow.stageB === 'Perdido', 'destino=' + (betaRow && betaRow.stageB));
 check('SAIU traz valor (aCash vidas de Beta=800)', betaRow && betaRow.aCash === 800, 'aCash=' + (betaRow && betaRow.aCash));
 
+// ── drillGeneric | bidstage: (D08, Pipe de Bid) ──────────────────────────────
+const dBid = FC.drillGeneric(cA, cB, 'bidstage:Proposta Enviada', 'prob12', rawBStage, 'arr');
+check('drill bidstage: retorna só deals de Bid (Gama)', dBid.deals.length === 1 && dBid.deals[0].id === '3', 'n=' + dBid.deals.length);
+check('drill bidstage: Gama permaneceu com ARR', dBid.deals[0] && dBid.deals[0].tipo === 'permaneceu' && dBid.deals[0].bCash === 1440000, dBid.deals[0] && (dBid.deals[0].tipo + '/' + dBid.deals[0].bCash));
+const suBid = FC.stageUnified(cA.filter(x => x.pipeline === 'Bid'), cB.filter(x => x.pipeline === 'Bid'), rawBStage);
+const suBidPE = suBid.filter(r => r.stage === 'Proposta Enviada')[0];
+check('bidUnified (stageUnified Bid-only) agrega Proposta Enviada', suBidPE && suBidPE.b.deals === 1 && suBidPE.b.arr === 1440000, suBidPE && (suBidPE.b.deals + '/' + suBidPE.b.arr));
+
 const dArrTot = FC.drillGeneric(cA, cB, 'kpi:arrTotal', 'prob12', rawBStage);
 check('drill kpi:arrTotal usa field=arr', dArrTot.field === 'arr', 'field=' + dArrTot.field);
 const dArrPond = FC.drillGeneric(cA, cB, 'kpi:arrPond', 'prob12', rawBStage);

@@ -233,6 +233,19 @@ module.exports = async function handler(req, res) {
       }
       const stageUnified = FC.stageUnified(suA, suB, rawBStageById);
       const quarters = FC.quarterAgg(cA, cB);
+      // Pipe de Bid (D08, pedido do dono 2026-07-24): visão por etapa SÓ do pipeline
+      // Bid, independente do escopo Ativos/Tudo (que remove Bid do headline). Mesma
+      // mecânica do stageUnified; receita probabilizada do Bid usa a régua fixa 0,5%
+      // (só Proposta/Negociação têm linha de receita no Overall — as demais etapas
+      // aparecem com deals/vidas/ARR e receita zerada, como no painel canônico).
+      const bidOnly = d => d.pipeline === 'Bid';
+      const bidA = FC.applyAeQuarterFilter(mappedA.filter(bidOnly), aeSel, qSel);
+      const bidB = FC.applyAeQuarterFilter(mappedB.filter(bidOnly), aeSel, qSel);
+      const bidUnified = FC.stageUnified(
+        FC.dealContributions(bidA, fA.refDate, manual),
+        FC.dealContributions(bidB, fB.refDate, manual),
+        rawBStageById
+      );
 
       return res.status(200).json({
         success: true,
@@ -245,6 +258,7 @@ module.exports = async function handler(req, res) {
         funnel: { stages: deltaScoped ? FC.deltaScopeStages(scopeParam) : snapB.funnelStages, a: snapA.stageCounts, b: snapB.stageCounts },
         waterfall,
         stageUnified,
+        bidUnified,
         quarters,
         totals: { a: snapA.totals, b: snapB.totals, deltaProb12: snapB.totals.prob12 - snapA.totals.prob12 },
         invariant: { sumStageDeltaProb12: sumDelta, totalDeltaProb12: snapB.totals.prob12 - snapA.totals.prob12, ok: invariantOk },
@@ -295,6 +309,13 @@ module.exports = async function handler(req, res) {
         const fullB = FC.applyAeQuarterFilter(FC.applyDeltaScope(mappedB, 'tudo'), aeSel, qSel);
         cA = FC.dealContributions(fullA, fA.refDate, manual);
         cB = FC.dealContributions(fullB, fB.refDate, manual);
+      }
+      // Drill do Pipe de Bid (bidstage:, D08): contribuições SÓ do pipeline Bid,
+      // espelhando o bidUnified do compare (o escopo Ativos/Tudo removeria o Bid).
+      if (String(row).indexOf('bidstage:') === 0) {
+        const bidOnly = d => d.pipeline === 'Bid';
+        cA = FC.dealContributions(FC.applyAeQuarterFilter(mappedA.filter(bidOnly), aeSel, qSel), fA.refDate, manual);
+        cB = FC.dealContributions(FC.applyAeQuarterFilter(mappedB.filter(bidOnly), aeSel, qSel), fB.refDate, manual);
       }
       // Drill genérico (Leva 2): row pode ser <rowKey> (compat waterfall), stage:<Etapa>,
       // quarter:<Q> ou kpi:vidas|arrTotal|arrPond.

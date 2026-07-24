@@ -110,6 +110,10 @@ function call(url){
   // agregações aditivas Leva 2
   check('stageUnified presente (funil + Stand by)', Array.isArray(cmp.body.stageUnified) && cmp.body.stageUnified.length === 9, 'n=' + (cmp.body.stageUnified || []).length);
   check('quarters presente', Array.isArray(cmp.body.quarters) && cmp.body.quarters.length >= 1, 'n=' + (cmp.body.quarters || []).length);
+  // D08 | Pipe de Bid: visão Bid-only independente do escopo (que remove Bid do headline)
+  const bidPE = (cmp.body.bidUnified || []).filter(r => r.stage === 'Proposta Enviada')[0];
+  check('bidUnified presente com Gama em Proposta Enviada', bidPE && bidPE.b.deals === 1 && bidPE.b.arr === 1440000, bidPE && (bidPE.b.deals + '/' + bidPE.b.arr));
+  check('bidUnified não vaza Vendas', (cmp.body.bidUnified || []).reduce((s, r) => s + r.b.deals, 0) === 1);
   check('quarter do AE no BID preservado', cmp.body.quarters.some(q => q.quarter === 'Q4 2026') && !cmp.body.quarters.some(q => q.quarter === 'Q2 2027'));
   const suSumProb12 = cmp.body.stageUnified.reduce((s, r) => s + r.delta.prob12, 0);
   check('Σ Δ(etapa unificada) == Δtotal prob12', near(suSumProb12, cmp.body.totals.b.prob12 - cmp.body.totals.a.prob12), Math.round(suSumProb12));

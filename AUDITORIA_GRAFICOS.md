@@ -13,11 +13,14 @@
 > | D04 | Funil / deals por etapa | contagem A × B |
 > | D05 | Deals que saíram do pipe | lista direta no card; destino distingue Caiu / Ganho / Avançou |
 > | D06 | ARR por Quarter previsto | ARR Total / Ponderado |
-> | D07 | Visão unificada por etapa | colunas de receita (12M) trocadas por **ARR Total / ARR Ponderado** (2026-07-24) |
+> | D07 | Visão unificada por etapa | colunas de receita (12M) trocadas por **ARR Total / ARR Ponderado** (2026-07-24); só Vendas (Bid no D08) |
+> | D08 | Pipe de Bid por etapa | visão DEDICADA do pipeline Bid (2026-07-24): prob fixa 0,5%, receita só Proposta/Negociação; não mistura com as visões de Vendas |
 >
 > Movimentação nos drills agora separa **Avançou** (etapa posterior) de **Caiu (Perdido)**
 > e **Foi para Ganho** — sair do conjunto por avanço não é churn. Cada card tem botão
 > **i** com memória de cálculo (drawer + seções do catálogo semântico).
+> 2026-07-24: os **🟡 por card foram removidos a pedido do dono** — a sinalização de
+> não-validado fica no pill do PAINEL (header); o estado desta tabela segue valendo.
 > Ressalva a validar: destino de deal **Bid** pode aparecer como ID bruto de etapa na
 > lista do D05 (mapeamento de etapa Bid do snapshot — pré-existente).
 
