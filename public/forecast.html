@@ -1806,6 +1806,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
     body.nav-docked #kpi-accordion,
     body.nav-docked #tw,
     body.nav-docked #comp-banner,
+    body.nav-docked #meta-panel,
     body.nav-docked #historico-panel{margin-left:280px;transition:margin-left .25s cubic-bezier(0.4,0,0.2,1)}
     @media(max-width:820px){
       body.nav-docked #app-header,
@@ -1814,6 +1815,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       body.nav-docked #kpi-accordion,
       body.nav-docked #tw,
       body.nav-docked #comp-banner,
+      body.nav-docked #meta-panel,
       body.nav-docked #historico-panel{margin-left:0}
     }
   </style>
@@ -1866,7 +1868,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       <div class="panel-switcher" id="panel-switcher"><button class="panel-switch-btn" type="button" onclick="togglePanelMenu(event)" aria-haspopup="true" aria-expanded="false"><h1>Forecast</h1><svg class="panel-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button><div class="panel-dd" id="panel-dd" role="menu"></div></div>
       <div class="seg-ctrl">
         <button class="seg-btn active" data-view="pipeline" onclick="switchView('pipeline')">Pipeline</button>
-        <button class="seg-btn" data-view="meta" onclick="switchView('meta')">Meta vs Ach</button>
+        <button class="seg-btn" data-view="meta" onclick="switchView('meta')">Meta</button>
       </div>
       <span class="sub" id="sub"></span>
     </div>

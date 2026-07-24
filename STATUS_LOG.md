@@ -1,5 +1,18 @@
 # Dashboard Enhancement Loop — Status Log
 
+### Forecast | aba "Meta vs Ach" vira "Meta" + aba responsiva ao drawer docked (2026-07-24)
+
+- **Título da aba simplificado** (pedido do dono): segmented control do /forecast agora
+  é Pipeline | **Meta** (era "Meta vs Ach"; o título interno do bloco segue sendo o do
+  quarter). Thumb medido via `_syncSegThumb` absorve a mudança de largura.
+- **Responsividade com o menu aberto:** o `nav-docked` do forecast.html desloca uma
+  LISTA fixa de elementos (`#app-header`, `#tw`, `#historico-panel`…) e o **`#meta-panel`
+  não estava nela** — com o drawer aberto, o conteúdo da Meta ficava por baixo do menu.
+  Fix: `#meta-panel` adicionado às duas regras (280px + reset ≤820px), espelhando o
+  `#historico-panel`. O conteúdo agora "espreme" com o menu aberto, sem precisar fechá-lo.
+- Validação: inline-js 0 erros; /forecast 200; screenshot com drawer docked conferido.
+  Front-only (forecast.html), sem tocar api/lib.
+
 ### Delta | sticky condensado com resumo dos filtros + horizonte ARR no lugar do TCV (2026-07-24)
 
 - **Sticky condensado (pedido do dono):** ao rolar (>48px), o header sticky troca os
