@@ -1,5 +1,31 @@
 # Dashboard Enhancement Loop — Status Log
 
+### Delta | sticky condensado com resumo dos filtros + horizonte ARR no lugar do TCV (2026-07-24)
+
+- **Sticky condensado (pedido do dono):** ao rolar (>48px), o header sticky troca os
+  controles por UMA linha com o resumo dos filtros ativos, no formato
+  `Todos os executivos | Todos os quarters | 2026-06-26 × 2026-07-20 | Probabilizada |
+  ARR | Deals Ativos` (datas = fotos RESOLVIDAS). Clique no resumo → volta ao topo
+  (smooth) para editar. Hambúrguer + título "Delta" permanecem; filtros/medidas/ações
+  somem no estado condensado (`.app-header.condensed` + `#hdr-summary`).
+- **Horizonte TCV 12M → ARR (pedido do dono):** o toggle Horizonte agora é
+  **ARR | Pipeline total**. Com ARR: Probabilizada = `arr_estimado` × prob. final
+  (arrPond) e Real = ARR bruto (arr); Pipeline total segue a receita da régua no
+  horizonte completo (probTotal/realTotal). O TCV(12M) saiu do menu — a medida
+  headline default do painel passa a ser **ARR ponderado** (coerente com D01/D03/D06/D07,
+  que já eram ARR). Waterfall Total @ A/B agora bate 1:1 com o KPI ARR Ponderado.
+  - **Backend (aditivo):** `compare` agrega `arr`/`arrPond` por linha do waterfall
+    (das contribuições por rowKey — com escopo, todo deal tem linha, então o invariante
+    **Σ Δ(linhas) = Δ KPI** vale também em ARR; verificado com dado real: 87.884 = 87.884)
+    e `totals.a/b` ganham `arr`/`arrPond` (= KPIs, mesmo conjunto). O drill do waterfall
+    herda a medida (`measure=arrPond|arr`) sem mudança no handler.
+- Textos atualizados: help do D02 (medidas ARR × régua), subtítulo do painel, tooltips
+  do toggle. Ressalva: com horizonte ARR, "Real" significa ARR bruto (não probabilizado),
+  não a série "Receita Real" da Regra nº 3 — documentado no i do D02.
+- **Validação:** `npm run check` PASS (exit 0, 71 PASS; asserts novos no e2e: waterfall
+  carrega ARR por linha, totals=KPIs, invariante em ARR); live PASS; screenshots do topo
+  e do estado condensado conferidos. ⚠ `api/` mudou → **servidor :3002 reiniciado**.
+
 ### Delta | D08 Pipe de Bid + remoção dos 🟡 por card (2026-07-24)
 
 - **🟡 removidos dos 6 cards** (pedido do dono; o pill **"🟡 não validado" do PAINEL

@@ -221,6 +221,21 @@ module.exports = async function handler(req, res) {
       // Contribuições por deal (mesmo escopo filtrado) — alimentam quarters/drills.
       const cA = FC.dealContributions(scopedInputA, fA.refDate, manual);
       const cB = FC.dealContributions(scopedInputB, fB.refDate, manual);
+      // ARR por linha do waterfall (horizonte ARR no menu, pedido do dono 2026-07-24):
+      // agrega arr/arrPond das contribuições por rowKey — campos ADITIVOS em a/b/delta.
+      // Com escopo (ativos|tudo) todo deal escopado tem rowKey, então Σ Δ(linhas) bate
+      // com o Δ dos KPIs arrTotal/arrPond (invariante preservado também em ARR).
+      const _arrByRow = (contrib) => { const m = {}; contrib.forEach(x => { if (!x.rowKey) return; const t = m[x.rowKey] || (m[x.rowKey] = { arr: 0, arrPond: 0 }); t.arr += x.arr || 0; t.arrPond += x.arrPond || 0; }); return m; };
+      const arrRowA = _arrByRow(cA), arrRowB = _arrByRow(cB);
+      waterfall.forEach(w => {
+        const ra = arrRowA[w.key] || { arr: 0, arrPond: 0 }, rb = arrRowB[w.key] || { arr: 0, arrPond: 0 };
+        w.a.arr = ra.arr; w.a.arrPond = ra.arrPond;
+        w.b.arr = rb.arr; w.b.arrPond = rb.arrPond;
+        w.delta.arr = rb.arr - ra.arr; w.delta.arrPond = rb.arrPond - ra.arrPond;
+      });
+      // Totais em ARR = os próprios KPIs (mesmo conjunto escopado; barras Total @ A/B).
+      const totalsA = Object.assign({}, snapA.totals, { arr: snapA.kpis.arrTotal, arrPond: snapA.kpis.arrPond });
+      const totalsB = Object.assign({}, snapB.totals, { arr: snapB.kpis.arrTotal, arrPond: snapB.kpis.arrPond });
       // Visão Unificada por Etapa: SEMPRE o funil completo (independe de Ativos/Tudo —
       // requisito do dono 2026-07-20). Conta todas as etapas e distingue avançou×perdido.
       // Sem escopo (legado/testes): mantém o conjunto de cA/cB (invariante Σ=headline).
@@ -260,7 +275,7 @@ module.exports = async function handler(req, res) {
         stageUnified,
         bidUnified,
         quarters,
-        totals: { a: snapA.totals, b: snapB.totals, deltaProb12: snapB.totals.prob12 - snapA.totals.prob12 },
+        totals: { a: totalsA, b: totalsB, deltaProb12: snapB.totals.prob12 - snapA.totals.prob12 },
         invariant: { sumStageDeltaProb12: sumDelta, totalDeltaProb12: snapB.totals.prob12 - snapA.totals.prob12, ok: invariantOk },
         dealDiff: FC.dealDiff(snapA.scopedDeals, snapB.scopedDeals).counts,
         caveats: [

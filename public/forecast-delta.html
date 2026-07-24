@@ -149,6 +149,12 @@ html[data-theme="light"] .hdr-btn:hover{background:rgba(0,0,0,.07)}
 .hdr-filters{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap}
 body.nav-docked .app-header,body.nav-docked #app-content{margin-left:280px;transition:margin-left .25s cubic-bezier(0.4,0,0.2,1)}
 @media(max-width:820px){body.nav-docked .app-header,body.nav-docked #app-content{margin-left:0}}
+/* Sticky condensado (2026-07-24): ao rolar, o header vira uma linha com o RESUMO dos
+   filtros ativos ("Todos os executivos | ... | ARR | Ativos"); clique = volta ao topo. */
+#hdr-summary{display:none;flex:1;min-width:0;align-items:center;border:0;background:transparent;color:var(--text2);font-family:var(--font);font-size:.78rem;font-weight:500;text-align:left;cursor:pointer;padding:0 .4rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#hdr-summary:hover{color:var(--text)}
+.app-header.condensed .hdr-filters,.app-header.condensed .controls,.app-header.condensed #fotos-hint,.app-header.condensed .hdr-actions{display:none}
+.app-header.condensed #hdr-summary{display:block}
 /* segmented control (canônico do dashboard geral) */
 .seg-ctrl{display:inline-flex;align-items:center;background:rgba(255,255,255,.14);border-radius:99px;padding:3px;position:relative}
 .seg-ctrl::before{content:'';position:absolute;top:3px;left:0;width:var(--seg-tw,calc(50% - 3px));height:calc(100% - 6px);background:rgba(255,255,255,.26);border-radius:99px;transform:translateX(var(--seg-tx,3px));transition:transform .22s cubic-bezier(.4,0,.2,1),width .22s cubic-bezier(.4,0,.2,1);will-change:transform,width;pointer-events:none;z-index:0}
@@ -209,6 +215,7 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
         </div>
       </div>
     </div>
+    <button type="button" id="hdr-summary" title="Filtros ativos | clique para voltar ao topo e editar"></button>
     <div class="hdr-actions">
       <span class="pill" title="Ainda não validado contra o HubSpot">🟡 não validado</span>
       <button type="button" class="hdr-btn" id="info-btn" title="Memória de cálculo" data-tooltip="Memória de cálculo" aria-expanded="false" aria-controls="info">i</button>
@@ -235,8 +242,8 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
     <div class="ctl">
       <span class="ctl-label">Horizonte</span>
       <div class="seg-ctrl" id="horizon-toggle" role="group" aria-label="Horizonte">
-        <button class="seg-btn active" data-v="12" aria-pressed="true">TCV 12M</button>
-        <button class="seg-btn" data-v="Total" aria-pressed="false">Pipeline total</button>
+        <button class="seg-btn active" data-v="arr" aria-pressed="true" title="ARR estimado | Probabilizada pondera pela prob. final da etapa">ARR</button>
+        <button class="seg-btn" data-v="Total" aria-pressed="false" title="Receita da régua no horizonte completo">Pipeline total</button>
       </div>
     </div>
     <div class="ctl">
@@ -258,7 +265,7 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
 </div>
 
 <div class="wrap" id="app-content">
-  <p class="sub">O que mudou no forecast de caixa entre duas datas | soma por etapa do funil</p>
+  <p class="sub">O que mudou no pipe entre duas fotos | ARR ou receita da régua, somados por etapa do funil</p>
 
   <!-- Memória de cálculo GERADA do catálogo (Fase 3 do 2.0, ADR-006) -->
   <div id="info">
@@ -398,13 +405,15 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
     { key: 'delta', label: 'Δ', align: 'right', type: 'num' },
     { key: 'tipo', label: 'Movimentação', align: 'left', type: 'str' }
   ];
-  var metric = 'prob', horizon = '12', scope = 'ativos';   // measure = metric + (horizon==='12'?'12':'Total'); scope = ativos|tudo (remove Bid+Standby)
+  var metric = 'prob', horizon = 'arr', scope = 'ativos';   // horizon: 'arr' (ARR estimado) | 'Total' (receita da régua no horizonte completo); scope = ativos|tudo (remove Bid+Standby)
   var aeFilter = new Set(), quarterFilter = new Set();     // filtros multiselect (vazio = todos; '__NONE__' = nenhum)
   function filterQS(){ var p=''; if(aeFilter.size) p+='&ae='+encodeURIComponent(Array.from(aeFilter).join('|')); if(quarterFilter.size) p+='&q='+encodeURIComponent(Array.from(quarterFilter).join('|')); return p; }
   var quarterMetric = 'arr';              // toggle ARR Total / Ponderado da seção de quarter
   var lastJ = null;                        // última resposta de compare (para re-render de toggles)
   var fotoMin = '', fotoMax = '';          // limites de datas com foto disponível
-  function measureKey(){ return metric + (horizon === '12' ? '12' : 'Total'); }
+  // Medida efetiva: ARR (Probabilizada→arrPond, Real→arr bruto) ou receita da régua
+  // no horizonte completo (probTotal/realTotal). O TCV 12M saiu do menu (2026-07-24).
+  function measureKey(){ if(horizon === 'arr') return metric === 'prob' ? 'arrPond' : 'arr'; return metric + 'Total'; }
   function fmtBRL(v){ if(v==null||isNaN(v)) return '-'; return 'R$ ' + Math.round(v).toLocaleString('pt-BR'); }
   function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
   function fmtBRLc(v){ var s = Math.abs(v) >= 1e6 ? (v/1e6).toFixed(2)+'M' : Math.round(v).toLocaleString('pt-BR'); return (v>=0?'+':'-')+'R$ '+ s.replace('-',''); }
@@ -470,6 +479,7 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
   }
 
   function refresh(){
+    updateHdrSummary();
     var a = document.getElementById('dateA').value, b = document.getElementById('dateB').value;
     var cs = document.getElementById('chart-state');
     if(!a || !b){ cs.style.display='block'; cs.className='state'; cs.textContent='Escolha as duas datas.'; return; }
@@ -485,6 +495,7 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
         document.getElementById('resB').textContent = (j.b.requested===j.b.resolvedTab?'foto exata':'→ foto '+j.b.resolvedTab)+' | '+tipoLbl(j.b.tipo);
         if(j.filters){ buildAeFilter(j.filters.executivos); buildQuarterFilter(j.filters.quarters); }
         lastJ = j;
+        updateHdrSummary();
         render(j);
       })
       .catch(function(e){ cs.className='state err'; cs.textContent='Erro de conexão: '+e.message; });
@@ -806,6 +817,24 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
   function syncAllSegs(){ Array.prototype.slice.call(document.querySelectorAll('.seg-ctrl')).forEach(syncSeg); }
   window.addEventListener('resize', syncAllSegs);
   window.addEventListener('load', syncAllSegs);
+
+  // ── Sticky condensado: resumo dos filtros ativos no lugar dos controles ──
+  function hdrSummaryTxt(){
+    var aeTxt = aeFilter.size===0 ? 'Todos os executivos' : (aeFilter.has('__NONE__') ? 'Nenhum executivo' : (aeFilter.size===1 ? Array.from(aeFilter)[0] : aeFilter.size+' executivos'));
+    var qTxt = quarterFilter.size===0 ? 'Todos os quarters' : (quarterFilter.has('__NONE__') ? 'Nenhum quarter' : (quarterFilter.size===1 ? Array.from(quarterFilter)[0] : quarterFilter.size+' quarters'));
+    var a = lastJ ? lastJ.a.resolvedTab : document.getElementById('dateA').value;
+    var b = lastJ ? lastJ.b.resolvedTab : document.getElementById('dateB').value;
+    var dTxt = (a||'—')+' × '+(b||'—');
+    var mTxt = metric==='prob' ? 'Probabilizada' : 'Real';
+    var hTxt = horizon==='arr' ? 'ARR' : 'Pipeline total';
+    var sTxt = scope==='ativos' ? 'Deals Ativos' : 'Todas as etapas';
+    return [aeTxt, qTxt, dTxt, mTxt, hTxt, sTxt].join(' | ');
+  }
+  function updateHdrSummary(){ var el=document.getElementById('hdr-summary'); if(el) el.textContent = hdrSummaryTxt(); }
+  var _hdrEl = document.getElementById('app-header');
+  function onHdrScroll(){ _hdrEl.classList.toggle('condensed', (window.scrollY || document.documentElement.scrollTop || 0) > 48); }
+  window.addEventListener('scroll', onHdrScroll, {passive:true});
+  document.getElementById('hdr-summary').addEventListener('click', function(){ window.scrollTo({top:0, behavior:'smooth'}); });
   function wireToggle(id, cb){
     document.getElementById(id).addEventListener('click', function(e){
       var btn = e.target.closest('.seg-btn'); if(!btn) return;
@@ -832,9 +861,10 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
       '<p class="hk"><b>O que mostra |</b> os KPIs da Foto B (a mais recente ou a selecionada), sem comparação.</p>'+
       '<p class="hk"><b>Campos e fórmulas |</b> Deals abertos = contagem de deals no escopo da foto. Vidas = soma de <code>vidas</code>. ARR Total = soma de <code>arr_estimado</code> (fallback: 1ª fatura × 12; depois vidas × VPV × 12 nas etapas valoradas). ARR Ponderado = ARR × probabilidade final da etapa (pipeline Bid: 0,5%).</p>'+
       '<p class="hk"><b>Data usada |</b> a data escolhida em "Foto B" resolve para a foto em ou antes dela.</p>' },
-    D02: { title: 'Waterfall do forecast por etapa', sem: ['comparacao_fotos_delta'], html:
-      '<p class="hk"><b>O que mostra |</b> a variação (Δ) da medida selecionada no header (Probabilizada ou Real × TCV 12M ou Pipeline total) entre a Foto A e a Foto B, etapa a etapa, partindo de Total @ A até Total @ B.</p>'+
-      '<p class="hk"><b>Fórmula |</b> receita por deal vem do motor canônico (<code>forecast-compute</code> → <code>forecast-engine</code>, Regra primária nº 3), ancorada na data de cada foto; a barra da etapa é Σ(B) − Σ(A). Invariante verificado: Σ Δ das etapas = Δ do total (selo nos KPIs).</p>'+
+    D02: { title: 'Waterfall do forecast por etapa', sem: ['comparacao_fotos_delta','arr_ponderado_forecast'], html:
+      '<p class="hk"><b>O que mostra |</b> a variação (Δ) da medida selecionada no header entre a Foto A e a Foto B, etapa a etapa, partindo de Total @ A até Total @ B.</p>'+
+      '<p class="hk"><b>Medidas |</b> Horizonte <b>ARR</b>: Probabilizada = <code>arr_estimado</code> × prob. final da etapa | Real = ARR estimado bruto. Horizonte <b>Pipeline total</b>: receita da régua no horizonte completo (motor canônico <code>forecast-compute</code> → <code>forecast-engine</code>, Regra primária nº 3), ancorada na data de cada foto.</p>'+
+      '<p class="hk"><b>Fórmula |</b> a barra da etapa é Σ(B) − Σ(A). Invariante verificado: Σ Δ das etapas = Δ do total (selo nos KPIs).</p>'+
       '<p class="hk"><b>Escopo |</b> segue o filtro Ativos/Tudo do header (sem Bid e Stand by).</p>' },
     D03: { title: 'KPIs comparativos | A → B', sem: ['arr_estimado_fallback','arr_ponderado_forecast'], html:
       '<p class="hk"><b>O que mostra |</b> os mesmos KPIs do D01, só que em A → B com delta absoluto e %.</p>'+
@@ -891,6 +921,7 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
 
   loadCaptureAccess();
   syncAllSegs();
+  updateHdrSummary();
   loadFotos().then(refresh).catch(function(e){ var cs=document.getElementById('chart-state'); cs.className='state err'; cs.textContent=e.message; });
 })();
 </script>

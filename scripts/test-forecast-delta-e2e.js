@@ -105,6 +105,11 @@ function call(url){
     cmp.body.a && (cmp.body.a.resolvedTab + ' -> ' + cmp.body.b.resolvedTab));
   check('requested ecoado', cmp.body.a.requested === '2026-07-08' && cmp.body.b.requested === '2026-07-09');
   check('invariante ΣΔ == Δtotal', cmp.body.invariant && cmp.body.invariant.ok === true);
+  // Horizonte ARR no menu (2026-07-24): waterfall e totais carregam arr/arrPond aditivos
+  check('waterfall carrega ARR por linha (a/b/delta)', cmp.body.waterfall.length > 0 && cmp.body.waterfall.every(w => w.a.arrPond != null && w.b.arr != null && w.delta.arrPond != null));
+  check('totals carregam arr/arrPond (= KPIs)', near(cmp.body.totals.b.arr, cmp.body.b.kpis.arrTotal) && near(cmp.body.totals.b.arrPond, cmp.body.b.kpis.arrPond), Math.round(cmp.body.totals.b.arr || -1) + ' vs ' + Math.round(cmp.body.b.kpis.arrTotal));
+  const wfArrDelta = cmp.body.waterfall.reduce((s, w) => s + w.delta.arr, 0);
+  check('Σ Δ(ARR por linha) == Δ KPI arrTotal (invariante em ARR)', near(wfArrDelta, cmp.body.b.kpis.arrTotal - cmp.body.a.kpis.arrTotal, 1), 'ΣΔ=' + Math.round(wfArrDelta));
   check('KPIs presentes (vidas/arrTotal/arrPond)', cmp.body.a.kpis && cmp.body.a.kpis.vidas != null && cmp.body.a.kpis.arrTotal != null && cmp.body.a.kpis.arrPond != null);
 
   // agregações aditivas Leva 2
