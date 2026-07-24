@@ -89,6 +89,12 @@ const dCot = FC.drillGeneric(cA, cB, 'stage:Cotação', 'prob12', rawBStage);
 check('drill stage:Cotação retorna deals', Array.isArray(dCot.deals) && dCot.deals.length >= 1, 'n=' + dCot.deals.length);
 const alfaRow = dCot.deals.find(x => x.id === '1');
 check('drill stage: Alfa é NOVO em Cotação (veio de Diagnóstico)', alfaRow && alfaRow.tipo === 'novo', 'tipo=' + (alfaRow && alfaRow.tipo));
+// Sair da etapa por AVANÇO ≠ sair por perda (2026-07-24): Alfa saiu de Diagnóstico
+// rumo a Cotação (posterior) → tipo 'avancou', com o destino preservado.
+const dDiag = FC.drillGeneric(cA, cB, 'stage:Diagnóstico', 'prob12', rawBStage);
+const alfaDiag = dDiag.deals.find(x => x.id === '1');
+check('drill stage: Alfa AVANÇOU de Diagnóstico (não é "saiu")', alfaDiag && alfaDiag.tipo === 'avancou', 'tipo=' + (alfaDiag && alfaDiag.tipo));
+check('AVANÇOU traz destino (Cotação)', alfaDiag && alfaDiag.stageB === 'Cotação', 'destino=' + (alfaDiag && alfaDiag.stageB));
 
 // ── 5. drillGeneric | quarter: ───────────────────────────────────────────────
 const dQ = FC.drillGeneric(cA, cB, 'quarter:Q4 2026', 'prob12', rawBStage);

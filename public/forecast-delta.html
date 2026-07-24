@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Comparativo | Delta | Axenya</title>
+<title>Delta | Axenya</title>
 <link rel="icon" href="/favicon.svg">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
@@ -76,6 +76,19 @@ table.drill th.sortable:hover{color:var(--text)}
 .tag.saiu{color:var(--red);background:rgba(248,81,73,.14)}
 .tag.permaneceu{color:var(--text2);background:var(--card2)}
 .tag.ganho{color:var(--teal);background:rgba(58,184,183,.14)}
+.tag.avancou{color:var(--blue);background:rgba(88,166,255,.14)}
+.ccode{font-size:.62rem;font-weight:700;letter-spacing:.04em;color:var(--muted);border:1px solid var(--border);border-radius:5px;padding:.08rem .4rem;align-self:center}
+/* drawer lateral de memória de cálculo por card (padrão dos outros painéis) */
+.help-drawer{position:fixed;top:0;right:calc(-1 * min(480px,94vw));width:min(480px,94vw);height:100vh;background:var(--card);border-left:1px solid var(--border);z-index:1300;transition:right .25s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;box-shadow:-18px 0 40px rgba(0,0,0,.35)}
+.help-drawer.open{right:0}
+.help-drawer-hd{display:flex;align-items:center;gap:.7rem;padding:.95rem 1.25rem;border-bottom:1px solid var(--border)}
+.help-drawer-hd h3{margin:0;font-size:.95rem;flex:1}
+.help-drawer-bd{overflow:auto;padding:1rem 1.25rem 1.5rem;font-size:.78rem;line-height:1.65}
+.help-drawer-bd code{color:var(--teal)}
+.help-drawer-bd .hk{margin:0 0 .55rem}
+.help-drawer-bd .hk b{color:var(--text)}
+.help-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:1250;opacity:0;pointer-events:none;transition:opacity .2s}
+.help-backdrop.open{opacity:1;pointer-events:auto}
 .state{color:var(--text2);text-align:center;padding:2.5rem}
 .state.err{color:var(--red)}
 .caveat{font-size:.72rem;color:var(--muted);margin-top:.6rem;border-top:1px solid var(--border);padding-top:.6rem}
@@ -140,8 +153,7 @@ body.nav-docked .app-header,body.nav-docked #app-content{margin-left:280px;trans
 @media(max-width:820px){body.nav-docked .app-header,body.nav-docked #app-content{margin-left:0}}
 /* segmented control (canônico do dashboard geral) */
 .seg-ctrl{display:inline-flex;align-items:center;background:rgba(255,255,255,.14);border-radius:99px;padding:3px;position:relative}
-.seg-ctrl::before{content:'';position:absolute;top:3px;left:3px;width:calc(50% - 3px);height:calc(100% - 6px);background:rgba(255,255,255,.26);border-radius:99px;transition:transform .22s cubic-bezier(.4,0,.2,1);will-change:transform;pointer-events:none;z-index:0}
-.seg-ctrl.seg-pos1::before{transform:translateX(100%)}
+.seg-ctrl::before{content:'';position:absolute;top:3px;left:0;width:var(--seg-tw,calc(50% - 3px));height:calc(100% - 6px);background:rgba(255,255,255,.26);border-radius:99px;transform:translateX(var(--seg-tx,3px));transition:transform .22s cubic-bezier(.4,0,.2,1),width .22s cubic-bezier(.4,0,.2,1);will-change:transform,width;pointer-events:none;z-index:0}
 .seg-btn{border:none;background:none;color:var(--text2);border-radius:99px;padding:.27rem .9rem;font-size:.8rem;font-weight:500;font-family:var(--font);cursor:pointer;transition:color .2s ease;white-space:nowrap;letter-spacing:-.01em;flex:1;text-align:center;position:relative;z-index:1}
 .seg-btn.active{color:var(--text)}
 html[data-theme="light"] .seg-ctrl{background:rgba(0,0,0,.06)}
@@ -187,7 +199,7 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
       <button class="hdr-btn" onclick="toggleDrawer()" data-tooltip="Menu" aria-label="Menu">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
       </button>
-      <div class="panel-switcher" id="panel-switcher"><button class="panel-switch-btn" type="button" onclick="togglePanelMenu(event)" aria-haspopup="true" aria-expanded="false"><h1>Comparativo</h1><svg class="panel-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button><div class="panel-dd" id="panel-dd" role="menu"></div></div>
+      <div class="panel-switcher" id="panel-switcher"><button class="panel-switch-btn" type="button" onclick="togglePanelMenu(event)" aria-haspopup="true" aria-expanded="false"><h1>Delta</h1><svg class="panel-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button><div class="panel-dd" id="panel-dd" role="menu"></div></div>
       <div class="hdr-filters">
         <div class="fdd-wrapper">
           <button class="fdd-trigger" id="btn-ae" onclick="toggleAeMenu()"><span id="btn-ae-lbl">Executivo</span><span class="fdd-arr"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span></button>
@@ -202,7 +214,6 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
     <div class="hdr-actions">
       <span class="pill" title="Ainda não validado contra o HubSpot">🟡 não validado</span>
       <button type="button" class="hdr-btn" id="info-btn" title="Memória de cálculo" data-tooltip="Memória de cálculo" aria-expanded="false" aria-controls="info">i</button>
-      <a class="back" href="/forecast-overall" style="font-size:.82rem">← Overall</a>
     </div>
   </div>
   <div class="controls">
@@ -256,69 +267,97 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
     <div data-semantic-help="comparacao_fotos_delta"></div>
   </div>
 
-  <!-- Fotografia mais recente / selecionada -->
+  <!-- D01 | Fotografia mais recente / selecionada -->
   <div class="card" id="today-snapshot-card" style="display:none">
     <div class="sec-hdr">
+      <span class="ccode">D01</span>
       <h3 id="today-snapshot-title">Fotografia do forecast</h3>
       <span class="sec-note" id="today-snapshot-note"></span>
+      <span class="toggle-wrap"><button type="button" class="ibtn" data-help="D01" aria-label="Memória de cálculo | D01">i</button></span>
     </div>
     <div class="kpis" id="today-snapshot-kpis"></div>
   </div>
 
-  <!-- Waterfall = elemento primário (spec seção 8) -->
+  <!-- D02 | Waterfall = elemento primário (spec seção 8) -->
   <div class="card">
+    <div class="sec-hdr">
+      <span class="ccode">D02</span>
+      <h3>Waterfall do forecast por etapa <span class="pill">🟡</span></h3>
+      <span class="sec-note">Δ da medida selecionada entre Total @ A e Total @ B | clique numa barra para o drill</span>
+      <span class="toggle-wrap"><button type="button" class="ibtn" data-help="D02" aria-label="Memória de cálculo | D02">i</button></span>
+    </div>
     <div class="chart-wrap"><canvas id="wf"></canvas><div class="state" id="chart-state" aria-live="polite">Selecione duas fotos…</div></div>
     <div class="clickhint">Clique numa barra de etapa para ver os deals que causaram o movimento.</div>
     <div class="caveat" id="caveat"></div>
   </div>
 
-  <!-- KPIs de apoio (seção 6.2) -->
+  <!-- D03 | KPIs de apoio (seção 6.2) -->
   <div class="card">
+    <div class="sec-hdr">
+      <span class="ccode">D03</span>
+      <h3>KPIs comparativos | A → B <span class="pill">🟡</span></h3>
+      <span class="sec-note">Deals, vidas e ARR do escopo em cada foto | clique num KPI para o drill</span>
+      <span class="toggle-wrap"><button type="button" class="ibtn" data-help="D03" aria-label="Memória de cálculo | D03">i</button></span>
+    </div>
     <div class="kpis" id="kpis"></div>
   </div>
 
-  <!-- Funil delta (seção 6.3): contagem de deals por etapa, Foto A × Foto B -->
+  <!-- D04 | Funil delta (seção 6.3): contagem de deals por etapa, Foto A × Foto B -->
   <div class="card">
     <div class="funnel-hdr">
+      <span class="ccode">D04</span>
       <h3>Funil | deals por etapa <span class="pill">🟡</span></h3>
       <span class="funnel-note">Contagem de deals abertos por etapa em cada foto (A × B) | clique numa etapa para o drill</span>
+      <span class="toggle-wrap"><button type="button" class="ibtn" data-help="D04" aria-label="Memória de cálculo | D04">i</button></span>
     </div>
     <div class="chart-wrap" style="height:300px"><canvas id="funnel"></canvas></div>
-    <div class="clickhint">Clique numa barra do funil para ver os deals daquela etapa (Novo / Permaneceu / Saiu + destino).</div>
+    <div class="clickhint">Clique numa barra do funil para ver os deals daquela etapa (Novo | Permaneceu | Avançou | Caiu + destino).</div>
   </div>
 
-  <!-- Acesso dedicado aos que SAÍRAM (spec Leva 2) -->
+  <!-- D05 | Deals que SAÍRAM do escopo, lista direta (pedido do dono 2026-07-24) -->
   <div class="card">
     <div class="sec-hdr">
+      <span class="ccode">D05</span>
       <h3>Deals que saíram do pipe <span class="pill">🟡</span></h3>
       <span class="sec-note">Estavam em A e não estão mais no escopo em B | destino final e valor</span>
-      <span class="toggle-wrap"><button type="button" class="fchip" id="open-saiu">Abrir lista de "Saiu" ▸</button></span>
+      <span class="toggle-wrap"><button type="button" class="ibtn" data-help="D05" aria-label="Memória de cálculo | D05">i</button></span>
     </div>
     <div id="saiu-summary" class="reslbl"></div>
+    <div id="saiu-list" style="overflow:auto"></div>
   </div>
 
-  <!-- ARR Total + Ponderado por Quarter previsto (spec Leva 2) -->
+  <!-- D06 | ARR Total + Ponderado por Quarter previsto (spec Leva 2) -->
   <div class="card">
     <div class="sec-hdr">
+      <span class="ccode">D06</span>
       <h3>ARR por Quarter previsto <span class="pill">🟡</span></h3>
       <span class="sec-note">ARR Total e Ponderado por quarter de fechamento | A → B | clique numa linha para o drill</span>
-      <div class="toggle-wrap"><div class="seg-ctrl" id="quarter-toggle" role="group" aria-label="Métrica de ARR por quarter">
+      <div class="toggle-wrap" style="display:flex;gap:.6rem;align-items:center"><div class="seg-ctrl" id="quarter-toggle" role="group" aria-label="Métrica de ARR por quarter">
         <button class="seg-btn active" data-v="arr" aria-pressed="true">ARR Total</button>
         <button class="seg-btn" data-v="arrPond" aria-pressed="false">Ponderado</button>
-      </div></div>
+      </div><button type="button" class="ibtn" data-help="D06" aria-label="Memória de cálculo | D06">i</button></div>
     </div>
     <div style="overflow:auto"><table class="utable" id="quarter-table"></table></div>
   </div>
 
-  <!-- Tabela unificada por ETAPA (spec Leva 2) -->
+  <!-- D07 | Tabela unificada por ETAPA (spec Leva 2) -->
   <div class="card">
     <div class="sec-hdr">
+      <span class="ccode">D07</span>
       <h3>Visão unificada por etapa <span class="pill">🟡</span></h3>
       <span class="sec-note">Todas as etapas do funil (independe do filtro Ativos/Tudo) | Movimentação: <b>Novo</b> (entrou) / <b>Avançou</b> (saiu p/ etapa posterior) / <b>Perdido</b> | clique numa linha para o drill</span>
+      <span class="toggle-wrap"><button type="button" class="ibtn" data-help="D07" aria-label="Memória de cálculo | D07">i</button></span>
     </div>
     <div style="overflow:auto"><table class="utable" id="stage-table"></table></div>
   </div>
 </div>
+
+<!-- Drawer lateral de memória de cálculo por card (i) -->
+<div class="help-backdrop" id="help-backdrop"></div>
+<aside class="help-drawer" id="help-drawer" role="dialog" aria-modal="true" aria-labelledby="help-title" aria-hidden="true">
+  <div class="help-drawer-hd"><span class="ccode" id="help-code"></span><h3 id="help-title">Memória de cálculo</h3><button type="button" class="modal-x" id="help-x" aria-label="Fechar">×</button></div>
+  <div class="help-drawer-bd" id="help-body"></div>
+</aside>
 
 <div class="modal" id="drill" role="dialog" aria-modal="true" aria-labelledby="drill-title" aria-hidden="true">
   <div class="modal-box">
@@ -335,7 +374,9 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
   var drillRows = [], drillMeta = { sumDelta: 0, measure: '', field: '' }, drillSort = { key: 'delta', dir: -1 };
   var drillFmt = null;   // formatador dos valores da coluna (BRL ou número, conforme o KPI)
   var drillMov = {};   // filtro de Movimentação: chave->true; vazio = todas
-  var MOV = [ { k: 'novo', label: 'Novo' }, { k: 'permaneceu', label: 'Permaneceu' }, { k: 'saiu', label: 'Caiu (Perdido)' }, { k: 'ganho', label: 'Foi para Ganho' } ];
+  // 'avancou' ≠ 'saiu': sair do conjunto por avanço de etapa é diferente de sair por perda (2026-07-24)
+  var MOV = [ { k: 'novo', label: 'Novo' }, { k: 'permaneceu', label: 'Permaneceu' }, { k: 'avancou', label: 'Avançou' }, { k: 'saiu', label: 'Caiu (Perdido)' }, { k: 'ganho', label: 'Foi para Ganho' } ];
+  function movLbl(t){ for(var i=0;i<MOV.length;i++){ if(MOV[i].k===t) return MOV[i].label; } return t; }
   var DRILL_COLS = [
     { key: 'dealname', label: 'Deal', align: 'left', type: 'str' },
     { key: 'stage', label: 'Etapa (A→B) | destino', align: 'left', type: 'str' },
@@ -402,12 +443,16 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
         fotoMax = fotos[0].tab; fotoMin = fotos[fotos.length-1].tab;
         var dA = document.getElementById('dateA'), dB = document.getElementById('dateB');
         dA.min = fotoMin; dA.max = fotoMax; dB.min = fotoMin; dB.max = fotoMax;
-        // Default: B = data mais recente com foto; A = ~1 mês antes (4 fotos atrás ou a mais antiga)
-        dB.value = fotos[0].tab;
-        dA.value = fotos[Math.min(fotos.length-1, 4)].tab;
+        // Default: B = data mais recente com foto; A = ~1 mês antes (4 fotos atrás ou a
+        // mais antiga). Só datas YYYY-MM-DD servem de default: no fallback do Sheet as
+        // fotos mensais têm tab "Mmm AAAA", que o input[type=date] rejeita (ficava vazio).
+        var isoFotos = fotos.filter(function(f){ return /^\d{4}-\d{2}-\d{2}$/.test(f.tab); });
+        if(isoFotos.length){
+          dB.value = isoFotos[0].tab;
+          dA.value = isoFotos[Math.min(isoFotos.length-1, 4)].tab;
+        }
         document.getElementById('fotos-hint').textContent =
-          'Datas livres | ' + fotos.length + ' fotos entre ' + fotoMin + ' e ' + fotoMax +
-          ' (fonte ' + (j.source||'BigQuery') + '). A data escolhida resolve para a foto em ou antes dela.';
+          fotos.length + ' fotos | ' + fotoMin + ' → ' + fotoMax + ' | a data escolhida usa a foto em ou antes dela';
       });
   }
 
@@ -423,8 +468,8 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
         var j = res.j;
         if(!j.success){ cs.className='state err'; cs.textContent = j.error || 'Erro'; if(chart){chart.destroy();chart=null;} document.getElementById('kpis').innerHTML=''; return; }
         // requested (a data que o usuário pediu) e resolvedTab (a foto real usada)
-        document.getElementById('resA').textContent = 'Pedido: '+j.a.requested+' → foto '+j.a.resolvedTab+' ('+tipoLbl(j.a.tipo)+')';
-        document.getElementById('resB').textContent = 'Pedido: '+j.b.requested+' → foto '+j.b.resolvedTab+' ('+tipoLbl(j.b.tipo)+')';
+        document.getElementById('resA').textContent = (j.a.requested===j.a.resolvedTab?'foto exata':'→ foto '+j.a.resolvedTab)+' | '+tipoLbl(j.a.tipo);
+        document.getElementById('resB').textContent = (j.b.requested===j.b.resolvedTab?'foto exata':'→ foto '+j.b.resolvedTab)+' | '+tipoLbl(j.b.tipo);
         if(j.filters){ buildAeFilter(j.filters.executivos); buildQuarterFilter(j.filters.quarters); }
         lastJ = j;
         render(j);
@@ -488,8 +533,6 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
       card('Vidas em pipe', kA.vidas, kB.vidas, num, 'vidas') +
       card('ARR Total em pipe', kA.arrTotal, kB.arrTotal, money, 'arrTotal') +
       card('ARR Ponderado', kA.arrPond, kB.arrPond, money, 'arrPond') +
-      card('MRR Ponderado', kA.mrrPond, kB.mrrPond, money) +
-      card('TCV (12M) ponderado', kA.tcv12, kB.tcv12, money) +
       invBadge;
     document.getElementById('kpis').querySelectorAll('.kpi.clk').forEach(function(el){
       el.addEventListener('click', function(){ var k=el.getAttribute('data-kpi'); openDrill('kpi:'+k, kpiTitle(k), kpiFmt(k)); });
@@ -557,7 +600,7 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
   function renderStageTable(j){
     var t = document.getElementById('stage-table');
     if(!j.stageUnified){ t.innerHTML=''; return; }
-    var head = '<caption class="sr-only">Visão unificada por etapa</caption><thead><tr><th scope="col">Etapa</th><th scope="col">Deals A→B</th><th scope="col">Novo / Avançou / Perdido</th><th scope="col">Vidas A→B</th><th scope="col" class="stage-real">Receita Real (12M) A→B</th><th scope="col">Receita Ponderada (12M) A→B</th><th scope="col">Δ Ponderada</th></tr></thead>';
+    var head = '<caption class="sr-only">Visão unificada por etapa</caption><thead><tr><th scope="col">Etapa</th><th scope="col">Deals A→B</th><th scope="col">Novo / Avançou / Perdido</th><th scope="col">Vidas A→B</th><th scope="col" class="stage-real">ARR Total A→B</th><th scope="col">ARR Ponderado A→B</th><th scope="col">Δ ARR Pond.</th></tr></thead>';
     var tot = { dA:0,dB:0, vA:0,vB:0, rA:0,rB:0, pA:0,pB:0, novos:0, avancou:0, caiuPerdido:0 };
     var movStr = function(m){ if(!m) return '—'; return '<span class="dpos" title="Novo (entrou na etapa)">+'+fmtNum(m.novos||0)+'</span> / <span style="color:var(--teal)" title="Avançou (saiu p/ etapa posterior)">→'+fmtNum(m.avancou||0)+'</span> / <span class="dneg" title="Perdido">-'+fmtNum(m.caiuPerdido||0)+'</span>'; };
     var body = j.stageUnified.filter(function(r){
@@ -565,21 +608,21 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
       var m=r.movement||{}; return r.a.deals||r.b.deals||m.novos||m.avancou||m.caiuPerdido||m.regrediu||m.saiuOutro;
     }).map(function(r){
       tot.dA+=r.a.deals; tot.dB+=r.b.deals; tot.vA+=r.a.vidas; tot.vB+=r.b.vidas;
-      tot.rA+=r.a.real12; tot.rB+=r.b.real12; tot.pA+=r.a.prob12; tot.pB+=r.b.prob12;
+      tot.rA+=r.a.arr; tot.rB+=r.b.arr; tot.pA+=r.a.arrPond; tot.pB+=r.b.arrPond;
       if(r.movement){ tot.novos+=r.movement.novos || 0; tot.avancou+=r.movement.avancou || 0; tot.caiuPerdido+=r.movement.caiuPerdido || 0; }
-      var dp=r.delta.prob12;
+      var dp=r.delta.arrPond;
       return '<tr data-stage="'+esc(r.stage)+'" role="button" tabindex="0" aria-label="Abrir drill da etapa '+esc(r.stage)+'">'+
         '<td>'+esc(r.stage)+'</td>'+
         '<td>'+fmtNum(r.a.deals)+' → '+fmtNum(r.b.deals)+' <span class="'+dcls(r.delta.deals)+'">('+fmtNumc(r.delta.deals)+')</span></td>'+
         '<td>'+movStr(r.movement)+'</td>'+
         '<td>'+fmtNum(r.a.vidas)+' → '+fmtNum(r.b.vidas)+' <span class="'+dcls(r.delta.vidas)+'">('+fmtNumc(r.delta.vidas)+')</span></td>'+
-        '<td class="stage-real">'+fmtBRL(r.a.real12)+' → '+fmtBRL(r.b.real12)+'</td>'+
-        '<td>'+fmtBRL(r.a.prob12)+' → '+fmtBRL(r.b.prob12)+'</td>'+
+        '<td class="stage-real">'+fmtBRL(r.a.arr)+' → '+fmtBRL(r.b.arr)+'</td>'+
+        '<td>'+fmtBRL(r.a.arrPond)+' → '+fmtBRL(r.b.arrPond)+'</td>'+
         '<td class="'+dcls(dp)+'">'+fmtBRLc(dp)+'</td></tr>';
     }).join('');
     var foot = '<tfoot><tr><td>Total</td><td>'+fmtNum(tot.dA)+' → '+fmtNum(tot.dB)+'</td><td>'+movStr(tot)+'</td><td>'+fmtNum(tot.vA)+' → '+fmtNum(tot.vB)+'</td><td class="stage-real">'+fmtBRL(tot.rA)+' → '+fmtBRL(tot.rB)+'</td><td>'+fmtBRL(tot.pA)+' → '+fmtBRL(tot.pB)+'</td><td class="'+dcls(tot.pB-tot.pA)+'">'+fmtBRLc(tot.pB-tot.pA)+'</td></tr></tfoot>';
     t.innerHTML = head+'<tbody>'+body+'</tbody>'+foot;
-    t.querySelectorAll('tbody tr').forEach(function(tr){ var go=function(){ var st=tr.getAttribute('data-stage'); openDrill('stage:'+st, 'Etapa | '+st, null); }; tr.addEventListener('click', go); tr.addEventListener('keydown', function(e){ if(e.key==='Enter'||e.key===' '){e.preventDefault();go();} }); });
+    t.querySelectorAll('tbody tr').forEach(function(tr){ var go=function(){ var st=tr.getAttribute('data-stage'); openDrill('stage:'+st, 'Etapa | '+st, fmtBRL, 'arr'); }; tr.addEventListener('click', go); tr.addEventListener('keydown', function(e){ if(e.key==='Enter'||e.key===' '){e.preventDefault();go();} }); });
   }
 
   // ── ARR Total + Ponderado por Quarter previsto (Leva 2) ──
@@ -604,16 +647,35 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
     t.querySelectorAll('tbody tr').forEach(function(tr){ var go=function(){ var q=tr.getAttribute('data-quarter'); openDrill('quarter:'+q, 'Quarter | '+q, fmtBRL, isPond?'arrPond':'arr'); }; tr.addEventListener('click', go); tr.addEventListener('keydown', function(e){ if(e.key==='Enter'||e.key===' '){e.preventDefault();go();} }); });
   }
 
-  // ── Acesso dedicado aos deals que SAÍRAM (Leva 2) ──
+  // ── D05 | Deals que SAÍRAM do escopo, lista direta no card (2026-07-24) ──
+  // Reusa o drill de KPI (todo o escopo) e mostra só quem saiu, com o destino
+  // classificado: Caiu (Perdido) | Foi para Ganho | Avançou (p/ etapa fora do escopo).
+  var saiuSeq = 0;   // descarta resposta atrasada quando o usuário troca filtros rápido
   function renderSaiu(j){
-    var el = document.getElementById('saiu-summary');
+    var el = document.getElementById('saiu-summary'), list = document.getElementById('saiu-list');
     var n = (j.dealDiff && j.dealDiff.sairam) || 0;
-    el.textContent = n ? (n + ' deal(s) saíram do escopo entre A e B | abra a lista para ver destino final e valor.') : 'Nenhum deal saiu do escopo entre A e B.';
-    document.getElementById('open-saiu').style.display = n ? '' : 'none';
-  }
-  function openSaiu(){
-    // Reusa o drill de KPI (todo o escopo) filtrado por Movimentação = Saiu.
-    openDrill('kpi:arrTotal', 'Deals que saíram | destino final e valor', fmtBRL, 'arrTotal', 'saiu');
+    el.textContent = n ? (n + ' deal(s) saíram do escopo entre A e B | valor = ARR estimado na foto A.') : 'Nenhum deal saiu do escopo entre A e B.';
+    if(!n){ list.innerHTML=''; return; }
+    list.innerHTML = '<div class="state"><span class="spin"></span>Carregando lista…</div>';
+    var a=document.getElementById('dateA').value, b=document.getElementById('dateB').value;
+    var seq = ++saiuSeq;
+    fetch('/api/history?action=compare-drill&a='+a+'&b='+b+'&row='+encodeURIComponent('kpi:arrTotal')+'&measure='+measureKey()+'&scope='+scope+filterQS(), {credentials:'same-origin'})
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if(seq !== saiuSeq) return;
+        if(!d.success){ list.innerHTML = '<div class="state err">'+esc(d.error||'erro')+'</div>'; return; }
+        var rows = (d.deals||[]).filter(function(x){ return x.tipo==='saiu' || x.tipo==='ganho' || x.tipo==='avancou'; });
+        rows.sort(function(x,y){ return (y.aCash||0)-(x.aCash||0); });
+        if(!rows.length){ list.innerHTML=''; return; }
+        var cap = rows.slice(0,60);
+        var trs = cap.map(function(x){
+          var st = (x.stageA||'—')+' → '+(x.stageB||'—');
+          return '<tr><td>'+esc(x.dealname)+'</td><td style="text-align:left">'+esc(st)+'</td><td>'+fmtBRL(x.aCash)+'</td><td><span class="tag '+x.tipo+'">'+movLbl(x.tipo)+'</span></td></tr>';
+        }).join('');
+        list.innerHTML = '<table class="drill"><thead><tr><th scope="col" style="text-align:left">Deal</th><th scope="col" style="text-align:left">Etapa A → destino</th><th scope="col">ARR @ A</th><th scope="col" style="text-align:left">Movimentação</th></tr></thead><tbody>'+trs+'</tbody></table>'+
+          (rows.length>60 ? '<p style="color:var(--muted);font-size:.72rem;margin-top:.6rem">Mostrando 60 de '+rows.length+' deals.</p>' : '');
+      })
+      .catch(function(e){ if(seq === saiuSeq) list.innerHTML = '<div class="state err">'+esc(e.message)+'</div>'; });
   }
 
   // ── Drill-down genérico (barra do waterfall, etapa, quarter, KPI) ──
@@ -670,7 +732,7 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
     var cap=rows.slice(0,120);
     var trs=cap.map(function(x){
       var st=(x.stageA||'—'); if(x.stageA!==x.stageB) st+=' → '+(x.stageB||'—');
-      return '<tr><td>'+esc(x.dealname)+'</td><td style="text-align:left">'+esc(st)+'</td><td>'+vf(x.aCash)+'</td><td>'+vf(x.bCash)+'</td><td class="'+(x.delta>=0?'up':'down')+'">'+vfc(x.delta)+'</td><td><span class="tag '+x.tipo+'">'+x.tipo+'</span></td></tr>';
+      return '<tr><td>'+esc(x.dealname)+'</td><td style="text-align:left">'+esc(st)+'</td><td>'+vf(x.aCash)+'</td><td>'+vf(x.bCash)+'</td><td class="'+(x.delta>=0?'up':'down')+'">'+vfc(x.delta)+'</td><td><span class="tag '+x.tipo+'">'+movLbl(x.tipo)+'</span></td></tr>';
     }).join('');
     body.innerHTML=head+'<table class="drill"><thead><tr>'+ths+'</tr></thead><tbody>'+trs+'</tbody></table>'+(rows.length>120?'<p style="color:var(--muted);font-size:.72rem;margin-top:.6rem">Mostrando 120 de '+rows.length+' deals (ordene/filtre para focar).</p>':'');
     body.querySelectorAll('th.sortable').forEach(function(th){ var go=function(){sortDrill(th.getAttribute('data-key'));}; th.addEventListener('click',go); th.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();go();}}); });
@@ -712,14 +774,24 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
   window.toggleQuarter=function(){ quarterFilter.clear(); var cbs=document.querySelectorAll('#quarter-menu input'); var n=0; cbs.forEach(function(c){if(c.checked){quarterFilter.add(c.value);n++;}}); if(n===0)quarterFilter.add('__NONE__'); else if(n===cbs.length)quarterFilter.clear(); updateQuarterBtnLabel(); refresh(); };
   document.addEventListener('click', function(e){ document.querySelectorAll('.fdd-wrapper.open').forEach(function(w){ if(!w.contains(e.target)) w.classList.remove('open'); }); });
 
-  // toggles (segmented control canônico)
+  // toggles (segmented control canônico) — thumb medido por botão ativo, como no
+  // /forecast: funciona para labels de larguras diferentes (o calc(50%) fixo não).
+  function syncSeg(ctrl){
+    var act = ctrl.querySelector('.seg-btn.active');
+    if(!act || !act.offsetWidth) return;
+    ctrl.style.setProperty('--seg-tw', act.offsetWidth+'px');
+    ctrl.style.setProperty('--seg-tx', act.offsetLeft+'px');
+  }
+  function syncAllSegs(){ Array.prototype.slice.call(document.querySelectorAll('.seg-ctrl')).forEach(syncSeg); }
+  window.addEventListener('resize', syncAllSegs);
+  window.addEventListener('load', syncAllSegs);
   function wireToggle(id, cb){
     document.getElementById(id).addEventListener('click', function(e){
       var btn = e.target.closest('.seg-btn'); if(!btn) return;
       var btns = Array.prototype.slice.call(this.querySelectorAll('.seg-btn'));
       btns.forEach(function(b){ b.classList.remove('active'); b.setAttribute('aria-pressed','false'); });
       btn.classList.add('active'); btn.setAttribute('aria-pressed','true');
-      this.classList.toggle('seg-pos1', btns.indexOf(btn)===1);
+      syncSeg(this);
       cb(btn.getAttribute('data-v'));
     });
   }
@@ -729,11 +801,70 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
   wireToggle('scope-toggle', function(v){ scope = v; refresh(); });
   document.getElementById('dateA').addEventListener('change', refresh);
   document.getElementById('dateB').addEventListener('change', refresh);
-  document.getElementById('open-saiu').addEventListener('click', openSaiu);
   document.getElementById('capture-snapshot-btn').addEventListener('click', captureSnapshotNow);
   document.getElementById('info-btn').addEventListener('click', function(){ var el=document.getElementById('info'); var open=el.style.display==='none'||!el.style.display; el.style.display=open?'block':'none'; this.setAttribute('aria-expanded',open?'true':'false'); });
 
+  // ── Memória de cálculo por card (i → drawer lateral, padrão dos outros painéis) ──
+  // Texto de negócio escrito aqui + seções GERADAS do catálogo semântico (ADR-006).
+  var HELP = {
+    D01: { title: 'Fotografia do forecast', sem: ['arr_estimado_fallback','arr_ponderado_forecast'], html:
+      '<p class="hk"><b>O que mostra |</b> os KPIs da Foto B (a mais recente ou a selecionada), sem comparação.</p>'+
+      '<p class="hk"><b>Campos e fórmulas |</b> Deals abertos = contagem de deals no escopo da foto. Vidas = soma de <code>vidas</code>. ARR Total = soma de <code>arr_estimado</code> (fallback: 1ª fatura × 12; depois vidas × VPV × 12 nas etapas valoradas). ARR Ponderado = ARR × probabilidade final da etapa (pipeline Bid: 0,5%).</p>'+
+      '<p class="hk"><b>Data usada |</b> a data escolhida em "Foto B" resolve para a foto em ou antes dela.</p>' },
+    D02: { title: 'Waterfall do forecast por etapa', sem: ['comparacao_fotos_delta'], html:
+      '<p class="hk"><b>O que mostra |</b> a variação (Δ) da medida selecionada no header (Probabilizada ou Real × TCV 12M ou Pipeline total) entre a Foto A e a Foto B, etapa a etapa, partindo de Total @ A até Total @ B.</p>'+
+      '<p class="hk"><b>Fórmula |</b> receita por deal vem do motor canônico (<code>forecast-compute</code> → <code>forecast-engine</code>, Regra primária nº 3), ancorada na data de cada foto; a barra da etapa é Σ(B) − Σ(A). Invariante verificado: Σ Δ das etapas = Δ do total (selo nos KPIs).</p>'+
+      '<p class="hk"><b>Escopo |</b> segue o filtro Ativos/Tudo do header (sem Bid e Stand by).</p>' },
+    D03: { title: 'KPIs comparativos | A → B', sem: ['arr_estimado_fallback','arr_ponderado_forecast'], html:
+      '<p class="hk"><b>O que mostra |</b> os mesmos KPIs do D01, só que em A → B com delta absoluto e %.</p>'+
+      '<p class="hk"><b>Campos |</b> Deals abertos (contagem) | Vidas (<code>vidas</code>) | ARR Total (<code>arr_estimado</code> com fallbacks) | ARR Ponderado (ARR × prob. final; Bid 0,5%).</p>'+
+      '<p class="hk"><b>Drill |</b> Vidas, ARR Total e ARR Ponderado abrem a lista de deals com a Movimentação (Novo | Permaneceu | Avançou | Caiu | Ganho).</p>' },
+    D04: { title: 'Funil | deals por etapa', sem: [], html:
+      '<p class="hk"><b>O que mostra |</b> a contagem de deals abertos por etapa do funil em cada foto (A em cinza, B em turquesa).</p>'+
+      '<p class="hk"><b>Campos |</b> etapa da foto (coluna Etapa do snapshot; Closed Lost → Perdido, fora do funil). Escopo Ativos/Tudo do header.</p>'+
+      '<p class="hk"><b>Drill |</b> clique na etapa para ver os deals e a Movimentação de cada um.</p>' },
+    D05: { title: 'Deals que saíram do pipe', sem: [], html:
+      '<p class="hk"><b>O que mostra |</b> deals presentes na Foto A que não estão mais no escopo na Foto B, com o destino final e o valor.</p>'+
+      '<p class="hk"><b>Classificação |</b> destino = etapa bruta em B: <b>Foi para Ganho</b> | <b>Caiu (Perdido)</b> | <b>Avançou</b> (foi para etapa posterior fora do escopo, ex.: Implantação com filtro Ativos) | fora do pipe.</p>'+
+      '<p class="hk"><b>Valor |</b> ARR estimado do deal na Foto A (<code>arr_estimado</code> com fallbacks).</p>' },
+    D06: { title: 'ARR por Quarter previsto', sem: ['quarter_fallback','arr_ponderado_forecast'], html:
+      '<p class="hk"><b>O que mostra |</b> ARR Total e ARR Ponderado somados por quarter previsto de fechamento, em A → B.</p>'+
+      '<p class="hk"><b>Campos |</b> quarter = campo <code>quarter</code> do deal (fallback: quarter da <code>data_prevista_para_receita</code>); sem nenhum dos dois → "Sem quarter". ARR como no D03.</p>'+
+      '<p class="hk"><b>Drill |</b> clique na linha para ver os deals do quarter na métrica do toggle.</p>' },
+    D07: { title: 'Visão unificada por etapa', sem: ['arr_estimado_fallback','arr_ponderado_forecast'], html:
+      '<p class="hk"><b>O que mostra |</b> TODAS as etapas do funil (independe do filtro Ativos/Tudo): deals, movimentação, vidas e ARRs por etapa, em A → B.</p>'+
+      '<p class="hk"><b>Movimentação |</b> Novo = entrou na etapa | Avançou = saiu para etapa posterior (inclui Ganho/Implantação) | Perdido = foi para Perdido.</p>'+
+      '<p class="hk"><b>Campos |</b> ARR Total = Σ <code>arr_estimado</code> (com fallbacks) dos deals da etapa; ARR Ponderado = Σ ARR × prob. final da etapa. Δ ARR Pond. = B − A.</p>' }
+  };
+  var helpLastFocus = null;
+  function openHelp(code){
+    var h = HELP[code]; if(!h) return;
+    helpLastFocus = document.activeElement;
+    document.getElementById('help-code').textContent = code;
+    document.getElementById('help-title').textContent = h.title;
+    var body = document.getElementById('help-body');
+    body.innerHTML = h.html + (h.sem.length ? '<div id="help-sem"></div>' : '');
+    if(h.sem.length && window.SemanticHelp) SemanticHelp.render(document.getElementById('help-sem'), h.sem);
+    document.getElementById('help-drawer').classList.add('open');
+    document.getElementById('help-drawer').setAttribute('aria-hidden','false');
+    document.getElementById('help-backdrop').classList.add('open');
+    setTimeout(function(){ document.getElementById('help-x').focus(); },0);
+  }
+  function closeHelp(){
+    document.getElementById('help-drawer').classList.remove('open');
+    document.getElementById('help-drawer').setAttribute('aria-hidden','true');
+    document.getElementById('help-backdrop').classList.remove('open');
+    if(helpLastFocus && helpLastFocus.focus) helpLastFocus.focus();
+  }
+  Array.prototype.slice.call(document.querySelectorAll('[data-help]')).forEach(function(btn){
+    btn.addEventListener('click', function(){ openHelp(btn.getAttribute('data-help')); });
+  });
+  document.getElementById('help-x').addEventListener('click', closeHelp);
+  document.getElementById('help-backdrop').addEventListener('click', closeHelp);
+  document.addEventListener('keydown', function(e){ if(e.key==='Escape' && document.getElementById('help-drawer').classList.contains('open')){ e.preventDefault(); closeHelp(); } });
+
   loadCaptureAccess();
+  syncAllSegs();
   loadFotos().then(refresh).catch(function(e){ var cs=document.getElementById('chart-state'); cs.className='state err'; cs.textContent=e.message; });
 })();
 </script>
@@ -754,6 +885,6 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
   (function(){ try{ var t=localStorage.getItem('theme'); if(t) document.documentElement.dataset.theme=t; }catch(e){}
     try{ var s=localStorage.getItem('nav_open'); if(s===null) s=localStorage.getItem('novo_nav_open'); if(s!=='false') _setNavOpen(true); }catch(e){} })();
 </script>
-<script src="/nav.js?v=2"></script>
+<script src="/nav.js?v=3"></script>
 </body>
 </html>

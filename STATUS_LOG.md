@@ -1,5 +1,50 @@
 # Dashboard Enhancement Loop — Status Log
 
+### Delta (ex-Comparativo) | rename + códigos D01–D07 + ARRs + "Avançou" + lista inline + i por card (2026-07-24)
+
+> Leva do dono no painel `/forecast-delta` (executada de ponta a ponta na sessão):
+> rename, numeração de cards, ARRs na visão por etapa, "Avançou" nos drills, lista
+> direta dos que saíram, KPIs enxutos, memória de cálculo por card e header harmônico.
+
+- **Rename Comparativo → Delta:** `<title>`, `<h1>` do panel-switcher e o item do menu
+  único (`public/nav.js`, Regra primária nº 2). Cache-buster `nav.js?v=3` nos 11 HTMLs
+  (no `bdr.html`, que tem bytes NUL, via replace binário byte-a-byte — sem sed).
+- **Códigos de card D01–D07** (chip `.ccode` no header de cada card): D01 Fotografia |
+  D02 Waterfall | D03 KPIs comparativos | D04 Funil | D05 Saíram do pipe | D06 ARR por
+  Quarter | D07 Visão unificada por etapa. Waterfall e KPIs ganharam header próprio.
+- **D07 | Visão unificada:** colunas de Receita Real/Ponderada (12M) substituídas por
+  **ARR Total A→B / ARR Ponderado A→B / Δ ARR Pond.** (pedido do dono; os campos
+  `arr`/`arrPond` por etapa JÁ vinham no payload de `stageUnified` — front-only).
+  Drill da linha passa a focar ARR (`field=arr`).
+- **"Avançou" nos drills (lib/forecast-compute.js):** `drillGeneric`/`drillRow` agora
+  classificam quem saiu do conjunto pelo destino bruto em B via `_classifySaiu`:
+  `ganho` (foi p/ Ganho) | `avancou` (etapa posterior pelo `_RANK` — sair por avanço ≠
+  sair por perda) | `saiu` (Perdido, regressão, fora do pipe). Chip "Avançou" no filtro
+  de Movimentação do modal (tag azul) + labels legíveis nas linhas. Únicos consumidores:
+  `api/history.js` compare-drill → só o Delta. Testes: asserts novos no
+  `test-forecast-delta-leva2.js` (Alfa avançou de Diagnóstico c/ destino).
+- **D05 | Deals que saíram:** o botão "Abrir lista" virou **lista direta no card**
+  (Deal | Etapa A → destino | ARR @ A | Movimentação), tipos saiu/ganho/avancou,
+  ordenada por ARR, cap 60 + contador; guarda de corrida por sequência.
+- **D03 | KPIs:** removidos **TCV (12M) ponderado** e **MRR Ponderado** (pedido do dono).
+  Ficam Deals, Vidas, ARR Total, ARR Ponderado + selo do invariante.
+- **Memória de cálculo por card:** botão **i** em todos os cards abre drawer lateral
+  direito (padrão dos outros painéis) com O que mostra | Campos/Fórmulas | Data usada,
+  + seções GERADAS do catálogo semântico (`SemanticHelp.render`, ADR-006) por card.
+- **Header harmônico:** thumb do segmented control agora é **medido via JS**
+  (`syncSeg`, mesmo padrão do /forecast — o `calc(50%)` fixo não envolvia labels de
+  larguras diferentes, ex. "Pipeline total"); removido link "← Overall" (redundante com
+  o menu único); linhas "Pedido: X → foto Y" encurtadas ("foto exata | diário");
+  hint de fotos condensado. Robustez: default de Foto A/B só aceita tab `YYYY-MM-DD`
+  (no fallback Sheet a foto mensal "Mmm AAAA" deixava o input vazio).
+- **Validação:** `npm run check` **PASS (exit 0)** com os asserts novos; smoke local
+  com dados reais: `stageUnified` com ARRs, drill kpi:arrTotal retorna
+  `{novo:12, saiu:16, permaneceu:48, avancou:2}` coerente com `dealDiff.sairam=18`;
+  2 screenshots headless conferidos (cards, códigos, thumbs, lista inline, drawer).
+  ⚠ `lib/` mudou → **servidor local :3002 foi reiniciado** nesta sessão.
+- Quirk observado (pré-existente, fora da leva): destino de deal Bid pode aparecer como
+  ID bruto de etapa (ex.: `1349620551`) na foto B — mapeamento de etapa Bid do snapshot.
+
 ### Forecast | fix REAL do menu Exportar atrás (backdrop-filter do header prendia o stacking context) (2026-07-22)
 
 > O deploy anterior subiu o `#export-menu` para z-index 1500, mas o menu CONTINUAVA atrás.

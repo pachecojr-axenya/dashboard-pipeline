@@ -1,5 +1,26 @@
 # Auditoria crítica dos gráficos 🟡 | 2026-06-12
 
+## Adendo | Delta (ex-Comparativo), códigos D01–D07 (2026-07-24)
+
+> **Estado: 🟡 não validado contra o HubSpot** (painel inteiro segue 🟡; pill no header).
+> O painel `/forecast-delta` foi renomeado para **Delta** e os cards ganharam códigos:
+>
+> | # | Card | Nota |
+> |---|---|---|
+> | D01 | Fotografia do forecast (foto B) | KPIs da foto isolada |
+> | D02 | Waterfall do forecast por etapa | motor canônico (Regra nº 3), invariante Σ Δ = Δtotal |
+> | D03 | KPIs comparativos A → B | TCV e MRR removidos a pedido do dono (2026-07-24) |
+> | D04 | Funil / deals por etapa | contagem A × B |
+> | D05 | Deals que saíram do pipe | lista direta no card; destino distingue Caiu / Ganho / Avançou |
+> | D06 | ARR por Quarter previsto | ARR Total / Ponderado |
+> | D07 | Visão unificada por etapa | colunas de receita (12M) trocadas por **ARR Total / ARR Ponderado** (2026-07-24) |
+>
+> Movimentação nos drills agora separa **Avançou** (etapa posterior) de **Caiu (Perdido)**
+> e **Foi para Ganho** — sair do conjunto por avanço não é churn. Cada card tem botão
+> **i** com memória de cálculo (drawer + seções do catálogo semântico).
+> Ressalva a validar: destino de deal **Bid** pode aparecer como ID bruto de etapa na
+> lista do D05 (mapeamento de etapa Bid do snapshot — pré-existente).
+
 ## Adendo | Meta vs Ach (2026-07-22)
 
 > **Estado: 🟡 não validado contra o HubSpot.** Bloco novo (`public/meta-ach.js`), primeira
