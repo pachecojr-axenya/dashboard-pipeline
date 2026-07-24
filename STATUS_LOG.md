@@ -1,5 +1,25 @@
 # Dashboard Enhancement Loop — Status Log
 
+### Delta | tipografia Inter de verdade + alinhamento do CSS aos globais (2026-07-24)
+
+- **Causa do "muito Arial":** o painel declarava `font-family:Inter,...` mas (1) **nunca
+  carregava a Inter** (era o único painel sem o `<link>` do Google Fonts — caía em
+  Segoe UI) e (2) **não setava `Chart.defaults.font`** — todo texto de canvas (eixos,
+  rótulos de dados, legendas do waterfall/funil) usava o default do Chart.js, **Arial**.
+- Fix: `<link>` preconnect + Inter 400–700 (mesmo padrão dos demais painéis);
+  `Chart.defaults.font.family/size` = Inter/12 (padrão `NOVO_FONT` do dashboard.html e
+  do premium.js); `body` passa a usar o token global `var(--font)` + regra canônica
+  `button,input,select,textarea{font-family:var(--font)}`.
+- **Redundância removida:** bloco CSS morto `.help-section/.help-h3/.help-p/.help-table`
+  ("versão mínima local" do drawer semântico antigo — o semantic-help.js v2 injeta
+  as classes `sh-*` próprias; nenhum markup do Delta usava as antigas).
+- **Paridade de tokens com o global:** light theme ganha `--hover:rgba(0,0,0,.05)`
+  (mesmo conjunto do dashboard.html). Auditoria do restante: paleta `:root` idêntica ao
+  dashboard.html; shell (drawer/header) espelha os literais do dashboard; seg-ctrl/fdd/
+  custom-cb são os mesmos do /forecast; panel-switcher/dropdown/scrollbars vêm
+  INJETADOS pelo nav.js (não redefinidos aqui) — sem duplicação restante.
+- Validação: inline-js 0 erros; screenshot headless confere Inter em UI e nos gráficos.
+
 ### Delta (ex-Comparativo) | rename + códigos D01–D07 + ARRs + "Avançou" + lista inline + i por card (2026-07-24)
 
 > Leva do dono no painel `/forecast-delta` (executada de ponta a ponta na sessão):

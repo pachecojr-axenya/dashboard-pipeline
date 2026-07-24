@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Delta | Axenya</title>
 <link rel="icon" href="/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
 <script src="/semantic-ref.js?v=6"></script>
@@ -12,9 +15,10 @@
 <style>
 :root{--bg:#0d1117;--card:#171f2e;--card2:#1e2a3c;--border:#293a50;--text:#e6edf3;--text2:#8b949e;--muted:#6e7681;--teal:#3ab8b7;--green:#3fb950;--red:#f85149;--orange:#d29922;--yellow:#e3b341;--blue:#58a6ff}
 :root{--font:Inter,'Segoe UI',system-ui,sans-serif;--hover:rgba(255,255,255,.06)}
-html[data-theme="light"]{--bg:#f6f8fa;--card:#fff;--card2:#eaeef2;--border:#d0d7de;--text:#1f2328;--text2:#57606a;--teal:#0d7377;--green:#1a7f37;--yellow:#9a6700;--red:#cf222e;--blue:#0969da}
+html[data-theme="light"]{--bg:#f6f8fa;--card:#fff;--card2:#eaeef2;--border:#d0d7de;--text:#1f2328;--text2:#57606a;--teal:#0d7377;--green:#1a7f37;--yellow:#9a6700;--red:#cf222e;--blue:#0969da;--hover:rgba(0,0,0,.05)}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,'Segoe UI',system-ui,sans-serif;font-size:13px;line-height:1.5}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;line-height:1.5}
+button,input,select,textarea{font-family:var(--font)}
 a{color:var(--teal);text-decoration:none}
 .wrap{max-width:1180px;margin:0 auto;padding:1.25rem 1.5rem 3rem}
 .hdr{display:flex;align-items:center;gap:.9rem;margin-bottom:.35rem;flex-wrap:wrap}
@@ -94,12 +98,6 @@ table.drill th.sortable:hover{color:var(--text)}
 .caveat{font-size:.72rem;color:var(--muted);margin-top:.6rem;border-top:1px solid var(--border);padding-top:.6rem}
 #info{display:none;font-size:.78rem;color:var(--text);background:var(--card2);border-radius:9px;padding:.9rem 1.1rem;margin-bottom:1.1rem;line-height:1.6}
 #info code{color:var(--teal)}
-/* classes do drawer gerado (semantic-help.js) | versão mínima local */
-.help-section{margin:0}
-.help-h3{font-size:.84rem;margin:0 0 .4rem;color:var(--text)}
-.help-p{font-size:.78rem;color:var(--text);margin:0 0 .35rem;line-height:1.6}
-.help-table{border-collapse:collapse;margin:.4rem 0 .6rem;font-size:.75rem}
-.help-table th,.help-table td{border:1px solid var(--border);padding:.25rem .55rem;text-align:left}
 /* tabela unificada por etapa + quarter (Leva 2) */
 .utable{width:100%;border-collapse:collapse;font-size:.8rem}
 .utable th,.utable td{text-align:right;padding:.45rem .55rem;border-bottom:1px solid var(--border);white-space:nowrap}
@@ -369,6 +367,10 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
 <script>
 (function(){
   Chart.register(ChartDataLabels);
+  // Tipografia dos gráficos = mesma do painel (sem isto o canvas cai no default
+  // do Chart.js, Arial). Mesmo padrão do dashboard.html (NOVO_FONT) e premium.js.
+  Chart.defaults.font.family = "Inter,'Segoe UI',system-ui,sans-serif";
+  Chart.defaults.font.size = 12;
   var fotos = [], chart = null, funnelChart = null, drillLastFocus = null;
   // estado do drill-down (modal de etapa): dados + coluna/sentido de ordenacao
   var drillRows = [], drillMeta = { sumDelta: 0, measure: '', field: '' }, drillSort = { key: 'delta', dir: -1 };
