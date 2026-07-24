@@ -10,14 +10,18 @@
  * forecast-engine.js.
  *
  * Precedência da prob. de ETAPA (stageProbFor):
- *   override manual (por pipeline) > C07 do funil (por pipeline) > default fixo.
+ *   override manual (por pipeline) > C07 do funil (por pipeline) > default fixo
+ *   (ctx.defaults injetado pelo chamador, senão a régua única DEFAULT).
  * Ajuste do AE (calcProbInfo): a prob. custom do deal NÃO substitui a da etapa; só
  * empurra ±10% se divergir da etapa em ≥ 30 pontos percentuais (0.3).
+ * Diagnóstico: SEMPRE 6% fixo, sem funil e sem ajuste do AE (decisão do dono; antes
+ * só forecast/core aplicavam — unificado aqui em 2026-07-24).
  *
- * NOTA (2026-07-07): enquanto uma sessão paralela edita o dashboard.html, o CRO
- * mantém a cópia inline dessa lógica. A migração do CRO para consumir este arquivo
- * (eliminando a duplicação) fica para um momento coordenado. A lógica aqui é cópia
- * verbatim da do CRO — os números batem.
+ * UNIFICAÇÃO (2026-07-24): este arquivo é O cálculo de probabilidade. Consumidores:
+ * CRO (dashboard.html) e Board delegam via window.ProbEngine; forecast.html delega
+ * com ctx próprio (régua flat de propósito, sem C07 — tooltip da planilha documenta);
+ * forecast-overall-core.js (Overall no browser + Delta no Node) delega com o estado
+ * do seu config(). Dual-load: browser (window.ProbEngine) e Node (require).
  */
 (function (root) {
   // RÉGUA ÚNICA (D4/D4b, decisão do dono 2026-07-15): o fallback do C07 é a MESMA
@@ -77,19 +81,22 @@
       var fp = ctx.funnelProbPipe && ctx.funnelProbPipe[pk];
       if (fp && fp[stage] != null) return fp[stage];    // C07 do funil por pipeline
     }
-    return DEFAULT[stage];                               // régua única (fallback/premissas)
+    var D = ctx.defaults || DEFAULT;                     // régua do chamador ou a única
+    return D[stage];
   }
 
-  // Prob. FINAL do deal com o ajuste ±10% do AE. Retorna { sp, cp, final }.
-  // Idêntico a _calcProbInfo do CRO.
+  // Prob. FINAL do deal com o ajuste ±10% do AE. Retorna { sp, cp, final, modStr }.
+  // Cálculo ÚNICO de todos os painéis (CRO, Board, Forecast, Overall, Delta).
   function calcProbInfo(deal, ctx) {
+    // Diagnóstico: probabilidade SEMPRE fixa em 6% (não deriva do funil nem ajusta pelo AE).
+    if (deal.stage === 'Diagnóstico') return { sp: 0.06, cp: deal.probabilidade, final: 0.06, modStr: 'Diagnóstico: fixa em 6% (sem ajuste do AE)' };
     var sp = stageProbFor(deal.stage, deal.pipeline, ctx);
-    if (sp == null) return { sp: null, cp: null, final: null };
+    if (sp == null) return { sp: null, cp: null, final: null, modStr: '' };
     var cp = deal.probabilidade;
-    if (cp == null) return { sp: sp, cp: null, final: sp };
-    if (cp <= sp - 0.3) return { sp: sp, cp: cp, final: sp * 0.9 };  // AE muito abaixo → −10%
-    if (cp >= sp + 0.3) return { sp: sp, cp: cp, final: sp * 1.1 };  // AE muito acima  → +10%
-    return { sp: sp, cp: cp, final: sp };                            // dentro de ±30 pts → = etapa
+    if (cp == null) return { sp: sp, cp: null, final: sp, modStr: 'AE não informou (usando P. Etapa)' };
+    if (cp <= sp - 0.3) return { sp: sp, cp: cp, final: sp * 0.9, modStr: 'Penalidade (-10% sobre P. Etapa)' };
+    if (cp >= sp + 0.3) return { sp: sp, cp: cp, final: sp * 1.1, modStr: 'Bônus (+10% sobre P. Etapa)' };
+    return { sp: sp, cp: cp, final: sp, modStr: 'Dentro da margem (sem ajuste)' };
   }
 
   root.ProbEngine = {

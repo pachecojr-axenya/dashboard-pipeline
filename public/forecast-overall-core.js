@@ -51,28 +51,27 @@
     });
   }
 
-  // ── Probabilização (espelha _fcStageProbFor / calcProbInfo) ─────────────────
-  function stageProbFor(stage, pipeline) {
+  // ── Probabilização | fonte única: prob-engine.js ────────────────────────────
+  // DELEGADO à fonte única prob-engine.js (unificação 2026-07-24): este módulo não
+  // calcula mais probabilidade — monta o ctx a partir do config() e chama o ProbEngine.
+  // Resolução preguiçosa: no browser o prob-engine.js pode vir depois deste script na
+  // página; em Node o require embute o módulo no bundle da Vercel.
+  var _PE = null;
+  function _probEngine() {
+    if (_PE) return _PE;
+    _PE = root.ProbEngine || (typeof require === 'function' ? require('./prob-engine.js').ProbEngine : null);
+    return _PE;
+  }
+  function _probCtx() {
     var saved = _cfg.stageProbSaved || {};
-    var def = _cfg.stageProbDefault || {};
-    if (saved[stage] != null) return saved[stage];
-    if (_cfg.funnelProb && _cfg.funnelProb[stage] != null) return _cfg.funnelProb[stage];
-    var pk = pipeline === 'Bid' ? 'bid' : 'vendas';
-    var fp = _cfg.funnelProb && _cfg.funnelProb[pk];
-    if (fp && fp[stage] != null) return fp[stage];
-    return def[stage];
+    var hasSaved = false; for (var k in saved) { if (Object.prototype.hasOwnProperty.call(saved, k)) { hasSaved = true; break; } }
+    var f = _cfg.funnelProb;
+    // aceita mapa flat (aplica aos dois pipelines) ou já por pipeline {vendas,bid}
+    var fp = f ? ((f.vendas || f.bid) ? f : { vendas: f, bid: f }) : null;
+    return { cfg: { manual: hasSaved, values: { vendas: saved, bid: saved } }, funnelProbPipe: fp, defaults: _cfg.stageProbDefault };
   }
-  // Diagnóstico: sempre 6% (sem funil, sem ajuste ±10% do AE).
-  function calcProbInfo(deal) {
-    if (deal.stage === 'Diagnóstico') return { sp: 0.06, cp: deal.probabilidade, final: 0.06, modStr: 'Diagnóstico: fixa em 6% (sem ajuste do AE)' };
-    var sp = stageProbFor(deal.stage, deal.pipeline);
-    if (sp == null) return { sp: null, cp: null, final: null, modStr: '' };
-    var cp = deal.probabilidade;
-    if (cp == null) return { sp: sp, cp: cp, final: sp, modStr: 'AE não informou (usando P. Etapa)' };
-    if (cp <= sp - 0.3) return { sp: sp, cp: cp, final: sp * 0.9, modStr: 'Penalidade (-10% sobre P. Etapa)' };
-    if (cp >= sp + 0.3) return { sp: sp, cp: cp, final: sp * 1.1, modStr: 'Bônus (+10% sobre P. Etapa)' };
-    return { sp: sp, cp: cp, final: sp, modStr: 'Dentro da margem (sem ajuste)' };
-  }
+  function stageProbFor(stage, pipeline) { return _probEngine().stageProbFor(stage, pipeline, _probCtx()); }
+  function calcProbInfo(deal) { return _probEngine().calcProbInfo(deal, _probCtx()); }
 
   // ── Dedup Fee × Corretagem (espelha _fcDedupKey/_fcStageRank/_fcRevExcluded) ─
   function dedupKey(name) {

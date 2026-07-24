@@ -1,5 +1,37 @@
 # Dashboard Enhancement Loop — Status Log
 
+### Probabilidade | reconciliação COMPLETA no prob-engine.js (muda em 1 lugar → muda em tudo) (2026-07-24)
+
+> Pedido do dono ("se a gente muda 1 lugar, muda em tudo? deveria"), pré-requisito do
+> futuro override de probabilidade por deal. Antes havia 4 cópias de `calcProbInfo`;
+> CRO e Board já delegavam ao ProbEngine (nota da auditoria estava defasada) — as 2
+> cópias reais restantes eram forecast.html e forecast-overall-core.js.
+
+- **`prob-engine.js` é O cálculo** (única implementação): ganhou a regra
+  **Diagnóstico fixo 6% (sem funil, sem ±10% do AE)** — antes só forecast/core tinham;
+  CRO/Board podiam dar 5,4%/6,6% num Diagnóstico com prob. do AE ≥30 pp distante
+  (divergência latente, agora eliminada) —, os `modStr` das memórias de cálculo e
+  `ctx.defaults` (régua injetável pelo chamador). Dual-load browser/Node.
+- **`forecast-overall-core.js`** (Overall no browser + **Delta no Node** via
+  forecast-compute) não calcula mais: monta o ctx do seu `config()` (saved flat →
+  ambos pipelines; funnelProb flat ou por pipe) e delega. Resolução preguiçosa
+  (`window.ProbEngine` ou `require('./prob-engine.js')`) — ordem de script não importa
+  e o bundler da Vercel traça o require.
+- **`forecast.html`** delega com ctx próprio: régua FLAT de propósito (sem C07 — a
+  diferença intencional vs CRO/Board continua documentada no tooltip do ARR Ponderado).
+  A FONTE da probabilidade segue configurável por painel; o CÁLCULO é um só.
+- Efeito colateral aceito: o toggle global `prob_fonte=premissas` passa a valer também
+  no caminho do core (uniforme com a decisão D1–D3); com `calculada` (default), nada muda.
+- Cache-busters: `prob-engine.js?v=3` + `forecast-overall-core.js?v=2` (board,
+  dashboard, forecast, forecast-stage).
+- **Validação de não-regressão:** `npm run check` PASS (71 PASS — os testes do Delta
+  asseriam valores exatos pelo caminho core→ProbEngine); Delta live byte a byte igual
+  (arrPond 4.844.667→4.932.551, ΣΔ 87.884); CRO P03 R$ 97,3M e Board B04 R$ 97,32M
+  idênticos à baseline capturada minutos antes; /forecast validado por **A/B com
+  git stash** no MESMO dado (KPIs idênticos dígito a dígito: ARR Pond. 32.008.849,
+  TCV 102.142.486 — a diferença vs baseline anterior era dado vivo do HubSpot).
+  ⚠ Servidor :3002 reiniciado (o Node cacheia core/engine via require).
+
 ### BDR | menu interno reconciliado + glossário para leitura sem contexto (2026-07-24)
 
 - **Causa das cores divergentes:** páginas gerais usam `nav.js`, mas as páginas internas de BDR regeneram o menu por `premium.js`. O PR anterior atualizou somente `nav.js`; `premium.js` ainda marcava Ataque à Lista como verde e Treble como amarelo. Os dois modelos agora usam exatamente Workload amarelo | Ataque à Lista vermelho | Treble verde. As cinco páginas BDR usam `premium.js?v=10` para invalidar o cache antigo.
