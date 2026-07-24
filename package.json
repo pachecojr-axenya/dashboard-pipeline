@@ -12,6 +12,7 @@
     "smoke:no-show": "node scripts/smoke-bdr-no-show-browser.js",
     "smoke:treble-dw": "node scripts/smoke-bdr-treble-dw-browser.js",
     "smoke:workload-v2": "node scripts/smoke-bdr-workload-v2-browser.js",
+    "smoke:nav-glossary": "node scripts/smoke-bdr-nav-glossary-browser.js",
     "gate:no-show": "node scripts/gate-bdr-no-show.js",
     "predeploy": "node scripts/preflight-deploy.js",
     "deploy": "vercel --prod --yes",
