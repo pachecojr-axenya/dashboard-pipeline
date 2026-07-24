@@ -1,5 +1,23 @@
 # Dashboard Enhancement Loop — Status Log
 
+### 🚀 DEPLOY DE PRODUÇÃO | levas do Delta + Meta (2026-07-24)
+
+> Autorização explícita do dono nesta data ("já preciso do commit e deploy").
+
+- **Commit deployado:** `8f16a18` (== origin/main; preflight PASS, projeto canônico).
+  Inclui as 5 levas do dia: rename Delta + D01–D08 + ARRs/Avançou/lista inline/i por card;
+  Inter + CSS alinhado; D08 Pipe de Bid + 🟡 só no painel; sticky condensado + horizonte
+  ARR; aba Meta + responsividade ao drawer.
+- **Deployment:** `dpl_8ctdhTKMuiX13VDP6M8H6Wdkz3tJ`
+  (`dashboard-axenya-k0gicxb25-axenya-f1a041f6`, target production, READY).
+- **Pós-deploy (aliases `axenya-pipeline-dashboard` + `project-bsmfu`):** 8 rotas 200
+  (7 mínimas + /forecast-delta; BDR do Samuel intacto), `/api/auth/me` 401 (auth ativa).
+  Features confirmadas no ar: aba "Meta", `nav.js` com label Delta, `/forecast-delta`
+  com título Delta, `#hdr-summary` e horizonte ARR.
+- Ressalva de rastreabilidade: `vercel ls`/`inspect` não respondeu no shell (CLI sem
+  sessão interativa) — identidade confirmada pelo fluxo `npm run deploy` (preflight
+  garante HEAD==origin/main) + verificação HTTP das features novas.
+
 ### Forecast | aba "Meta vs Ach" vira "Meta" + aba responsiva ao drawer docked (2026-07-24)
 
 - **Título da aba simplificado** (pedido do dono): segmented control do /forecast agora
