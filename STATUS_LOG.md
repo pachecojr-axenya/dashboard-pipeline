@@ -1,5 +1,27 @@
 # Dashboard Enhancement Loop — Status Log
 
+### 🚀 DEPLOY DE PRODUÇÃO | motor de prob unificado + overrides DUX/Maringá + cohorts A + Delta 🟢 (2026-07-27)
+
+> Autorização explícita do dono ("Faça o deploy"). Tree continha a leva finalizada e
+> validada da sessão paralela (Delta 🟢) — commitada como leva própria (`090ad63`,
+> gate combinado PASS) antes do deploy, para sair de base limpa.
+
+- **Commit deployado:** `090ad63` (== origin/main; preflight PASS). Inclui:
+  reconciliação do prob-engine (`51bc4b2`), override manual DUX 0% / Maringá 10%
+  (`ed7c713`), cohorts fora do TOTAL filtrado (`61031f7`) e Delta 🟢 (`090ad63`).
+- **Deployment:** `dpl_EXRskVxCMSUeZXoRmLZZSer2ehaH`
+  (`dashboard-axenya-civv3b1dq`, READY, production). Nota de rastreabilidade: o
+  `npm run deploy` rodou 2× (a 1ª saída foi cortada pelo banner de update do CLI e
+  reexecutei para capturar o id) — ambos do MESMO commit; o ativo é o acima.
+- **Pós-deploy (2 aliases):** 9 rotas 200 (7 mínimas + /forecast-delta +
+  /forecast-overall; BDR do Samuel intacto); `/api/auth/me` **401** e
+  `/api/prob-manual` **401** (endpoint novo no ar, auth ativa — antes era 404).
+  Features confirmadas: `prob-engine.js?v=4` servindo o texto do override,
+  `semantic-ref.js?v=7`, `nav.js` com Delta `health:'g'`, pill "🟢 validado" no Delta.
+- **Efeito imediato em produção:** DUX Company conta 0% e Grupo Maringá 10% na
+  P. Ajust. final de TODOS os painéis (planilha com ✱ + tooltip + modal; CRO, Board,
+  Overall e Delta herdam pelo motor único).
+
 ### Forecast | cohorts BDR saem do TOTAL em recortes filtrados (caminho A) (2026-07-27)
 
 > Pergunta do dono: filtrou a planilha para a DUX (zerada pelo override) e o TOTAL da
