@@ -14,6 +14,10 @@ window.WorkloadBDRV2Core = (function () {
   function rng(p) { var n = new Date(), s = new Date(n), u = new Date(n); if (p === 'ontem') { s.setDate(s.getDate() - 1); u = new Date(s); } else if (p === '7d') s.setDate(s.getDate() - 6); else if (p === '30d') s.setDate(s.getDate() - 29); else if (p === '90d') s.setDate(s.getDate() - 89); return { since: iso(s), until: iso(u) }; }
   function n(v) { return Number(v || 0); }
   function pct(a, b) { return b ? Math.round(a / b * 100) + '%' : '—'; }
+  // Tempo em linha legivel. Entrada em SEGUNDOS (calls_talk_time_s).
+  // '—' quando zero: nao existe "0min em linha" util, e zero aqui quase sempre
+  // significa nenhuma ligacao conectada no corte.
+  function hms(sec) { var t = Math.max(0, Math.round(n(sec))); if (!t) return '—'; var h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60); if (h) return h + 'h' + (m < 10 ? '0' : '') + m; if (m) return m + 'min'; return t + 's'; }
   function sum(rows, k) { return (rows || []).reduce(function (m, r) { return m + n(r[k]); }, 0); }
   function validContext(c) { return /^(channel:(calls|emails|whatsapp|linkedin|meetings)|bucket:(0|1|2|3|4|5|6\+|lt_1h|1_4h|4_24h|24_72h|72h_plus|sem_toque|2–3|4–5)|event:(attempted|connected|qualified|disqualified)|domain:(ritmo|insercao|crm|contato_efetivo|sql))$/.test(String(c || '')); }
   function isBucketLabel(v) { return /^(0|1|2|3|4|5|6\+|2–3|4–5)$/.test(String(v || '')); }
@@ -36,5 +40,5 @@ window.WorkloadBDRV2Core = (function () {
     var out = Object.keys(by).sort().map(function (bdr) { return { bdr: bdr, values: dates.map(function (d) { return n(by[bdr][d]); }) }; });
     return out;
   }
-  return { ALL_CHANNELS: ALL_CHANNELS, CHANNEL_LABELS: CHANNEL_LABELS, PORTE: PORTE, TABS: TABS, E: E, id: id, iso: iso, add: add, rangeDays: rangeDays, previousEquivalent: previousEquivalent, rng: rng, n: n, pct: pct, sum: sum, validContext: validContext, isBucketLabel: isBucketLabel, api: api, SERIES_PALETTE: SERIES_PALETTE, seriesColor: seriesColor, movingAverage: movingAverage, mean: mean, median: median, bdrList: bdrList, uniqueDates: uniqueDates, seriesByBdr: seriesByBdr };
+  return { ALL_CHANNELS: ALL_CHANNELS, CHANNEL_LABELS: CHANNEL_LABELS, PORTE: PORTE, TABS: TABS, E: E, id: id, iso: iso, add: add, rangeDays: rangeDays, previousEquivalent: previousEquivalent, rng: rng, n: n, pct: pct, hms: hms, sum: sum, validContext: validContext, isBucketLabel: isBucketLabel, api: api, SERIES_PALETTE: SERIES_PALETTE, seriesColor: seriesColor, movingAverage: movingAverage, mean: mean, median: median, bdrList: bdrList, uniqueDates: uniqueDates, seriesByBdr: seriesByBdr };
 })();

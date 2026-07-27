@@ -64,9 +64,11 @@ async function withBqStub(rows, fn) {
   assert.equal(liveAggregate[0].contactsInserted, 1);
   assert.equal(liveAggregate[0].leadsCreated, undefined);
   assert(!/não deve vazar|telefone|contato_id|123|456/.test(JSON.stringify(liveAggregate)), 'agregado live não contém PII/IDs nominais');
-  const liveRich = sem.aggregateLivePayload({ team: ['Thauan Pontes'], diagnostics: { activityAssociations: { attempted: 6, succeeded: 6, errors: 0, available: true } }, companiesCreated: [{ bdr: 'Thauan Pontes', id: 'c-new' }], contactsCreated: [{ bdr: 'Thauan Pontes', id: 'ct-new', empresa_id: 'c1' }], activities: [{ tipo: 'calls', duracao_ms: 61000, bdr: 'Thauan Pontes', contact_id: 'ct1', company_id: 'c1' }, { tipo: 'calls', duracao_ms: 10000, bdr: 'Thauan Pontes', contact_id: 'ct2', company_id: 'c1' }, { tipo: 'communications', canal: 'WHATS_APP', bdr: 'Thauan Pontes', contact_id: 'ct2', company_id: 'c1' }], transitions: [{ bdr: 'Thauan Pontes', para: 'CONNECTED', contact_id: 'ct1', company_id: 'c1' }, { bdr: 'Thauan Pontes', para: 'OPEN_DEAL', contact_id: 'ct1', company_id: 'c1' }, { bdr: 'Thauan Pontes', para: 'BAD_TIMING', contact_id: 'ct2', company_id: 'c1' }, { bdr: 'Thauan Pontes', para: 'NEW', contact_id: 'ct3', company_id: 'c2' }, { bdr: 'Thauan Pontes', para: 'ATTEMPTED_TO_CONTACT', contact_id: 'ct3', company_id: 'c2' }] }, sem.todayIso(), { bdr: 'Thauan Pontes', channels: sem.CHANNELS });
+  const liveRich = sem.aggregateLivePayload({ team: ['Thauan Pontes'], diagnostics: { activityAssociations: { attempted: 6, succeeded: 6, errors: 0, available: true } }, companiesCreated: [{ bdr: 'Thauan Pontes', id: 'c-new' }], contactsCreated: [{ bdr: 'Thauan Pontes', id: 'ct-new', empresa_id: 'c1' }], activities: [{ tipo: 'calls', desfecho: 'Conectado', duracao_ms: 61000, bdr: 'Thauan Pontes', contact_id: 'ct1', company_id: 'c1' }, { tipo: 'calls', desfecho: 'Sem resposta', duracao_ms: 10000, bdr: 'Thauan Pontes', contact_id: 'ct2', company_id: 'c1' }, { tipo: 'communications', canal: 'WHATS_APP', bdr: 'Thauan Pontes', contact_id: 'ct2', company_id: 'c1' }], transitions: [{ bdr: 'Thauan Pontes', para: 'CONNECTED', contact_id: 'ct1', company_id: 'c1' }, { bdr: 'Thauan Pontes', para: 'OPEN_DEAL', contact_id: 'ct1', company_id: 'c1' }, { bdr: 'Thauan Pontes', para: 'BAD_TIMING', contact_id: 'ct2', company_id: 'c1' }, { bdr: 'Thauan Pontes', para: 'NEW', contact_id: 'ct3', company_id: 'c2' }, { bdr: 'Thauan Pontes', para: 'ATTEMPTED_TO_CONTACT', contact_id: 'ct3', company_id: 'c2' }] }, sem.todayIso(), { bdr: 'Thauan Pontes', channels: sem.CHANNELS });
+  // Classificador e o DESFECHO declarado, nao a duracao (mudou em 2026-07-27).
   assert.equal(liveRich[0].callsConversation, 1);
   assert.equal(liveRich[0].callsDial, 1);
+  assert.equal(liveRich[0].callsTalkTimeS, 61);
   assert.equal(liveRich[0].activities, 3);
   assert.equal(liveRich[0].total, 3);
   assert.equal(liveRich[0].companiesInserted, 1);
@@ -306,6 +308,54 @@ async function withBqStub(rows, fn) {
   // 7) BDR inválido continua barrado no parse (400), nunca chega ao SQL.
   assert.throws(() => sem.parse(req('v=2&since=2026-07-01&until=2026-07-02&bdr=Fulano%20Inexistente')), /BDR inválido/);
   assert.throws(() => drill.parse(req('kind=activity&since=2026-07-01&until=2026-07-02&bdr=Fulano%20Inexistente')), /BDR inválido/);
+
+  // --- Contrato de qualidade de ligacao (incidente 2026-07-27) ---
+  // Antes: conversa era classificada por `hs_call_duration >= 60s`, mas o ETL
+  // nunca pedia essa propriedade ao HubSpot -> campo sempre NULL -> 100% das
+  // ligacoes viravam "tentativa" (5.767/5.767). Agora a fonte e o desfecho
+  // declarado (hs_call_disposition). Politica: sucesso = 'Conectado' apenas;
+  // voicemail tem output mas nao e conversa e vive em bucket proprio.
+  const liveCall = (desfecho, durMs) => ({ bdr: 'Gabriele Almeida', tipo: 'calls', ts: '1', desfecho, duracao_ms: durMs });
+  const callPayload = {
+    team: ['Gabriele Almeida'],
+    activities: [
+      liveCall('Conectado', 120000),      // conectada, 120s em linha
+      liveCall('Conectado', 20000),       // conectada curta: CONTA (antes era descartada por <60s)
+      liveCall('Sem resposta', 0),
+      liveCall('Ocupado', 90000),         // duracao alta SEM conexao: nao conta como conversa
+      liveCall('Número errado', 0),
+      liveCall('Deixou mensagem de voz', 30000),
+      liveCall('Deixou mensagem ativa', 10000),
+      liveCall(null, 0),                  // sem desfecho registrado
+    ],
+  };
+  const callRows = sem.aggregateLivePayload(callPayload, '2026-07-27', { bdr: 'Gabriele Almeida', channels: ['calls'] });
+  assert.equal(callRows.length, 1);
+  const cr = callRows[0];
+  assert.equal(cr.calls, 8, 'todas as ligacoes contam no volume');
+  assert.equal(cr.callsConversation, 2, 'só desfecho Conectado é conversa');
+  assert.equal(cr.callsVoicemail, 2, 'voicemail e recado ativo em bucket proprio');
+  assert.equal(cr.callsNoAnswer, 1);
+  assert.equal(cr.callsBusy, 1);
+  assert.equal(cr.callsWrongNumber, 1);
+  assert.equal(cr.callsNoOutcome, 1);
+  // MECE: volume = conectadas + voicemail + sem conexao, sem sobreposicao.
+  assert.equal(cr.callsConversation + cr.callsVoicemail + cr.callsDial, cr.calls, 'buckets de ligacao devem ser MECE');
+  assert.equal(cr.callsDial, 4, 'sem conexao = no_answer + busy + wrong_number + sem desfecho');
+  // Tempo em linha soma SO as conectadas: 120s + 20s. O Ocupado de 90s nao entra.
+  assert.equal(cr.callsTalkTimeS, 140, 'tempo em linha considera apenas conectadas');
+  // Voicemail nao pode inflar a taxa de conexao (decisao do dono, 2026-07-27).
+  assert.ok(cr.callsConversation < cr.callsConversation + cr.callsVoicemail);
+
+  // O SQL do BQ tem de trazer as colunas novas e a lineage deve declarar todas.
+  await withBqStub([], async (calls) => {
+    await sem.build(sem.parse(req('v=2&since=2026-07-01&until=2026-07-02')));
+    const sql = calls[0].sql;
+    ['calls_voicemail_total', 'calls_no_answer_total', 'calls_busy_total', 'calls_wrong_number_total', 'calls_no_outcome_total', 'calls_talk_time_s']
+      .forEach((col) => assert(sql.includes(col), `SELECT deve trazer ${col}`));
+  });
+  const callLineage = sem.liveLineage({ used: false, rows: [] });
+  ['callsConversation', 'callsVoicemail', 'callsTalkTimeS'].forEach((k) => assert(callLineage[k], `lineage deve declarar ${k}`));
 
   console.log('PASS bdr-workload-v2 API contract tests');
 })().catch((error) => { console.error(error); process.exit(1); });
