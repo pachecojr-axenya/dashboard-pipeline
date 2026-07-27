@@ -1821,7 +1821,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
   </style>
 <link rel="stylesheet" href="/premium.css?v=5">
 <script src="/premium.js?v=5"></script>
-<script src="/semantic-ref.js?v=6"></script>
+<script src="/semantic-ref.js?v=7"></script>
 <script src="/semantic-help.js?v=2"></script>
 <script src="/forecast-columns.js?v=1"></script>
 <script src="/prob-engine.js?v=4"></script>
@@ -4158,9 +4158,15 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
 
       // Projeção de originação BDR (topo de funil, agregado) somada aos totais mensais,
       // igual ao painel MQL/Reunião Agendada: Real += rec, Probabilizada += rec × conversão MQL.
-      // Só entra quando não há filtro de etapa OU quando Reunião Agendada está entre as filtradas
-      // (é originação de topo de funil; não faz sentido em recortes de outras etapas).
-      const _bdrVisivel = stageFilter.size === 0 || stageFilter.has('Reunião Agendada');
+      // Só entra no RECORTE CHEIO (caminho A, decisão do dono 2026-07-27): qualquer filtro
+      // que reduza a deals específicos (busca por nome, Executivo, Quarter, Modelo, Tier,
+      // Pipeline, completude) suprime a projeção — o TOTAL passa a bater com a soma das
+      // linhas visíveis. Etapa mantém a regra anterior: só some se o recorte de etapas
+      // excluir Reunião Agendada (originação é topo de funil).
+      const _semFiltroDeDeal = !searchQuery && aeFilter.size === 0 && quarterFilter.size === 0 &&
+        tierFilter.size === 0 && modeloFilter.size === 0 && pipelineFilter.size === 0 &&
+        completenessFilter === 'all';
+      const _bdrVisivel = _semFiltroDeDeal && (stageFilter.size === 0 || stageFilter.has('Reunião Agendada'));
       if (_bdrVisivel) {
         ForecastEngine.bdrCohorts().forEach(c => MONTHS.forEach((m, i) => {
           const diff = (m.y - c.revStart.y) * 12 + (m.mo - c.revStart.mo);

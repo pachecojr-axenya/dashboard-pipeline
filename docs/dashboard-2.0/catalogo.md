@@ -215,6 +215,7 @@ Corte PME: 200 vidas. Fuso canônico: America/Sao_Paulo.
 
 - **Tipo:** hibrido · **Grain:** mês de originação · **Status:** em_revisao · **Vigente desde:** 2026-07-14 · **Dono:** cro
 - **Usa dados:** `premissas_bdr_originacao`
+- **Filtro:** Entra no TOTAL da planilha do /forecast só no recorte cheio: qualquer filtro que reduza a deals específicos (busca por nome, Executivo, Quarter, Modelo, Tier, Pipeline, completude) suprime a projeção, e o recorte de Etapa precisa incluir Reunião Agendada (originação é topo de funil). Decisão do dono 2026-07-27 (caminho A).
 - **Fórmula:** Por mês jul/26..jan/28: vidas = 4×34.000 (antigos) + 8×rampa(mês). Receita da coorte = vidas × R$24, iniciando originação+15m, probabilizada pela conversão MQL.
 - **Código (1.0):** public/forecast-engine.js:117 (bdrCohorts) · public/forecast-engine.js:110 (bdrNewVidasPer)
 - **Notas:** Premissas manuais hardcoded (ver dados.premissas_bdr_originacao) — regularizar na Fase 4.

@@ -77,6 +77,7 @@
       "formula": "Por mês jul/26..jan/28: vidas = 4×34.000 (antigos) + 8×rampa(mês). Receita da coorte = vidas × R$24, iniciando originação+15m, probabilizada pela conversão MQL.",
       "fonte_codigo": ["public/forecast-engine.js:117 (bdrCohorts)", "public/forecast-engine.js:110 (bdrNewVidasPer)"],
       "owner": "cro", "status": "em_revisao", "vigente_desde": "2026-07-14",
+      "filtro": "Entra no TOTAL da planilha do /forecast só no recorte cheio: qualquer filtro que reduza a deals específicos (busca por nome, Executivo, Quarter, Modelo, Tier, Pipeline, completude) suprime a projeção, e o recorte de Etapa precisa incluir Reunião Agendada (originação é topo de funil). Decisão do dono 2026-07-27 (caminho A).",
       "notas": "Premissas manuais hardcoded (ver dados.premissas_bdr_originacao) — regularizar na Fase 4."
     },
 

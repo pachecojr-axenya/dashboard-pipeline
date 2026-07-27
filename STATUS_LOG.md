@@ -1,5 +1,24 @@
 # Dashboard Enhancement Loop — Status Log
 
+### Forecast | cohorts BDR saem do TOTAL em recortes filtrados (caminho A) (2026-07-27)
+
+> Pergunta do dono: filtrou a planilha para a DUX (zerada pelo override) e o TOTAL da
+> Receita Probabilizada mostrava valores a partir de Out/2027. Causa: o TOTAL soma,
+> além das linhas visíveis, a projeção de originação BDR (cohorts, Regra nº 3) — camada
+> agregada sem linha de deal; o 1º cohort (Jul/26 + 15 meses) começa exatamente em
+> Out/2027. Só o filtro de Etapa suprimia os cohorts; busca/AE/Quarter etc. não.
+
+- **Caminho A (decisão do dono):** cohorts entram no TOTAL só no **recorte cheio** —
+  qualquer filtro que reduza a deals específicos (busca por nome, Executivo, Quarter,
+  Modelo, Tier, Pipeline, completude) suprime a projeção; o TOTAL passa a bater com a
+  soma das linhas visíveis. Etapa mantém a regra anterior (some se o recorte excluir
+  Reunião Agendada). `_semFiltroDeDeal` em `_bdrVisivel`, forecast.html.
+- Memória de cálculo atualizada na fonte certa: `semantic/regras.json` →
+  `cohorts_bdr.filtro` + `gen-semantic-front` (semantic-ref.js) + `semantic-view`
+  (catalogo.md); `check-semantic` OK. Cache-buster `semantic-ref.js?v=7` nas 7 páginas
+  que o incluem (ae e bdr-no-show estavam em v=5/v=3 — alinhadas).
+- Validação: `npm run check` PASS (73). Front-only + catálogo; sem tocar api/lib.
+
 ### Probabilidade | override MANUAL por deal: DUX 0% e Grupo Maringá 10% (2026-07-27)
 
 > Decisão do dono: DUX Company (`62853528445`) com P. Ajust. final forçada para **0%**
