@@ -18,7 +18,9 @@ assert.equal((core.match(/\['(pulse|channels|management|penetration|evolution)'/
 ['bloquead', 'experimental', 'desabilitad', 'indisponível', 'bdr_daily_ops', 'snapshot observado'].forEach((word) => assert(!new RegExp(word, 'i').test(js), `texto proibido em strings v2: ${word}`));
 assert(js.includes("dimMulti('Porte','porte','portes'") && js.includes("dimMulti('Segmento','segmento','segmentos'") && js.includes("dimMulti('Persona','persona','personas'"), 'multi-select porte/segmento/persona ausente');
 ['v2-line-area', 'v2-waterfall', 'v2-grouped', 'v2-ranking', 'v2-stacked'].forEach((cls) => has(cls, `componente SVG/lista ausente: ${cls}`));
-['lineArea', 'waterfall', 'grouped', 'ranking', 'stacked'].forEach((fn) => { const ix = charts.indexOf('function ' + fn); assert(ix >= 0, `renderer ${fn}`); assert(charts.slice(ix, ix + 2200).includes('openDrill'), `${fn} sem openDrill`); });
+// grouped delega o clique ao helper bar() (openDrill por barra A/B), então checa o helper.
+['lineArea', 'waterfall', 'ranking', 'stacked'].forEach((fn) => { const ix = charts.indexOf('function ' + fn); assert(ix >= 0, `renderer ${fn}`); assert(charts.slice(ix, ix + 2200).includes('openDrill'), `${fn} sem openDrill`); });
+assert(charts.indexOf('function grouped') >= 0 && charts.includes('function bar(') && /function bar\([^)]*\)[\s\S]*?openDrill/.test(charts), 'grouped/bar sem openDrill');
 assert(js.includes('loadSeq') && js.includes('currentLoad(token)') && js.includes('loadSemantic(token)') && js.includes('loadPen(token)') && js.includes('loadCmp(token)'), 'request token/loadSeq ausente');
 assert(core.includes('function validContext') && js.includes('if(validContext(context))p.context=context'), 'sanitização de context ausente');
 ['index:', 'component:', "'bdr:", 'metric:'].forEach((bad) => assert(!js.includes(bad), `context inválido ainda presente: ${bad}`));
@@ -43,8 +45,8 @@ assert(js.includes('coorte empresa+owner com lead elegível criado no período, 
 assert(js.includes('mesmo owner em até 30 dias; correlação, não causalidade'), 'associação/conversão 30D deve declarar correlação, não causalidade');
 assert(js.includes("if(!r.eligible)return panel(head+cards") && js.includes("st('empty','Nenhum lead elegível criado no período'"), 'pulso deve renderizar empty state de reatividade quando eligible=0');
 assert(js.includes("['crm','CRM']") && js.includes("['contato_efetivo','Contato efetivo']"), 'domínios CRM habilitados');
-assert(html.includes('/bdr-workload-v2-core.js?v=3') && html.includes('/bdr-workload-v2-charts.js?v=4') && html.includes('/bdr-workload-v2.js?v=12') && html.includes('/bdr-workload-info.js?v=3'), 'ordem/cache-busters v2 modular');
-assert(html.indexOf('/bdr-workload-v2-core.js') < html.indexOf('/bdr-workload-v2-charts.js') && html.indexOf('/bdr-workload-v2-charts.js') < html.indexOf('/bdr-workload-v2.js?v=12'), 'ordem dos scripts v2 modular inválida');
+assert(html.includes('/bdr-workload-v2-core.js?v=4') && html.includes('/bdr-workload-v2-charts.js?v=5') && html.includes('/bdr-workload-v2.js?v=13') && html.includes('/bdr-workload-info.js?v=3'), 'ordem/cache-busters v2 modular');
+assert(html.indexOf('/bdr-workload-v2-core.js') < html.indexOf('/bdr-workload-v2-charts.js') && html.indexOf('/bdr-workload-v2-charts.js') < html.indexOf('/bdr-workload-v2.js?v=13'), 'ordem dos scripts v2 modular inválida');
 assert(core.includes('window.WorkloadBDRV2Core') && charts.includes('window.WorkloadBDRV2Charts') && js.includes('WorkloadBDRV2Core') && js.includes('WorkloadBDRV2Charts'), 'namespaces modulares explícitos ausentes');
 assert(js.includes('Período anterior equivalente') && core.includes('previousEquivalent') && core.includes('rangeDays'), 'janela anterior equivalente visível/correta em Canais');
 assert(core.includes('2–3') && core.includes('4–5'), 'drill agrupado 2–3/4–5 ausente no front');

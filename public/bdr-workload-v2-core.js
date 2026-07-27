@@ -19,7 +19,7 @@ window.WorkloadBDRV2Core = (function () {
   // significa nenhuma ligacao conectada no corte.
   function hms(sec) { var t = Math.max(0, Math.round(n(sec))); if (!t) return '—'; var h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60); if (h) return h + 'h' + (m < 10 ? '0' : '') + m; if (m) return m + 'min'; return t + 's'; }
   function sum(rows, k) { return (rows || []).reduce(function (m, r) { return m + n(r[k]); }, 0); }
-  function validContext(c) { return /^(channel:(calls|emails|whatsapp|linkedin|meetings)|bucket:(0|1|2|3|4|5|6\+|lt_1h|1_4h|4_24h|24_72h|72h_plus|sem_toque|2–3|4–5)|event:(attempted|connected|qualified|disqualified)|domain:(ritmo|insercao|crm|contato_efetivo|sql))$/.test(String(c || '')); }
+  function validContext(c) { return /^(channel:(calls|emails|whatsapp|linkedin|meetings)|outcome:(connected|voicemail|dial|no_answer|busy|wrong_number|no_outcome|talk_time)|bucket:(0|1|2|3|4|5|6\+|lt_1h|1_4h|4_24h|24_72h|72h_plus|sem_toque|2–3|4–5)|event:(attempted|connected|qualified|disqualified)|domain:(ritmo|insercao|crm|contato_efetivo|sql))$/.test(String(c || '')); }
   function isBucketLabel(v) { return /^(0|1|2|3|4|5|6\+|2–3|4–5)$/.test(String(v || '')); }
   function api(path, p) { return fetch(path + '?' + new URLSearchParams(p).toString(), { credentials: 'same-origin' }).then(function (r) { if (r.status === 401) { location.href = '/'; throw Error('login'); } return r.json().then(function (d) { if (!r.ok || d.success === false) throw Error(d.error || 'Falha ao carregar'); return d; }); }); }
   // Paleta por série (BDR): tons de marca (turquesa/azul) + neutros derivados; 12 séries distinguíveis.

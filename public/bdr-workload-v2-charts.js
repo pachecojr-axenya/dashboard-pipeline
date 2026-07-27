@@ -12,8 +12,10 @@ window.WorkloadBDRV2Charts = (function () {
   function legend(items) { return '<div class="v2-legend">' + items.map(function (it) { return '<span><i style="background:' + it.c + '"></i>' + E(it.l) + '</span>'; }).join('') + '</div>'; }
 
   // Série temporal: linha + área, rótulo no maior e no último ponto, legenda e eixos.
-  function lineArea(rows, metrics, title, kind) {
-    rows = rows || [];
+  // opts.context propaga o context do bloco ao clicar num ponto (dia).
+  function lineArea(rows, metrics, title, kind, opts) {
+    rows = rows || []; opts = opts || {};
+    var ctx = opts.context || '';
     var by = {}, dates = [];
     rows.forEach(function (r) { if (!by[r.date]) { by[r.date] = { date: r.date }; dates.push(r.date); } metrics.forEach(function (m) { by[r.date][m.key] = n(by[r.date][m.key]) + n(r[m.key]); }); });
     var data = dates.sort().map(function (d) { return by[d]; });
@@ -29,7 +31,7 @@ window.WorkloadBDRV2Charts = (function () {
       var area = 'M' + x(0) + ' ' + (h - p) + ' ' + data.map(function (r, i) { return 'L' + x(i) + ' ' + y(r[m.key]); }).join(' ') + ' L' + x(data.length - 1) + ' ' + (h - p) + ' Z';
       var pts = data.map(function (r, i) {
         var lbl = (i === maxIdx || i === data.length - 1) ? '<text class="v2-pt-label" x="' + x(i) + '" y="' + (y(r[m.key]) - 9) + '" text-anchor="middle">' + fmt(r[m.key]) + '</text>' : '';
-        return '<circle role="button" tabindex="0" aria-label="Abrir lista de ' + E(title) + ' em ' + E(r.date) + '" cx="' + x(i) + '" cy="' + y(r[m.key]) + '" r="4.5" onclick="WorkloadBDRV2.openDrill(\'' + kind + '\',\'\',\'' + r.date + '\')"></circle>' + lbl;
+        return '<circle role="button" tabindex="0" aria-label="Abrir lista de ' + E(title) + ' em ' + E(r.date) + '" cx="' + x(i) + '" cy="' + y(r[m.key]) + '" r="4.5" onclick="WorkloadBDRV2.openDrill(\'' + kind + '\',\'' + ctx + '\',\'' + r.date + '\')"></circle>' + lbl;
       }).join('');
       return '<path class="v2-area a' + mi + '" d="' + area + '"></path><path class="ln scheduled" style="stroke:' + COLORS[mi % 2] + '" d="' + d + '"></path>' + pts;
     }).join('');
@@ -39,9 +41,19 @@ window.WorkloadBDRV2Charts = (function () {
   }
 
   // Barras agrupadas A×B com rótulo de valor em cada barra e legenda.
+  // Cada barra abre o período CORRETO (A ou B), nunca o range inteiro dos dois:
+  //  - linha de DIA (payload /bdr-workload-compare dateIndex traz aDate/bDate):
+  //    a barra A abre r.aDate, a barra B abre r.bDate;
+  //  - linha de COMPONENTE (canal), sem data própria: abre o range do período via
+  //    "since..until" (opts.aSince/aUntil e opts.bSince/bUntil).
+  // opts.context = context fixo; opts.contextFn(r) = context por linha (ex.: canal).
+  // Barra sem context E sem dia/range derivável fica SEM clique (unicidade).
   function grouped(rows, a, b, labelKey, kind, opts) {
     rows = rows || []; opts = opts || {};
     if (!rows.length) return empty('Sem dados para comparar', '');
+    var rangeA = (opts.aSince && opts.aUntil) ? (opts.aSince + '..' + opts.aUntil) : '';
+    var rangeB = (opts.bSince && opts.bUntil) ? (opts.bSince + '..' + opts.bUntil) : '';
+    var ctxOf = function (r) { return opts.contextFn ? (opts.contextFn(r) || '') : (opts.context || ''); };
     var w = 760, h = 280, p = 46, max = 1;
     rows.forEach(function (r) { max = Math.max(max, n(r[a]), n(r[b])); });
     var bw = (w - p * 2) / Math.max(1, rows.length);
@@ -49,14 +61,22 @@ window.WorkloadBDRV2Charts = (function () {
     for (var i = 0; i < 5; i += 1) { var gy = p + i * (h - p * 2) / 4; out += '<line x1="' + p + '" y1="' + gy + '" x2="' + (w - p) + '" y2="' + gy + '"></line><text x="8" y="' + (gy + 4) + '">' + fmt(Math.round(max - i * max / 4)) + '</text>'; }
     rows.forEach(function (r, i) {
       var x0 = p + i * bw + bw * .16, ya = h - p - n(r[a]) / max * (h - p * 2), yb = h - p - n(r[b]) / max * (h - p * 2);
-      out += '<rect tabindex="0" role="button" class="bar-a" x="' + x0 + '" y="' + ya + '" width="' + bw * .26 + '" height="' + (h - p - ya) + '" onclick="WorkloadBDRV2.openDrill(\'' + kind + '\',\'\')"></rect>'
+      var ctx = ctxOf(r), da = r.aDate || rangeA, db = r.bDate || rangeB;
+      out += bar('bar-a', x0, ya, bw * .26, h - p - ya, kind, ctx, da)
         + '<text class="v2-bar-label" x="' + (x0 + bw * .13) + '" y="' + (ya - 4) + '" text-anchor="middle">' + fmt(r[a]) + '</text>'
-        + '<rect tabindex="0" role="button" class="bar-b" x="' + (x0 + bw * .30) + '" y="' + yb + '" width="' + bw * .26 + '" height="' + (h - p - yb) + '" onclick="WorkloadBDRV2.openDrill(\'' + kind + '\',\'\')"></rect>'
+        + bar('bar-b', x0 + bw * .30, yb, bw * .26, h - p - yb, kind, ctx, db)
         + '<text class="v2-bar-label" x="' + (x0 + bw * .43) + '" y="' + (yb - 4) + '" text-anchor="middle">' + fmt(r[b]) + '</text>'
         + '<text x="' + (x0 + bw * .28) + '" y="' + (h - 12) + '" text-anchor="middle">' + E(String(r[labelKey] || i + 1).slice(0, 10)) + '</text>';
     });
     out += '</svg>';
     return out + legend([{ c: '#3896B4', l: opts.aLabel || 'A (antes)' }, { c: '#3AB8B7', l: opts.bLabel || 'B (atual)' }]) + metricTable(rows, [[labelKey, 'Índice'], [a, opts.aLabel || 'A'], [b, opts.bLabel || 'B']]);
+  }
+  // <rect> de barra: clicável só quando há context ou dia/range que identifique o
+  // subconjunto. Sem isso, barra decorativa (não abre drill errado).
+  function bar(cls, x, y, w, h, kind, context, day) {
+    var geo = 'x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '"';
+    if (!context && !day) return '<rect class="' + cls + '" ' + geo + '></rect>';
+    return '<rect tabindex="0" role="button" class="' + cls + '" ' + geo + ' onclick="WorkloadBDRV2.openDrill(\'' + kind + '\',\'' + context + '\',\'' + day + '\')"></rect>';
   }
 
   // Waterfall assinado: quanto cada componente somou/subtraiu da variação, com rótulo.
@@ -77,24 +97,35 @@ window.WorkloadBDRV2Charts = (function () {
   }
 
   // Ranking horizontal: barra preenchida + rótulo de valor. Layout próprio (não reusa break-row).
+  // opts.contextFn(r) -> context por linha (ex.: desfecho -> outcome:*). Linha cujo
+  // context é vazio e não é bucket/bdr renderiza SEM clique (unicidade: não abrir
+  // o conjunto errado). opts.noDrill força todas as linhas sem clique.
   function ranking(rows, key, kind, opts) {
     opts = opts || {};
     rows = (rows || []).slice().sort(function (a, b) { return n(b[key]) - n(a[key]); }).slice(0, 12);
     if (!rows.length) return empty('Sem dados', opts.emptyMsg || 'Nenhum registro para os filtros atuais.');
     var max = Math.max(1, rows.reduce(function (m, r) { return Math.max(m, n(r[key])); }, 0));
     var body = rows.map(function (r) {
-      var label = r.bdr || r.label || r.bucket, click;
-      if (r.bdr) click = "WorkloadBDRV2.freeze(decodeURIComponent('" + encodeURIComponent(r.bdr) + "'))";
+      var label = r.bdr || r.label || r.bucket, click = '';
+      if (opts.noDrill) click = '';
+      else if (r.bdr) click = "WorkloadBDRV2.freeze(decodeURIComponent('" + encodeURIComponent(r.bdr) + "'))";
+      else if (opts.contextFn) { var ctx = opts.contextFn(r); click = ctx ? "WorkloadBDRV2.openDrill('" + kind + "','" + ctx + "')" : ''; }
       else click = "WorkloadBDRV2.openDrill('" + kind + "','" + (((kind === 'reactivity' || kind === 'penetration') && C.isBucketLabel(label)) ? 'bucket:' + label : '') + "')";
       var pctw = Math.round(n(r[key]) / max * 100);
-      return '<button class="v2-rank" onclick="' + click + '" aria-label="' + E(label) + ': ' + fmt(r[key]) + (opts.unit || '') + '"><span class="v2-rank-name" title="' + E(label) + '">' + E(label) + '</span><span class="v2-rank-bar"><span class="v2-rank-fill" style="width:' + pctw + '%"></span></span><span class="v2-rank-val">' + fmt(r[key]) + (opts.unit || '') + '</span></button>';
+      var inner = '<span class="v2-rank-name" title="' + E(label) + '">' + E(label) + '</span><span class="v2-rank-bar"><span class="v2-rank-fill" style="width:' + pctw + '%"></span></span><span class="v2-rank-val">' + fmt(r[key]) + (opts.unit || '') + '</span>';
+      if (!click) return '<div class="v2-rank v2-rank-static" aria-label="' + E(label) + ': ' + fmt(r[key]) + (opts.unit || '') + '">' + inner + '</div>';
+      return '<button class="v2-rank" onclick="' + click + '" aria-label="' + E(label) + ': ' + fmt(r[key]) + (opts.unit || '') + '">' + inner + '</button>';
     }).join('');
     return '<div class="v2-ranking">' + body + '</div>' + metricTable(rows, [[rows[0] && rows[0].bdr != null ? 'bdr' : 'label', 'Nome'], [key, opts.valLabel || 'Valor']]);
   }
 
   // Barras empilhadas por dia: comprimento = volume do dia; segmentos = mix de canais. Com legenda.
-  function stacked(rows, keys, kind) {
-    rows = rows || [];
+  // opts.context = context do bloco (propagado ao clicar na linha do dia). Cada
+  // segmento de canal abre o próprio channel:<key> daquele dia (mais específico).
+  function stacked(rows, keys, kind, opts) {
+    rows = rows || []; opts = opts || {};
+    var blockCtx = opts.context || '';
+    var CHANNEL_CTX = { calls: 'calls', emails: 'emails', whatsapp: 'whatsapp', linkedin: 'linkedin', meetings: 'meetings' };
     var dates = {};
     rows.forEach(function (r) { if (!dates[r.date]) dates[r.date] = { date: r.date }; keys.forEach(function (k) { dates[r.date][k] = n(dates[r.date][k]) + n(r[k]); }); });
     var data = Object.keys(dates).sort().map(function (d) { return dates[d]; });
@@ -102,7 +133,12 @@ window.WorkloadBDRV2Charts = (function () {
     var max = Math.max(1, data.reduce(function (m, r) { return Math.max(m, keys.reduce(function (s, k) { return s + n(r[k]); }, 0)); }, 0));
     var body = data.map(function (r) {
       var tot = keys.reduce(function (s, k) { return s + n(r[k]); }, 0);
-      return '<button class="v2-stack-row" onclick="WorkloadBDRV2.openDrill(\'' + kind + '\',\'\',\'' + r.date + '\')" aria-label="' + E(r.date) + ': ' + fmt(tot) + '"><span>' + E(r.date.slice(5)) + '</span><span class="v2-stackbar" style="width:' + Math.max(4, Math.round(tot / max * 100)) + '%">' + keys.map(function (k, i) { return n(r[k]) ? '<i class="s' + i + '" style="width:' + Math.round(n(r[k]) / tot * 100) + '%" title="' + E(C.CHANNEL_LABELS[k] || k) + ': ' + fmt(r[k]) + '"></i>' : ''; }).join('') + '</span><b>' + fmt(tot) + '</b></button>';
+      var segs = keys.map(function (k, i) {
+        if (!n(r[k])) return '';
+        var segCtx = CHANNEL_CTX[k] ? 'channel:' + CHANNEL_CTX[k] : blockCtx;
+        return '<i role="button" tabindex="0" class="s' + i + '" style="width:' + Math.round(n(r[k]) / tot * 100) + '%" title="' + E(C.CHANNEL_LABELS[k] || k) + ': ' + fmt(r[k]) + '" aria-label="' + E(C.CHANNEL_LABELS[k] || k) + ' em ' + E(r.date) + ': ' + fmt(r[k]) + '" onclick="event.stopPropagation();WorkloadBDRV2.openDrill(\'' + kind + '\',\'' + segCtx + '\',\'' + r.date + '\')"></i>';
+      }).join('');
+      return '<button class="v2-stack-row" onclick="WorkloadBDRV2.openDrill(\'' + kind + '\',\'' + blockCtx + '\',\'' + r.date + '\')" aria-label="' + E(r.date) + ': ' + fmt(tot) + '"><span>' + E(r.date.slice(5)) + '</span><span class="v2-stackbar" style="width:' + Math.max(4, Math.round(tot / max * 100)) + '%">' + segs + '</span><b>' + fmt(tot) + '</b></button>';
     }).join('');
     return '<div class="v2-stacked">' + body + '</div>' + legend(keys.map(function (k, i) { return { c: PALETTE[i % PALETTE.length], l: C.CHANNEL_LABELS[k] || k }; })) + metricTable(data, [['date', 'Data']].concat(keys.map(function (k) { return [k, C.CHANNEL_LABELS[k] || k]; })));
   }

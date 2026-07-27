@@ -33,12 +33,31 @@ function parseContext(raw) {
   const type = parts[0], value = parts[1];
   const allowed = {
     channel: Object.keys(CHANNEL_DB),
+    // outcome: desfecho de ligação (activity + channel=call). Chave canônica é
+    // a MESMA usada em bdr-workload-semantic.js (GUID/label -> outcome), então
+    // o card, o modelo e o drill falam a mesma língua.
+    outcome: ['connected', 'voicemail', 'dial', 'no_answer', 'busy', 'wrong_number', 'no_outcome', 'talk_time'],
     bucket: ['0', '1', '2', '3', '4', '5', '6+', '2–3', '4–5', 'lt_1h', '1_4h', '4_24h', '24_72h', '72h_plus', 'sem_toque'],
     event: ['attempted', 'connected', 'qualified', 'disqualified'],
     domain: ['ritmo', 'insercao', 'crm', 'contato_efetivo', 'sql'],
   };
   if (!allowed[type] || !allowed[type].includes(value)) throw bad('context inválido');
   return { type, value };
+}
+// Filtro global de canal (multi). Só faz sentido para kind=activity. Cada valor
+// tem de estar em CHANNEL_DB (nome público -> nome no BQ). Quando o clique já
+// carrega um context channel/outcome específico, a precedência é do context e
+// este filtro é IGNORADO (evita interseção vazia).
+function parseChannels(raw) {
+  if (raw == null || raw === '') return null;
+  const parts = String(raw).split(',').map((s) => s.trim()).filter(Boolean);
+  if (!parts.length) return null;
+  const bad_ = parts.filter((c) => !Object.prototype.hasOwnProperty.call(CHANNEL_DB, c));
+  if (bad_.length) throw bad('canal inválido');
+  // dedup preservando ordem (payload menor, SQL determinístico)
+  const seen = {}, out = [];
+  parts.forEach((c) => { if (!seen[c]) { seen[c] = 1; out.push(c); } });
+  return out;
 }
 function parse(req) {
   const q = new URL(`http://x${req.url}`).searchParams;
@@ -57,6 +76,7 @@ function parse(req) {
     segmento: q.get('segmento') || null,
     persona: q.get('persona') || null,
     context: parseContext(q.get('context')),
+    channels: parseChannels(q.get('channels')),
     page, limit, offset: (page - 1) * limit,
   };
 }
@@ -86,6 +106,39 @@ function addFilters(alias, requested, dateField, params, options = {}) {
   }
   return where;
 }
+// Canais de ritmo (domain:ritmo). O domínio "ritmo" é a soma destes canais no
+// modelo semântico; aqui filtramos exatamente esse conjunto para reconciliar.
+const RITMO_CHANNELS = ['calls', 'email', 'whatsapp', 'linkedin', 'meeting'];
+// Desfecho de ligação -> cláusula SQL sobre bdr_workload_touch_detail_v2.
+// Todas restringem a channel='call'. `dial` = sem conexão (nem connected nem
+// voicemail); `no_outcome` = sem call_outcome; `talk_time` = conectadas com
+// duração > 0 (é o conjunto que soma o "tempo em linha"). MECE:
+// connected + voicemail + dial = calls.
+const OUTCOME_CLAUSE = {
+  connected: (a) => `${a}.channel='call' AND ${a}.call_outcome='connected'`,
+  voicemail: (a) => `${a}.channel='call' AND ${a}.call_outcome='voicemail'`,
+  dial: (a) => `${a}.channel='call' AND COALESCE(${a}.call_outcome,'') NOT IN ('connected','voicemail')`,
+  no_answer: (a) => `${a}.channel='call' AND ${a}.call_outcome='no_answer'`,
+  busy: (a) => `${a}.channel='call' AND ${a}.call_outcome='busy'`,
+  wrong_number: (a) => `${a}.channel='call' AND ${a}.call_outcome='wrong_number'`,
+  no_outcome: (a) => `${a}.channel='call' AND COALESCE(${a}.call_outcome,'')=''`,
+  talk_time: (a) => `${a}.channel='call' AND ${a}.call_outcome='connected' AND ${a}.call_duration_s>0`,
+};
+// Filtro global multi-canal (kind=activity). Só aplicado quando NÃO há context
+// channel/outcome (esses são mais específicos e prevalecem). Params nomeados
+// individuais (@channel0..@channelN) porque o cliente BQ REST não aceita ARRAY.
+function addChannelsFilter(where, params, requested, alias) {
+  if (!requested.channels || !requested.channels.length) return;
+  if (requested.kind !== 'activity') throw bad('channels incompatível com kind');
+  const context = requested.context;
+  if (context && (context.type === 'channel' || context.type === 'outcome')) return; // context prevalece
+  const names = requested.channels.map((channel, index) => {
+    const name = `channel${index}`;
+    params.push({ name, type: 'STRING', value: CHANNEL_DB[channel] });
+    return `@${name}`;
+  });
+  where.push(`${alias}.channel IN (${names.join(',')})`);
+}
 function addContext(where, params, requested, alias) {
   const context = requested.context;
   if (!context) return;
@@ -93,6 +146,9 @@ function addContext(where, params, requested, alias) {
     if (requested.kind !== 'activity') throw bad('context channel incompatível com kind');
     where.push(`${alias}.channel = @contextValue`);
     params.push({ name: 'contextValue', type: 'STRING', value: CHANNEL_DB[context.value] });
+  } else if (context.type === 'outcome') {
+    if (requested.kind !== 'activity') throw bad('context outcome incompatível com kind');
+    where.push(OUTCOME_CLAUSE[context.value](alias));
   } else if (context.type === 'event') {
     if (requested.kind !== 'crm') throw bad('context event incompatível com kind');
     where.push(`${alias}.event_type = @contextValue`);
@@ -113,6 +169,18 @@ function addContext(where, params, requested, alias) {
     if (expected && context.value !== expected && !(requested.kind === 'crm' && context.value === 'contato_efetivo')) {
       throw bad('context domain incompatível com kind');
     }
+    // domain:ritmo (activity) corresponde ao conjunto de canais de ritmo — filtra
+    // de fato (antes: cláusula morta -> drill devolvia o total do domínio).
+    if (requested.kind === 'activity' && context.value === 'ritmo') {
+      const names = RITMO_CHANNELS.map((db, index) => {
+        const name = `ritmoChannel${index}`;
+        params.push({ name, type: 'STRING', value: db });
+        return `@${name}`;
+      });
+      where.push(`${alias}.channel IN (${names.join(',')})`);
+    }
+    // Nos demais domínios (crm/sql/insercao/contato_efetivo) a semântica já vem
+    // do `kind` (a própria view isola o conjunto) — sem cláusula adicional.
   } else if (context.type === 'bucket' && requested.kind !== 'penetration') {
     throw bad('context bucket incompatível com kind');
   }
@@ -121,7 +189,7 @@ function standardQuery(requested, countOnly) {
   const specs = {
     activity: {
       date: 'metric_date', order: 'occurred_at DESC',
-      fields: 'interaction_id, metric_date, occurred_at, owner_id, owner_name, company_id, company_name, channel, direction_effective, atividade_tipo, call_natureza_final, call_duration_s, porte, segmento, persona, outcome_real, deal_id',
+      fields: 'interaction_id, metric_date, occurred_at, owner_id, owner_name, company_id, company_name, channel, direction_effective, atividade_tipo, call_outcome, call_natureza_final, call_duration_s, porte, segmento, persona, outcome_real, deal_id',
     },
     reactivity: {
       date: 'eligible_date', order: 'eligible_date DESC, owner_name',
@@ -143,6 +211,7 @@ function standardQuery(requested, countOnly) {
   ];
   const where = addFilters('x', requested, spec.date, params);
   addContext(where, params, requested, 'x');
+  addChannelsFilter(where, params, requested, 'x');
   if (!countOnly) params.push({ name: 'limit', type: 'INT64', value: requested.limit }, { name: 'offset', type: 'INT64', value: requested.offset });
   const sql = countOnly
     ? `SELECT COUNT(1) AS total FROM \`${VIEWS[requested.kind]}\` x WHERE ${where.join(' AND ')}`
@@ -221,12 +290,12 @@ async function build(requested) {
   const total = Number((countResult.rows[0] && countResult.rows[0].total) || 0);
   return {
     success: true,
-    contractVersion: '2.2',
+    contractVersion: '2.3',
     kind: requested.kind,
     requestedRange: { since: requested.since, until: requested.until },
     filtersApplied: {
       bdr: requested.bdr, porte: requested.porte, segmento: requested.segmento,
-      persona: requested.persona, context: requested.context,
+      persona: requested.persona, context: requested.context, channels: requested.channels,
     },
     source: { kind: 'bq-operational', view: dataQuery.view },
     total,
@@ -253,4 +322,4 @@ module.exports = async function handler(req, res) {
   catch (error) { return res.status(error.statusCode || 500).json({ success: false, error: error.message }); }
 };
 
-module.exports._test = { parse, parseContext, sanitizeRow, hubspotUrl, queryFor, build, VIEWS, CHANNEL_DB };
+module.exports._test = { parse, parseContext, parseChannels, sanitizeRow, hubspotUrl, queryFor, build, VIEWS, CHANNEL_DB };

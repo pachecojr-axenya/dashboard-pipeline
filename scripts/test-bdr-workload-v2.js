@@ -382,5 +382,41 @@ async function withBqStub(rows, fn) {
   const callLineage = sem.liveLineage({ used: false, rows: [] });
   ['callsConversation', 'callsVoicemail', 'callsTalkTimeS'].forEach((k) => assert(callLineage[k], `lineage deve declarar ${k}`));
 
+  // --- Unicidade do drill por desfecho de ligacao (incidente 2026-07-27) ---
+  // Antes: os cards Ligacoes/Conectadas/Sem conexao/Voicemail passavam TODOS
+  // context=channel:calls -> mesma query -> 5.781 linhas em todos. Agora cada
+  // desfecho tem context outcome:* proprio e uma clausula SQL distinta.
+  const outQ = (ctx) => drill.queryFor(drill.parse(req('kind=activity&since=2026-07-01&until=2026-07-02&context=' + encodeURIComponent(ctx))), false);
+  assert.deepStrictEqual(drill.parseContext('outcome:connected'), { type: 'outcome', value: 'connected' });
+  assert.throws(() => drill.parse(req('kind=activity&since=2026-07-01&until=2026-07-02&context=outcome:foo')), /context inválido/);
+  const sqlConnected = outQ('outcome:connected').sql;
+  const sqlDial = outQ('outcome:dial').sql;
+  const sqlVoicemail = outQ('outcome:voicemail').sql;
+  const sqlTalk = outQ('outcome:talk_time').sql;
+  const sqlChannelCalls = outQ('channel:calls').sql;
+  assert(sqlConnected.includes('call_outcome') && sqlConnected.includes("'connected'"), 'outcome:connected deve filtrar call_outcome connected');
+  assert(sqlDial.includes('NOT IN') && sqlDial.includes("'connected','voicemail'"), 'outcome:dial deve ser o complemento (NOT IN connected,voicemail)');
+  assert(sqlTalk.includes('call_duration_s') && sqlTalk.includes("'connected'"), 'outcome:talk_time deve exigir connected + duracao');
+  // Prova de UNICIDADE: os quatro SQLs de ligacao sao distintos entre si.
+  const norm = (s) => s.replace(/\s+/g, ' ').trim();
+  const variants = [norm(sqlChannelCalls), norm(sqlConnected), norm(sqlDial), norm(sqlVoicemail), norm(sqlTalk)];
+  assert.equal(new Set(variants).size, variants.length, 'cada clique de ligacao deve gerar SQL unico (era o bug: 5.781 em todos)');
+  // outcome:* so vale para kind=activity (checado ao montar a query).
+  assert.throws(() => drill.queryFor(drill.parse(req('kind=crm&since=2026-07-01&until=2026-07-02&context=outcome:connected')), false), /incompatível/);
+
+  // --- Filtro global de canal chega ao drill (Bug 4) ---
+  assert.deepStrictEqual(drill.parseChannels('emails,calls'), ['emails', 'calls']);
+  assert.deepStrictEqual(drill.parseChannels('emails,emails,calls'), ['emails', 'calls']);
+  assert.throws(() => drill.parseChannels('foo'), /canal inválido/);
+  const chQ = drill.queryFor(drill.parse(req('kind=activity&since=2026-07-01&until=2026-07-02&channels=emails,calls')), false);
+  assert(/x\.channel IN \(@channel0,@channel1\)/.test(chQ.sql), 'channels deve virar filtro IN por canal');
+  // Precedencia: context de canal/outcome vence o filtro global (evita intersecao vazia).
+  const chCtxQ = drill.queryFor(drill.parse(req('kind=activity&since=2026-07-01&until=2026-07-02&channels=emails&context=channel:calls')), false);
+  assert(!/@channel0/.test(chCtxQ.sql), 'context channel deve prevalecer sobre filtro global channels');
+
+  // --- domain:ritmo agora filtra de fato (antes: clausula morta) ---
+  const ritmoQ = drill.queryFor(drill.parse(req('kind=activity&since=2026-07-01&until=2026-07-02&context=domain:ritmo')), false);
+  assert(/channel IN \(/.test(ritmoQ.sql), 'domain:ritmo deve filtrar o conjunto de canais de ritmo');
+
   console.log('PASS bdr-workload-v2 API contract tests');
 })().catch((error) => { console.error(error); process.exit(1); });
