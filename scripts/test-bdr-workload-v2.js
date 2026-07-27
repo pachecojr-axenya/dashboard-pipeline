@@ -329,7 +329,8 @@ async function withBqStub(rows, fn) {
       liveCall(null, 0),                  // sem desfecho registrado
     ],
   };
-  const callRows = sem.aggregateLivePayload(callPayload, '2026-07-27', { bdr: 'Gabriele Almeida', channels: ['calls'] });
+  const callUnknown = new Set();
+  const callRows = sem.aggregateLivePayload(callPayload, '2026-07-27', { bdr: 'Gabriele Almeida', channels: ['calls'] }, callUnknown);
   assert.equal(callRows.length, 1);
   const cr = callRows[0];
   assert.equal(cr.calls, 8, 'todas as ligacoes contam no volume');
@@ -346,6 +347,30 @@ async function withBqStub(rows, fn) {
   assert.equal(cr.callsTalkTimeS, 140, 'tempo em linha considera apenas conectadas');
   // Voicemail nao pode inflar a taxa de conexao (decisao do dono, 2026-07-27).
   assert.ok(cr.callsConversation < cr.callsConversation + cr.callsVoicemail);
+
+  // GUID e a chave canonica: precisa concordar com o BQ mesmo se o label mudar
+  // de idioma ou vier customizado no portal (achado do review, 2026-07-27).
+  const byGuid = sem.aggregateLivePayload({ team: ['Gabriele Almeida'], activities: [
+    { bdr: 'Gabriele Almeida', tipo: 'calls', ts: '1', desfechoId: 'f240bbac-87c9-4f6e-bf70-924b57d47db7', desfecho: 'Connected', duracao_ms: 60000 },
+    { bdr: 'Gabriele Almeida', tipo: 'calls', ts: '1', desfechoId: 'b2cf5968-551e-4856-9783-52b3da59a7d0', desfecho: 'qualquer coisa', duracao_ms: 0 },
+  ] }, '2026-07-27', { bdr: 'Gabriele Almeida', channels: ['calls'] });
+  assert.equal(byGuid[0].callsConversation, 1, 'GUID deve classificar conectada mesmo com label em outro idioma');
+  assert.equal(byGuid[0].callsVoicemail, 1, 'GUID tem precedencia sobre label divergente');
+  // Label com acento/caixa/espaco extra ainda resolve (fallback defensivo).
+  const byLabel = sem.aggregateLivePayload({ team: ['Gabriele Almeida'], activities: [
+    { bdr: 'Gabriele Almeida', tipo: 'calls', ts: '1', desfecho: '  CONECTADO  ', duracao_ms: 30000 },
+    { bdr: 'Gabriele Almeida', tipo: 'calls', ts: '1', desfecho: 'Número errado' },
+  ] }, '2026-07-27', { bdr: 'Gabriele Almeida', channels: ['calls'] });
+  assert.equal(byLabel[0].callsConversation, 1, 'label deve normalizar caixa/espaco');
+  assert.equal(byLabel[0].callsWrongNumber, 1, 'label deve normalizar acento');
+  // Desfecho desconhecido precisa ser DIAGNOSTICADO, nao virar silenciosamente
+  // "sem conexao" -- e o modo de falha que zeraria a taxa do dia sem aviso.
+  const unknownSet = new Set();
+  const unknownRows = sem.aggregateLivePayload({ team: ['Gabriele Almeida'], activities: [
+    { bdr: 'Gabriele Almeida', tipo: 'calls', ts: '1', desfechoId: 'guid-que-nao-existe', desfecho: 'Label Novo Do HubSpot' },
+  ] }, '2026-07-27', { bdr: 'Gabriele Almeida', channels: ['calls'] }, unknownSet);
+  assert.equal(unknownRows[0].callsNoOutcome, 1, 'desconhecido conta como sem desfecho');
+  assert.equal(unknownSet.size, 1, 'desfecho desconhecido deve ser coletado para diagnostico');
 
   // O SQL do BQ tem de trazer as colunas novas e a lineage deve declarar todas.
   await withBqStub([], async (calls) => {

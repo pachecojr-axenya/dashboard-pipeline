@@ -272,6 +272,11 @@ async function fetchActivities(token, teamIds, idToBdr, sinceMs, untilMs) {
       if (type === 'calls') {
         a.duracao_ms = p.hs_call_duration != null && p.hs_call_duration !== '' ? Number(p.hs_call_duration) : null;
         a.desfecho = dispMap[p.hs_call_disposition] || null;
+        // Preserva o GUID cru: o BQ classifica desfecho por GUID e o consumidor
+        // (bdr-workload-semantic) deve usar a MESMA chave, senao a definicao de
+        // "conectada" muda entre hoje (live) e o historico (BQ). O label e so
+        // para exibicao e pode variar com idioma/customizacao do portal.
+        a.desfechoId = p.hs_call_disposition || null;
       }
       if (type === 'emails') a.direction = p.hs_email_direction || null;
       if (type === 'communications') a.canal = p.hs_communication_channel_type || null;
