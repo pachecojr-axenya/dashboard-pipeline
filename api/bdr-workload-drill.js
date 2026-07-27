@@ -2,7 +2,7 @@
 
 const { setCORSHeaders, requireAuth, methodCheck } = require('./_helpers');
 const bq = require('../lib/bigquery');
-const { BDR_TEAM, canonicalizeBdrName } = require('../lib/bdr-team');
+const { BDR_TEAM, canonicalizeBdrName, bdrOwnerIds, bdrOwnerIdClause } = require('../lib/bdr-team');
 
 const PROJECT = 'gen-lang-client-0423905839';
 const GOLD = 'axenya_sales_hubspot_bdr_prd_sae1_gold';
@@ -52,7 +52,7 @@ function parse(req) {
   const limit = Math.min(50, Math.max(1, Number(q.get('limit') || 25)));
   const page = Math.max(1, Number(q.get('page') || 1));
   return {
-    kind, since, until, bdr,
+    kind, since, until, bdr, bdrIds: bdrOwnerIds(bdr),
     porte: q.get('porte') || null,
     segmento: q.get('segmento') || null,
     persona: q.get('persona') || null,
@@ -68,9 +68,9 @@ function hubspotUrl(type, id) {
 }
 function addFilters(alias, requested, dateField, params, options = {}) {
   const where = [`${alias}.${dateField} BETWEEN @since AND @until`];
-  if (requested.bdr) {
-    where.push(`${alias}.owner_name = @bdr`);
-    params.push({ name: 'bdr', type: 'STRING', value: requested.bdr });
+  if (requested.bdrIds && requested.bdrIds.length) {
+    const oc = bdrOwnerIdClause(alias, requested.bdrIds, requested.bdr);
+    if (oc) where.push(oc);
   }
   if (requested.porte) {
     where.push(`COALESCE(NULLIF(${alias}.porte,''),'desconhecido') = @porte`);

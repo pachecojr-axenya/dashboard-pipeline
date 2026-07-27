@@ -265,5 +265,47 @@ async function withBqStub(rows, fn) {
   assert.equal(clean.company_name, 'Empresa');
   assert(!/x@y.com|123|Pessoa/.test(JSON.stringify(clean)));
 
+  // --- Contrato do filtro de BDR por owner_id (incidente 2026-07-27) ---
+  // As tabelas gold guardam owner_name CRU do HubSpot ("Gabriele de Almeida
+  // Silva", "Cíntia Rodrigues"); a UI filtra pelo canônico. Filtrar por nome
+  // zerava 3 dos 13 BDRs com dado existente no BQ. O filtro é por owner_id.
+  const team = require('../lib/bdr-team');
+
+  // 1) Todo BDR do roster resolve para pelo menos um owner_id. Se este teste
+  //    falhar, alguém adicionou BDR em BDR_TEAM sem atualizar BDR_OWNER_MAP e o
+  //    filtro daquele BDR quebraria (hoje fail-closed, antes: time inteiro).
+  const semOwnerId = team.BDR_TEAM.filter((bdr) => !team.bdrOwnerIds(bdr).length);
+  assert.deepStrictEqual(semOwnerId, [], `BDR sem owner_id em BDR_OWNER_MAP: ${semOwnerId.join(', ')}`);
+
+  // 2) Todo owner_id do mapa é só dígito (são interpolados no SQL).
+  Object.keys(team.BDR_OWNER_MAP).forEach((id) => assert(/^\d+$/.test(id), `owner_id não numérico: ${id}`));
+
+  // 3) Alias e acento resolvem para o MESMO owner_id do nome canônico.
+  assert.deepStrictEqual(team.bdrOwnerIds('Gabriele de Almeida Silva'), team.bdrOwnerIds('Gabriele Almeida'));
+  assert.deepStrictEqual(team.bdrOwnerIds('Cíntia Rodrigues'), team.bdrOwnerIds('Cintia Rodrigues'));
+  assert.deepStrictEqual(team.bdrOwnerIds('Bruna Cristina Dos Reis Silva'), team.bdrOwnerIds('Bruna Reis'));
+
+  // 4) Cíntia consolida os dois owner_ids históricos dela.
+  assert.deepStrictEqual(team.bdrOwnerIds('Cintia Rodrigues').sort(), ['86900152', '87213208']);
+
+  // 5) Fail-closed: BDR pedido que não resolve para owner_id LANÇA, em vez de
+  //    devolver cláusula vazia (que traria o time inteiro rotulado como o BDR).
+  assert.throws(() => team.bdrOwnerIdClause('d', [], 'BDR Fantasma'), /não tem owner_id mapeado/);
+  //    Sem BDR pedido, ausência de ids é legítima (visão do time): retorna ''.
+  assert.equal(team.bdrOwnerIdClause('d', []), '');
+  assert.equal(team.bdrOwnerIdClause('d', team.bdrOwnerIds('Gabriele Almeida')), "d.owner_id IN ('83025540')");
+
+  // 6) O SQL gerado filtra por owner_id e NÃO por owner_name.
+  await withBqStub([], async (calls) => {
+    await sem.build(sem.parse(req('v=2&since=2026-07-01&until=2026-07-02&bdr=Gabriele%20Almeida')));
+    const withBdr = calls.filter((c) => /owner_id IN/.test(c.sql));
+    assert(withBdr.length >= 2, 'semantic deve filtrar rhythm e reactivity por owner_id');
+    calls.forEach((c) => assert(!/owner_name\s*=\s*@bdr/.test(c.sql), 'não deve sobrar filtro por owner_name'));
+  });
+
+  // 7) BDR inválido continua barrado no parse (400), nunca chega ao SQL.
+  assert.throws(() => sem.parse(req('v=2&since=2026-07-01&until=2026-07-02&bdr=Fulano%20Inexistente')), /BDR inválido/);
+  assert.throws(() => drill.parse(req('kind=activity&since=2026-07-01&until=2026-07-02&bdr=Fulano%20Inexistente')), /BDR inválido/);
+
   console.log('PASS bdr-workload-v2 API contract tests');
 })().catch((error) => { console.error(error); process.exit(1); });
