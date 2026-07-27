@@ -54,6 +54,14 @@ check('quarter presente por deal', alfaB && alfaB.quarter === 'Q4 2026', 'quarte
 const gamaB = cB.find(x => x.id === '3');
 check('quarter do AE no BID não é sobrescrito pela régua fixa', gamaB && gamaB.quarter === 'Q4 2026', 'quarter=' + (gamaB && gamaB.quarter));
 
+// ── 1b. Override manual de probabilidade por deal (2026-07-27) ────────────────
+console.log('\n== probManual (P. Ajust. final forçada por deal) ==');
+const cBov = FC.dealContributions(dealsB, refB, {}, { '1': { prob: 0 } });
+const alfaOv = cBov.find(x => x.id === '1');
+check('probManual zera prob12 e arrPond do deal forçado', alfaOv && alfaOv.prob12 === 0 && alfaOv.arrPond === 0, 'prob12=' + (alfaOv && Math.round(alfaOv.prob12)) + ' arrPond=' + (alfaOv && Math.round(alfaOv.arrPond)));
+const deltaOv = cBov.find(x => x.id === '4'), deltaRef = cB.find(x => x.id === '4');
+check('probManual não afeta os demais deals', deltaOv && near(deltaOv.arrPond, deltaRef.arrPond), Math.round(deltaOv && deltaOv.arrPond) + ' vs ' + Math.round(deltaRef && deltaRef.arrPond));
+
 // ── 2. stageUnified: soma por etapa, delta, invariante de receita ────────────
 console.log('\n== stageUnified (tabela por etapa) ==');
 const su = FC.stageUnified(cA, cB);

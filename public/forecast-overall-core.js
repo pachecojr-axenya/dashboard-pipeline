@@ -68,7 +68,7 @@
     var f = _cfg.funnelProb;
     // aceita mapa flat (aplica aos dois pipelines) ou já por pipeline {vendas,bid}
     var fp = f ? ((f.vendas || f.bid) ? f : { vendas: f, bid: f }) : null;
-    return { cfg: { manual: hasSaved, values: { vendas: saved, bid: saved } }, funnelProbPipe: fp, defaults: _cfg.stageProbDefault };
+    return { cfg: { manual: hasSaved, values: { vendas: saved, bid: saved } }, funnelProbPipe: fp, defaults: _cfg.stageProbDefault, probManual: _cfg.probManual };
   }
   function stageProbFor(stage, pipeline) { return _probEngine().stageProbFor(stage, pipeline, _probCtx()); }
   function calcProbInfo(deal) { return _probEngine().calcProbInfo(deal, _probCtx()); }

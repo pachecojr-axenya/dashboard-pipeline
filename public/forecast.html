@@ -1824,7 +1824,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
 <script src="/semantic-ref.js?v=6"></script>
 <script src="/semantic-help.js?v=2"></script>
 <script src="/forecast-columns.js?v=1"></script>
-<script src="/prob-engine.js?v=3"></script>
+<script src="/prob-engine.js?v=4"></script>
 <script src="/revenue-engine.js?v=2"></script>
 <script src="/faturamento-manual.js?v=1"></script>
 <script src="/forecast-engine.js?v=1"></script>
@@ -2270,6 +2270,8 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
     function _fcStageProbFor(stage, pipeline) {
       return ProbEngine.stageProbFor(stage, pipeline, _fcProbCtx());
     }
+    // Re-render quando o mapa de overrides manuais chega depois do 1º render (autoload do prob-engine).
+    window._probManualRerender = function () { if (typeof applyAndRender === 'function') applyAndRender(); };
     async function _fcLoadFunnelProb() {
       try {
         const r = await fetch('/api/funnel-stages', { credentials: 'same-origin' });
@@ -2738,7 +2740,9 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       body += cell('Modelo', cmpInline(d, 'modelo_remuneracao', 'text', txt(d.modelo_remuneracao))) + cell('POC', boolv(d.is_poc));
       body += cell('Agenciamento', cmpInline(d, 'possui_agenciamento', 'bool', boolv(d.possui_agenciamento))) + cell('Vitalício', cmpInline(d, 'possui_vitalicio', 'bool', boolv(d.possui_vitalicio)));
       body += cell('Prob. Etapa', pct(d.prob_etapa)) + cell('Prob. AE', cmpInline(d, 'probabilidade', 'pct', pct(d.probabilidade)));
-      body += cell('Prob. Ajustada', pct(d.prob_ajustada)) + cell('Quarter', cmpInline(d, 'quarter', 'quarter', (d.quarter && !quarterEmpty(d.quarter)) ? esc(d.quarter) : muted));
+      const _pManual = d.prob_info && d.prob_info.manual;
+      body += cell('Prob. Ajustada', pct(d.prob_ajustada) + (_pManual ? ' <span style="color:var(--yellow);font-weight:700" title="' + esc(d.prob_info.modStr) + '">*</span>' : '')) + cell('Quarter', cmpInline(d, 'quarter', 'quarter', (d.quarter && !quarterEmpty(d.quarter)) ? esc(d.quarter) : muted));
+      if (_pManual) body += `<div style="grid-column:1/-1;margin:.35rem 0;background:rgba(227,179,65,.1);border:1px solid rgba(227,179,65,.35);border-radius:8px;padding:.5rem .7rem;font-size:.78rem;color:var(--yellow)">✱ Probabilidade manualmente ajustada para <b>${esc(fmtPct(d.prob_ajustada))}</b>${d.prob_info.originalFinal != null ? ' | original (régua + ajuste do AE): ' + esc(fmtPct(d.prob_info.originalFinal)) : ''}</div>`;
       body += cell('Dt. Receita', cmpInline(d, 'data_prevista_para_receita', 'date', dt(d.data_prevista_para_receita))) + cell('Dt. Vigência', cmpInline(d, 'vigencia', 'date', dt(d.vigencia)));
 
       body += _dealModalExtras(d);
@@ -4428,6 +4432,11 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
           }
 
           if (c.prob) {
+            // P. Ajust. com override manual (prob-engine): asterisco + tooltip com o original
+            if (c.k === 'prob_ajustada' && d.prob_info && d.prob_info.manual) {
+              h += `<td class="${sc} ${probCls(v)}"${align} data-col="${ci}" data-tip="${esc(d.prob_info.modStr)}">${fmtPct(v)}<span style="color:var(--yellow);font-weight:700">*</span></td>`;
+              return;
+            }
             h += `<td class="${sc} ${probCls(v)}"${align} data-col="${ci}">${fmtPct(v)}</td>`;
             return;
           }

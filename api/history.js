@@ -23,6 +23,7 @@ const { setCORSHeaders, requireAuth, getHubspotToken } = require('./_helpers');
 const FC = require('../lib/forecast-compute');
 const bq = require('../lib/bigquery');
 const kv = require('../lib/kv');
+const PM = require('../lib/prob-manual');
 const fs = require('fs'); const os = require('os'); const path = require('path');
 
 // ── Comparação de fotos (action=compare) — helpers ──────────────────────────
@@ -180,7 +181,7 @@ module.exports = async function handler(req, res) {
       if (!fA || !fB) return res.status(422).json({ success: false, error: 'Sem foto em ou antes de uma das datas (foto mais antiga: ' + oldest.tab + ')' });
       if (fA.tab === fB.tab) return res.status(422).json({ success: false, error: 'As duas datas resolvem para a mesma foto (' + fA.tab + ') | escolha datas mais distantes' });
 
-      const [rowsA, rowsB, manual] = await Promise.all([_readFotoRows(fA), _readFotoRows(fB), _readManual()]);
+      const [rowsA, rowsB, manual, probManual] = await Promise.all([_readFotoRows(fA), _readFotoRows(fB), _readManual(), PM.readAll()]);
       if (!rowsA.length || !rowsB.length) return res.status(404).json({ success: false, error: 'Foto vazia' });
 
       const objsA = _rowsToObjs(rowsA), objsB = _rowsToObjs(rowsB);
@@ -199,8 +200,8 @@ module.exports = async function handler(req, res) {
       scopedInputA = FC.applyAeQuarterFilter(scopedInputA, aeSel, qSel);
       scopedInputB = FC.applyAeQuarterFilter(scopedInputB, aeSel, qSel);
 
-      const snapA = FC.computeSnapshot(scopedInputA, fA.refDate, manual);
-      const snapB = FC.computeSnapshot(scopedInputB, fB.refDate, manual);
+      const snapA = FC.computeSnapshot(scopedInputA, fA.refDate, manual, probManual);
+      const snapB = FC.computeSnapshot(scopedInputB, fB.refDate, manual, probManual);
       const byA = {}; snapA.stages.forEach(s => { byA[s.key] = s; });
       let waterfall = snapB.stages.map(s => {
         const pa = byA[s.key] || {};
@@ -219,8 +220,8 @@ module.exports = async function handler(req, res) {
       const invariantOk = Math.abs(sumDelta - (snapB.totals.prob12 - snapA.totals.prob12)) < 0.01;
 
       // Contribuições por deal (mesmo escopo filtrado) — alimentam quarters/drills.
-      const cA = FC.dealContributions(scopedInputA, fA.refDate, manual);
-      const cB = FC.dealContributions(scopedInputB, fB.refDate, manual);
+      const cA = FC.dealContributions(scopedInputA, fA.refDate, manual, probManual);
+      const cB = FC.dealContributions(scopedInputB, fB.refDate, manual, probManual);
       // ARR por linha do waterfall (horizonte ARR no menu, pedido do dono 2026-07-24):
       // agrega arr/arrPond das contribuições por rowKey — campos ADITIVOS em a/b/delta.
       // Com escopo (ativos|tudo) todo deal escopado tem rowKey, então Σ Δ(linhas) bate
@@ -243,8 +244,8 @@ module.exports = async function handler(req, res) {
       if (deltaScoped) {
         const fullA = FC.applyAeQuarterFilter(FC.applyDeltaScope(mappedA, 'tudo'), aeSel, qSel);
         const fullB = FC.applyAeQuarterFilter(FC.applyDeltaScope(mappedB, 'tudo'), aeSel, qSel);
-        suA = FC.dealContributions(fullA, fA.refDate, manual);
-        suB = FC.dealContributions(fullB, fB.refDate, manual);
+        suA = FC.dealContributions(fullA, fA.refDate, manual, probManual);
+        suB = FC.dealContributions(fullB, fB.refDate, manual, probManual);
       }
       const stageUnified = FC.stageUnified(suA, suB, rawBStageById);
       const quarters = FC.quarterAgg(cA, cB);
@@ -257,8 +258,8 @@ module.exports = async function handler(req, res) {
       const bidA = FC.applyAeQuarterFilter(mappedA.filter(bidOnly), aeSel, qSel);
       const bidB = FC.applyAeQuarterFilter(mappedB.filter(bidOnly), aeSel, qSel);
       const bidUnified = FC.stageUnified(
-        FC.dealContributions(bidA, fA.refDate, manual),
-        FC.dealContributions(bidB, fB.refDate, manual),
+        FC.dealContributions(bidA, fA.refDate, manual, probManual),
+        FC.dealContributions(bidB, fB.refDate, manual, probManual),
         rawBStageById
       );
 
@@ -305,7 +306,7 @@ module.exports = async function handler(req, res) {
       const fA = _resolveFoto(fotos, a); const fB = _resolveFoto(fotos, b);
       if (!fA || !fB) return res.status(422).json({ success: false, error: 'Sem foto em ou antes de uma das datas' });
       if (fA.tab === fB.tab) return res.status(422).json({ success: false, error: 'As duas datas resolvem para a mesma foto' });
-      const [rowsA, rowsB, manual] = await Promise.all([_readFotoRows(fA), _readFotoRows(fB), _readManual()]);
+      const [rowsA, rowsB, manual, probManual] = await Promise.all([_readFotoRows(fA), _readFotoRows(fB), _readManual(), PM.readAll()]);
       const mappedA = FC.mapFotoDeals(_rowsToObjs(rowsA)), mappedB = FC.mapFotoDeals(_rowsToObjs(rowsB));
       // etapa bruta de cada deal em B (inclui Perdido/Ganho/fora de escopo) → destino de quem saiu
       const rawBStageById = {}; mappedB.forEach(d => { rawBStageById[FC.dealId(d)] = d.stage; });
@@ -314,23 +315,23 @@ module.exports = async function handler(req, res) {
       let scopedInputB = deltaScoped ? FC.applyDeltaScope(mappedB, scopeParam) : (includeClosedStages ? mappedB : FC.excludeClosedStages(mappedB));
       scopedInputA = FC.applyAeQuarterFilter(scopedInputA, aeSel, qSel);
       scopedInputB = FC.applyAeQuarterFilter(scopedInputB, aeSel, qSel);
-      let cA = FC.dealContributions(scopedInputA, fA.refDate, manual);
-      let cB = FC.dealContributions(scopedInputB, fB.refDate, manual);
+      let cA = FC.dealContributions(scopedInputA, fA.refDate, manual, probManual);
+      let cB = FC.dealContributions(scopedInputB, fB.refDate, manual, probManual);
       // Drill de ETAPA (stage:) espelha a Visão Unificada por Etapa: no app (com
       // escopo) usa o funil COMPLETO, senão a etapa fora do Ativos viria vazia.
       // quarter:/kpi:/<rowKey> continuam no conjunto escopado (headline).
       if (deltaScoped && String(row).indexOf('stage:') === 0) {
         const fullA = FC.applyAeQuarterFilter(FC.applyDeltaScope(mappedA, 'tudo'), aeSel, qSel);
         const fullB = FC.applyAeQuarterFilter(FC.applyDeltaScope(mappedB, 'tudo'), aeSel, qSel);
-        cA = FC.dealContributions(fullA, fA.refDate, manual);
-        cB = FC.dealContributions(fullB, fB.refDate, manual);
+        cA = FC.dealContributions(fullA, fA.refDate, manual, probManual);
+        cB = FC.dealContributions(fullB, fB.refDate, manual, probManual);
       }
       // Drill do Pipe de Bid (bidstage:, D08): contribuições SÓ do pipeline Bid,
       // espelhando o bidUnified do compare (o escopo Ativos/Tudo removeria o Bid).
       if (String(row).indexOf('bidstage:') === 0) {
         const bidOnly = d => d.pipeline === 'Bid';
-        cA = FC.dealContributions(FC.applyAeQuarterFilter(mappedA.filter(bidOnly), aeSel, qSel), fA.refDate, manual);
-        cB = FC.dealContributions(FC.applyAeQuarterFilter(mappedB.filter(bidOnly), aeSel, qSel), fB.refDate, manual);
+        cA = FC.dealContributions(FC.applyAeQuarterFilter(mappedA.filter(bidOnly), aeSel, qSel), fA.refDate, manual, probManual);
+        cB = FC.dealContributions(FC.applyAeQuarterFilter(mappedB.filter(bidOnly), aeSel, qSel), fB.refDate, manual, probManual);
       }
       // Drill genérico (Leva 2): row pode ser <rowKey> (compat waterfall), stage:<Etapa>,
       // quarter:<Q> ou kpi:vidas|arrTotal|arrPond.

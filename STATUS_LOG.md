@@ -1,5 +1,59 @@
 # Dashboard Enhancement Loop — Status Log
 
+### Probabilidade | override MANUAL por deal: DUX 0% e Grupo Maringá 10% (2026-07-27)
+
+> Decisão do dono: DUX Company (`62853528445`) com P. Ajust. final forçada para **0%**
+> e Grupo Maringá (`52091223109`) para **10%**. O valor forçado SUBSTITUI o resultado
+> do cálculo automático (nenhum ±10%/Diagnóstico por cima) e vale em TODOS os painéis
+> — a reconciliação de 24/07 tornou isto uma inserção única no motor.
+
+- **`lib/prob-manual.js` (novo):** SEED versionado (auditável no git: prob, quem,
+  quando, por quê) + camada KV (`forecast:prob_manual`) com precedência por dealId —
+  editar depois não exige deploy; `prob:null` no KV anula inclusive o seed.
+- **`api/prob-manual.js` (novo):** GET mapa efetivo (consumido pelo autoload) |
+  POST upsert (requireAuth; KV, fallback /tmp local — padrão faturamento-manual).
+- **`prob-engine.js`:** `calcProbInfo` = cálculo automático (`_autoProbInfo`) + camada
+  de override (`ctx.probManual` no Node/core; autoload de `/api/prob-manual` no
+  browser — mesmo padrão do config-global; re-render via `novoRender` /
+  `_probManualRerender`). Retorno ganha `{ manual:true, originalFinal }` e
+  `modStr = "Probabilidade manualmente ajustada para X% | original: Y%"`.
+- **Servidor/Delta:** `computeSnapshot`/`dealContributions` ganham 4º parâmetro
+  `probManual`; `api/history.js` lê `PM.readAll()` junto do faturamento manual e passa
+  nos 14 call sites. Override retroage sobre fotos (estado ATUAL, mesmo regime do
+  caveat Fase 1) — Delta A→B caiu exatos R$ 257.050 (= Maringá 49,3%→10%) nos dois lados.
+- **UI da planilha (/forecast):** célula P. Ajust. dos deals forçados ganha **✱ amarelo**
+  + tooltip com o modStr; o modal do deal (clique no nome) mostra o valor com `*` e um
+  aviso destacado "✱ Probabilidade manualmente ajustada para X% | original (régua +
+  ajuste do AE): Y%". O tooltip da Receita Probabilizada já expunha o modStr.
+- **forecast-stage.html (/forecast-overall):** a ÚLTIMA cópia de `calcProbInfo`/
+  `_fcStageProbFor` que restava (fora do radar em 24/07 — o `file:` do nav.js aponta
+  forecast-panel, mas o vercel.json serve forecast-stage) foi delegada ao ProbEngine —
+  override e Diagnóstico 6% valem lá também.
+- Cache-busters: `prob-engine.js?v=4` + `forecast-overall-core.js?v=3`.
+- **Fora do alcance (por decisão):** bloco Meta (régua própria de bookings) não usa o
+  override; export Excel leva o VALOR forçado nas fórmulas mas ainda sem marca ✱
+  (follow-up); Bid segue 0,5% fixo.
+- **Validação:** `npm run check` PASS (73 PASS; asserts novos: probManual zera
+  prob12/arrPond do deal forçado e não afeta os demais); smoke Node (DUX final 0 |
+  original 18,6%; Maringá 0,1 | original 49,3%; terceiros intactos); DOM da planilha
+  com as 2 células ✱ e tooltips corretos; `/api/prob-manual` 200. ⚠ `api/`+`lib/`
+  mudaram → servidor :3002 reiniciado. **Ainda NÃO deployado** — em produção os
+  overrides só valem após deploy (o seed vai no código).
+- Coordenação: commit desta leva foi **staged por hunk** para NÃO arrastar os bumps
+  `nav.js?v=4` da sessão paralela (Delta 🟢), que seguem no working tree para ela commitar.
+
+### Delta | painel promovido a 🟢 validado (decisão do dono) (2026-07-27)
+
+- **Pill do header** do `/forecast-delta`: "🟡 não validado" → "🟢 validado" (title
+  atualizado). **`nav.js`**: item Delta `health:'y'` → `'g'` (fonte única do menu,
+  Regra primária nº 2; `premium.js` não lista o Delta, nada a espelhar).
+- Cache-buster `nav.js?v=4` nos 11 HTMLs (no `bdr.html`, com bytes NUL, via replace
+  binário em Node — sem sed; 3 NUL preservados, verificado).
+- `AUDITORIA_GRAFICOS.md` | adendo do Delta atualizado para 🟢 com a data e a origem
+  da decisão. Ressalva pré-existente segue anotada lá (destino de deal Bid como ID
+  bruto no D05).
+- Front-only + docs; sem tocar `api/`/`lib/`.
+
 ### Probabilidade | reconciliação COMPLETA no prob-engine.js (muda em 1 lugar → muda em tudo) (2026-07-24)
 
 > Pedido do dono ("se a gente muda 1 lugar, muda em tudo? deveria"), pré-requisito do

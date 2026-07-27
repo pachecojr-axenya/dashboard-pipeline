@@ -85,9 +85,8 @@
     return D[stage];
   }
 
-  // Prob. FINAL do deal com o ajuste ±10% do AE. Retorna { sp, cp, final, modStr }.
-  // Cálculo ÚNICO de todos os painéis (CRO, Board, Forecast, Overall, Delta).
-  function calcProbInfo(deal, ctx) {
+  // Cálculo AUTOMÁTICO (régua/C07 + Diagnóstico fixo + ajuste ±10% do AE).
+  function _autoProbInfo(deal, ctx) {
     // Diagnóstico: probabilidade SEMPRE fixa em 6% (não deriva do funil nem ajusta pelo AE).
     if (deal.stage === 'Diagnóstico') return { sp: 0.06, cp: deal.probabilidade, final: 0.06, modStr: 'Diagnóstico: fixa em 6% (sem ajuste do AE)' };
     var sp = stageProbFor(deal.stage, deal.pipeline, ctx);
@@ -99,13 +98,45 @@
     return { sp: sp, cp: cp, final: sp, modStr: 'Dentro da margem (sem ajuste)' };
   }
 
+  // ── Override MANUAL por deal (decisão do dono 2026-07-27) ───────────────────
+  // Mapa dealId(hs_id) → { prob } vindo de /api/prob-manual (autoload no browser)
+  // ou injetado via ctx.probManual (Node/core). O valor forçado substitui a P. Ajust.
+  // FINAL — nenhum ajuste (±10% do AE, Diagnóstico) é aplicado por cima.
+  var _probManual = null;
+  function _fmtPct1(p) { return String(Math.round(p * 1000) / 10).replace('.', ',') + '%'; }
+  function _manualFor(deal, ctx) {
+    var m = (ctx && ctx.probManual) || _probManual;
+    if (!m || !deal || deal.hs_id == null) return null;
+    var e = m[String(deal.hs_id)];
+    if (e == null) return null;
+    var p = typeof e === 'number' ? e : e.prob;
+    if (p == null || isNaN(p) || p < 0 || p > 1) return null;
+    return p;
+  }
+
+  // Prob. FINAL do deal. Retorna { sp, cp, final, modStr } e, quando há override
+  // manual, também { manual: true, originalFinal } (o que o cálculo automático daria).
+  // Cálculo ÚNICO de todos os painéis (CRO, Board, Forecast, Overall, Delta).
+  function calcProbInfo(deal, ctx) {
+    var base = _autoProbInfo(deal, ctx);
+    var mp = _manualFor(deal, ctx);
+    if (mp == null) return base;
+    return {
+      sp: base.sp, cp: base.cp, final: mp, manual: true, originalFinal: base.final,
+      modStr: 'Probabilidade manualmente ajustada para ' + _fmtPct1(mp) +
+        (base.final != null ? ' | original: ' + _fmtPct1(base.final) : '')
+    };
+  }
+
   root.ProbEngine = {
     DEFAULT: DEFAULT,
     MIN_SAMPLE: MIN_SAMPLE,
     loadCfg: loadCfg,
     funnelDerivedProbPipe: funnelDerivedProbPipe,
     stageProbFor: stageProbFor,
-    calcProbInfo: calcProbInfo
+    calcProbInfo: calcProbInfo,
+    setProbManual: function (m) { _probManual = m || null; },   // injeção (testes/Node)
+    probManual: function () { return _probManual; }
   };
 
   // Fase 4b: carrega a config global (KV) e re-renderiza se a fonte de prob mudou.
@@ -119,6 +150,19 @@
         var antes = root.CONFIG_GLOBAL && root.CONFIG_GLOBAL.prob_fonte;
         root.CONFIG_GLOBAL = j.config;
         if (antes !== j.config.prob_fonte && typeof root.novoRender === 'function') root.novoRender();
+      })
+      .catch(function () {});
+    // Overrides manuais por deal (autoload; mesmo padrão do config-global). Após
+    // carregar, re-renderiza: CRO/Board expõem novoRender; forecast/forecast-stage
+    // registram window._probManualRerender (applyAndRender).
+    fetch('/api/prob-manual', { credentials: 'same-origin' })
+      .then(function (r) { return r && r.ok ? r.json() : null; })
+      .then(function (j) {
+        if (!j || !j.success || !j.map) return;
+        _probManual = j.map;
+        if (!Object.keys(j.map).length) return;
+        if (typeof root.novoRender === 'function') root.novoRender();
+        if (typeof root._probManualRerender === 'function') root._probManualRerender();
       })
       .catch(function () {});
   }
