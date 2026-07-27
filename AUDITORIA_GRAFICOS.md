@@ -2,7 +2,9 @@
 
 ## Adendo | Delta (ex-Comparativo), códigos D01–D07 (2026-07-24)
 
-> **Estado: 🟡 não validado contra o HubSpot** (painel inteiro segue 🟡; pill no header).
+> **Estado: 🟢 validado (2026-07-27, decisão do dono)** — o pill do header passou de
+> "🟡 não validado" para "🟢 validado" e a saúde do item Delta no `nav.js` foi para verde,
+> por instrução explícita do dono em 2026-07-27.
 > O painel `/forecast-delta` foi renomeado para **Delta** e os cards ganharam códigos:
 >
 > | # | Card | Nota |
