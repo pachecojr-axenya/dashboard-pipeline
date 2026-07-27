@@ -1,5 +1,25 @@
 # Dashboard Enhancement Loop — Status Log
 
+### Forecast | filtro "Qtr. Receita" (quarter da data da receita) na planilha (2026-07-27)
+
+> Pedido do dono: filtro com opções de quarter, na mesma mecânica do Quarter de
+> fechamento, mas ALIMENTADO por `data_prevista_para_receita` — propriedades
+> independentes (um deal pode fechar num quarter e gerar receita só em outro).
+
+- Novo dropdown **"Qtr. Receita"** entre Quarter e Modelo (`btn-rq`/`rq-menu`);
+  `revQuarterOf(d)` deriva `Qn AAAA` do prefixo `YYYY-MM` da data da receita.
+  Mesma mecânica multiselect (Todos/Nenhum/`__NONE__`).
+- Integrado em TODOS os pontos do ciclo de filtros: aplicação na planilha, filtro dos
+  "saíram do pipe" do modo comparação (sobre os dados da foto), pills ("Qtr. Receita:
+  Q3 2026"), badge mobile, "Limpar tudo" e supressão dos cohorts BDR no TOTAL
+  (`_semFiltroDeDeal` — recorte filtrado por Qtr. Receita também esconde a projeção).
+- Paridade de semântica com o filtro Quarter: deal SEM data da receita fica fora
+  quando o filtro está ativo (igual ao comportamento do quarter de fechamento).
+- Validação: inline-js 0 erros; DOM renderizado com `rq-menu` populado
+  (Q2 2026 → Q3 2027, derivados da data) ≠ lista do Quarter de fechamento
+  (Q1 2026 → Q4 2027) — independência comprovada; `npm run check` PASS.
+  Front-only. **Sem deploy** (a pedido do dono).
+
 ### 🚀 DEPLOY DE PRODUÇÃO | motor de prob unificado + overrides DUX/Maringá + cohorts A + Delta 🟢 (2026-07-27)
 
 > Autorização explícita do dono ("Faça o deploy"). Tree continha a leva finalizada e

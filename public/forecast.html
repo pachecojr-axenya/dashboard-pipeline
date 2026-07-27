@@ -1954,6 +1954,15 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
         </div>
       </div>
       <div class="fdd-wrapper">
+        <button class="fdd-trigger" id="btn-rq" onclick="toggleRevQuarterMenu()" title="Quarter derivado da Data da Receita (data_prevista_para_receita) | independente do Quarter de fechamento">
+          <span id="btn-rq-lbl">Qtr. Receita</span>
+          <span class="fdd-arr"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+        </button>
+        <div id="rq-menu" class="fdd-panel">
+          <!-- dynamically populated -->
+        </div>
+      </div>
+      <div class="fdd-wrapper">
         <button class="fdd-trigger" id="btn-modelo" onclick="toggleModeloMenu()">
           <span id="btn-modelo-lbl">Modelo</span>
           <span class="fdd-arr"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
@@ -2308,6 +2317,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
     let allDeals = [];
     let stageFilter = new Set();
     let quarterFilter = new Set();
+    let revQuarterFilter = new Set();   // quarter da DATA DA RECEITA (independente do quarter de fechamento)
     let tierFilter = new Set();
     let modeloFilter = new Set();
     let aeFilter = new Set();
@@ -3022,6 +3032,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       if (pipelineFilter.size > 0) count++;
       if (aeFilter.size > 0) count++;
       if (quarterFilter.size > 0) count++;
+      if (revQuarterFilter.size > 0) count++;
       if (tierFilter.size > 0) count++;
       if (modeloFilter.size > 0) count++;
       badge.textContent = count;
@@ -3108,6 +3119,86 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
         lbl.textContent = 'Nenhum'; btn && btn.classList.add('filter-active');
       } else {
         lbl.textContent = quarterFilter.size + ' selecionado' + (quarterFilter.size > 1 ? 's' : '');
+        btn && btn.classList.add('filter-active');
+      }
+    }
+
+    // ── FILTRO QUARTER DA DATA DA RECEITA (2026-07-27) ────────────────────────
+    // Mesma mecânica do filtro Quarter, mas alimentado pelo quarter DERIVADO de
+    // data_prevista_para_receita — propriedade independente do quarter de fechamento
+    // (um deal pode fechar num quarter e gerar receita só em outro).
+    function revQuarterOf(d) {
+      const s = d && d.data_prevista_para_receita;
+      if (!s) return null;
+      const m = String(s).match(/^(\d{4})-(\d{2})/);
+      if (!m) return null;
+      return 'Q' + (Math.floor((parseInt(m[2], 10) - 1) / 3) + 1) + ' ' + m[1];
+    }
+    function buildRevQuarterFilter(deals) {
+      const menu = document.getElementById('rq-menu');
+      if (!menu) return;
+      const quarters = [...new Set(deals.map(revQuarterOf).filter(Boolean))]
+        .sort((a, b) => {
+          const [qa, ya] = String(a).split(' ');
+          const [qb, yb] = String(b).split(' ');
+          if (ya !== yb) return parseInt(ya) - parseInt(yb);
+          return qa.localeCompare(qb);
+        });
+      let h = `
+        <div style="display:flex; gap:0.4rem; margin-bottom:0; padding-bottom:0.3rem;">
+          <button class="fbtn" style="flex:1; justify-content:center; padding:0.2rem" onclick="selectAllRevQuarters()">Todos</button>
+          <button class="fbtn" style="flex:1; justify-content:center; padding:0.2rem" onclick="clearAllRevQuarters()">Nenhum</button>
+        </div>
+      `;
+      quarters.forEach(q => {
+        const isChecked = revQuarterFilter.size === 0 ? true : revQuarterFilter.has(q);
+        h += `
+          <label class="custom-cb">
+            <input type="checkbox" value="${esc(q)}" onchange="toggleRevQuarter()" ${isChecked ? 'checked' : ''}>
+            <span class="cb-box"></span>
+            ${esc(q)}
+          </label>
+        `;
+      });
+      menu.innerHTML = h;
+      updateRevQuarterBtnLabel();
+    }
+    function toggleRevQuarterMenu() {
+      document.getElementById('btn-rq')?.closest('.fdd-wrapper')?.classList.toggle('open');
+    }
+    function selectAllRevQuarters() {
+      revQuarterFilter.clear();
+      document.querySelectorAll('#rq-menu input[type="checkbox"]').forEach(cb => cb.checked = true);
+      updateRevQuarterBtnLabel();
+      applyAndRender();
+    }
+    function clearAllRevQuarters() {
+      revQuarterFilter.clear();
+      revQuarterFilter.add('__NONE__');
+      document.querySelectorAll('#rq-menu input[type="checkbox"]').forEach(cb => cb.checked = false);
+      updateRevQuarterBtnLabel();
+      applyAndRender();
+    }
+    function toggleRevQuarter() {
+      revQuarterFilter.clear();
+      const cbs = document.querySelectorAll('#rq-menu input[type="checkbox"]');
+      let checkedCount = 0;
+      cbs.forEach(cb => { if (cb.checked) { revQuarterFilter.add(cb.value); checkedCount++; } });
+      if (checkedCount === 0) revQuarterFilter.add('__NONE__');
+      else if (checkedCount === cbs.length) revQuarterFilter.clear();
+      updateRevQuarterBtnLabel();
+      applyAndRender();
+    }
+    function updateRevQuarterBtnLabel() {
+      const lbl = document.getElementById('btn-rq-lbl');
+      const btn = document.getElementById('btn-rq');
+      if (!lbl) return;
+      if (revQuarterFilter.size === 0) {
+        lbl.textContent = 'Qtr. Receita'; btn && btn.classList.remove('filter-active');
+      } else if (revQuarterFilter.has('__NONE__')) {
+        lbl.textContent = 'Nenhum'; btn && btn.classList.add('filter-active');
+      } else {
+        lbl.textContent = revQuarterFilter.size + ' selecionado' + (revQuarterFilter.size > 1 ? 's' : '');
         btn && btn.classList.add('filter-active');
       }
     }
@@ -3309,6 +3400,11 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
           : quarterFilter.size === 1 ? `Quarter: ${[...quarterFilter][0]}` : `Quarter (${quarterFilter.size})`;
         pills.push({ label, clear: 'selectAllQuarters()' });
       }
+      if (revQuarterFilter.size > 0) {
+        const label = revQuarterFilter.has('__NONE__') ? 'Qtr. Receita: Nenhum'
+          : revQuarterFilter.size === 1 ? `Qtr. Receita: ${[...revQuarterFilter][0]}` : `Qtr. Receita (${revQuarterFilter.size})`;
+        pills.push({ label, clear: 'selectAllRevQuarters()' });
+      }
       if (tierFilter.size > 0) {
         const label = tierFilter.has('__NONE__') ? 'Tier: Nenhum'
           : tierFilter.size === 1 ? `Tier: ${[...tierFilter][0]}` : `Tier (${tierFilter.size})`;
@@ -3334,7 +3430,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
 
     function clearAllFilters() {
       pipelineFilter.clear(); stageFilter.clear(); aeFilter.clear();
-      quarterFilter.clear(); tierFilter.clear(); modeloFilter.clear();
+      quarterFilter.clear(); revQuarterFilter.clear(); tierFilter.clear(); modeloFilter.clear();
       completenessFilter = 'all'; searchQuery = '';
 
       const sInput = document.getElementById('search-input'); if (sInput) sInput.value = '';
@@ -3343,9 +3439,10 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       document.querySelectorAll('#pipeline-menu input[type="checkbox"]').forEach(cb => cb.checked = true);
       document.querySelectorAll('#ae-menu input[type="checkbox"]').forEach(cb => cb.checked = true);
       document.querySelectorAll('#quarter-menu input[type="checkbox"]').forEach(cb => cb.checked = true);
+      document.querySelectorAll('#rq-menu input[type="checkbox"]').forEach(cb => cb.checked = true);
       document.querySelectorAll('#tier-menu input[type="checkbox"]').forEach(cb => cb.checked = true);
       document.querySelectorAll('#modelo-menu input[type="checkbox"]').forEach(cb => cb.checked = true);
-      syncStageButtons(); updatePipelineBtnLabel(); updateAeBtnLabel(); updateQuarterBtnLabel(); updateTierBtnLabel(); updateModeloBtnLabel();
+      syncStageButtons(); updatePipelineBtnLabel(); updateAeBtnLabel(); updateQuarterBtnLabel(); updateRevQuarterBtnLabel(); updateTierBtnLabel(); updateModeloBtnLabel();
       applyAndRender();
     }
 
@@ -3725,7 +3822,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       const liveIds = new Set(allDeals.map(d => String(d.hs_id)));
       const aeSel = (aeFilter && aeFilter.size > 0) ? [...aeFilter] : null;
       if (aeSel && aeSel.includes('__NONE__')) return [];
-      if (pipelineFilter.has('__NONE__') || stageFilter.has('__NONE__') || quarterFilter.has('__NONE__') || tierFilter.has('__NONE__') || modeloFilter.has('__NONE__')) return [];
+      if (pipelineFilter.has('__NONE__') || stageFilter.has('__NONE__') || quarterFilter.has('__NONE__') || revQuarterFilter.has('__NONE__') || tierFilter.has('__NONE__') || modeloFilter.has('__NONE__')) return [];
       const q = searchQuery ? searchQuery.toLowerCase() : '';
       const out = [];
       compMap.forEach((old, id) => {
@@ -3734,6 +3831,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
         if (pipelineFilter.size > 0 && !pipelineFilter.has(old.pipeline)) return;
         if (stageFilter.size > 0 && !stageFilter.has(old.stage)) return;
         if (quarterFilter.size > 0 && !quarterFilter.has(old.quarter)) return;
+        if (revQuarterFilter.size > 0 && !revQuarterFilter.has(revQuarterOf(old))) return;
         if (tierFilter.size > 0 && !tierFilter.has(getTier(old.vidas))) return;
         if (modeloFilter.size > 0 && !modeloFilter.has(old.modelo_remuneracao || '__NULL__')) return;
         if (q && !(old.dealname || '').toLowerCase().includes(q)) return;
@@ -3825,7 +3923,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
 
     function compExitsHtml() {
       const exits = compExits();
-      const anyFilter = (aeFilter && aeFilter.size > 0) || pipelineFilter.size > 0 || stageFilter.size > 0 || quarterFilter.size > 0 || tierFilter.size > 0 || modeloFilter.size > 0 || !!searchQuery;
+      const anyFilter = (aeFilter && aeFilter.size > 0) || pipelineFilter.size > 0 || stageFilter.size > 0 || quarterFilter.size > 0 || revQuarterFilter.size > 0 || tierFilter.size > 0 || modeloFilter.size > 0 || !!searchQuery;
       const scopeTxt = anyFilter ? 'busca e filtros aplicados (sobre os dados da foto)' : 'considera o livro todo | busca e filtros se aplicam aqui';
       if (!exits.length) return `<div class="cmp-exits" id="cmp-exits-box"><h3>Saíram do pipe desde a foto <span>| nenhum deal saiu${anyFilter ? ' (com os filtros atuais)' : ''}</span></h3></div>`;
       // Top 5 mais relevantes = maiores por Vidas, independente da ordenação de coluna escolhida.
@@ -3867,12 +3965,13 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       updateMobFabBadge();
       let deals = allDeals;
 
-      if (pipelineFilter.has('__NONE__') || stageFilter.has('__NONE__') || quarterFilter.has('__NONE__') || tierFilter.has('__NONE__') || modeloFilter.has('__NONE__') || aeFilter.has('__NONE__')) {
+      if (pipelineFilter.has('__NONE__') || stageFilter.has('__NONE__') || quarterFilter.has('__NONE__') || revQuarterFilter.has('__NONE__') || tierFilter.has('__NONE__') || modeloFilter.has('__NONE__') || aeFilter.has('__NONE__')) {
         deals = [];
       } else {
         if (pipelineFilter.size > 0) deals = deals.filter(d => pipelineFilter.has(d.pipeline));
         if (stageFilter.size > 0) deals = deals.filter(d => stageFilter.has(d.stage));
         if (quarterFilter.size > 0) deals = deals.filter(d => quarterFilter.has(d.quarter));
+        if (revQuarterFilter.size > 0) deals = deals.filter(d => revQuarterFilter.has(revQuarterOf(d)));
         if (tierFilter.size > 0) deals = deals.filter(d => tierFilter.has(getTier(d.vidas)));
         if (modeloFilter.size > 0) deals = deals.filter(d => modeloFilter.has(d.modelo_remuneracao || '__NULL__'));
         if (aeFilter.size > 0) deals = deals.filter(d => aeFilter.has(d.ae));
@@ -3985,6 +4084,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
         buildPipelineFilter();
         buildAeFilter(allDeals);
         buildQuarterFilter(allDeals);
+        buildRevQuarterFilter(allDeals);
         buildTierFilter();
         buildModeloFilter();
         syncStageButtons();
@@ -4164,8 +4264,8 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       // linhas visíveis. Etapa mantém a regra anterior: só some se o recorte de etapas
       // excluir Reunião Agendada (originação é topo de funil).
       const _semFiltroDeDeal = !searchQuery && aeFilter.size === 0 && quarterFilter.size === 0 &&
-        tierFilter.size === 0 && modeloFilter.size === 0 && pipelineFilter.size === 0 &&
-        completenessFilter === 'all';
+        revQuarterFilter.size === 0 && tierFilter.size === 0 && modeloFilter.size === 0 &&
+        pipelineFilter.size === 0 && completenessFilter === 'all';
       const _bdrVisivel = _semFiltroDeDeal && (stageFilter.size === 0 || stageFilter.has('Reunião Agendada'));
       if (_bdrVisivel) {
         ForecastEngine.bdrCohorts().forEach(c => MONTHS.forEach((m, i) => {
