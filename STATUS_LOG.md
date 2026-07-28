@@ -35,8 +35,19 @@
   `reverse()` das abas mensais em `forecast.html`.
 - **Validação local (:3002, bypass):** `action=local` lista as 2 abas na ordem certa; 28 Abr → 67
   deals / 95 atrito, ARR R$ 31.949.094 (bate com o CSV); regressão 12 Jun → 91 deals / 22 atrito
-  intacta; `/forecast` e `/novo` 200; `node --check` OK. **Não deployado** (require estático precisa
-  do arquivo no bundle → só aparece em prod após `vercel --prod`).
+  intacta; `/forecast` e `/novo` 200; `node --check` OK.
+- **Commit `b697657`** (fast-forward de `067b5dc`), **deploy real concluído** | `dpl_41dUNw3pquvjDh4m239pDwgfnosd`,
+  alias `https://project-bsmfu.vercel.app`. `npm run check` PASS + `npm run predeploy` PASS.
+  Smokes prod: 8 HTMLs 200 (`/novo`, `/forecast`, `/forecast-overall`, `/novo-bdr` + 4 subs) e
+  `/api/auth/me`, `/api/forecast-table`, `/api/history?action=local` → **401** (auth ativa).
+- **Deploy feito de clone limpo de `main`, não do workspace local** | a cópia de trabalho tinha 15
+  arquivos não commitados de outras frentes (BDR/workload | dono Samuel; e CS `api/cs-accounts.js`
+  + `public/cs.html`). Como `vercel --prod` empacota o **working tree**, deployar de lá levaria
+  trabalho de terceiros a produção. Padrão a repetir: `git clone` + `predeploy` + `vercel --prod`.
+- **⚠️ Incidente de segurança no workspace local (corrigido):** a cópia estava **sem `.gitignore`
+  nem `.vercelignore`**, então `lib/credentials.json` aparecia como untracked — um `git add -A`
+  teria pushado credenciais. Ambos restaurados de `origin/main`; `git check-ignore` confirma
+  (`.gitignore:6`). O `preflight-deploy.js` já lista o arquivo em `FORBIDDEN_TRACKED_PATHS`.
 
 ### Forecast | POC deixa de estimar ARR (coluna ARR Est. + KPIs de ARR) (2026-07-28)
 
