@@ -1,5 +1,27 @@
 # Dashboard Enhancement Loop — Status Log
 
+### Forecast | POC deixa de estimar ARR (coluna ARR Est. + KPIs de ARR) (2026-07-28)
+
+> Pergunta do dono: por que a Marfrig, com 1ª Fatura vazia, aparecia com ARR calculado no
+> `/forecast`? Diagnóstico: o deal visível é **BRF/MARFRIG - POC** (`60844049805`, Vendas,
+> **Negociação**, `e_poc=true`, `primeira_fatura`/`arr_estimado` = 0, `vidas=4500`). O ARR
+> não vinha da 1ª Fatura e sim do **fallback VPV** (Regra 2b de `docs/forecast-revenue-rules.md`):
+> `4.500 × 24 × 12 = R$ 1.296.000`. O fallback **não checava POC**, então inflava o ARR de um
+> deal que o forecast de **caixa** (Real/Probabilizada via `dealMonthly`) já zera por ser POC —
+> inconsistência entre a coluna ARR e o caixa.
+
+- **Correção (mudança de servidor):** guard de POC como **passo 0** da cascata de ARR, antes de
+  `arr_estimado`/`1ª Fatura`/VPV. `api/forecast-table.js` (`normalizeBool(p.e_poc) === true → null`)
+  e espelho em `lib/forecast-compute.js` `mapFotoDeal` (`_bool(r['É POC?']) === true → null`).
+  Só dispara em POC explícito (`=== true`); fotos antigas sem `É POC?` não afetadas.
+- Efeito: POC fica com **ARR Est. `—`** no `/forecast` e sai dos KPIs ARR Total/Ponderado do
+  `/forecast-delta`, coerente com o zero do caixa (Regra primária nº 3). A Marfrig POC some do ARR.
+- **Doc:** `docs/forecast-revenue-rules.md` seção 2b ganhou o passo 0 (precedência de POC) + nota
+  sobre fotos ≥ 2026-07-13.
+- **Validação:** `node --check` OK nos 2 arquivos; `npm run check` **PASS** (invariantes de ARR do
+  Delta intactos: `ΣΔ(ARR por linha) == Δ KPI arrTotal`); dado real conferido via HubSpot MCP
+  (deal `60844049805` `e_poc=true`).
+
 ### Forecast | filtro "Qtr. Receita" (quarter da data da receita) na planilha (2026-07-27)
 
 > Pedido do dono: filtro com opções de quarter, na mesma mecânica do Quarter de

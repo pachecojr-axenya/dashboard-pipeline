@@ -57,6 +57,12 @@ O **ARR de cada deal** (coluna "ARR Est." do `/forecast` e KPIs ARR Total/Ponder
 `/forecast-delta`) é derivado assim (`api/forecast-table.js` + `lib/forecast-compute.js`
 `mapFotoDeal`, iguais por espelho):
 
+0. **POC → sem ARR (2026-07-28):** se `É POC? = Sim`, o ARR é `—`, **antes de qualquer
+   outro passo** — nem `arr_estimado`, nem `1ª Fatura × 12`, nem o fallback VPV se aplicam.
+   Precede toda a cascata, espelhando a precedência de POC no `dealMonthly` (POC zera Real
+   e Probabilizada em todos os painéis, Regra primária nº 3). Antes deste guard, um POC de
+   Cot/Cons/Neg com 1ª Fatura vazia caía no fallback VPV e exibia ARR (ex.: **BRF/MARFRIG -
+   POC**, 4.500 vidas → `4.500 × 24 × 12 = R$ 1.296.000`), contradizendo o zero do caixa.
 1. `arr_estimado` (campo do HubSpot), se > 0; senão
 2. `1ª Fatura × 12`, se > 0; senão
 3. **Fallback VPV (2026-07-20):** nas etapas **Diagnóstico/Cotação/Consultoria/Negociação**,
@@ -64,8 +70,12 @@ O **ARR de cada deal** (coluna "ARR Est." do `/forecast` e KPIs ARR Total/Ponder
 4. `—` (sem ARR).
 
 Assim, um deal de Cot/Cons/Neg sem 1ª Fatura passa a ter **ARR estimado** (coluna + KPIs)
-coerente com a projeção de caixa por VPV. A coluna "Fatura Atual" (plano vigente do
-cliente) continua **não** entrando no ARR.
+coerente com a projeção de caixa por VPV — **exceto POC, que fica sem ARR**. A coluna
+"Fatura Atual" (plano vigente do cliente) continua **não** entrando no ARR.
+
+> Nota sobre fotos do Delta: o guard de POC no `mapFotoDeal` só dispara em fotos que
+> capturam `É POC?` (a partir de 2026-07-13). Fotos anteriores não têm o campo e não são
+> afetadas — igual à precedência de POC já existente no `dealMonthly` sobre fotos antigas.
 
 - **Demais etapas** (Proposta Enviada, Standby, Implantação, Ganho, …)
   - início = `data_prevista`; valor = `calcReceitaMes(n)`; **cap 24 meses**.
