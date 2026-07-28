@@ -69,9 +69,9 @@ const STATIC_PROPS = ['hs_object_id', 'createdate'];
 // Grupo de atrito (perdidos da semana): precisamos do estado ATUAL destes campos.
 const CURRENT_EXTRA_PROPS = ['motivo_do_declinio_ou_perdido', 'closedate'];
 // "Vivo no corte" = etapa ativa OU Diagnóstico (Vendas). Estar aqui garante que o
-// deal NÃO estava perdido em 12/06 — então um closed-lost atual é perda da semana.
+// deal NÃO estava perdido no corte — então um closed-lost atual é perda posterior.
 const DIAGNOSTICO_ID = '1144746906';
-const ALIVE_12JUN = new Set([...ACTIVE_STAGE_IDS, DIAGNOSTICO_ID]);
+const ALIVE_AT_CUTOFF = new Set([...ACTIVE_STAGE_IDS, DIAGNOSTICO_ID]);
 
 const STAGE_PROB = {
   'Cotação': 0.18579, 'Proposta Enviada': 0.285, 'Consultoria': 0.284954,
@@ -255,9 +255,9 @@ async function main() {
       rewound.push({ id, p });
     }
 
-    // Atrito da semana: vivo em 12/06 (ativa ou Diagnóstico) e HOJE perdido.
+    // Atrito desde o corte: vivo no corte (ativa ou Diagnóstico) e HOJE perdido.
     // stage12 ∈ ALIVE garante que não estava perdido no corte → perda posterior.
-    if (ALIVE_12JUN.has(stage12) && cur.hs_is_closed_lost === 'true') {
+    if (ALIVE_AT_CUTOFF.has(stage12) && cur.hs_is_closed_lost === 'true') {
       attrition.push({ id, p, cur });
     }
   }
@@ -351,10 +351,10 @@ async function main() {
     'Deal':            cleanName(p.dealname),
     'URL HubSpot':     `https://app.hubspot.com/contacts/44715285/deal/${id}`,
     'Pipeline':        PIPELINE_LABELS[p.pipeline] || p.pipeline || '-',
-    'Etapa em 12 Jun': STAGE_MAP[p.dealstage]   || p.dealstage   || '-',
+    [`Etapa em ${fmtDate(dateArg)}`]: STAGE_MAP[p.dealstage]   || p.dealstage   || '-',
     'Etapa hoje':      STAGE_MAP[cur.dealstage] || cur.dealstage || '-',
     'Executivo':       ownerMap[p.hubspot_owner_id] || '-',
-    'ARR 12 Jun (R$)': calcARR(p) || '',
+    [`ARR em ${fmtDate(dateArg)} (R$)`]: calcARR(p) || '',
     'Data Perdido':    fmtDate(cur.closedate),
     'Motivo':          cur.motivo_do_declinio_ou_perdido || '',
   }));
@@ -395,7 +395,7 @@ async function main() {
     const fromDiag = attrition.filter(a => a.p.dealstage === DIAGNOSTICO_ID).length;
     console.log('  ── Atrito desde o corte (perdidos da semana) ──');
     console.log(`     Perdidos: ${attritionRows.length}  (de Diagnóstico: ${fromDiag}, de etapa ativa: ${attritionRows.length - fromDiag})`);
-    console.log(`     ARR perdido (estado 12/06): ${brl(Math.round(lostArr))}`);
+    console.log(`     ARR perdido (estado ${fmtDate(dateArg)}): ${brl(Math.round(lostArr))}`);
   }
   console.log('═'.repeat(58));
   console.log(`\n✅ Arquivos gravados em ${outDir}\\`);

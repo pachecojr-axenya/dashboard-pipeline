@@ -118,8 +118,10 @@ async function fetchOwnersMap(token) {
 // Dados embutidos via require() para o bundler da Vercel os incluir; servidos
 // pela rota autenticada abaixo (action=local), nunca como arquivo estático.
 // Para adicionar um novo: gere com scripts/reconstruct-snapshot.js e registre aqui.
+// Ordem = ordem no dropdown do /forecast (mais recente primeiro, como as abas mensais).
 const LOCAL_SNAPSHOTS = {
   '12 Jun 2026 (reconstruído)': require('../lib/snapshots/2026-06-12.json'),
+  '28 Abr 2026 (reconstruído)': require('../lib/snapshots/2026-04-28.json'),
 };
 
 module.exports = async function handler(req, res) {

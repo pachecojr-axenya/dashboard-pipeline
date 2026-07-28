@@ -1,5 +1,43 @@
 # Dashboard Enhancement Loop — Status Log
 
+### Snapshots | fotografia reconstruída de 2026-04-28 + rótulos hardcoded no reconstruct (2026-07-28)
+
+> Pedido: reconstruir a fotografia do pipe de 3 meses atrás (**28/04/2026**) do Pipeline de Vendas.
+> Rodado `scripts/reconstruct-snapshot.js 2026-04-28` (rewind por `propertiesWithHistory`), com PAT
+> provisório passado só via env — **nada de token escrito em arquivo**; PAT a revogar.
+
+- **Resultado (Vendas+Bid, régua do script):** 67 deals ativos · ARR Total **R$ 31.949.094** ·
+  ARR Ponderado **R$ 15.664.161** · MRR Pond. R$ 1.305.347. Etapas: Cotação 24, Consultoria 15,
+  Negociação 12, Implantação 9, Ganho 7. **Pipeline Vendas 67 | Bid 0.**
+- **Bid = 0 é correto, não falha:** os 17 deals que *hoje* estão no Bid estavam **todos em Vendas**
+  em 28/04 (Bid populado depois, por migração). Logo, nesta data *foto de Vendas = foto inteira*.
+- **⚠️ Comparar Vendas-only com 12/06 é enganoso:** Cosan-Raízen, CPFL, WEG e Biolab (~R$ 11,3M)
+  migraram Vendas→Bid no intervalo. Vendas-only "cai" 31,9M→15,1M, mas consolidado fica **estável**
+  (31,95M → 31,62M). Sempre comparar **Vendas+Bid** entre fotos.
+- **⚠️ ARR de atrito não é utilizável:** 95 deals vivos em 28/04 e hoje perdidos somam R$ 132,3M,
+  mas a **mediana é 0** e 2 outliers em *Diagnóstico* (Vicunha 72M, Soc. Campineira 26,4M) dominam.
+  Lixo de origem em etapa inicial — não expor (Regra de não-validado).
+- **Correção no script (rótulos presos a 12/06 apesar de aceitar qualquer data):** chaves de saída
+  do grupo de atrito agora dirigidas pela data (`Etapa em ${fmtDate(dateArg)}`,
+  `ARR em ${fmtDate(dateArg)} (R$)`), idem a linha de resumo; `ALIVE_12JUN` → `ALIVE_AT_CUTOFF`.
+- **⚠️ Divergência de schema a resolver (não tocada):** o cabeçalho do script diz aplicar
+  "EXATAMENTE a mesma lógica do `api/snapshot.js`", mas (a) o cron **não filtra por etapa ativa**
+  (captura todas, inclui Reunião Agendada/Diagnóstico/Perdido) e (b) usa `COUNT_HEADERS` (15 col.,
+  sem ARR) vs `HISTORICO_HEADERS` do script (14 col., com ARR). As fotos reconstruídas são
+  comparáveis **entre si**, não com a linha diária do cron.
+- **Saídas:** `_snapshots/snapshot-2026-04-28{-deals.csv,-agregado.csv,.json}` +
+  `lib/snapshots/2026-04-28.json`.
+- **Publicada no Forecast:** entrada `'28 Abr 2026 (reconstruído)'` registrada em `LOCAL_SNAPSHOTS`
+  (`api/history.js`), servida por `/api/history?action=local` e consumida pela aba **Histórico** do
+  `/forecast` e do `forecast-stage.html`. O mapa é manual (`require` estático p/ bundle da Vercel):
+  gerar o JSON **não** basta, sem a linha o dropdown não lista e o fetch por tab dá 404.
+  Ordem do objeto = ordem do dropdown → **mais recente primeiro** (12 Jun, 28 Abr), alinhado ao
+  `reverse()` das abas mensais em `forecast.html`.
+- **Validação local (:3002, bypass):** `action=local` lista as 2 abas na ordem certa; 28 Abr → 67
+  deals / 95 atrito, ARR R$ 31.949.094 (bate com o CSV); regressão 12 Jun → 91 deals / 22 atrito
+  intacta; `/forecast` e `/novo` 200; `node --check` OK. **Não deployado** (require estático precisa
+  do arquivo no bundle → só aparece em prod após `vercel --prod`).
+
 ### Forecast | POC deixa de estimar ARR (coluna ARR Est. + KPIs de ARR) (2026-07-28)
 
 > Pergunta do dono: por que a Marfrig, com 1ª Fatura vazia, aparecia com ARR calculado no
