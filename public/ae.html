@@ -351,7 +351,7 @@ var AE_HELP_CHARTS=[
     fields:[['notes_last_updated','Data da última atividade/nota | base do cálculo. No payload: ultima_atividade e dias_sem_atividade.'],['hubspot_owner_id','Executivo | agrupamento das linhas.'],['dealstage','Base ativa do pipeline (exclui Ganho/Perdido).']]},
   {key:'loss-reason',title:'Motivos de Perda por Deals (A15)',
     desc:'Contagem de deals PERDIDOS por motivo categórico. Considera deals em Perdido com close_date no período. Clique numa barra: o modal abre com o motivo pré-selecionado num filtro MULTISELECT no topo (opção "Todos" disponível) e lista os deals com a etapa em que estavam antes da perda, o motivo E a justificativa em texto aberto (Motivo de Declínio/Perdido - Descrição).',
-    fields:[['dealstage','Perdido.'],['closedate','Filtro de período.'],['motivo_do_declinio_ou_perdido','Motivo categórico (barras + filtro do modal).'],['motivo_de_declinio_perdido___descricao','Texto aberto | coluna "Motivo declínio (texto)" do drill.'],['hs_v2_date_entered_*','Trilha de etapas | coluna "Etapa antes da perda" = etapa com entrada mais recente até a data do Perdido (sem trilha → "—").']]},
+    fields:[['dealstage','Perdido.'],['closedate','Filtro de período.'],['motivo_do_declinio_ou_perdido','Motivo categórico (barras + filtro do modal).'],['motivo_de_declinio_perdido___descricao','Texto aberto | coluna "Motivo declínio (texto)" do drill.'],['hs_v2_date_entered_*','Trilha de etapas | coluna "Etapa antes da perda" = etapa com entrada mais recente até a data do Perdido. Deal sem etapa do funil ATUAL antes da perda = migrou de pipeline antigo direto p/ Perdido → "(pipeline legado)"; criado no mesmo dia da perda → "(criado como perdido)". Verificado via propertiesWithHistory em 2026-07-29.']]},
   {key:'pipeline-stage',title:'Distribuição de Etapas por AE (A11)',
     desc:'Barras horizontais 100% empilhadas: composição percentual do pipeline ATIVO de cada AE por etapa. SÓ executivos do time — a diferença para o KPI Deals Ativos (A22) são os deals ativos de owners FORA do time (ops, BDRs, sem proprietário), explicitada no subtítulo do card ("X de Y ativos | fora do time: N"). Os toggles de Reunião Agendada e Standby valem igualmente para o A11 e o A22 (não explicam a diferença). Base ativa = exclui Ganho/Perdido/Implantação; RA/Standby conforme toggles. Clique numa fatia para ver os deals do AE naquela etapa.',
     fields:[['hubspot_owner_id','Define o AE (só time).'],['dealstage','Etapa da fatia (base ativa).'],['pipeline','Vendas + Bid.']]},
@@ -802,7 +802,7 @@ function novoRender(){
       cWide('Motivos de Perda por Deals'+_aeCntSpan(lost.length),'Contagem de deals perdidos por motivo (campo HubSpot motivo_do_declinio_ou_perdido). Considera deals em Perdido no período (close_date). Clique numa barra para ver os deals | a tabela inclui a justificativa em texto aberto (motivo_de_declinio_perdido___descricao).','loss-reason',340,'',true)+
       // Seção Pipeline
       '<div class="section-hdr"><h2>Pipeline</h2></div>'+
-      cWide(t('ae_pipeline_stage')+_aeA11CntSpan(),t('ae_pipeline_stage_tip'),'pipeline-stage',340)+
+      cWide(t('ae_pipeline_stage')+_aeA11CntSpan(),t('ae_pipeline_stage_tip'),'pipeline-stage',340,'',true)+
       c(t('ae_aging')+_aeCntSpan(_aeAgingBase().length),t('ae_aging_tip'),'aging',300,'',true)+
       c('Deal Age Distribution (Open)'+_aeCntSpan(_aeAgingBase().length),'Distribuição dos deals abertos por faixa de idade (dias desde a entrada em Reunião Agendada): 0-30, 31-60, 61-90, 91-120, 121-180 e +180 dias. MESMA base do A12 (Idade Média): só executivos do time, sem Implantação, e deals sem a data de RA ficam fora. Clique numa barra para ver os deals.','age-dist',300,'',true)+
       // Seção Velocidade
@@ -1157,7 +1157,14 @@ function _aePrevStage(d){
     var rk=_AE_STAGE_RANK[st]!=null?_AE_STAGE_RANK[st]:-1;
     if(bestDt===null||dt>bestDt||(dt===bestDt&&rk>bestRk)){ best=st;bestDt=dt;bestRk=rk; }
   });
-  return best;
+  if(best) return best;
+  // Sem etapa do funil ATUAL antes do Perdido. Auditoria 2026-07-29 (propertiesWithHistory):
+  // esses deals migraram de PIPELINES LEGADOS (etapas antigas 1002*/qualifiedtobuy etc.)
+  // direto para o Perdido do Vendas — nunca pisaram no funil atual. Não é dado faltando:
+  // rotular a origem em vez de "—". Criado no mesmo dia da perda → registro retroativo.
+  var lostEntry=se['Perdido']||d.data_perdido;
+  if(lostEntry&&d.createdate&&lostEntry===d.createdate) return '(criado como perdido)';
+  return '(pipeline legado)';
 }
 // A15 | modal próprio dos perdidos: filtro MULTISELECT de motivos no topo (com "Todos",
 // pedido do dono 2026-07-27) + colunas de etapa antes da perda e justificativa em texto.

@@ -1,5 +1,23 @@
 # Dashboard Enhancement Loop — Status Log
 
+### AE | A11 sem 🟡 + A15: "—" vira rótulo auditado (pipeline legado / criado como perdido) (2026-07-29)
+
+- **A11:** emoji 🟡 removido do título (flag `noEmoji` do `cWide`, pedido do dono).
+- **A15 | causa dos "Etapa antes da perda" vazios AUDITADA na fonte:** os 188 deals sem
+  trilha foram verificados via `propertiesWithHistory` (API HubSpot) — o histórico
+  EXISTE, mas as etapas anteriores são de **pipelines legados** (ids `1002*`,
+  `qualifiedtobuy`, `presentationscheduled`…): os deals migraram de pipelines antigos
+  DIRETO para o Perdido do Vendas, sem nunca pisar no funil atual (as
+  `hs_v2_date_entered_*` do Vendas estão corretamente vazias). O dono tem razão que
+  ninguém cria deal em perda — o que havia era migração de base.
+- **Fix (front-only):** `_aePrevStage` deixa de devolver "—": sem etapa do funil atual
+  antes do Perdido → **"(pipeline legado)"** (180 deals); entrada no Perdido no MESMO
+  dia do createdate → **"(criado como perdido)"** (8 deals, registro retroativo).
+  Distribuição final sem nenhum vazio; ficha do A15 documenta a regra e a auditoria.
+- Leva **CS da sessão paralela commitada** (`dd19eb3`) com validação explícita do dono
+  ("reconheço o que foi feito na sessão anterior e ela está válida") — próximo deploy
+  leva tudo junto. `npm run check` PASS. **Sem deploy** nesta rodada.
+
 ### CS | religado na base real via GET /api/cs-accounts (fim do banner Electron) (2026-07-27)
 
 > Pedido do dono: "é possível desenvolver o dash sem depender disso [electronAPI]?" — sim:
