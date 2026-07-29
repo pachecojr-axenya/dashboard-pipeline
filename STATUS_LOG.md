@@ -1,5 +1,24 @@
 # Dashboard Enhancement Loop — Status Log
 
+### 🚀 DEPLOY DE PRODUÇÃO | levas AE (A11/A15) + CS validada + Qtr. Receita (2026-07-29)
+
+> Autorização explícita do dono ("Faça o deploy"). Deploy conjunto: esta sessão + a
+> leva CS da sessão paralela, validada pelo dono em 2026-07-29.
+
+- **Commit deployado:** `2c58dbe` (== origin/main; preflight PASS, tree limpa).
+  Inclui, desde o deploy de 27/07: filtro **Qtr. Receita** no /forecast (`7d53959`);
+  A15 filtro multiselect de motivos + coluna Etapa antes da perda (`e6a203d`);
+  **leva CS** — `/novo-cs` religado na base real via `GET /api/cs-accounts` (`dd19eb3`);
+  A11 sem 🟡 + rótulos "(pipeline legado)"/"(criado como perdido)" (`6c1c7fa`);
+  relabel Inativo +45→+60 dias (`2c58dbe`).
+- **Deployment:** `dpl_GYfNAVEn19surFeSDf96E7X8d1Lh`
+  (`dashboard-axenya-5o1ws2pu9`, READY, production), 2 aliases.
+- **Pós-deploy:** 10 rotas 200 (7 mínimas + /forecast-delta + /novo-ae + /novo-cs;
+  BDR do Samuel intacto); `/api/auth/me` **401** e `/api/cs-accounts` **401**
+  (endpoint novo da leva CS no ar com auth ativa). Features confirmadas no HTML servido:
+  filtro do modal A15 (`aeLostFilterToggle`), `_aePrevStage` + "(pipeline legado)",
+  "Inativo (+60 dias)", A11 com `noEmoji`, e `btn-rq`/"Qtr. Receita" no /forecast.
+
 ### AE | A15: relabel "Inativo (+45 dias)" → "Inativo (+60 dias)" (2026-07-29)
 
 > Pedido do dono: a régua de inatividade mudou de 45 para 60 dias. Relabel de
