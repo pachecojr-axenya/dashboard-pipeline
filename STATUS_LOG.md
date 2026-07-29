@@ -1,5 +1,18 @@
 # Dashboard Enhancement Loop — Status Log
 
+### AE | A15: relabel "Inativo (+45 dias)" → "Inativo (+60 dias)" (2026-07-29)
+
+> Pedido do dono: a régua de inatividade mudou de 45 para 60 dias. Relabel de
+> EXIBIÇÃO no painel AE, num ponto único (`_AE_LOSS_RELABEL`/`_aeLossLabel`), valendo
+> para as barras do A15, o filtro multiselect do modal e as colunas de motivo
+> (modal do A15 + `_novoDealsRows`). 126 deals afetados no recorte atual.
+> ⚠ O VALOR no HubSpot segue "Inativo (+45 dias)" — o drill para o deal no CRM mostra
+> o antigo. Renomear a opção da propriedade e o workflow de inatividade (a régua real
+> de 45d que marca o perdido) é mudança de ORIGEM, fora do dashboard — sinalizado ao
+> dono; a ficha do A15 documenta o relabel. Validação: DOM renderizado só exibe "+60"
+> em dado (os "+45" restantes são o próprio mapa/ficha); `npm run check` PASS.
+> Front-only (ae.html), sem deploy.
+
 ### AE | A11 sem 🟡 + A15: "—" vira rótulo auditado (pipeline legado / criado como perdido) (2026-07-29)
 
 - **A11:** emoji 🟡 removido do título (flag `noEmoji` do `cWide`, pedido do dono).
