@@ -1,5 +1,21 @@
 # Dashboard Enhancement Loop — Status Log
 
+### Cotação | filtro temporal compartilhado (filter-bar.js) sobre createdate (2026-07-29)
+
+- **Pedido do dono:** os mesmos filtros temporais dos outros painéis. O
+  `filter-bar.js` já estava incluído no cotacao.html mas nunca fora montado —
+  agora a barra (presets Tudo/Mês atual/…/trimestre/intervalo) abre o conteúdo
+  (`AxFilter.barHtml()` + `afterRender()`, re-render automático via `novoRender`).
+- **Semântica da janela:** aplica sobre a **data de criação do ticket** (`createdate`),
+  no padrão ESTRITO do AE/BDR (`_tkInWin`: com janela ativa, ticket sem data sai).
+  Vale para Q01–Q08 (KPIs, por etapa, por responsável, volume mensal, aging) e os
+  drills — tudo consome `_tkList()` (ponto único). O **proxy de deals (Q09–Q11) fica
+  FORA do filtro de propósito** (snapshot da etapa atual; explicitado no i).
+  Nota do topo e fichas i atualizadas com o campo de data (regra do projeto: cada
+  indicador diz qual data o filtro usa).
+- Validação: inline-js 0 erros; `npm run check` PASS; screenshot com a barra montada
+  e dados reais. Front-only; sem deploy; painel segue oculto/🔴 no menu até validação.
+
 ### Cotação | religado nos TICKETS reais (pipeline 847948895) via /api/pull-tickets (2026-07-29)
 
 > Pergunta do dono ("por que a API está indisponível se dá pra puxar do HubSpot?") →

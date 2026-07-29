@@ -199,6 +199,12 @@ function _tkCycleDays(t){
 }
 function _tkAgeDays(t){ var c=_tkTs(t.createdate); if(isNaN(c))return null; var d=Math.round((Date.now()-c)/86400000); return d<0?0:d; }
 function _tkOwner(t){ return (_tk&&_tk.owners&&_tk.owners[t.hubspot_owner_id])||( t.hubspot_owner_id?('ID '+t.hubspot_owner_id):'(sem responsável)'); }
+// Filtro de período compartilhado (filter-bar.js): janela aplica sobre a DATA DE
+// CRIAÇÃO do ticket (createdate). Estrito: com janela ativa, ticket sem data sai.
+// O proxy de deals (Q09–Q11) NÃO usa o filtro (snapshot da etapa atual, explicitado no i).
+function _filterState(){ return (window.AxFilter && AxFilter.getState) ? AxFilter.getState() : {mode:'all',start:null,end:null}; }
+function _tkInWin(t){ var s=_filterState(); if(!s.start)return true; var d=_tkD10(t.createdate); if(!d)return false; return AxFilter.inWin(d); }
+function _tkList(){ return ((_tk&&_tk.tickets)||[]).filter(_tkInWin); }
 function _tkRows(list,extraCol){
   return (list||[]).map(function(t){
     var id=t.hs_object_id||t._id;
@@ -233,7 +239,7 @@ function novoLoadData(){
 
 function novoRender(){
   _deals=window._dealsRaw||_deals||[];
-  var tickets=(_tk&&_tk.tickets)||[];
+  var tickets=_tkList();
   var ts=new Date().toLocaleTimeString('pt-BR',{timeZone:'America/Sao_Paulo',hour:'2-digit',minute:'2-digit'});
   var cotacao=(_deals||[]).filter(function(d){ var s=d.stage||''; return s.toLowerCase().indexOf('cota')>=0; });
   var abertos=tickets.filter(_tkIsOpen);
@@ -245,24 +251,26 @@ function novoRender(){
   var tkErr=_tk&&_tk.error?'<div style="background:rgba(248,81,73,.1);border:1px solid rgba(248,81,73,.35);border-radius:8px;padding:.6rem .9rem;font-size:.8rem;color:var(--red);margin-bottom:1rem">Tickets indisponíveis: '+_ne(_tk.error)+'</div>':'';
 
   document.getElementById('novo-content').innerHTML=
-    '<div style="font-size:.78rem;color:var(--text2);margin-bottom:1rem">Atualizado às '+ts+' | fonte: tickets do Pipeline de Cotação (id 847948895) via /api/pull-tickets | snapshot atual, sem filtro de período | 🟡 não validado contra o portal</div>'+
+    (window.AxFilter?AxFilter.barHtml():'')+
+    '<div style="font-size:.78rem;color:var(--text2);margin-bottom:1rem">Atualizado às '+ts+' | fonte: tickets do Pipeline de Cotação (id 847948895) via /api/pull-tickets | filtro de período aplica sobre a data de criação do ticket (createdate) | 🟡 não validado contra o portal</div>'+
     tkErr+
     '<div class="kpi-row">'+
-      kpi('Tickets no pipeline',_ni(tickets.length),'todos os tickets do Pipeline de Cotação','var(--teal)','kpi-tickets','tk-all')+
+      kpi('Tickets no pipeline',_ni(tickets.length),'tickets criados na janela do filtro','var(--teal)','kpi-tickets','tk-all')+
       kpi('Em aberto',_ni(abertos.length),'Novas Cotações | Triagem | Pendente | Mapeamento | Criação','var(--yellow)','kpi-open','tk-open')+
       kpi('Entregues | Concluídos',_ni(fechados.length),'Projeto Entregue + Concluído','var(--green)','kpi-done','tk-done')+
       kpi('Ciclo médio (dias)',cycleAvg!=null?_ni(cycleAvg):'—','criação → 1ª entrada em etapa final | '+_ni(cycles.length)+' tickets medidos','var(--text)','kpi-cycle','tk-cycle')+
     '</div>'+
     '<div class="novo-cards">'+
-    '<div class="novo-card"><div class="novo-card-header"><h3>🟡 Tickets por etapa</h3>'+_infoBtn('Contagem de tickets do Pipeline de Cotação por etapa atual (hs_pipeline_stage). Snapshot, sem filtro de período. Clique numa barra para os tickets.','tk-stage')+'</div><canvas id="chart-tk-stage" style="max-height:300px"></canvas></div>'+
-    '<div class="novo-card"><div class="novo-card-header"><h3>🟡 Tickets por responsável</h3>'+_infoBtn('Contagem por hubspot_owner_id (nome resolvido via owners). Snapshot atual. Clique numa barra para os tickets.','tk-owner')+'</div><canvas id="chart-tk-owner" style="max-height:300px"></canvas></div>'+
-    '<div class="novo-card"><div class="novo-card-header"><h3>🟡 Volume por mês de criação</h3>'+_infoBtn('Tickets criados por mês (createdate), últimos 12 meses. Clique numa barra para os tickets do mês.','tk-month')+'</div><canvas id="chart-tk-month" style="max-height:300px"></canvas></div>'+
-    '<div class="novo-card"><div class="novo-card-header"><h3>🟡 Aging dos abertos</h3>'+_infoBtn('Tickets EM ABERTO por faixa de dias desde a criação. Clique numa barra para os tickets da faixa.','tk-aging')+'</div><canvas id="chart-tk-aging" style="max-height:300px"></canvas></div>'+
+    '<div class="novo-card"><div class="novo-card-header"><h3>🟡 Tickets por etapa</h3>'+_infoBtn('Contagem de tickets do Pipeline de Cotação por etapa atual (hs_pipeline_stage). Janela do filtro de período aplica sobre createdate. Clique numa barra para os tickets.','tk-stage')+'</div><canvas id="chart-tk-stage" style="max-height:300px"></canvas></div>'+
+    '<div class="novo-card"><div class="novo-card-header"><h3>🟡 Tickets por responsável</h3>'+_infoBtn('Contagem por hubspot_owner_id (nome resolvido via owners). Janela do filtro de período (createdate). Clique numa barra para os tickets.','tk-owner')+'</div><canvas id="chart-tk-owner" style="max-height:300px"></canvas></div>'+
+    '<div class="novo-card"><div class="novo-card-header"><h3>🟡 Volume por mês de criação</h3>'+_infoBtn('Tickets criados por mês (createdate), últimos 12 meses da janela do filtro. Clique numa barra para os tickets do mês.','tk-month')+'</div><canvas id="chart-tk-month" style="max-height:300px"></canvas></div>'+
+    '<div class="novo-card"><div class="novo-card-header"><h3>🟡 Aging dos abertos</h3>'+_infoBtn('Tickets EM ABERTO (criados na janela do filtro) por faixa de dias desde a criação. Clique numa barra para os tickets da faixa.','tk-aging')+'</div><canvas id="chart-tk-aging" style="max-height:300px"></canvas></div>'+
     '<div class="section-hdr"><h2>Funil de Vendas | deals na etapa Cotação (proxy via /api/forecast-table — outra base: deals, não tickets)</h2></div>'+
     '<div class="novo-card"><div class="novo-card-header"><h3>Deals em Cotação por AE (proxy)</h3>'+_infoBtn('Snapshot atual: deals na etapa Cotação do funil de VENDAS por responsável. Não usa filtro de período.','cot-ae')+'</div><canvas id="chart-cot-ae" style="max-height:300px"></canvas></div>'+
     '<div class="novo-card"><div class="novo-card-header"><h3>Vidas em Cotação por AE (proxy)</h3>'+_infoBtn('Snapshot atual: vidas de deals na etapa Cotação do funil de VENDAS por AE. Não usa filtro de período.','cot-vidas')+'</div><canvas id="chart-cot-vidas" style="max-height:300px"></canvas></div>'+
     '</div>';
 
+  if(window.AxFilter&&AxFilter.afterRender)AxFilter.afterRender();
   buildTkStage();
   buildTkOwner();
   buildTkMonth();
@@ -271,7 +279,7 @@ function novoRender(){
   buildCotVidas();
 }
 function cotKpiOpen(kind){
-  var tickets=(_tk&&_tk.tickets)||[];
+  var tickets=_tkList();
   if(kind==='tk-all') cotOpenTicketsModal('Tickets no pipeline',tickets);
   else if(kind==='tk-open') cotOpenTicketsModal('Tickets em aberto',tickets.filter(_tkIsOpen));
   else if(kind==='tk-done') cotOpenTicketsModal('Entregues | Concluídos',tickets.filter(function(t){return !_tkIsOpen(t);}),'cycle');
@@ -280,7 +288,7 @@ function cotKpiOpen(kind){
 }
 
 function buildTkStage(){
-  var th=_novoTheme(), tickets=(_tk&&_tk.tickets)||[];
+  var th=_novoTheme(), tickets=_tkList();
   var counts=COT_STAGES.map(function(s){ return tickets.filter(function(t){return String(t.hs_pipeline_stage)===s.id;}).length; });
   var labels=COT_STAGES.map(function(s){return s.nome;});
   _novoMkChart('chart-tk-stage',{type:'bar',plugins:[ChartDataLabels],
@@ -292,7 +300,7 @@ function buildTkStage(){
       onClick:function(e,el){ if(!el.length)return; var s=COT_STAGES[el[0].index]; cotOpenTicketsModal('Etapa | '+s.nome, tickets.filter(function(t){return String(t.hs_pipeline_stage)===s.id;}), s.open?null:'cycle'); }}});
 }
 function buildTkOwner(){
-  var th=_novoTheme(), tickets=(_tk&&_tk.tickets)||[];
+  var th=_novoTheme(), tickets=_tkList();
   var map={}; tickets.forEach(function(t){ var o=_tkOwner(t); map[o]=(map[o]||0)+1; });
   var labels=Object.keys(map).sort(function(a,b){return map[b]-map[a];}).slice(0,15);
   _novoMkChart('chart-tk-owner',{type:'bar',plugins:[ChartDataLabels],
@@ -304,7 +312,7 @@ function buildTkOwner(){
       onClick:function(e,el){ if(!el.length)return; var o=labels[el[0].index]; cotOpenTicketsModal('Responsável | '+o, tickets.filter(function(t){return _tkOwner(t)===o;})); }}});
 }
 function buildTkMonth(){
-  var th=_novoTheme(), tickets=(_tk&&_tk.tickets)||[];
+  var th=_novoTheme(), tickets=_tkList();
   var map={}; tickets.forEach(function(t){ var ym=_tkD10(t.createdate); if(ym) { ym=ym.slice(0,7); map[ym]=(map[ym]||0)+1; } });
   var yms=Object.keys(map).sort().slice(-12);
   _novoMkChart('chart-tk-month',{type:'bar',plugins:[ChartDataLabels],
@@ -317,7 +325,7 @@ function buildTkMonth(){
 }
 var _TK_AGE_BUCKETS=[[0,7,'0–7d'],[8,14,'8–14d'],[15,30,'15–30d'],[31,60,'31–60d'],[61,Infinity,'60d+']];
 function buildTkAging(){
-  var th=_novoTheme(), abertos=((_tk&&_tk.tickets)||[]).filter(_tkIsOpen);
+  var th=_novoTheme(), abertos=_tkList().filter(_tkIsOpen);
   var counts=_TK_AGE_BUCKETS.map(function(b){ return abertos.filter(function(t){var a=_tkAgeDays(t);return a!=null&&a>=b[0]&&a<=b[1];}).length; });
   _novoMkChart('chart-tk-aging',{type:'bar',plugins:[ChartDataLabels],
     data:{labels:_TK_AGE_BUCKETS.map(function(b){return b[2];}),datasets:[{data:counts,backgroundColor:['rgba(63,185,80,.75)','rgba(58,184,183,.75)','rgba(227,179,65,.75)','rgba(210,153,34,.75)','rgba(248,81,73,.75)'],borderRadius:4}]},
