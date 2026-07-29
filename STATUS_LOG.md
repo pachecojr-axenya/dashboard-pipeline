@@ -1,5 +1,43 @@
 # Dashboard Enhancement Loop — Status Log
 
+### CS | religado na base real via GET /api/cs-accounts (fim do banner Electron) (2026-07-27)
+
+> Pedido do dono: "é possível desenvolver o dash sem depender disso [electronAPI]?" — sim:
+> o repo JÁ tinha o caminho web (`lib/hubspot.js:pullCSData` + `api/pull-cs-data.js`,
+> legado não usado). O banner vermelho do cs.html pedia campos que NUNCA existiram no
+> portal (nps_score, health_score, churn_reason, renewal_date, mrr, cs_owner — herança
+> Electron); os campos reais são outros (ativo_ou_inativo_, vigencia_do_contrato_atual,
+> premio_mensal, hs_csm_sentiment…).
+
+- **`api/cs-accounts.js` (NOVO):** `GET`, wrapper do `pullCSData` (223 empresas com
+  `kam_responsavel` + 184 vigencia_deals + 60 owners) com cache em memória 5 min +
+  dedup de chamadas concorrentes (`X-CS-Cache: hit|miss`; pull frio ~4-6s, quente <100ms).
+- **`cs.html` religado na base real:** KPIs CS09–CS12 (Clientes Ativos 180 | Inativos 40 |
+  Prêmio Mensal da Base Σ `premio_mensal` c/ fill rate no subtítulo | Renovações 90d via
+  `vigencia_do_contrato_atual` — datas FUTURAS = fim do contrato vigente). Gráficos novos:
+  **CS13** Carteira por KAM (owners resolvidos) | **CS14** Fim de Vigência por Mês
+  (Vencida/12 meses/Além) | **CS15** Qualidade de Dados da Base (fill % dos campos-chave
+  nas ativas; clique lista as empresas SEM o campo). Banner vermelho removido; proxy
+  Vendas (CS05–CS08) mantido em seção própria; placeholders reescritos com os campos
+  REAIS que faltam (data_de_inativacao ~2%, hs_csm_sentiment ~2%, maturidade_em_saude 0%).
+  Modais de empresa com link p/ HubSpot (`/company/{id}`).
+- **🟡 no nível certo:** linha de meta do painel + section-hdr marcam "não validado";
+  painel segue `hidden`/🔴 no nav.js até validação contra o HubSpot.
+- **Memória de cálculo nos KPIs (pedido do dono, mesma data):** os 4 KPIs CS09–CS12
+  ganharam o botão **i** com campos e CONDICIONAIS (ex.: CS09 = `kam_responsavel`
+  preenchido E `ativo_ou_inativo_ = "Ativo"`; CS12 = vigência entre hoje e hoje+90d,
+  vazia/vencida fica fora; CS11 avisa que o Σ é PARCIAL e que prêmio ≠ receita da
+  Regra nº 3). `kpi()` aceita `tip` → `_infoBtn`; clique no i não abre o modal do card
+  (listener em fase de captura); regra CSS do toggle `?` estendida ao `.kpi-card`.
+- Ressalvas conhecidas: 2 KAMs aparecem como ID bruto (owner desativado fora do
+  `fetchOwners`); 10 ativas com vigência já vencida (dado de origem, exposto de propósito);
+  vigencia_deals retornados pela API mas sem KPI (pipelines mistos, semântica a validar).
+- **Validação:** inline-js 0 erros; `/api/cs-accounts` 200 (miss 3,9s → hit <100ms);
+  `/novo-cs` 200; screenshot headless conferido (KPIs, 3 cards novos, qualidade batendo
+  com a análise: prêmio 22%, vigência 27%, vidas 3%). Endpoint NOVO em `api/` → deploy
+  futuro deve ir ao projeto canônico Pro. Server :3002 NÃO reiniciado (handler novo,
+  nunca esteve no cache de require da outra sessão).
+
 ### AE | A15: filtro multiselect de motivos no modal + coluna "Etapa antes da perda" (2026-07-29)
 
 > Pedido do dono: (1) o modal dos motivos de perda precisa de filtro de motivos no

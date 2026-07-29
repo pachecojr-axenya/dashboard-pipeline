@@ -1,5 +1,27 @@
 # Auditoria crítica dos gráficos 🟡 | 2026-06-12
 
+## Adendo | CS Dashboard religado na base real (2026-07-27)
+
+> **Estado: 🟡 não validado contra o HubSpot** (painel segue oculto/🔴 no menu até validação).
+> O `/novo-cs` deixou de ser só proxy de Vendas: agora consome `GET /api/cs-accounts`
+> (empresas com `kam_responsavel` + owners), novo nesta data.
+>
+> | # | Card | Nota |
+> |---|---|---|
+> | CS09 | Clientes Ativos (KPI) | `ativo_ou_inativo_ = Ativo` (~99% preenchido) — 180 na 1ª leitura |
+> | CS10 | Clientes Inativos (KPI) | idem, valor Inativo — 40 |
+> | CS11 | Prêmio Mensal da Base (KPI) | Σ `premio_mensal` das ativas; **fill ~22%** — subtítulo expõe o denominador |
+> | CS12 | Renovações \| 90 dias (KPI) | `vigencia_do_contrato_atual` (fim do contrato, data futura) nos próx. 90d; **fill ~27%** |
+> | CS13 | Carteira por KAM | owners resolvidos; ressalva: owner desativado aparece como ID bruto |
+> | CS14 | Fim de Vigência por Mês | Vencida + 12 meses + Além; 10 ativas com vigência vencida (dado de origem) |
+> | CS15 | Qualidade de Dados da Base | fill % por campo nas ativas; é o card que mede a confiança dos demais |
+>
+> CS05–CS08 (proxy Vendas, deals Ganho) continuam como estavam, em seção própria.
+> CS01–CS04 (KPIs proxy) foram **removidos** — diziam "Clientes Ativos: 14" onde a base
+> real tem 180. Semânticas a validar contra o HubSpot: flag `ativo_ou_inativo_` como
+> definição oficial de cliente ativo; `vigencia_do_contrato_atual` = data de renovação;
+> `premio_mensal` da company vs o do deal.
+
 ## Adendo | Delta (ex-Comparativo), códigos D01–D07 (2026-07-24)
 
 > **Estado: 🟢 validado (2026-07-27, decisão do dono)** — o pill do header passou de

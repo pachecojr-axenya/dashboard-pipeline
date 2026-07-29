@@ -55,7 +55,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
 .novo-card-header h3{font-size:.88rem;font-weight:600;color:var(--text);margin:0;flex:1}
 .novo-code-tag{display:none;align-items:center;font-size:.6rem;font-weight:700;letter-spacing:.04em;font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--teal);background:rgba(58,184,183,.14);border:1px solid rgba(58,184,183,.32);border-radius:5px;padding:.05rem .32rem;line-height:1.35;flex-shrink:0}
 .novo-info-btn{width:16px;height:16px;border-radius:50%;border:1.5px solid var(--text2);background:none;color:var(--text2);font-size:.62rem;font-style:normal;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;position:relative;flex-shrink:0;padding:0;line-height:1}
-body:not(.novo-info-on) .novo-card .novo-info-btn{display:none}
+body:not(.novo-info-on) .novo-card .novo-info-btn,body:not(.novo-info-on) .kpi-card .novo-info-btn{display:none}
 body.novo-info-on .novo-code-tag{display:inline-flex}
 #novo-tip{position:fixed;z-index:9999;background:rgba(23,31,46,.78);backdrop-filter:blur(14px) saturate(1.5);border-radius:6px;padding:.45rem .7rem;width:278px;pointer-events:none;display:none;box-shadow:0 6px 20px rgba(0,0,0,.3)}
 html[data-theme="light"] #novo-tip{background:rgba(246,248,250,.82)}
@@ -160,12 +160,13 @@ function exportModalCSV(){ var title=document.getElementById('modal-title').text
 var NOVO_LANG=(function(){ try{return localStorage.getItem('novo_lang')||'pt';}catch(e){return 'pt';} })();
 function novoToggleLang(){ NOVO_LANG=NOVO_LANG==='pt'?'en':'pt'; try{localStorage.setItem('novo_lang',NOVO_LANG);}catch(e){} (function(_e){if(_e)_e.textContent=NOVO_LANG.toUpperCase();})(document.getElementById('novo-lang-label')); if(_novoDeals) novoRender(); }
 
-var CS_CARD_CODES={'kpi-customers':'CS01','kpi-arr':'CS02','kpi-lives':'CS03','kpi-product':'CS04','cs-produto':'CS05','cs-modelo':'CS06','cs-vidas-prod':'CS07','cs-concentration':'CS08'};
+var CS_CARD_CODES={'kpi-customers':'CS01','kpi-arr':'CS02','kpi-lives':'CS03','kpi-product':'CS04','cs-produto':'CS05','cs-modelo':'CS06','cs-vidas-prod':'CS07','cs-concentration':'CS08','kpi-ativos':'CS09','kpi-inativos':'CS10','kpi-premio':'CS11','kpi-renov':'CS12','cs-kam':'CS13','cs-vigencia':'CS14','cs-quality':'CS15'};
 var _novoShowInfo=(function(){try{return localStorage.getItem('cs_show_info')!=='0';}catch(e){return true;}})();
 function _codeTag(key){var c=CS_CARD_CODES[key]||'';return c?'<span class="novo-code-tag">'+c+'</span>':'';}
 function novoToggleInfo(){_novoShowInfo=!_novoShowInfo;document.body.classList.toggle('novo-info-on',_novoShowInfo);var b=document.getElementById('btn-info-toggle');if(b)b.classList.toggle('highlighted',_novoShowInfo);try{localStorage.setItem('cs_show_info',_novoShowInfo?'1':'0');}catch(e){}}
 
 document.addEventListener('mouseover',function(e){ var btn=e.target.closest('.novo-info-btn'); if(!btn)return; var tip=document.getElementById('novo-tip'); tip.querySelector('.nt-text').textContent=btn.getAttribute('data-tip')||''; tip.querySelector('.nt-code').textContent=btn.getAttribute('data-code')||''; tip.classList.add('nt-show'); });
+document.addEventListener('click',function(e){ if(e.target.closest&&e.target.closest('.novo-info-btn')) e.stopPropagation(); },true);
 document.addEventListener('mouseout',function(e){ if(!e.target.closest('.novo-info-btn')) document.getElementById('novo-tip').classList.remove('nt-show'); });
 document.addEventListener('mousemove',function(e){ var tip=document.getElementById('novo-tip'); if(!tip.classList.contains('nt-show'))return; var r=tip.getBoundingClientRect(); var x=e.clientX+14; var y=e.clientY+14; if(x+r.width>window.innerWidth-8) x=e.clientX-r.width-10; if(y+r.height>window.innerHeight-8) y=e.clientY-r.height-10; tip.style.left=x+'px'; tip.style.top=y+'px'; });
 function _infoBtn(tip,code){ return _codeTag(code)+'<button class="novo-info-btn" data-tip="'+_ne(tip)+'" data-code="'+(CS_CARD_CODES[code]||code||'')+'" aria-label="info">i</button>'; }
@@ -192,11 +193,20 @@ function _placeholder(icon,title,body,fields){
 }
 
 var _novoDeals=null;
+var _csData=null;
+function _csNum(v){ var n=Number(v); return isNaN(n)?0:n; }
+function _csOwner(id){ var o=(_csData&&_csData.owners)||{}; return o[id]||(id?String(id):'—'); }
+function _csComps(){ return (_csData&&_csData.companies)||[]; }
+function _csAtivas(){ return _csComps().filter(function(c){return c.ativo_ou_inativo_==='Ativo';}); }
+function _csCompRows(comps){ return comps.map(function(c){ var url=c.hs_object_id?'https://app.hubspot.com/contacts/44715285/company/'+c.hs_object_id:null; var nameCell=url?'<a href="'+url+'" target="_blank" rel="noopener" style="color:var(--teal);text-decoration:none">'+_ne(c.name)+'</a>':_ne(c.name); return '<tr><td style="text-align:left;min-width:150px;max-width:230px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+nameCell+'</td><td style="text-align:left;white-space:nowrap">'+_ne(_csOwner(c.kam_responsavel))+'</td><td>'+(_csNum(c.premio_mensal)>0?_fmtBig(_csNum(c.premio_mensal)):'—')+'</td><td style="white-space:nowrap">'+_ne(c.vigencia_do_contrato_atual||'—')+'</td><td>'+_ne(c.ativo_ou_inativo_||'—')+'</td></tr>'; }).join(''); }
+function csOpenCompsModal(title,comps){ if(!comps||!comps.length){ openModal(title,'<p style="color:var(--text2);padding:1rem 0">Nenhuma empresa.</p>'); return; } var html='<table class="lb"><thead><tr><th style="text-align:left">Empresa</th><th style="text-align:left">KAM</th><th>Prêmio Mensal</th><th>Fim da Vigência</th><th>Status</th></tr></thead><tbody>'+_csCompRows(comps)+'</tbody></table>'; openModal(title+' ('+comps.length+')',html); }
 function novoLoadData(){
   var btn=document.getElementById('btn-refresh'); if(btn) btn.classList.add('spinning');
   document.getElementById('novo-content').innerHTML='<div style="text-align:center;padding:3rem 0;color:var(--text2)">Buscando dados…</div>';
-  fetch('/api/forecast-table').then(function(r){ if(!r.ok) return r.text().then(function(txt){ throw new Error(txt||('HTTP '+r.status)); }); return r.json(); }).then(function(data){
-    _novoDeals=Array.isArray(data)?data:(data.deals||[]);window._novoDealsRaw=_novoDeals;
+  var grab=function(url){ return fetch(url).then(function(r){ if(!r.ok) return r.text().then(function(txt){ throw new Error(url+' | '+(txt||('HTTP '+r.status))); }); return r.json(); }); };
+  Promise.all([grab('/api/forecast-table'),grab('/api/cs-accounts')]).then(function(res){
+    _novoDeals=Array.isArray(res[0])?res[0]:(res[0].deals||[]);window._novoDealsRaw=_novoDeals;
+    _csData=res[1]||{};
     if(btn) btn.classList.remove('spinning');
     novoRender();
   }).catch(function(err){
@@ -209,47 +219,54 @@ function novoRender(){
   var deals=window._novoDealsRaw||_novoDeals||[];
   var won=deals.filter(function(d){return d.stage===NOVO_WON_STAGE;});
   var ts=new Date().toLocaleTimeString('pt-BR',{timeZone:'America/Sao_Paulo',hour:'2-digit',minute:'2-digit'});
-  var totalArr=won.reduce(function(s,d){return s+_annualRev(d);},0);
-  var totalVidas=won.reduce(function(s,d){return s+(d.vidas||0);},0);
-  var produtos={}; won.forEach(function(d){ if(d.produto) produtos[d.produto]=(produtos[d.produto]||0)+1; });
-  var topProd=Object.keys(produtos).sort(function(a,b){return produtos[b]-produtos[a];})[0]||'—';
+  var comps=_csComps();
+  var ativas=_csAtivas();
+  var inativas=comps.filter(function(c){return c.ativo_ou_inativo_==='Inativo';});
+  var premioComps=ativas.filter(function(c){return _csNum(c.premio_mensal)>0;});
+  var premioTotal=premioComps.reduce(function(s,c){return s+_csNum(c.premio_mensal);},0);
+  var isoHoje=new Date().toISOString().slice(0,10);
+  var iso90=new Date(Date.now()+90*864e5).toISOString().slice(0,10);
+  var comVig=ativas.filter(function(c){return !!c.vigencia_do_contrato_atual;});
+  var renov90=comVig.filter(function(c){var v=c.vigencia_do_contrato_atual;return v>=isoHoje&&v<=iso90;});
 
-  var kpi=function(lbl,val,sub,col,key,kind){ return '<div class="kpi-card'+(kind?' kpi-click':'')+'" '+(kind?'onclick="csKpiOpen(\''+kind+'\')"':'')+'><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.35rem"><div class="kpi-label">'+lbl+'</div>'+_codeTag(key)+'</div><div class="kpi-value" style="color:'+(col||'var(--text)')+'">'+val+'</div><div class="kpi-sub">'+sub+'</div></div>'; };
+  var kpi=function(lbl,val,sub,col,key,kind,tip){ return '<div class="kpi-card'+(kind?' kpi-click':'')+'" '+(kind?'onclick="csKpiOpen(\''+kind+'\')"':'')+'><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.35rem"><div class="kpi-label">'+lbl+'</div><span style="display:inline-flex;align-items:center;gap:.35rem">'+(tip?_infoBtn(tip,key):_codeTag(key))+'</span></div><div class="kpi-value" style="color:'+(col||'var(--text)')+'">'+val+'</div><div class="kpi-sub">'+sub+'</div></div>'; };
 
   document.getElementById('novo-content').innerHTML=
-    '<div style="font-size:.78rem;color:var(--text2);margin-bottom:1rem">Atualizado às '+ts+' | proxy não filtrado por período | '+won.length+' deals ganhos</div>'+ 
+    '<div style="font-size:.78rem;color:var(--text2);margin-bottom:1rem">Atualizado às '+ts+' | base real: '+_ni(comps.length)+' empresas com KAM (/api/cs-accounts) | proxy Vendas: '+_ni(won.length)+' deals ganhos | <span style="font-weight:700">🟡 painel não validado contra o HubSpot</span></div>'+
     '<div class="kpi-row">'+
-      kpi('Clientes Ativos (proxy)',_ni(won.length),'deals em stage Ganho','var(--teal)','kpi-customers','won')+
-      kpi('ARR da Base (proxy)',_fmtBig(totalArr),'soma do ARR dos ganhos','var(--green)','kpi-arr','won')+
-      kpi('Vidas na Base (proxy)',_ni(totalVidas),'vidas em deals ganhos','var(--text)','kpi-lives','won')+
-      kpi('Produto Líder (proxy)',_ne(topProd),'produto mais recorrente','var(--text)','kpi-product','topProd')+
+      kpi('Clientes Ativos',_ni(ativas.length),'empresas com KAM | ativo_ou_inativo_ = Ativo','var(--teal)','kpi-ativos','ativas',
+        'Contagem de empresas do HubSpot (objeto Company) que atendem às 2 condições: kam_responsavel preenchido E ativo_ou_inativo_ = "Ativo". Empresa sem a flag (nem Ativo nem Inativo) fica FORA. Fonte: GET /api/cs-accounts | sem filtro de período. Clique para a lista.')+
+      kpi('Clientes Inativos',_ni(inativas.length),'empresas com KAM | ativo_ou_inativo_ = Inativo','var(--text)','kpi-inativos','inativas',
+        'Mesma base do CS09 (empresas com kam_responsavel preenchido), com a condição ativo_ou_inativo_ = "Inativo". Campos: kam_responsavel, ativo_ou_inativo_. Clique para a lista.')+
+      kpi('Prêmio Mensal da Base',_fmtBig(premioTotal),'Σ premio_mensal | preenchido em '+premioComps.length+' de '+ativas.length+' ativas','var(--green)','kpi-premio','premio',
+        'Σ premio_mensal das empresas ATIVAS (CS09) com premio_mensal > 0 — hoje '+premioComps.length+' de '+ativas.length+'; empresa sem o campo NÃO soma, então o total é PARCIAL. Atenção: é o prêmio da apólice registrado na company, NÃO receita Axenya (não passa pela Regra nº 3 / forecast-engine). Clique para a lista ordenada por prêmio.')+
+      kpi('Renovações | 90 dias',_ni(renov90.length),'fim de vigência nos próx. 90d | campo em '+comVig.length+' de '+ativas.length+' ativas','var(--orange)','kpi-renov','renov90',
+        'Empresas ATIVAS (CS09) cuja vigencia_do_contrato_atual (data de FIM do contrato vigente) cai entre hoje e hoje+90 dias. Condicionais: campo preenchido ('+comVig.length+' de '+ativas.length+' ativas) e data >= hoje — vigência vazia ou já vencida fica FORA (vencidas aparecem no CS14). Clique para a lista por data.')+
     '</div>'+
     '<div class="novo-cards">'+
 
-    '<div class="banner-api">'+
-      '<h4>API de CS não disponível nesta versão</h4>'+ 
-      '<p>O CS Dashboard original utiliza <code>window.electronAPI.pullCSData()</code>, que é exclusivo do app Electron e não está disponível no contexto web.</p>'+
-      '<p>Para habilitar os gráficos de CS (churn, NPS, saúde de conta, renovações, tickets), é necessário criar o endpoint <code>GET /api/cs-accounts</code> que retorne dados dos objetos de contato/empresa do HubSpot.</p>'+
-      '<p style="margin-top:.5rem"><strong>Campos necessários (HubSpot Contacts/Companies):</strong></p>'+
-      '<p>contact.id · company.name · hs_lead_status · lifecyclestage · last_nps_survey_date · nps_score · churn_reason · renewal_date · contract_start_date · mrr · num_vidas · cs_owner · health_score</p>'+
-    '</div>'+
+    '<div class="section-hdr"><h2>Base real de clientes | /api/cs-accounts (empresas com kam_responsavel) | 🟡 não validado</h2></div>'+
 
-    '<div class="section-hdr"><h2>Disponível via /api/forecast-table (proxy: clientes = deals Ganho | sem filtro de período)</h2></div>'+ 
+    '<div class="novo-card"><div class="novo-card-header"><h3>Carteira por KAM</h3>'+_infoBtn('Empresas ATIVAS por KAM responsável (companies.kam_responsavel, resolvido pelo mapa de owners do HubSpot). Sem filtro de período. Clique numa barra para a lista.','cs-kam')+'</div><canvas id="chart-cs-kam" style="max-height:320px"></canvas></div>'+
+    '<div class="novo-card"><div class="novo-card-header"><h3>Fim de Vigência por Mês</h3>'+_infoBtn('Empresas ATIVAS pelo mês de vigencia_do_contrato_atual (fim do contrato vigente): vencidas, próximos 12 meses e além. Campo preenchido em '+comVig.length+' de '+ativas.length+' ativas | as demais não aparecem. Clique numa barra para a lista.','cs-vigencia')+'</div><canvas id="chart-cs-vigencia" style="max-height:320px"></canvas></div>'+
+    '<div class="novo-card"><div class="novo-card-header"><h3>Qualidade de Dados da Base</h3>'+_infoBtn('% de preenchimento dos campos-chave nas '+ativas.length+' empresas ATIVAS. Este card mede a confiabilidade dos demais: campo vermelho = gráfico que depender dele fica cego. Clique numa barra para listar as empresas SEM o campo.','cs-quality')+'</div><canvas id="chart-cs-quality" style="max-height:340px"></canvas></div>'+
 
-    '<div class="novo-card"><div class="novo-card-header"><h3>ARR por Produto (proxy)</h3>'+_infoBtn('ARR acumulado por produto dos deals em stage Ganho. Sem filtro de período.','cs-produto')+'</div><canvas id="chart-cs-produto" style="max-height:320px"></canvas></div>'+ 
-    '<div class="novo-card"><div class="novo-card-header"><h3>Clientes por Modelo de Remuneração (proxy)</h3>'+_infoBtn('Deals Ganho segmentados por modelo de remuneração. Sem filtro de período.','cs-modelo')+'</div><canvas id="chart-cs-modelo" style="max-height:320px"></canvas></div>'+ 
-    '<div class="novo-card"><div class="novo-card-header"><h3>Vidas por Produto (proxy)</h3>'+_infoBtn('Vidas dos deals Ganho segmentadas por produto. Sem filtro de período.','cs-vidas-prod')+'</div><canvas id="chart-cs-vidas-prod" style="max-height:320px"></canvas></div>'+ 
-    '<div class="novo-card"><div class="novo-card-header"><h3>Concentração de ARR por Cliente (proxy)</h3>'+_infoBtn('% do ARR total representado por Top 1/3/5/10 deals ganhos por ARR.','cs-concentration')+'</div><canvas id="chart-cs-concentration" style="max-height:320px"></canvas></div>'+ 
+    '<div class="section-hdr"><h2>Proxy Vendas | /api/forecast-table (clientes = deals Ganho | sem filtro de período)</h2></div>'+
 
-    '<div class="section-hdr"><h2>Requer API de CS (/api/cs-accounts)</h2></div>'+ 
-    _placeholder('','Churn Rate Mensal','Taxa de cancelamento mensal. Requer endpoint /api/cs-accounts com campo churn_date.',['churn_date','renewal_date','hs_lead_status'])+
-    _placeholder('','NPS por Período','Score NPS médio por mês. Requer dados de pesquisa NPS do HubSpot.',['nps_score','last_nps_survey_date','cs_owner'])+
-    _placeholder('','Health Score da Base','Distribuição de health score por cliente. Requer campo health_score.',['health_score','company.name','cs_owner'])+
-    _placeholder('','Renovações no Mês','Contratos com renewal_date no mês atual. Requer renewal_date.',['renewal_date','contract_start_date','mrr'])+
-    _placeholder('','Clientes em Risco','Clientes com health_score < 40 ou NPS < 6. Requer campos de saúde.',['health_score','nps_score','hs_lead_status'])+
-    _placeholder('','CS Owner Leaderboard','Carteira de clientes e ARR por CS Owner.',['cs_owner','health_score','mrr'])+
+    '<div class="novo-card"><div class="novo-card-header"><h3>ARR por Produto (proxy)</h3>'+_infoBtn('ARR acumulado por produto dos deals em stage Ganho. Sem filtro de período.','cs-produto')+'</div><canvas id="chart-cs-produto" style="max-height:320px"></canvas></div>'+
+    '<div class="novo-card"><div class="novo-card-header"><h3>Clientes por Modelo de Remuneração (proxy)</h3>'+_infoBtn('Deals Ganho segmentados por modelo de remuneração. Sem filtro de período.','cs-modelo')+'</div><canvas id="chart-cs-modelo" style="max-height:320px"></canvas></div>'+
+    '<div class="novo-card"><div class="novo-card-header"><h3>Vidas por Produto (proxy)</h3>'+_infoBtn('Vidas dos deals Ganho segmentadas por produto. Sem filtro de período.','cs-vidas-prod')+'</div><canvas id="chart-cs-vidas-prod" style="max-height:320px"></canvas></div>'+
+    '<div class="novo-card"><div class="novo-card-header"><h3>Concentração de ARR por Cliente (proxy)</h3>'+_infoBtn('% do ARR total representado por Top 1/3/5/10 deals ganhos por ARR.','cs-concentration')+'</div><canvas id="chart-cs-concentration" style="max-height:320px"></canvas></div>'+
+
+    '<div class="section-hdr"><h2>Requer dado novo no HubSpot | processo de CS</h2></div>'+
+    _placeholder('','Churn Rate Mensal','Requer data_de_inativacao consistente (hoje ~2% da base). Com ela: inativações ÷ base ativa, por mês.',['data_de_inativacao','ativo_ou_inativo_'])+
+    _placeholder('','NPS por Período','Não existe pesquisa NPS no portal. Requer implantar a coleta; hoje o campo mais próximo é hs_csm_sentiment (~2% preenchido).',['hs_csm_sentiment'])+
+    _placeholder('','Health Score da Base','O campo maturidade_em_saude existe mas está 100% vazio. Requer critério de health e rotina de preenchimento pelo time de CS.',['maturidade_em_saude','hs_csm_sentiment'])+
     '</div>';
 
+  buildCSKam();
+  buildCSVigencia();
+  buildCSQuality();
   buildCSProduto();
   buildCSModelo();
   buildCSVidasProd();
@@ -257,13 +274,14 @@ function novoRender(){
 }
 
 function csKpiOpen(kind){
-  var won=(_novoDeals||[]).filter(function(d){return d.stage===NOVO_WON_STAGE;});
-  if(kind==='topProd'){
-    var produtos={}; won.forEach(function(d){ if(d.produto) produtos[d.produto]=(produtos[d.produto]||0)+1; });
-    var top=Object.keys(produtos).sort(function(a,b){return produtos[b]-produtos[a];})[0];
-    return novoOpenDealsModal('Produto Líder | '+(top||'—'), top?won.filter(function(d){return d.produto===top;}):[]);
+  if(kind==='ativas') return csOpenCompsModal('Clientes Ativos',_csAtivas());
+  if(kind==='inativas') return csOpenCompsModal('Clientes Inativos',_csComps().filter(function(c){return c.ativo_ou_inativo_==='Inativo';}));
+  if(kind==='premio') return csOpenCompsModal('Prêmio Mensal da Base',_csAtivas().filter(function(c){return _csNum(c.premio_mensal)>0;}).sort(function(a,b){return _csNum(b.premio_mensal)-_csNum(a.premio_mensal);}));
+  if(kind==='renov90'){
+    var isoHoje=new Date().toISOString().slice(0,10);
+    var iso90=new Date(Date.now()+90*864e5).toISOString().slice(0,10);
+    return csOpenCompsModal('Renovações | 90 dias',_csAtivas().filter(function(c){var v=c.vigencia_do_contrato_atual;return v&&v>=isoHoje&&v<=iso90;}).sort(function(a,b){return a.vigencia_do_contrato_atual<b.vigencia_do_contrato_atual?-1:1;}));
   }
-  novoOpenDealsModal('Clientes Ativos (proxy)',won);
 }
 
 function buildCSProduto(){
@@ -322,6 +340,58 @@ function buildCSConcentration(){
       tooltip:{callbacks:{label:function(c){return c.parsed.y+'% do ARR';}}}},
       scales:{x:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}},y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT}},max:100}},
       onClick:function(e,el){ if(!el.length)return; var n=tops[el[0].index]; novoOpenDealsModal('Top '+n+' clientes', won.slice(0,n)); }}});
+}
+
+function buildCSKam(){
+  var th=_novoTheme();
+  var ativas=_csAtivas();
+  var map={}; ativas.forEach(function(c){ var k=_csOwner(c.kam_responsavel); map[k]=(map[k]||0)+1; });
+  var labels=Object.keys(map).sort(function(a,b){return map[b]-map[a];}).slice(0,10);
+  var vals=labels.map(function(l){return map[l];});
+  _novoMkChart('chart-cs-kam',{type:'bar',plugins:[ChartDataLabels],
+    data:{labels:labels,datasets:[{data:vals,backgroundColor:'rgba(58,184,183,.75)',borderRadius:4}]},
+    options:{indexAxis:'y',responsive:true,layout:{padding:{right:55}},plugins:{legend:{display:false},
+      datalabels:{anchor:'end',align:'right',color:th.cText,font:{family:NOVO_FONT,size:10,weight:'bold'},formatter:function(v){return _ni(v);}},
+      tooltip:{callbacks:{label:function(c){return _ni(c.parsed.x)+' empresas ativas';}}}},
+      scales:{x:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT}}},y:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}}},
+      onClick:function(e,el){ if(!el.length)return; var kam=labels[el[0].index]; csOpenCompsModal('KAM | '+kam, ativas.filter(function(c){return _csOwner(c.kam_responsavel)===kam;})); }}});
+}
+
+function buildCSVigencia(){
+  var th=_novoTheme();
+  var comVig=_csAtivas().filter(function(c){return !!c.vigencia_do_contrato_atual;});
+  var ymNow=new Date().toISOString().slice(0,7);
+  var months=[]; var d=new Date();
+  for(var i=0;i<12;i++){ months.push(d.toISOString().slice(0,7)); d.setMonth(d.getMonth()+1); }
+  var last=months[months.length-1];
+  var buckets={'Vencida':[]}; months.forEach(function(m){buckets[m]=[];}); buckets['Além de 12m']=[];
+  comVig.forEach(function(c){ var ym=c.vigencia_do_contrato_atual.slice(0,7); if(ym<ymNow) buckets['Vencida'].push(c); else if(ym<=last&&buckets[ym]) buckets[ym].push(c); else buckets['Além de 12m'].push(c); });
+  var labels=['Vencida'].concat(months.map(_mlbl)).concat(['Além de 12m']);
+  var keys=['Vencida'].concat(months).concat(['Além de 12m']);
+  var vals=keys.map(function(k){return buckets[k].length;});
+  var colors=keys.map(function(k){return k==='Vencida'?'rgba(248,81,73,.7)':k==='Além de 12m'?'rgba(110,118,129,.6)':'rgba(58,184,183,.75)';});
+  _novoMkChart('chart-cs-vigencia',{type:'bar',plugins:[ChartDataLabels],
+    data:{labels:labels,datasets:[{data:vals,backgroundColor:colors,borderRadius:4}]},
+    options:{responsive:true,layout:{padding:{top:24}},plugins:{legend:{display:false},
+      datalabels:{anchor:'end',align:'end',color:th.cText,font:{family:NOVO_FONT,size:10,weight:'bold'},formatter:function(v){return v||'';}},
+      tooltip:{callbacks:{label:function(c){return c.parsed.y+' empresas';}}}},
+      scales:{x:{grid:{display:false},ticks:{color:th.cText2,font:{family:NOVO_FONT,size:10},maxRotation:60,minRotation:40}},y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0}}},
+      onClick:function(e,el){ if(!el.length)return; var k=keys[el[0].index]; csOpenCompsModal('Fim de vigência | '+labels[el[0].index], buckets[k].slice().sort(function(a,b){return a.vigencia_do_contrato_atual<b.vigencia_do_contrato_atual?-1:1;})); }}});
+}
+
+var CS_QUALITY_FIELDS=[['premio_mensal','Prêmio mensal'],['vigencia_do_contrato_atual','Fim da vigência'],['contrato_atual','Contrato atual'],['vitalicio_ou_comissionamento','Vitalício | comissionamento'],['beneficio_axenya','Benefício Axenya'],['company_data_inicio_cliente','Data de início do cliente'],['vidas','Vidas'],['segmento','Segmento'],['operadora_atual','Operadora atual'],['hs_csm_sentiment','Sentimento CSM'],['maturidade_em_saude','Maturidade em saúde']];
+function buildCSQuality(){
+  var th=_novoTheme();
+  var ativas=_csAtivas(); var n=ativas.length||1;
+  var pcts=CS_QUALITY_FIELDS.map(function(f){ return Math.round(ativas.filter(function(c){return c[f[0]]!=null&&c[f[0]]!=='';}).length/n*100); });
+  var colors=pcts.map(function(v){return v>=80?'rgba(63,185,80,.75)':v>=40?'rgba(210,153,34,.8)':'rgba(248,81,73,.7)';});
+  _novoMkChart('chart-cs-quality',{type:'bar',plugins:[ChartDataLabels],
+    data:{labels:CS_QUALITY_FIELDS.map(function(f){return f[1];}),datasets:[{data:pcts,backgroundColor:colors,borderRadius:4}]},
+    options:{indexAxis:'y',responsive:true,layout:{padding:{right:48}},plugins:{legend:{display:false},
+      datalabels:{anchor:'end',align:'right',color:th.cText,font:{family:NOVO_FONT,size:10,weight:'bold'},formatter:function(v){return v+'%';}},
+      tooltip:{callbacks:{label:function(c){return c.parsed.x+'% preenchido nas ativas';}}}},
+      scales:{x:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},max:100,callback:function(v){return v+'%';}},max:100},y:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT,size:10}}}},
+      onClick:function(e,el){ if(!el.length)return; var f=CS_QUALITY_FIELDS[el[0].index]; csOpenCompsModal('Sem '+f[1], _csAtivas().filter(function(c){return c[f[0]]==null||c[f[0]]==='';})); }}});
 }
 
 (function(){
