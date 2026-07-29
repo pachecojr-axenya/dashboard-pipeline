@@ -1,5 +1,31 @@
 # Dashboard Enhancement Loop — Status Log
 
+### Cotação | religado nos TICKETS reais (pipeline 847948895) via /api/pull-tickets (2026-07-29)
+
+> Pergunta do dono ("por que a API está indisponível se dá pra puxar do HubSpot?") →
+> auditoria mostrou que a API SEMPRE existiu: `POST /api/pull-tickets`
+> (`fetchCotacaoTickets`, legado Electron) responde 177 tickets ao vivo. O stub do
+> painel esperava um `GET /api/tickets` hipotético e nunca foi ligado ao endpoint
+> real. Dono confirmou o pipeline de tickets: **847948895**.
+
+- **Painel reconstruído (front-only, ZERO endpoint novo):** KPIs Q01–Q04 (Tickets no
+  pipeline 177 | Em aberto 10 | Entregues+Concluídos 167 | Ciclo médio 19 dias sobre
+  167 medidos) + Q05–Q08 (por etapa, por responsável, volume mensal, aging dos
+  abertos), todos com drill de tickets (link p/ o ticket no HubSpot, empresa via
+  associação, responsável via owners). Proxy de deals em Cotação (Vendas) mantido
+  como seção separada e rotulada (Q09–Q11). Tudo **🟡**; painel segue **oculto/🔴 no
+  menu** até validação do dono (mesmo protocolo do CS).
+- Etapas: espelho de `semantic/referencia.json → tickets_cotacao` (abertas = Novas
+  Cotações/Triagem/Pendente/Mapeamento/Criação; finais = Projeto Entregue/Concluído).
+- **Quirk de dados:** `hs_date_entered_*` de TICKETS vem como epoch em ms (string
+  numérica), não ISO como em deals — parser `_tkTs` aceita os dois (sem ele o ciclo
+  médio dava 0 medidos).
+- **Fix estrutural pré-existente:** CSS do modal/tabela estava ÓRFÃO depois do
+  `</html>` (renderizava como texto na página) — movido para dentro do `<style>`.
+  Código morto removido (banner-api, placeholders).
+- Validação: inline-js 0 erros; `npm run check` PASS; screenshots com dados reais
+  conferidos (ciclo 19d, 101 Projeto Entregue + 66 Concluído). Sem deploy.
+
 ### 🚀 DEPLOY DE PRODUÇÃO | levas AE (A11/A15) + CS validada + Qtr. Receita (2026-07-29)
 
 > Autorização explícita do dono ("Faça o deploy"). Deploy conjunto: esta sessão + a

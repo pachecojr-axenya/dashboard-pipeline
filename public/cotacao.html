@@ -69,21 +69,28 @@ body.nav-docked #view-novo{margin-left:280px}
 .content-blur{filter:blur(4px);pointer-events:none;user-select:none}
 .section-hdr{grid-column:1/-1;margin:1.5rem 0 .25rem;border-top:1px solid var(--border);padding-top:1.25rem}
 .section-hdr h2{font-size:.78rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.1em;margin:0}
-.banner-api{grid-column:1/-1;background:rgba(248,81,73,.1);border:1.5px dashed rgba(248,81,73,.4);border-radius:10px;padding:1.4rem 1.5rem;margin-bottom:.25rem}
-.banner-api h4{color:var(--red);font-size:.9rem;margin-bottom:.5rem}
-.banner-api p{font-size:.8rem;color:var(--text2);line-height:1.7;margin:.25rem 0}
-.banner-api code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.75rem;background:rgba(248,81,73,.15);padding:.1rem .35rem;border-radius:3px;color:var(--red)}
-.placeholder-card{background:var(--card);border:1.5px dashed var(--border);border-radius:10px;padding:2rem 1.5rem;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.75rem;text-align:center;min-height:220px}
-.placeholder-card .ph-icon{font-size:2.5rem;opacity:.4}
-.placeholder-card .ph-title{font-size:.88rem;font-weight:600;color:var(--text2)}
-.placeholder-card .ph-body{font-size:.75rem;color:var(--muted);max-width:320px;line-height:1.6}
-.placeholder-card .ph-field{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.7rem;color:var(--teal);background:rgba(58,184,183,.08);padding:.15rem .4rem;border-radius:3px;margin:.1rem;display:inline-block}
 .kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.75rem;margin-bottom:.75rem}
 .kpi-card{background:var(--card);border-radius:14px;padding:clamp(1rem,.6rem+1.3vw,1.6rem) clamp(1.05rem,.5rem+1.6vw,1.8rem);transition:box-shadow .18s}
 .kpi-click{cursor:pointer}
 .kpi-label{font-size:.66rem;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;line-height:1}
 .kpi-value{font-size:clamp(1.35rem,.95rem+1.3vw,2rem);font-weight:800;line-height:1.1;margin:.35rem 0 .25rem}
 .kpi-sub{font-size:.7rem;color:var(--muted);line-height:1.35}
+/* Modal + tabela (estava ÓRFÃO depois do </html> — renderizava como texto; movido p/ dentro do style em 2026-07-29) */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:2000;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s linear;backdrop-filter:blur(5px)}
+.modal-overlay.open{opacity:1;pointer-events:auto}
+.modal{background:var(--card);border:1px solid var(--border);border-radius:14px;width:90vw;max-width:960px;max-height:85vh;display:flex;flex-direction:column;transform:translateY(20px);transition:transform .28s cubic-bezier(0.4,0,0.2,1)}
+.modal-overlay.open .modal{transform:translateY(0)}
+.modal-header{display:flex;justify-content:space-between;align-items:center;padding:1.2rem 1.5rem;border-bottom:1px solid var(--border)}
+.modal-header h2{font-size:1rem;font-weight:600;color:var(--text)}
+.modal-close{background:none;border:none;color:var(--text2);font-size:1.4rem;cursor:pointer;padding:.2rem .5rem;border-radius:4px}
+.modal-body{padding:1.2rem 1.5rem;overflow-y:auto;flex:1}
+.btn-export{background:transparent;border:1px solid var(--border);color:var(--text2);border-radius:8px;padding:.3rem .7rem;font-size:.7rem;cursor:pointer;margin-left:auto}
+table.lb{width:100%;border-collapse:separate;border-spacing:0;font-size:14px}
+table.lb th{text-align:right;color:var(--teal);font-size:.72rem;font-weight:700;text-transform:uppercase;padding:.6rem 1rem;border-bottom:2px solid var(--teal);white-space:nowrap;position:sticky;top:0;background:var(--card)}
+table.lb th:first-child{text-align:left}
+table.lb td{padding:.38rem 1rem;border-bottom:1px solid var(--border);color:var(--text);text-align:right}
+table.lb td:first-child{text-align:left;font-weight:600}
+table.lb tbody tr:nth-child(even) td{background:var(--even-s)}
 </style>
 <link rel="stylesheet" href="/premium.css?v=5">
 <script src="/premium.js?v=5"></script>
@@ -140,7 +147,7 @@ function exportModalCSV(){ var title=document.getElementById('modal-title').text
 
 var NOVO_LANG=(function(){ try{return localStorage.getItem('novo_lang')||'pt';}catch(e){return 'pt';} })();
 function novoToggleLang(){ NOVO_LANG=NOVO_LANG==='pt'?'en':'pt'; try{localStorage.setItem('novo_lang',NOVO_LANG);}catch(e){} (function(_e){if(_e)_e.textContent=NOVO_LANG.toUpperCase();})(document.getElementById('novo-lang-label')); novoRender(); }
-var COT_CARD_CODES={'kpi-cotacao':'Q01','kpi-tickets':'Q02','kpi-open':'Q03','kpi-ticket-medio':'Q04','cot-ae':'Q05','cot-vidas':'Q06'};
+var COT_CARD_CODES={'kpi-tickets':'Q01','kpi-open':'Q02','kpi-done':'Q03','kpi-cycle':'Q04','tk-stage':'Q05','tk-owner':'Q06','tk-month':'Q07','tk-aging':'Q08','kpi-cotacao':'Q09','cot-ae':'Q10','cot-vidas':'Q11'};
 var _novoShowInfo=(function(){try{return localStorage.getItem('cotacao_show_info')!=='0';}catch(e){return true;}})();
 function _codeTag(key){var c=COT_CARD_CODES[key]||'';return c?'<span class="novo-code-tag">'+c+'</span>':'';}
 function novoToggleInfo(){_novoShowInfo=!_novoShowInfo;document.body.classList.toggle('novo-info-on',_novoShowInfo);var b=document.getElementById('btn-info-toggle');if(b)b.classList.toggle('highlighted',_novoShowInfo);try{localStorage.setItem('cotacao_show_info',_novoShowInfo?'1':'0');}catch(e){}}
@@ -164,16 +171,58 @@ function _mlbl(ym){ var p=ym.split('-'); return ['Jan','Fev','Mar','Abr','Mai','
 function _dealsRows(deals){ return (deals||[]).map(function(d){ var hsUrl=d.hs_id?'https://app.hubspot.com/contacts/44715285/deal/'+d.hs_id:'#'; var name=d.hs_id?'<a href="'+hsUrl+'" target="_blank" rel="noopener" style="color:var(--teal);text-decoration:none">'+_ne(d.dealname)+'</a>':_ne(d.dealname); return '<tr><td style="text-align:left;max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+name+'</td><td style="text-align:left;white-space:nowrap">'+_ne(d.ae)+'</td><td>'+_ne(d.pipeline)+'</td><td>'+_ne(d.stage)+'</td><td>'+_ni(d.vidas)+'</td><td>'+_revShort(_annualRev(d))+'</td><td>'+_ne(d.createdate)+'</td><td>'+_ne(d.data_prevista_para_receita)+'</td></tr>'; }).join(''); }
 function novoOpenDealsModal(title,deals){ if(!deals||!deals.length){ openModal(title,'<p style="color:var(--text2);padding:1rem 0">Nenhum deal.</p>'); return; } openModal(title+' ('+deals.length+')','<table class="lb"><thead><tr><th style="text-align:left">Deal</th><th style="text-align:left">AE</th><th>Pipe</th><th>Etapa</th><th>Vidas</th><th>ARR</th><th>Criado</th><th>Dt. Receita</th></tr></thead><tbody>'+_dealsRows(deals)+'</tbody></table>'); }
 
-function _placeholder(icon,title,body,fields){
-  var fHtml=fields?fields.map(function(f){return '<span class="ph-field">'+f+'</span>';}).join(' '):'';
-  return '<div class="placeholder-card"><div class="ph-icon">'+icon+'</div><div class="ph-title">'+title+'</div><div class="ph-body">'+body+'</div>'+(fHtml?'<div style="margin-top:.5rem">'+fHtml+'</div>':'')+'</div>';
+// ── Pipeline de Cotação (TICKETS, id 847948895) ─────────────────────────────
+// Fonte: POST /api/pull-tickets (fetchCotacaoTickets — endpoint que já existia do
+// fluxo Electron; religado aqui em 2026-07-29, decisão do dono). Etapas: espelho de
+// semantic/referencia.json → tickets_cotacao (o semantic-ref.js gerado não as expõe).
+var COT_STAGES=[
+  {id:'1262941018',nome:'Novas Cotações',open:true},
+  {id:'1262941019',nome:'Triagem',open:true},
+  {id:'1293302338',nome:'Pendente',open:true},
+  {id:'1263003034',nome:'Mapeamento de Mercado',open:true},
+  {id:'1263003035',nome:'Criação da Apresentação',open:true},
+  {id:'1263003036',nome:'Projeto Entregue',open:false},
+  {id:'1263003039',nome:'Concluído',open:false}
+];
+function _tkStage(t){ for(var i=0;i<COT_STAGES.length;i++){ if(COT_STAGES[i].id===String(t.hs_pipeline_stage)) return COT_STAGES[i]; } return {id:String(t.hs_pipeline_stage||''),nome:'(etapa removida)',open:false}; }
+function _tkIsOpen(t){ return _tkStage(t).open; }
+function _tkD10(v){ return v?String(v).substring(0,10):null; }
+// hs_date_entered_* de TICKETS vem como epoch em ms (string numérica); createdate vem ISO.
+function _tkTs(v){ if(v==null||v==='')return NaN; if(/^\d+$/.test(String(v)))return Number(v); return Date.parse(v); }
+// Dias corridos entre criação e a 1ª entrada em etapa final (Projeto Entregue/Concluído)
+function _tkCycleDays(t){
+  var c=_tkTs(t.createdate); if(isNaN(c)) return null;
+  var ends=[t['hs_date_entered_1263003036'],t['hs_date_entered_1263003039']].map(_tkTs).filter(function(n){return !isNaN(n);});
+  if(!ends.length) return null;
+  var d=Math.round((Math.min.apply(null,ends)-c)/86400000);
+  return d<0?0:d;
+}
+function _tkAgeDays(t){ var c=_tkTs(t.createdate); if(isNaN(c))return null; var d=Math.round((Date.now()-c)/86400000); return d<0?0:d; }
+function _tkOwner(t){ return (_tk&&_tk.owners&&_tk.owners[t.hubspot_owner_id])||( t.hubspot_owner_id?('ID '+t.hubspot_owner_id):'(sem responsável)'); }
+function _tkRows(list,extraCol){
+  return (list||[]).map(function(t){
+    var id=t.hs_object_id||t._id;
+    var url='https://app.hubspot.com/contacts/44715285/ticket/'+id;
+    var name='<a href="'+url+'" target="_blank" rel="noopener" style="color:var(--teal);text-decoration:none">'+_ne(t.subject||('Ticket '+id))+'</a>';
+    var extra = extraCol==='cycle' ? '<td>'+_ni(_tkCycleDays(t))+'</td>' : '<td>'+_ni(_tkAgeDays(t))+'</td>';
+    return '<tr><td style="text-align:left;max-width:260px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+name+'</td><td style="text-align:left;white-space:nowrap">'+_ne(t._companyName||'—')+'</td><td style="text-align:left;white-space:nowrap">'+_ne(_tkOwner(t))+'</td><td style="text-align:left;white-space:nowrap">'+_ne(_tkStage(t).nome)+'</td><td style="white-space:nowrap">'+_ne(_tkD10(t.createdate))+'</td>'+extra+'</tr>';
+  }).join('');
+}
+function cotOpenTicketsModal(title,list,extraCol){
+  if(!list||!list.length){ openModal(title,'<p style="color:var(--text2);padding:1rem 0">Nenhum ticket.</p>'); return; }
+  var sorted=list.slice().sort(function(a,b){ return (Date.parse(b.createdate)||0)-(Date.parse(a.createdate)||0); });
+  openModal(title+' ('+list.length+')','<table class="lb"><thead><tr><th style="text-align:left">Ticket</th><th style="text-align:left">Empresa</th><th style="text-align:left">Responsável</th><th style="text-align:left">Etapa</th><th>Criado</th><th>'+(extraCol==='cycle'?'Dias de ciclo':'Dias em aberto')+'</th></tr></thead><tbody>'+_tkRows(sorted,extraCol)+'</tbody></table>');
 }
 
-var _deals=null;
+var _deals=null,_tk=null;
 function novoLoadData(){
   var btn=document.getElementById('btn-refresh'); if(btn) btn.classList.add('spinning');
-  fetch('/api/forecast-table').then(function(r){ if(!r.ok) return r.text().then(function(txt){ throw new Error(txt||('HTTP '+r.status)); }); return r.json(); }).then(function(data){
+  var pDeals=fetch('/api/forecast-table').then(function(r){ if(!r.ok) return r.text().then(function(txt){ throw new Error(txt||('HTTP '+r.status)); }); return r.json(); });
+  var pTk=fetch('/api/pull-tickets',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:'{}'}).then(function(r){ return r.json(); }).catch(function(e){ return {success:false,error:String(e)}; });
+  Promise.all([pDeals,pTk]).then(function(res){
+    var data=res[0],tk=res[1];
     _deals=Array.isArray(data)?data:(data.deals||[]);window._dealsRaw=_deals;
+    _tk=(tk&&tk.success&&tk.data)?tk.data:{tickets:[],owners:{},error:(tk&&tk.error)||'sem resposta'};
     if(btn) btn.classList.remove('spinning');
     novoRender();
   }).catch(function(err){
@@ -184,52 +233,99 @@ function novoLoadData(){
 
 function novoRender(){
   _deals=window._dealsRaw||_deals||[];
+  var tickets=(_tk&&_tk.tickets)||[];
   var ts=new Date().toLocaleTimeString('pt-BR',{timeZone:'America/Sao_Paulo',hour:'2-digit',minute:'2-digit'});
-  var won=(_deals||[]).filter(function(d){return d.stage===NOVO_WON_STAGE;});
   var cotacao=(_deals||[]).filter(function(d){ var s=d.stage||''; return s.toLowerCase().indexOf('cota')>=0; });
+  var abertos=tickets.filter(_tkIsOpen);
+  var fechados=tickets.filter(function(t){return !_tkIsOpen(t);});
+  var cycles=fechados.map(_tkCycleDays).filter(function(v){return v!=null;});
+  var cycleAvg=cycles.length?Math.round(cycles.reduce(function(s,v){return s+v;},0)/cycles.length):null;
 
-  var kpi=function(lbl,val,sub,col,key,kind){ return '<div class="kpi-card'+(kind?' kpi-click':'')+'" '+(kind?'onclick="cotKpiOpen(\''+kind+'\')"':'')+'><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.35rem"><div class="kpi-label">'+lbl+'</div>'+_codeTag(key)+'</div><div class="kpi-value" style="color:'+(col||'var(--text)')+'">'+val+'</div><div class="kpi-sub">'+sub+'</div></div>'; };
+  var kpi=function(lbl,val,sub,col,key,kind){ return '<div class="kpi-card'+(kind?' kpi-click':'')+'" '+(kind?'onclick="cotKpiOpen(\''+kind+'\')"':'')+'><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.35rem"><div class="kpi-label">🟡 '+lbl+'</div>'+_codeTag(key)+'</div><div class="kpi-value" style="color:'+(col||'var(--text)')+'">'+val+'</div><div class="kpi-sub">'+sub+'</div></div>'; };
+  var tkErr=_tk&&_tk.error?'<div style="background:rgba(248,81,73,.1);border:1px solid rgba(248,81,73,.35);border-radius:8px;padding:.6rem .9rem;font-size:.8rem;color:var(--red);margin-bottom:1rem">Tickets indisponíveis: '+_ne(_tk.error)+'</div>':'';
 
   document.getElementById('novo-content').innerHTML=
-    '<div style="font-size:.78rem;color:var(--text2);margin-bottom:1rem">Atualizado às '+ts+' | proxy sem filtro de período: deals atualmente na etapa Cotação</div>'+ 
+    '<div style="font-size:.78rem;color:var(--text2);margin-bottom:1rem">Atualizado às '+ts+' | fonte: tickets do Pipeline de Cotação (id 847948895) via /api/pull-tickets | snapshot atual, sem filtro de período | 🟡 não validado contra o portal</div>'+
+    tkErr+
     '<div class="kpi-row">'+
-      kpi('Em Cotação (proxy)',_ni(cotacao.length),'deals atualmente na etapa Cotação','var(--teal)','kpi-cotacao','cotacao')+
-      kpi('Tickets (API)',_ni(null),'requer /api/tickets','var(--text2)','kpi-tickets','')+
-      kpi('Tickets Abertos (API)',_ni(null),'requer /api/tickets','var(--text2)','kpi-open','')+
-      kpi('Ticket Médio (API)',_ni(null),'requer /api/tickets','var(--text2)','kpi-ticket-medio','')+
+      kpi('Tickets no pipeline',_ni(tickets.length),'todos os tickets do Pipeline de Cotação','var(--teal)','kpi-tickets','tk-all')+
+      kpi('Em aberto',_ni(abertos.length),'Novas Cotações | Triagem | Pendente | Mapeamento | Criação','var(--yellow)','kpi-open','tk-open')+
+      kpi('Entregues | Concluídos',_ni(fechados.length),'Projeto Entregue + Concluído','var(--green)','kpi-done','tk-done')+
+      kpi('Ciclo médio (dias)',cycleAvg!=null?_ni(cycleAvg):'—','criação → 1ª entrada em etapa final | '+_ni(cycles.length)+' tickets medidos','var(--text)','kpi-cycle','tk-cycle')+
     '</div>'+
     '<div class="novo-cards">'+
-
-    '<div class="banner-api">'+
-      '<h4>API de Cotação não disponível nesta versão</h4>'+ 
-      '<p>O dashboard original usa <code>window.electronAPI.pullTickets()</code>, que é exclusivo do app Electron e não possui equivalente no contexto web.</p>'+
-      '<p>Para habilitar esta view, é necessário criar <code>GET /api/tickets</code> que busque os objetos de Tickets do HubSpot CRM (pipeline de cotações).</p>'+
-      '<p style="margin-top:.6rem"><strong>Campos necessários no endpoint /api/tickets:</strong></p>'+
-      '<p>ticket.id · hs_ticket_id · subject · hs_pipeline_stage · createdate · closedate · owner_id · num_vidas · produto_solicitado · valor_estimado · hs_ticket_priority · status_cotacao · razao_perda</p>'+
-      '<p style="margin-top:.6rem"><strong>Como criar:</strong><br>Em <code>api/tickets.js</code>, buscar <code>GET /crm/v3/objects/tickets</code> com as propriedades acima e retornar JSON.</p>'+
-    '</div>'+
-
-    '<div class="section-hdr"><h2>Proxy disponível: deals atualmente em etapa Cotação via /api/forecast-table</h2></div>'+ 
-
-    '<div class="novo-card"><div class="novo-card-header"><h3>Deals em Cotação por AE (proxy)</h3>'+_infoBtn('Snapshot atual: deals na etapa Cotação por responsável. Não usa filtro de período.','cot-ae')+'</div><canvas id="chart-cot-ae" style="max-height:300px"></canvas></div>'+ 
-    '<div class="novo-card"><div class="novo-card-header"><h3>Vidas em Cotação por AE (proxy)</h3>'+_infoBtn('Snapshot atual: vidas de deals na etapa Cotação por AE. Não usa filtro de período.','cot-vidas')+'</div><canvas id="chart-cot-vidas" style="max-height:300px"></canvas></div>'+ 
-
-    '<div class="section-hdr"><h2>Requer /api/tickets (pipeline de cotações HubSpot)</h2></div>'+ 
-    _placeholder('','Volume de Tickets por Mês','Quantidade de cotações abertas por mês. Requer /api/tickets.',['createdate','hs_ticket_id'])+
-    _placeholder('','Tempo Médio de Resposta','Dias da criação do ticket até primeira resposta. Requer /api/tickets.',['createdate','first_response_date'])+
-    _placeholder('','Taxa de Aprovação de Cotação','% de tickets com status aprovado vs recusado. Requer status_cotacao.',['status_cotacao','razao_perda'])+
-    _placeholder('','Valor Médio por Ticket','Vidas e ARR médios por ticket de cotação.',['num_vidas','valor_estimado'])+
-    _placeholder('','Tickets por Pipeline Stage','Distribuição de tickets pelas etapas do pipeline de cotação.',['hs_pipeline_stage'])+
-    _placeholder('','Taxa de Conversão Cotação → Deal','% de tickets de cotação que viram deals no HubSpot.',['hs_ticket_id','deal_id (associação)'])+
-    _placeholder('','Ranking por Responsável','Volume e taxa de aprovação por owner de ticket.',['owner_id','status_cotacao'])+
-    _placeholder('','Produto Mais Cotado','Top produtos por número de cotações abertas.',['produto_solicitado'])+
+    '<div class="novo-card"><div class="novo-card-header"><h3>🟡 Tickets por etapa</h3>'+_infoBtn('Contagem de tickets do Pipeline de Cotação por etapa atual (hs_pipeline_stage). Snapshot, sem filtro de período. Clique numa barra para os tickets.','tk-stage')+'</div><canvas id="chart-tk-stage" style="max-height:300px"></canvas></div>'+
+    '<div class="novo-card"><div class="novo-card-header"><h3>🟡 Tickets por responsável</h3>'+_infoBtn('Contagem por hubspot_owner_id (nome resolvido via owners). Snapshot atual. Clique numa barra para os tickets.','tk-owner')+'</div><canvas id="chart-tk-owner" style="max-height:300px"></canvas></div>'+
+    '<div class="novo-card"><div class="novo-card-header"><h3>🟡 Volume por mês de criação</h3>'+_infoBtn('Tickets criados por mês (createdate), últimos 12 meses. Clique numa barra para os tickets do mês.','tk-month')+'</div><canvas id="chart-tk-month" style="max-height:300px"></canvas></div>'+
+    '<div class="novo-card"><div class="novo-card-header"><h3>🟡 Aging dos abertos</h3>'+_infoBtn('Tickets EM ABERTO por faixa de dias desde a criação. Clique numa barra para os tickets da faixa.','tk-aging')+'</div><canvas id="chart-tk-aging" style="max-height:300px"></canvas></div>'+
+    '<div class="section-hdr"><h2>Funil de Vendas | deals na etapa Cotação (proxy via /api/forecast-table — outra base: deals, não tickets)</h2></div>'+
+    '<div class="novo-card"><div class="novo-card-header"><h3>Deals em Cotação por AE (proxy)</h3>'+_infoBtn('Snapshot atual: deals na etapa Cotação do funil de VENDAS por responsável. Não usa filtro de período.','cot-ae')+'</div><canvas id="chart-cot-ae" style="max-height:300px"></canvas></div>'+
+    '<div class="novo-card"><div class="novo-card-header"><h3>Vidas em Cotação por AE (proxy)</h3>'+_infoBtn('Snapshot atual: vidas de deals na etapa Cotação do funil de VENDAS por AE. Não usa filtro de período.','cot-vidas')+'</div><canvas id="chart-cot-vidas" style="max-height:300px"></canvas></div>'+
     '</div>';
 
+  buildTkStage();
+  buildTkOwner();
+  buildTkMonth();
+  buildTkAging();
   buildCotAE();
   buildCotVidas();
 }
 function cotKpiOpen(kind){
-  if(kind==='cotacao') novoOpenDealsModal('Em Cotação (proxy)', (_deals||[]).filter(function(d){return d.stage&&d.stage.toLowerCase().indexOf('cota')>=0;}));
+  var tickets=(_tk&&_tk.tickets)||[];
+  if(kind==='tk-all') cotOpenTicketsModal('Tickets no pipeline',tickets);
+  else if(kind==='tk-open') cotOpenTicketsModal('Tickets em aberto',tickets.filter(_tkIsOpen));
+  else if(kind==='tk-done') cotOpenTicketsModal('Entregues | Concluídos',tickets.filter(function(t){return !_tkIsOpen(t);}),'cycle');
+  else if(kind==='tk-cycle') cotOpenTicketsModal('Ciclo | tickets em etapa final',tickets.filter(function(t){return !_tkIsOpen(t)&&_tkCycleDays(t)!=null;}),'cycle');
+  else if(kind==='cotacao') novoOpenDealsModal('Em Cotação (proxy)', (_deals||[]).filter(function(d){return d.stage&&d.stage.toLowerCase().indexOf('cota')>=0;}));
+}
+
+function buildTkStage(){
+  var th=_novoTheme(), tickets=(_tk&&_tk.tickets)||[];
+  var counts=COT_STAGES.map(function(s){ return tickets.filter(function(t){return String(t.hs_pipeline_stage)===s.id;}).length; });
+  var labels=COT_STAGES.map(function(s){return s.nome;});
+  _novoMkChart('chart-tk-stage',{type:'bar',plugins:[ChartDataLabels],
+    data:{labels:labels,datasets:[{data:counts,backgroundColor:COT_STAGES.map(function(s){return s.open?'rgba(227,179,65,.75)':'rgba(63,185,80,.75)';}),borderRadius:4}]},
+    options:{indexAxis:'y',responsive:true,layout:{padding:{right:45}},plugins:{legend:{display:false},
+      datalabels:{anchor:'end',align:'right',color:th.cText,font:{family:NOVO_FONT,size:11,weight:'bold'}},
+      tooltip:{callbacks:{label:function(c){return c.parsed.x+' tickets';}}}},
+      scales:{x:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0}},y:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}}},
+      onClick:function(e,el){ if(!el.length)return; var s=COT_STAGES[el[0].index]; cotOpenTicketsModal('Etapa | '+s.nome, tickets.filter(function(t){return String(t.hs_pipeline_stage)===s.id;}), s.open?null:'cycle'); }}});
+}
+function buildTkOwner(){
+  var th=_novoTheme(), tickets=(_tk&&_tk.tickets)||[];
+  var map={}; tickets.forEach(function(t){ var o=_tkOwner(t); map[o]=(map[o]||0)+1; });
+  var labels=Object.keys(map).sort(function(a,b){return map[b]-map[a];}).slice(0,15);
+  _novoMkChart('chart-tk-owner',{type:'bar',plugins:[ChartDataLabels],
+    data:{labels:labels,datasets:[{data:labels.map(function(l){return map[l];}),backgroundColor:'rgba(58,184,183,.75)',borderRadius:4}]},
+    options:{indexAxis:'y',responsive:true,layout:{padding:{right:45}},plugins:{legend:{display:false},
+      datalabels:{anchor:'end',align:'right',color:th.cText,font:{family:NOVO_FONT,size:11,weight:'bold'}},
+      tooltip:{callbacks:{label:function(c){return c.parsed.x+' tickets';}}}},
+      scales:{x:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0}},y:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}}},
+      onClick:function(e,el){ if(!el.length)return; var o=labels[el[0].index]; cotOpenTicketsModal('Responsável | '+o, tickets.filter(function(t){return _tkOwner(t)===o;})); }}});
+}
+function buildTkMonth(){
+  var th=_novoTheme(), tickets=(_tk&&_tk.tickets)||[];
+  var map={}; tickets.forEach(function(t){ var ym=_tkD10(t.createdate); if(ym) { ym=ym.slice(0,7); map[ym]=(map[ym]||0)+1; } });
+  var yms=Object.keys(map).sort().slice(-12);
+  _novoMkChart('chart-tk-month',{type:'bar',plugins:[ChartDataLabels],
+    data:{labels:yms.map(_mlbl),datasets:[{data:yms.map(function(y){return map[y];}),backgroundColor:'rgba(88,166,255,.75)',borderRadius:4}]},
+    options:{responsive:true,plugins:{legend:{display:false},
+      datalabels:{anchor:'end',align:'top',color:th.cText,font:{family:NOVO_FONT,size:11,weight:'bold'}},
+      tooltip:{callbacks:{label:function(c){return c.parsed.y+' tickets';}}}},
+      scales:{x:{grid:{display:false},ticks:{color:th.cText2,font:{family:NOVO_FONT}}},y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0}}},
+      onClick:function(e,el){ if(!el.length)return; var ym=yms[el[0].index]; cotOpenTicketsModal('Criados em '+_mlbl(ym), tickets.filter(function(t){var d=_tkD10(t.createdate);return d&&d.slice(0,7)===ym;})); }}});
+}
+var _TK_AGE_BUCKETS=[[0,7,'0–7d'],[8,14,'8–14d'],[15,30,'15–30d'],[31,60,'31–60d'],[61,Infinity,'60d+']];
+function buildTkAging(){
+  var th=_novoTheme(), abertos=((_tk&&_tk.tickets)||[]).filter(_tkIsOpen);
+  var counts=_TK_AGE_BUCKETS.map(function(b){ return abertos.filter(function(t){var a=_tkAgeDays(t);return a!=null&&a>=b[0]&&a<=b[1];}).length; });
+  _novoMkChart('chart-tk-aging',{type:'bar',plugins:[ChartDataLabels],
+    data:{labels:_TK_AGE_BUCKETS.map(function(b){return b[2];}),datasets:[{data:counts,backgroundColor:['rgba(63,185,80,.75)','rgba(58,184,183,.75)','rgba(227,179,65,.75)','rgba(210,153,34,.75)','rgba(248,81,73,.75)'],borderRadius:4}]},
+    options:{responsive:true,plugins:{legend:{display:false},
+      datalabels:{anchor:'end',align:'top',color:th.cText,font:{family:NOVO_FONT,size:11,weight:'bold'}},
+      tooltip:{callbacks:{label:function(c){return c.parsed.y+' tickets abertos';}}}},
+      scales:{x:{grid:{display:false},ticks:{color:th.cText2,font:{family:NOVO_FONT}}},y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0}}},
+      onClick:function(e,el){ if(!el.length)return; var b=_TK_AGE_BUCKETS[el[0].index]; cotOpenTicketsModal('Abertos | '+b[2], abertos.filter(function(t){var a=_tkAgeDays(t);return a!=null&&a>=b[0]&&a<=b[1];})); }}});
 }
 
 function buildCotAE(){
@@ -275,18 +371,3 @@ function buildCotVidas(){
 <script src="/nav.js?v=4"></script>
 </body>
 </html>
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:2000;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s linear;backdrop-filter:blur(5px)}
-.modal-overlay.open{opacity:1;pointer-events:auto}
-.modal{background:var(--card);border:1px solid var(--border);border-radius:14px;width:90vw;max-width:960px;max-height:85vh;display:flex;flex-direction:column;transform:translateY(20px);transition:transform .28s cubic-bezier(0.4,0,0.2,1)}
-.modal-overlay.open .modal{transform:translateY(0)}
-.modal-header{display:flex;justify-content:space-between;align-items:center;padding:1.2rem 1.5rem;border-bottom:1px solid var(--border)}
-.modal-header h2{font-size:1rem;font-weight:600;color:var(--text)}
-.modal-close{background:none;border:none;color:var(--text2);font-size:1.4rem;cursor:pointer;padding:.2rem .5rem;border-radius:4px}
-.modal-body{padding:1.2rem 1.5rem;overflow-y:auto;flex:1}
-.btn-export{background:transparent;border:1px solid var(--border);color:var(--text2);border-radius:8px;padding:.3rem .7rem;font-size:.7rem;cursor:pointer;margin-left:auto}
-table.lb{width:100%;border-collapse:separate;border-spacing:0;font-size:14px}
-table.lb th{text-align:right;color:var(--teal);font-size:.72rem;font-weight:700;text-transform:uppercase;padding:.6rem 1rem;border-bottom:2px solid var(--teal);white-space:nowrap;position:sticky;top:0;background:var(--card)}
-table.lb th:first-child{text-align:left}
-table.lb td{padding:.38rem 1rem;border-bottom:1px solid var(--border);color:var(--text);text-align:right}
-table.lb td:first-child{text-align:left;font-weight:600}
-table.lb tbody tr:nth-child(even) td{background:var(--even-s)}

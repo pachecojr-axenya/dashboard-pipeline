@@ -1,5 +1,29 @@
 # Auditoria crítica dos gráficos 🟡 | 2026-06-12
 
+## Adendo | Cotação religado nos tickets reais (2026-07-29)
+
+> **Estado: 🟡 não validado contra o portal** (painel segue oculto/🔴 no menu até
+> validação do dono). O `/novo-cotacao` deixou de ser placeholder: consome
+> `POST /api/pull-tickets` (endpoint que JÁ EXISTIA do fluxo Electron —
+> `fetchCotacaoTickets`, pipeline de tickets **847948895** confirmado pelo dono).
+> O banner "API indisponível" era nota desatualizada: o stub esperava um `GET
+> /api/tickets` hipotético e nunca foi ligado ao endpoint real.
+>
+> | # | Card | Nota |
+> |---|---|---|
+> | Q01 | Tickets no pipeline | contagem total (177 na religação) |
+> | Q02 | Em aberto | etapas Novas Cotações/Triagem/Pendente/Mapeamento/Criação |
+> | Q03 | Entregues + Concluídos | etapas finais (Projeto Entregue + Concluído) |
+> | Q04 | Ciclo médio (dias) | createdate → 1ª entrada em etapa final; `hs_date_entered_*` de tickets vem em EPOCH MS (parser próprio) |
+> | Q05–Q08 | Por etapa / responsável / mês / aging | snapshot, sem filtro de período; drill com link p/ ticket |
+> | Q09–Q11 | Proxy de deals na etapa Cotação (Vendas) | seção separada; OUTRA base (deals, não tickets) |
+>
+> Ressalvas a validar: (1) etapas espelhadas de `semantic/referencia.json →
+> tickets_cotacao` (o semantic-ref.js gerado não expõe tickets); (2) 54 tickets sem
+> responsável; (3) "aberto/fechado" assume Projeto Entregue+Concluído como finais —
+> confirmar com o time de cotação; (4) fix estrutural: CSS do modal estava ÓRFÃO
+> depois do `</html>` (renderizava como texto) — movido para o `<style>`.
+
 ## Adendo | CS Dashboard religado na base real (2026-07-27)
 
 > **Estado: 🟡 não validado contra o HubSpot** (painel segue oculto/🔴 no menu até validação).
