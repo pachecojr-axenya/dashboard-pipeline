@@ -1,5 +1,29 @@
 # Dashboard Enhancement Loop — Status Log
 
+### AE | A15: filtro multiselect de motivos no modal + coluna "Etapa antes da perda" (2026-07-29)
+
+> Pedido do dono: (1) o modal dos motivos de perda precisa de filtro de motivos no
+> topo — dropdown, multiseleção, com opção "Todos" para analisar o conjunto; (2) coluna
+> com a etapa em que o deal estava antes de ser dado como perdido.
+
+- **Filtro de motivos (dropdown `<details>` autocontido no modal):** opção **Todos**
+  (com contagem) + um checkbox por motivo ranqueado (com n). Multiseleção; nenhum ou
+  todos marcados = "Todos". Clique na barra do A15 agora abre o modal com o **livro
+  TODO de perdidos do recorte** e o motivo clicado pré-selecionado — dá para expandir
+  para outros motivos sem fechar (era o objetivo do "Todos"). Título/contador refletem
+  o recorte ("N de M deals"). Dropdown permanece aberto entre toggles.
+- **Coluna "Etapa antes da perda":** derivada FRONT-ONLY da trilha que o payload já
+  traz (`stage_entered`, das `hs_v2_date_entered_*`): etapa com a entrada mais recente
+  até a data do Perdido; empate no mesmo dia → etapa mais avançada (`_AE_STAGE_RANK`);
+  sem trilha → "—" (~16% dos perdidos, deals antigos sem histórico v2).
+- Validação com o payload real (1.207 perdidos): RA 503 · Diagnóstico 363 · — 188 ·
+  Consultoria 67 · Cotação 47 · Negociação 27 · Stand by 5 · Implantação 4 · Ganho 2
+  (os 2 "antes=Ganho" são o caso real conhecido de conta ganha que caiu — não é bug).
+  `npm run check` PASS; inline-js 0 erros; ficha de ajuda do A15 atualizada
+  (multiselect + `hs_v2_date_entered_*`). Front-only (ae.html), sem tocar api/lib.
+- Coordenação: tree tinha trabalho não commitado de outra sessão (snapshot 2026-04-28,
+  CS accounts) — commit desta leva é seletivo (ae.html + STATUS_LOG); o resto segue
+  no working tree para a sessão dona commitar.
 ### Snapshots | fotografia reconstruída de 2026-04-28 + rótulos hardcoded no reconstruct (2026-07-28)
 
 > Pedido: reconstruir a fotografia do pipe de 3 meses atrás (**28/04/2026**) do Pipeline de Vendas.

@@ -350,8 +350,8 @@ var AE_HELP_CHARTS=[
     formula:'faixa por dias_sem_atividade: [15,30) · [30,45) · [45,60) · [60,90) · [90,∞)',
     fields:[['notes_last_updated','Data da última atividade/nota | base do cálculo. No payload: ultima_atividade e dias_sem_atividade.'],['hubspot_owner_id','Executivo | agrupamento das linhas.'],['dealstage','Base ativa do pipeline (exclui Ganho/Perdido).']]},
   {key:'loss-reason',title:'Motivos de Perda por Deals (A15)',
-    desc:'Contagem de deals PERDIDOS por motivo categórico. Considera deals em Perdido com close_date no período. Clique numa barra: a tabela lista os deals com o motivo E a justificativa em texto aberto (Motivo de Declínio/Perdido - Descrição).',
-    fields:[['dealstage','Perdido.'],['closedate','Filtro de período.'],['motivo_do_declinio_ou_perdido','Motivo categórico (barras).'],['motivo_de_declinio_perdido___descricao','Texto aberto | coluna "Motivo declínio (texto)" do drill.']]},
+    desc:'Contagem de deals PERDIDOS por motivo categórico. Considera deals em Perdido com close_date no período. Clique numa barra: o modal abre com o motivo pré-selecionado num filtro MULTISELECT no topo (opção "Todos" disponível) e lista os deals com a etapa em que estavam antes da perda, o motivo E a justificativa em texto aberto (Motivo de Declínio/Perdido - Descrição).',
+    fields:[['dealstage','Perdido.'],['closedate','Filtro de período.'],['motivo_do_declinio_ou_perdido','Motivo categórico (barras + filtro do modal).'],['motivo_de_declinio_perdido___descricao','Texto aberto | coluna "Motivo declínio (texto)" do drill.'],['hs_v2_date_entered_*','Trilha de etapas | coluna "Etapa antes da perda" = etapa com entrada mais recente até a data do Perdido (sem trilha → "—").']]},
   {key:'pipeline-stage',title:'Distribuição de Etapas por AE (A11)',
     desc:'Barras horizontais 100% empilhadas: composição percentual do pipeline ATIVO de cada AE por etapa. SÓ executivos do time — a diferença para o KPI Deals Ativos (A22) são os deals ativos de owners FORA do time (ops, BDRs, sem proprietário), explicitada no subtítulo do card ("X de Y ativos | fora do time: N"). Os toggles de Reunião Agendada e Standby valem igualmente para o A11 e o A22 (não explicam a diferença). Base ativa = exclui Ganho/Perdido/Implantação; RA/Standby conforme toggles. Clique numa fatia para ver os deals do AE naquela etapa.',
     fields:[['hubspot_owner_id','Define o AE (só time).'],['dealstage','Etapa da fatia (base ativa).'],['pipeline','Vendas + Bid.']]},
@@ -1143,16 +1143,78 @@ function buildAEAgeDist(){
 }
 
 function _aeLossReason(d){ return (d.lost_reason&&String(d.lost_reason).trim())||'(sem motivo)'; }
-// A15 | modal próprio dos perdidos: inclui a coluna de texto aberto com a justificativa
-// do declínio (motivo_de_declinio_perdido___descricao), além do motivo categórico.
-function _aeLostDealsModal(title,deals){
+// Etapa em que o deal estava ANTES de ir para Perdido: etapa da trilha (stage_entered,
+// hs_v2_date_entered_*) com a entrada mais recente até a data do Perdido. Empate de
+// data (mudanças no mesmo dia) → a etapa mais avançada do funil. Sem trilha → null.
+var _AE_STAGE_RANK={'Reunião Agendada':0,'Reunião Pré-RFP':0,'Diagnóstico':1,'Convite Enviado':1,'Documentação':2,'RFP Enviada':3,'Cotação':4,'Proposta Enviada':5,'Consultoria':6,'Negociação':7,'Stand by':8,'Standby':8,'Implantação':9,'Ganho':10};
+function _aePrevStage(d){
+  var se=d.stage_entered; if(!se) return null;
+  var lostAt=(se['Perdido']||d.data_perdido||d.close_date||'9999-12-31');
+  var best=null,bestDt=null,bestRk=-1;
+  Object.keys(se).forEach(function(st){
+    if(st==='Perdido')return;
+    var dt=se[st]; if(!dt||dt>lostAt)return;
+    var rk=_AE_STAGE_RANK[st]!=null?_AE_STAGE_RANK[st]:-1;
+    if(bestDt===null||dt>bestDt||(dt===bestDt&&rk>bestRk)){ best=st;bestDt=dt;bestRk=rk; }
+  });
+  return best;
+}
+// A15 | modal próprio dos perdidos: filtro MULTISELECT de motivos no topo (com "Todos",
+// pedido do dono 2026-07-27) + colunas de etapa antes da perda e justificativa em texto.
+// Recebe o livro TODO de perdidos do recorte; initReason (opcional) pré-seleciona o
+// motivo da barra clicada — dá para expandir para outros motivos sem fechar o modal.
+var _aeLostModal={deals:[],sel:{},title:''};
+function _aeLostDealsModal(title,deals,initReason){
   if(!deals||!deals.length){ openModal(title,'<p style="color:var(--text2);padding:1rem 0">Nenhum deal.</p>'); return; }
-  var rows=deals.map(function(d){
+  _aeLostModal={deals:deals,sel:{},title:title};
+  if(initReason)_aeLostModal.sel[initReason]=true;
+  openModal(title,'<div id="ae-lost-modal-body"></div>');
+  _aeLostModalRender();
+}
+function _aeLostReasonsRanked(){
+  var agg={};
+  _aeLostModal.deals.forEach(function(d){ var r=_aeLossReason(d); agg[r]=(agg[r]||0)+1; });
+  return Object.keys(agg).map(function(r){return {reason:r,n:agg[r]};}).sort(function(a,b){return b.n-a.n||a.reason.localeCompare(b.reason);});
+}
+function _aeLostModalRender(){
+  var box=document.getElementById('ae-lost-modal-body'); if(!box)return;
+  var sel=_aeLostModal.sel, selKeys=Object.keys(sel).filter(function(k){return sel[k];});
+  var all=selKeys.length===0;
+  var shown=all?_aeLostModal.deals:_aeLostModal.deals.filter(function(d){return sel[_aeLossReason(d)];});
+  var ranked=_aeLostReasonsRanked();
+  var btnLbl=all?'Todos os motivos':(selKeys.length===1?selKeys[0]:selKeys.length+' motivos');
+  var opts='<label class="ae-lost-cb" style="border-bottom:1px solid var(--border);margin-bottom:.25rem;padding-bottom:.45rem"><input type="checkbox" '+(all?'checked':'')+' onchange="aeLostFilterAll(this.checked)"><span></span><b>Todos</b> ('+_aeLostModal.deals.length+')</label>'+
+    ranked.map(function(r){
+      return '<label class="ae-lost-cb"><input type="checkbox" value="'+_ne(r.reason)+'" '+(all||sel[r.reason]?'checked':'')+' onchange="aeLostFilterToggle()"><span></span>'+_ne(r.reason)+' <span style="color:var(--text2)">('+r.n+')</span></label>';
+    }).join('');
+  var head='<div style="display:flex;align-items:center;gap:.7rem;flex-wrap:wrap;margin-bottom:.8rem">'+
+    '<span style="font-size:.72rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--text2)">Motivo</span>'+
+    '<details id="ae-lost-dd" style="position:relative">'+
+      '<summary style="list-style:none;cursor:pointer;display:inline-flex;align-items:center;gap:.5rem;background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:.4rem .8rem;font-size:.82rem;color:var(--text);user-select:none">'+btnLbl+' <span style="color:var(--text2)">▾</span></summary>'+
+      '<div style="position:absolute;top:calc(100% + 6px);left:0;z-index:60;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:.5rem;min-width:280px;max-height:300px;overflow:auto;box-shadow:0 14px 34px rgba(0,0,0,.4)">'+opts+'</div>'+
+    '</details>'+
+    '<span style="font-size:.78rem;color:var(--text2)">'+shown.length+' de '+_aeLostModal.deals.length+' deals</span></div>';
+  if(!document.getElementById('ae-lost-cb-css')){ var st=document.createElement('style'); st.id='ae-lost-cb-css'; st.textContent='.ae-lost-cb{display:flex;align-items:center;gap:.5rem;padding:.28rem .4rem;border-radius:6px;cursor:pointer;font-size:.82rem;color:var(--text);white-space:nowrap}.ae-lost-cb:hover{background:rgba(255,255,255,.05)}.ae-lost-cb input{accent-color:var(--teal)}'; document.head.appendChild(st); }
+  var rows=shown.map(function(d){
     var hsUrl=d.hs_id?'https://app.hubspot.com/contacts/44715285/deal/'+d.hs_id:'#';
     var nameCell=d.hs_id?'<a href="'+hsUrl+'" target="_blank" rel="noopener" style="color:var(--teal);text-decoration:none">'+_ne(d.dealname)+'</a>':_ne(d.dealname);
-    return '<tr><td style="text-align:left;min-width:150px;max-width:210px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+nameCell+'</td><td style="text-align:left;white-space:nowrap">'+_ne(d.ae)+'</td><td>'+_ni(d.vidas)+'</td><td style="white-space:nowrap">'+_nd(d.close_date)+'</td><td style="text-align:left;white-space:nowrap">'+_ne(d.lost_reason||'')+'</td><td style="text-align:left;min-width:220px;max-width:420px;white-space:normal;font-weight:400;color:var(--text2)">'+_ne(d.lost_reason_desc||'—')+'</td></tr>';
+    return '<tr><td style="text-align:left;min-width:150px;max-width:210px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+nameCell+'</td><td style="text-align:left;white-space:nowrap">'+_ne(d.ae)+'</td><td>'+_ni(d.vidas)+'</td><td style="white-space:nowrap">'+_nd(d.close_date)+'</td><td style="text-align:left;white-space:nowrap">'+_ne(_aePrevStage(d)||'—')+'</td><td style="text-align:left;white-space:nowrap">'+_ne(d.lost_reason||'')+'</td><td style="text-align:left;min-width:220px;max-width:420px;white-space:normal;font-weight:400;color:var(--text2)">'+_ne(d.lost_reason_desc||'—')+'</td></tr>';
   }).join('');
-  openModal(title+' ('+deals.length+')','<table class="lb"><thead><tr><th style="text-align:left">Deal</th><th style="text-align:left">AE</th><th>Vidas</th><th>Fechado</th><th style="text-align:left">Motivo perda</th><th style="text-align:left">Motivo declínio (texto)</th></tr></thead><tbody>'+rows+'</tbody></table>');
+  box.innerHTML=head+'<table class="lb"><thead><tr><th style="text-align:left">Deal</th><th style="text-align:left">AE</th><th>Vidas</th><th>Fechado</th><th style="text-align:left">Etapa antes da perda</th><th style="text-align:left">Motivo perda</th><th style="text-align:left">Motivo declínio (texto)</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  document.getElementById('modal-title').textContent=_aeLostModal.title+' ('+shown.length+')';
+}
+function aeLostFilterAll(checked){
+  _aeLostModal.sel={};
+  var keepOpen=document.getElementById('ae-lost-dd'); var wasOpen=keepOpen&&keepOpen.open;
+  _aeLostModalRender();
+  if(wasOpen){ var dd=document.getElementById('ae-lost-dd'); if(dd)dd.open=true; }
+}
+function aeLostFilterToggle(){
+  var sel={},cbs=document.querySelectorAll('#ae-lost-dd input[value]');
+  var n=0; cbs.forEach(function(cb){ if(cb.checked){sel[cb.value]=true;n++;} });
+  _aeLostModal.sel=(n===0||n===cbs.length)?{}:sel;   // nenhum ou todos marcados = "Todos"
+  _aeLostModalRender();
+  var dd=document.getElementById('ae-lost-dd'); if(dd)dd.open=true;
 }
 function buildAELossReason(){
   var th=_novoTheme(), lost=_novoLost();
@@ -1165,7 +1227,7 @@ function buildAELossReason(){
       datalabels:{anchor:'end',align:'right',color:th.cText,font:{family:NOVO_FONT,size:11,weight:'bold'},formatter:function(v){return v;}},
       tooltip:{callbacks:{label:function(c){return c.parsed.x+' deals';}}}},
       scales:{x:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0}},y:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}}},
-      onClick:function(e,el){ if(!el.length)return; var r=ranked[el[0].index].reason; _aeLostDealsModal('Perdidos | '+r, lost.filter(function(d){return _aeLossReason(d)===r;})); }}});
+      onClick:function(e,el){ if(!el.length)return; var r=ranked[el[0].index].reason; _aeLostDealsModal('Perdidos', lost, r); }}});
 }
 
 function _aeMeetingClass(d){ var v=((d.reuniao_ocorreu==null?'':d.reuniao_ocorreu)+''); if(/sim/i.test(v)) return 'sim'; if(/n[aã]o/i.test(v)) return 'nao'; return 'vazio'; }
