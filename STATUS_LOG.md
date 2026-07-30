@@ -1,5 +1,27 @@
 # Dashboard Enhancement Loop — Status Log
 
+### 🚀 DEPLOY DE PRODUÇÃO | Fase 2 do Delta + backfill + Cotação religado (2026-07-30)
+
+> Autorização explícita do dono ("faça o commit, push e deploy geral"). Deploy geral:
+> esta sessão + a leva de refinamentos do Cotação da sessão paralela (commitada como
+> `98fc463` no pré-deploy, gate combinado PASS).
+
+- **Commit deployado:** `98fc463` (== origin/main; preflight PASS). Desde o deploy de
+  29/07: **Fase 2 do Delta** (`6c70ea4`: config sidecar `snapshot_config` + Δ composição
+  × Δ convicção + toggle D02/KPIs duplos/caveat) · **backfill do sidecar** (`d209c1b`) ·
+  **Cotação religado nos tickets** (`589a316`) + filtro temporal (`6528060`) +
+  refinamentos da sessão paralela (`98fc463`).
+- **Deployment:** `dpl_C4AWoXqTZdBg5QbWWtvMbKUgz6vj` (`dashboard-axenya-i6o2yv3s8`,
+  READY, production), 2 aliases.
+- **Pós-deploy:** 11 rotas 200 (7 mínimas + delta/ae/cs/cotacao); `/api/auth/me` e
+  `/api/snapshot` 401 (auth ativa). Features confirmadas no HTML servido: toggle
+  Δ composição|Δ convicção + flag de config no /forecast-delta; /novo-cotacao com
+  pull-tickets, pipeline 847948895 e filter-bar.
+- **Operação pós-deploy (pendências conhecidas):** (1) o cron desta noite grava o
+  1º sidecar AO VIVO em produção; (2) backfill das fotos históricas no
+  `axenya_forecast_prd` ainda requer rodar o script com credencial BQ de produção
+  (a SA do .env.local recebe 403) — sem isso, fotos antigas seguem flagadas em prd.
+
 ### Delta | backfill do config sidecar para fotos históricas (2026-07-30)
 
 > Continuação da Fase 2: as fotos anteriores ao sidecar caíam no fallback flagado.
