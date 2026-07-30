@@ -58,6 +58,36 @@ MEASURES.forEach(m => {
 // (c) deal incompleto (hs_id 7) contribui 0 e não quebra a soma (invariante acima já cobre)
 check('deal incompleto nao quebra a soma (implicito em b)', true);
 
+// ── Parte 1b | Fase 2: régua muda entre A e B (Δ composição × Δ convicção) ────
+// Régua "da época de A": Cotação valia 10% (vs 18,58% atual). Convicção deve
+// avaliar A com 10% e B com a atual; composição avalia as duas com a atual.
+console.log('\n== UNIT Fase 2 (stageProb por foto | composição × convicção) ==');
+const RULER_A = Object.assign({}, FC.STAGE_PROB_DEFAULT, { 'Cotação': 0.10 });
+const snapAconv = FC.computeSnapshot(dealsA, '2026-05-15', {}, null, RULER_A);
+const snapBconv = FC.computeSnapshot(dealsB, '2026-06-15', {}, null, null);   // B usa a régua atual
+// composição: mesma régua nos dois lados → o par (A régua-atual, B régua-atual) é o baseline (snapA/snapB)
+const dComp = snapB.totals.prob12 - snapA.totals.prob12;
+const dConv = snapBconv.totals.prob12 - snapAconv.totals.prob12;
+// Beta está em Cotação nas DUAS fotos com os mesmos números → na composição ele não move nada;
+// na convicção, a régua de Cotação subiu 10%→18,58% e o delta captura o ganho de crença.
+check('Δ convicção > Δ composição quando a régua de Cotação SOBE entre A e B', dConv > dComp + 1);
+// invariante Σ Δ = Δtotal vale TAMBÉM na convicção (réguas diferentes por lado)
+const byAc = {}; snapAconv.stages.forEach(s => byAc[s.key] = s);
+MEASURES.forEach(m => {
+  const sumDeltaC = snapBconv.stages.reduce((acc, s) => acc + (s[m] - (byAc[s.key] ? byAc[s.key][m] : 0)), 0);
+  check('Σ Δ(etapa) == Δtotal | convicção (' + m + ')', near(sumDeltaC, snapBconv.totals[m] - snapAconv.totals[m]));
+});
+// deal parado em Cotação: em probTotal (horizonte FIXO — prob12 é janela rolante
+// ancorada na data da foto e mexe mesmo sem mudança de config), a composição não
+// registra Δ; a convicção captura a régua 10% → 18,58%.
+const cA_at = FC.dealContributions(dealsA, '2026-05-15', {});
+const cB_at = FC.dealContributions(dealsB, '2026-06-15', {});
+const cA_rl = FC.dealContributions(dealsA, '2026-05-15', {}, null, RULER_A);
+const betaCompA = cA_at.find(x => x.id === '2'), betaCompB = cB_at.find(x => x.id === '2');
+const betaConvA = cA_rl.find(x => x.id === '2');
+check('Beta (parado em Cotação): Δ composição = 0 (probTotal)', near(betaCompB.probTotal - betaCompA.probTotal, 0));
+check('Beta (parado em Cotação): Δ convicção > 0 (probTotal, régua 10% → 18,58%)', (betaCompB.probTotal - betaConvA.probTotal) > 1);
+
 // ── Parte 2 | INTEGRAÇÃO (server local) ──────────────────────────────────────
 // Porta: arg1 ou env PORT (default 3004). Ex.: node scripts/test-delta-invariant.js 3002
 const PORT = parseInt(process.argv[2], 10) || parseInt(process.env.PORT, 10) || 3004;

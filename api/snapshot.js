@@ -33,6 +33,7 @@ const { setCORSHeaders, getHubspotToken } = require('./_helpers');
 const { verifyRequest } = require('../lib/auth');
 const { PIPELINE_VENDAS, PIPELINE_BID, PROPERTIES, HEADERS, buildRow } = require('../lib/snapshot-format');
 const bq = require('../lib/bigquery');
+const snapshotConfig = require('../lib/snapshot-config');
 
 const MONTHS_PT = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 const MANUAL_SNAPSHOT_EDITORS = new Set(['jpacheco@axenya.com', 'salencar@axenya.com']);
@@ -276,6 +277,13 @@ module.exports = async function handler(req, res) {
     } else {
       throw new Error('BigQuery não configurado: GOOGLE_SERVICE_ACCOUNT_JSON ausente');
     }
+
+    // ── Config sidecar (Fase 2 do Delta): régua de prob + prob-manual + faturamento
+    // manual VIGENTES nesta data, gravados junto da foto (tabela snapshot_config).
+    // ADITIVO e não bloqueante: falha aqui não derruba a foto das 35 colunas.
+    const cfgResult = await snapshotConfig.save(today, manualWeekly ? 'manual_weekly' : 'cron');
+    actions.config_sidecar = cfgResult.saved ? ('gravado (' + today + ')')
+      : (cfgResult.reason || ('ERRO (não bloqueante): ' + (cfgResult.error || '?')));
 
     return res.status(200).json({
       success: true, date: today, deals: deals.length,

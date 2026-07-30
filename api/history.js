@@ -24,6 +24,7 @@ const FC = require('../lib/forecast-compute');
 const bq = require('../lib/bigquery');
 const kv = require('../lib/kv');
 const PM = require('../lib/prob-manual');
+const snapshotConfig = require('../lib/snapshot-config');
 const fs = require('fs'); const os = require('os'); const path = require('path');
 
 // ── Comparação de fotos (action=compare) — helpers ──────────────────────────
@@ -183,7 +184,13 @@ module.exports = async function handler(req, res) {
       if (!fA || !fB) return res.status(422).json({ success: false, error: 'Sem foto em ou antes de uma das datas (foto mais antiga: ' + oldest.tab + ')' });
       if (fA.tab === fB.tab) return res.status(422).json({ success: false, error: 'As duas datas resolvem para a mesma foto (' + fA.tab + ') | escolha datas mais distantes' });
 
-      const [rowsA, rowsB, manual, probManual] = await Promise.all([_readFotoRows(fA), _readFotoRows(fB), _readManual(), PM.readAll()]);
+      // Config sidecar por foto (Fase 2): régua/prob-manual/faturamento VIGENTES em
+      // cada data, para o Δ convicção. null = foto antiga sem sidecar → fallback
+      // para a config atual COM FLAG (nunca silenciosamente).
+      const [rowsA, rowsB, manual, probManual, cfgA, cfgB] = await Promise.all([
+        _readFotoRows(fA), _readFotoRows(fB), _readManual(), PM.readAll(),
+        snapshotConfig.load(fA.refDate), snapshotConfig.load(fB.refDate),
+      ]);
       if (!rowsA.length || !rowsB.length) return res.status(404).json({ success: false, error: 'Foto vazia' });
 
       const objsA = _rowsToObjs(rowsA), objsB = _rowsToObjs(rowsB);
@@ -265,6 +272,47 @@ module.exports = async function handler(req, res) {
         rawBStageById
       );
 
+      // ── Δ CONVICÇÃO (Fase 2): cada foto avaliada com a config VIGENTE nela ─────
+      // A prob do AE na data já vem da própria foto (coluna "Probabilidade (campo)")
+      // e o É POC? idem — o que o sidecar acrescenta é a régua de etapa, os overrides
+      // manuais e o faturamento manual daquela data. Foto sem sidecar → config atual
+      // com flag snapshotted:false (o front exibe o aviso).
+      const evalA = { manual: (cfgA && cfgA.faturamentoManual) || manual, probManual: (cfgA && cfgA.probManual) || probManual, stageProb: (cfgA && cfgA.stageProb) || null };
+      const evalB = { manual: (cfgB && cfgB.faturamentoManual) || manual, probManual: (cfgB && cfgB.probManual) || probManual, stageProb: (cfgB && cfgB.stageProb) || null };
+      const snapAc = FC.computeSnapshot(scopedInputA, fA.refDate, evalA.manual, evalA.probManual, evalA.stageProb);
+      const snapBc = FC.computeSnapshot(scopedInputB, fB.refDate, evalB.manual, evalB.probManual, evalB.stageProb);
+      const byAc = {}; snapAc.stages.forEach(s => { byAc[s.key] = s; });
+      let wfConv = snapBc.stages.map(s => {
+        const pa = byAc[s.key] || {};
+        return {
+          key: s.key, label: s.label, isBid: s.isBid, stages: s.stages,
+          a: { prob12: pa.prob12 || 0, real12: pa.real12 || 0, probTotal: pa.probTotal || 0, realTotal: pa.realTotal || 0 },
+          b: { prob12: s.prob12, real12: s.real12, probTotal: s.probTotal, realTotal: s.realTotal },
+          delta: { prob12: s.prob12 - (pa.prob12 || 0), real12: s.real12 - (pa.real12 || 0), probTotal: s.probTotal - (pa.probTotal || 0), realTotal: s.realTotal - (pa.realTotal || 0) },
+        };
+      });
+      if (deltaScoped) wfConv = wfConv.filter(w => FC.deltaRowInScope(w, scopeParam));
+      const cAc = FC.dealContributions(scopedInputA, fA.refDate, evalA.manual, evalA.probManual, evalA.stageProb);
+      const cBc = FC.dealContributions(scopedInputB, fB.refDate, evalB.manual, evalB.probManual, evalB.stageProb);
+      const arrRowAc = _arrByRow(cAc), arrRowBc = _arrByRow(cBc);
+      wfConv.forEach(w => {
+        const ra = arrRowAc[w.key] || { arr: 0, arrPond: 0 }, rb = arrRowBc[w.key] || { arr: 0, arrPond: 0 };
+        w.a.arr = ra.arr; w.a.arrPond = ra.arrPond;
+        w.b.arr = rb.arr; w.b.arrPond = rb.arrPond;
+        w.delta.arr = rb.arr - ra.arr; w.delta.arrPond = rb.arrPond - ra.arrPond;
+      });
+      const sumDeltaConv = wfConv.reduce((x, w) => x + w.delta.prob12, 0);
+      const conviccao = {
+        a: { kpis: snapAc.kpis, totals: Object.assign({}, snapAc.totals, { arr: snapAc.kpis.arrTotal, arrPond: snapAc.kpis.arrPond }) },
+        b: { kpis: snapBc.kpis, totals: Object.assign({}, snapBc.totals, { arr: snapBc.kpis.arrTotal, arrPond: snapBc.kpis.arrPond }) },
+        waterfall: wfConv,
+        invariant: { sumStageDeltaProb12: sumDeltaConv, totalDeltaProb12: snapBc.totals.prob12 - snapAc.totals.prob12, ok: Math.abs(sumDeltaConv - (snapBc.totals.prob12 - snapAc.totals.prob12)) < 0.01 },
+        config: {
+          a: { snapshotted: !!cfgA, savedAt: cfgA ? cfgA.savedAt : null },
+          b: { snapshotted: !!cfgB, savedAt: cfgB ? cfgB.savedAt : null },
+        },
+      };
+
       return res.status(200).json({
         success: true,
         measure: 'prob12',   // headline: Receita Probabilizada, TCV(12M) rolante
@@ -275,6 +323,7 @@ module.exports = async function handler(req, res) {
         b: { requested: b, resolvedTab: fB.tab, tipo: fB.tipo, refDate: fB.refDate, kpis: snapB.kpis, totals: snapB.totals },
         funnel: { stages: deltaScoped ? FC.deltaScopeStages(scopeParam) : snapB.funnelStages, a: snapA.stageCounts, b: snapB.stageCounts },
         waterfall,
+        conviccao,
         stageUnified,
         bidUnified,
         quarters,
@@ -282,7 +331,8 @@ module.exports = async function handler(req, res) {
         invariant: { sumStageDeltaProb12: sumDelta, totalDeltaProb12: snapB.totals.prob12 - snapA.totals.prob12, ok: invariantOk },
         dealDiff: FC.dealDiff(snapA.scopedDeals, snapB.scopedDeals).counts,
         caveats: [
-          'Probabilidades por etapa e faturamento manual usam o estado ATUAL (não snapshotado) | Fase 1',
+          'Duas medidas | Δ composição: config ATUAL aplicada às duas fotos (o que entrou/saiu/moveu). Δ convicção: cada foto avaliada com a config vigente NELA (o que mudou de crença/valoração).'
+            + ((cfgA && cfgB) ? '' : ' ⚠ Config não snapshotada em ' + (!cfgA && !cfgB ? 'A e B' : (!cfgA ? 'A' : 'B')) + ' — convicção usa a config atual nessa(s) foto(s).'),
           'Ganho/Implantação depende do faturamento manual (gate: vencimento ≤ data da foto) | em datas anteriores ao início do faturamento a etapa aparece subestimada — não é erro, é fidelidade ponto-no-tempo',
           deltaScoped
             ? (scopeParam === 'tudo' ? 'Escopo: Tudo (todas as etapas, sem Bid e Standby)' : 'Escopo: Ativos (Cotação, Consultoria, Negociação)')

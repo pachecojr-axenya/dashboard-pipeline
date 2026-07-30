@@ -1,5 +1,50 @@
 # Dashboard Enhancement Loop — Status Log
 
+### Delta | FASE 2: deltas point-in-time (Δ composição × Δ convicção + config sidecar) (2026-07-30)
+
+> Spec do dono: o compare aplicava às DUAS fotos a config ATUAL (régua de prob,
+> prob-manual, faturamento manual) — derisks/reclassificações do período sumiam do
+> delta e o passado era reescrito a cada edição de probabilidade (ex.: jul/26 deu
+> +35% na régua atual e −28% point-in-time). Fase 2 = duas medidas lado a lado.
+
+- **`lib/snapshot-config.js` (novo) | config sidecar por foto:** régua de prob por
+  etapa (fonte: `semantic/referencia.json → forecast_flat`), overrides do prob-manual
+  e faturamento manual VIGENTES na data, gravados junto da foto. BQ: tabela nova
+  `snapshot_config` (DATE + JSON, particionada; idempotente por data — a config da
+  captura ORIGINAL é o registro). Fallback dev: /tmp. As 35/36 colunas NÃO mudam
+  (foto continua sem calcular nada — snapshota-se CONFIG, não valor computado).
+- **`api/snapshot.js`:** cron diário e `POST ?promote=weekly` gravam o sidecar após
+  a foto (`actions.config_sidecar`); ADITIVO e não bloqueante (falha não derruba a
+  foto). `test-snapshot-resilience.js` PASS pós-mudança.
+- **Motor:** `computeSnapshot`/`dealContributions` ganham 5º parâmetro `stageProb`
+  (régua da época via `stageProbDefault` do core). Prob. do AE e É POC? JÁ vinham da
+  própria foto (point-in-time por construção) — o sidecar cobre o resto.
+- **`api/history.js` compare:** resposta ganha bloco `conviccao` (aditivo): KPIs/totais
+  A e B, waterfall próprio (com ARR por linha), invariante Σ Δ = Δtotal próprio e
+  `config.{a,b}.snapshotted`. **Δ composição** = comportamento atual renomeado (config
+  atual nas duas fotos → "o que entrou/saiu/moveu"); **Δ convicção** = cada foto com a
+  config vigente NELA ("o que mudou de crença"). Foto sem sidecar → fallback para a
+  config atual COM flag — nunca silencioso. Caveat "Fase 1" removido: caveats[0] agora
+  descreve as duas medidas (+ aviso de foto sem sidecar quando for o caso).
+- **UI (forecast-delta.html):** D02 ganha toggle **Δ composição | Δ convicção**
+  (re-render local, sem refetch) + pill amarela "config não snapshotada em A/B" quando
+  em fallback; clickhint avisa que o drill lista deals na medida composição. D03 mostra
+  **ARR Ponderado | composição** e **ARR Ponderado | convicção** lado a lado + selos de
+  invariante das DUAS medidas. Fichas i do D02/D03 explicam cada medida em uma frase.
+- **Testes:** `test-delta-invariant.js` (unit: régua de Cotação 10%→18,58% entre A e B —
+  composição ignora [Δ probTotal do deal parado = 0], convicção captura; Σ Δ = Δtotal
+  nas 4 medidas TAMBÉM na convicção) e `test-forecast-delta-e2e.js` (sidecar stub em A,
+  B sem sidecar: flag correta, convicção B == composição B, convicção A < composição A,
+  Δconv > Δcomp, caveat certo). Aprendizado no unit: prob12 é janela ROLANTE ancorada
+  na foto — deal parado muda de prob12 entre fotos sem mudança de config; o assert de
+  "composição ignora" precisa ser em probTotal.
+- **Validação:** `npm run check` PASS (80 PASS); live: fotos existentes sem sidecar →
+  convicção == composição com `snapshotted:false` (honesto); screenshot com toggle,
+  KPIs duplos e selos duplos. ⚠ `api/`+`lib/` mudaram → servidor :3002 reiniciado.
+  Sidecar começa a popular no PRÓXIMO cron/captura após deploy — fotos futuras terão
+  convicção real; as antigas ficam flagadas para sempre (sem backfill possível:
+  a config da época não existe mais).
+
 ### Cotação | filtro temporal compartilhado (filter-bar.js) sobre createdate (2026-07-29)
 
 - **Pedido do dono:** os mesmos filtros temporais dos outros painéis. O

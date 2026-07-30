@@ -289,10 +289,17 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
       <span class="ccode">D02</span>
       <h3>Waterfall do forecast por etapa</h3>
       <span class="sec-note">Δ da medida selecionada entre Total @ A e Total @ B | clique numa barra para o drill</span>
-      <span class="toggle-wrap"><button type="button" class="ibtn" data-help="D02" aria-label="Memória de cálculo | D02">i</button></span>
+      <div class="toggle-wrap" style="display:flex;gap:.6rem;align-items:center">
+        <span class="pill" id="wf-config-flag" style="display:none;color:var(--yellow);border-color:rgba(227,179,65,.5)" title=""></span>
+        <div class="seg-ctrl" id="wf-measure-toggle" role="group" aria-label="Medida do delta" title="Δ composição: config atual nas duas fotos (o que entrou/saiu/moveu). Δ convicção: cada foto avaliada com a config vigente nela (o que mudou de crença).">
+          <button class="seg-btn active" data-v="comp" aria-pressed="true">Δ composição</button>
+          <button class="seg-btn" data-v="conv" aria-pressed="false">Δ convicção</button>
+        </div>
+        <button type="button" class="ibtn" data-help="D02" aria-label="Memória de cálculo | D02">i</button>
+      </div>
     </div>
     <div class="chart-wrap"><canvas id="wf"></canvas><div class="state" id="chart-state" aria-live="polite">Selecione duas fotos…</div></div>
-    <div class="clickhint">Clique numa barra de etapa para ver os deals que causaram o movimento.</div>
+    <div class="clickhint" id="wf-clickhint">Clique numa barra de etapa para ver os deals que causaram o movimento.</div>
     <div class="caveat" id="caveat"></div>
   </div>
 
@@ -406,6 +413,7 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
     { key: 'tipo', label: 'Movimentação', align: 'left', type: 'str' }
   ];
   var metric = 'prob', horizon = 'arr', scope = 'ativos';   // horizon: 'arr' (ARR estimado) | 'Total' (receita da régua no horizonte completo); scope = ativos|tudo (remove Bid+Standby)
+  var wfMeasure = 'comp';   // medida do waterfall D02 (Fase 2): 'comp' Δ composição | 'conv' Δ convicção
   var aeFilter = new Set(), quarterFilter = new Set();     // filtros multiselect (vazio = todos; '__NONE__' = nenhum)
   function filterQS(){ var p=''; if(aeFilter.size) p+='&ae='+encodeURIComponent(Array.from(aeFilter).join('|')); if(quarterFilter.size) p+='&q='+encodeURIComponent(Array.from(quarterFilter).join('|')); return p; }
   var quarterMetric = 'arr';              // toggle ARR Total / Ponderado da seção de quarter
@@ -503,11 +511,29 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
 
   function render(j){
     var m = measureKey();
-    var totA = j.totals.a[m], totB = j.totals.b[m];
+    // Medida do delta (Fase 2): 'comp' = Δ composição (config atual em A e B) |
+    // 'conv' = Δ convicção (cada foto com a config vigente nela, do sidecar).
+    var isConv = wfMeasure === 'conv' && j.conviccao;
+    var src = isConv
+      ? { wf: j.conviccao.waterfall, totals: { a: j.conviccao.a.totals, b: j.conviccao.b.totals } }
+      : { wf: j.waterfall, totals: j.totals };
+    // Flag de fallback: foto sem config snapshotada → convicção usa a config atual.
+    var flagEl = document.getElementById('wf-config-flag');
+    if(flagEl){
+      var cc = j.conviccao && j.conviccao.config;
+      var missing = cc ? [!cc.a.snapshotted?'A':null, !cc.b.snapshotted?'B':null].filter(Boolean) : [];
+      if(isConv && missing.length){ flagEl.style.display=''; flagEl.textContent='⚠ config não snapshotada em '+missing.join(' e '); flagEl.title='Nessa(s) foto(s) o Δ convicção usa a config ATUAL (régua/overrides/faturamento) como fallback.'; }
+      else flagEl.style.display='none';
+    }
+    var hintEl = document.getElementById('wf-clickhint');
+    if(hintEl) hintEl.textContent = isConv
+      ? 'Clique numa barra para o drill (o drill lista os deals na medida Δ composição).'
+      : 'Clique numa barra de etapa para ver os deals que causaram o movimento.';
+    var totA = src.totals.a[m], totB = src.totals.b[m];
     // barras do waterfall
     var labels = ['Total @ A'], data = [[0, totA]], colors = ['rgba(58,184,183,.85)'], dataline = [totA];
     var run = totA, sumDelta = 0;
-    j.waterfall.forEach(function(w){
+    src.wf.forEach(function(w){
       var d = w.delta[m]; sumDelta += d;
       var from = run, to = run + d;
       labels.push(w.label);
@@ -527,7 +553,7 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
       data:{ labels:labels, datasets:[{ data:data, backgroundColor:colors, borderRadius:4, barPercentage:.72 }] },
       options:{
         responsive:true, maintainAspectRatio:false,
-        onClick:function(evt, els){ if(!els||!els.length) return; var i=els[0].index; if(i===0 || i===labels.length-1) return; var w=j.waterfall[i-1]; if(w) openDrill(w.key, 'Deals | '+w.label, fmtBRL); },
+        onClick:function(evt, els){ if(!els||!els.length) return; var i=els[0].index; if(i===0 || i===labels.length-1) return; var w=src.wf[i-1]; if(w) openDrill(w.key, 'Deals | '+w.label, fmtBRL); },
         onHover:function(evt, els){ var t=evt&&evt.native&&evt.native.target; if(!t) return; var i=els&&els.length?els[0].index:-1; t.style.cursor=(i>0&&i<labels.length-1)?'pointer':''; },
         plugins:{
           legend:{display:false},
@@ -551,12 +577,20 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
     function pctd(a,b){ if(!a) return ''; var p=(b-a)/Math.abs(a)*100; return ' | '+(p>=0?'+':'−')+Math.abs(p).toFixed(0)+'%'; }
     function card(title,a,b,fmt,drill){ var d=b-a; var cls=d>=0?'up':'down'; var inner='<div class="k">'+title+'</div><div class="v">'+fmt(a)+' → '+fmt(b)+'</div><div class="d '+cls+'">'+(d>=0?'+':'−')+fmt(Math.abs(d))+pctd(a,b)+'</div>'; return drill?'<button type="button" class="kpi clk" data-kpi="'+drill+'" aria-label="'+title+' | abrir drill">'+inner+'</button>':'<div class="kpi">'+inner+'</div>'; }
     var inv = Math.abs(sumDelta - (totB-totA)) < 1;
-    var invBadge = '<div class="kpi" style="display:flex;align-items:center;justify-content:center"><span class="badge '+(inv?'ok':'bad')+'">'+(inv?'✓':'✗')+' Σ Δ = Δtotal</span></div>';
+    // Convicção lado a lado (Fase 2): a config vigente em cada foto muda só o que é
+    // ponderado por probabilidade — deals/vidas/ARR Total são idênticos nas 2 medidas.
+    var cvA = j.conviccao && j.conviccao.a.kpis, cvB = j.conviccao && j.conviccao.b.kpis;
+    var convOk = j.conviccao && j.conviccao.invariant && j.conviccao.invariant.ok;
+    var invBadge = '<div class="kpi" style="display:flex;align-items:center;justify-content:center;flex-direction:column;gap:.2rem">'+
+      '<span class="badge '+(inv?'ok':'bad')+'">'+(inv?'✓':'✗')+' Σ Δ = Δtotal | composição</span>'+
+      (j.conviccao?'<span class="badge '+(convOk?'ok':'bad')+'">'+(convOk?'✓':'✗')+' Σ Δ = Δtotal | convicção</span>':'')+
+      '</div>';
     document.getElementById('kpis').innerHTML =
       card('Deals abertos', kA.deals, kB.deals, num) +
       card('Vidas em pipe', kA.vidas, kB.vidas, num, 'vidas') +
       card('ARR Total em pipe', kA.arrTotal, kB.arrTotal, money, 'arrTotal') +
-      card('ARR Ponderado', kA.arrPond, kB.arrPond, money, 'arrPond') +
+      card('ARR Ponderado | composição', kA.arrPond, kB.arrPond, money, 'arrPond') +
+      (cvA?card('ARR Ponderado | convicção', cvA.arrPond, cvB.arrPond, money):'') +
       invBadge;
     document.getElementById('kpis').querySelectorAll('.kpi.clk').forEach(function(el){
       el.addEventListener('click', function(){ var k=el.getAttribute('data-kpi'); openDrill('kpi:'+k, kpiTitle(k), kpiFmt(k)); });
@@ -848,6 +882,7 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
   wireToggle('metric-toggle', function(v){ metric=v; refresh(); });
   wireToggle('horizon-toggle', function(v){ horizon=v; refresh(); });
   wireToggle('quarter-toggle', function(v){ quarterMetric=v; if(lastJ) renderQuarterTable(lastJ); });
+  wireToggle('wf-measure-toggle', function(v){ wfMeasure=v; if(lastJ) render(lastJ); });
   wireToggle('scope-toggle', function(v){ scope = v; refresh(); });
   document.getElementById('dateA').addEventListener('change', refresh);
   document.getElementById('dateB').addEventListener('change', refresh);
@@ -863,11 +898,14 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
       '<p class="hk"><b>Data usada |</b> a data escolhida em "Foto B" resolve para a foto em ou antes dela.</p>' },
     D02: { title: 'Waterfall do forecast por etapa', sem: ['comparacao_fotos_delta','arr_ponderado_forecast'], html:
       '<p class="hk"><b>O que mostra |</b> a variação (Δ) da medida selecionada no header entre a Foto A e a Foto B, etapa a etapa, partindo de Total @ A até Total @ B.</p>'+
+      '<p class="hk"><b>Δ composição |</b> as DUAS fotos avaliadas com a config ATUAL (régua, overrides, faturamento) — responde "o que entrou, saiu ou mudou de etapa".</p>'+
+      '<p class="hk"><b>Δ convicção |</b> cada foto avaliada com a config VIGENTE nela (config sidecar da data; prob. do AE e É POC? já vêm da própria foto) — responde "o que mudou de crença/valoração no período". Foto sem sidecar (anterior à Fase 2) usa a config atual com aviso visível — nunca silenciosamente. O drill das barras lista os deals na medida composição.</p>'+
       '<p class="hk"><b>Medidas |</b> Horizonte <b>ARR</b>: Probabilizada = <code>arr_estimado</code> × prob. final da etapa | Real = ARR estimado bruto. Horizonte <b>Pipeline total</b>: receita da régua no horizonte completo (motor canônico <code>forecast-compute</code> → <code>forecast-engine</code>, Regra primária nº 3), ancorada na data de cada foto.</p>'+
       '<p class="hk"><b>Fórmula |</b> a barra da etapa é Σ(B) − Σ(A). Invariante verificado: Σ Δ das etapas = Δ do total (selo nos KPIs).</p>'+
       '<p class="hk"><b>Escopo |</b> segue o filtro Ativos/Tudo do header (sem Bid e Stand by).</p>' },
     D03: { title: 'KPIs comparativos | A → B', sem: ['arr_estimado_fallback','arr_ponderado_forecast'], html:
       '<p class="hk"><b>O que mostra |</b> os mesmos KPIs do D01, só que em A → B com delta absoluto e %.</p>'+
+      '<p class="hk"><b>Duas medidas de ARR Ponderado |</b> <b>composição</b> = as duas fotos ponderadas pela config ATUAL (mostra movimento de pipe); <b>convicção</b> = cada foto ponderada pela config vigente NELA (mostra mudança de crença — derisks e reclassificações do período aparecem aqui). Deals, Vidas e ARR Total independem de probabilidade e são idênticos nas duas.</p>'+
       '<p class="hk"><b>Campos |</b> Deals abertos (contagem) | Vidas (<code>vidas</code>) | ARR Total (<code>arr_estimado</code> com fallbacks) | ARR Ponderado (ARR × prob. final; Bid 0,5%).</p>'+
       '<p class="hk"><b>Drill |</b> Vidas, ARR Total e ARR Ponderado abrem a lista de deals com a Movimentação (Novo | Permaneceu | Avançou | Caiu | Ganho).</p>' },
     D04: { title: 'Funil | deals por etapa', sem: [], html:
