@@ -123,20 +123,15 @@ function call(url){
   const wfArrDelta = cmp.body.waterfall.reduce((s, w) => s + w.delta.arr, 0);
   check('Σ Δ(ARR por linha) == Δ KPI arrTotal (invariante em ARR)', near(wfArrDelta, cmp.body.b.kpis.arrTotal - cmp.body.a.kpis.arrTotal, 1), 'ΣΔ=' + Math.round(wfArrDelta));
 
-  // ── Fase 2 | Δ convicção: A com sidecar (Cotação 10%), B sem (fallback flagado) ──
-  const cv = cmp.body.conviccao;
-  check('conviccao presente com waterfall + invariant', !!cv && Array.isArray(cv.waterfall) && !!cv.invariant);
-  check('conviccao invariante Σ Δ = Δtotal ok', cv.invariant.ok === true, 'ΣΔ=' + Math.round(cv.invariant.sumStageDeltaProb12));
-  check('config A snapshotada | B em fallback flagado', cv.config.a.snapshotted === true && cv.config.b.snapshotted === false);
-  // B sem sidecar → convicção B == composição B (mesma config atual)
-  check('B sem sidecar: convicção B == composição B (arrPond)', near(cv.b.kpis.arrPond, cmp.body.b.kpis.arrPond, 1), Math.round(cv.b.kpis.arrPond) + ' vs ' + Math.round(cmp.body.b.kpis.arrPond));
-  // A com régua de Cotação MENOR (10% < 18,58%): arrPond de A na convicção < composição
-  // (Beta está em Cotação em A) → o Δ convicção captura a mudança de régua que a composição ignora.
-  check('A com régua da época: convicção A < composição A (arrPond)', cv.a.kpis.arrPond < cmp.body.a.kpis.arrPond - 1, Math.round(cv.a.kpis.arrPond) + ' vs ' + Math.round(cmp.body.a.kpis.arrPond));
-  const dCompE2E = cmp.body.b.kpis.arrPond - cmp.body.a.kpis.arrPond;
-  const dConvE2E = cv.b.kpis.arrPond - cv.a.kpis.arrPond;
-  check('Δ convicção > Δ composição (régua de Cotação subiu entre A e B)', dConvE2E > dCompE2E + 1, Math.round(dConvE2E) + ' vs ' + Math.round(dCompE2E));
-  check('caveat descreve as duas medidas + flag de foto sem sidecar', /composição/.test(cmp.body.caveats[0]) && /convicção/.test(cmp.body.caveats[0]) && /não snapshotada em B/.test(cmp.body.caveats[0]));
+  // ── MEDIDA ÚNICA point-in-time (2026-07-30): A com sidecar (Cotação 10%), B sem ──
+  check('config meta: A snapshotada | B em fallback flagado', cmp.body.config && cmp.body.config.a.snapshotted === true && cmp.body.config.b.snapshotted === false);
+  // A régua da ÉPOCA de A (Cotação 10%) é usada no lado A: a contribuição do Beta
+  // (em Cotação em A, ARR 360k) vira exatamente 360000×0,10 = 36.000 no arrPond —
+  // com a régua atual (18,58%) seria ~66.884. Prova o point-in-time no headline e no drill.
+  const dPond = await call('/api/history?action=compare-drill&a=2026-07-08&b=2026-07-09&row=' + encodeURIComponent('kpi:arrPond') + '&measure=prob12');
+  const betaPond = (dPond.body.deals || []).find(x => x.id === '2');
+  check('drill point-in-time: Beta aCash = ARR × régua da ÉPOCA (36.000)', betaPond && near(betaPond.aCash, 36000, 1), betaPond && ('aCash=' + Math.round(betaPond.aCash)));
+  check('caveat descreve o delta point-in-time + flag de foto sem sidecar', /point-in-time/.test(cmp.body.caveats[0]) && /não snapshotada em B/.test(cmp.body.caveats[0]));
   check('KPIs presentes (vidas/arrTotal/arrPond)', cmp.body.a.kpis && cmp.body.a.kpis.vidas != null && cmp.body.a.kpis.arrTotal != null && cmp.body.a.kpis.arrPond != null);
 
   // agregações aditivas Leva 2

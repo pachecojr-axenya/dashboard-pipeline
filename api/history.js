@@ -220,8 +220,16 @@ module.exports = async function handler(req, res) {
       scopedInputA = FC.applyAeQuarterFilter(scopedInputA, aeSel, qSel);
       scopedInputB = FC.applyAeQuarterFilter(scopedInputB, aeSel, qSel);
 
-      const snapA = FC.computeSnapshot(scopedInputA, fA.refDate, manual, probManual);
-      const snapB = FC.computeSnapshot(scopedInputB, fB.refDate, manual, probManual);
+      // MEDIDA ÚNICA = point-in-time (decisão do dono 2026-07-30: "remover o toggle
+      // e ficar apenas com a convicção"). TODO o painel — waterfall, KPIs, tabelas,
+      // drill — avalia cada foto com a config VIGENTE nela (sidecar/backfill); foto
+      // sem config nenhuma usa a atual com flag. A antiga "composição" (config atual
+      // nas duas fotos) foi aposentada junto com o toggle.
+      const evalA = { manual: (cfgA && cfgA.faturamentoManual) || manual, probManual: (cfgA && cfgA.probManual) || probManual, stageProb: (cfgA && cfgA.stageProb) || null };
+      const evalB = { manual: (cfgB && cfgB.faturamentoManual) || manual, probManual: (cfgB && cfgB.probManual) || probManual, stageProb: (cfgB && cfgB.stageProb) || null };
+
+      const snapA = FC.computeSnapshot(scopedInputA, fA.refDate, evalA.manual, evalA.probManual, evalA.stageProb);
+      const snapB = FC.computeSnapshot(scopedInputB, fB.refDate, evalB.manual, evalB.probManual, evalB.stageProb);
       const byA = {}; snapA.stages.forEach(s => { byA[s.key] = s; });
       let waterfall = snapB.stages.map(s => {
         const pa = byA[s.key] || {};
@@ -240,8 +248,8 @@ module.exports = async function handler(req, res) {
       const invariantOk = Math.abs(sumDelta - (snapB.totals.prob12 - snapA.totals.prob12)) < 0.01;
 
       // Contribuições por deal (mesmo escopo filtrado) — alimentam quarters/drills.
-      const cA = FC.dealContributions(scopedInputA, fA.refDate, manual, probManual);
-      const cB = FC.dealContributions(scopedInputB, fB.refDate, manual, probManual);
+      const cA = FC.dealContributions(scopedInputA, fA.refDate, evalA.manual, evalA.probManual, evalA.stageProb);
+      const cB = FC.dealContributions(scopedInputB, fB.refDate, evalB.manual, evalB.probManual, evalB.stageProb);
       // ARR por linha do waterfall (horizonte ARR no menu, pedido do dono 2026-07-24):
       // agrega arr/arrPond das contribuições por rowKey — campos ADITIVOS em a/b/delta.
       // Com escopo (ativos|tudo) todo deal escopado tem rowKey, então Σ Δ(linhas) bate
@@ -264,8 +272,8 @@ module.exports = async function handler(req, res) {
       if (deltaScoped) {
         const fullA = FC.applyAeQuarterFilter(FC.applyDeltaScope(mappedA, 'tudo'), aeSel, qSel);
         const fullB = FC.applyAeQuarterFilter(FC.applyDeltaScope(mappedB, 'tudo'), aeSel, qSel);
-        suA = FC.dealContributions(fullA, fA.refDate, manual, probManual);
-        suB = FC.dealContributions(fullB, fB.refDate, manual, probManual);
+        suA = FC.dealContributions(fullA, fA.refDate, evalA.manual, evalA.probManual, evalA.stageProb);
+        suB = FC.dealContributions(fullB, fB.refDate, evalB.manual, evalB.probManual, evalB.stageProb);
       }
       const stageUnified = FC.stageUnified(suA, suB, rawBStageById);
       const quarters = FC.quarterAgg(cA, cB);
@@ -278,50 +286,17 @@ module.exports = async function handler(req, res) {
       const bidA = FC.applyAeQuarterFilter(mappedA.filter(bidOnly), aeSel, qSel);
       const bidB = FC.applyAeQuarterFilter(mappedB.filter(bidOnly), aeSel, qSel);
       const bidUnified = FC.stageUnified(
-        FC.dealContributions(bidA, fA.refDate, manual, probManual),
-        FC.dealContributions(bidB, fB.refDate, manual, probManual),
+        FC.dealContributions(bidA, fA.refDate, evalA.manual, evalA.probManual, evalA.stageProb),
+        FC.dealContributions(bidB, fB.refDate, evalB.manual, evalB.probManual, evalB.stageProb),
         rawBStageById
       );
 
-      // ── Δ CONVICÇÃO (Fase 2): cada foto avaliada com a config VIGENTE nela ─────
-      // A prob do AE na data já vem da própria foto (coluna "Probabilidade (campo)")
-      // e o É POC? idem — o que o sidecar acrescenta é a régua de etapa, os overrides
-      // manuais e o faturamento manual daquela data. Foto sem sidecar → config atual
-      // com flag snapshotted:false (o front exibe o aviso).
-      const evalA = { manual: (cfgA && cfgA.faturamentoManual) || manual, probManual: (cfgA && cfgA.probManual) || probManual, stageProb: (cfgA && cfgA.stageProb) || null };
-      const evalB = { manual: (cfgB && cfgB.faturamentoManual) || manual, probManual: (cfgB && cfgB.probManual) || probManual, stageProb: (cfgB && cfgB.stageProb) || null };
-      const snapAc = FC.computeSnapshot(scopedInputA, fA.refDate, evalA.manual, evalA.probManual, evalA.stageProb);
-      const snapBc = FC.computeSnapshot(scopedInputB, fB.refDate, evalB.manual, evalB.probManual, evalB.stageProb);
-      const byAc = {}; snapAc.stages.forEach(s => { byAc[s.key] = s; });
-      let wfConv = snapBc.stages.map(s => {
-        const pa = byAc[s.key] || {};
-        return {
-          key: s.key, label: s.label, isBid: s.isBid, stages: s.stages,
-          a: { prob12: pa.prob12 || 0, real12: pa.real12 || 0, probTotal: pa.probTotal || 0, realTotal: pa.realTotal || 0 },
-          b: { prob12: s.prob12, real12: s.real12, probTotal: s.probTotal, realTotal: s.realTotal },
-          delta: { prob12: s.prob12 - (pa.prob12 || 0), real12: s.real12 - (pa.real12 || 0), probTotal: s.probTotal - (pa.probTotal || 0), realTotal: s.realTotal - (pa.realTotal || 0) },
-        };
-      });
-      if (deltaScoped) wfConv = wfConv.filter(w => FC.deltaRowInScope(w, scopeParam));
-      const cAc = FC.dealContributions(scopedInputA, fA.refDate, evalA.manual, evalA.probManual, evalA.stageProb);
-      const cBc = FC.dealContributions(scopedInputB, fB.refDate, evalB.manual, evalB.probManual, evalB.stageProb);
-      const arrRowAc = _arrByRow(cAc), arrRowBc = _arrByRow(cBc);
-      wfConv.forEach(w => {
-        const ra = arrRowAc[w.key] || { arr: 0, arrPond: 0 }, rb = arrRowBc[w.key] || { arr: 0, arrPond: 0 };
-        w.a.arr = ra.arr; w.a.arrPond = ra.arrPond;
-        w.b.arr = rb.arr; w.b.arrPond = rb.arrPond;
-        w.delta.arr = rb.arr - ra.arr; w.delta.arrPond = rb.arrPond - ra.arrPond;
-      });
-      const sumDeltaConv = wfConv.reduce((x, w) => x + w.delta.prob12, 0);
-      const conviccao = {
-        a: { kpis: snapAc.kpis, totals: Object.assign({}, snapAc.totals, { arr: snapAc.kpis.arrTotal, arrPond: snapAc.kpis.arrPond }) },
-        b: { kpis: snapBc.kpis, totals: Object.assign({}, snapBc.totals, { arr: snapBc.kpis.arrTotal, arrPond: snapBc.kpis.arrPond }) },
-        waterfall: wfConv,
-        invariant: { sumStageDeltaProb12: sumDeltaConv, totalDeltaProb12: snapBc.totals.prob12 - snapAc.totals.prob12, ok: Math.abs(sumDeltaConv - (snapBc.totals.prob12 - snapAc.totals.prob12)) < 0.01 },
-        config: {
-          a: { snapshotted: !!cfgA, savedAt: cfgA ? cfgA.savedAt : null, origin: cfgA ? (cfgA.origin || 'live') : null },
-          b: { snapshotted: !!cfgB, savedAt: cfgB ? cfgB.savedAt : null, origin: cfgB ? (cfgB.origin || 'live') : null },
-        },
+      // Metadados da config point-in-time por lado (a pill do D02 lê daqui):
+      // origin 'live' (sidecar capturado na data) | 'backfill' (reconstruída) |
+      // null (nenhuma — avaliada com a config atual, flag amarela).
+      const configMeta = {
+        a: { snapshotted: !!cfgA, savedAt: cfgA ? cfgA.savedAt : null, origin: cfgA ? (cfgA.origin || 'live') : null },
+        b: { snapshotted: !!cfgB, savedAt: cfgB ? cfgB.savedAt : null, origin: cfgB ? (cfgB.origin || 'live') : null },
       };
 
       return res.status(200).json({
@@ -334,7 +309,7 @@ module.exports = async function handler(req, res) {
         b: { requested: b, resolvedTab: fB.tab, tipo: fB.tipo, refDate: fB.refDate, kpis: snapB.kpis, totals: snapB.totals },
         funnel: { stages: deltaScoped ? FC.deltaScopeStages(scopeParam) : snapB.funnelStages, a: snapA.stageCounts, b: snapB.stageCounts },
         waterfall,
-        conviccao,
+        config: configMeta,
         stageUnified,
         bidUnified,
         quarters,
@@ -342,8 +317,8 @@ module.exports = async function handler(req, res) {
         invariant: { sumStageDeltaProb12: sumDelta, totalDeltaProb12: snapB.totals.prob12 - snapA.totals.prob12, ok: invariantOk },
         dealDiff: FC.dealDiff(snapA.scopedDeals, snapB.scopedDeals).counts,
         caveats: [
-          'Duas medidas | Δ composição: config ATUAL aplicada às duas fotos (o que entrou/saiu/moveu). Δ convicção: cada foto avaliada com a config vigente NELA (o que mudou de crença/valoração).'
-            + ((cfgA && cfgB) ? '' : ' ⚠ Config não snapshotada em ' + (!cfgA && !cfgB ? 'A e B' : (!cfgA ? 'A' : 'B')) + ' — convicção usa a config atual nessa(s) foto(s).'),
+          'Delta point-in-time: cada foto é avaliada com a config vigente NELA (régua de prob, overrides manuais e faturamento manual da data — sidecar/backfill); prob. do AE e É POC? vêm da própria foto.'
+            + ((cfgA && cfgB) ? '' : ' ⚠ Config não snapshotada em ' + (!cfgA && !cfgB ? 'A e B' : (!cfgA ? 'A' : 'B')) + ' — essa(s) foto(s) usa(m) a config atual.'),
           'Ganho/Implantação depende do faturamento manual (gate: vencimento ≤ data da foto) | em datas anteriores ao início do faturamento a etapa aparece subestimada — não é erro, é fidelidade ponto-no-tempo',
           deltaScoped
             ? (scopeParam === 'tudo' ? 'Escopo: Tudo (todas as etapas, sem Bid e Standby)' : 'Escopo: Ativos (Cotação, Consultoria, Negociação)')
@@ -369,7 +344,14 @@ module.exports = async function handler(req, res) {
       const fA = _resolveFoto(fotos, a); const fB = _resolveFoto(fotos, b);
       if (!fA || !fB) return res.status(422).json({ success: false, error: 'Sem foto em ou antes de uma das datas' });
       if (fA.tab === fB.tab) return res.status(422).json({ success: false, error: 'As duas datas resolvem para a mesma foto' });
-      const [rowsA, rowsB, manual, probManual] = await Promise.all([_readFotoRows(fA), _readFotoRows(fB), _readManual(), PM.readAll()]);
+      // Point-in-time também no drill (medida única, 2026-07-30): cada lado usa a
+      // config vigente na foto — o Σ do drill fecha com a barra do waterfall.
+      const [rowsA, rowsB, manual, probManual, cfgA, cfgB] = await Promise.all([
+        _readFotoRows(fA), _readFotoRows(fB), _readManual(), PM.readAll(),
+        snapshotConfig.load(_sidecarDate(fA)), snapshotConfig.load(_sidecarDate(fB)),
+      ]);
+      const evalA = { manual: (cfgA && cfgA.faturamentoManual) || manual, probManual: (cfgA && cfgA.probManual) || probManual, stageProb: (cfgA && cfgA.stageProb) || null };
+      const evalB = { manual: (cfgB && cfgB.faturamentoManual) || manual, probManual: (cfgB && cfgB.probManual) || probManual, stageProb: (cfgB && cfgB.stageProb) || null };
       const mappedA = FC.mapFotoDeals(_rowsToObjs(rowsA)), mappedB = FC.mapFotoDeals(_rowsToObjs(rowsB));
       // etapa bruta de cada deal em B (inclui Perdido/Ganho/fora de escopo) → destino de quem saiu
       const rawBStageById = {}; mappedB.forEach(d => { rawBStageById[FC.dealId(d)] = d.stage; });
@@ -378,23 +360,23 @@ module.exports = async function handler(req, res) {
       let scopedInputB = deltaScoped ? FC.applyDeltaScope(mappedB, scopeParam) : (includeClosedStages ? mappedB : FC.excludeClosedStages(mappedB));
       scopedInputA = FC.applyAeQuarterFilter(scopedInputA, aeSel, qSel);
       scopedInputB = FC.applyAeQuarterFilter(scopedInputB, aeSel, qSel);
-      let cA = FC.dealContributions(scopedInputA, fA.refDate, manual, probManual);
-      let cB = FC.dealContributions(scopedInputB, fB.refDate, manual, probManual);
+      let cA = FC.dealContributions(scopedInputA, fA.refDate, evalA.manual, evalA.probManual, evalA.stageProb);
+      let cB = FC.dealContributions(scopedInputB, fB.refDate, evalB.manual, evalB.probManual, evalB.stageProb);
       // Drill de ETAPA (stage:) espelha a Visão Unificada por Etapa: no app (com
       // escopo) usa o funil COMPLETO, senão a etapa fora do Ativos viria vazia.
       // quarter:/kpi:/<rowKey> continuam no conjunto escopado (headline).
       if (deltaScoped && String(row).indexOf('stage:') === 0) {
         const fullA = FC.applyAeQuarterFilter(FC.applyDeltaScope(mappedA, 'tudo'), aeSel, qSel);
         const fullB = FC.applyAeQuarterFilter(FC.applyDeltaScope(mappedB, 'tudo'), aeSel, qSel);
-        cA = FC.dealContributions(fullA, fA.refDate, manual, probManual);
-        cB = FC.dealContributions(fullB, fB.refDate, manual, probManual);
+        cA = FC.dealContributions(fullA, fA.refDate, evalA.manual, evalA.probManual, evalA.stageProb);
+        cB = FC.dealContributions(fullB, fB.refDate, evalB.manual, evalB.probManual, evalB.stageProb);
       }
       // Drill do Pipe de Bid (bidstage:, D08): contribuições SÓ do pipeline Bid,
       // espelhando o bidUnified do compare (o escopo Ativos/Tudo removeria o Bid).
       if (String(row).indexOf('bidstage:') === 0) {
         const bidOnly = d => d.pipeline === 'Bid';
-        cA = FC.dealContributions(FC.applyAeQuarterFilter(mappedA.filter(bidOnly), aeSel, qSel), fA.refDate, manual, probManual);
-        cB = FC.dealContributions(FC.applyAeQuarterFilter(mappedB.filter(bidOnly), aeSel, qSel), fB.refDate, manual, probManual);
+        cA = FC.dealContributions(FC.applyAeQuarterFilter(mappedA.filter(bidOnly), aeSel, qSel), fA.refDate, evalA.manual, evalA.probManual, evalA.stageProb);
+        cB = FC.dealContributions(FC.applyAeQuarterFilter(mappedB.filter(bidOnly), aeSel, qSel), fB.refDate, evalB.manual, evalB.probManual, evalB.stageProb);
       }
       // Drill genérico (Leva 2): row pode ser <rowKey> (compat waterfall), stage:<Etapa>,
       // quarter:<Q> ou kpi:vidas|arrTotal|arrPond.

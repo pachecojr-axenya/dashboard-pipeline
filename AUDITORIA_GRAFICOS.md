@@ -56,8 +56,8 @@
 > | # | Card | Nota |
 > |---|---|---|
 > | D01 | Fotografia do forecast (foto B) | KPIs da foto isolada |
-> | D02 | Waterfall do forecast por etapa | motor canônico (Regra nº 3), invariante Σ Δ = Δtotal. **Fase 2 (2026-07-30): DUAS medidas** — Δ composição (config atual nas 2 fotos) × Δ convicção (config vigente de cada foto, via sidecar `snapshot_config`); toggle no card; foto sem sidecar → fallback com flag visível; invariante verificado nas duas medidas. Drill segue na composição. |
-> | D03 | KPIs comparativos A → B | TCV e MRR removidos a pedido do dono (2026-07-24). Fase 2: ARR Ponderado nas DUAS medidas lado a lado (deals/vidas/ARR Total independem de prob e são idênticos). |
+> | D02 | Waterfall do forecast por etapa | motor canônico (Regra nº 3), invariante Σ Δ = Δtotal. **Medida ÚNICA point-in-time (2026-07-30, decisão do dono — toggle composição×convicção removido)**: cada foto avaliada com a config vigente NELA (sidecar `snapshot_config` ao vivo ou backfill reconstruído embutido); pill indica a origem da config; foto sem config → fallback atual com flag amarela. TODO o painel (KPIs, tabelas, drill) usa a mesma avaliação — o Σ do drill fecha com a barra. A medida "composição" (config atual nas 2 fotos) foi aposentada. |
+> | D03 | KPIs comparativos A → B | TCV e MRR removidos a pedido do dono (2026-07-24). ARR Ponderado point-in-time (mesma medida única do D02). |
 > | D04 | Funil / deals por etapa | contagem A × B |
 > | D05 | Deals que saíram do pipe | lista direta no card; destino distingue Caiu / Ganho / Avançou |
 > | D06 | ARR por Quarter previsto | ARR Total / Ponderado |

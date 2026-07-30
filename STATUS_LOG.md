@@ -1,5 +1,32 @@
 # Dashboard Enhancement Loop — Status Log
 
+### Delta | medida ÚNICA point-in-time: toggle composição×convicção removido (2026-07-30)
+
+> Decisão do dono: "remover o toggle e ficarmos apenas com a convicção". Promovida a
+> convicção a medida única do PAINEL INTEIRO — não só do waterfall — para nenhuma
+> visão contar outra história por baixo.
+
+- **`api/history.js` compare:** waterfall, KPIs (D01/D03), stageUnified (D07),
+  bidUnified (D08) e quarters (D06) passam a avaliar cada foto com a config vigente
+  NELA (`evalA/evalB` = sidecar/backfill; fallback atual flagado). O bloco `conviccao`
+  do payload foi REMOVIDO (virara duplicata da medida principal); `config` (meta de
+  origem por lado) exposto no topo. Caveat reescrito: "Delta point-in-time…".
+- **`compare-drill` também point-in-time:** carrega os sidecars e usa a config por
+  lado em todos os drills — **o Σ do drill volta a fechar com a barra** (na Fase 2 com
+  toggle, o drill ficava na composição com nota; incoerência eliminada).
+- **UI:** toggle removido; pill de origem da config mantida (live/backfill/ausente)
+  e sempre visível quando aplicável; KPIs D03 voltam a UM ARR Ponderado; selo único
+  Σ Δ = Δtotal; fichas i do D02/D03 reescritas (medida única, drill coerente).
+- **Catálogo semântico:** `comparacao_fotos_delta` atualizado para medida única
+  (composição aposentada); `semantic-ref.js?v=9` nas 7 páginas; check-semantic OK.
+- **Testes:** e2e reescrito — headline usa a régua da ÉPOCA (assert exato: Beta em
+  Cotação na foto A com régua 10% → drill kpi:arrPond aCash = 36.000) + config meta
+  + caveat novo. `npm run check` PASS (76). Unit do invariant (motor) inalterado.
+- **Smoke live:** compare 2026-06-30×2026-07-20 → headline arrPond 6,82M → 3,80M
+  (Δ −3,01M, o número que o toggle mostrava como convicção), origem backfill nos 2
+  lados, invariante ok, `conviccao` ausente do payload. Screenshot conferido.
+  ⚠ `api/`+`lib` mudaram → servidor :3002 reiniciado. Requer deploy.
+
 ### 🚀 DEPLOY DE PRODUÇÃO | backfill embutido do sidecar (convicção nas fotos históricas) (2026-07-30)
 
 > Autorização explícita do dono ("pode deployar"). 3º deploy do dia.
