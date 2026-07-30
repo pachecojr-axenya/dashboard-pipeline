@@ -1,5 +1,20 @@
 # Dashboard Enhancement Loop — Status Log
 
+### 🚀 DEPLOY DE PRODUÇÃO | backfill embutido do sidecar (convicção nas fotos históricas) (2026-07-30)
+
+> Autorização explícita do dono ("pode deployar"). 3º deploy do dia.
+
+- **Commit deployado:** `53d565e` (== origin/main; preflight PASS): backfill embutido
+  (`lib/snapshot-config-backfill.json`, 79 datas) + cadeia de load BQ→backfill→tmp +
+  pill de 3 estados no D02 (live / reconstruída / não snapshotada).
+- **Deployment:** `dpl_GvDuZLtCF8KCR9PnVbyUaNEoV3Cz` (`dashboard-axenya-nn25brtqy`,
+  READY, production), 2 aliases.
+- **Pós-deploy:** 11 rotas 200; `/api/auth/me` e compare sem sessão 401; texto
+  "config reconstruída (backfill)" servido no /forecast-delta.
+- **Efeito:** o Δ convicção passa a funcionar em qualquer par de fotos em produção —
+  históricas via backfill reconstruído (flag cinza) e novas via sidecar ao vivo
+  (a foto substituída de hoje + as do cron daqui em diante).
+
 ### Delta | backfill EMBUTIDO no bundle: convicção funciona nas fotos históricas sem credencial (2026-07-30)
 
 > Pergunta do dono: "por que não conseguimos usar a convicção nos snapshots?" —
