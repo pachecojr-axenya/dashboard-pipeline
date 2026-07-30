@@ -1,5 +1,44 @@
 # Dashboard Enhancement Loop — Status Log
 
+### Delta | backfill do config sidecar para fotos históricas (2026-07-30)
+
+> Continuação da Fase 2: as fotos anteriores ao sidecar caíam no fallback flagado.
+> `scripts/backfill-snapshot-config.js` reconstrói a config POR DATA com regras de
+> resgate honestas (dry-run por padrão; `--apply` grava; `saveRaw` é idempotente por
+> data — NUNCA sobrescreve sidecar capturado ao vivo).
+
+- **stageProb do GIT** (`git show <commit>:semantic/referencia.json` do último commit
+  ≤ D, fim do dia): datas ≤ 2026-07-14 → **painel_default** da época (Cotação 33% ·
+  Consultoria 61,1% · Implantação 58,1%; 14/07 pega o 68157f9 com Implantação 100%);
+  ≥ 2026-07-15 → **forecast_flat** (0583202/ADR-008). Regra mecânica: painel_default
+  OBJETO no catálogo da época = vigente; string = aposentada → flat. Datas anteriores
+  ao catálogo usam o commit 8976175 (que documentou a régua pré-existente). Chaves
+  ausentes na painel_default (Reunião Agendada) completadas pela flat DA ÉPOCA.
+  Registro no config: `backfill{rescuedAt, rulerKey, rulerCommit}`.
+- **probManual**: só entradas com data ≤ D (campo `by` "Nome | AAAA-MM-DD" ou `at`);
+  sem data → excluída e logada. (DUX/Maringá são de 27/07 → não entram nas fotos-alvo.)
+- **faturamentoManual**: estado atual do KV com `backfilled_partial: true` (histórico
+  não existe; decisão consciente da spec).
+- **Datas-alvo**: BQ weekly+daily + abas legadas do Sheets; mensais "Mmm AAAA" →
+  data de CAPTURA real (fim do mês, ex.: Jun 2026 → 2026-06-30), não o refDate dia-15.
+  O compare ganhou `_sidecarDate(foto)` para procurar o sidecar da mensal-sheet na
+  data de captura. Fix de fonte no `snapshot-config`: a chave do JSON é
+  `reguas_probabilidade` (não `reguas`) + fallback BQ→/tmp no save/load (a credencial
+  BQ do .env.local não tem role no projeto — 403; produção usa a credencial da Vercel).
+- **APPLY local**: 10 datas (2026-05-12 → 2026-07-20) gravadas no fallback /tmp.
+  **Validação da spec (PASS)**: compare 2026-06-30×2026-07-20 → `conviccao.config.a.
+  snapshotted=true` e **Δ convicção NEGATIVO** (arrPond −44,2%; prob12 −675k), direção
+  batendo com a reconstrução externa via propertiesWithHistory (−28%) — mais negativo
+  que a composição (−22,7%) porque a régua da época era mais otimista (expõe o derisk).
+  Valores não batem 1:1 com o prework POR CONSTRUÇÃO (painel = régua de etapa + ajuste
+  do AE; prework = prob do AE pura × ARR cru) — o que o backfill garante é direção e
+  composição verdadeiras.
+- **Pendência de OPERAÇÃO (produção)**: rodar `NODE_ENV=production node scripts/
+  backfill-snapshot-config.js --apply` num ambiente com a credencial BQ de produção
+  (a SA do .env.local recebe 403) — grava na tabela `snapshot_config` do
+  `axenya_forecast_prd`, cobrindo também as diárias de julho que o Sheets legado não
+  lista. `npm run check` PASS (80). ⚠ servidor :3002 reiniciado.
+
 ### Delta | FASE 2: deltas point-in-time (Δ composição × Δ convicção + config sidecar) (2026-07-30)
 
 > Spec do dono: o compare aplicava às DUAS fotos a config ATUAL (régua de prob,

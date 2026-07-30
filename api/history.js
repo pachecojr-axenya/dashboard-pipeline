@@ -78,6 +78,17 @@ async function _readFotoRows(foto) {
 }
 // Foto mais próxima em ou antes de `date` (fotos já vem ordenada desc).
 function _resolveFoto(fotos, date) { return fotos.find(f => f.ord <= date) || null; }
+// Data-chave do config sidecar de uma foto: a data de CAPTURA real. Fotos mensais
+// legadas do Sheet têm refDate no dia 15 (meio do mês, p/ ancorar a janela 12M),
+// mas a captura acontece no FIM do mês — o sidecar é gravado nessa data.
+function _sidecarDate(foto) {
+  if (foto && foto.source === 'sheet' && foto.tipo === 'mensal') {
+    const ym = String(foto.refDate).slice(0, 7);
+    const last = new Date(Date.UTC(+ym.slice(0, 4), +ym.slice(5, 7), 0)).getUTCDate();
+    return ym + '-' + String(last).padStart(2, '0');
+  }
+  return foto.refDate;
+}
 function _rowsToObjs(rows) { const h = rows[0]; return rows.slice(1).map(r => { const o = {}; h.forEach((k, i) => { o[k] = r[i] == null ? '' : r[i]; }); return o; }); }
 
 // ── Histórico de proprietários de um deal (action=owner-history&id=X) ────────
@@ -189,7 +200,7 @@ module.exports = async function handler(req, res) {
       // para a config atual COM FLAG (nunca silenciosamente).
       const [rowsA, rowsB, manual, probManual, cfgA, cfgB] = await Promise.all([
         _readFotoRows(fA), _readFotoRows(fB), _readManual(), PM.readAll(),
-        snapshotConfig.load(fA.refDate), snapshotConfig.load(fB.refDate),
+        snapshotConfig.load(_sidecarDate(fA)), snapshotConfig.load(_sidecarDate(fB)),
       ]);
       if (!rowsA.length || !rowsB.length) return res.status(404).json({ success: false, error: 'Foto vazia' });
 
