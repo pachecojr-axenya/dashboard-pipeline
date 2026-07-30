@@ -1,5 +1,20 @@
 # Dashboard Enhancement Loop — Status Log
 
+### 🚀 DEPLOY DE PRODUÇÃO | replace=today + registro da Fase 2 no catálogo (2026-07-30)
+
+> Autorização explícita do dono ("pode deployar"). 2º deploy do dia.
+
+- **Commit deployado:** `63efe5d` (== origin/main; preflight PASS). Desde o deploy
+  anterior (`98fc463`): registro da Fase 2 no catálogo semântico + AUDITORIA
+  (`2fe5046`, semantic-ref v8) e o **replace=today** na captura manual (`63efe5d`).
+- **Deployment:** `dpl_ARPrgmTcq7u9FpzttwhJuy5jMJkf` (`dashboard-axenya-gurivihj1`,
+  READY, production), 2 aliases.
+- **Pós-deploy:** 11 rotas 200; `/api/auth/me` e `/api/snapshot` 401. Confirmado no
+  HTML servido: fluxo "Substituir pela foto de AGORA" + `replace=today` no
+  /forecast-delta; `semantic-ref.js?v=8` com as duas medidas no drawer i.
+- Caso concreto do dono destravado: recapturar a foto de hoje (da manhã) pelo botão
+  📸 → confirm de substituição → foto nova COM config sidecar.
+
 ### Snapshot | substituir a foto de HOJE pela de agora (replace=today no Capturar agora) (2026-07-30)
 
 > Pedido do dono: recapturar a foto de hoje (feita de manhã) com o pipe de agora. Sem
