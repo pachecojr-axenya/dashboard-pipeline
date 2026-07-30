@@ -1,5 +1,21 @@
 # Dashboard Enhancement Loop — Status Log
 
+### 🚀 DEPLOY DE PRODUÇÃO | Delta com medida única point-in-time (2026-07-30)
+
+> Autorização explícita do dono ("pode deployar"). 4º deploy do dia.
+
+- **Commit deployado:** `683a173` (== origin/main; preflight PASS): toggle removido,
+  painel inteiro point-in-time (incl. drill), catálogo v9.
+- **Deployment:** `dpl_CaD7BU6y15pRLQG6C1Py97X3L8UD` (`dashboard-axenya-e7u8600mx`,
+  READY, production), 2 aliases.
+- **Pós-deploy:** 11 rotas 200; auth 401; toggle AUSENTE do HTML servido (0 matches),
+  pill "config reconstruída (backfill)" e `semantic-ref.js?v=9` (catálogo com a
+  medida única) no ar.
+- ⚠ Nota de leitura: os números do Delta em produção MUDARAM em relação a ontem —
+  o headline era a composição (config atual nas 2 fotos) e passou a ser o
+  point-in-time (config da época de cada foto). Ex.: Jun/26→20/07 arrPond
+  Δ −1,04M (composição, antiga) → Δ −3,01M (point-in-time, atual).
+
 ### Delta | medida ÚNICA point-in-time: toggle composição×convicção removido (2026-07-30)
 
 > Decisão do dono: "remover o toggle e ficarmos apenas com a convicção". Promovida a
