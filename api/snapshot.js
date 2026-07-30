@@ -149,6 +149,12 @@ module.exports = async function handler(req, res) {
 
   const params = new URL(`http://x${req.url}`).searchParams;
   const manualWeekly = params.get('promote') === 'weekly';
+  // Substituição da foto de HOJE pela de agora (pedido do dono 2026-07-30, caso
+  // "recapturar antes da reunião"): apaga a partição de hoje (daily + weekly +
+  // config sidecar) e regrava. SÓ acompanha a captura manual (mesmo gate de editor
+  // + origem) e SÓ atinge a data de hoje — datas passadas são imutáveis (Fase 2).
+  const replaceToday = params.get('replace') === 'today';
+  if (replaceToday && !manualWeekly) return res.status(400).json({ success: false, error: 'replace=today só vale com promote=weekly (captura manual)' });
   if (manualWeekly) {
     if (req.method !== 'POST') return res.status(405).json({ success: false, error: 'Captura manual exige POST' });
     const email = String(userSession && userSession.email || '').trim().toLowerCase();
@@ -233,6 +239,24 @@ module.exports = async function handler(req, res) {
     if (bq.isConfigured()) {
       try {
         await bq.ensureTables();
+        // replace=today: apaga a partição de HOJE nas 3 tabelas antes de regravar.
+        // DELETE roda com a credencial da Vercel (DML via jobs.query). Foto gravada
+        // há <90min pode estar no streaming buffer → o BQ recusa o DELETE; o erro
+        // propaga com mensagem clara e nada é regravado (a foto antiga permanece).
+        if (replaceToday) {
+          const ds = bq.dataset();
+          const del = async (tbl) => {
+            const r = await bq.query(
+              'DELETE FROM `' + bq.PROJECT + '.' + ds + '.' + tbl + '` WHERE snapshot_date = @d',
+              [{ name: 'd', type: 'DATE', value: today }]
+            );
+            return r;
+          };
+          await del(bq.TABLE_DAILY);
+          await del(bq.TABLE_WEEKLY);
+          try { await del('snapshot_config'); } catch (e) { /* tabela pode não existir ainda */ }
+          actions.replaced = 'partição de ' + today + ' apagada (daily + weekly + config) para regravação';
+        }
         const ehSexta = brtDate.getUTCDay() === 5;
         const ehFimMes = isLastDayOfMonth(brtDate);
         const snapType = manualWeekly ? 'semanal_manual' : (ehSexta ? 'semanal' : (ehFimMes ? 'mensal' : 'diario'));

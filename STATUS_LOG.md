@@ -1,5 +1,32 @@
 # Dashboard Enhancement Loop — Status Log
 
+### Snapshot | substituir a foto de HOJE pela de agora (replace=today no Capturar agora) (2026-07-30)
+
+> Pedido do dono: recapturar a foto de hoje (feita de manhã) com o pipe de agora. Sem
+> console GCP/gcloud na máquina — a solução na raiz é o caminho de substituição no
+> próprio produto, rodando com a credencial da VERCEL (que tem DML no BQ).
+
+- **`api/snapshot.js`:** `POST ?promote=weekly&replace=today` apaga a partição de HOJE
+  (daily + weekly_gold + snapshot_config, DML via `bq.query`) e regrava com o pipe
+  deste instante. Guard-rails: só acompanha a captura manual (gate de editor
+  jpacheco/salencar + header de origem), e só a data de HOJE por construção — datas
+  passadas continuam imutáveis (filosofia da Fase 2). Foto <90min pode estar no
+  streaming buffer → o DELETE do BQ recusa, o erro propaga e a foto antiga permanece.
+- **`lib/bigquery.js`:** `insertId` do streaming agora inclui o `capturedAt`
+  (retry de rede do MESMO insertAll segue deduplicado; uma RECAPTURA com capturedAt
+  novo não é engolida pela janela de dedup — sem isso, substituições consecutivas
+  podiam regravar foto PARCIAL silenciosamente). Cron reexecutado no mesmo dia segue
+  barrado antes do insert pelo guard de contagem.
+- **UI (forecast-delta):** o botão "📸 Capturar agora" detecta "já existia" na resposta
+  e oferece: "A foto de HOJE já existe. Substituir pela foto de AGORA?" → confirm →
+  repete com `replace=today`; status mostra "Foto SUBSTITUÍDA (N deals)". Bug pego no
+  review próprio: o listener passava o event como parâmetro `replace` (truthy → pularia
+  o confirm) — corrigido com wrapper explícito.
+- Validação: `node --check` + inline-js 0 erros; `test-snapshot-resilience.js` PASS;
+  `npm run check` PASS (80). **Requer deploy para o dono usar** (o caso concreto de
+  hoje: recapturar a foto da manhã — que também ganhará o config sidecar, ausente na
+  captura matinal pré-deploy da Fase 2).
+
 ### 🚀 DEPLOY DE PRODUÇÃO | Fase 2 do Delta + backfill + Cotação religado (2026-07-30)
 
 > Autorização explícita do dono ("faça o commit, push e deploy geral"). Deploy geral:

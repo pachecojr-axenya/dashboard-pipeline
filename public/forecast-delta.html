@@ -443,23 +443,39 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
       .catch(function(){ /* mantém oculto sem sessão/permissão */ });
   }
 
-  function captureSnapshotNow(){
-    if(!confirm('Capturar o pipe agora? A foto será gravada no BigQuery e entrará nos comparativos.')) return;
+  // Captura manual. Se a foto de HOJE já existe, oferece SUBSTITUIR pela de agora
+  // (?replace=today apaga a partição do dia — daily+weekly+config — e regrava; só
+  // hoje, nunca datas passadas). Foto gravada há <90min pode estar no streaming
+  // buffer do BQ e o DELETE falha — nesse caso, aguardar e tentar de novo.
+  function captureSnapshotNow(replace){
+    if(!replace && !confirm('Capturar o pipe agora? A foto será gravada no BigQuery e entrará nos comparativos.')) return;
     var btn = document.getElementById('capture-snapshot-btn');
     var status = document.getElementById('capture-snapshot-status');
-    btn.disabled = true; btn.textContent = 'Capturando…'; status.textContent = 'Buscando o pipe no HubSpot…';
-    fetch('/api/snapshot?promote=weekly', {
+    btn.disabled = true; btn.textContent = replace ? 'Substituindo…' : 'Capturando…';
+    status.textContent = replace ? 'Apagando a foto de hoje e recapturando…' : 'Buscando o pipe no HubSpot…';
+    fetch('/api/snapshot?promote=weekly'+(replace?'&replace=today':''), {
       method:'POST', credentials:'same-origin',
       headers:{'Content-Type':'application/json','X-Requested-With':'forecast-dashboard'}, body:'{}'
     })
       .then(function(r){ return r.json().then(function(j){ return {ok:r.ok,j:j}; }); })
       .then(function(res){
         if(!res.ok || !res.j.success) throw new Error(res.j.error || 'Falha ao capturar foto');
-        status.textContent = 'Foto '+res.j.date+' salva ('+fmtNum(res.j.deals)+' deals).';
+        var acts = res.j.actions || {};
+        var jaExistia = !replace && /já existia/.test(String(acts.bq_daily||'') + String(acts.bq_weekly||''));
+        if(jaExistia){
+          btn.disabled=false; btn.textContent='📸 Capturar agora';
+          if(confirm('A foto de HOJE já existe (capturada mais cedo). Substituir pela foto de AGORA?\n\nA foto anterior de hoje será apagada — datas passadas nunca são tocadas.')){
+            captureSnapshotNow(true);
+          } else {
+            status.textContent = 'Mantida a foto existente de hoje.';
+          }
+          return;
+        }
+        status.textContent = 'Foto '+res.j.date+(replace?' SUBSTITUÍDA':' salva')+' ('+fmtNum(res.j.deals)+' deals).';
         return loadFotos().then(refresh);
       })
       .catch(function(e){ status.textContent = 'Erro: '+e.message; })
-      .finally(function(){ btn.disabled=false; btn.textContent='📸 Capturar agora'; });
+      .finally(function(){ if(btn.textContent!=='📸 Capturar agora'){ btn.disabled=false; btn.textContent='📸 Capturar agora'; } });
   }
 
   function loadFotos(){
@@ -886,7 +902,7 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
   wireToggle('scope-toggle', function(v){ scope = v; refresh(); });
   document.getElementById('dateA').addEventListener('change', refresh);
   document.getElementById('dateB').addEventListener('change', refresh);
-  document.getElementById('capture-snapshot-btn').addEventListener('click', captureSnapshotNow);
+  document.getElementById('capture-snapshot-btn').addEventListener('click', function(){ captureSnapshotNow(false); });
   document.getElementById('info-btn').addEventListener('click', function(){ var el=document.getElementById('info'); var open=el.style.display==='none'||!el.style.display; el.style.display=open?'block':'none'; this.setAttribute('aria-expanded',open?'true':'false'); });
 
   // ── Memória de cálculo por card (i → drawer lateral, padrão dos outros painéis) ──
