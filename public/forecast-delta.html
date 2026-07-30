@@ -538,8 +538,16 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
     if(flagEl){
       var cc = j.conviccao && j.conviccao.config;
       var missing = cc ? [!cc.a.snapshotted?'A':null, !cc.b.snapshotted?'B':null].filter(Boolean) : [];
-      if(isConv && missing.length){ flagEl.style.display=''; flagEl.textContent='⚠ config não snapshotada em '+missing.join(' e '); flagEl.title='Nessa(s) foto(s) o Δ convicção usa a config ATUAL (régua/overrides/faturamento) como fallback.'; }
-      else flagEl.style.display='none';
+      var backfilled = cc ? [cc.a.origin==='backfill'?'A':null, cc.b.origin==='backfill'?'B':null].filter(Boolean) : [];
+      if(isConv && missing.length){
+        flagEl.style.display=''; flagEl.style.color='var(--yellow)';
+        flagEl.textContent='⚠ config não snapshotada em '+missing.join(' e ');
+        flagEl.title='Nessa(s) foto(s) o Δ convicção usa a config ATUAL (régua/overrides/faturamento) como fallback — os números ficam IGUAIS à composição.';
+      } else if(isConv && backfilled.length){
+        flagEl.style.display=''; flagEl.style.color='var(--text2)';
+        flagEl.textContent='config reconstruída (backfill) em '+backfilled.join(' e ');
+        flagEl.title='Config da época reconstruída retroativamente: régua do git da data (painel_default até 14/07, forecast_flat depois) + overrides por data; faturamento manual = estado atual (parcial).';
+      } else flagEl.style.display='none';
     }
     var hintEl = document.getElementById('wf-clickhint');
     if(hintEl) hintEl.textContent = isConv

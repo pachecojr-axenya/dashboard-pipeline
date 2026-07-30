@@ -1,5 +1,30 @@
 # Dashboard Enhancement Loop — Status Log
 
+### Delta | backfill EMBUTIDO no bundle: convicção funciona nas fotos históricas sem credencial (2026-07-30)
+
+> Pergunta do dono: "por que não conseguimos usar a convicção nos snapshots?" —
+> porque a `snapshot_config` de PRODUÇÃO estava vazia para as fotos históricas (o
+> backfill só tinha rodado no fallback local; o BQ prd recebia 403 da credencial da
+> máquina). Solução na raiz: o backfill vira ARQUIVO VERSIONADO embutido no bundle
+> (mesmo padrão do LOCAL_SNAPSHOTS do history.js) — zero dependência de credencial.
+
+- **`--export` no backfill:** gera `lib/snapshot-config-backfill.json` (79 datas,
+  2026-05-12 → 2026-07-29, 33 KB, versionado no git = auditável). Cobre TODAS as
+  diárias (inclusive as que só existem no BQ prd). `faturamentoManual` é OMITIDO de
+  propósito no export: o compare resolve com o estado atual do KV em request-time
+  (a semântica "estado atual, parcial" da spec, sem congelar a visão vazia da máquina).
+- **Cadeia de load do sidecar:** BQ (ao vivo — sempre vence) → backfill embutido →
+  /tmp (dev). `origin: 'live' | 'backfill'` exposto no `conviccao.config.{a,b}`.
+- **UI:** a pill do D02 agora tem 3 estados — sem flag (config ao vivo) · cinza
+  "config reconstruída (backfill) em A e B" (tooltip explica a reconstrução) ·
+  amarela "⚠ config não snapshotada" (tooltip agora explicita que os números ficam
+  IGUAIS à composição — era a confusão do dono com o toggle).
+- Sanidade da linha do tempo no arquivo: 13/07 painel_default@8976175 (Impl 58,1%) ·
+  14/07 painel_default@68157f9 (Impl 100%) · 15/07+ forecast_flat@0583202 · DUX/
+  Maringá só ≥ 27/07. Smoke local: compare 2026-06-30×2026-07-20 → origin backfill
+  nos 2 lados, Δ convicção −3,0M vs composição −1,0M, invariantes ok. `npm run
+  check` PASS (80). ⚠ lib mudou → servidor :3002 reiniciado. Requer deploy.
+
 ### 🚀 DEPLOY DE PRODUÇÃO | replace=today + registro da Fase 2 no catálogo (2026-07-30)
 
 > Autorização explícita do dono ("pode deployar"). 2º deploy do dia.

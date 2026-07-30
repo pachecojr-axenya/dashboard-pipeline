@@ -319,8 +319,8 @@ module.exports = async function handler(req, res) {
         waterfall: wfConv,
         invariant: { sumStageDeltaProb12: sumDeltaConv, totalDeltaProb12: snapBc.totals.prob12 - snapAc.totals.prob12, ok: Math.abs(sumDeltaConv - (snapBc.totals.prob12 - snapAc.totals.prob12)) < 0.01 },
         config: {
-          a: { snapshotted: !!cfgA, savedAt: cfgA ? cfgA.savedAt : null },
-          b: { snapshotted: !!cfgB, savedAt: cfgB ? cfgB.savedAt : null },
+          a: { snapshotted: !!cfgA, savedAt: cfgA ? cfgA.savedAt : null, origin: cfgA ? (cfgA.origin || 'live') : null },
+          b: { snapshotted: !!cfgB, savedAt: cfgB ? cfgB.savedAt : null, origin: cfgB ? (cfgB.origin || 'live') : null },
         },
       };
 

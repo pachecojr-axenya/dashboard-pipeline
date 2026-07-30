@@ -42,6 +42,14 @@ const os = require('os');
 const path = require('path');
 
 const APPLY = process.argv.includes('--apply');
+// --export: em vez de gravar no BQ/tmp, escreve lib/snapshot-config-backfill.json
+// (embutido no bundle da Vercel — o load() do snapshot-config usa como fallback
+// depois do BQ). Resolve o backfill em produção SEM credencial BQ local: o arquivo
+// é versionado no git e auditável. No export, o faturamentoManual é OMITIDO de
+// propósito (o compare cai no estado atual do KV em request-time — a semântica
+// "estado atual marcado parcial" da spec, sem congelar a visão vazia desta máquina).
+const EXPORT = process.argv.includes('--export');
+const EXPORT_FILE = require('path').join(__dirname, '..', 'lib', 'snapshot-config-backfill.json');
 const RESCUE_DATE = new Date().toISOString().slice(0, 10);
 const CATALOG_FIRST_COMMIT = '8976175'; // Fase 1 do catálogo (2026-07-14) — documenta a régua pré-existente
 const MESES = { jan: 0, fev: 1, mar: 2, abr: 3, mai: 4, jun: 5, jul: 6, ago: 7, set: 8, out: 9, nov: 10, dez: 11 };
@@ -121,11 +129,20 @@ async function targetDates() {
       }
     });
   } catch (e) { log('  ⚠ Sheets indisponível: ' + e.message.slice(0, 120)); }
+  // Export: cobre TODAS as datas diárias possíveis (o BQ prd tem diárias que nem o
+  // Sheets nem o BQ dev listam daqui) — entradas de datas sem foto nunca são lidas.
+  if (EXPORT) {
+    const start = new Date(Date.UTC(2026, 4, 12));   // 1ª foto conhecida (2026-05-12)
+    const end = new Date(Date.now() - 3 * 60 * 60 * 1000 - 86400000);   // ontem BRT
+    for (let d = start; d <= end; d = new Date(d.getTime() + 86400000)) {
+      dates.add(d.toISOString().slice(0, 10));
+    }
+  }
   return [...dates].sort();
 }
 
 (async () => {
-  log('== backfill-snapshot-config | ' + (APPLY ? 'APPLY' : 'DRY-RUN') + ' ==');
+  log('== backfill-snapshot-config | ' + (EXPORT ? 'EXPORT' : (APPLY ? 'APPLY' : 'DRY-RUN')) + ' ==');
   log('ambiente: ' + env.name + ' | dataset BQ alvo: ' + (bq.isConfigured() ? env.forecastDataset() : '(BQ off → /tmp)'));
   const dates = await targetDates();
   if (!dates.length) { log('Nenhuma data-alvo encontrada.'); process.exit(1); }
@@ -135,6 +152,7 @@ async function targetDates() {
   const fm = await faturamentoAtual();
   const globalWarn = new Set();
   let saved = 0, skipped = 0;
+  const exportMap = {};
 
   for (const date of dates) {
     const warnings = [];
@@ -144,18 +162,23 @@ async function targetDates() {
     const cfg = {
       stageProb: ruler.stageProb,
       probManual: pm,
-      faturamentoManual: Object.assign({}, fm),
       backfilled_partial: true,   // faturamento manual = estado atual (histórico não existe)
       backfill: { rescuedAt: RESCUE_DATE, rulerKey: ruler.rulerKey, rulerCommit: ruler.commit },
       savedAt: new Date().toISOString(),
       source: 'backfill:' + RESCUE_DATE,
     };
+    // No APPLY (grava BQ/tmp) o faturamento atual ENTRA congelado; no EXPORT fica
+    // de fora — o compare resolve em request-time (ver comentário do EXPORT no topo).
+    if (!EXPORT) cfg.faturamentoManual = Object.assign({}, fm);
     const pmIds = Object.keys(pm);
-    log(date + ' | régua ' + ruler.rulerKey + '@' + ruler.commit
-      + ' (Cotação ' + (ruler.stageProb['Cotação'] != null ? (ruler.stageProb['Cotação'] * 100).toFixed(1) + '%' : '—')
-      + ', Implantação ' + (ruler.stageProb['Implantação'] != null ? (ruler.stageProb['Implantação'] * 100).toFixed(1) + '%' : '—') + ')'
-      + ' | probManual: ' + (pmIds.length ? pmIds.join(',') : '(nenhum ≤ data)')
-      + ' | fatManual: atual (parcial)');
+    if (!EXPORT || pmIds.length || dates.length < 30) {
+      log(date + ' | régua ' + ruler.rulerKey + '@' + ruler.commit
+        + ' (Cotação ' + (ruler.stageProb['Cotação'] != null ? (ruler.stageProb['Cotação'] * 100).toFixed(1) + '%' : '—')
+        + ', Implantação ' + (ruler.stageProb['Implantação'] != null ? (ruler.stageProb['Implantação'] * 100).toFixed(1) + '%' : '—') + ')'
+        + ' | probManual: ' + (pmIds.length ? pmIds.join(',') : '(nenhum ≤ data)')
+        + ' | fatManual: ' + (EXPORT ? 'resolvido em request-time' : 'atual (parcial)'));
+    }
+    if (EXPORT) { exportMap[date] = cfg; continue; }
     if (APPLY) {
       const r = await snapshotConfig.saveRaw(date, cfg);
       if (r.saved) { saved++; log('  → gravado'); }
@@ -163,6 +186,11 @@ async function targetDates() {
     }
   }
   if (globalWarn.size) { log('\nAvisos:'); [...globalWarn].forEach(w => log('  ⚠ ' + w)); }
+  if (EXPORT) {
+    fs.writeFileSync(EXPORT_FILE, JSON.stringify(exportMap));
+    log('\nEXPORT: ' + Object.keys(exportMap).length + ' datas → ' + EXPORT_FILE + ' (' + Math.round(fs.statSync(EXPORT_FILE).size / 1024) + ' KB)');
+    return;
+  }
   log('\n' + (APPLY ? ('APPLY: ' + saved + ' gravado(s), ' + skipped + ' pulado(s) (idempotência preserva sidecars ao vivo).')
     : 'DRY-RUN: nada gravado. Rode com --apply para executar.'));
 })().catch(e => { console.error('ERRO:', e.message); process.exit(1); });
