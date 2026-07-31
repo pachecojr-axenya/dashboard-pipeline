@@ -264,6 +264,77 @@ function formatDatePt(s) {
   return p[2] + '/' + p[1] + '/' + p[0];
 }
 
+const STALE_THRESHOLD_MINUTES = 180;
+
+// Período (BRT) inclui o dia de hoje? Só nesse caso "sem linhas" ou "linha antiga"
+// significa dado desatualizado; período puramente histórico não fica stale por idade.
+function periodIncludesToday(range) {
+  const today = dateStr(todayBrtDate());
+  return range.from <= today && range.to >= today;
+}
+
+// Maior timestamps_eta já retornado/selecionado (via created_at, já derivado de
+// timestamps_eta na SQL). Sem PII: usa só o campo de data já sanitizado.
+function latestEventFromMessages(messages) {
+  let latestMs = null;
+  let latestIso = null;
+
+  for (let i = 0; i < messages.length; i += 1) {
+    const iso = messages[i] && messages[i].createdAt;
+    if (!iso) continue;
+
+    const ms = Date.parse(iso);
+    if (Number.isNaN(ms)) continue;
+
+    if (latestMs === null || ms > latestMs) {
+      latestMs = ms;
+      latestIso = iso;
+    }
+  }
+
+  return latestIso;
+}
+
+// Dia (YYYY-MM-DD) do evento mais recente, sempre em America/Sao_Paulo.
+function brtDayFromIso(iso) {
+  if (!iso) return null;
+
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: TZ,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).formatToParts(d);
+
+  const m = {};
+  parts.forEach(function (p) { m[p.type] = p.value; });
+  return m.year + '-' + m.month + '-' + m.day;
+}
+
+// Minutos inteiros não-negativos entre agora e o último evento, ou null se
+// não houver evento.
+function freshnessAgeMinutes(latestIso, nowMs) {
+  if (!latestIso) return null;
+
+  const ms = Date.parse(latestIso);
+  if (Number.isNaN(ms)) return null;
+
+  const minutes = Math.round((nowMs - ms) / 60000);
+  return minutes < 0 ? 0 : minutes;
+}
+
+// Stale só é avaliado dentro de período que inclui hoje: sem linhas, ou última
+// linha com mais de STALE_THRESHOLD_MINUTES. Período histórico puro nunca fica
+// stale só por idade.
+function computeDwStale(range, rowsReturned, ageMinutes) {
+  if (!periodIncludesToday(range)) return false;
+  if (rowsReturned === 0) return true;
+  return ageMinutes !== null && ageMinutes > STALE_THRESHOLD_MINUTES;
+}
+
 function resolveDateRange(query) {
   const today = todayBrtDate();
   let preset = String(query.preset || '').toLowerCase();
@@ -760,6 +831,11 @@ async function buildPayloadFromDW(range) {
   const messages = rawRows.slice(0, ROW_LIMIT).map(sanitizeMessage);
   const agg = aggregateMessages(messages);
 
+  const latestEventAt = latestEventFromMessages(messages);
+  const latestEventDay = brtDayFromIso(latestEventAt);
+  const ageMinutes = freshnessAgeMinutes(latestEventAt, Date.now());
+  const dwStale = computeDwStale(range, messages.length, ageMinutes);
+
   const payload = {
     success: true,
     source: 'treble_data_warehouse',
@@ -783,6 +859,12 @@ async function buildPayloadFromDW(range) {
       byDay: agg.timeline,
       byConversationDay: []
     },
+    latestEventAt: latestEventAt || null,
+    latestEventDay: latestEventDay || null,
+    freshnessAgeMinutes: ageMinutes,
+    dwStale,
+    rowsReturned: messages.length,
+    rowsTruncated: truncated,
     meta: {
       source: 'Treble Data Warehouse (ClickHouse)',
       sourceLabel: 'Treble Data Warehouse (ClickHouse)',
@@ -816,18 +898,57 @@ function cacheKey(range) {
   return 'dw-' + range.preset + '-' + range.from + '-' + range.to;
 }
 
-function getFromCache(key) {
+// Payload saudável ou range histórico: cacheável normalmente. Payload com
+// dwStale===true ou rowsReturned===0 para período que inclui hoje nunca deve
+// ir para o cache (evita servir "sem dados"/desatualizado por até 10 min).
+function shouldCachePayload(payload, range) {
+  if (!payload) return false;
+  if (!periodIncludesToday(range)) return true;
+  if (payload.dwStale === true) return false;
+  if (payload.rowsReturned === 0) return false;
+  return true;
+}
+
+// Recalcula freshnessAgeMinutes/dwStale a partir de "agora" (não do momento em
+// que o payload foi gerado/cacheado). O payload pode ter sido escrito no cache
+// com idade de 175min (fresco) e, até 10min depois (CACHE_TTL_MS), a idade real
+// do último evento já ter cruzado o limiar de STALE_THRESHOLD_MINUTES — sem essa
+// recomputação o cache serviria um payload com dwStale=false desatualizado.
+// nowMs é injetável só para teste determinístico; em produção usa Date.now().
+function recomputeFreshness(payload, range, nowMs) {
+  if (!payload) return payload;
+  const now = typeof nowMs === 'number' ? nowMs : Date.now();
+  const ageMinutes = freshnessAgeMinutes(payload.latestEventAt, now);
+  const dwStale = computeDwStale(range, payload.rowsReturned, ageMinutes);
+  return Object.assign({}, payload, { freshnessAgeMinutes: ageMinutes, dwStale });
+}
+
+function getFromCache(key, range, nowMs) {
+  const now = typeof nowMs === 'number' ? nowMs : Date.now();
   const entry = cacheByKey[key];
   if (!entry) return null;
-  if (Date.now() - entry.ts > CACHE_TTL_MS) {
+  if (now - entry.ts > CACHE_TTL_MS) {
     delete cacheByKey[key];
     return null;
   }
-  return entry.payload;
+  // Recalcula freshness com o relógio atual antes de decidir servir. Cache
+  // legado (ou payload que envelheceu dentro do próprio TTL) pode ter cruzado
+  // 180min ou ficado stale entre a escrita e esta leitura — invalida em vez de
+  // servir dado desatualizado.
+  const recomputed = range ? recomputeFreshness(entry.payload, range, now) : entry.payload;
+  if (range && !shouldCachePayload(recomputed, range)) {
+    delete cacheByKey[key];
+    return null;
+  }
+  return recomputed;
 }
 
-function setCache(key, payload) {
-  cacheByKey[key] = { payload, ts: Date.now() };
+function setCache(key, payload, tsOverride) {
+  cacheByKey[key] = { payload, ts: typeof tsOverride === 'number' ? tsOverride : Date.now() };
+}
+
+function resetCache() {
+  cacheByKey = {};
 }
 
 module.exports = async function handler(req, res) {
@@ -847,12 +968,12 @@ module.exports = async function handler(req, res) {
 
   const key = cacheKey(range);
   const refresh = String(req.query.refresh || '') === 'true' || String(req.query.refresh || '') === '1';
-  const cached = refresh ? null : getFromCache(key);
+  const cached = refresh ? null : getFromCache(key, range);
   if (cached) return res.json(Object.assign({}, cached, { cached: true }));
 
   try {
     const payload = await buildPayloadFromDW(range);
-    setCache(key, payload);
+    if (shouldCachePayload(payload, range)) setCache(key, payload);
     res.json(payload);
   } catch (e) {
     console.error('[bdr-treble-dw] Error:', e && e.message ? e.message : 'unknown');
@@ -875,5 +996,18 @@ module.exports._test = {
   assertNoPii,
   agentFromFlowRule,
   inferAgentFromFlow,
+  periodIncludesToday,
+  latestEventFromMessages,
+  brtDayFromIso,
+  freshnessAgeMinutes,
+  computeDwStale,
+  shouldCachePayload,
+  recomputeFreshness,
+  getFromCache,
+  setCache,
+  resetCache,
+  cacheKey,
+  STALE_THRESHOLD_MINUTES,
+  CACHE_TTL_MS,
   ROW_LIMIT
 };

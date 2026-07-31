@@ -88,15 +88,18 @@
     } catch (e) {}
   }
 
-  function setState(type, title, text) {
+  function setState(type, title, text, extraHtml) {
     var el = $('state');
     var content = $('content');
     if (content) content.classList.add('hidden');
     if (!el) return;
 
     el.classList.remove('hidden');
-    el.innerHTML = (type === 'loading' ? '<div class="spinner"></div>' : '') +
-      '<strong>' + esc(title) + '</strong>' + esc(text || '');
+    if (type === 'loading') {
+      el.innerHTML = '<div class="spinner"></div><strong>' + esc(title) + '</strong>' + esc(text || '');
+    } else {
+      el.innerHTML = (extraHtml || '') + '<strong>' + esc(title) + '</strong>' + esc(text || '');
+    }
   }
 
   function unique(rows, field) {
@@ -296,6 +299,7 @@
   function majoritySource(a) {
     var rows = [
       { key: 'direct', value: a.direct },
+      { key: 'flow_rule', value: a.rule },
       { key: 'flow_inference', value: a.inferred },
       { key: 'unknown', value: a.unknown }
     ].sort(function (x, y) { return y.value - x.value; });
@@ -349,6 +353,33 @@
     var label = ((state.raw || {}).dateRange || {}).label || (state.dwMode ? 'Hoje' : 'Fallback REST');
     return '<section class="hero-headline" aria-live="polite"><b>' + esc(label) + ':</b> ' +
       fmt(s.attempts) + ' tentativas | ' + pct(s.deliveryRate) + ' entregues | ' + pct(s.responseRate) + ' responderam</section>';
+  }
+
+  function buildFallbackNoteHtml(raw, dwMode) {
+    raw = raw || {};
+    var out = '';
+    if (raw.fallbackNote) {
+      out += '<div class="note"><b>Aviso de fonte de dados:</b> ' + esc(raw.fallbackNote) + '</div>';
+    } else if (!dwMode) {
+      out += '<div class="note"><b>Fallback REST | últimos 30 dias:</b> filtros de data exatos não se aplicam nesta fonte legada.</div>';
+    }
+    if (raw.rowsTruncated === true) {
+      out += '<div class="note warn"><b>Alerta:</b> resultado truncado pelo limite de linhas do servidor (rowsTruncated=true); os totais exibidos podem não representar 100% do período selecionado.</div>';
+    }
+    return out;
+  }
+
+  function renderFallbackNote() {
+    return buildFallbackNoteHtml(state.raw, state.dwMode);
+  }
+
+  function composeEmptyState(raw, dwMode) {
+    return {
+      type: 'empty',
+      title: 'Sem dados no filtro',
+      text: 'Ajuste período ou filtros.',
+      noteHtml: buildFallbackNoteHtml(raw, dwMode)
+    };
   }
 
   function funnelDeltas(s) {
@@ -485,7 +516,6 @@
       return agent.agent !== 'Não identificado';
     })[0];
     var gargalo = statuses.filter(function (x) { return x.statusGroup !== 'delivered'; })[0] || statuses[0];
-    var fallbackNote = state.dwMode ? '' : '<div class="note"><b>Fallback REST | últimos 30 dias:</b> filtros de data exatos não se aplicam nesta fonte legada.</div>';
     var whoTried;
     if (!leader) {
       whoTried = 'Sem agente identificado.';
@@ -506,7 +536,7 @@
       kpi('Respondidas', fmt(s.replied), pct(s.responseRate) + ' das tentativas',
         s.responseRate >= 0.10 ? 'good' : (s.responseRate >= 0.03 ? 'warn' : 'bad'), 'secondary-kpi') +
       '</div>';
-    return headline(s) + fallbackNote + kpis + story + '<div class="grid">' + funnelDeltas(s) + statusComposition(rows) + agentRanking(rows) + '</div>';
+    return headline(s) + kpis + story + '<div class="grid">' + funnelDeltas(s) + statusComposition(rows) + agentRanking(rows) + '</div>';
   }
 
   function renderStatus(rows) {
@@ -569,12 +599,14 @@
     var content = $('content');
     var stateEl = $('state');
     if (!rows.length) {
-      setState('empty', 'Sem dados no filtro', 'Ajuste período ou filtros.');
+      var emptyState = composeEmptyState(state.raw, state.dwMode);
+      setState(emptyState.type, emptyState.title, emptyState.text, emptyState.noteHtml);
       return;
     }
 
     var s = summarize(rows);
     var flags = '<div class="active-filters-line" aria-live="polite">' + esc(activeFilterLine(rows.length, state.totalRows || state.rows.length)) + '</div>';
+    var globalNote = renderFallbackNote();
     var tabs = '<div class="tabs"><button class="tab ' + (state.tab === 'overview' ? 'active' : '') + '" onclick="BdrTreble.tab(\'overview\')">Resumo</button>' +
       '<button class="tab ' + (state.tab === 'agents' ? 'active' : '') + '" onclick="BdrTreble.tab(\'agents\')">Quem enviou</button>' +
       '<button class="tab ' + (state.tab === 'status' ? 'active' : '') + '" onclick="BdrTreble.tab(\'status\')">Status</button>' +
@@ -595,7 +627,7 @@
 
     if (stateEl) stateEl.classList.add('hidden');
     content.classList.remove('hidden');
-    content.innerHTML = flags + tabs + body + '<div class="footer-note">Segurança, PII e memória de cálculo ficam no botão de ajuda.</div>';
+    content.innerHTML = flags + globalNote + tabs + body + '<div class="footer-note">Segurança, PII e memória de cálculo ficam no botão de ajuda.</div>';
     bindDrills(content);
   }
 
@@ -654,6 +686,14 @@
     return status >= 500 || status === 0;
   }
 
+  function isNoFallbackStatus(status) {
+    return status === 400 || status === 401 || status === 403;
+  }
+
+  function shouldFallbackDwPayload(dwJson) {
+    return !!(dwJson && dwJson.dwStale === true);
+  }
+
   function humanRangeError(error) {
     var map = {
       invalid_custom_date: 'Data customizada inválida. Use início e fim no formato AAAA-MM-DD.',
@@ -672,12 +712,31 @@
     saveFilters();
   }
 
+  function buildFallbackNote(fbJson) {
+    var note = 'Fallback REST ativado: Data Warehouse retornou vazio ou desatualizado; exibindo dados normalizados via API REST Treble (fonte: /api/bdr-treble, contingência sem garantia de filtro de data exato).';
+    if (fbJson && fbJson.latestEventAt) note += ' Último evento REST: ' + fbJson.latestEventAt + '.';
+    if (fbJson && fbJson.freshnessAgeMinutes != null) note += ' Idade do dado: ' + fbJson.freshnessAgeMinutes + ' min.';
+    return note;
+  }
+
+  function buildStaleNote(dwJson) {
+    var note = 'Aviso: Data Warehouse sem dados novos ou vazio no período e o fallback REST veio vazio ou falhou; exibindo o último payload do Data Warehouse.';
+    if (dwJson && dwJson.latestEventAt) note += ' Último evento DW: ' + dwJson.latestEventAt + '.';
+    if (dwJson && dwJson.freshnessAgeMinutes != null) note += ' Idade do dado: ' + dwJson.freshnessAgeMinutes + ' min.';
+    return note;
+  }
+
   function loadRestFallback(url) {
     return fetch(url, { credentials: 'include' }).then(function (response) {
       if (!response.ok) {
-        throw new Error(response.status === 401
-          ? 'Não autorizado. Faça login novamente.'
-          : 'Fallback REST falhou com HTTP ' + response.status);
+        var error = new Error(
+          response.status === 401 || response.status === 403
+            ? 'Não autorizado. Faça login novamente.'
+            : 'Fallback REST falhou com HTTP ' + response.status
+        );
+        error.status = response.status;
+        if (isNoFallbackStatus(response.status)) error.noFallback = true;
+        throw error;
       }
       return response.json();
     }).then(function (json) {
@@ -706,7 +765,26 @@
       var fallbackUrl = '/api/bdr-treble?days=30' + (refresh ? '&refresh=true' : '');
 
       fetch(dwUrl, { credentials: 'include' }).then(function (r) {
-        if (r.ok) return r.json();
+        if (r.ok) {
+          return r.json().then(function (dwJson) {
+            if (!dwJson.success) throw new Error(dwJson.error || dwJson.message || 'Resposta inválida');
+            var dwNeedsFallback = shouldFallbackDwPayload(dwJson);
+            if (!dwNeedsFallback) return dwJson;
+            return loadRestFallback(fallbackUrl).then(function (fbJson) {
+              var fbMessages = (fbJson && fbJson.messages) || [];
+              if (fbMessages.length > 0) {
+                fbJson.fallbackNote = buildFallbackNote(fbJson);
+                return fbJson;
+              }
+              dwJson.fallbackNote = buildStaleNote(dwJson);
+              return dwJson;
+            }).catch(function (fbError) {
+              if (fbError && fbError.noFallback) throw fbError;
+              dwJson.fallbackNote = buildStaleNote(dwJson);
+              return dwJson;
+            });
+          });
+        }
         if (r.status === 400) {
           return r.json().catch(function () { return { error: 'invalid_preset' }; }).then(function (body) {
             var error = new Error(humanRangeError(body.error));
@@ -771,7 +849,15 @@
     },
     _test: {
       shouldFallback: shouldFallback,
-      humanRangeError: humanRangeError
+      isNoFallbackStatus: isNoFallbackStatus,
+      shouldFallbackDwPayload: shouldFallbackDwPayload,
+      humanRangeError: humanRangeError,
+      majoritySource: majoritySource,
+      buildFallbackNote: buildFallbackNote,
+      buildStaleNote: buildStaleNote,
+      normalizeRestRows: normalizeRestRows,
+      buildFallbackNoteHtml: buildFallbackNoteHtml,
+      composeEmptyState: composeEmptyState
     }
   };
 

@@ -1,5 +1,22 @@
 # Dashboard Enhancement Loop — Status Log
 
+### ⚠ Incidente | DW `fact_deployment_status` congelado desde 30/07 16:05 BRT (2026-07-31)
+
+> Detectado ao investigar dados desatualizados no painel BDR | Treble.
+
+- **Sintoma:** `client_analytics.fact_deployment_status` sem linha nova desde
+  **2026-07-30 16:05 BRT**; 31/07 sem nenhuma linha até o momento da checagem.
+- **Diagnóstico:** Scheduler, Cloud Run e a API REST da Treble (`/poll/api/all`,
+  `/devapi/poll/{id}/sessions`, `/devapi/session/{id}/history`) respondem
+  saudáveis — causa principal provável é a **ingestão upstream da Treble para
+  o DW**, fora do nosso controle direto.
+- **Mitigação (branch `fix/treble-dw-fallback-20260731`, ainda NÃO
+  deployada):** metadata de freshness no payload do DW, fallback automático
+  para a API REST quando o DW devolver 200 vazio/stale, aviso de truncamento
+  na UI, exposição de `flow_rule` e cache-buster `v9` nos assets do painel.
+- Runbook completo:
+  [[20_Company/Sales/Pipeline_Dashboard/BDR_Treble_Dashboard_Runbook|BDR Treble Dashboard Runbook]].
+
 ### 🚀 DEPLOY DE PRODUÇÃO | Delta com medida única point-in-time (2026-07-30)
 
 > Autorização explícita do dono ("pode deployar"). 4º deploy do dia.
