@@ -1002,18 +1002,6 @@
       margin-left: .2rem;
     }
 
-    /* Loading / error */
-    .state {
-      text-align: center;
-      padding: 4rem;
-      color: var(--text2);
-      font-size: .95rem;
-    }
-
-    .state.err {
-      color: var(--red);
-    }
-
     /* Deal link */
     a.deal-link {
       color: var(--teal);
@@ -1748,6 +1736,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
 <script src="/revenue-engine.js?v=2"></script>
 <script src="/faturamento-manual.js?v=1"></script>
 <script src="/forecast-engine.js?v=1"></script>
+<script src="/ax-ui.js?v=1"></script>
 </head>
 
 <body>
@@ -2188,7 +2177,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
   <div class="mob-sheet-overlay" id="mob-sheet-overlay" onclick="closeMobileSheet()"></div>
 
   <div class="table-wrap" id="tw">
-    <div class="state">Buscando dados do HubSpot...</div>
+    <div class="ax-empty ax-empty-lg">Buscando dados do HubSpot...</div>
   </div>
 
   <!-- ── Painel Histórico ─────────────────────────────────────────────── -->
@@ -3678,7 +3667,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       const btn = document.getElementById('btn-r');
       btn.disabled = true;
       btn.classList.add('spinning');
-      document.getElementById('tw').innerHTML = '<div class="state">Buscando dados do HubSpot...</div>';
+      document.getElementById('tw').innerHTML = AxUI.emptyState('Buscando dados do HubSpot...', { size: 'lg' });
 
       try {
         // Carrega em paralelo a tabela e o store de faturamento manual (painel Ganho/Overall).
@@ -3688,7 +3677,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
         ]);
         const data = await resp.json();
         if (!resp.ok || !data.success) {
-          document.getElementById('tw').innerHTML = `<div class="state err">Erro: ${esc(data.error || String(resp.status))}</div>`;
+          document.getElementById('tw').innerHTML = AxUI.banner('Erro: ' + esc(data.error || String(resp.status)), { severity: 'error' });
           return;
         }
         try { if (manResp && manResp.ok) { const mj = await manResp.json(); if (mj && mj.success && mj.data) FaturamentoManual.setData(mj.data); } } catch (e) { /* mantém {} */ }
@@ -3743,7 +3732,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
         applyAndRender();
         _fcLoadFunnelProb();   // em 2º plano: puxa as probabilidades ao vivo do funil e re-renderiza
       } catch (e) {
-        document.getElementById('tw').innerHTML = `<div class="state err">Erro de conexão: ${esc(e.message)}</div>`;
+        document.getElementById('tw').innerHTML = AxUI.banner('Erro de conexão: ' + esc(e.message), { severity: 'error' });
       } finally {
         btn.disabled = false;
         btn.classList.remove('spinning');
@@ -4734,7 +4723,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
         updateHistKPIs(historicoDeals);
         renderComparativo();
       } catch (e) {
-        panel.innerHTML = `<div class="state err">Erro: ${esc(e.message)}</div>`;
+        panel.innerHTML = AxUI.banner('Erro: ' + esc(e.message), { severity: 'error' });
         document.getElementById('hist-kpis').style.display = 'none';
       } finally {
         loading.style.display = 'none';

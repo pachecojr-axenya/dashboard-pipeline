@@ -4702,3 +4702,35 @@ Registro curto, uma linha por interação (a cada alteração).
   - `novoOpenDealsModal` ("Nenhum deal."), `cotOpenTickets` ("Nenhum ticket.") e os dois empty-states de gráfico em `buildCotAE`/`buildCotVidas` ("Nenhum deal em etapa Cotação.") → `AxUI.emptyState(...)`, mesmo texto.
   - **`.banner-api` removido do CSS local** de `cotacao.html`: depois da migração do `tkErr`, era o único uso da classe no arquivo (confirmado por grep antes de remover) — ficou 100% morta, então o bloco de 4 regras foi apagado.
 - **Validação:** `node scripts/_check-inline-js.js public/cs.html` e `public/cotacao.html` = 0 erros nos 2; `npm run check` completo (única falha é a conhecida `test-bdr-workload-v2.js`, não relacionada, sinalizada como não sendo responsabilidade desta rodada).
+
+## Componente de estado vazio/erro/aviso | `AxUI` — FASE 2: forecast.html + forecast-stage.html (2026-08-02)
+
+> Continuação da FASE 1 (entrada acima), item 8 do Tier 2 de `docs/design-system-proposal.md`
+> (achado 2.3.9: `.state`/`.state.err` — texto puro — era a "terceira variação" de
+> vazio/erro do projeto, `forecast.html:1061-1070` e 5 pontos em `forecast-stage.html`).
+> Escopo estritamente visual: nenhuma linha de `revenue-engine.js`/`forecast-engine.js`/
+> `prob-engine.js` ou de lógica de cálculo de ARR/probabilidade foi tocada.
+
+- **`<script src="/ax-ui.js?v=1"></script>` adicionado ao `<head>` dos dois arquivos** (não
+  estava incluído antes).
+- **5 pontos migrados em cada arquivo** (`forecast.html` e `forecast-stage.html`, mesma
+  estrutura nos dois irmãos, texto preservado 100%):
+  - Placeholder estático "Buscando dados do HubSpot..." antes do 1º load (`<div class="table-wrap" id="tw">`) → classe `ax-empty ax-empty-lg` aplicada direto na tag (mesmo padrão do placeholder "Aguardando dados…" da Fase 1, sem precisar de JS pra essa troca).
+  - Mesmo texto duplicado dentro de `load()` (reset do `#tw` antes do fetch) → `AxUI.emptyState('Buscando dados do HubSpot...', {size:'lg'})`.
+  - Erro do fetch principal (`!resp.ok || !data.success`) → `AxUI.banner('Erro: '+esc(data.error||String(resp.status)), {severity:'error'})`.
+  - Erro de conexão (`catch` de `load()`) → `AxUI.banner('Erro de conexão: '+esc(e.message), {severity:'error'})`.
+  - Erro de `loadHistoricoSnapshot(tab)` (painel Histórico) → `AxUI.banner('Erro: '+esc(e.message), {severity:'error'})`.
+  - Nenhum dos 5 pontos tinha botão de retry antes da migração (era só texto), então nenhum `opts.retry` foi adicionado — manter o gate de "só o invólucro muda", sem introduzir comportamento novo (mesmo critério do erro do funil horizontal em `dashboard.html`/Fase 1, que também ficou sem retry).
+- **`.state`/`.state.err` removidos** (CSS morto): confirmado por grep que os 5 usos por
+  arquivo eram os únicos (a única outra ocorrência da palavra "state" nos dois arquivos é
+  o comentário `/* Filter active state */`, não relacionado) — regra CSS excluída dos dois.
+- **Validação:** `node scripts/_check-inline-js.js public/forecast.html` e
+  `public/forecast-stage.html` → 0 erro(s) nos 2; `npm run check` completo parou na falha
+  conhecida de `test-bdr-workload-v2.js` (não relacionada, sinalizada como não sendo
+  responsabilidade desta rodada — mesma ressalva da Fase 1); `scripts/test-forecast-delta-e2e.js`
+  e `scripts/test-delta-invariant.js` rodados manualmente após a falha do `npm run check` →
+  100% PASS nos dois, confirmando que a lógica de receita/delta não foi afetada.
+- **Fora do escopo, deliberadamente não tocado:** o hex fixo `.error-msg{color:#f85149}`
+  (achado 2.3 #4 do `design-system-proposal.md`, `forecast.html:1586`/`forecast-stage.html:1586`)
+  é uma classe CSS diferente, não usada nos pontos `.state`/`.state.err` migrados aqui — fica
+  para uma rodada futura de correção de hardcode de cor (Tier 3 item 3 da proposta).
