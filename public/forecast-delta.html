@@ -13,9 +13,6 @@
 <script src="/semantic-ref.js?v=9"></script>
 <script src="/semantic-help.js?v=2"></script>
 <style>
-:root{--bg:#0d1117;--card:#171f2e;--card2:#1e2a3c;--border:#293a50;--text:#e6edf3;--text2:#8b949e;--muted:#6e7681;--teal:#3ab8b7;--green:#3fb950;--red:#f85149;--orange:#d29922;--yellow:#e3b341;--blue:#58a6ff}
-:root{--font:Inter,'Segoe UI',system-ui,sans-serif;--hover:rgba(255,255,255,.06)}
-html[data-theme="light"]{--bg:#f6f8fa;--card:#fff;--card2:#eaeef2;--border:#d0d7de;--text:#1f2328;--text2:#57606a;--teal:#0d7377;--green:#1a7f37;--yellow:#9a6700;--red:#cf222e;--blue:#0969da;--hover:rgba(0,0,0,.05)}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;line-height:1.5}
 button,input,select,textarea{font-family:var(--font)}
@@ -28,24 +25,26 @@ a{color:var(--teal);text-decoration:none}
 .back{margin-left:auto;font-size:.82rem}
 .ibtn{cursor:pointer;border:1px solid var(--border);background:var(--card2);color:var(--text2);border-radius:6px;width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-weight:700}
 .ibtn:hover{color:var(--text);border-color:var(--teal)}
-.card{background:var(--card);border-radius:10px;padding:1.15rem 1.35rem;margin-bottom:1.1rem}
+.novo-card{background:var(--card);border-radius:10px;padding:1.15rem 1.35rem;margin-bottom:1.1rem}
 .controls{display:flex;gap:1.1rem;flex-wrap:wrap;align-items:flex-end}
 .ctl label,.ctl-label{display:block;font-size:.7rem;font-weight:700;letter-spacing:.04em;color:var(--text2);text-transform:uppercase;margin-bottom:.3rem}
 select{background:var(--card2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:.5rem .7rem;font-family:inherit;font-size:.86rem;min-width:150px}
 input[type=date]{background:var(--card2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:.5rem .7rem;font-family:inherit;font-size:.86rem;min-width:150px;color-scheme:dark}
 html[data-theme="light"] input[type=date]{color-scheme:light}
 .reslbl{font-size:.72rem;color:var(--muted);margin-top:.3rem;min-height:1em}
-.tab-sub{display:inline-flex;background:var(--card2);border:1px solid var(--border);border-radius:9px;padding:2px;gap:2px}
-.tab-sub-btn{border:0;background:transparent;color:var(--text2);font-family:inherit;font-size:.78rem;font-weight:600;padding:.4rem .7rem;border-radius:7px;cursor:pointer}
-.tab-sub-btn.on{background:var(--teal);color:#fff}
+.tab-sub{display:inline-flex;background:var(--card2);border-radius:99px;padding:3px;gap:0;position:relative}
+.tab-sub-thumb{position:absolute;top:3px;height:calc(100% - 6px);border-radius:99px;background:rgba(255,255,255,.14);pointer-events:none;z-index:0;transition:left .22s cubic-bezier(.4,0,.2,1),width .22s cubic-bezier(.4,0,.2,1)}
+html[data-theme="light"] .tab-sub-thumb{background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.15)}
+.tab-sub-btn{background:transparent;border:none;border-radius:99px;color:var(--text2);padding:.4rem .7rem;cursor:pointer;font-family:inherit;font-size:.78rem;font-weight:500;transition:color .18s;position:relative;z-index:1}
+.tab-sub-btn.active{color:var(--text);font-weight:600}
 .kpis{display:flex;gap:1rem;flex-wrap:wrap;margin:.2rem 0 0}
-.kpi{background:var(--card2);border-radius:9px;padding:.7rem .95rem;min-width:150px}
-.kpi.clk{cursor:pointer;border:1px solid transparent;transition:border-color .12s,transform .12s;font:inherit;color:inherit;text-align:left}
-.kpi.clk:hover{border-color:var(--teal);transform:translateY(-1px)}
-.kpi.clk::after{content:'drill ▸';display:block;font-size:.72rem;color:var(--text2);margin-top:.2rem;letter-spacing:.03em}
-.kpi .k{font-size:.68rem;text-transform:uppercase;letter-spacing:.04em;color:var(--text2);font-weight:700}
-.kpi .v{font-size:1.02rem;font-weight:700;margin-top:.15rem}
-.kpi .d{font-size:.75rem;margin-top:.1rem}
+.kpi-card{background:var(--card2);border-radius:9px;padding:.7rem .95rem;min-width:150px}
+.kpi-card.clk{cursor:pointer;border:1px solid transparent;transition:border-color .12s,transform .12s;font:inherit;color:inherit;text-align:left}
+.kpi-card.clk:hover{border-color:var(--teal);transform:translateY(-1px)}
+.kpi-card.clk::after{content:'drill ▸';display:block;font-size:.72rem;color:var(--text2);margin-top:.2rem;letter-spacing:.03em}
+.kpi-card .kpi-label{font-size:.68rem;text-transform:uppercase;letter-spacing:.04em;color:var(--text2);font-weight:700}
+.kpi-card .kpi-value{font-size:1.02rem;font-weight:700;margin-top:.15rem}
+.kpi-card .d{font-size:.75rem;margin-top:.1rem}
 .up{color:var(--green)}.down{color:var(--red)}
 .badge{display:inline-flex;align-items:center;gap:.4rem;font-size:.72rem;font-weight:700;border-radius:6px;padding:.25rem .55rem}
 .badge.ok{color:var(--green);background:rgba(63,185,80,.12)}
@@ -113,7 +112,7 @@ table.drill th.sortable:hover{color:var(--text)}
 .toggle-wrap{margin-left:auto}
 .dpos{color:var(--green)}.dneg{color:var(--red)}.dnul{color:var(--muted)}
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
-@media (max-width:640px){.wrap{padding:1rem .65rem 2rem}.card{padding:.9rem}.utable{font-size:.72rem}.utable th,.utable td{padding:.4rem}.stage-real{display:none}}
+@media (max-width:640px){.wrap{padding:1rem .65rem 2rem}.novo-card{padding:.9rem}.utable{font-size:.72rem}.utable th,.utable td{padding:.4rem}.stage-real{display:none}}
 @media (max-width:480px){.modal{padding:.5rem}.modal-box{max-height:95vh}.modal-bd{padding:.35rem .65rem .8rem}}
 /* ===== Shell (drawer + topbar) — consistente com o dashboard geral ===== */
 .nav-drawer{position:fixed;top:0;left:-280px;width:280px;height:100vh;background:var(--card);border-right:1px solid rgba(255,255,255,.08);z-index:1000;transition:left .25s cubic-bezier(0.4,0,0.2,1);display:flex;flex-direction:column}
@@ -190,6 +189,8 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
 @keyframes spin{to{transform:rotate(360deg)}}
 .is-loading{opacity:.5;pointer-events:none;transition:opacity .15s}
 </style>
+<link rel="stylesheet" href="/premium.css?v=5">
+<script src="/premium.js?v=5"></script>
 </head>
 <body>
 <!-- Nav Drawer (preenchido pelo nav.js) -->
@@ -256,7 +257,7 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
     <div class="ctl" id="capture-snapshot-ctl" style="display:none">
       <span class="ctl-label">Foto oficial</span>
       <div class="tab-sub">
-        <button type="button" class="tab-sub-btn on" id="capture-snapshot-btn">📸 Capturar agora</button>
+        <button type="button" class="tab-sub-btn active" id="capture-snapshot-btn">📸 Capturar agora</button>
       </div>
       <div class="reslbl" id="capture-snapshot-status" aria-live="polite"></div>
     </div>
@@ -273,7 +274,7 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
   </div>
 
   <!-- D01 | Fotografia mais recente / selecionada -->
-  <div class="card" id="today-snapshot-card" style="display:none">
+  <div class="novo-card" id="today-snapshot-card" style="display:none">
     <div class="sec-hdr">
       <span class="ccode">D01</span>
       <h3 id="today-snapshot-title">Fotografia do forecast</h3>
@@ -284,7 +285,7 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
   </div>
 
   <!-- D02 | Waterfall = elemento primário (spec seção 8) -->
-  <div class="card">
+  <div class="novo-card">
     <div class="sec-hdr">
       <span class="ccode">D02</span>
       <h3>Waterfall do forecast por etapa</h3>
@@ -300,7 +301,7 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
   </div>
 
   <!-- D03 | KPIs de apoio (seção 6.2) -->
-  <div class="card">
+  <div class="novo-card">
     <div class="sec-hdr">
       <span class="ccode">D03</span>
       <h3>KPIs comparativos | A → B</h3>
@@ -311,7 +312,7 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
   </div>
 
   <!-- D04 | Funil delta (seção 6.3): contagem de deals por etapa, Foto A × Foto B -->
-  <div class="card">
+  <div class="novo-card">
     <div class="funnel-hdr">
       <span class="ccode">D04</span>
       <h3>Funil | deals por etapa</h3>
@@ -323,7 +324,7 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
   </div>
 
   <!-- D05 | Deals que SAÍRAM do escopo, lista direta (pedido do dono 2026-07-24) -->
-  <div class="card">
+  <div class="novo-card">
     <div class="sec-hdr">
       <span class="ccode">D05</span>
       <h3>Deals que saíram do pipe</h3>
@@ -335,7 +336,7 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
   </div>
 
   <!-- D06 | ARR Total + Ponderado por Quarter previsto (spec Leva 2) -->
-  <div class="card">
+  <div class="novo-card">
     <div class="sec-hdr">
       <span class="ccode">D06</span>
       <h3>ARR por Quarter previsto</h3>
@@ -349,7 +350,7 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
   </div>
 
   <!-- D07 | Tabela unificada por ETAPA (spec Leva 2) -->
-  <div class="card">
+  <div class="novo-card">
     <div class="sec-hdr">
       <span class="ccode">D07</span>
       <h3>Visão unificada por etapa</h3>
@@ -360,7 +361,7 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
   </div>
 
   <!-- D08 | Pipe de Bid por etapa (pedido do dono 2026-07-24) -->
-  <div class="card">
+  <div class="novo-card">
     <div class="sec-hdr">
       <span class="ccode">D08</span>
       <h3>Pipe de Bid por etapa</h3>
@@ -371,7 +372,7 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
   </div>
 
   <!-- D09 | ARR do quarter corrente vs Meta, evolução semanal (pedido do CRO, reunião de forecast 31/07/2026) -->
-  <div class="card">
+  <div class="novo-card">
     <div class="sec-hdr">
       <span class="ccode">D09</span>
       <h3>ARR do quarter corrente vs Meta | evolução semanal</h3>
@@ -443,12 +444,12 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
 
   function loadCaptureAccess(){
     var ctl = document.getElementById('capture-snapshot-ctl');
-    if(['localhost','127.0.0.1'].indexOf(window.location.hostname) >= 0){ ctl.style.display=''; return Promise.resolve(); }
+    if(['localhost','127.0.0.1'].indexOf(window.location.hostname) >= 0){ ctl.style.display=''; _initTabSubs(); return Promise.resolve(); }
     return fetch('/api/auth/me', {credentials:'same-origin'})
       .then(function(r){ return r.ok ? r.json() : null; })
       .then(function(j){
         var email = String(j && j.user && j.user.email || '').toLowerCase();
-        if(email === 'jpacheco@axenya.com' || email === 'salencar@axenya.com') ctl.style.display='';
+        if(email === 'jpacheco@axenya.com' || email === 'salencar@axenya.com'){ ctl.style.display=''; _initTabSubs(); }
       })
       .catch(function(){ /* mantém oculto sem sessão/permissão */ });
   }
@@ -616,16 +617,16 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
     function num(v){ return Number(v||0).toLocaleString('pt-BR'); }
     function money(v){ return fmtBRL(v); }
     function pctd(a,b){ if(!a) return ''; var p=(b-a)/Math.abs(a)*100; return ' | '+(p>=0?'+':'−')+Math.abs(p).toFixed(0)+'%'; }
-    function card(title,a,b,fmt,drill){ var d=b-a; var cls=d>=0?'up':'down'; var inner='<div class="k">'+title+'</div><div class="v">'+fmt(a)+' → '+fmt(b)+'</div><div class="d '+cls+'">'+(d>=0?'+':'−')+fmt(Math.abs(d))+pctd(a,b)+'</div>'; return drill?'<button type="button" class="kpi clk" data-kpi="'+drill+'" aria-label="'+title+' | abrir drill">'+inner+'</button>':'<div class="kpi">'+inner+'</div>'; }
+    function card(title,a,b,fmt,drill){ var d=b-a; var cls=d>=0?'up':'down'; var inner='<div class="kpi-label">'+title+'</div><div class="kpi-value">'+fmt(a)+' → '+fmt(b)+'</div><div class="d '+cls+'">'+(d>=0?'+':'−')+fmt(Math.abs(d))+pctd(a,b)+'</div>'; return drill?'<button type="button" class="kpi-card clk" data-kpi="'+drill+'" aria-label="'+title+' | abrir drill">'+inner+'</button>':'<div class="kpi-card">'+inner+'</div>'; }
     var inv = Math.abs(sumDelta - (totB-totA)) < 1;
-    var invBadge = '<div class="kpi" style="display:flex;align-items:center;justify-content:center"><span class="badge '+(inv?'ok':'bad')+'">'+(inv?'✓':'✗')+' Σ Δ = Δtotal</span></div>';
+    var invBadge = '<div class="kpi-card" style="display:flex;align-items:center;justify-content:center"><span class="badge '+(inv?'ok':'bad')+'">'+(inv?'✓':'✗')+' Σ Δ = Δtotal</span></div>';
     document.getElementById('kpis').innerHTML =
       card('Deals abertos', kA.deals, kB.deals, num) +
       card('Vidas em pipe', kA.vidas, kB.vidas, num, 'vidas') +
       card('ARR Total em pipe', kA.arrTotal, kB.arrTotal, money, 'arrTotal') +
       card('ARR Ponderado', kA.arrPond, kB.arrPond, money, 'arrPond') +
       invBadge;
-    document.getElementById('kpis').querySelectorAll('.kpi.clk').forEach(function(el){
+    document.getElementById('kpis').querySelectorAll('.kpi-card.clk').forEach(function(el){
       el.addEventListener('click', function(){ var k=el.getAttribute('data-kpi'); openDrill('kpi:'+k, kpiTitle(k), kpiFmt(k)); });
     });
 
@@ -655,10 +656,10 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
     
     var k = j.b.kpis;
     kpisEl.innerHTML =
-      '<div class="kpi"><div class="k">Deals abertos</div><div class="v">'+fmtNum(k.deals)+'</div></div>' +
-      '<div class="kpi"><div class="k">Vidas em pipe</div><div class="v">'+fmtNum(k.vidas)+'</div></div>' +
-      '<div class="kpi"><div class="k">ARR Total</div><div class="v">'+fmtBRL(k.arrTotal)+'</div></div>' +
-      '<div class="kpi"><div class="k">ARR Ponderado</div><div class="v">'+fmtBRL(k.arrPond)+'</div></div>';
+      '<div class="kpi-card"><div class="kpi-label">Deals abertos</div><div class="kpi-value">'+fmtNum(k.deals)+'</div></div>' +
+      '<div class="kpi-card"><div class="kpi-label">Vidas em pipe</div><div class="kpi-value">'+fmtNum(k.vidas)+'</div></div>' +
+      '<div class="kpi-card"><div class="kpi-label">ARR Total</div><div class="kpi-value">'+fmtBRL(k.arrTotal)+'</div></div>' +
+      '<div class="kpi-card"><div class="kpi-label">ARR Ponderado</div><div class="kpi-value">'+fmtBRL(k.arrPond)+'</div></div>';
     
     cardEl.style.display = '';
   }
@@ -847,9 +848,9 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
     var pct = metaQuarter>0 ? Math.round(val/metaQuarter*100) : null;
     var pctCls = pct==null ? '' : (pct>=100?'up':'down');
     document.getElementById('q3trend-kpis').innerHTML =
-      '<div class="kpi"><div class="k">'+esc(mlbl)+' | '+esc(qLabel)+'</div><div class="v">'+fmtBRL(val)+'</div><div class="d" style="color:var(--text2)">foto '+esc(last.label)+'</div></div>' +
-      '<div class="kpi"><div class="k">Meta trimestral</div><div class="v">'+(metaQuarter>0?fmtBRL(metaQuarter):'—')+'</div><div class="d" style="color:var(--text2)">'+(metaQuarter>0?'meta anual ÷ 4':'sem meta em Configurações')+'</div></div>' +
-      '<div class="kpi"><div class="k">Atingimento</div><div class="v '+pctCls+'">'+(pct!=null?pct+'%':'—')+'</div></div>';
+      '<div class="kpi-card"><div class="kpi-label">'+esc(mlbl)+' | '+esc(qLabel)+'</div><div class="kpi-value">'+fmtBRL(val)+'</div><div class="d" style="color:var(--text2)">foto '+esc(last.label)+'</div></div>' +
+      '<div class="kpi-card"><div class="kpi-label">Meta trimestral</div><div class="kpi-value">'+(metaQuarter>0?fmtBRL(metaQuarter):'—')+'</div><div class="d" style="color:var(--text2)">'+(metaQuarter>0?'meta anual ÷ 4':'sem meta em Configurações')+'</div></div>' +
+      '<div class="kpi-card"><div class="kpi-label">Atingimento</div><div class="kpi-value '+pctCls+'">'+(pct!=null?pct+'%':'—')+'</div></div>';
   }
 
   // ── D05 | Deals que SAÍRAM do escopo, lista direta no card (2026-07-24) ──
@@ -991,6 +992,31 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
   window.addEventListener('resize', syncAllSegs);
   window.addEventListener('load', syncAllSegs);
 
+  // .tab-sub com thumb deslizante (padrão canônico do dashboard.html): injeta o
+  // elemento .tab-sub-thumb ausente e move via left/width conforme o botão .active.
+  function _moveTabSubThumb(sub, animate){
+    var thumb = sub && sub.querySelector('.tab-sub-thumb');
+    if(!thumb) return;
+    var active = sub.querySelector('.tab-sub-btn.active');
+    if(!active){ thumb.style.opacity='0'; thumb.style.width='0px'; return; }
+    thumb.style.opacity='';
+    if(!animate) thumb.style.transition='none';
+    thumb.style.left = active.offsetLeft+'px';
+    thumb.style.width = active.offsetWidth+'px';
+    if(!animate){ void thumb.offsetWidth; thumb.style.transition=''; }
+  }
+  function _initTabSubs(){
+    Array.prototype.slice.call(document.querySelectorAll('.tab-sub')).forEach(function(sub){
+      if(!sub.querySelector('.tab-sub-thumb')){
+        var th = document.createElement('div');
+        th.className = 'tab-sub-thumb';
+        sub.insertBefore(th, sub.firstChild);
+      }
+      _moveTabSubThumb(sub, false);
+    });
+  }
+  window.addEventListener('resize', _initTabSubs);
+
   // ── Sticky condensado: resumo dos filtros ativos no lugar dos controles ──
   function hdrSummaryTxt(){
     var aeTxt = aeFilter.size===0 ? 'Todos os executivos' : (aeFilter.has('__NONE__') ? 'Nenhum executivo' : (aeFilter.size===1 ? Array.from(aeFilter)[0] : aeFilter.size+' executivos'));
@@ -1105,6 +1131,7 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
 
   loadCaptureAccess();
   syncAllSegs();
+  _initTabSubs();
   updateHdrSummary();
   loadFotos().then(refresh).catch(function(e){ var cs=document.getElementById('chart-state'); cs.className='state err'; cs.textContent=e.message; });
   document.getElementById('q3trend-qlabel').textContent = q3TrendQuarterLabel();

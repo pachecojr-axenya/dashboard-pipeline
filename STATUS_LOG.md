@@ -4238,3 +4238,18 @@ Registro curto, uma linha por interação (a cada alteração).
 - **Regressões da extração do nav.js corrigidas** (o bloco inline do merge-base tinha coisas que o nav.js perdeu): footer chama `(doLogout||logout)` — 8 das 10 páginas só definem `doLogout`, o botão Sair dava ReferenceError; botão de idioma PT/EN de volta (condicional a `novoToggleLang`; forecast/forecast-stage não têm); ícone de tema sun/moon; **Escape em cascata** (settings → ajuda → modal → dropdown) restaurado — 8 páginas tinham perdido o Esc-fecha.
 - **Regra primária nº 2 atualizada** com a ressalva do main: subpáginas BDR (workload, treble, no-show, list-attack) ainda usam `premium.js`/`NAV_MODEL` como segunda fonte de menu — espelhar mudanças lá até a unificação.
 - **Validação:** `node --check nav.js` OK; `npm run check` OK; `_check-inline-js` 10/10 OK; fix `35b30eb` presente nos forecast*; servidor local reiniciado (api/lib mudaram); 17 rotas 200 (incl. `/novo-bdr/workload`, `/novo-bdr/treble`, `/nav.js`); `_smoke-render` OK nos 8 painéis novo*; menu montado em mini-DOM com os 4 sub-itens BDR + footer completo. ⚠ `/api/bdr-workload` local dá 500 "autenticação falhou" — token do `.env.local` sem os escopos de engagements/owners que o endpoint usa (funciona em produção; não é defeito do merge).
+
+## Delta | religado ao design system compartilhado (premium.css/premium.js) (2026-08-02)
+
+> Tier 1, item 1 de `docs/design-system-proposal.md`: `forecast-delta.html` era o
+> único painel "principal" sem `premium.css`/`premium.js` — renderizava com paleta
+> antiga (`:root` local vivo, sem override) e um toggle sem thumb deslizante.
+> Rodada **só CSS/nomes de classe**, sem tocar lógica de cálculo; preservadas as
+> features recém-mescladas nesta branch (barra "Fechado" no D02, card D09).
+
+- **Includes adicionados** no `<head>`, mesma posição relativa de `dashboard.html`/`board.html` (logo após o `<style>` inline): `<link rel="stylesheet" href="/premium.css?v=5">` + `<script src="/premium.js?v=5"></script>`.
+- **Classes renomeadas para os canônicos** (lógica JS que lê/escreve essas classes preservada): `.card` → `.novo-card` (9 divs + regra de media query); `.kpi`/`.k`/`.v` → `.kpi-card`/`.kpi-label`/`.kpi-value` (CSS + todas as strings de KPI geradas em JS, D01/D03/D09). `.d` (linha de delta) e `.ibtn` (botão de info 24px) mantidos como estão — fora do escopo desta rodada.
+- **`.tab-sub` reconstruído com thumb real:** única instância era o botão "📸 Capturar agora" (faixa de captura manual, sempre "ativo"). Adicionado `.tab-sub-thumb` (desliza via `left`/`width`) + classe de estado `.active` (era `.on`), com `_moveTabSubThumb`/`_initTabSubs` copiadas de `dashboard.html` (cada página implementa o próprio toggle, por convenção do projeto). `_initTabSubs()` é rechamada quando a faixa de captura (`display:none` até a checagem de acesso) fica visível.
+- **`:root` local morto removido** — `--bg`/`--card`/`--teal`/etc. da paleta antiga, incluindo `--font`/`--hover`; todas cobertas por `premium.css`.
+- **Gate de paridade (grep no arquivo inteiro):** zero classes órfãs (`class="card"`, `class="kpi"`/`"k"`/`"v"` soltas, `tab-sub-btn.on`, `:root` remanescente) após o rename.
+- **Validação:** `node scripts/_check-inline-js.js public/forecast-delta.html` = 0 erros; `npm run check` (única falha é a conhecida `test-bdr-workload-v2.js`, não relacionada); `scripts/test-forecast-delta-e2e.js`, `scripts/test-forecast-delta-leva2.js` e `scripts/test-delta-invariant.js` = PASS (invariante Σ Δ = Δtotal intacto; barra Fechado e card D09 confirmados por inspeção de código, sem servidor com dado real neste worktree).

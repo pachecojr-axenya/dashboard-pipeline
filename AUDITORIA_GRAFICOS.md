@@ -1,5 +1,44 @@
 # Auditoria crítica dos gráficos 🟡 | 2026-06-12
 
+## Adendo | Delta religado ao design system (premium.css/premium.js) (2026-08-02)
+
+> **Estado inalterado: 🟢 validado** (D01–D08) / 🟡 D09 (ver adendo seguinte) — esta
+> rodada é **só CSS/nomes de classe**, sem tocar em lógica de cálculo. Tier 1, item 1
+> de `docs/design-system-proposal.md`: `forecast-delta.html` era o único painel
+> "principal" sem `premium.css`/`premium.js`, renderizando com paleta antiga
+> (`:root` local vivo, sem nada que o sobrescrevesse) e um toggle sem thumb
+> deslizante.
+>
+> - Adicionado `<link rel="stylesheet" href="/premium.css?v=5">` +
+>   `<script src="/premium.js?v=5"></script>` no `<head>`, logo após o `<style>`
+>   inline — mesma posição relativa usada por `dashboard.html`/`board.html`.
+> - Renomeadas as classes locais para os equivalentes canônicos (mantendo toda a
+>   lógica JS que lê/escreve essas classes): `.card` → `.novo-card` (9 usos no HTML +
+>   regra da media query); `.kpi`/`.k`/`.v` → `.kpi-card`/`.kpi-label`/`.kpi-value`
+>   (CSS + todas as strings HTML geradas em JS: KPIs do D01/D03/D09).
+> - `.tab-sub` reconstruído com o padrão real (só existia 1 instância: o botão
+>   "📸 Capturar agora" da faixa de captura manual, sempre "ativo"): elemento
+>   `.tab-sub-thumb` deslizante (via `left`/`width`) + classe de estado `.active`
+>   (era `.on`), copiando a implementação de `dashboard.html`
+>   (`_moveTabSubThumb`/`_initTabSubs`, replicadas aqui porque cada página implementa
+>   o próprio toggle — `STATUS_LOG.md`, Regra de código). `_initTabSubs()` é
+>   re-chamada quando a faixa de captura (inicialmente `display:none`) fica visível,
+>   para o thumb medir a largura real.
+> - `.ibtn` (botão de info 24px próprio) mantido como está — fora do escopo desta
+>   rodada (drawer de info é extração separada).
+> - Removido o `:root` local morto (paleta antiga `--bg:#0d1117` etc.) — todas as
+>   vars usadas (`--font`, `--hover` inclusive) já são cobertas por `premium.css`.
+> - Gate de paridade: grep no arquivo inteiro por classes órfãs (`class="card"`,
+>   `class="kpi"`, `class="k"`/`class="v"` soltas, `tab-sub-btn.on`, `:root`
+>   remanescente) — zero ocorrências após o rename. A barra **Fechado** e o card
+>   **D09** (mesclados nesta branch antes desta rodada) foram só reembalados em
+>   `.novo-card`/`.kpi-card`; nenhuma linha de cálculo tocada.
+> - Validação: `node scripts/_check-inline-js.js public/forecast-delta.html` = 0
+>   erros; `npm run check` (exceto a falha conhecida de
+>   `test-bdr-workload-v2.js`, não relacionada); `scripts/test-forecast-delta-e2e.js`,
+>   `scripts/test-forecast-delta-leva2.js` e `scripts/test-delta-invariant.js` = PASS
+>   (invariante Σ Δ = Δtotal intacto).
+
 ## Adendo | Delta ganha o D09, ARR do quarter corrente vs Meta (2026-08-02)
 
 > **Estado: 🟡 não validado contra o HubSpot** (card novo; painel Delta segue 🟢
