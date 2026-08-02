@@ -57,25 +57,31 @@ O **ARR de cada deal** (coluna "ARR Est." do `/forecast` e KPIs ARR Total/Ponder
 `/forecast-delta`) é derivado assim (`api/forecast-table.js` + `lib/forecast-compute.js`
 `mapFotoDeal`, iguais por espelho):
 
-0. **POC → sem ARR (2026-07-28):** se `É POC? = Sim`, o ARR é `—`, **antes de qualquer
-   outro passo** — nem `arr_estimado`, nem `1ª Fatura × 12`, nem o fallback VPV se aplicam.
-   Precede toda a cascata, espelhando a precedência de POC no `dealMonthly` (POC zera Real
-   e Probabilizada em todos os painéis, Regra primária nº 3). Antes deste guard, um POC de
-   Cot/Cons/Neg com 1ª Fatura vazia caía no fallback VPV e exibia ARR (ex.: **BRF/MARFRIG -
-   POC**, 4.500 vidas → `4.500 × 24 × 12 = R$ 1.296.000`), contradizendo o zero do caixa.
 1. `arr_estimado` (campo do HubSpot), se > 0; senão
 2. `1ª Fatura × 12`, se > 0; senão
 3. **Fallback VPV (2026-07-20):** nas etapas **Diagnóstico/Cotação/Consultoria/Negociação**,
    `(vidas || colaboradores) × VPV × 12` (VPV por faixa 36/24/12); senão
 4. `—` (sem ARR).
 
-Assim, um deal de Cot/Cons/Neg sem 1ª Fatura passa a ter **ARR estimado** (coluna + KPIs)
-coerente com a projeção de caixa por VPV — **exceto POC, que fica sem ARR**. A coluna
-"Fatura Atual" (plano vigente do cliente) continua **não** entrando no ARR.
+**POC entra na mesma cascata, sem guard especial (2026-08-02):** o guard "POC → sem ARR"
+introduzido em 2026-07-28 foi **revertido** por decisão da reunião de forecast de 31/07 —
+"POC não pode valer zero no forecast: se a probabilidade real fosse zero, a conta deveria
+morrer (se não acreditamos que vai dar receita, liberamos o tempo do Rafa); POC entra com
+valor e probabilidade baixa, o conservadorismo de caixa é problema do CFO, o forecast
+reflete crença." Um deal POC de Cot/Cons/Neg sem 1ª Fatura volta a cair no fallback VPV
+como qualquer outro deal (ex.: um POC de 4.500 vidas em Cotação → `4.500 × 24 × 12`). A
+probabilidade baixa de um POC não vem de uma fórmula nova — é o valor que o AE/comitê já
+ajusta manualmente por deal em `Probabilidade (campo)` / HubSpot, igual a qualquer deal.
+A coluna "Fatura Atual" (plano vigente do cliente) continua **não** entrando no ARR.
 
-> Nota sobre fotos do Delta: o guard de POC no `mapFotoDeal` só dispara em fotos que
-> capturam `É POC?` (a partir de 2026-07-13). Fotos anteriores não têm o campo e não são
-> afetadas — igual à precedência de POC já existente no `dealMonthly` sobre fotos antigas.
+> Nota: o **forecast de caixa mensal** (`dealMonthly` em `forecast-engine.js`, item 1 da
+> precedência da seção 2 acima) **continua zerando Real e Probabilizada para POC** — essa
+> é uma regra mais antiga (2026-07-13) e mais ampla (zera a série mensal inteira, não só o
+> campo ARR), fora do escopo desta reversão de 2026-08-02, que tratou especificamente do
+> campo "ARR Estimado"/KPIs de ARR. Ou seja: hoje um POC mostra ARR estimado normal na
+> coluna/KPIs, mas ainda não contribui para o forecast de caixa mensal (waterfall, TCV,
+> N05/N06B) — divergência conhecida a resolver numa decisão separada se a intenção da
+> reunião de 31/07 for estendida ao caixa também.
 
 - **Demais etapas** (Proposta Enviada, Standby, Implantação, Ganho, …)
   - início = `data_prevista`; valor = `calcReceitaMes(n)`; **cap 24 meses**.

@@ -1,5 +1,39 @@
 # Dashboard Enhancement Loop — Status Log
 
+### Forecast | POC volta a estimar ARR — reversão da regra de 28/07 (2026-08-02)
+
+> Decisão estrutural da reunião de forecast de 31/07 ("05 - Consolidado da reunião.md"):
+> "POC não pode valer zero no forecast. Se a probabilidade real fosse zero, a conta deveria
+> morrer (se não acreditamos que vai dar receita, liberamos o tempo do Rafa). POC entra com
+> valor e probabilidade baixa — o conservadorismo de caixa é problema da Cíntia (CFO), o
+> forecast reflete crença." Isso reverte a regra de 2026-07-28 (STATUS_LOG abaixo) que
+> zerava o ARR de qualquer deal `É POC? = Sim`.
+
+- **`lib/forecast-compute.js` (`mapFotoDeal`, cascata de `arr_estimado`) e
+  `api/forecast-table.js` (cascata de `arr`):** removido o guard "POC → sem ARR". POC volta
+  a fluir pela MESMA cascata de ARR de qualquer outro deal (`arr_estimado` → `1ª Fatura ×
+  12` → fallback VPV por vidas → `—`), sem tratamento especial. A probabilidade baixa de um
+  POC continua vindo do campo já ajustado manualmente pelo AE/comitê no HubSpot
+  (`Probabilidade (campo)`) — nenhuma fórmula nova de probabilidade foi criada.
+- **`docs/forecast-revenue-rules.md` (seção 2b):** guard "0. POC → sem ARR (2026-07-28)"
+  removido da cascata documentada; nota adicionada explicando a reversão e citando a
+  decisão de 31/07.
+- **Divergência conhecida, deixada FORA do escopo desta mudança:** `public/forecast-engine.js`
+  (`dealMonthly`, regra de 2026-07-13, mais antiga e mais ampla que a de ARR) continua
+  zerando Real/Probabilizada de deals POC no **forecast de caixa mensal** (waterfall do
+  Forecast Overall, TCV, N05/N06B do CRO Dashboard) — hoje um POC mostra ARR normal na
+  coluna/KPIs, mas ainda não contribui em R$ para o forecast de caixa. Não mexido por ser
+  regra distinta (zera a série mensal inteira, não o campo ARR) e fora do pedido desta
+  tarefa; se a intenção de 31/07 for estendida ao caixa, precisa de decisão/sessão dedicada.
+- **Validação:** `npm run check` — mesma suíte de sempre PASS; a única falha
+  (`test-bdr-workload-v2.js`, assert `blockedByFilters` na linha 228) é fragilidade
+  pré-existente de checagem de dia útil hardcoded (hoje, 02/08/2026, é domingo) — não
+  relacionada a esta mudança. `scripts/test-delta-invariant.js`,
+  `scripts/test-forecast-delta-leva2.js` e `scripts/test-forecast-delta-e2e.js` rodados à
+  parte (fora da cadeia interrompida pelo teste de fim de semana), PASS integral.
+- Branch: `pacheco/poc-nao-zera-arr-2026-08-02` (sem push, sem deploy — aguardando revisão
+  humana).
+
 ### ⚠ Incidente | DW `fact_deployment_status` congelado desde 30/07 16:05 BRT (2026-07-31)
 
 > Detectado ao investigar dados desatualizados no painel BDR | Treble.
