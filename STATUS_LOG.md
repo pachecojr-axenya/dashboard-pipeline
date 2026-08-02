@@ -1,5 +1,54 @@
 # Dashboard Enhancement Loop — Status Log
 
+### Forecast | Probabilidade final = MENOR entre etapa × AE (autorizado, validado com a CFO) (2026-08-02)
+
+> Decisão da reunião de forecast de 31/07, agora autorizada: "para fins de forecast, usar
+> sempre a MENOR entre a probabilidade da etapa (régua estatística) e a probabilidade que o
+> executivo colocou manualmente." Racional: um AE que baixa a própria probabilidade tem
+> motivo real; a régua de etapa carrega o otimismo natural de quem não mexeu em nada.
+> Precedência preservada: ajuste explícito do comitê em reunião ("P. Ajust." via override
+> manual por deal, decisão 2026-07-27) continua valendo por cima — a regra do mínimo é só o
+> cálculo DEFAULT/automático.
+
+- **`public/prob-engine.js` (`_autoProbInfo`, ~linha 89-104):** substituído o ajuste
+  ±10%-se-divergir-≥30pp por `final = cp < sp ? cp : sp` (MENOR entre prob. de etapa `sp` e
+  prob. do AE `cp`); sem prob. do AE, mantém `sp` (inalterado). Diagnóstico continua fixo em
+  6% sem ajuste do AE (regra separada, não tocada). `calcProbInfo` — a camada que aplica o
+  override manual por deal (`probManual`/"P. Ajust.") por cima do cálculo automático — **não
+  foi alterada**: a precedência do ajuste do comitê continua intacta (verificado pelo teste
+  `probManual` de `test-forecast-delta-leva2.js`, que segue passando).
+- **Alcance:** `prob-engine.js` é a fonte única de `calcProbInfo` para CRO Dashboard (C04),
+  Board, `/forecast`, `/forecast-stage`, `forecast-overall-core.js` e `/forecast-delta`
+  (`lib/forecast-compute.js`, que faz `require('./prob-engine.js')` no server) — todos
+  herdaram a regra do mínimo só com esta edição.
+- **Mirrors locais corrigidos também (Regra primária nº 3 — nenhum painel deveria recalcular
+  por conta própria, mas dois já faziam antes de hoje):** `public/dashboard.html`
+  (`_novoFcProbAdj`, ~linha 3931 — alimenta a série de N05/N06B via `_novoForecastSeries`) e
+  `public/ae.html` (`_novoFcProbAdj`, ~linha 626 — alimenta A07 via `_aeForecastByAE`) tinham
+  cada um sua PRÓPRIA cópia do ajuste ±10%, que NÃO passava por `prob-engine.js`. Corrigidas
+  para o mesmo `cp < sp ? cp : sp`, senão N05/N06B/A07 continuariam na régua antiga enquanto
+  o resto do dashboard já usava a nova. Nenhum dos dois tinha (nem tem agora) suporte ao
+  override manual por deal — comportamento pré-existente, fora do escopo desta mudança.
+- **Encontrado e NÃO tocado (código morto):** `public/shared-charts.js` (`sharedProbFinal`) e
+  `public/ae.html` (`_aeProbAdj`, que sobrescreve `sharedProbFinal` "só neste painel") ainda
+  têm a fórmula ±10% antiga. Confirmado por grep de chamadas: a cadeia
+  `sharedDealProjectedRevenue → sharedPipeRevMonthValue → sharedProbFinal` não é chamada por
+  nenhum HTML — é código órfão (provavelmente superado pela migração para `ForecastEngine`/
+  `_novoFcProbAdj`). Não editado por não ter efeito em produção; sinalizado aqui para limpeza
+  futura oportunística.
+- **Documentação:** `docs/forecast-revenue-rules.md` (seção 2, bullet "Probabilizada", e nova
+  nota na seção 3) e `semantic/regras.json` (`prob_final_deal`, `prob_final_forecast`,
+  `arr_ponderado_forecast`) atualizados; `docs/dashboard-2.0/catalogo.md` e
+  `public/semantic-ref.js` regenerados (`check-semantic` OK, 0 avisos).
+- **Validação:** `npm run check` PASS (única falha: fragilidade preexistente de dia útil
+  hardcoded em `test-bdr-workload-v2.js`); `node --check` limpo em `prob-engine.js` e
+  `forecast-engine.js`; `_check-inline-js.js` limpo em `dashboard.html`/`ae.html`/`board.html`.
+  `test-delta-invariant.js`, `test-forecast-delta-leva2.js` (inclui o teste específico de
+  `probManual`/"P. Ajust." final forçada) e `test-forecast-delta-e2e.js` rodados à parte,
+  PASS integral.
+- Commit separado, mesma branch `pacheco/poc-nao-zera-arr-2026-08-02` (sem push, sem
+  deploy).
+
 ### Forecast | POC volta a gerar receita no forecast de caixa (dealMonthly) — fecha a divergência (2026-08-02)
 
 > Autorização explícita do dono, seguida à entrada anterior: "a intenção é POC carregar

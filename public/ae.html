@@ -621,17 +621,17 @@ function _novoFcStageProbForwd(stage, pipeline){
   return NOVO_FC_STAGE_PROB_DEFAULT[stage];
 }
 // probAdj por deal, IDÊNTICO ao calcProbInfo do /forecast: Diagnóstico fixo 6%; demais =
-// prob da etapa (funil/default do /forecast) com ajuste do AE (±10% se |cp-sp|>=30pp);
-// sp nulo → null (deal não entra). Ganho/Impl. NÃO são forçados a 100%.
+// MENOR entre prob da etapa (funil/default do /forecast) e prob do AE (2026-08-02, decisão
+// validada com a CFO na reunião de forecast de 31/07 — substitui o antigo ajuste ±10% se
+// |cp-sp|>=30pp); sp nulo → null (deal não entra). Ganho/Impl. NÃO são forçados a 100%.
+// Espelha ProbEngine._autoProbInfo (public/prob-engine.js).
 function _novoFcProbAdj(d){
   if (d.stage==='Diagnóstico') return 0.06;
   var sp = _novoFcStageProbForwd(d.stage, d.pipeline);
   if (sp == null) return null;
   var cp = d.probabilidade;
   if (cp == null) return sp;
-  if (cp <= sp - 0.3) return sp*0.9;
-  if (cp >= sp + 0.3) return sp*1.1;
-  return sp;
+  return cp < sp ? cp : sp;
 }
 // Conjunto de deals do /forecast: negócio novo (createdate>=set/25) OU Ganho/Impl. OU Bid desde jan/25.
 function _novoFcInForecastSet(d){

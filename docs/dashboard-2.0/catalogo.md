@@ -233,10 +233,10 @@ Corte PME: 200 vidas. Fuso canônico: America/Sao_Paulo.
 - **Tipo:** calculado · **Grain:** deal · **Status:** em_revisao · **Vigente desde:** 2026-07-14 · **Dono:** revops
 - **Usa dados:** `dealstage`, `pipeline`, `probabilidade_ae`, `prob_override_etapa`
 - **Usa referência:** `reguas_probabilidade.forecast_flat`, `reguas_probabilidade.calculada_funil`
-- **Precedência:** prob de etapa = override manual (por pipeline) > calculada do funil (C07, por pipeline) > RÉGUA ÚNICA forecast_flat (D4/D4b, 2026-07-15 — antes era a painel_default, aposentada)
-- **Fórmula:** final = prob_etapa, ajustada pela prob do AE só quando diverge >= 30pp: AE <= etapa-0,3 → etapa×0,9 \| AE >= etapa+0,3 → etapa×1,1 \| senão = etapa.
-- **Código (1.0):** public/prob-engine.js:62 (stageProbFor) · public/prob-engine.js:77 (calcProbInfo)
-- **Notas:** ADR-008 (toggle global forçada × calculada) muda a precedência para uma escolha explícita do usuário na Fase 4. Histórico da divergência de Implantação: referencia.reguas_probabilidade.painel_default_APOSENTADA.
+- **Precedência:** prob de etapa = override manual (por pipeline) > calculada do funil (C07, por pipeline) > RÉGUA ÚNICA forecast_flat (D4/D4b, 2026-07-15 — antes era a painel_default, aposentada). Override manual POR DEAL (probManual/'P. Ajust.', 2026-07-27) vence tudo abaixo, inclusive a regra do mínimo.
+- **Fórmula:** final = MENOR entre a prob de etapa e a prob do AE (2026-08-02, decisão validada com a CFO na reunião de forecast de 31/07: um AE que baixa a própria prob tem motivo real, a régua de etapa carrega o otimismo natural de quem não mexeu em nada); sem prob do AE → prob de etapa. Substitui o ajuste ±10% por divergência ≥30pp (regra anterior, aposentada em 2026-08-02).
+- **Código (1.0):** public/prob-engine.js:62 (stageProbFor) · public/prob-engine.js:89 (_autoProbInfo) · public/prob-engine.js:120 (calcProbInfo)
+- **Notas:** ADR-008 (toggle global forçada × calculada) muda a precedência para uma escolha explícita do usuário na Fase 4. Histórico da divergência de Implantação: referencia.reguas_probabilidade.painel_default_APOSENTADA. 2026-08-02: fórmula do ajuste automático trocada de ±10%/30pp para o mínimo etapa×AE; o override manual por deal (probManual) não muda.
 
 ### `filtro_deals_ativos` | Filtro de deals ativos (payload principal)
 
@@ -275,27 +275,27 @@ Corte PME: 200 vidas. Fuso canônico: America/Sao_Paulo.
 - **Tipo:** calculado · **Grain:** deal · **Status:** em_revisao · **Vigente desde:** 2026-07-16 · **Dono:** revops
 - **Usa dados:** `arr_estimado`, `primeira_fatura`, `dealstage`, `probabilidade_ae`
 - **Depende de:** `arr_estimado_fallback`, `prob_final_forecast`
-- **Fórmula:** ARR Ponderado = ARR estimado (sem ARR → 1ª fatura × 12, regra arr_estimado_fallback) × P. Ajust. (probabilidade final da etapa + ajuste ±10% do AE, a mesma da coluna P. Ajust. do painel). Puramente informativa: NÃO altera a receita probabilizada nem os totais mensais. Diferenças residuais contra o Board vêm da fonte da probabilidade (Forecast: régua flat; Board: C07 por pipeline quando há amostra) — visíveis nas colunas P. Etapa / P. Realtime.
+- **Fórmula:** ARR Ponderado = ARR estimado (sem ARR → 1ª fatura × 12, regra arr_estimado_fallback) × P. Ajust. (probabilidade final = menor entre etapa e AE, 2026-08-02, a mesma da coluna P. Ajust. do painel). Puramente informativa: NÃO altera a receita probabilizada nem os totais mensais. Diferenças residuais contra o Board vêm da fonte da probabilidade (Forecast: régua flat; Board: C07 por pipeline quando há amostra) — visíveis nas colunas P. Etapa / P. Realtime.
 - **Código (1.0):** public/forecast.html (coluna arr_pond) · public/forecast-stage.html (idem)
 
 ### `prob_final_forecast` | Probabilidade final no Forecast (régua flat + ajuste do AE)
 
-> A coluna P. Etapa segue a régua flat validada do Forecast; a probabilidade informada pelo AE só ajusta ±10% quando diverge muito da etapa.
+> A coluna P. Etapa segue a régua flat validada do Forecast; a probabilidade final usa a MENOR entre essa régua e a probabilidade que o AE informou no deal (2026-08-02).
 
 - **Tipo:** calculado · **Grain:** deal · **Status:** em_revisao · **Vigente desde:** 2026-07-14 · **Dono:** revops
 - **Usa dados:** `dealstage`, `probabilidade_ae`, `prob_override_etapa`
 - **Usa referência:** `reguas_probabilidade.forecast_flat`
-- **Precedência:** override manual em Configurações > régua flat do Forecast. Overrides legados iguais aos defaults antigos são limpos automaticamente (fix 2026-07-14).
-- **Fórmula:** P.Etapa = régua flat. Ajuste pelo AE: sem prob. do AE → P.Etapa; dentro de ±30 pp → P.Etapa; AE >= P.Etapa+30pp → P.Etapa × 1,10; AE <= P.Etapa−30pp → P.Etapa × 0,90.
+- **Precedência:** override manual em Configurações > régua flat do Forecast. Overrides legados iguais aos defaults antigos são limpos automaticamente (fix 2026-07-14). Override manual POR DEAL (probManual/'P. Ajust.') vence a regra do mínimo abaixo.
+- **Fórmula:** P.Etapa = régua flat. Prob. final (2026-08-02, decisão validada com a CFO): sem prob. do AE → P.Etapa; senão → MENOR(P.Etapa, Prob. AE). Substitui o ajuste ±10% por divergência ≥30pp (regra anterior, aposentada).
 
 | Situação | Probabilidade final |
 |---|---|
-| AE não informou | P.Etapa (sem ajuste) |
-| Prob. AE dentro de ±30 pp da P.Etapa | P.Etapa (sem ajuste) |
-| Prob. AE >= P.Etapa + 30 pp | P.Etapa × 1,10 (+10%) |
-| Prob. AE <= P.Etapa − 30 pp | P.Etapa × 0,90 (−10%) |
+| AE não informou | P.Etapa |
+| Prob. AE >= P.Etapa | P.Etapa (a menor) |
+| Prob. AE < P.Etapa | Prob. AE (a menor) |
 
-- **Código (1.0):** public/forecast.html (P. Etapa \| fix 2026-07-14) · public/forecast-stage.html
+- **Código (1.0):** public/forecast.html (P. Etapa \| fix 2026-07-14) · public/forecast-stage.html · public/prob-engine.js:89 (_autoProbInfo)
+- **Notas:** 2026-08-02: fórmula do ajuste automático trocada de ±10%/30pp para o mínimo etapa×AE (decisão da reunião de forecast de 31/07, validada com a CFO).
 
 ### `arr_estimado_fallback` | ARR com fallback
 

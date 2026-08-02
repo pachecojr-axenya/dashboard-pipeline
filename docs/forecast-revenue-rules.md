@@ -91,8 +91,17 @@ A coluna "Fatura Atual" (plano vigente do cliente) continua **não** entrando no
   - início = `data_prevista`; valor = `calcReceitaMes(n)`; **cap 24 meses**.
 
 - **Probabilizada** = `valor × probAdj`.
-  - `probAdj` = `prob_final_deal` (régua `forecast_flat` / `ProbEngine`, com ajuste ±10% do AE)
+  - `probAdj` = `prob_final_deal` (régua `forecast_flat` / `ProbEngine.calcProbInfo`)
     **exceto Diagnóstico**, que é **fixo em 6% sem ajuste do AE**; BID usa `bidProb` (0,5%).
+  - **Regra do mínimo (2026-08-02):** o ajuste automático da prob. do AE deixou de ser
+    ±10% por divergência ≥30pp e passou a ser a **MENOR entre a prob. de etapa (régua) e a
+    prob. que o AE colocou manualmente no deal** — decisão da reunião de forecast de 31/07,
+    validada com a CFO ("um AE que baixa a própria probabilidade tem motivo real; a régua
+    de etapa carrega o otimismo natural de quem não mexeu em nada"). Sem prob. do AE, usa a
+    de etapa. Um override manual **por deal** ("P. Ajust." explícito do comitê, decisão
+    2026-07-27) continua valendo **por cima** dessa regra — o mínimo é só o cálculo
+    DEFAULT/automático, não substitui um ajuste explícito já feito em reunião. Detalhe em
+    `public/prob-engine.js` (`_autoProbInfo`/`calcProbInfo`).
 
 ## 3. Onde se aplica (auditoria 2026-07-20)
 
@@ -101,6 +110,14 @@ A coluna "Fatura Atual" (plano vigente do cliente) continua **não** entrando no
 (comparativo), CRO Dashboard — *headline* de coverage N05/N06B (`_novoForecastSeries` →
 `dealMonthly`), AE Performance (`ae.html`), Board (TCV via `calcTCV`). `api/forecast-table.js`
 não projeta receita (só entrega campos crus + fallback de ARR).
+
+> **Nota (2026-08-02):** a probabilidade que N05/N06B (`dashboard.html`, `_novoFcProbAdj`) e
+> A07 (`ae.html`, `_novoFcProbAdj`) injetam em `dealMonthly` sempre foi um MIRROR local do
+> cálculo de `prob-engine.js`, não uma chamada direta — motivo pelo qual a regra do mínimo
+> (seção 2 acima) precisou ser replicada manualmente nesses dois arquivos além do
+> `prob-engine.js`, para as três séries continuarem batendo mês a mês. Demais consumidores
+> de probabilidade (C04 do CRO/Board, Forecast, Overall, Delta) chamam `ProbEngine.calcProbInfo`
+> diretamente e herdaram a mudança sem edição própria.
 
 ## 4. Divergências conhecidas (a corrigir — motores paralelos)
 
