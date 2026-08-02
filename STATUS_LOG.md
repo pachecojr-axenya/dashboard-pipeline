@@ -1,5 +1,53 @@
 # Dashboard Enhancement Loop — Status Log
 
+### Design System | `forecast-panel.html` — remoção do CSS morto de `.nav-drawer`/`.nav-item`/`.panel-switcher` (Tier 1.2) (2026-08-02)
+
+> Item Tier 1.2 de `docs/design-system-proposal.md` (seção 2.3, achado #3 do
+> `forecast-panel.html`): o arquivo (109 linhas, placeholder "em construção") replicava
+> manualmente o bloco `.nav-drawer`/`.nav-item`/`.panel-switcher` (linhas ~21-63) com valores
+> que o documento descreveu como já cobertos por `premium.css` + pelo CSS que `nav.js`
+> injeta. Confirmado por leitura direta de `public/nav.js` e `public/premium.css` (não
+> tomado de forma cega do documento) antes de remover qualquer coisa.
+
+- **Achado importante que o documento não capturou:** nem tudo no bloco é 100% coberto
+  externamente. `nav.js` injeta um `.panel-dd` **sem** `max-height:70vh;overflow-y:auto`
+  (só o `forecast-panel.html` tinha esse cap local — nenhuma outra página principal define
+  `.panel-dd` inline); e o posicionamento/layout de `.nav-drawer` (`position/top/left/height/
+  z-index/transition/display`), `.nav-backdrop` (`position/inset/z-index/opacity/
+  pointer-events/transition`), `.novo-hdr` (`display/align-items/justify-content/gap/
+  position/z-index/transition`), `#view-novo`, `.nav-drawer-footer`/`.nav-foot-btn` (footer
+  do drawer) e o `gap`/`margin-left` específicos de `.nav-item.nav-sub`/`.nav-acc-chevron`
+  **não existem** em `premium.css` nem no CSS injetado por `nav.js` — são mecânica de
+  layout que cada página principal (`dashboard.html`, `board.html`, `ae.html`, `forecast.html`
+  etc.) também mantém localmente, não duplicação morta.
+- **O que foi de fato removido (redundante, coberto/sobrescrito 100% por `premium.css`
+  linhas 348-437 e/ou pelo CSS injetado por `nav.js` linhas 19-51):** `.nav-drawer-header`,
+  `.nav-drawer-brand`, `.nav-item` (regra base), `.nav-item.nav-sub svg`,
+  `.nav-item.nav-sub.nav-collapsed`, `.nav-acc-chevron:hover`, `.nav-acc-chevron.open`,
+  `.nav-item:hover`, `.nav-item.active`, `.nav-item.active svg`, `.novo-hdr.scrolled`,
+  `.novo-theme-sun`/`.novo-theme-moon` (+ variante light), `.panel-switcher`,
+  `.panel-switch-btn`, `.panel-chevron`, `.panel-switcher.open .panel-chevron`,
+  `.panel-switch-btn:hover .panel-chevron`, `.panel-dd-item` (+ hover/active/svg/light),
+  `.health-dot` (regra base) + `@keyframes health-glow`, `.nav-item .health-dot,
+  .panel-dd-item .health-dot`, `.panel-switch-btn .health-dot` — além de propriedades
+  individuais mortas "aparadas" de dentro de regras mistas que tinham uma parte coberta e
+  uma parte não (`.nav-drawer`: `background`/`width`/`border-right`; `.nav-backdrop`:
+  `background`; `.nav-menu`: `list-style`/`padding`/`margin`, mantido só `overflow-y:auto`;
+  `.nav-item.nav-sub`: `padding-left`/`font-size`, mantido só `gap`; `.nav-acc-chevron`:
+  tudo exceto `margin-left`; `.novo-hdr`: `padding`; `.panel-dd`: tudo exceto
+  `max-height`/`overflow-y`). Total: arquivo caiu de 109 para 85 linhas.
+- **Não tocado (confirmado):** `.health-dot.g/.y/.r` (paleta Flat UI `#2ecc71`/`#f1c40f`/
+  `#e74c3c`, linhas ~36-38 após a edição) — mudança coordenada em paralelo com `nav.js`,
+  fora do escopo desta tarefa. `.ph-card` (estado "em construção" 🚧) e o `:root` parcial do
+  topo também não foram tocados.
+- **Validação:** `node scripts/_check-inline-js.js public/forecast-panel.html` — 0 erros.
+  `npm run check` — mesma falha pré-existente e não relacionada de fim de semana em
+  `test-bdr-workload-v2.js` (dia útil hardcoded); todo o resto (incluindo
+  `check-semantic`, `_check-inline-js` dos demais HTMLs, `test-bdr-treble-dw`,
+  `test-bdr-no-show`, `test-bdr-cohort-analytics`, `test-snapshot-resilience`,
+  `test-snapshot-history`, `test-forecast-delta-leva2`, `test-forecast-delta-e2e`) PASS.
+- Commit na branch `pacheco/design-forecast-panel-cleanup-2026-08-02` (sem push, sem merge).
+
 ### Forecast | Probabilidade final = MENOR entre etapa × AE (autorizado, validado com a CFO) (2026-08-02)
 
 > Decisão da reunião de forecast de 31/07, agora autorizada: "para fins de forecast, usar
