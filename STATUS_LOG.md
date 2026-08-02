@@ -79,6 +79,42 @@
   mas confirmam que nada no motor compartilhado quebrou).
 - Branch: `pacheco/design-cotacao-cleanup-2026-08-02` (sem push, sem deploy).
 
+### `public/cs.html` | Limpeza de design system (Tier 1.2) + liga `settings-modal.js` (Tier 2.7) (2026-08-02)
+
+> Duas correções de `docs/design-system-proposal.md` (seção 2.2, achados #1 e #8), sem
+> tocar no achado #2 (`filter-bar.js` incluído e nunca usado) — fica para tarefa futura.
+
+- **Tier 1.2 — `:root`/`.novo-card`/`.kpi-card` locais mortos removidos.** O `<style>`
+  inline de `cs.html` tinha um `:root` (dark + `html[data-theme="light"]`) com paleta
+  pré-`premium.css`, mais as regras `.novo-card{background:...;border-radius:10px;...}` e
+  `.kpi-card{background:...;border-radius:14px;...}` — todas sobrescritas em runtime pelo
+  `premium.css?v=5` (incluído depois, no `<head>`, mesma especificidade `:root`/seletor de
+  classe, vence por ordem de cascata). Confirmado var a var que todas as custom properties
+  do `:root` removido (`--bg,--card,--card2,--border,--text,--text2,--muted,--teal,--green,
+  --red,--orange,--yellow,--hover,--even-s,--hover-s,--hdr-glass`) já existem em
+  `premium.css:20-46` (dark) e `:71-92` (light). Servido via `local-server.js` numa porta
+  isolada (3011, para não colidir com outra sessão ativa na 3002) e comparado byte a byte
+  contra o HTML anterior via grep — **zero mudança visual**.
+- **Tier 2.7 — `settings-modal.js?v=2` ligado.** Antes, `NOVO_WON_STAGE='Ganho'` era o único
+  critério de "cliente ganho" nos 5 gráficos-proxy de Vendas (ARR por Produto, Clientes por
+  Modelo, Vidas por Produto, Concentração de ARR, KPI de topo) — cs.html divergia
+  silenciosamente do resto do app sempre que o toggle global "Implantação = Ganho" mudava em
+  outro painel (Board/AE/CRO/48h). Adicionado `<script src="/settings-modal.js?v=2"></script>`
+  (mesma posição de `board.html`/`ae.html`, depois de `filter-bar.js`) + botão "Configurações"
+  no header (mesmo ícone/posição de `board.html:173`) + o trio canônico
+  `_novoImplWon`/`_novoActiveMeetings`/`_novoActiveStandby` (localStorage, mesmas chaves
+  `novo_impl_won`/`novo_active_meetings`/`novo_active_standby` usadas por
+  dashboard/board/ae/48h) + `_novoIsWon(d)` (`d.stage==='Ganho'||(_novoImplWon&&d.stage===
+  'Implantação')`) + `novoToggleImplWon/ActiveMeetings/ActiveStandby()` (exigidos pelo
+  contrato do módulo, chamam `_gsSync()`). Os 5 usos de `d.stage===NOVO_WON_STAGE` viraram
+  `_novoIsWon(d)`. `_novoActiveMeetings`/`_novoActiveStandby` existem só para satisfazer o
+  contrato do drawer compartilhado (CS não tem conceito de "deals ativos") — não têm
+  consumidor no painel, comportamento idêntico ao presente em `48h.html`.
+- **Validado:** `node scripts/_check-inline-js.js public/cs.html` (0 erros); `npm run check`
+  completo (só falhou `test-bdr-workload-v2.js`, assert dependente de dia útil — hoje é
+  sábado, falha conhecida de fim de semana, não relacionada a esta mudança); rotas `/novo`,
+  `/novo-board`, `/novo-ae`, `/novo-bdr`, `/novo-cs` todas 200 no `local-server.js`.
+
 ### Forecast | Probabilidade final = MENOR entre etapa × AE (autorizado, validado com a CFO) (2026-08-02)
 
 > Decisão da reunião de forecast de 31/07, agora autorizada: "para fins de forecast, usar
