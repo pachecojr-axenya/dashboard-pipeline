@@ -115,6 +115,51 @@
   sábado, falha conhecida de fim de semana, não relacionada a esta mudança); rotas `/novo`,
   `/novo-board`, `/novo-ae`, `/novo-bdr`, `/novo-cs` todas 200 no `local-server.js`.
 
+### Design System | `48h.html` — limpeza de `:root`/`.novo-card`/`.kpi-card` mortos + 2 hardcodes de cor (2026-08-02)
+
+> Segue `docs/design-system-proposal.md` (levantamento de fragmentação visual entre
+> painéis), Tier 1, itens 2 e 3, para o trio `cs.html`/`cotacao.html`/`48h.html`
+> (seção 2.2). Escopo desta sessão: só `48h.html`.
+
+- **Tier 1.2 (código morto, zero mudança visual):** removidos o `:root` local
+  (paleta pré-premium, `--teal:#3ab8b7` etc.) e seu par
+  `html[data-theme="light"]{...}`, e as regras locais `.novo-card{...}` e
+  `.kpi-card{...}` (`public/48h.html`, antigo bloco `<style>` inline,
+  linhas ~15-16, 70, 90). Confirmado que `premium.css`/`premium.js`/
+  `settings-modal.js` já estavam incluídos (linhas 129-132) e que `premium.css`
+  já vencia em runtime — os 4 blocos removidos eram idênticos em padrão ao que
+  o `dashboard.html` (padrão-ouro) também carrega sem efeito prático (mesma
+  cascata, `premium.css` carregado depois no `<head>`). Nenhuma mudança visual.
+- **Tier 1.3, hardcode nº 1 — `.kpi-card:hover`:** a regra local
+  `.kpi-card:hover{box-shadow:0 0 0 2px rgba(58,184,183,.35)}` (teal antigo)
+  foi **removida** (não atualizada para `var(--teal)`). Motivo: comparado com
+  `dashboard.html:157`, que tem a MESMA regra byte-a-byte — e nos dois casos
+  ela é totalmente sobrescrita pelo `.kpi-card:hover` de `premium.css`
+  (`box-shadow:var(--pm-card-shadow-hover)`, carregado depois no documento,
+  mesma especificidade, mesma propriedade). Ou seja, já era código morto,
+  igual ao padrão-ouro — remover (em vez de portar pra `var(--teal)`) evita
+  perpetuar uma regra sem efeito e mantém o hover 100% a cargo do
+  `premium.css`. Zero mudança visual.
+- **Tier 1.3, hardcode nº 2 — cor órfã do gráfico de doughnut por etapa**
+  (`buildH48ChartStage`, `public/48h.html` ~linha 461): o 7º item da paleta
+  `rgba(230,150,80,.75)` (`#e69650`, laranja-marrom) não corresponde a
+  nenhuma das 8 entradas de `MAP_DARK`/`MAP_LIGHT` do `premium.js` — não era
+  remapeado em runtime, cor genuinamente fora do sistema. Substituído por
+  `var(--orange)` (`premium.css`: dark `#f59e0b`, light `#d97706`), mesmo
+  papel/posição na paleta (7ª etapa do doughnut, ordem de séries inalterada).
+  Diferente da correção acima, este É um ajuste visual real (a cor muda de
+  laranja-marrom estranho para o laranja oficial do sistema, em ambos os
+  temas) — esperado e intencional.
+- **Validação:** `node scripts/_check-inline-js.js public/48h.html` → 0 erros.
+  `npm run check` → mesma falha pré-existente e não relacionada de
+  `test-bdr-workload-v2.js` (`blockedByFilters`, fragilidade de dia útil
+  hardcoded; hoje, 02/08/2026, é domingo) interrompe a cadeia `&&`; os scripts
+  seguintes (`test-bdr-workload-v2-ui.js`, `test-snapshot-resilience.js`,
+  `test-snapshot-history.js`, `test-forecast-delta-leva2.js`,
+  `test-forecast-delta-e2e.js`) rodados manualmente à parte, todos PASS.
+- Branch `pacheco/design-48h-cleanup-2026-08-02`, arquivo único tocado
+  (`public/48h.html`). Sem push, sem deploy.
+
 ### Forecast | Probabilidade final = MENOR entre etapa × AE (autorizado, validado com a CFO) (2026-08-02)
 
 > Decisão da reunião de forecast de 31/07, agora autorizada: "para fins de forecast, usar
