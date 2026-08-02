@@ -217,6 +217,37 @@
   visual em navegador com dados reais fica pendente para quando este trabalho for
   integrado/revisado pelo dono.
 
+### Prob AE | histórico no mouse-over (material de estudo, não alimenta cálculo) (2026-08-02)
+
+> Item de backlog, decisão nº 6 da reunião de forecast de 31-jul-2026: "Histórico de
+> probabilidade do AE como material de estudo (mouse-over no dash): não para cálculo —
+> para contar a história da conta (o que aconteceu quando subiu/desceu)."
+
+- **Onde encontrei "Prob AE" hoje:** só o **CRO Dashboard** (`public/dashboard.html`)
+  tem uma coluna dedicada "Prob AE" (`d.probabilidade`, propriedade HubSpot
+  `probabilidade_de_fechamento_`) nas tabelas de drill de deals (`_novoDealsRows` e
+  `_novoP01Rows`, coluna 13). `public/ae.html` **não** tem essa coluna própria — só
+  exibe a probabilidade FINAL já ajustada (`r.p`/`_novoFcProbAdj`), não o valor cru
+  do AE isolado — então não mexi nele.
+- **Endpoint novo, isolado:** `api/deal-prob-history.js` (`GET
+  ?id=<dealId>`), espelhando o padrão já existente de `action=owner-history` em
+  `api/history.js` (busca `propertiesWithHistory=probabilidade_de_fechamento_` de 1
+  deal, normaliza 0–100/0–1 como o `forecast-table.js`, colapsa re-saves sem mudança
+  real). **Não editei `api/history.js`** (outra sessão mexendo nele em paralelo).
+- **Front (`public/dashboard.html`):** CSS `.novo-probae-hint`/`#novo-probhist-pop`;
+  JS `_novoProbHist*` (cache por deal, popup flutuante que segue o mouse, fetch
+  lazy só no primeiro hover); célula "Prob AE" agora passa por `_novoProbAeCell(d)`
+  (sublinhado pontilhado quando `d.hs_id` existe). Puramente visual — nenhum cálculo
+  de receita/probabilidade lê o histórico; a fonte de cálculo continua o valor atual
+  de `d.probabilidade` (Regra primária nº 3).
+- **Testes:** `node --check api/deal-prob-history.js` OK; `node
+  scripts/_check-inline-js.js public/dashboard.html` → 1 bloco, 0 erros; `npm run
+  check` passou em tudo, exceto uma falha pré-existente e não relacionada em
+  `scripts/test-bdr-workload-v2.js` (não toca `dashboard.html` nem o endpoint novo —
+  já falhava antes desta mudança, provável efeito de outro trabalho em paralelo no
+  worktree).
+- **Branch:** `pacheco/ae-prob-historico-hover-2026-08-02` (sem push, sem merge).
+
 ### ⚠ Incidente | DW `fact_deployment_status` congelado desde 30/07 16:05 BRT (2026-07-31)
 
 > Detectado ao investigar dados desatualizados no painel BDR | Treble.
