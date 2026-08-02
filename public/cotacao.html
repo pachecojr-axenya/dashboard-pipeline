@@ -66,10 +66,6 @@ body.nav-docked #view-novo{margin-left:280px}
 .content-blur{filter:blur(4px);pointer-events:none;user-select:none}
 .section-hdr{grid-column:1/-1;margin:1.5rem 0 .25rem;border-top:1px solid var(--border);padding-top:1.25rem}
 .section-hdr h2{font-size:.78rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.1em;margin:0}
-.banner-api{grid-column:1/-1;background:rgba(248,81,73,.1);border:1.5px dashed rgba(248,81,73,.4);border-radius:10px;padding:1.4rem 1.5rem;margin-bottom:.25rem}
-.banner-api h4{color:var(--red);font-size:.9rem;margin-bottom:.5rem}
-.banner-api p{font-size:.8rem;color:var(--text2);line-height:1.7;margin:.25rem 0}
-.banner-api code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.75rem;background:rgba(248,81,73,.15);padding:.1rem .35rem;border-radius:3px;color:var(--red)}
 .placeholder-card{background:var(--card);border:1.5px dashed var(--border);border-radius:10px;padding:2rem 1.5rem;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.75rem;text-align:center;min-height:220px}
 .placeholder-card .ph-icon{font-size:2.5rem;opacity:.4}
 .placeholder-card .ph-title{font-size:.88rem;font-weight:600;color:var(--text2)}
@@ -100,6 +96,7 @@ table.lb tbody tr:nth-child(even) td{background:var(--even-s)}
 <script src="/premium.js?v=5"></script>
 <script src="/filter-bar.js?v=1"></script>
 <script src="/settings-modal.js?v=2"></script>
+<script src="/ax-ui.js?v=1"></script>
 </head>
 <body>
 
@@ -185,7 +182,7 @@ function _annualRev(d){ if(d.arr_estimado!=null&&d.arr_estimado>0)return d.arr_e
 function _revShort(v){ if(!v||v<=0)return 'R$0'; return v>=1000000?('R$'+(v/1000000).toFixed(1)+'M'):('R$'+Math.round(v/1000)+'k'); }
 function _mlbl(ym){ var p=ym.split('-'); return ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][parseInt(p[1])-1]+'/'+p[0].slice(2); }
 function _dealsRows(deals){ return (deals||[]).map(function(d){ var hsUrl=d.hs_id?'https://app.hubspot.com/contacts/44715285/deal/'+d.hs_id:'#'; var name=d.hs_id?'<a href="'+hsUrl+'" target="_blank" rel="noopener" style="color:var(--teal);text-decoration:none">'+_ne(d.dealname)+'</a>':_ne(d.dealname); return '<tr><td style="text-align:left;max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+name+'</td><td style="text-align:left;white-space:nowrap">'+_ne(d.ae)+'</td><td>'+_ne(d.pipeline)+'</td><td>'+_ne(d.stage)+'</td><td>'+_ni(d.vidas)+'</td><td>'+_revShort(_annualRev(d))+'</td><td>'+_ne(d.createdate)+'</td><td>'+_ne(d.data_prevista_para_receita)+'</td></tr>'; }).join(''); }
-function novoOpenDealsModal(title,deals){ if(!deals||!deals.length){ openModal(title,'<p style="color:var(--text2);padding:1rem 0">Nenhum deal.</p>'); return; } openModal(title+' ('+deals.length+')','<table class="lb"><thead><tr><th style="text-align:left">Deal</th><th style="text-align:left">AE</th><th>Pipe</th><th>Etapa</th><th>Vidas</th><th>ARR</th><th>Criado</th><th>Dt. Receita</th></tr></thead><tbody>'+_dealsRows(deals)+'</tbody></table>'); }
+function novoOpenDealsModal(title,deals){ if(!deals||!deals.length){ openModal(title,AxUI.emptyState('Nenhum deal.')); return; } openModal(title+' ('+deals.length+')','<table class="lb"><thead><tr><th style="text-align:left">Deal</th><th style="text-align:left">AE</th><th>Pipe</th><th>Etapa</th><th>Vidas</th><th>ARR</th><th>Criado</th><th>Dt. Receita</th></tr></thead><tbody>'+_dealsRows(deals)+'</tbody></table>'); }
 
 function _placeholder(icon,title,body,fields){
   var fHtml=fields?fields.map(function(f){return '<span class="ph-field">'+f+'</span>';}).join(' '):'';
@@ -232,7 +229,7 @@ function novoLoadData(){
     novoRender();
   }).catch(function(err){
     if(btn) btn.classList.remove('spinning');
-    document.getElementById('novo-content').innerHTML='<div style="text-align:center;padding:3rem 0;color:var(--red)">Erro: '+_ne(String(err))+'<br><br><button onclick="novoLoadData()" style="background:var(--teal);color:#fff;border:none;border-radius:8px;padding:.5rem 1.2rem;cursor:pointer">Tentar novamente</button></div>';
+    document.getElementById('novo-content').innerHTML=AxUI.banner('Erro: '+_ne(String(err)), { severity:'error', retry:'novoLoadData()', retryLabel:'Tentar novamente' });
   });
 }
 
@@ -279,7 +276,7 @@ function novoRender(){
     '<div class="novo-cards">'+
 
     '<div class="section-hdr"><h2>Tickets de Cotação | POST /api/pull-tickets | pipeline 847948895 | 🟡 não validado</h2></div>'+
-    (tkErr?('<div class="banner-api"><h4>Não foi possível carregar os tickets</h4><p>'+_ne(tkErr)+'</p><p style="margin-top:.6rem">O endpoint <code>POST /api/pull-tickets</code> exige sessão autenticada e <code>HUBSPOT_TOKEN</code> no ambiente. Os cards de proxy abaixo seguem funcionando.</p></div>'):'')+
+    (tkErr?AxUI.banner('<strong>Não foi possível carregar os tickets</strong><br>'+_ne(tkErr)+'<br><br>O endpoint <code>POST /api/pull-tickets</code> exige sessão autenticada e <code>HUBSPOT_TOKEN</code> no ambiente. Os cards de proxy abaixo seguem funcionando.', { severity:'error' }):'')+
 
     '<div class="section-hdr"><h2>Proxy Vendas | deals atualmente em etapa Cotação via /api/forecast-table | sem filtro de período</h2></div>'+
     '<div class="kpi-row" style="grid-column:1/-1">'+
@@ -321,7 +318,7 @@ function _tkRows(list,modo){
   }).join('');
 }
 function cotOpenTickets(title,list,modo){
-  if(!list||!list.length){ openModal(title,'<p style="color:var(--text2);padding:1rem 0">Nenhum ticket.</p>'); return; }
+  if(!list||!list.length){ openModal(title,AxUI.emptyState('Nenhum ticket.')); return; }
   var ord=list.slice().sort(function(a,b){
     var x=modo==='idade'?_tkIdade(a):_tkCiclo(a), y=modo==='idade'?_tkIdade(b):_tkCiclo(b);
     return (y==null?-1:y)-(x==null?-1:x);
@@ -345,7 +342,7 @@ function buildCotAE(){
   var map={}; cotacao.forEach(function(d){var ae=d.ae||'(sem AE)'; map[ae]=(map[ae]||0)+1;});
   var labels=Object.keys(map).sort(function(a,b){return map[b]-map[a];});
   var vals=labels.map(function(l){return map[l];});
-  if(!labels.length){ document.getElementById('chart-cot-ae').parentElement.insertAdjacentHTML('beforeend','<p style="color:var(--text2);font-size:.8rem;padding:.5rem 0">Nenhum deal em etapa Cotação.</p>'); return; }
+  if(!labels.length){ document.getElementById('chart-cot-ae').parentElement.insertAdjacentHTML('beforeend',AxUI.emptyState('Nenhum deal em etapa Cotação.')); return; }
   _novoMkChart('chart-cot-ae',{type:'bar',plugins:[ChartDataLabels],
     data:{labels:labels,datasets:[{data:vals,backgroundColor:'rgba(58,184,183,.75)',borderRadius:4}]},
     options:{indexAxis:'y',responsive:true,layout:{padding:{right:45}},plugins:{legend:{display:false},
@@ -361,7 +358,7 @@ function buildCotVidas(){
   var map={}; cotacao.forEach(function(d){var ae=d.ae||'(sem AE)'; map[ae]=(map[ae]||0)+(d.vidas||0);});
   var labels=Object.keys(map).sort(function(a,b){return map[b]-map[a];});
   var vals=labels.map(function(l){return map[l];});
-  if(!labels.length){ document.getElementById('chart-cot-vidas').parentElement.insertAdjacentHTML('beforeend','<p style="color:var(--text2);font-size:.8rem;padding:.5rem 0">Nenhum deal em etapa Cotação.</p>'); return; }
+  if(!labels.length){ document.getElementById('chart-cot-vidas').parentElement.insertAdjacentHTML('beforeend',AxUI.emptyState('Nenhum deal em etapa Cotação.')); return; }
   _novoMkChart('chart-cot-vidas',{type:'bar',plugins:[ChartDataLabels],
     data:{labels:labels,datasets:[{data:vals,backgroundColor:'rgba(63,185,80,.75)',borderRadius:4}]},
     options:{indexAxis:'y',responsive:true,layout:{padding:{right:65}},plugins:{legend:{display:false},
