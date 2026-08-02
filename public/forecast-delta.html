@@ -295,7 +295,7 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
       </div>
     </div>
     <div class="chart-wrap"><canvas id="wf"></canvas><div class="state" id="chart-state" aria-live="polite">Selecione duas fotos…</div></div>
-    <div class="clickhint">Clique numa barra de etapa para ver os deals que causaram o movimento.</div>
+    <div class="clickhint">Clique numa barra de etapa (ou em Fechado) para ver os deals que causaram o movimento.</div>
     <div class="caveat" id="caveat"></div>
   </div>
 
@@ -541,7 +541,7 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
     }
     var totA = j.totals.a[m], totB = j.totals.b[m];
     // barras do waterfall
-    var labels = ['Total @ A'], data = [[0, totA]], colors = ['rgba(58,184,183,.85)'], dataline = [totA];
+    var labels = ['Total @ A'], data = [[0, totA]], colors = ['rgba(58,184,183,.85)'], dataline = [totA], kinds = ['total'];
     var run = totA, sumDelta = 0;
     j.waterfall.forEach(function(w){
       var d = w.delta[m]; sumDelta += d;
@@ -550,12 +550,24 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
       data.push([Math.min(from,to), Math.max(from,to)]);
       colors.push(d >= 0 ? 'rgba(63,185,80,.85)' : 'rgba(248,81,73,.85)');
       dataline.push(d);
+      kinds.push('delta');
       run = to;
     });
-    labels.push('Total @ B'); data.push([0, run]); colors.push('rgba(58,184,183,.85)'); dataline.push(run);
+    labels.push('Total @ B'); data.push([0, run]); colors.push('rgba(58,184,183,.85)'); dataline.push(run); kinds.push('total');
+    // Fechado (pedido do dono, reunião 2026-07-31): hoje um deal que vira Ganho entre
+    // A e B "derruba" o Total B como se fosse perda de valor — na verdade é vitória,
+    // o valor só migrou de pipe aberto ponderado para fechado/contratado. Exposição
+    // ADITIVA/informativa (barra própria + "Total B + Fechado"), NÃO participa do
+    // Σ Δ do waterfall nem da barra Total @ B (ver caveat do card e ficha i do D02).
+    var fechadoVal = (j.fechado && j.fechado[m]) || 0;
+    if(j.fechado){
+      labels.push('Fechado (Ganho no período)'); data.push([0, fechadoVal]); colors.push('rgba(63,185,80,.5)'); dataline.push(fechadoVal); kinds.push('fechado');
+      labels.push('Total B + Fechado'); data.push([0, run + fechadoVal]); colors.push('rgba(58,184,183,.5)'); dataline.push(run + fechadoVal); kinds.push('composto');
+    }
 
     var css = getComputedStyle(document.documentElement);
     var textc = css.getPropertyValue('--text2').trim(), gridc = css.getPropertyValue('--border').trim();
+    var TOOLTIP_PREFIX = { total: 'Total: ', fechado: 'Fechado: ', composto: 'Total B + Fechado: ' };
     document.getElementById('chart-state').style.display = 'none';
     if(chart) chart.destroy();
     chart = new Chart(document.getElementById('wf'), {
@@ -563,14 +575,18 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
       data:{ labels:labels, datasets:[{ data:data, backgroundColor:colors, borderRadius:4, barPercentage:.72 }] },
       options:{
         responsive:true, maintainAspectRatio:false,
-        onClick:function(evt, els){ if(!els||!els.length) return; var i=els[0].index; if(i===0 || i===labels.length-1) return; var w=j.waterfall[i-1]; if(w) openDrill(w.key, 'Deals | '+w.label, fmtBRL); },
-        onHover:function(evt, els){ var t=evt&&evt.native&&evt.native.target; if(!t) return; var i=els&&els.length?els[0].index:-1; t.style.cursor=(i>0&&i<labels.length-1)?'pointer':''; },
+        onClick:function(evt, els){
+          if(!els||!els.length) return; var i=els[0].index;
+          if(kinds[i]==='delta'){ var w=j.waterfall[i-1]; if(w) openDrill(w.key, 'Deals | '+w.label, fmtBRL); return; }
+          if(kinds[i]==='fechado'){ openDrill('kpi:arrTotal', 'Deals | Fechado (foram para Ganho)', fmtBRL, null, 'ganho'); return; }
+        },
+        onHover:function(evt, els){ var t=evt&&evt.native&&evt.native.target; if(!t) return; var i=els&&els.length?els[0].index:-1; t.style.cursor=(i>=0&&(kinds[i]==='delta'||kinds[i]==='fechado'))?'pointer':''; },
         plugins:{
           legend:{display:false},
-          tooltip:{ callbacks:{ label:function(ctx){ var i=ctx.dataIndex; var isTot = i===0 || i===labels.length-1; return (isTot?'Total: ':'Δ ') + fmtBRL(dataline[i]); } } },
+          tooltip:{ callbacks:{ label:function(ctx){ var i=ctx.dataIndex; var k=kinds[i]; return (k==='delta'?'Δ ':(TOOLTIP_PREFIX[k]||'')) + fmtBRL(dataline[i]); } } },
           datalabels:{
             anchor:'end', align:'end', color:textc, font:{size:10,weight:'700'},
-            formatter:function(v,ctx){ var i=ctx.dataIndex; var isTot = i===0 || i===labels.length-1; return isTot ? fmtBRL(dataline[i]) : fmtBRLc(dataline[i]); }
+            formatter:function(v,ctx){ var i=ctx.dataIndex; return kinds[i]==='delta' ? fmtBRLc(dataline[i]) : fmtBRL(dataline[i]); }
           }
         },
         scales:{
@@ -903,7 +919,8 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
       '<p class="hk"><b>Origem da config |</b> a pill do card indica: sem pill = sidecar capturado ao vivo; "reconstruída (backfill)" = régua da época via git + overrides por data; "⚠ não snapshotada" = avaliada com a config atual (fallback). O drill das barras usa a MESMA avaliação — o Σ fecha com a barra.</p>'+
       '<p class="hk"><b>Medidas |</b> Horizonte <b>ARR</b>: Probabilizada = <code>arr_estimado</code> × prob. final da etapa | Real = ARR estimado bruto. Horizonte <b>Pipeline total</b>: receita da régua no horizonte completo (motor canônico <code>forecast-compute</code> → <code>forecast-engine</code>, Regra primária nº 3), ancorada na data de cada foto.</p>'+
       '<p class="hk"><b>Fórmula |</b> a barra da etapa é Σ(B) − Σ(A). Invariante verificado: Σ Δ das etapas = Δ do total (selo nos KPIs).</p>'+
-      '<p class="hk"><b>Escopo |</b> segue o filtro Ativos/Tudo do header (sem Bid e Stand by).</p>' },
+      '<p class="hk"><b>Escopo |</b> segue o filtro Ativos/Tudo do header (sem Bid e Stand by).</p>'+
+      '<p class="hk"><b>Fechado (2026-08-02) |</b> hoje um deal que vira Ganho entre A e B "derruba" o Total @ B como se fosse perda de valor — na verdade é vitória: o valor só migrou de pipe aberto ponderado para fechado/contratado. A barra <b>Fechado</b> soma ARR/ARR Ponderado (na foto A) dos deals que foram para Ganho no período (clique para ver a lista); a barra <b>Total B + Fechado</b> comunica o quadro completo (o que já foi executado + o que ainda está por vir). São barras INFORMATIVAS/aditivas — não entram no Σ Δ nem no invariante das etapas.</p>' },
     D03: { title: 'KPIs comparativos | A → B', sem: ['arr_estimado_fallback','arr_ponderado_forecast'], html:
       '<p class="hk"><b>O que mostra |</b> os mesmos KPIs do D01, só que em A → B com delta absoluto e %.</p>'+
       '<p class="hk"><b>Point-in-time |</b> o ARR Ponderado de cada foto usa a config vigente NELA (mesma medida única do D02) — derisks e reclassificações do período aparecem no delta. Deals, Vidas e ARR Total independem de probabilidade.</p>'+

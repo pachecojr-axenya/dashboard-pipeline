@@ -47,6 +47,7 @@ const SNAP = {
     { id: '2', name: 'Beta', pipeline: 'Vendas', stage: 'Cotação', vidas: 800, arr: 360000, modelo: 'Fee por vida', pf: 30000, revDate: '2027-01-01', quarter: 'Q1 2027', prob: 0.3 },
     { id: '3', name: 'Gama', pipeline: 'Bid', stage: 'Proposta Enviada', vidas: 9000, arr: 1440000, modelo: 'Corretagem', pf: 120000, quarter: 'Q4 2026', prob: 0.6 },
     { id: '4', name: 'Delta', pipeline: 'Vendas', stage: 'Consultoria', vidas: 1500, arr: 480000, modelo: 'Fee por vida', pf: 40000, revDate: '2026-11-01', quarter: 'Q4 2026', prob: 0.5 },
+    { id: '8', name: 'Cappta', pipeline: 'Vendas', stage: 'Negociação', vidas: 1000, arr: 345000, modelo: 'Fee por vida', pf: 28750, revDate: '2026-08-01', quarter: 'Q3 2026', prob: 0.5 },
   ]),
   '2026-07-09': snapRows([
     { id: '1', name: 'Alfa', pipeline: 'Vendas', stage: 'Cotação', vidas: 500, arr: 200000, modelo: 'Fee por vida', pf: 20000, revDate: '2026-10-01', quarter: 'Q4 2026', prob: 0.4 },
@@ -54,6 +55,10 @@ const SNAP = {
     { id: '3', name: 'Gama', pipeline: 'Bid', stage: 'Proposta Enviada', vidas: 9000, arr: 1440000, modelo: 'Corretagem', pf: 120000, quarter: 'Q4 2026', prob: 0.6 },
     { id: '4', name: 'Delta', pipeline: 'Vendas', stage: 'Negociação', vidas: 1500, arr: 480000, modelo: 'Fee por vida', pf: 40000, revDate: '2026-11-01', quarter: 'Q4 2026', prob: 0.6 },
     { id: '6', name: 'Novo', pipeline: 'Vendas', stage: 'Diagnóstico', vidas: 250, arr: 90000, modelo: 'Fee por vida', pf: 9000, revDate: '2027-02-01', quarter: 'Q1 2027', prob: '' },
+    // Cappta (Tarefa 2026-08-02, waterfall ganha a barra "Fechado"): foi para Ganho
+    // entre A e B — não deve "derrubar" o Total B, deve virar Σ ARR/ARR Ponderado
+    // do agregado informativo j.fechado.
+    { id: '8', name: 'Cappta', pipeline: 'Vendas', stage: 'Ganho', vidas: 1000, arr: 345000, modelo: 'Fee por vida', pf: 28750, revDate: '2026-08-01', quarter: 'Q3 2026', prob: 1.0 },
   ]),
 };
 const DAILY_DATES = ['2026-07-09', '2026-07-08'];   // desc
@@ -122,6 +127,14 @@ function call(url){
   check('totals carregam arr/arrPond (= KPIs)', near(cmp.body.totals.b.arr, cmp.body.b.kpis.arrTotal) && near(cmp.body.totals.b.arrPond, cmp.body.b.kpis.arrPond), Math.round(cmp.body.totals.b.arr || -1) + ' vs ' + Math.round(cmp.body.b.kpis.arrTotal));
   const wfArrDelta = cmp.body.waterfall.reduce((s, w) => s + w.delta.arr, 0);
   check('Σ Δ(ARR por linha) == Δ KPI arrTotal (invariante em ARR)', near(wfArrDelta, cmp.body.b.kpis.arrTotal - cmp.body.a.kpis.arrTotal, 1), 'ΣΔ=' + Math.round(wfArrDelta));
+
+  // ── Fechado (2026-08-02): Cappta foi para Ganho entre A e B — vira o agregado
+  // informativo, não "derruba" o waterfall (invariante acima segue intacto).
+  check('fechado presente no payload', cmp.body.fechado && typeof cmp.body.fechado === 'object', JSON.stringify(cmp.body.fechado));
+  check('fechado identifica 1 deal (Cappta)', cmp.body.fechado && cmp.body.fechado.deals === 1, 'deals=' + (cmp.body.fechado && cmp.body.fechado.deals));
+  check('fechado soma o ARR de Cappta na foto A (345.000)', cmp.body.fechado && near(cmp.body.fechado.arr, 345000), 'arr=' + (cmp.body.fechado && cmp.body.fechado.arr));
+  check('fechado não conta Beta (foi para Perdido, não Ganho)', cmp.body.fechado && cmp.body.fechado.arr < 345000 + 360000, 'arr=' + (cmp.body.fechado && cmp.body.fechado.arr));
+  check('caveat descreve a barra Fechado', cmp.body.caveats.some(c => /Fechado/.test(c) && /Ganho/.test(c)));
 
   // ── MEDIDA ÚNICA point-in-time (2026-07-30): A com sidecar (Cotação 10%), B sem ──
   check('config meta: A snapshotada | B em fallback flagado', cmp.body.config && cmp.body.config.a.snapshotted === true && cmp.body.config.b.snapshotted === false);

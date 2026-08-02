@@ -46,6 +46,43 @@
 > definição oficial de cliente ativo; `vigencia_do_contrato_atual` = data de renovação;
 > `premio_mensal` da company vs o do deal.
 
+## Adendo | D02 ganha a barra "Fechado" + fix do bug do Perdido no drill (2026-08-02)
+
+> Duas correções pedidas na reunião de forecast de 2026-07-31 (caso concreto: deal
+> Cappta, −R$345k de fatura+vigência que na verdade era vitória).
+>
+> **1. Waterfall ganha "Fechado" (`api/history.js` compare + `lib/forecast-compute.js`
+> `closedWonAgg`).** Hoje um deal que vira Ganho entre a Foto A e a Foto B "derruba"
+> o Total @ B do waterfall como se fosse perda de valor — na verdade é uma vitória, o
+> valor só migrou de pipe aberto ponderado para fechado/contratado. O card D02 ganhou
+> duas barras novas após Total @ B: **Fechado** (Σ ARR/ARR Ponderado, na foto A, dos
+> deals que foram para Ganho no período — clicável, abre a mesma lista do D05 filtrada
+> por "Foi para Ganho") e **Total B + Fechado** (a soma, comunicando "o que já foi
+> executado + o que ainda está por vir"). **Design deliberado: exposição
+> ADITIVA/informativa** — não entra no Σ Δ(etapa) nem no invariante Σ Δ = Δtotal já
+> testado (`scripts/test-delta-invariant.js`, `scripts/test-forecast-delta-e2e.js`),
+> porque Ganho não tem linha própria no waterfall em escopo Ativos (some do conjunto
+> por definição); somar ali mudaria a semântica do invariante existente em vez de só
+> anotá-lo ao lado. Payload novo: `fechado: { deals, arr, arrPond, real12, prob12,
+> realTotal, probTotal }`.
+>
+> **2. Bug corrigido: deal Perdido aparecendo como "movimentação" (avanço) no drill.**
+> Causa raiz em `lib/snapshot-history.js` (`valueAt`, usada pelo backfill histórico
+> HubSpot→BQ, `scripts/backfill-hubspot-bq.js`): o comparador de ordenação do
+> histórico de propriedade (`a.timestamp < b.timestamp ? 1 : -1`) devolvia -1 também
+> quando os timestamps eram IGUAIS — viola o contrato de ordem total do
+> `Array.prototype.sort`. Quando o HubSpot registra duas mudanças de `dealstage` no
+> mesmo instante (workflow em cadeia, ex.: Negociação → Perdido no mesmo request), o
+> sort podia reordenar errado um array que o HubSpot já entrega correto
+> (mais-recente-primeiro) e `valueAt()` devolvia a etapa INTERMEDIÁRIA em vez do
+> estado FINAL — daí o deal Perdido "vazando" como avanço de etapa no drill do
+> waterfall. Fix: comparador numérico próprio (0 em empate) → sort estável, preserva
+> a ordem que o HubSpot entrega. Reproduzido e coberto por
+> `scripts/test-snapshot-history.js` (novo, no `npm run check`). A classificação em
+> si (`_classifySaiu` no `lib/forecast-compute.js`, e o equivalente em
+> `stageUnified`) já priorizava Perdido/Ganho antes do rank de avanço desde 2026-07-24
+> — o bug estava na ETAPA reconstruída chegando errada, não na regra de classificação.
+
 ## Adendo | Delta (ex-Comparativo), códigos D01–D07 (2026-07-24)
 
 > **Estado: 🟢 validado (2026-07-27, decisão do dono)** — o pill do header passou de
@@ -56,7 +93,7 @@
 > | # | Card | Nota |
 > |---|---|---|
 > | D01 | Fotografia do forecast (foto B) | KPIs da foto isolada |
-> | D02 | Waterfall do forecast por etapa | motor canônico (Regra nº 3), invariante Σ Δ = Δtotal. **Medida ÚNICA point-in-time (2026-07-30, decisão do dono — toggle composição×convicção removido)**: cada foto avaliada com a config vigente NELA (sidecar `snapshot_config` ao vivo ou backfill reconstruído embutido); pill indica a origem da config; foto sem config → fallback atual com flag amarela. TODO o painel (KPIs, tabelas, drill) usa a mesma avaliação — o Σ do drill fecha com a barra. A medida "composição" (config atual nas 2 fotos) foi aposentada. |
+> | D02 | Waterfall do forecast por etapa | motor canônico (Regra nº 3), invariante Σ Δ = Δtotal. **Medida ÚNICA point-in-time (2026-07-30, decisão do dono — toggle composição×convicção removido)**: cada foto avaliada com a config vigente NELA (sidecar `snapshot_config` ao vivo ou backfill reconstruído embutido); pill indica a origem da config; foto sem config → fallback atual com flag amarela. TODO o painel (KPIs, tabelas, drill) usa a mesma avaliação — o Σ do drill fecha com a barra. A medida "composição" (config atual nas 2 fotos) foi aposentada. **2026-08-02: ganhou as barras informativas "Fechado" e "Total B + Fechado"** (deals que foram para Ganho no período não "derrubam" mais o Total B; ver adendo abaixo) e o bug do deal Perdido aparecendo como avanço no drill foi corrigido. |
 > | D03 | KPIs comparativos A → B | TCV e MRR removidos a pedido do dono (2026-07-24). ARR Ponderado point-in-time (mesma medida única do D02). |
 > | D04 | Funil / deals por etapa | contagem A × B |
 > | D05 | Deals que saíram do pipe | lista direta no card; destino distingue Caiu / Ganho / Avançou |
