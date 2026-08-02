@@ -1,5 +1,76 @@
 # Dashboard Enhancement Loop — Status Log
 
+### Design | `help-drawer.js` — extração do botão "i"/tooltip/drawer de ajuda (dashboard.html + board.html + ae.html) (2026-08-02)
+
+> Item 6 do Tier 2 do `docs/design-system-proposal.md` (seção "3.4 O módulo novo
+> proposto", bullet `help-drawer.js`). **Extração de código, zero mudança de
+> comportamento esperada** — mesmo padrão de auto-inclusão já usado por
+> `public/nav.js`/`public/filter-bar.js`/`public/settings-modal.js`.
+> `public/bdr.html` tem a MESMA implementação duplicada mas fica FORA desta
+> rodada (arquivo de outro desenvolvedor, Samuel; pendência documentada para
+> quando ele puder coordenar).
+
+- **Novo módulo `public/help-drawer.js`:** auto-injeta CSS (botão "i" `.novo-info-btn`,
+  tag `.novo-code-tag`, tooltip `#novo-tip`, drawer lateral `.novo-help-backdrop`/
+  `.novo-help-drawer`) e o próprio DOM do tooltip/drawer (se ainda não existirem na
+  página), do mesmo jeito que `nav.js` injeta `#nav-drawer`. Expõe `window._infoBtn(tip,
+  helpKey)` (equivalente ao antigo `_infoBtn`), `window.novoToggleInfo()` (toggle "?"),
+  `window.novoCloseHelp()` e `window.HelpDrawer.{configure,open}`. Cada painel chama
+  `HelpDrawer.configure({ variant, blur, storageKey, charts, codes })` logo depois de
+  declarar seu PRÓPRIO mapa de ajuda (`NOVO_HELP_CHARTS`/`BOARD_HELP_CHARTS`/
+  `AE_HELP_CHARTS` + `NOVO_CARD_CODES`/`BOARD_CARD_CODES`/`AE_CARD_CODES`) — esses
+  mapas e todo o RENDER de conteúdo por gráfico (`_novoHelpSection`/`_boardHelpSection`/
+  `_aeHelpSection`, `NOVO_FILT_FIELD`/`NOVO_HELP_DETAIL` e equivalentes, a função que
+  monta o texto de cada ficha, ex. `novoHelpChart(key)`) **continuam 100% em cada HTML,
+  intactos** — só o mecanismo (botão/tag/tooltip/shell do drawer/toggle "?") saiu para o
+  módulo.
+- **3 painéis atualizados** (`public/dashboard.html`, `public/board.html`,
+  `public/ae.html`): incluem `<script src="/help-drawer.js?v=1"></script>` no `<head>`
+  (antes do `<script>` inline que declara o mapa de ajuda) e tiveram removidos: CSS
+  duplicado do botão/tag/tooltip/drawer; markup duplicado de `#novo-tip` e
+  `.novo-help-backdrop`/`.novo-help-drawer`; as funções `_infoBtn`, `novoCloseHelp`, o
+  toggle "?" (`novoToggleInfo`/`boardToggleInfo`) e os listeners de tooltip
+  (mouseover/mouseout/mousemove/scroll). `board.html`'s `boardHelpChart`/`aeHelpChart`
+  (ae.html) renomeadas para `novoHelpChart` (mesmo nome nos 3 painéis agora, já que o
+  botão "i" compartilhado precisa de UM nome canônico para chamar); a "?" do board.html
+  passou a chamar `novoToggleInfo()` (era `boardToggleInfo()`).
+- **Diferenças reais encontradas entre as 3 implementações "idênticas" (não eram
+  100% idênticas — preservadas via config, não corrigidas, por ser extração):**
+  1. **Tamanho/escopo do botão "i":** dashboard.html usava 14px/`.56rem` oculto por
+     padrão e revelado GLOBALMENTE por `body.novo-info-on` (em QUALQUER lugar da
+     página); board.html/ae.html usavam 16px/`.62rem`, visível por padrão e ocultado só
+     DENTRO de `.novo-card` — por isso, historicamente, os "i" de `.kpi-card` em
+     board/ae **nunca respeitaram o toggle "?"** (ficam sempre visíveis). Mantido via
+     `configure({ variant: 'cro' | 'panel' })` (dashboard = `'cro'`; board/ae = `'panel'`,
+     default).
+  2. **Posição do tooltip:** dashboard.html ancorava embaixo/em cima do botão (calculado
+     1x no `mouseover`); board.html/ae.html seguiam o cursor (`mousemove`). Mesma
+     variante `'cro'`/`'panel'` controla isso.
+  3. **`data-code` sem code mapeado:** dashboard.html omitia o atributo; board.html/
+     ae.html caíam para a própria `key` como fallback (tooltip mostrava a key crua).
+     Mesma variante.
+  4. **Blur de fundo ao abrir a ficha:** dashboard.html e board.html sempre chamavam
+     `setContentBlur(true/false)`; **ae.html nunca chamava** (apesar de ter
+     `setContentBlur` disponível e usá-la em outros lugares — inconsistência
+     pré-existente, não um bug desta extração). Preservado via `configure({ blur: false
+     })` só em ae.html.
+  5. **Chave de localStorage do toggle "?"** era por painel (`novo_show_info` |
+     `board_show_info` | `ae_show_info`) — preservada via `configure({ storageKey })`
+     para não resetar a preferência já salva de quem já usa o dashboard.
+  6. `ae.html` tinha `_codeTag()` reaproveitado FORA do botão "i" (nos `.kpi-card`,
+     só a tag, sem botão) — não fazia parte do mecanismo extraído; deixado intacto no
+     próprio `ae.html`.
+- **Validação:** `node --check public/help-drawer.js` OK; `node scripts/_check-inline-js.js`
+  limpo em `dashboard.html`/`board.html`/`ae.html` (0 erros nos 3); `npm run check` —
+  mesma suíte PASS, única falha conhecida `test-bdr-workload-v2.js` (fragilidade
+  pré-existente de dia útil hardcoded, hoje é domingo, não relacionada). Smoke manual:
+  servidor local numa porta alternativa (3011, para não colidir com outra sessão já
+  ativa na 3002) confirmou `/novo`, `/novo-board`, `/novo-ae` e `/help-drawer.js` todos
+  200, com o `<script src="/help-drawer.js?v=1">` presente nos 3 HTMLs.
+- **Pendência documentada:** `public/bdr.html` tem a mesma implementação duplicada,
+  fora do escopo desta extração (coordenar com Samuel antes de tocar).
+- Branch `pacheco/design-help-drawer-extraction-2026-08-02` (sem push, sem deploy).
+
 ### Forecast | Probabilidade final = MENOR entre etapa × AE (autorizado, validado com a CFO) (2026-08-02)
 
 > Decisão da reunião de forecast de 31/07, agora autorizada: "para fins de forecast, usar
