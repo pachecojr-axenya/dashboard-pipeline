@@ -1,5 +1,35 @@
 # Auditoria crítica dos gráficos 🟡 | 2026-06-12
 
+## Adendo | Delta ganha o D09, ARR do quarter corrente vs Meta (2026-08-02)
+
+> **Estado: 🟡 não validado contra o HubSpot** (card novo; painel Delta segue 🟢
+> validado nos D01–D08 já auditados). Pedido do CRO (Ivan) na reunião de forecast de
+> 31/07/2026: uma visão de como o ARR probabilizado do quarter CORRENTE evoluiu
+> semana a semana, comparado com a meta.
+>
+> | # | Card | Nota |
+> |---|---|---|
+> | D09 | ARR do quarter corrente vs Meta \| evolução semanal | linha (ARR Total/Ponderado, toggle) por foto semanal, com marcador tracejado da meta trimestral |
+>
+> **Front-only por construção (sem mudar `api/history.js`)**: looping do front sobre
+> os dois endpoints que já existiam — `action=fotos` (cadência semanal oficial, sem
+> `cadence=`) para a lista de fotos, e `action=compare` (mesmo `quarters[]` que já
+> alimenta o D06) para o ARR do quarter corrente EM CADA foto — lê o lado `b` (ou `a`
+> para o primeiro ponto) de cada chamada, todas com a mesma foto mais antiga da janela
+> como base A (até 16 fotos semanais mais recentes, paralelizadas via `Promise.all`).
+> Nenhuma agregação nova no backend.
+>
+> Escopo sempre "Tudo" (Ganho/Implantação incluídos, sem Bid/Standby) e SEM os filtros
+> de Executivo/Quarter/Escopo do cabeçalho — visão executiva do total da empresa,
+> deliberadamente independente do resto da página (documentado no drawer "i" do D09).
+> Meta trimestral = meta anual configurada em Configurações (⚙, mesma fonte do CRO
+> Dashboard, `NOVO_META_MTD`) ÷ 4, lida diretamente do `localStorage` do navegador
+> (`novo_meta_mtd`) — o painel Delta não inclui `settings-modal.js`, então não há UI
+> própria para editar a meta aqui; se nunca foi configurada neste navegador, o card
+> mostra "sem meta em Configurações" em vez de uma meta zerada silenciosa.
+> Ressalva a validar: a série pode incluir fotos de ANTES do início do quarter
+> corrente (contexto de tendência) quando ainda há poucas fotos dentro do quarter.
+
 ## Adendo | Cotação religado nos tickets reais (2026-07-29)
 
 > **Estado: 🟡 não validado contra o portal** (painel segue oculto/🔴 no menu até
