@@ -1,5 +1,84 @@
 # Dashboard Enhancement Loop — Status Log
 
+### Cotação | fix: CSS do modal órfão depois de `</html>` (regressão do fix de 2026-07-29) (2026-08-02)
+
+> Item Tier 1.5 de `docs/design-system-proposal.md` (seção 2.2, achado #5): a proposta já
+> tinha confirmado por leitura direta que `public/cotacao.html` tinha um bloco de CSS
+> (`.modal-overlay`, `.modal`, `.modal-header`, `.modal-close`, `.modal-body`, `.btn-export`,
+> `table.lb`) fisicamente DEPOIS da tag `</html>` de fechamento — fora de qualquer `<style>`,
+> então o navegador o ignorava por completo. O `STATUS_LOG.md` de 2026-07-29 já registrava
+> essa EXATA classe de bug como corrigida uma vez ("CSS do modal/tabela estava órfão...
+> movido para dentro do `<style>`") — este achado é uma **regressão** (ou o fix de 07-29 não
+> cobriu este trecho específico do arquivo).
+- **`public/cotacao.html`:** as ~15 linhas de CSS órfãs (linhas 364-379 antes do fix) foram
+  movidas para dentro do `<style>` real do `<head>` (logo antes do `</style>` de fechamento,
+  depois de `.kpi-sub`). Nenhuma dessas classes existia duplicada dentro do `<style>` já
+  existente, então foi um MOVE puro, sem reconciliação de conflito necessária. Efeito: o
+  modal de drill-down (usado por `novoOpenDealsModal`/`cotOpenTickets`) volta a ter
+  `position:fixed`, `display:flex`, dimensões e transição de entrada — antes do fix, o
+  `.modal-overlay` não tinha NENHUMA dessas propriedades (só o pouco que `premium.css`
+  cobre para `.modal`/`.modal-overlay`, que não inclui posicionamento nem dimensões),
+  então o modal provavelmente não se comportava como overlay de tela cheia.
+- Confirmado servindo o arquivo por um `local-server.js` isolado (porta alternativa 3211,
+  para não colidir com sessão paralela já rodando na 3002): resposta HTTP do
+  `/novo-cotacao` bate byte-a-byte com o arquivo em disco, um único `</html>` no documento,
+  CSS do modal presente dentro do `<style>` do `<head>`.
+
+### Cotação | limpeza: `:root`/`.novo-card`/`.kpi-card` locais mortos removidos (2026-08-02)
+
+> Item Tier 1.2 de `docs/design-system-proposal.md` (seção 2.2, achado #1). Confirmado por
+> grep no `<head>` que `public/cotacao.html` já inclui `<link rel="stylesheet"
+> href="/premium.css?v=5">` **depois** do `<style>` inline — como os seletores `:root`,
+> `html[data-theme="light"]`, `.novo-card` e `.kpi-card` têm especificidade idêntica nos
+> dois lugares, `premium.css` (carregado por último) vence a cascata para TODAS as
+> propriedades que o `:root`/`.novo-card`/`.kpi-card` locais declaravam.
+- **`public/cotacao.html`:** removidos o `:root{...}` e o `html[data-theme="light"]{...}`
+  locais (paleta pré-`premium.css`, ex. `--bg:#0d1117 --teal:#3ab8b7`), e as regras
+  `.novo-card{...}`/`.kpi-card{...}` locais — todas as variáveis/propriedades que elas
+  declaravam já são redefinidas pelo `premium.css` (`:root`/light equivalentes e
+  `.novo-card`/`.kpi-card` das seções 1 e 6). **Não removido**: `.novo-cards` (grid/padding
+  não cobertos pelo premium), `.kpi-click`, `.kpi-label`, `.kpi-value`, `.kpi-sub` — essas
+  regras têm propriedades (cursor, text-transform, line-height, margin) que o `premium.css`
+  NÃO redefine, então continuam vivas e em uso; removê-las mudaria o visual.
+- **Zero mudança visual esperada** — código morto (a cascata já era decidida pelo
+  `premium.css` antes do fix); confirmado comparando a resposta HTTP servida com o arquivo
+  em disco (idênticos) e via `node scripts/_check-inline-js.js public/cotacao.html` (0 erros).
+
+### Cotação | liga `settings-modal.js` (toggle global Implantação=Ganho) (2026-08-02)
+
+> Item Tier 2.7 de `docs/design-system-proposal.md` (seção 2.2, achado #8): `cs.html` e
+> `cotacao.html` eram os dois únicos painéis "principais" sem `settings-modal.js`, com
+> `NOVO_WON_STAGE='Ganho'` fixo no código — divergindo silenciosamente do resto do app
+> sempre que o dono muda o toggle "Implantação = Ganho" em outro painel (board/ae/bdr/48h).
+- **`public/cotacao.html` `<head>`:** adicionado `<script src="/settings-modal.js?v=2">`,
+  logo depois de `filter-bar.js`, mesma ordem usada por `board.html`/`48h.html`.
+- **Header:** novo botão de engrenagem "Configurações" (`onclick="novoOpenSettings()"`),
+  entre o botão "?" e o de Atualizar — mesmo ícone/posição do `48h.html`.
+- **JS:** adicionados `_novoImplWon`/`_novoActiveMeetings`/`_novoActiveStandby`
+  (localStorage-backed, mesmos nomes/defaults de `board.html`/`48h.html`),
+  `_novoIsWon(d)` (`d.stage==='Ganho'||(_novoImplWon&&d.stage==='Implantação')`),
+  `novoToggleImplWon`/`novoToggleActiveMeetings`/`novoToggleActiveStandby` e
+  `setContentBlur` (alvo `#view-novo`, mesma classe `.content-blur` que já existia no
+  arquivo) — o conjunto mínimo que o comentário de `settings-modal.js` documenta como
+  dependência de qualquer painel que o inclua, evitando erro de referência ao clicar nos
+  toggles do drawer de Configurações.
+- **`novoRender()`:** `var won=(_deals||[]).filter(function(d){return
+  d.stage===NOVO_WON_STAGE;})` virou `var won=(_deals||[]).filter(_novoIsWon);`. Confirmado
+  por grep que `won` **não é consumido em nenhum outro lugar do arquivo** (era, e continua,
+  uma variável sem efeito no render de hoje) — a troca não altera nenhum KPI/contagem
+  visível do painel agora, mas corrige a fonte para quando `won` (ou qualquer novo card)
+  passar a ser usado, e alinha o painel ao padrão dos demais. `NOVO_WON_STAGE='Ganho'`
+  manteve-se declarada (mesmo padrão de `board.html`/`48h.html`, que também a mantêm sem
+  uso direto) por não ser referenciada por nenhum módulo compartilhado (`shared-charts.js`,
+  `filter-bar.js`, `settings-modal.js` — confirmado por grep).
+- **Validação:** `node scripts/_check-inline-js.js public/cotacao.html` — 0 erros.
+  `npm run check` — mesma suíte PASS (única falha: `test-bdr-workload-v2.js`, fragilidade
+  preexistente de checagem de dia útil hardcoded, hoje 02/08/2026 é domingo, não
+  relacionada). Testes específicos de forecast (`test-forecast-delta-leva2.js`,
+  `test-forecast-delta-e2e.js`) rodados à parte, PASS integral (não tocam `cotacao.html`,
+  mas confirmam que nada no motor compartilhado quebrou).
+- Branch: `pacheco/design-cotacao-cleanup-2026-08-02` (sem push, sem deploy).
+
 ### Forecast | Probabilidade final = MENOR entre etapa × AE (autorizado, validado com a CFO) (2026-08-02)
 
 > Decisão da reunião de forecast de 31/07, agora autorizada: "para fins de forecast, usar
