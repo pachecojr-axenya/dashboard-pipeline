@@ -1,5 +1,42 @@
 # Dashboard Enhancement Loop — Status Log
 
+### Componente de estado vazio/erro/aviso | `AxUI` — FASE 2, item 8: `48h.html` (2026-08-02)
+
+> Continuação da Fase 1 (`AxUI` — módulo + dashboard/board/ae, entrada acima). Seguiu à
+> risca o "para o próximo agente" documentado ali: incluir `<script src="/ax-ui.js?v=1">`
+> no `<head>`, trocar texto solto de vazio/erro por `AxUI.emptyState(...)`/`AxUI.banner(...)`
+> sem mudar o TEXTO da mensagem, e para o placeholder ANTES do 1º load (antes do JS rodar)
+> aplicar a classe `ax-empty ax-empty-lg` direto na tag em vez de chamar a função — mesmo
+> padrão usado em `board.html`/`ae.html`.
+- **`public/48h.html`:** adicionado `<script src="/ax-ui.js?v=1"></script>` no `<head>`
+  (junto de `settings-modal.js`). 6 pontos migrados:
+  - Placeholder estático de página inteira antes do 1º load ("Aguardando dados…") →
+    `<div class="ax-empty ax-empty-lg">Aguardando dados…</div>`.
+  - `novoOpenDealsModal` ("Nenhum deal.") → `AxUI.emptyState('Nenhum deal.')`.
+  - Erro principal de `novoLoadData()` (fetch de `/api/forecast-table`, com botão de
+    retry) → `AxUI.banner(t('error_prefix')+_ne(String(err)), {severity:'error',
+    retry:'novoLoadData()', retryLabel:t('retry')})` no lugar do
+    `<div style="color:var(--red)">…<button style="background:var(--teal)…">` inline.
+  - `buildH48ChartAE` ("Nenhum deal criado nas últimas 48h.", quando não há barras) →
+    `AxUI.emptyState(...)`.
+  - `buildH48WonTable` ("Nenhum deal ganho nas últimas 48h.") → `AxUI.emptyState(...)`.
+  - `buildH48NewTable` ("Nenhum deal criado nas últimas 48h.") → `AxUI.emptyState(...)`.
+  - **Não migrado (fora de escopo)**: o texto de "carregando" (`t('loading')`, dentro de
+    `novoLoadData()`) permanece como `<div style="...color:var(--text2)">` solto — mesmo
+    padrão preservado em `board.html`/`ae.html`, pois é um estado de carregamento, não
+    vazio/erro/aviso. O bloco `.alert-card` (`buildH48Alerts`, incl. o caso "Nenhum alerta
+    no período.") também não foi tocado: é um componente próprio do painel com 4 variantes
+    simultâneas (default/verde/amarelo, várias podem aparecer empilhadas ao mesmo tempo),
+    não existe em nenhum outro painel, e não mapeia 1:1 para o modelo de severidade única
+    do `AxUI.banner` (`info`/`warn`/`error`, sem verde de sucesso) — não é "texto solto"
+    no sentido do gate de paridade, é um sistema de alertas já desenhado.
+- **Validação:** `node scripts/_check-inline-js.js public/48h.html` → 0 erros. `npm run
+  check` completo: única falha é a conhecida `test-bdr-workload-v2.js`
+  (`AssertionError: false == true`), sinalizada de antemão como não sendo responsabilidade
+  desta rodada (falha de fim de semana, sem relação com este painel); todo o resto passou
+  (`check-semantic`, `test-bdr-treble-dw`, `test-bdr-no-show`, `test-bdr-cohort-analytics`,
+  `_check-inline-js` dos demais painéis).
+
 ### Cotação | fix: CSS do modal órfão depois de `</html>` (regressão do fix de 2026-07-29) (2026-08-02)
 
 > Item Tier 1.5 de `docs/design-system-proposal.md` (seção 2.2, achado #5): a proposta já

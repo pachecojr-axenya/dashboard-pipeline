@@ -125,6 +125,7 @@ body.nav-docked #view-novo{margin-left:280px}
 <script src="/premium.js?v=5"></script>
 <script src="/filter-bar.js?v=1"></script>
 <script src="/settings-modal.js?v=2"></script>
+<script src="/ax-ui.js?v=1"></script>
 </head>
 <body>
 
@@ -161,7 +162,7 @@ body.nav-docked #view-novo{margin-left:280px}
     </div>
   </div>
   <div id="novo-content" style="max-width:1400px;margin:0 auto;padding:2rem">
-    <div style="text-align:center;padding:3rem 0;color:var(--text2)">Aguardando dados…</div>
+    <div class="ax-empty ax-empty-lg">Aguardando dados…</div>
   </div>
 </div>
 
@@ -343,7 +344,7 @@ function _novoMkChart(id,cfg){ var ctx=document.getElementById(id); if(!ctx)retu
 
 // ── Deals modal ───────────────────────────────────────────────────────────────
 function _novoDealsRows(deals){ return deals.map(function(d){ var hsUrl=d.hs_id?'https://app.hubspot.com/contacts/44715285/deal/'+d.hs_id:'#'; var nameCell=d.hs_id?'<a href="'+hsUrl+'" target="_blank" rel="noopener" style="color:var(--teal);text-decoration:none">'+_ne(d.dealname)+'</a>':_ne(d.dealname); return '<tr><td style="text-align:left;min-width:150px;max-width:210px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+nameCell+'</td><td style="text-align:left;white-space:nowrap">'+_ne(d.ae)+'</td><td>'+_ne(d.pipeline)+'</td><td style="white-space:nowrap">'+_ne(d.stage)+'</td><td>'+_ni(d.vidas)+'</td><td>'+_revShort(_annualRev(d))+'</td><td style="white-space:nowrap">'+(d.createdate||'—')+'</td><td style="white-space:nowrap">'+(d.close_date||'—')+'</td><td style="white-space:nowrap">'+(d.data_prevista_para_receita||'—')+'</td></tr>'; }).join(''); }
-function novoOpenDealsModal(title,deals){ if(!deals||!deals.length){ openModal(title,'<p style="color:var(--text2);padding:1rem 0">Nenhum deal.</p>'); return; } var html='<table class="lb"><thead><tr><th style="text-align:left">Deal</th><th style="text-align:left">AE</th><th>Pipe</th><th>Etapa</th><th>Vidas</th><th>ARR</th><th>Criado</th><th>Fechado</th><th>Dt. Receita</th></tr></thead><tbody>'+_novoDealsRows(deals)+'</tbody></table>'; openModal(title+' ('+deals.length+')',html); }
+function novoOpenDealsModal(title,deals){ if(!deals||!deals.length){ openModal(title,AxUI.emptyState('Nenhum deal.')); return; } var html='<table class="lb"><thead><tr><th style="text-align:left">Deal</th><th style="text-align:left">AE</th><th>Pipe</th><th>Etapa</th><th>Vidas</th><th>ARR</th><th>Criado</th><th>Fechado</th><th>Dt. Receita</th></tr></thead><tbody>'+_novoDealsRows(deals)+'</tbody></table>'; openModal(title+' ('+deals.length+')',html); }
 
 // ── Data loading ──────────────────────────────────────────────────────────────
 var _novoDeals=null;
@@ -357,7 +358,7 @@ function novoLoadData(){
     novoRender();
   }).catch(function(err){
     if(btn) btn.classList.remove('spinning');
-    document.getElementById('novo-content').innerHTML='<div style="text-align:center;padding:3rem 0;color:var(--red)">'+t('error_prefix')+_ne(String(err))+'<br><br><button onclick="novoLoadData()" style="background:var(--teal);color:#fff;border:none;border-radius:8px;padding:.5rem 1.2rem;cursor:pointer">'+t('retry')+'</button></div>';
+    document.getElementById('novo-content').innerHTML=AxUI.banner(t('error_prefix')+_ne(String(err)), { severity:'error', retry:'novoLoadData()', retryLabel:t('retry') });
   });
 }
 
@@ -428,7 +429,7 @@ function buildH48ChartAE(newDeals){
   var aeMap={};
   newDeals.forEach(function(d){ var ae=d.ae||'(sem AE)'; aeMap[ae]=(aeMap[ae]||0)+1; });
   var aes=Object.keys(aeMap).sort(function(a,b){return aeMap[b]-aeMap[a];});
-  if(!aes.length){ document.getElementById('chart-h48-ae').parentElement.querySelector('.novo-card-header').insertAdjacentHTML('afterend','<p style="color:var(--text2);font-size:.82rem;padding:.5rem 0">Nenhum deal criado nas últimas 48h.</p>'); return; }
+  if(!aes.length){ document.getElementById('chart-h48-ae').parentElement.querySelector('.novo-card-header').insertAdjacentHTML('afterend',AxUI.emptyState('Nenhum deal criado nas últimas 48h.')); return; }
   _novoMkChart('chart-h48-ae',{type:'bar',plugins:[ChartDataLabels],
     data:{labels:aes,datasets:[{data:aes.map(function(ae){return aeMap[ae];}),backgroundColor:'rgba(88,166,255,.75)',borderRadius:4}]},
     options:{indexAxis:'y',responsive:true,layout:{padding:{right:45}},plugins:{legend:{display:false},
@@ -470,7 +471,7 @@ function buildH48ChartStage(newDeals){
 function buildH48WonTable(wonDeals){
   var el=document.getElementById('h48-won-body');
   if(!el)return;
-  if(!wonDeals.length){ el.innerHTML='<p style="color:var(--text2);font-size:.82rem;padding:.5rem 0">Nenhum deal ganho nas últimas 48h.</p>'; return; }
+  if(!wonDeals.length){ el.innerHTML=AxUI.emptyState('Nenhum deal ganho nas últimas 48h.'); return; }
   var html='<div style="overflow-x:auto"><table class="lb" style="font-size:.78rem"><thead><tr><th style="text-align:left">Deal</th><th style="text-align:left">AE</th><th>Vidas</th><th>ARR</th><th>Fechado</th></tr></thead><tbody>';
   wonDeals.forEach(function(d){
     var hsUrl=d.hs_id?'https://app.hubspot.com/contacts/44715285/deal/'+d.hs_id:'#';
@@ -483,7 +484,7 @@ function buildH48WonTable(wonDeals){
 function buildH48NewTable(newDeals){
   var el=document.getElementById('h48-new-table');
   if(!el)return;
-  if(!newDeals.length){ el.innerHTML='<p style="color:var(--text2);font-size:.82rem;padding:.5rem 0">Nenhum deal criado nas últimas 48h.</p>'; return; }
+  if(!newDeals.length){ el.innerHTML=AxUI.emptyState('Nenhum deal criado nas últimas 48h.'); return; }
   var html='<div style="overflow-x:auto"><table class="lb" style="font-size:.78rem"><thead><tr><th style="text-align:left">Deal</th><th style="text-align:left">AE</th><th>Pipeline</th><th>Etapa</th><th>Colab.</th><th>ARR</th><th>Criado</th></tr></thead><tbody>';
   newDeals.slice().sort(function(a,b){ return (b.createdate||'').localeCompare(a.createdate||''); }).forEach(function(d){
     var hsUrl=d.hs_id?'https://app.hubspot.com/contacts/44715285/deal/'+d.hs_id:'#';
