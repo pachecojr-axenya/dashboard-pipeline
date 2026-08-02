@@ -160,6 +160,67 @@
 - Branch `pacheco/design-48h-cleanup-2026-08-02`, arquivo único tocado
   (`public/48h.html`). Sem push, sem deploy.
 
+### Design System | Limpeza CSS dos gêmeos `forecast.html`/`forecast-stage.html` (Tier 1.2-1.4) (2026-08-02)
+
+> Execução dos itens Tier 1.2, 1.3 e 1.4 de `docs/design-system-proposal.md` (seção 2.3),
+> restrita a CSS puro + uma função de posicionamento de UI — nenhuma lógica de
+> receita/probabilidade tocada.
+
+- **(Tier 1.2) `:root` local morto removido dos dois arquivos.** `forecast.html:15-51` e
+  `forecast-stage.html:15-51` tinham um bloco `:root` + `html[data-theme="light"]`
+  byte-a-byte idêntico entre si, com a paleta pré-`premium.css` (`--bg:#0d1117
+  --teal:#3ab8b7` etc.). Confirmado que `premium.css?v=5` já está incluído nos dois
+  (`<link>` vem DEPOIS do `<style>` inline no `<head>`, então já vencia a cascata) e que
+  TODAS as vars do bloco morto (`--bg/--card/--card2/--border/--text/--text2/--teal/
+  --green/--yellow/--red/--font/--warn-s/--warn-sh/--even-s/--hover-s/--accent/--hover`,
+  dark e light) já têm equivalente em `premium.css:20-69` (dark) e `:71-107` (light) —
+  removido sem qualquer mudança visual.
+- **(Tier 1.3) Hardcodes de `rgba(58,184,183,*)`/`#f85149` (paleta antiga) corrigidos em
+  CSS puro, fora do alcance do remap de `premium.js` (que só intercepta `new Chart(...)`,
+  não `box-shadow`/`border`/`background` estático).** `--teal` atual (`premium.css:29`,
+  dark) = `#2dd4bf` = `rgb(45,212,191)`; `--red` atual (`premium.css:31`) = `#fb7185`.
+  Corrigido nos DOIS arquivos, mesma alpha preservada em cada regra:
+  - `.filter-pill` — `background: rgba(58,184,183,0.15)` → `rgba(45,212,191,0.15)`
+  - `.search-input-full:focus` — `box-shadow …rgba(58,184,183,.12)` → `…rgba(45,212,191,.12)`
+  - `.domain-badge` — `background:rgba(58,184,183,.1)` → `rgba(45,212,191,.1)`;
+    `border:1px solid rgba(58,184,183,.2)` → `rgba(45,212,191,.2)`
+  - FAB mobile (`.mob-filter-fab`) — `box-shadow …rgba(58,184,183,.45)…` →
+    `…rgba(45,212,191,.45)…`
+  - `.error-msg` — `color:#f85149` (hex fixo) → `color:var(--red)`
+  - `.dm-pipe` — `background:rgba(58,184,183,.14)` → `rgba(45,212,191,.14)`;
+    `border:1px solid rgba(58,184,183,.32)` → `rgba(45,212,191,.32)`. **Achado que corrige
+    o levantamento**: `docs/design-system-proposal.md` listava `.dm-pipe` como existente só
+    em `forecast-stage.html:1343` — grep direto mostrou que a regra (e o uso em
+    `pipeTag`/`dm-pipe`) também existe, idêntica, em `forecast.html:1284` e `:2670`.
+    Corrigido nos DOIS arquivos por consistência, já que é exatamente o mesmo bug de cor
+    legada que o item pede para eliminar.
+  - Deliberadamente NÃO tocado (fora do escopo pedido, mesmo sendo `rgba(58,184,183,*)`/
+    `#f85149` em CSS puro): `.fbtn.a-todos.active`, `td.col-hl`, `td.m.now`/`th.m.now`,
+    `.cmpb-down`/`td.dneg`/`.cmp-nv.down`/`.cmp-exits *` e demais `#f85149` inline em
+    lógica de coloração de dias/status — não fazem parte da lista explícita desta tarefa.
+- **(Tier 1.4) `_syncSegThumb()` portado de `forecast.html` para `forecast-stage.html`.**
+  `forecast-stage.html` usava `.seg-ctrl.on-historico::before{transform:translateX(100%)}`
+  fixo, assumindo 2 botões de largura idêntica (quebra com rótulos desiguais). Portado:
+  função `_syncSegThumb()` (mede `offsetWidth`/`offsetLeft` do botão ativo e seta
+  `--seg-tw`/`--seg-tx`), `window.addEventListener('resize'/'load', _syncSegThumb)`, CSS de
+  `.seg-ctrl::before` trocado para `left:0; width:var(--seg-tw, calc(50% - 3px));
+  transform:translateX(var(--seg-tx, 3px))` (idêntico ao de `forecast.html`), regra
+  `.seg-ctrl.on-historico::before` removida (substituída pela var dinâmica). Ligado nos
+  MESMOS pontos que `forecast.html` usa: dentro de `switchView()` (troca de aba
+  Pipeline/Histórico) e nos dois branches de `checkSession()` (bypass local + sessão
+  autenticada), antes do `load()`.
+- **Cuidado especial respeitado**: nenhuma linha de `revenue-engine.js`,
+  `forecast-engine.js`, `prob-engine.js` ou cálculo de ARR/probabilidade foi tocada; o
+  `<script src="/revenue-engine.js?v=2">` permanece `v=2` nos dois arquivos (inalterado).
+- **Validação**: `node scripts/_check-inline-js.js` limpo (0 erros) nos dois arquivos;
+  `npm run check` — mesma suíte PASS (única falha: `test-bdr-workload-v2.js`, fragilidade
+  preexistente de dia útil hardcoded — hoje, 02/08/2026, é domingo — não relacionada);
+  `scripts/test-delta-invariant.js`, `scripts/test-forecast-delta-leva2.js` e
+  `scripts/test-forecast-delta-e2e.js` rodados à parte, PASS integral (confirma que a
+  fonte única de receita não foi afetada). Rotas locais confirmadas: `/forecast` (200) e
+  `/forecast-overall` (rota real de `forecast-stage.html` no `vercel.json`, 200).
+- Branch: `pacheco/design-forecast-twins-cleanup-2026-08-02` (sem push, sem deploy).
+
 ### Forecast | Probabilidade final = MENOR entre etapa × AE (autorizado, validado com a CFO) (2026-08-02)
 
 > Decisão da reunião de forecast de 31/07, agora autorizada: "para fins de forecast, usar

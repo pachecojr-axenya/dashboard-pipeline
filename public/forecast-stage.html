@@ -11,45 +11,6 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" rel="stylesheet">
   <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
   <style>
-    /* ── TOKENS ──────────────────────────────────────────────────────────────── */
-    :root {
-      --bg: #0d1117;
-      --card: #171f2e;
-      --card2: #1e2a3c;
-      --border: #293a50;
-      --text: #e6edf3;
-      --text2: #8b949e;
-      --teal: #3ab8b7;
-      --green: #3fb950;
-      --yellow: #d29922;
-      --red: #f85149;
-      --font: 'Inter', 'Segoe UI', system-ui, sans-serif;
-      --warn-s: #1f0e0d;
-      --warn-sh: #2c1211;
-      --even-s: #131b28;
-      --hover-s: #1c2b40;
-      --accent: var(--teal);
-      --hover: rgba(255,255,255,0.06);
-    }
-
-    html[data-theme="light"] {
-      --bg: #f6f8fa;
-      --card: #ffffff;
-      --card2: #eaeef2;
-      --border: #d0d7de;
-      --text: #1f2328;
-      --text2: #57606a;
-      --teal: #0d7377;
-      --green: #1a7f37;
-      --yellow: #9a6700;
-      --red: #cf222e;
-      --warn-s: #fde8e7;
-      --warn-sh: #f9d0cf;
-      --even-s: #f1f4f8;
-      --hover-s: #e8eef4;
-      --hover: rgba(0,0,0,0.05);
-    }
-
     /* ── RESET & BASE ─────────────────────────────────────────────────────────── */
     * {
       box-sizing: border-box;
@@ -101,17 +62,17 @@
     .seg-ctrl::before {
       content: '';
       position: absolute;
-      top: 3px; left: 3px;
-      width: calc(50% - 3px);
+      top: 3px; left: 0;
+      width: var(--seg-tw, calc(50% - 3px));
       height: calc(100% - 6px);
       background: rgba(255,255,255,0.26);
       border-radius: 99px;
-      transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
-      will-change: transform;
+      transform: translateX(var(--seg-tx, 3px));
+      transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1), width 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+      will-change: transform, width;
       pointer-events: none;
       z-index: 0;
     }
-    .seg-ctrl.on-historico::before { transform: translateX(100%); }
     .seg-btn {
       border: none;
       background: none;
@@ -409,7 +370,7 @@
     .filter-pill {
       display: inline-flex; align-items: center; gap: 0.28rem;
       padding: 0.15rem 0.5rem; border-radius: 99px; font-size: 0.76rem;
-      background: rgba(58,184,183,0.15);
+      background: rgba(45,212,191,0.15);
       color: var(--teal); font-family: var(--font);
     }
     html[data-theme="light"] .filter-pill { background: #c7f1f1; color: #0d7377; }
@@ -509,7 +470,7 @@
     }
 
     .search-input-full:focus {
-      box-shadow: 0 0 0 3px rgba(58, 184, 183, .12);
+      box-shadow: 0 0 0 3px rgba(45, 212, 191, .12);
     }
 
     .search-clear {
@@ -1340,7 +1301,7 @@
     .deal-modal-sub { font-size: .84rem; color: var(--text); margin-top: .45rem; }
     .deal-modal-sub .dm-stage-days { color: var(--text2); }
     .deal-modal-exec { font-size: .82rem; color: var(--text2); margin-top: .32rem; }
-    .dm-pipe { display: inline-block; font-size: .62rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--teal); background: rgba(58,184,183,.14); border: 1px solid rgba(58,184,183,.32); border-radius: 5px; padding: .14rem .5rem; margin-bottom: .55rem; }
+    .dm-pipe { display: inline-block; font-size: .62rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--teal); background: rgba(45,212,191,.14); border: 1px solid rgba(45,212,191,.32); border-radius: 5px; padding: .14rem .5rem; margin-bottom: .55rem; }
     .deal-sec { grid-column: 1 / -1; margin-top: 1rem; margin-bottom: .1rem; padding: .1rem .25rem .35rem; font-size: .7rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--text2); border-bottom: 1px solid var(--border); }
     .deal-trail, .deal-owner-hist { grid-column: 1 / -1; padding: .2rem .1rem 0; }
     .deal-trail .dt-row, .deal-owner-hist .oh-row { display: flex; align-items: baseline; justify-content: space-between; gap: .8rem; padding: .34rem .25rem; border-bottom: 1px solid var(--border); font-size: .82rem; }
@@ -1575,8 +1536,8 @@
       align-items: center;
       gap: .4rem;
       padding: .3rem .7rem;
-      background: rgba(58, 184, 183, .1);
-      border: 1px solid rgba(58, 184, 183, .2);
+      background: rgba(45, 212, 191, .1);
+      border: 1px solid rgba(45, 212, 191, .2);
       border-radius: 20px;
       font-size: .75rem;
       color: var(--teal);
@@ -1584,7 +1545,7 @@
     }
 
     .error-msg {
-      color: #f85149;
+      color: var(--red);
       font-size: .8rem;
       margin-top: 1rem;
       min-height: 1.2rem;
@@ -1651,7 +1612,7 @@
         font-size: 1.25rem;
         align-items: center;
         justify-content: center;
-        box-shadow: 0 4px 16px rgba(58,184,183,.45), 0 2px 6px rgba(0,0,0,.35);
+        box-shadow: 0 4px 16px rgba(45,212,191,.45), 0 2px 6px rgba(0,0,0,.35);
         cursor: pointer;
         z-index: 500;
         transition: transform .12s, box-shadow .12s;
@@ -4667,11 +4628,25 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       }[s] || s;
     }
 
+    // Sincroniza o "thumb" deslizante do segmented control com o botão ativo, medindo
+    // largura/posição reais — funciona para qualquer nº de botões e labels de tamanhos
+    // diferentes (o cálculo por 50% fixo assumia 2 botões idênticos e saía do centro).
+    function _syncSegThumb() {
+      const ctrl = document.querySelector('.seg-ctrl');
+      if (!ctrl) return;
+      const active = ctrl.querySelector('.seg-btn.active');
+      if (!active || !active.offsetWidth) return;
+      ctrl.style.setProperty('--seg-tw', active.offsetWidth + 'px');
+      ctrl.style.setProperty('--seg-tx', active.offsetLeft + 'px');
+    }
+    window.addEventListener('resize', _syncSegThumb);
+    window.addEventListener('load', _syncSegThumb);
+
     function switchView(view) {
       document.querySelectorAll('.seg-btn').forEach(t =>
         t.classList.toggle('active', t.dataset.view === view)
       );
-      document.querySelector('.seg-ctrl')?.classList.toggle('on-historico', view === 'historico');
+      _syncSegThumb();
       const isPipeline = view === 'pipeline';
       ['app-filters', 'app-search', 'tw', 'mob-filter-fab'].forEach(id => {
         const el = document.getElementById(id);
@@ -4958,6 +4933,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
         if (kpis) kpis.style.display = 'block';
         const personBtn = document.getElementById('btn-person');
         if (personBtn) personBtn.dataset.tooltip = 'Dev Local — Clique para sair';
+        _syncSegThumb();
         load();
         return;
       }
@@ -4977,6 +4953,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
 
             const personBtn = document.getElementById('btn-person');
             if (personBtn) personBtn.dataset.tooltip = (currentUser.name || '') + ' — Clique para sair';
+            _syncSegThumb();
             load();
             return;
           }
