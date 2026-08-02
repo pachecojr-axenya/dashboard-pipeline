@@ -12,6 +12,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
 <script src="/semantic-ref.js?v=9"></script>
 <script src="/semantic-help.js?v=2"></script>
+<script src="/ax-ui.js?v=1"></script>
 <style>
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;line-height:1.5}
@@ -295,7 +296,7 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
         <button type="button" class="ibtn" data-help="D02" aria-label="Memória de cálculo | D02">i</button>
       </div>
     </div>
-    <div class="chart-wrap"><canvas id="wf"></canvas><div class="state" id="chart-state" aria-live="polite">Selecione duas fotos…</div></div>
+    <div class="chart-wrap"><canvas id="wf"></canvas><div class="state ax-empty" id="chart-state" aria-live="polite">Selecione duas fotos…</div></div>
     <div class="clickhint">Clique numa barra de etapa (ou em Fechado) para ver os deals que causaram o movimento.</div>
     <div class="caveat" id="caveat"></div>
   </div>
@@ -517,14 +518,14 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
     updateHdrSummary();
     var a = document.getElementById('dateA').value, b = document.getElementById('dateB').value;
     var cs = document.getElementById('chart-state');
-    if(!a || !b){ cs.style.display='block'; cs.className='state'; cs.textContent='Escolha as duas datas.'; return; }
-    if(!(b > a)){ cs.style.display='block'; cs.className='state err'; cs.textContent='A Foto B (depois) precisa ser posterior à Foto A (antes).'; if(chart){chart.destroy();chart=null;} document.getElementById('kpis').innerHTML=''; return; }
+    if(!a || !b){ cs.style.display='block'; cs.className='state'; cs.innerHTML=AxUI.emptyState('Escolha as duas datas.'); return; }
+    if(!(b > a)){ cs.style.display='block'; cs.className='state'; cs.innerHTML=AxUI.banner('A Foto B (depois) precisa ser posterior à Foto A (antes).', {severity:'error'}); if(chart){chart.destroy();chart=null;} document.getElementById('kpis').innerHTML=''; return; }
     cs.style.display='block'; cs.className='state'; cs.innerHTML='<span class="spin"></span>Calculando…';
     fetch('/api/history?action=compare&a='+a+'&b='+b+'&scope='+scope+filterQS(), {credentials:'same-origin'})
       .then(function(r){ return r.json().then(function(j){ return {ok:r.ok, j:j}; }); })
       .then(function(res){
         var j = res.j;
-        if(!j.success){ cs.className='state err'; cs.textContent = j.error || 'Erro'; if(chart){chart.destroy();chart=null;} document.getElementById('kpis').innerHTML=''; return; }
+        if(!j.success){ cs.className='state'; cs.innerHTML=AxUI.banner(esc(j.error || 'Erro'), {severity:'error'}); if(chart){chart.destroy();chart=null;} document.getElementById('kpis').innerHTML=''; return; }
         // requested (a data que o usuário pediu) e resolvedTab (a foto real usada)
         document.getElementById('resA').textContent = (j.a.requested===j.a.resolvedTab?'foto exata':'→ foto '+j.a.resolvedTab)+' | '+tipoLbl(j.a.tipo);
         document.getElementById('resB').textContent = (j.b.requested===j.b.resolvedTab?'foto exata':'→ foto '+j.b.resolvedTab)+' | '+tipoLbl(j.b.tipo);
@@ -533,7 +534,7 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
         updateHdrSummary();
         render(j);
       })
-      .catch(function(e){ cs.className='state err'; cs.textContent='Erro de conexão: '+e.message; });
+      .catch(function(e){ cs.className='state'; cs.innerHTML=AxUI.banner('Erro de conexão: '+esc(e.message), {severity:'error'}); });
   }
 
   function render(j){
@@ -630,7 +631,7 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
       el.addEventListener('click', function(){ var k=el.getAttribute('data-kpi'); openDrill('kpi:'+k, kpiTitle(k), kpiFmt(k)); });
     });
 
-    document.getElementById('caveat').textContent = (j.caveats && j.caveats[0]) ? ('⚠ ' + j.caveats[0]) : '';
+    document.getElementById('caveat').innerHTML = (j.caveats && j.caveats[0]) ? AxUI.banner('⚠ ' + esc(j.caveats[0]), {severity:'warn'}) : '';
     renderTodaySnapshot(j);
     renderFunnel(j);
     renderStageTable(j);
@@ -713,7 +714,7 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
         '<td>'+fmtBRL(r.a.arrPond)+' → '+fmtBRL(r.b.arrPond)+'</td>'+
         '<td class="'+dcls(dp)+'">'+fmtBRLc(dp)+'</td></tr>';
     }).join('');
-    if(!body){ t.innerHTML = head+'<tbody><tr><td colspan="7" style="color:var(--text2);text-align:center;padding:1.1rem;cursor:default">'+emptyMsg+'</td></tr></tbody>'; return; }
+    if(!body){ t.innerHTML = head+'<tbody><tr><td colspan="7">'+AxUI.emptyState(emptyMsg)+'</td></tr></tbody>'; return; }
     var foot = '<tfoot><tr><td>Total</td><td>'+fmtNum(tot.dA)+' → '+fmtNum(tot.dB)+'</td><td>'+movStr(tot)+'</td><td>'+fmtNum(tot.vA)+' → '+fmtNum(tot.vB)+'</td><td class="stage-real">'+fmtBRL(tot.rA)+' → '+fmtBRL(tot.rB)+'</td><td>'+fmtBRL(tot.pA)+' → '+fmtBRL(tot.pB)+'</td><td class="'+dcls(tot.pB-tot.pA)+'">'+fmtBRLc(tot.pB-tot.pA)+'</td></tr></tfoot>';
     t.innerHTML = head+'<tbody>'+body+'</tbody>'+foot;
     t.querySelectorAll('tbody tr[data-stage]').forEach(function(tr){ var go=function(){ var st=tr.getAttribute('data-stage'); openDrill(prefix+st, titlePrefix+st, fmtBRL, 'arr'); }; tr.addEventListener('click', go); tr.addEventListener('keydown', function(e){ if(e.key==='Enter'||e.key===' '){e.preventDefault();go();} }); });
@@ -782,7 +783,7 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
     document.getElementById('q3trend-qlabel').textContent = qLabel;
     if(q3TrendFotos.length < 2){
       stateEl.style.display='block'; stateEl.className='state';
-      stateEl.textContent = 'Histórico insuficiente (mínimo 2 fotos semanais).';
+      stateEl.innerHTML = AxUI.emptyState('Histórico insuficiente (mínimo 2 fotos semanais).');
       document.getElementById('q3trend-kpis').innerHTML='';
       return;
     }
@@ -807,7 +808,7 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
       stateEl.style.display='none';
       q3TrendPoints = points;
       drawQ3TrendChart(points, qLabel);
-    }).catch(function(e){ if(seq!==q3TrendSeq) return; stateEl.style.display='block'; stateEl.className='state err'; stateEl.textContent='Erro: '+e.message; });
+    }).catch(function(e){ if(seq!==q3TrendSeq) return; stateEl.style.display='block'; stateEl.className='state'; stateEl.innerHTML=AxUI.banner('Erro: '+esc(e.message), {severity:'error'}); });
   }
 
   function drawQ3TrendChart(points, qLabel){
@@ -869,7 +870,7 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
       .then(function(r){ return r.json(); })
       .then(function(d){
         if(seq !== saiuSeq) return;
-        if(!d.success){ list.innerHTML = '<div class="state err">'+esc(d.error||'erro')+'</div>'; return; }
+        if(!d.success){ list.innerHTML = AxUI.banner(esc(d.error||'erro'), {severity:'error'}); return; }
         var rows = (d.deals||[]).filter(function(x){ return x.tipo==='saiu' || x.tipo==='ganho' || x.tipo==='avancou'; });
         rows.sort(function(x,y){ return (y.aCash||0)-(x.aCash||0); });
         if(!rows.length){ list.innerHTML=''; return; }
@@ -881,7 +882,7 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
         list.innerHTML = '<table class="drill"><thead><tr><th scope="col" style="text-align:left">Deal</th><th scope="col" style="text-align:left">Etapa A → destino</th><th scope="col">ARR @ A</th><th scope="col" style="text-align:left">Movimentação</th></tr></thead><tbody>'+trs+'</tbody></table>'+
           (rows.length>60 ? '<p style="color:var(--muted);font-size:.72rem;margin-top:.6rem">Mostrando 60 de '+rows.length+' deals.</p>' : '');
       })
-      .catch(function(e){ if(seq === saiuSeq) list.innerHTML = '<div class="state err">'+esc(e.message)+'</div>'; });
+      .catch(function(e){ if(seq === saiuSeq) list.innerHTML = AxUI.banner(esc(e.message), {severity:'error'}); });
   }
 
   // ── Drill-down genérico (barra do waterfall, etapa, quarter, KPI) ──
@@ -900,12 +901,12 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
     var q = '/api/history?action=compare-drill&a='+a+'&b='+b+'&row='+encodeURIComponent(target)+'&measure='+m+'&scope='+scope+filterQS()+(field?'&field='+encodeURIComponent(field):'');
     fetch(q, {credentials:'same-origin'})
       .then(function(r){ return r.json(); })
-      .then(function(d){ if(!d.success){ body.innerHTML='<div class="state err">'+esc(d.error||'erro')+'</div>'; return; }
+      .then(function(d){ if(!d.success){ body.innerHTML=AxUI.banner(esc(d.error||'erro'), {severity:'error'}); return; }
         drillRows=d.deals||[]; drillMeta={sumDelta:d.sumDelta, measure:d.measure, field:d.field||field||''};
         drillSort={key:'delta', dir:-1};   // padrao: maior movimento primeiro
         drillMov = initMov ? (function(){ var o={}; o[initMov]=true; return o; })() : {};
         renderDrill(); })
-      .catch(function(e){ body.innerHTML='<div class="state err">'+esc(e.message)+'</div>'; });
+      .catch(function(e){ body.innerHTML=AxUI.banner(esc(e.message), {severity:'error'}); });
   }
   function drillVal(x, key){ return key==='stage' ? (x.stageB||x.stageA||'') : x[key]; }
   function drillCompare(a,b){
@@ -1133,9 +1134,9 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
   syncAllSegs();
   _initTabSubs();
   updateHdrSummary();
-  loadFotos().then(refresh).catch(function(e){ var cs=document.getElementById('chart-state'); cs.className='state err'; cs.textContent=e.message; });
+  loadFotos().then(refresh).catch(function(e){ var cs=document.getElementById('chart-state'); cs.className='state'; cs.innerHTML=AxUI.banner(esc(e.message), {severity:'error'}); });
   document.getElementById('q3trend-qlabel').textContent = q3TrendQuarterLabel();
-  loadQ3TrendFotos().then(renderQ3Trend).catch(function(e){ var st=document.getElementById('q3trend-state'); st.style.display='block'; st.className='state err'; st.textContent=e.message; });
+  loadQ3TrendFotos().then(renderQ3Trend).catch(function(e){ var st=document.getElementById('q3trend-state'); st.style.display='block'; st.className='state'; st.innerHTML=AxUI.banner(esc(e.message), {severity:'error'}); });
 })();
 </script>
 <!-- Shell glue (global): drawer + tema + logout. Precisa ser global (onclick + nav.js). nav.js por último. -->
