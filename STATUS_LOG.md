@@ -1,5 +1,48 @@
 # Dashboard Enhancement Loop — Status Log
 
+### Delta | D09, ARR do quarter corrente vs Meta, evolução semanal (2026-08-02)
+
+> Pedido do CRO (Ivan) na reunião de forecast de 31/07/2026: uma visão de como o ARR
+> probabilizado do Q3 (trimestre corrente) evoluiu semana a semana, comparado com a
+> meta. Front-only em `public/forecast-delta.html`. Sessão em duas fases: Fase 1
+> (investigação) concluiu que dava para montar a visão só com front-end, então a
+> Fase 2 (construção) prosseguiu — **`api/history.js` NÃO foi tocado** (evita
+> conflito com outra sessão trabalhando nesse arquivo em paralelo). **NÃO commitado
+> em `main`; branch própria, não deployado.**
+
+- **Fase 1 (investigação, sem código):** `action=fotos` (sem `cadence=`) já lista as
+  fotos semanais oficiais; `action=compare` já devolve `quarters[]` (o mesmo array
+  que alimenta o card D06, "ARR por Quarter previsto") com o ARR Total/Ponderado de
+  CADA quarter tanto no lado `a` quanto no lado `b` — ou seja, dá pra obter o ARR de
+  um quarter especifico EM QUALQUER foto individual, sem agregação nova no backend,
+  só chamando `compare` repetidas vezes com a MESMA foto mais antiga como base `a` e
+  lendo o lado `b` de cada chamada (e o lado `a` da primeira, para o ponto inicial).
+  Meta: não existe um endpoint de "meta" — o valor configurável já existente é
+  `NOVO_META_MTD` (meta ANUAL de receita ganha), setado no modal de Configurações
+  (`settings-modal.js`) e persistido só no `localStorage` do navegador
+  (`novo_meta_mtd`), sem backend. `forecast-delta.html` não inclui
+  `settings-modal.js`; a meta é lida direto do `localStorage` (mesma chave, mesma
+  origem/domínio, portanto visível de qualquer painel que o usuário já tenha
+  configurado no CRO Dashboard).
+- **Fase 2 (card D09):** novo card no painel Delta, depois do D08. Eixo X = até 16
+  fotos semanais mais recentes (`action=fotos` oficial); eixo Y = ARR do quarter
+  CORRENTE (calculado a partir da data de hoje, formato `Q<n> <ano>` igual ao D06)
+  probabilizado (toggle Ponderado/ARR Total, default Ponderado, igual ao D06); linha
+  tracejada = meta trimestral (`NOVO_META_MTD` ÷ 4). KPIs: ARR do quarter na foto
+  mais recente, meta trimestral e % de atingimento. Toggle Apple-style e botão "i"
+  de memória de cálculo seguem o padrão dos cards vizinhos (D06/D07/D08). Escopo
+  sempre "Tudo" (Ganho/Implantação incluídos, sem Bid/Standby) e **sem** os filtros
+  de Executivo/Quarter/Escopo do cabeçalho — decisão deliberada para dar a visão
+  executiva do total da empresa, documentada no drawer "i" do D09 e no
+  `AUDITORIA_GRAFICOS.md`.
+- **Validação:** `node scripts/_check-inline-js.js public/forecast-delta.html` = 0
+  erros; `npm run check` passou em todos os gates, exceto a falha PRÉ-EXISTENTE
+  conhecida de `test-bdr-workload-v2.js` (checagem de dia útil que falha aos fins
+  de semana — hoje é domingo — não relacionada a esta mudança).
+- Sem servidor local com credenciais no worktree (sem `.env.local`), a validação
+  visual em navegador com dados reais fica pendente para quando este trabalho for
+  integrado/revisado pelo dono.
+
 ### ⚠ Incidente | DW `fact_deployment_status` congelado desde 30/07 16:05 BRT (2026-07-31)
 
 > Detectado ao investigar dados desatualizados no painel BDR | Treble.

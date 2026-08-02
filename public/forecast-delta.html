@@ -369,6 +369,21 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
     </div>
     <div style="overflow:auto"><table class="utable" id="bid-table"></table></div>
   </div>
+
+  <!-- D09 | ARR do quarter corrente vs Meta, evolução semanal (pedido do CRO, reunião de forecast 31/07/2026) -->
+  <div class="card">
+    <div class="sec-hdr">
+      <span class="ccode">D09</span>
+      <h3>ARR do quarter corrente vs Meta | evolução semanal</h3>
+      <span class="sec-note">ARR previsto do <span id="q3trend-qlabel"></span>, foto semanal a foto semanal | linha tracejada = meta trimestral | visão total da empresa, independente dos filtros do cabeçalho</span>
+      <div class="toggle-wrap" style="display:flex;gap:.6rem;align-items:center"><div class="seg-ctrl" id="q3trend-toggle" role="group" aria-label="Métrica do ARR do quarter corrente">
+        <button class="seg-btn active" data-v="arrPond" aria-pressed="true">Ponderado</button>
+        <button class="seg-btn" data-v="arr" aria-pressed="false">ARR Total</button>
+      </div><button type="button" class="ibtn" data-help="D09" aria-label="Memória de cálculo | D09">i</button></div>
+    </div>
+    <div class="kpis" id="q3trend-kpis"></div>
+    <div class="chart-wrap" style="height:320px;margin-top:.9rem"><canvas id="q3trend-chart"></canvas><div class="state" id="q3trend-state" aria-live="polite">Carregando…</div></div>
+  </div>
 </div>
 
 <!-- Drawer lateral de memória de cálculo por card (i) -->
@@ -715,6 +730,112 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
     t.querySelectorAll('tbody tr').forEach(function(tr){ var go=function(){ var q=tr.getAttribute('data-quarter'); openDrill('quarter:'+q, 'Quarter | '+q, fmtBRL, isPond?'arrPond':'arr'); }; tr.addEventListener('click', go); tr.addEventListener('keydown', function(e){ if(e.key==='Enter'||e.key===' '){e.preventDefault();go();} }); });
   }
 
+  // ── D09 | ARR do quarter CORRENTE vs Meta, evolução semanal (pedido do CRO, ──
+  // reunião de forecast 31/07/2026): "como o ARR probabilizado do Q3 evoluiu
+  // semana a semana, comparado com a meta". Front-only (Fase 1, 2026-08-02):
+  // usa action=fotos (cadência semanal oficial) + action=compare (quarters[])
+  // já existentes, sem nenhuma agregação nova no backend. Independe dos filtros
+  // do cabeçalho (Executivo/Quarter/Escopo) — sempre escopo 'tudo' (Ganho/
+  // Implantação incluídos, sem Bid/Standby) e sem filtro de AE/Quarter, para dar
+  // a visão executiva do total da empresa pedida pelo CRO.
+  var q3TrendFotos = [], q3TrendMetric = 'arrPond', q3TrendChartObj = null, q3TrendPoints = null, q3TrendSeq = 0;
+  var Q3_TREND_MAX_POINTS = 16;   // teto de fotos semanais na série (~4 meses), evita excesso de chamadas paralelas
+
+  function q3TrendQuarterLabel(){
+    var d = new Date(Date.now() - 3*60*60*1000);   // mesmo ajuste BRT do brtTodayStr
+    return 'Q' + (Math.floor(d.getUTCMonth()/3)+1) + ' ' + d.getUTCFullYear();
+  }
+  function q3TrendMetaAnual(){ try { var v = parseFloat(localStorage.getItem('novo_meta_mtd')); return isNaN(v) ? 0 : v; } catch(e){ return 0; } }
+
+  function loadQ3TrendFotos(){
+    // action=fotos SEM cadence= → lista oficial semanal (mesma fonte do D06/D07/D08
+    // em espírito; distinta da lista cadence=daily usada pelos seletores A/B do header).
+    return fetch('/api/history?action=fotos', {credentials:'same-origin'})
+      .then(function(r){ return r.json(); })
+      .then(function(j){
+        if(!j.success || !j.fotos || !j.fotos.length) throw new Error(j.error || 'Sem fotos semanais disponíveis');
+        var asc = j.fotos.slice().sort(function(a,b){ return String(a.ord).localeCompare(String(b.ord)); });
+        q3TrendFotos = asc.slice(Math.max(0, asc.length - Q3_TREND_MAX_POINTS));
+      });
+  }
+
+  function renderQ3Trend(){
+    var stateEl = document.getElementById('q3trend-state');
+    var qLabel = q3TrendQuarterLabel();
+    document.getElementById('q3trend-qlabel').textContent = qLabel;
+    if(q3TrendFotos.length < 2){
+      stateEl.style.display='block'; stateEl.className='state';
+      stateEl.textContent = 'Histórico insuficiente (mínimo 2 fotos semanais).';
+      document.getElementById('q3trend-kpis').innerHTML='';
+      return;
+    }
+    stateEl.style.display='block'; stateEl.className='state'; stateEl.innerHTML='<span class="spin"></span>Calculando…';
+    var seq = ++q3TrendSeq;
+    var base = q3TrendFotos[0].ord;
+    var rest = q3TrendFotos.slice(1);
+    Promise.all(rest.map(function(f){
+      return fetch('/api/history?action=compare&a='+base+'&b='+f.ord+'&scope=tudo', {credentials:'same-origin'})
+        .then(function(r){ return r.json(); });
+    })).then(function(results){
+      if(seq !== q3TrendSeq) return;
+      for(var i=0;i<results.length;i++){ if(!results[i].success) throw new Error(results[i].error || ('Erro ao calcular '+rest[i].ord)); }
+      var findQ = function(qs){ var hit=null; (qs||[]).forEach(function(r){ if(r.quarter===qLabel) hit=r; }); return hit; };
+      var zero = { deals:0, vidas:0, arr:0, arrPond:0 };
+      var baseQ = findQ(results[0].quarters);
+      var points = [{ label: q3TrendFotos[0].tab, ord: q3TrendFotos[0].ord, m: baseQ ? baseQ.a : zero }];
+      results.forEach(function(res, idx){
+        var q = findQ(res.quarters);
+        points.push({ label: q3TrendFotos[idx+1].tab, ord: q3TrendFotos[idx+1].ord, m: q ? q.b : zero });
+      });
+      stateEl.style.display='none';
+      q3TrendPoints = points;
+      drawQ3TrendChart(points, qLabel);
+    }).catch(function(e){ if(seq!==q3TrendSeq) return; stateEl.style.display='block'; stateEl.className='state err'; stateEl.textContent='Erro: '+e.message; });
+  }
+
+  function drawQ3TrendChart(points, qLabel){
+    var css = getComputedStyle(document.documentElement);
+    var textc = css.getPropertyValue('--text2').trim(), gridc = css.getPropertyValue('--border').trim();
+    var metaAnual = q3TrendMetaAnual();
+    var metaQuarter = metaAnual > 0 ? metaAnual / 4 : 0;
+    var mlbl = q3TrendMetric === 'arrPond' ? 'ARR Ponderado' : 'ARR Total';
+    var labels = points.map(function(p){ return p.label; });
+    var vals = points.map(function(p){ return q3TrendMetric==='arrPond' ? p.m.arrPond : p.m.arr; });
+    var datasets = [
+      { label: mlbl+' | '+qLabel, data: vals, borderColor:'rgba(58,184,183,1)', backgroundColor:'rgba(58,184,183,.16)', borderWidth:2.5, tension:.25, pointRadius:3, pointHoverRadius:5, fill:true, order:2, datalabels:{display:false} }
+    ];
+    if(metaQuarter > 0) datasets.push({ label:'Meta trimestral', data: labels.map(function(){ return metaQuarter; }), borderColor:'rgba(227,179,65,.95)', backgroundColor:'transparent', borderDash:[5,4], pointRadius:0, borderWidth:2, tension:0, fill:false, order:1, datalabels:{display:false} });
+    if(q3TrendChartObj) q3TrendChartObj.destroy();
+    q3TrendChartObj = new Chart(document.getElementById('q3trend-chart'), {
+      type:'line',
+      data:{ labels:labels, datasets:datasets },
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        plugins:{
+          legend:{ labels:{ color:textc, boxWidth:12 } },
+          tooltip:{ callbacks:{ label:function(ctx){ return (ctx.dataset.borderDash ? 'Meta: ' : (mlbl+': ')) + fmtBRL(ctx.parsed.y); } } }
+        },
+        scales:{
+          x:{ ticks:{ color:textc, maxRotation:35, font:{size:10} }, grid:{display:false} },
+          y:{ ticks:{ color:textc, callback:function(v){ return (v/1e6).toFixed(1)+'M'; } }, grid:{color:gridc}, beginAtZero:true }
+        }
+      }
+    });
+    renderQ3TrendKpis(points, qLabel, metaQuarter);
+  }
+
+  function renderQ3TrendKpis(points, qLabel, metaQuarter){
+    var last = points[points.length-1];
+    var val = q3TrendMetric==='arrPond' ? last.m.arrPond : last.m.arr;
+    var mlbl = q3TrendMetric==='arrPond' ? 'ARR Ponderado' : 'ARR Total';
+    var pct = metaQuarter>0 ? Math.round(val/metaQuarter*100) : null;
+    var pctCls = pct==null ? '' : (pct>=100?'up':'down');
+    document.getElementById('q3trend-kpis').innerHTML =
+      '<div class="kpi"><div class="k">'+esc(mlbl)+' | '+esc(qLabel)+'</div><div class="v">'+fmtBRL(val)+'</div><div class="d" style="color:var(--text2)">foto '+esc(last.label)+'</div></div>' +
+      '<div class="kpi"><div class="k">Meta trimestral</div><div class="v">'+(metaQuarter>0?fmtBRL(metaQuarter):'—')+'</div><div class="d" style="color:var(--text2)">'+(metaQuarter>0?'meta anual ÷ 4':'sem meta em Configurações')+'</div></div>' +
+      '<div class="kpi"><div class="k">Atingimento</div><div class="v '+pctCls+'">'+(pct!=null?pct+'%':'—')+'</div></div>';
+  }
+
   // ── D05 | Deals que SAÍRAM do escopo, lista direta no card (2026-07-24) ──
   // Reusa o drill de KPI (todo o escopo) e mostra só quem saiu, com o destino
   // classificado: Caiu (Perdido) | Foi para Ganho | Avançou (p/ etapa fora do escopo).
@@ -884,6 +1005,7 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
   wireToggle('metric-toggle', function(v){ metric=v; refresh(); });
   wireToggle('horizon-toggle', function(v){ horizon=v; refresh(); });
   wireToggle('quarter-toggle', function(v){ quarterMetric=v; if(lastJ) renderQuarterTable(lastJ); });
+  wireToggle('q3trend-toggle', function(v){ q3TrendMetric=v; if(q3TrendPoints) drawQ3TrendChart(q3TrendPoints, q3TrendQuarterLabel()); });
   wireToggle('scope-toggle', function(v){ scope = v; refresh(); });
   document.getElementById('dateA').addEventListener('change', refresh);
   document.getElementById('dateB').addEventListener('change', refresh);
@@ -929,7 +1051,13 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
       '<p class="hk"><b>O que mostra |</b> o pipeline <b>Bid</b> completo, por etapa, em A → B — deals, movimentação, vidas e ARRs. Independe do filtro Ativos/Tudo do header (que remove o Bid das demais visões).</p>'+
       '<p class="hk"><b>Régua do Bid |</b> a probabilidade do Bid no motor canônico é <b>fixa em 0,5%</b> e só as etapas <b>Proposta Enviada</b> e <b>Negociação</b> têm linha de receita no Overall — nas demais etapas o deal aparece com deals/vidas/ARR e receita zerada, como no painel canônico. ARR Ponderado do Bid = <code>arr_estimado</code> × 0,5%.</p>'+
       '<p class="hk"><b>Escopo |</b> deals de Bid criados desde jan/2025 (mesmo filtro do painel Forecast, Regra primária nº 3); Perdido sai do escopo.</p>'+
-      '<p class="hk"><b>Movimentação |</b> mesma leitura do D07: Novo | Avançou | Perdido, pelo destino bruto na Foto B.</p>' }
+      '<p class="hk"><b>Movimentação |</b> mesma leitura do D07: Novo | Avançou | Perdido, pelo destino bruto na Foto B.</p>' },
+    D09: { title: 'ARR do quarter corrente vs Meta | evolução semanal', sem: ['quarter_fallback','arr_ponderado_forecast'], html:
+      '<p class="hk"><b>O que mostra |</b> como o ARR (Total ou Ponderado) previsto para o quarter CORRENTE evoluiu, foto semanal a foto semanal, comparado com a meta trimestral. Pedido do CRO na reunião de forecast de 31/07/2026.</p>'+
+      '<p class="hk"><b>Quarter corrente |</b> calculado a partir da data de hoje, no mesmo formato <code>Q&lt;n&gt; &lt;ano&gt;</code> do campo <code>quarter</code> do deal (fallback do D06).</p>'+
+      '<p class="hk"><b>Série |</b> até 16 fotos semanais mais recentes (fonte: <code>action=fotos</code>, cadência semanal oficial — a mesma lista do seletor de <code>/forecast</code>). Cada ponto é o ARR do quarter corrente NA foto (point-in-time, config vigente na foto — mesma mecânica do D02/D06), obtido via <code>action=compare</code> entre a foto mais antiga da janela e cada foto seguinte, lendo o quarter correspondente no lado B (ou A, para o primeiro ponto). Nenhuma agregação nova no backend — só looping sobre os dois endpoints já existentes.</p>'+
+      '<p class="hk"><b>Escopo |</b> sempre "Tudo" (todas as etapas de Vendas, sem Bid/Standby; Ganho/Implantação incluídos) e SEM os filtros de Executivo/Quarter/Escopo do cabeçalho — visão executiva do total da empresa, independente das demais seções desta página.</p>'+
+      '<p class="hk"><b>Meta trimestral |</b> meta anual configurada em Configurações (⚙, mesmo valor do CRO Dashboard) ÷ 4. Lida do <code>localStorage</code> do navegador (<code>novo_meta_mtd</code>) — se nunca foi configurada neste navegador, o card mostra "sem meta em Configurações".</p>' }
   };
   var helpLastFocus = null;
   function openHelp(code){
@@ -962,6 +1090,8 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
   syncAllSegs();
   updateHdrSummary();
   loadFotos().then(refresh).catch(function(e){ var cs=document.getElementById('chart-state'); cs.className='state err'; cs.textContent=e.message; });
+  document.getElementById('q3trend-qlabel').textContent = q3TrendQuarterLabel();
+  loadQ3TrendFotos().then(renderQ3Trend).catch(function(e){ var st=document.getElementById('q3trend-state'); st.style.display='block'; st.className='state err'; st.textContent=e.message; });
 })();
 </script>
 <!-- Shell glue (global): drawer + tema + logout. Precisa ser global (onclick + nav.js). nav.js por último. -->
