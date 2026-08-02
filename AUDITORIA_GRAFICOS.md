@@ -1,5 +1,26 @@
 # Auditoria crítica dos gráficos 🟡 | 2026-06-12
 
+## Adendo | Cotação | fix do CSS órfão (regressão) + settings-modal.js + limpeza de `:root` morto (2026-08-02)
+
+> Trabalho de `docs/design-system-proposal.md` (seção 2.2, itens Tier 1.2/1.5/2.7), sem
+> mudança de estado de validação do painel (continua 🟡 não validado contra o portal, ver
+> adendo de 2026-07-29 abaixo — nenhum dado/cálculo de ticket foi tocado).
+>
+> 1. **Regressão corrigida**: o CSS de `.modal`/`.modal-header`/`.modal-close`/
+>    `.modal-body`/`.btn-export`/`table.lb` estava de novo fisicamente depois de
+>    `</html>` (fora de qualquer `<style>`, ignorado pelo navegador) — o MESMO tipo de
+>    bug que o adendo de 2026-07-29 (linha abaixo) já registrava como corrigido uma vez.
+>    Movido de volta para dentro do `<style>` do `<head>`.
+> 2. `:root`/`.novo-card`/`.kpi-card` locais (paleta pré-`premium.css`) removidos —
+>    código morto, já sobrescrito pelo `premium.css` em runtime; zero mudança visual.
+> 3. `settings-modal.js` ligado: o painel agora respeita o toggle global "Implantação =
+>    Ganho" (via `_novoIsWon(d)`) em vez do `NOVO_WON_STAGE='Ganho'` hardcoded — mesma
+>    correção de comportamento pendente para `cs.html` (não feita nesta tarefa).
+>
+> Detalhe completo de cada um dos três pontos: `STATUS_LOG.md`, entradas de 2026-08-02
+> ("Cotação | fix: CSS do modal órfão...", "Cotação | limpeza: `:root`/`.novo-card`/
+> `.kpi-card`...", "Cotação | liga `settings-modal.js`...").
+
 ## Adendo | Delta ganha o D09, ARR do quarter corrente vs Meta (2026-08-02)
 
 > **Estado: 🟡 não validado contra o HubSpot** (card novo; painel Delta segue 🟢
