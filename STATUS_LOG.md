@@ -1,5 +1,52 @@
 # Dashboard Enhancement Loop — Status Log
 
+### Componente de estado vazio/erro/aviso | `AxUI` — FASE 2: `forecast-delta.html` (2026-08-02)
+
+> Tier 2, item 8 de `docs/design-system-proposal.md`, continuação da FASE 1 (módulo
+> `public/ax-ui.js` + dashboard/board/ae, ver entrada mais antiga desta mesma seção).
+> `forecast-delta.html` incluído no `<head>` e todo texto solto de erro/vazio/aviso
+> migrado para `AxUI.banner`/`AxUI.emptyState` (conteúdo preservado 100%, só o
+> invólucro mudou). Barra "Fechado" (D02) e card "D09" — features recém-adicionadas —
+> tiveram a lógica de dados intocada; só as mensagens de erro/vazio que passavam por
+> eles foram reembaladas.
+- **`<script src="/ax-ui.js?v=1"></script>`** adicionado ao `<head>`.
+- **D02 (waterfall, `#chart-state`):** placeholder estático "Selecione duas fotos…"
+  ganhou a classe `ax-empty` direto na tag (padrão do "antes do JS rodar" da Fase 1);
+  "Escolha as duas datas." → `AxUI.emptyState(...)`; "A Foto B (depois) precisa ser
+  posterior à Foto A (antes)." e os 3 erros de fetch/API (validação de resposta,
+  catch de rede, catch do load inicial de fotos) → `AxUI.banner(msg, {severity:'error'})`.
+  O spinner "Calculando…" permanece como estava (não é erro/vazio).
+- **D02 (caveat, `#caveat`):** o aviso `⚠ ${caveat}` (ex.: explica a barra Fechado ou
+  foto sem sidecar) → `AxUI.banner('⚠ '+msg, {severity:'warn'})`. Só o wrapper mudou —
+  a barra "Fechado" em si (dado/cálculo/onClick do Chart.js) não foi tocada.
+- **D07/D08 (`renderUnifiedTable`, tabelas de etapa e de Bid):** célula de "sem
+  atividade" ("Sem etapas com atividade entre A e B." / "Nenhum deal de Bid nas fotos
+  selecionadas.") → `AxUI.emptyState(...)` dentro do `<td>`, no lugar do `style` inline
+  manual (mesmo padrão já usado nas tabelas do BoD em `board.html` na Fase 1).
+- **D05 (`#saiu-list`, lista de deals que saíram) e modal de drill (`#drill-body`):**
+  os 2 erros de cada (resposta sem sucesso da API + catch de rede) →
+  `AxUI.banner(esc(msg), {severity:'error'})`. Os "Carregando…"/spinner permanecem.
+- **D09 (`#q3trend-state`):** "Histórico insuficiente (mínimo 2 fotos semanais)." →
+  `AxUI.emptyState(...)`; os 2 erros (catch do cálculo de série + catch do load
+  inicial de fotos semanais) → `AxUI.banner('Erro: '+msg, {severity:'error'})`. Só o
+  wrapper das mensagens mudou — o cálculo de ARR do quarter corrente, a meta e o
+  gráfico (`drawQ3TrendChart`/`renderQ3TrendKpis`) não foram tocados.
+- **Revisado e deliberadamente NÃO migrado:** `#saiu-summary` ("Nenhum deal saiu do
+  escopo entre A e B.") e `#capture-snapshot-status` (mensagem "Erro: "+msg da captura
+  manual, feature só localhost/admin) — os dois são um único slot de texto reusado
+  tanto para o caso "vazio"/"erro" quanto para mensagens de status normais (contagem,
+  progresso), então virar caixa `ax-empty`/`ax-banner` só no caso vazio quebraria a
+  consistência visual com os demais estados do mesmo elemento; ficam como estão, no
+  mesmo espírito das exclusões já registradas na Fase 1 (formatação/label de dado, não
+  estado de vazio/erro dedicado). `wf-config-flag` (pill de origem da config) também
+  não foi tocado pelo mesmo motivo — é uma badge de qualidade de dado, não um estado de
+  vazio/erro.
+- **Validação:** `node scripts/_check-inline-js.js public/forecast-delta.html` = 0
+  erros; `scripts/test-forecast-delta-e2e.js` e `scripts/test-delta-invariant.js`
+  passam (invariante Σ Δ = Δtotal, barra Fechado, D09 point-in-time); `npm run check`
+  completo — única falha é a conhecida `test-bdr-workload-v2.js` (fim de semana), sem
+  relação com esta mudança.
+
 ### Cotação | fix: CSS do modal órfão depois de `</html>` (regressão do fix de 2026-07-29) (2026-08-02)
 
 > Item Tier 1.5 de `docs/design-system-proposal.md` (seção 2.2, achado #5): a proposta já
