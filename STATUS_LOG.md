@@ -340,6 +340,33 @@
   `test-snapshot-history`, `test-forecast-delta-leva2`, `test-forecast-delta-e2e`) PASS.
 - Commit na branch `pacheco/design-forecast-panel-cleanup-2026-08-02` (sem push, sem merge).
 
+### Design system | `.health-dot` migrado para as vars oficiais `--green`/`--yellow`/`--red` (2026-08-02)
+
+> Tier 2, item 9 de `docs/design-system-proposal.md`: o indicador de saúde do painel no menu
+> lateral (`.health-dot.g/.y/.r`) usava uma paleta "Flat UI" hardcoded que não correspondia a
+> nenhuma variável oficial do `premium.css` nem à paleta antiga do projeto.
+
+- **`public/nav.js`** (linhas 39-41, bloco CSS injetado globalmente — fonte única do menu,
+  Regra primária nº 2) e **`public/forecast-panel.html`** (linhas 61-63, cópia duplicada do
+  mesmo bloco): `background` dos 3 estados trocado de hex fixo para `var(--green)`/
+  `var(--yellow)`/`var(--red)`. Antes → depois: `#2ecc71` → `var(--green)`, `#f1c40f` →
+  `var(--yellow)`, `#e74c3c` → `var(--red)`. O glow (`--hg`, `rgba(...)` usado só no
+  `box-shadow` do keyframe) não foi tocado — fora do escopo do item 9. Como `premium.css`
+  define `--green`/`--yellow`/`--red` diferentes por tema (`:root` dark: `#34d399`/
+  `#fbbf24`/`#fb7185`; `html[data-theme="light"]`: `#15803d`/`#a16207`/`#e11d48`), o dot
+  agora acompanha o tema automaticamente em vez de ficar fixo na paleta Flat UI antiga.
+- **`public/bdr-workload.html` deliberadamente FORA de escopo:** tem uma paleta de
+  health-dot semanticamente errada (`--green:#3896B4`, que é azul) só no próprio fallback
+  morto — não é a mesma paleta Flat UI de `nav.js`/`forecast-panel.html` e fica para outra
+  rodada (dono: Samuel).
+- **Validação:** `node --check public/nav.js` OK; `node scripts/_check-inline-js.js
+  public/forecast-panel.html` (0 erros); `npm run check` completo OK, exceto a falha
+  conhecida de fim de semana em `scripts/test-bdr-workload-v2.js` (`blockedByFilters`
+  depende de `cmp.isBusiness(cmp.todayBrt())` — não relacionada a esta mudança). Os demais
+  scripts do pipeline (`test-bdr-workload-v2-ui.js`, `test-snapshot-resilience.js`,
+  `test-snapshot-history.js`, `test-forecast-delta-leva2.js`, `test-forecast-delta-e2e.js`)
+  rodados manualmente após o corte da cadeia `&&` — todos PASS.
+
 ### Forecast | Probabilidade final = MENOR entre etapa × AE (autorizado, validado com a CFO) (2026-08-02)
 
 > Decisão da reunião de forecast de 31/07, agora autorizada: "para fins de forecast, usar
