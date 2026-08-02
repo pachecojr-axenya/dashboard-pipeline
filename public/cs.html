@@ -102,6 +102,7 @@ body.nav-docked #view-novo{margin-left:280px}
 <script src="/premium.js?v=5"></script>
 <script src="/filter-bar.js?v=1"></script>
 <script src="/settings-modal.js?v=2"></script>
+<script src="/ax-ui.js?v=1"></script>
 </head>
 <body>
 
@@ -134,7 +135,7 @@ body.nav-docked #view-novo{margin-left:280px}
     </div>
   </div>
   <div id="novo-content" style="max-width:1400px;margin:0 auto;padding:2rem">
-    <div style="text-align:center;padding:3rem 0;color:var(--text2)">Aguardando dados…</div>
+    <div class="ax-empty ax-empty-lg">Aguardando dados…</div>
   </div>
 </div>
 
@@ -190,7 +191,7 @@ function _novoTheme(){ var isLight=document.documentElement.getAttribute('data-t
 var _novoCharts={};
 function _novoMkChart(id,cfg){ var ctx=document.getElementById(id); if(!ctx)return; if(cfg&&cfg.options&&cfg.options.onClick&&!cfg.options.onHover){ cfg.options.onHover=function(e,els){ var t=e&&e.native&&e.native.target; if(t) t.style.cursor=(els&&els.length)?'pointer':''; }; } if(_novoCharts[id]) _novoCharts[id].destroy(); _novoCharts[id]=new Chart(ctx,cfg); }
 function _novoDealsRows(deals){ return deals.map(function(d){ var hsUrl=d.hs_id?'https://app.hubspot.com/contacts/44715285/deal/'+d.hs_id:'#'; var nameCell=d.hs_id?'<a href="'+hsUrl+'" target="_blank" rel="noopener" style="color:var(--teal);text-decoration:none">'+_ne(d.dealname)+'</a>':_ne(d.dealname); return '<tr><td style="text-align:left;min-width:140px;max-width:190px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+nameCell+'</td><td style="text-align:left;white-space:nowrap">'+_ne(d.ae)+'</td><td style="white-space:nowrap">'+_ne(d.stage)+'</td><td>'+_ni(d.vidas)+'</td><td>'+_revShort(_annualRev(d))+'</td></tr>'; }).join(''); }
-function novoOpenDealsModal(title,deals){ if(!deals||!deals.length){ openModal(title,'<p style="color:var(--text2);padding:1rem 0">Nenhum deal.</p>'); return; } var html='<table class="lb"><thead><tr><th style="text-align:left">Deal</th><th style="text-align:left">AE</th><th>Etapa</th><th>Vidas</th><th>ARR</th></tr></thead><tbody>'+_novoDealsRows(deals)+'</tbody></table>'; openModal(title+' ('+deals.length+')',html); }
+function novoOpenDealsModal(title,deals){ if(!deals||!deals.length){ openModal(title,AxUI.emptyState('Nenhum deal.')); return; } var html='<table class="lb"><thead><tr><th style="text-align:left">Deal</th><th style="text-align:left">AE</th><th>Etapa</th><th>Vidas</th><th>ARR</th></tr></thead><tbody>'+_novoDealsRows(deals)+'</tbody></table>'; openModal(title+' ('+deals.length+')',html); }
 
 function _placeholder(icon,title,body,fields){
   var fHtml=fields?fields.map(function(f){return '<span class="ph-field">'+f+'</span>';}).join(' '):'';
@@ -204,7 +205,7 @@ function _csOwner(id){ var o=(_csData&&_csData.owners)||{}; return o[id]||(id?St
 function _csComps(){ return (_csData&&_csData.companies)||[]; }
 function _csAtivas(){ return _csComps().filter(function(c){return c.ativo_ou_inativo_==='Ativo';}); }
 function _csCompRows(comps){ return comps.map(function(c){ var url=c.hs_object_id?'https://app.hubspot.com/contacts/44715285/company/'+c.hs_object_id:null; var nameCell=url?'<a href="'+url+'" target="_blank" rel="noopener" style="color:var(--teal);text-decoration:none">'+_ne(c.name)+'</a>':_ne(c.name); return '<tr><td style="text-align:left;min-width:150px;max-width:230px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+nameCell+'</td><td style="text-align:left;white-space:nowrap">'+_ne(_csOwner(c.kam_responsavel))+'</td><td>'+(_csNum(c.premio_mensal)>0?_fmtBig(_csNum(c.premio_mensal)):'—')+'</td><td style="white-space:nowrap">'+_ne(c.vigencia_do_contrato_atual||'—')+'</td><td>'+_ne(c.ativo_ou_inativo_||'—')+'</td></tr>'; }).join(''); }
-function csOpenCompsModal(title,comps){ if(!comps||!comps.length){ openModal(title,'<p style="color:var(--text2);padding:1rem 0">Nenhuma empresa.</p>'); return; } var html='<table class="lb"><thead><tr><th style="text-align:left">Empresa</th><th style="text-align:left">KAM</th><th>Prêmio Mensal</th><th>Fim da Vigência</th><th>Status</th></tr></thead><tbody>'+_csCompRows(comps)+'</tbody></table>'; openModal(title+' ('+comps.length+')',html); }
+function csOpenCompsModal(title,comps){ if(!comps||!comps.length){ openModal(title,AxUI.emptyState('Nenhuma empresa.')); return; } var html='<table class="lb"><thead><tr><th style="text-align:left">Empresa</th><th style="text-align:left">KAM</th><th>Prêmio Mensal</th><th>Fim da Vigência</th><th>Status</th></tr></thead><tbody>'+_csCompRows(comps)+'</tbody></table>'; openModal(title+' ('+comps.length+')',html); }
 function novoLoadData(){
   var btn=document.getElementById('btn-refresh'); if(btn) btn.classList.add('spinning');
   document.getElementById('novo-content').innerHTML='<div style="text-align:center;padding:3rem 0;color:var(--text2)">Buscando dados…</div>';
@@ -216,7 +217,7 @@ function novoLoadData(){
     novoRender();
   }).catch(function(err){
     if(btn) btn.classList.remove('spinning');
-    document.getElementById('novo-content').innerHTML='<div style="text-align:center;padding:3rem 0;color:var(--red)">Erro: '+_ne(String(err))+'<br><br><button onclick="novoLoadData()" style="background:var(--teal);color:#fff;border:none;border-radius:8px;padding:.5rem 1.2rem;cursor:pointer">Tentar novamente</button></div>';
+    document.getElementById('novo-content').innerHTML=AxUI.banner('Erro: '+_ne(String(err)), { severity:'error', retry:'novoLoadData()', retryLabel:'Tentar novamente' });
   });
 }
 
