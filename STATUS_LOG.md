@@ -116,6 +116,64 @@
 - Branch: `pacheco/poc-nao-zera-arr-2026-08-02` (sem push, sem deploy — aguardando revisão
   humana).
 
+### Delta | D02 ganha a barra "Fechado" (2026-08-02)
+
+> Pedido da reunião de forecast de 2026-07-31 (caso concreto: deal Cappta, −R$345k de
+> fatura+vigência que na verdade era vitória): "hoje deal ganho derruba o Total B...
+> Total B + Fechado = o número executado + a executar."
+
+- **`lib/forecast-compute.js`:** nova função `closedWonAgg(contribA, contribB,
+  rawBStageById)` — soma ARR/ARR Ponderado/receita (na foto A, mesmo critério "valor
+  = ARR estimado na foto A" do D05) dos deals que saíram do conjunto escopado A→B
+  porque foram para Ganho (mesma classificação `_classifySaiu` do D05). Exportada.
+- **`api/history.js` (action=compare):** chama `FC.closedWonAgg(cA, cB,
+  rawBStageById)` e expõe `fechado: { deals, arr, arrPond, real12, prob12, realTotal,
+  probTotal }` no payload, + caveat novo explicando a barra.
+- **`public/forecast-delta.html` (D02):** duas barras novas no waterfall após "Total
+  @ B" — **Fechado** (clicável, abre o drill filtrado em "Foi para Ganho", reusa
+  `openDrill('kpi:arrTotal', ..., 'ganho')`) e **Total B + Fechado** (soma, não
+  clicável). Ficha **i** do D02 e clickhint atualizados.
+- **Design deliberado (aditivo, não parte da soma):** Fechado é uma exposição
+  INFORMATIVA — não entra no Σ Δ(etapa) nem no invariante Σ Δ = Δtotal já testado,
+  porque Ganho não tem linha própria no waterfall em escopo Ativos (sai do conjunto
+  por definição); somar ali mudaria a semântica do invariante em vez de só anotá-lo
+  ao lado. Verificado que, para escopo Tudo (onde Ganho já tem linha própria), o
+  agregado corretamente zera (sem double-count).
+- **Testes:** `scripts/test-delta-invariant.js` ganhou a seção "UNIT Fechado" (deal
+  sintético Cappta: `closedWonAgg` identifica e soma corretamente + invariante das
+  barras existentes preservado em todas as 4 medidas). `scripts/test-forecast-delta-e2e.js`
+  ganhou o deal "Cappta" (Negociação→Ganho) + asserts do campo `fechado` no payload
+  real do endpoint. `npm run check` PASS (exceto a fragilidade pré-existente conhecida
+  do `test-bdr-workload-v2.js` em fim de semana, ver entrada abaixo).
+
+### Delta | fix: deal Perdido aparecendo como "movimentação" (avanço) no drill (2026-08-02)
+
+> Bug relatado ao vivo na reunião de forecast de 2026-07-31.
+
+- **Causa raiz:** `lib/snapshot-history.js` (`valueAt`) — função que reconstrói "qual
+  era o valor de uma propriedade num corte de data" para o backfill histórico
+  HubSpot→BQ (`scripts/backfill-hubspot-bq.js`, fonte da maioria das fotos
+  comparáveis do Delta). O comparador de sort (`a.timestamp < b.timestamp ? 1 : -1`)
+  devolvia -1 também em EMPATE de timestamp — viola o contrato de ordem total do
+  `Array.prototype.sort`. Quando o HubSpot grava duas mudanças de `dealstage` no
+  MESMO instante (workflow em cadeia, ex.: Negociação→Perdido no mesmo request), o
+  sort podia embaralhar um array que o HubSpot já entrega correto
+  (mais-recente-primeiro) e `valueAt()` devolvia a etapa INTERMEDIÁRIA em vez do
+  estado FINAL (Perdido) — daí o deal "vazando" como avanço no drill. Reproduzido e
+  confirmado empiricamente (com o comparador antigo, array com empate no fim devolvia
+  a etapa errada; com o fix, resolve certo). A classificação em si (`_classifySaiu`
+  em `lib/forecast-compute.js`, e o equivalente em `stageUnified`) já priorizava
+  Perdido/Ganho antes do rank de avanço desde 2026-07-24 (`91678be`) — o bug estava na
+  ETAPA reconstruída chegando errada, não na regra de classificação.
+- **Fix:** comparador numérico próprio (`new Date(b.timestamp) - new
+  Date(a.timestamp)`, 0 em empate) → sort ESTÁVEL, preserva a ordem que o HubSpot já
+  entrega para os empates em vez de arriscar reordená-los errado.
+- **Teste novo:** `scripts/test-snapshot-history.js` (adicionado ao `npm run check`)
+  — cobre o empate de timestamp (isolado e em histórico longo), o caminho feliz sem
+  empate (regressão) e o efeito downstream na classificação do drill (`_classifySaiu`
+  via `FC.drillGeneric`). Confirmado que o teste FALHA contra o código antigo e PASSA
+  com o fix.
+
 ### ⚠ Incidente | DW `fact_deployment_status` congelado desde 30/07 16:05 BRT (2026-07-31)
 
 > Detectado ao investigar dados desatualizados no painel BDR | Treble.

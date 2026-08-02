@@ -250,6 +250,10 @@ module.exports = async function handler(req, res) {
       // Contribuições por deal (mesmo escopo filtrado) — alimentam quarters/drills.
       const cA = FC.dealContributions(scopedInputA, fA.refDate, evalA.manual, evalA.probManual, evalA.stageProb);
       const cB = FC.dealContributions(scopedInputB, fB.refDate, evalB.manual, evalB.probManual, evalB.stageProb);
+      // Fechado (Tarefa do dono, reunião 2026-07-31): Σ ARR/ARR Ponderado (na foto A)
+      // dos deals que foram para GANHO no período — ver nota em FC.closedWonAgg.
+      // Exposição ADITIVA/informativa: não participa do invariante Σ Δ = Δtotal.
+      const fechado = FC.closedWonAgg(cA, cB, rawBStageById);
       // ARR por linha do waterfall (horizonte ARR no menu, pedido do dono 2026-07-24):
       // agrega arr/arrPond das contribuições por rowKey — campos ADITIVOS em a/b/delta.
       // Com escopo (ativos|tudo) todo deal escopado tem rowKey, então Σ Δ(linhas) bate
@@ -309,6 +313,7 @@ module.exports = async function handler(req, res) {
         b: { requested: b, resolvedTab: fB.tab, tipo: fB.tipo, refDate: fB.refDate, kpis: snapB.kpis, totals: snapB.totals },
         funnel: { stages: deltaScoped ? FC.deltaScopeStages(scopeParam) : snapB.funnelStages, a: snapA.stageCounts, b: snapB.stageCounts },
         waterfall,
+        fechado,
         config: configMeta,
         stageUnified,
         bidUnified,
@@ -323,6 +328,7 @@ module.exports = async function handler(req, res) {
           deltaScoped
             ? (scopeParam === 'tudo' ? 'Escopo: Tudo (todas as etapas, sem Bid e Standby)' : 'Escopo: Ativos (Cotação, Consultoria, Negociação)')
             : (includeClosedStages ? 'Escopo inclui Implantação e Ganho' : 'Escopo exclui Implantação e Ganho'),
+          'Fechado = Σ ARR/ARR Ponderado (na foto A) dos deals que foram para Ganho entre A e B | valor INFORMATIVO/aditivo, não entra no Σ Δ do waterfall | "Total B + Fechado" = o que já foi executado (fechado no período) + o que ainda está por vir (pipe aberto em B)',
         ],
       });
     }
