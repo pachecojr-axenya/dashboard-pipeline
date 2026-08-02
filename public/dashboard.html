@@ -67,19 +67,9 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
 .novo-card-header{display:flex;align-items:center;gap:.6rem;margin-bottom:1rem;flex-wrap:wrap}
 .novo-card-header h3{font-size:.88rem;font-weight:600;color:var(--text);margin:0;flex:1}
 
-/* Info button — oculto por padrão; revelado pelo toggle "?" (body.novo-info-on) */
-.novo-info-btn{width:14px;height:14px;border-radius:50%;border:1.5px solid var(--text2);background:none;color:var(--text2);font-size:.56rem;font-style:normal;font-weight:700;cursor:pointer;display:none;align-items:center;justify-content:center;position:relative;flex-shrink:0;padding:0;line-height:1}
-body.novo-info-on .novo-info-btn{display:inline-flex}
-/* Tag de identificação do gráfico (ex.: N01) — também alternada pelo "?" */
-.novo-code-tag{display:none;align-items:center;font-size:.6rem;font-weight:700;letter-spacing:.04em;font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--teal);background:rgba(58,184,183,.14);border:1px solid rgba(58,184,183,.32);border-radius:5px;padding:.05rem .32rem;line-height:1.35;flex-shrink:0}
-body.novo-info-on .novo-code-tag{display:inline-flex}
-/* Info button tooltip (JS-driven via #novo-tip) */
-#novo-tip{position:fixed;z-index:9999;background:rgba(23,31,46,.78);backdrop-filter:blur(14px) saturate(1.5);-webkit-backdrop-filter:blur(14px) saturate(1.5);border-radius:6px;padding:.45rem .7rem;width:278px;pointer-events:none;display:none;box-shadow:0 6px 20px rgba(0,0,0,.3)}
-html[data-theme="light"] #novo-tip{background:rgba(246,248,250,.82)}
-#novo-tip.nt-show{display:block}
-#novo-tip .nt-text{font-size:.73rem;color:var(--text);font-weight:400;line-height:1.5;font-family:Inter,'Segoe UI',system-ui,sans-serif}
-#novo-tip .nt-code{font-size:.62rem;font-weight:700;color:var(--teal);font-family:ui-monospace,Menlo,Consolas,monospace;margin-top:.3rem;padding-top:.28rem;border-top:1px solid rgba(255,255,255,.12);letter-spacing:.07em;opacity:1}
-html[data-theme="light"] #novo-tip .nt-code{border-top-color:rgba(0,0,0,.1)}
+/* Botão "i" de ajuda, tag de identificação (N01…), tooltip (#novo-tip) e drawer
+   lateral (.novo-help-*): CSS + HTML + JS extraídos para /help-drawer.js
+   (2026-08-02, ver STATUS_LOG.md). */
 
 /* Tab sub */
 .tab-sub{display:inline-flex;background:var(--card2);border-radius:99px;padding:3px;gap:0;margin-bottom:1rem;position:relative}
@@ -244,14 +234,7 @@ table.lb tfoot td{font-weight:600;border-top:2px solid var(--border);position:st
 #novo-probhist-pop .ph-date{color:var(--text2)}
 #novo-probhist-pop .ph-val{font-weight:600}
 
-/* Help drawer (desliza da direita, desfoca o fundo) */
-.novo-help-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:3000;opacity:0;pointer-events:none;transition:opacity .25s ease}
-.novo-help-backdrop.open{opacity:1;pointer-events:auto}
-.novo-help-drawer{position:fixed;top:0;right:-580px;width:540px;max-width:100vw;height:100vh;background:var(--card);border-left:1px solid var(--border);z-index:3001;display:flex;flex-direction:column;transition:right .28s cubic-bezier(0.4,0,0.2,1);box-shadow:-8px 0 32px rgba(0,0,0,.25)}
-.novo-help-drawer.open{right:0}
-.novo-help-hdr{display:flex;align-items:center;justify-content:space-between;padding:1.25rem 1.5rem;border-bottom:1px solid var(--border);flex-shrink:0}
-.novo-help-hdr h3{margin:0;font-size:1.15rem;font-weight:600;color:var(--text)}
-.novo-help-body{flex:1;overflow-y:auto;padding:1.25rem 1.5rem}
+/* Help drawer: ver nota acima (extraído para /help-drawer.js). */
 </style>
 <link rel="stylesheet" href="/premium.css?v=5">
 <script src="/premium.js?v=5"></script>
@@ -262,6 +245,7 @@ table.lb tfoot td{font-weight:600;border-top:2px solid var(--border);position:st
 <script src="/faturamento-manual.js?v=1"></script>
 <script src="/forecast-engine.js?v=1"></script>
 <script src="/prob-engine.js?v=4"></script>
+<script src="/help-drawer.js?v=1"></script>
 </head>
 <body>
 
@@ -345,9 +329,6 @@ table.lb tfoot td{font-weight:600;border-top:2px solid var(--border);position:st
   </div>
 </div>
 
-<!-- Info-button tooltip -->
-<div id="novo-tip"><div class="nt-text"></div><div class="nt-code"></div></div>
-
 <!-- Settings drawer -->
 <div class="novo-prob-backdrop" id="novo-prob-backdrop" onclick="novoCloseProbEditor()"></div>
 <div class="novo-prob-drawer" id="novo-prob-drawer">
@@ -400,17 +381,7 @@ table.lb tfoot td{font-weight:600;border-top:2px solid var(--border);position:st
   <div class="novo-prob-body" id="novo-rules-body"></div>
 </div>
 
-<!-- Help drawer (desliza da direita) -->
-<div class="novo-help-backdrop" id="novo-help-backdrop" onclick="novoCloseHelp()"></div>
-<div class="novo-help-drawer" id="novo-help-drawer" aria-label="Ajuda | campos do HubSpot">
-  <div class="novo-help-hdr">
-    <h3 id="novo-help-title">Campos do HubSpot por gráfico</h3>
-    <button class="hdr-btn" onclick="novoCloseHelp()" aria-label="Fechar">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-    </button>
-  </div>
-  <div class="novo-help-body" id="novo-help-body"></div>
-</div>
+<!-- Info-button tooltip + Help drawer: injetados por /help-drawer.js -->
 
 <!-- Modal -->
 <div class="modal-overlay" id="modal-overlay" onclick="if(event.target===this)closeModal()">
@@ -1623,6 +1594,9 @@ var NOVO_CARD_CODES = {
   'financial':'N39','wonmonthly':'N10','weightedrevstage':'N12',
   'receivables':'N40','risktriage':'N41',
 };
+// Mecanismo do botão "i"/tooltip/drawer vive em help-drawer.js (2026-08-02);
+// aqui só configuramos com o conteúdo específico deste painel.
+HelpDrawer.configure({ variant: 'cro', storageKey: 'novo_show_info', charts: NOVO_HELP_CHARTS, codes: NOVO_CARD_CODES });
 
 // Qual dimensão de data o FILTRO GLOBAL de período usa em cada gráfico/KPI.
 // (abertos/estado → createdate · ganhos/perdidos → close_date · projeções → data_prevista)
@@ -1700,36 +1674,16 @@ function _openHelpDrawer(headerTitle, charts, extraHtml) {
       '<p style="font-size:.8rem;line-height:1.6;color:var(--text2);margin:0 0 .5rem">Colunas exibidas ao clicar em qualquer barra.</p>'+
       '<table class="lb" style="width:100%;font-size:.78rem"><tbody>'+detailRows+'</tbody></table>'+
     '</div>';
-  var ttl = document.getElementById('novo-help-title');
-  if (ttl) ttl.textContent = headerTitle;
-  document.getElementById('novo-help-body').innerHTML = html;
-  setContentBlur(true);
-  document.getElementById('novo-help-backdrop').classList.add('open');
-  document.getElementById('novo-help-drawer').classList.add('open');
-}
-// Botão "?" do topo: alterna a exibição dos identificadores (tags) e dos "i" de
-// info em todos os cards/gráficos. Clicar de novo oculta.
-// Padrão VISÍVEL: os "i" e as tags só somem se o usuário desligar no "?" (persistido como '0').
-var _novoShowInfo = (function(){ try { return localStorage.getItem('novo_show_info') !== '0'; } catch(e) { return true; } })();
-function novoToggleInfo() {
-  _novoShowInfo = !_novoShowInfo;
-  document.body.classList.toggle('novo-info-on', _novoShowInfo);
-  var b = document.getElementById('btn-info-toggle');
-  if (b) b.classList.toggle('highlighted', _novoShowInfo);
-  try { localStorage.setItem('novo_show_info', _novoShowInfo ? '1' : '0'); } catch(e) {}
+  HelpDrawer.open(headerTitle, html);
 }
 // Botão "i" de cada gráfico: abre o drawer com os campos só daquele gráfico.
+// (Toggle "?" = novoToggleInfo(); fechar drawer = novoCloseHelp(); ambas em help-drawer.js.)
 function novoHelpChart(key) {
   var c = NOVO_HELP_CHARTS.filter(function(x){ return x.key === key; });
   if (!c.length) return;
   var extra = (key === 'piperev12b' && typeof _novoForecastBMethodologyHtml === 'function') ? _novoForecastBMethodologyHtml()
             : (key === 'coverage' ? _novoCoverageHelpHtml() : '');
   _openHelpDrawer('Campos do HubSpot | ' + c[0].title.replace(/^(?:🟡|🟢|🟠|🔴) /,''), c, extra);
-}
-function novoCloseHelp() {
-  document.getElementById('novo-help-backdrop').classList.remove('open');
-  document.getElementById('novo-help-drawer').classList.remove('open');
-  setContentBlur(false);
 }
 
 // ── Dados ─────────────────────────────────────────────────────────────────────
@@ -2756,15 +2710,7 @@ function _annualRev(d) {
 function _revShort(v) { return v >= 1000000 ? ('R$'+(v/1000000).toFixed(1)+'M') : ('R$'+Math.round(v/1000)+'k'); }
 
 // ── Cards (HTML) ────────────────────────────────────────────────────────────────
-function _infoBtn(tip, helpKey) {
-  var code = helpKey && NOVO_CARD_CODES[helpKey] ? NOVO_CARD_CODES[helpKey] : '';
-  var tag = code ? '<span class="novo-code-tag">' + code + '</span>' : '';
-  return tag + '<button class="novo-info-btn"' +
-    (tip  ? ' data-tip="'  + _ne(tip)  + '"' : '') +
-    (code ? ' data-code="' + code       + '"' : '') +
-    (helpKey ? ' onclick="event.stopPropagation();novoHelpChart(\'' + helpKey + '\')"' : '') +
-    ' aria-label="Campos do HubSpot">i</button>';
-}
+// _infoBtn(tip, helpKey): agora vive em help-drawer.js (window._infoBtn).
 function _subTabs(id, current, opts) {
   return '<div id="'+id+'" class="tab-sub">'+opts.map(function(o){
     return '<button class="tab-sub-btn'+(current===o.mode?' active':'')+'" data-mode="'+o.mode+'" onclick="'+o.fn+'(\''+o.mode+'\')">'+o.label+'</button>';
@@ -5571,38 +5517,7 @@ function _novoOpenFunnelStageFilterModal(title, stagesData, order, preStage) {
   _novoFnSfRender();
 }
 
-// ── Info-button tooltip (JS-driven) ──────────────────────────────────────────
-(function() {
-  var tip = null;
-  function _getTip() { return tip || (tip = document.getElementById('novo-tip')); }
-  function _showTip(btn) {
-    var el = _getTip(); if (!el) return;
-    var text = btn.getAttribute('data-tip') || '';
-    var code = btn.getAttribute('data-code') || '';
-    el.querySelector('.nt-text').textContent = text;
-    var codeEl = el.querySelector('.nt-code');
-    codeEl.textContent = code;
-    codeEl.style.display = code ? '' : 'none';
-    el.classList.add('nt-show');
-    var r = btn.getBoundingClientRect();
-    var tw = el.offsetWidth, th = el.offsetHeight;
-    var x = r.left + r.width / 2 - tw / 2;
-    var y = r.bottom + 7;
-    x = Math.max(8, Math.min(x, window.innerWidth - tw - 8));
-    if (y + th > window.innerHeight - 8) y = r.top - th - 7;
-    el.style.left = x + 'px';
-    el.style.top  = y + 'px';
-  }
-  function _hideTip() { var el = _getTip(); if (el) el.classList.remove('nt-show'); }
-  document.addEventListener('mouseover', function(e) {
-    var btn = e.target && e.target.closest && e.target.closest('.novo-info-btn,[data-tip]');
-    if (btn) _showTip(btn);
-  });
-  document.addEventListener('mouseout', function(e) {
-    if (e.target && e.target.closest && e.target.closest('.novo-info-btn,[data-tip]')) _hideTip();
-  });
-  document.addEventListener('scroll', _hideTip, true);
-})();
+// Tooltip do botão "i" (hover) e toggle "?": help-drawer.js (variant 'cro').
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 // Fecha modal/drawers com a tecla Esc (fecha o overlay mais ao topo)
@@ -5625,11 +5540,6 @@ document.addEventListener('DOMContentLoaded', function() {
   _setNavOpen(navOpen);
   var lbl = document.getElementById('novo-lang-label');
   if (lbl) lbl.textContent = NOVO_LANG === 'pt' ? 'EN' : 'PT';
-  if (_novoShowInfo) {
-    document.body.classList.add('novo-info-on');
-    var _bi = document.getElementById('btn-info-toggle');
-    if (_bi) _bi.classList.add('highlighted');
-  }
   _novoLoadUserKey();
   _novoLoadGlobalMeta();
   novoLoadData();
