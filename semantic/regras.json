@@ -61,7 +61,7 @@
       "tipo": "hibrido", "grain": "deal × mês calendário",
       "usa_dados": ["is_poc", "faturamento_manual", "vidas", "colaboradores", "createdate", "modelo_remuneracao", "vigencia", "data_prevista_para_receita", "primeira_fatura", "possui_agenciamento", "vencimento_primeira_fatura"],
       "usa_referencia": ["valor_por_vida", "etapas"],
-      "precedencia": "1º É POC? → série zerada. 2º Faturamento manual existe → substitui INTEGRALMENTE a régua (probAdj=1). 3º Senão → régua por etapa abaixo.",
+      "precedencia": "1º Faturamento manual existe → substitui INTEGRALMENTE a régua (probAdj=1). 2º Senão → régua por etapa abaixo. (Até 2026-08-02, É POC? era o 1º passo e zerava a série; revertido por decisão da reunião de forecast de 31/07 — POC flui pela régua normal, sem guard especial.)",
       "formula": "Por etapa: Diagnóstico → (vidas||colaboradores) × VPV(faixa); início = createdate + delay (vidas<=200: 9m | <=4999: 14m | senão 18m), com piso na referenceDate. Reunião Agendada → (vidas||colaboradores) × R$24; início = createdate + 15m, sem piso. Cotação/Consultoria/Negociação → início por modelo (corretagem: vigência futura+2m senão prevista+2m | fee: prevista+2m | sem modelo: prevista) e valor = receita_regua_mensal(n), cap 24 meses. Demais etapas → início na data prevista, receita_regua_mensal(n), cap 24 meses. Probabilizada = valor × probAdj (regra prob_final_deal ou régua da página).",
       "ponto_no_tempo": "referenceDate injetável via ForecastEngine.config() (Delta 1A); sem ela, ancora em hoje",
       "fonte_codigo": ["public/forecast-engine.js:44 (dealMonthly)", "public/forecast-engine.js:32 (_refNow)"],

@@ -22,8 +22,14 @@ projetada chama `dealMonthly` (ou, no server, `forecast-compute`).
 ## 2. A régua por etapa (`dealMonthly`)
 
 Precedência (antes de olhar a etapa):
-1. **POC** (`É POC? = Sim`) → **zero** em Real e Probabilizada, em todos os painéis.
-2. **Faturamento manual** → substitui **integralmente** a projeção pelos valores digitados.
+1. **Faturamento manual** → substitui **integralmente** a projeção pelos valores digitados.
+
+> **POC não zera mais (2026-08-02):** até 2026-07-13/2026-08-02 o motor tratava POC
+> (`É POC? = Sim`) como precedência 0, zerando Real e Probabilizada antes de olhar a etapa.
+> Revertido por decisão da reunião de forecast de 31/07 ("POC não pode valer zero no
+> forecast" — ver seção 2b). Hoje um deal POC flui pela MESMA régua por etapa de qualquer
+> outro deal, sem guard especial; a probabilidade baixa vem do ajuste manual do AE/comitê
+> (item "Probabilidade" abaixo), não de uma fórmula nova.
 
 Por etapa (`valor` = receita real do mês; `início` = 1º mês com receita):
 
@@ -74,14 +80,12 @@ probabilidade baixa de um POC não vem de uma fórmula nova — é o valor que o
 ajusta manualmente por deal em `Probabilidade (campo)` / HubSpot, igual a qualquer deal.
 A coluna "Fatura Atual" (plano vigente do cliente) continua **não** entrando no ARR.
 
-> Nota: o **forecast de caixa mensal** (`dealMonthly` em `forecast-engine.js`, item 1 da
-> precedência da seção 2 acima) **continua zerando Real e Probabilizada para POC** — essa
-> é uma regra mais antiga (2026-07-13) e mais ampla (zera a série mensal inteira, não só o
-> campo ARR), fora do escopo desta reversão de 2026-08-02, que tratou especificamente do
-> campo "ARR Estimado"/KPIs de ARR. Ou seja: hoje um POC mostra ARR estimado normal na
-> coluna/KPIs, mas ainda não contribui para o forecast de caixa mensal (waterfall, TCV,
-> N05/N06B) — divergência conhecida a resolver numa decisão separada se a intenção da
-> reunião de 31/07 for estendida ao caixa também.
+> Nota (resolvida em 2026-08-02): o **forecast de caixa mensal** (`dealMonthly` em
+> `forecast-engine.js`) também zerava Real e Probabilizada para POC desde 2026-07-13 — regra
+> mais antiga e mais ampla que a de ARR (zerava a série mensal inteira). Revertida na mesma
+> decisão da reunião de 31/07: POC agora flui pela mesma régua por etapa em TODOS os
+> painéis que consomem `dealMonthly` (Forecast Overall, `/forecast-delta`, N05/N06B do CRO
+> Dashboard) — sem divergência remanescente entre o campo ARR e o forecast de caixa.
 
 - **Demais etapas** (Proposta Enviada, Standby, Implantação, Ganho, …)
   - início = `data_prevista`; valor = `calcReceitaMes(n)`; **cap 24 meses**.

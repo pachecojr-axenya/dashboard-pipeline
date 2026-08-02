@@ -1,5 +1,38 @@
 # Dashboard Enhancement Loop — Status Log
 
+### Forecast | POC volta a gerar receita no forecast de caixa (dealMonthly) — fecha a divergência (2026-08-02)
+
+> Autorização explícita do dono, seguida à entrada anterior: "a intenção é POC carregar
+> valor em qualquer lugar do painel, não só na coluna ARR." Estende a reversão de POC (ver
+> entrada abaixo) ao motor de forecast de caixa mensal, fechando a divergência que a
+> entrada anterior tinha deixado documentada como "conhecida".
+
+- **`public/forecast-engine.js` (`dealMonthly`, ~linha 52-54):** removido o guard
+  `if (d.is_poc === true) return NIL;` (regra de 2026-07-13). POC agora flui pela MESMA
+  régua por etapa de qualquer outro deal (Real e Probabilizada), em TODOS os painéis que
+  consomem `dealMonthly` — Forecast Overall (`forecast.html`/`forecast-stage.html`),
+  `/forecast-delta` (via `lib/forecast-compute.js`, mesma função reusada no server), e o
+  N05/N06B do CRO Dashboard (`_novoForecastSeries()` chama `ForecastEngine.dealMonthly`
+  diretamente — mesma função, sem cópia — então os três continuam batendo mês a mês **por
+  construção**, sem precisar de correção separada em `dashboard.html`).
+- **`docs/forecast-revenue-rules.md`:** seção 2 (precedência do `dealMonthly`) e seção 2b
+  atualizadas — a nota de "divergência conhecida" (POC sem ARR zerado, mas ainda zerado no
+  caixa) foi marcada como **resolvida**; não há mais divergência entre o campo ARR e o
+  forecast de caixa para deals POC.
+- **`semantic/regras.json`** (regra `receita_mensal_deal`, campo `precedencia`) e
+  **`semantic/dados.json`** (campo `is_poc.notas`) atualizados para não documentar mais o
+  zero de POC como comportamento vigente; `docs/dashboard-2.0/catalogo.md` e
+  `public/semantic-ref.js` regenerados via `node scripts/semantic-view.js` +
+  `node scripts/gen-semantic-front.js` (`check-semantic` OK, 0 avisos — também limpou 3
+  avisos de staleness pré-existentes, não relacionados a esta mudança).
+- **Validação:** `npm run check` — mesma suíte PASS (única falha: fragilidade preexistente
+  de dia útil hardcoded em `test-bdr-workload-v2.js`, não relacionada). `test-delta-invariant.js`,
+  `test-forecast-delta-leva2.js` e `test-forecast-delta-e2e.js` rodados à parte, PASS
+  integral — os invariantes Σ Δ(etapa) == Δtotal continuam batendo com POC fluindo na
+  régua normal.
+- Commit separado, mesma branch `pacheco/poc-nao-zera-arr-2026-08-02` (sem push, sem
+  deploy).
+
 ### Forecast | POC volta a estimar ARR — reversão da regra de 28/07 (2026-08-02)
 
 > Decisão estrutural da reunião de forecast de 31/07 ("05 - Consolidado da reunião.md"):

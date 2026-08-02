@@ -49,9 +49,10 @@
     var FM = root.FaturamentoManual;
     var NIL = MONTHS.map(function () { return null; });
 
-    // POC (É POC? = Sim): deal de prova de conceito NÃO gera receita — não infere no
-    // forecast (regra do projeto). Zera Real e Probabilizada em todos os painéis.
-    if (d.is_poc === true) return NIL;
+    // POC volta a gerar receita no forecast (2026-08-02): reverte o guard de 2026-07-13.
+    // Decisão da reunião de forecast de 31/07 — "POC não pode valer zero no forecast": o
+    // deal flui pela MESMA régua por etapa de qualquer outro deal, com probabilidade baixa
+    // vinda do ajuste manual do AE/comitê (não uma fórmula nova). Ver docs/forecast-revenue-rules.md.
 
     // Faturamento manual: substitui integralmente o forecast pelos valores digitados.
     var _man = FM.manualMonths(d, todayStr());
