@@ -246,6 +246,7 @@ table.lb tfoot td{font-weight:600;border-top:2px solid var(--border);position:st
 <script src="/forecast-engine.js?v=1"></script>
 <script src="/prob-engine.js?v=4"></script>
 <script src="/help-drawer.js?v=1"></script>
+<script src="/ax-ui.js?v=1"></script>
 </head>
 <body>
 
@@ -323,7 +324,7 @@ table.lb tfoot td{font-weight:600;border-top:2px solid var(--border);position:st
     </div>
   </div>
   <div id="novo-content" style="max-width:1400px;margin:0 auto;padding:2rem">
-    <div id="novo-status" style="text-align:center;padding:3rem 0;color:var(--text2);font-size:.9rem">
+    <div id="novo-status" class="ax-empty ax-empty-lg">
       Aguardando dados…
     </div>
   </div>
@@ -2008,10 +2009,9 @@ function novoLoadData() {
     .catch(function(err) {
       _novoLoading = false;
       if (btn) { btn.classList.remove('spinning'); btn.disabled = false; }
-      novoSetStatus(
-        '<span style="color:var(--red)">' + t('error_prefix') + err.message + '</span>' +
-        '<br><button onclick="novoLoadData()" style="margin-top:.75rem;background:var(--teal);color:#fff;border:none;border-radius:8px;padding:.35rem .9rem;font-size:.85rem;cursor:pointer">' + t('retry') + '</button>'
-      );
+      novoSetStatus(AxUI.banner(t('error_prefix') + err.message, {
+        severity: 'error', retry: 'novoLoadData()', retryLabel: t('retry')
+      }));
     });
 }
 
@@ -3476,7 +3476,7 @@ function _novoOpenCoverageDrill(month, s, metaMonth) {
     '<span>'+(L?'Real: ':'Real: ')+'<b style="color:var(--green)">'+_revShort(mReal)+'</b> ('+cov+'×)</span>'+
     '<span>'+(L?'Weighted: ':'Probabilizada: ')+'<b style="color:rgba(88,166,255,.95)">'+_revShort(mProb)+'</b> ('+covP+'×)</span>'+
     '<span style="color:var(--text2)">'+(L?'Target/mo: ':'Meta/mês: ')+_revShort(metaMonth)+'</span></div>';
-  if (!rows.length) { openModal((L?'Coverage':'Cobertura')+' | '+_mlbl(month), head+'<p style="color:var(--text2);padding:1rem 0">'+(L?'No deals.':'Nenhum deal.')+'</p>'); return; }
+  if (!rows.length) { openModal((L?'Coverage':'Cobertura')+' | '+_mlbl(month), head+AxUI.emptyState(L?'No deals.':'Nenhum deal.')); return; }
   var body = '<table class="lb" style="font-size:.78rem"><thead><tr>'+
     '<th style="text-align:left">Deal</th><th style="text-align:left">Etapa</th><th>'+(L?'Block':'Bloco')+'</th><th>'+(L?'Contract mo (n)':'Mês contrato (n)')+'</th><th>Prob.</th><th>'+(L?'Real revenue':'Receita real')+'</th><th>'+(L?'Weighted revenue':'Receita probabilizada')+'</th></tr></thead><tbody>';
   rows.forEach(function(x){
@@ -5218,7 +5218,7 @@ function novoLoadFunnel() {
       _novoFunnelLoading = false;
       if (btn) { btn.disabled = false; }
       var el = document.getElementById('funnel-horiz-chart-area');
-      if (el) el.innerHTML = '<p style="color:var(--red);padding:1rem;font-size:.85rem">Erro: ' + _ne(err.message) + '</p>';
+      if (el) el.innerHTML = AxUI.banner('Erro: ' + _ne(err.message), { severity: 'error' });
     });
 }
 

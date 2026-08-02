@@ -4620,3 +4620,31 @@ Registro curto, uma linha por interação (a cada alteração).
 - **`:root` local morto removido** — `--bg`/`--card`/`--teal`/etc. da paleta antiga, incluindo `--font`/`--hover`; todas cobertas por `premium.css`.
 - **Gate de paridade (grep no arquivo inteiro):** zero classes órfãs (`class="card"`, `class="kpi"`/`"k"`/`"v"` soltas, `tab-sub-btn.on`, `:root` remanescente) após o rename.
 - **Validação:** `node scripts/_check-inline-js.js public/forecast-delta.html` = 0 erros; `npm run check` (única falha é a conhecida `test-bdr-workload-v2.js`, não relacionada); `scripts/test-forecast-delta-e2e.js`, `scripts/test-forecast-delta-leva2.js` e `scripts/test-delta-invariant.js` = PASS (invariante Σ Δ = Δtotal intacto; barra Fechado e card D09 confirmados por inspeção de código, sem servidor com dado real neste worktree).
+
+## Componente de estado vazio/erro/aviso | `AxUI` — FASE 1: módulo + dashboard/board/ae (2026-08-02)
+
+> Tier 2, item 8 de `docs/design-system-proposal.md` (seções 1.9 "Estado vazio/erro",
+> 2.5 "Síntese" e 3.4 "O módulo novo proposto"): o projeto tinha 7+ variações
+> diferentes de "sem dados"/"erro"/"aviso" (texto solto `color:var(--red)`/
+> `var(--text2)` na maioria, `.banner-api`, `.state`/`.state.err`, `.banner-warn`
+> etc.) e nem o próprio `dashboard.html` (padrão-ouro) tinha um componente
+> dedicado. **Esta é só a FASE 1** de uma migração maior: o componente + os 3
+> painéis que já compartilham `help-drawer.js` (dashboard/board/ae). Os demais
+> painéis (cs, cotação, 48h, forecast, forecast-stage, forecast-delta) ficam
+> para uma PRÓXIMA rodada, construindo em cima deste módulo — não foram tocados
+> aqui.
+
+- **Novo módulo `public/ax-ui.js`** (arquivo IRMÃO de `help-drawer.js`, não o mesmo arquivo — extrair para um módulo dedicado casa com o padrão já usado por `nav.js`/`filter-bar.js`/`settings-modal.js`/`help-drawer.js`: um `<script>` a mais por página, responsabilidade única; misturar com `help-drawer.js` acoplaria dois conceitos sem relação, o drawer de ajuda de campos do HubSpot e o aviso de estado vazio/erro). Segue o MESMO estilo de auto-inclusão do `help-drawer.js`: IIFE que injeta um único `<style id="ax-ui-css">` na primeira carga (idempotente, `getElementById` guard) e expõe `window.AxUI`. Sem `configure()` — não há estado global, só 2 funções puras que retornam STRING html (para casar com o padrão já usado nos painéis: `el.innerHTML = '...'` ou `openModal(title, htmlString)`).
+- **API exposta:**
+  - `AxUI.emptyState(msg, opts?)` — `opts.size: 'sm'` (default, dentro de modal/card, `padding:1.5rem 1rem`) | `'lg'` (estado de página inteira antes do 1º load, `padding:3rem 0`). Retorna `<div class="ax-empty[ ax-empty-lg]">msg</div>`.
+  - `AxUI.banner(msg, opts?)` — `opts.severity: 'info'|'warn'|'error'` (default `'error'`); `opts.retry`: string com o JS a rodar no `onclick` do botão (ex. `'novoLoadData()'`), omitido = sem botão; `opts.retryLabel` (default `'Tentar novamente'`). Retorna `<div class="ax-banner ax-banner-{sev}">` com borda esquerda de 3px + texto na cor da severidade (`var(--blue)`/`var(--yellow)`/`var(--red)`, nunca hex fixo), fundo `var(--card2)`, `border-radius:10px`.
+- **Aplicado em `dashboard.html`, `board.html`, `ae.html`** (conteúdo/texto preservado 100%, só o invólucro mudou):
+  - Placeholder estático "Aguardando dados…" antes do 1º load (`novo-status`/div em `#novo-content`, os 3 arquivos) → classe `ax-empty ax-empty-lg` (aplicada direto no HTML estático, sem precisar de JS para essa troca — o contrato são as classes CSS que o módulo injeta).
+  - Erro principal de `novoLoadData()` (fetch de `/api/forecast-table`) nos 3 arquivos → `AxUI.banner(t('error_prefix')+msg, {severity:'error', retry:'novoLoadData()', retryLabel:t('retry')})` no lugar do `<span style="color:var(--red)">…</span><br><button style="background:var(--teal)…">` inline.
+  - `ae.html`: banner de rate-limit do HubSpot (retry automático com contagem regressiva) → `AxUI.banner(msg, {severity:'warn'})` (sem botão, é auto-retry).
+  - `dashboard.html`: erro do funil horizontal (`buildNovoFunnelHorizChart`, catch) → `AxUI.banner('Erro: '+msg, {severity:'error'})`; empty state do modal de Cobertura (N05, "No deals."/"Nenhum deal.") → `AxUI.emptyState(...)`.
+  - `board.html`: `novoOpenDealsModal` ("Nenhum deal.") + 2 tabelas do BoD watchlist/top-AE ("Nenhum deal ativo.") → `AxUI.emptyState(...)`.
+  - `ae.html`: 12 chamadas `<p style="color:var(--text2);padding:1rem 0">…</p>` (7× "Nenhum deal.", + "Nenhum deal estagnado.", "Nenhum deal na etapa.", "Nenhuma pendência de reunião | tudo em dia ✅", "Nenhum deal parado há 15+ dias ✅", "Nenhum AE.") → `AxUI.emptyState(...)`, mesmo texto.
+  - **Fora do escopo, deliberadamente não tocado:** o popover flutuante de histórico de probabilidade (`#novo-probhist-pop`, `dashboard.html`, ~250px de largura) mantém `color:var(--red)`/`var(--text2)` soltos — é um mini-tooltip que segue o cursor, não um card/página; encaixar o banner/empty-state de largura fixa ali quebraria o layout. Também não tocados: cores condicionais de célula de tabela (ex. `ae.html` destaque vermelho de valor acima do limiar) e labels de dado (ex. "No Show", "Risk Score") — não são estados de vazio/erro, são formatação de dado.
+- **Validação:** `node --check public/ax-ui.js` OK; `node scripts/_check-inline-js.js` = 0 erros em `dashboard.html`/`board.html`/`ae.html`; `npm run check` completo (única falha é a conhecida `test-bdr-workload-v2.js`, sem relação, sinalizada como não sendo responsabilidade desta rodada).
+- **Para o próximo agente que for consumir isso num painel novo:** incluir `<script src="/ax-ui.js?v=1"></script>` no `<head>` (qualquer posição, sem dependência de ordem com `premium.js`/`help-drawer.js`); trocar qualquer texto solto de "sem dados"/"vazio" por `AxUI.emptyState('mesmo texto de antes')` e qualquer erro/aviso com ou sem botão de retry por `AxUI.banner('mesmo texto', {severity:'error'|'warn'|'info', retry:'nomeDaFuncao()'})`; **não mudar o texto/conteúdo da mensagem**, só a chamada que a envolve (gate de paridade); para estado ANTES do JS rodar (placeholder estático no HTML), aplicar a classe `ax-empty`/`ax-empty ax-empty-lg` direto na tag em vez de chamar a função (o módulo só precisa estar incluído para o CSS existir).

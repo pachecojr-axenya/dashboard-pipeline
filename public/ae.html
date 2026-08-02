@@ -13,6 +13,7 @@
 <script src="/faturamento-manual.js?v=1"></script>
 <script src="/forecast-engine.js?v=1"></script>
 <script src="/help-drawer.js?v=1"></script>
+<script src="/ax-ui.js?v=1"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -160,7 +161,7 @@ body.nav-docked #view-novo{margin-left:280px}
     </div>
   </div>
   <div id="novo-content" style="max-width:1400px;margin:0 auto;padding:2rem">
-    <div style="text-align:center;padding:3rem 0;color:var(--text2)">Aguardando dados…</div>
+    <div class="ax-empty ax-empty-lg">Aguardando dados…</div>
   </div>
 </div>
 
@@ -439,7 +440,7 @@ function _novoTheme(){ var isLight=document.documentElement.getAttribute('data-t
 var _novoCharts={};
 function _novoMkChart(id,cfg){ var ctx=document.getElementById(id); if(!ctx)return; if(cfg&&cfg.options&&cfg.options.onClick&&!cfg.options.onHover){ cfg.options.onHover=function(e,els){ var t=e&&e.native&&e.native.target; if(t) t.style.cursor=(els&&els.length)?'pointer':''; }; } if(_novoCharts[id]) _novoCharts[id].destroy(); _novoCharts[id]=new Chart(ctx,cfg); }
 function _novoDealsRows(deals){ return deals.map(function(d){ var hsUrl=d.hs_id?'https://app.hubspot.com/contacts/44715285/deal/'+d.hs_id:'#'; var nameCell=d.hs_id?'<a href="'+hsUrl+'" target="_blank" rel="noopener" style="color:var(--teal);text-decoration:none">'+_ne(d.dealname)+'</a>':_ne(d.dealname); return '<tr><td style="text-align:left;min-width:150px;max-width:210px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+nameCell+'</td><td style="text-align:left;white-space:nowrap">'+_ne(d.ae)+'</td><td>'+_ne(d.pipeline)+'</td><td style="white-space:nowrap">'+_ne(d.stage)+'</td><td>'+_ni(d.vidas)+'</td><td>'+_revShort(_annualRev(d))+'</td><td style="white-space:nowrap">'+_nd(d.data_reuniao_agendada)+'</td><td style="white-space:nowrap">'+_nd(d.close_date)+'</td><td style="text-align:left">'+_ne(_aeLossLabel(d.lost_reason))+'</td></tr>'; }).join(''); }
-function novoOpenDealsModal(title,deals){ if(!deals||!deals.length){ openModal(title,'<p style="color:var(--text2);padding:1rem 0">Nenhum deal.</p>'); return; } var totV=deals.reduce(function(s,d){return s+(d.vidas||0);},0), totA=deals.reduce(function(s,d){return s+_annualRev(d);},0); var foot='<tfoot><tr style="border-top:2px solid var(--border)"><td colspan="4" style="text-align:left;font-weight:700">Total</td><td style="font-weight:700">'+_ni(totV)+'</td><td style="font-weight:700">'+_revShort(totA)+'</td><td></td><td></td><td></td></tr></tfoot>'; var html='<table class="lb"><thead><tr><th style="text-align:left">Deal</th><th style="text-align:left">AE</th><th>Pipe</th><th>Etapa</th><th>Vidas</th><th>ARR</th><th>Reunião Ag.</th><th>Fechado</th><th style="text-align:left">Motivo perda</th></tr></thead><tbody>'+_novoDealsRows(deals)+'</tbody>'+foot+'</table>'; openModal(title+' ('+deals.length+')',html); }
+function novoOpenDealsModal(title,deals){ if(!deals||!deals.length){ openModal(title,AxUI.emptyState('Nenhum deal.')); return; } var totV=deals.reduce(function(s,d){return s+(d.vidas||0);},0), totA=deals.reduce(function(s,d){return s+_annualRev(d);},0); var foot='<tfoot><tr style="border-top:2px solid var(--border)"><td colspan="4" style="text-align:left;font-weight:700">Total</td><td style="font-weight:700">'+_ni(totV)+'</td><td style="font-weight:700">'+_revShort(totA)+'</td><td></td><td></td><td></td></tr></tfoot>'; var html='<table class="lb"><thead><tr><th style="text-align:left">Deal</th><th style="text-align:left">AE</th><th>Pipe</th><th>Etapa</th><th>Vidas</th><th>ARR</th><th>Reunião Ag.</th><th>Fechado</th><th style="text-align:left">Motivo perda</th></tr></thead><tbody>'+_novoDealsRows(deals)+'</tbody>'+foot+'</table>'; openModal(title+' ('+deals.length+')',html); }
 
 // ── Data loading ──────────────────────────────────────────────────────────────
 var _novoDeals=null;
@@ -486,14 +487,14 @@ function novoLoadData(){
       var el=document.getElementById('novo-content');
       var tick=function(){
         if(!el) return;
-        el.innerHTML='<div style="text-align:center;padding:3rem 0;color:var(--text2)">Limite de requisições do HubSpot atingido.<br>Tentando de novo em <strong style="color:var(--teal)">'+secs+'s</strong>… (tentativa '+_aeRateRetries+' de 2)</div>';
+        el.innerHTML=AxUI.banner('Limite de requisições do HubSpot atingido.<br>Tentando de novo em <strong style="color:var(--teal)">'+secs+'s</strong>… (tentativa '+_aeRateRetries+' de 2)', { severity:'warn' });
         if(secs<=0){ novoLoadData(); return; }
         secs--; setTimeout(tick,1000);
       };
       tick();
       return;
     }
-    document.getElementById('novo-content').innerHTML='<div style="text-align:center;padding:3rem 0;color:var(--red)">'+t('error_prefix')+_ne(msg)+'<br><br><button onclick="_aeRateRetries=0;novoLoadData()" style="background:var(--teal);color:#fff;border:none;border-radius:8px;padding:.5rem 1.2rem;cursor:pointer">'+t('retry')+'</button></div>';
+    document.getElementById('novo-content').innerHTML=AxUI.banner(t('error_prefix')+_ne(msg), { severity:'error', retry:'_aeRateRetries=0;novoLoadData()', retryLabel:t('retry') });
   });
 }
 
@@ -671,7 +672,7 @@ function _aeForecastByAE(){
 var _AE_FC_BLOCK_LBL={won:'Ganho/Impl.',pipe:'Pipe Vendas',bid:'BID'};
 // Drill do A07: deals do AE que contribuem para o forecast, com receita Real/Prob da janela.
 function _aeFcDrillModal(ae, f){
-  var g=f.byAE[ae]; if(!g||!g.deals.length){ openModal('Forecast | '+ae,'<p style="color:var(--text2);padding:1rem 0">Nenhum deal.</p>'); return; }
+  var g=f.byAE[ae]; if(!g||!g.deals.length){ openModal('Forecast | '+ae,AxUI.emptyState('Nenhum deal.')); return; }
   var rows=g.deals.slice().sort(function(a,b){return b.real-a.real;}).map(function(r){
     var d=r.d;
     var hsUrl=d.hs_id?'https://app.hubspot.com/contacts/44715285/deal/'+d.hs_id:'#';
@@ -824,7 +825,7 @@ function aeKpiOpen(kind){
 function _aeStaleModal(){
   var deals=_aeActivePipeline().filter(function(d){return d.dias_sem_atividade!=null&&d.dias_sem_atividade>30;})
     .sort(function(a,b){return (b.dias_sem_atividade||0)-(a.dias_sem_atividade||0);});
-  if(!deals.length){ openModal('Deals Estagnados','<p style="color:var(--text2);padding:1rem 0">Nenhum deal estagnado.</p>'); return; }
+  if(!deals.length){ openModal('Deals Estagnados',AxUI.emptyState('Nenhum deal estagnado.')); return; }
   var rows=deals.map(function(d){
     var hsUrl=d.hs_id?'https://app.hubspot.com/contacts/44715285/deal/'+d.hs_id:'#';
     var nameCell=d.hs_id?'<a href="'+hsUrl+'" target="_blank" rel="noopener" style="color:var(--teal);text-decoration:none">'+_ne(d.dealname)+'</a>':_ne(d.dealname);
@@ -837,7 +838,7 @@ function _aeStaleModal(){
 function _aeMeetingsModal(){
   var deals=_rawDeals().filter(function(d){return d.stage==='Reunião Agendada';})
     .sort(function(a,b){return (b.data_reuniao_agendada||'')<(a.data_reuniao_agendada||'')?-1:1;});
-  if(!deals.length){ openModal('Reuniões Agendadas','<p style="color:var(--text2);padding:1rem 0">Nenhum deal na etapa.</p>'); return; }
+  if(!deals.length){ openModal('Reuniões Agendadas',AxUI.emptyState('Nenhum deal na etapa.')); return; }
   var rows=deals.map(function(d){
     var hsUrl=d.hs_id?'https://app.hubspot.com/contacts/44715285/deal/'+d.hs_id:'#';
     var nameCell=d.hs_id?'<a href="'+hsUrl+'" target="_blank" rel="noopener" style="color:var(--teal);text-decoration:none">'+_ne(d.dealname)+'</a>':_ne(d.dealname);
@@ -1065,7 +1066,7 @@ function _aeAgRender(){
   var totV=list.reduce(function(s,d){return s+(d.vidas||0);},0), totA=list.reduce(function(s,d){return s+_annualRev(d);},0);
   var diasArr=list.map(_aeRaDays).filter(function(x){return x!=null;}); var avgD=diasArr.length?Math.round(diasArr.reduce(function(s,x){return s+x;},0)/diasArr.length):null;
   var foot=list.length?'<tfoot><tr style="border-top:2px solid var(--border)"><td colspan="3" style="text-align:left;font-weight:700">Total ('+list.length+')</td><td style="font-weight:700">'+_ni(totV)+'</td><td style="font-weight:700">'+_revShort(totA)+'</td><td></td><td style="font-weight:700">'+(avgD!=null?_ni(avgD)+'d':'—')+'</td></tr></tfoot>':'';
-  var tb=document.getElementById('ae-ag-table'); if(tb)tb.innerHTML=list.length?'<table class="lb"><thead><tr><th style="text-align:left">Deal</th><th>Pipe</th><th>Etapa</th><th>Vidas</th><th>ARR</th><th>Reunião Ag.</th><th>Dias no pipe</th></tr></thead><tbody>'+list.map(_aeAgingRow).join('')+'</tbody>'+foot+'</table>':'<p style="color:var(--text2);padding:1rem 0">Nenhum deal.</p>';
+  var tb=document.getElementById('ae-ag-table'); if(tb)tb.innerHTML=list.length?'<table class="lb"><thead><tr><th style="text-align:left">Deal</th><th>Pipe</th><th>Etapa</th><th>Vidas</th><th>ARR</th><th>Reunião Ag.</th><th>Dias no pipe</th></tr></thead><tbody>'+list.map(_aeAgingRow).join('')+'</tbody>'+foot+'</table>':AxUI.emptyState('Nenhum deal.');
 }
 function _aeAgingModal(preAe){ _aeAgAll=_aeAgingBase(); _aeAgAe=preAe||null; _aeAgStage=null; openModal('Idade dos Deals por Executivo e Etapa ('+_aeAgAll.length+')','<div id="ae-ag-chips"></div><div id="ae-ag-table"></div>'); _aeAgRender(); }
 function buildAEAging(){
@@ -1156,7 +1157,7 @@ function _aePrevStage(d){
 // motivo da barra clicada — dá para expandir para outros motivos sem fechar o modal.
 var _aeLostModal={deals:[],sel:{},title:''};
 function _aeLostDealsModal(title,deals,initReason){
-  if(!deals||!deals.length){ openModal(title,'<p style="color:var(--text2);padding:1rem 0">Nenhum deal.</p>'); return; }
+  if(!deals||!deals.length){ openModal(title,AxUI.emptyState('Nenhum deal.')); return; }
   _aeLostModal={deals:deals,sel:{},title:title};
   if(initReason)_aeLostModal.sel[initReason]=true;
   openModal(title,'<div id="ae-lost-modal-body"></div>');
@@ -1252,7 +1253,7 @@ function buildAEMeetingAlert(){
     var o=byOwner[owner]||(byOwner[owner]={sem_status:0,nao_sem_reag:0,nao_venc:0,ocorreu_parado:0,total:0});
     o[cls]++; o.total++; totals[cls]++; grand++;
   });
-  if(!grand){ el.innerHTML='<p style="color:var(--text2);padding:1rem 0">Nenhuma pendência de reunião | tudo em dia ✅</p>'; return; }
+  if(!grand){ el.innerHTML=AxUI.emptyState('Nenhuma pendência de reunião | tudo em dia ✅'); return; }
   _aeMtgAlertOwners=Object.keys(byOwner).sort(function(a,b){ if(a==='(sem proprietário)')return 1; if(b==='(sem proprietário)')return -1; return byOwner[b].total-byOwner[a].total || a.localeCompare(b); });
   var chips='<div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:1rem">'+_AE_MTG_ALERT_BUCKETS.map(function(b){
     return '<div style="flex:1;min-width:130px;background:var(--card2);border-radius:8px;padding:.55rem .7rem;text-align:center">'+
@@ -1317,7 +1318,7 @@ function _aeMtgModRender(){
   var aeItems=Object.keys(aeCounts).sort(function(a,b){ if(a==='(sem proprietário)')return 1; if(b==='(sem proprietário)')return -1; return aeCounts[b]-aeCounts[a]||a.localeCompare(b); }).map(function(k){return {key:k,label:_ne(k),count:aeCounts[k]};});
   var ch=document.getElementById('ae-mtgmod-chips'); if(ch)ch.innerHTML=_aeMtgChipRow('Executivo','ae',_aeMtgModAe,aeItems);
   var head='<thead><tr><th style="text-align:left">Deal</th><th style="text-align:left">Executivo</th><th style="text-align:left">Situação</th><th>Data reunião</th><th>Data reagend.</th><th>Dias desde reunião</th><th>Dias desde reagend.</th><th>Dias s/ atividade</th></tr></thead>';
-  var tb=document.getElementById('ae-mtgmod-table'); if(tb)tb.innerHTML=list.length?'<table class="lb">'+head+'<tbody>'+list.map(_aeMtgModRow).join('')+'</tbody></table>':'<p style="color:var(--text2);padding:1rem 0">Nenhum deal.</p>';
+  var tb=document.getElementById('ae-mtgmod-table'); if(tb)tb.innerHTML=list.length?'<table class="lb">'+head+'<tbody>'+list.map(_aeMtgModRow).join('')+'</tbody></table>':AxUI.emptyState('Nenhum deal.');
 }
 function aeMtgAlertDrill(idx,bucket){
   _aeMtgModAll=_aeMtgAlertBase().filter(function(d){return _aeMtgAlertClass(d)!=null;});
@@ -1353,7 +1354,7 @@ function buildAEStaleAlert(){
     var o=byOwner[owner]; if(!o){ o=byOwner[owner]={total:0}; _AE_STALE_BUCKETS.forEach(function(b){ o[b.key]=0; }); }
     o[cls]++; o.total++; totals[cls]++; grand++;
   });
-  if(!grand){ el.innerHTML='<p style="color:var(--text2);padding:1rem 0">Nenhum deal parado há 15+ dias ✅</p>'; return; }
+  if(!grand){ el.innerHTML=AxUI.emptyState('Nenhum deal parado há 15+ dias ✅'); return; }
   _aeStaleOwners=Object.keys(byOwner).sort(function(a,b){ if(a==='(sem proprietário)')return 1; if(b==='(sem proprietário)')return -1; return byOwner[b].total-byOwner[a].total || a.localeCompare(b); });
   var chips='<div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:1rem">'+_AE_STALE_BUCKETS.map(function(b){
     return '<div style="flex:1;min-width:110px;background:var(--card2);border-radius:8px;padding:.55rem .7rem;text-align:center">'+
@@ -1414,7 +1415,7 @@ function _aeStaleModRender(){
   var aeItems=Object.keys(aeCounts).sort(function(a,b){ if(a==='(sem proprietário)')return 1; if(b==='(sem proprietário)')return -1; return aeCounts[b]-aeCounts[a]||a.localeCompare(b); }).map(function(k){return {key:k,label:_ne(k),count:aeCounts[k]};});
   var ch=document.getElementById('ae-stalemod-chips'); if(ch)ch.innerHTML=_aeStaleChipRow(_aeStaleModAe,aeItems);
   var head='<thead><tr><th style="text-align:left">Deal</th><th style="text-align:left">Executivo</th><th>Pipe</th><th style="text-align:left">Etapa</th><th>Faixa</th><th>Última atividade</th><th>Dias s/ atividade</th><th>Vidas</th><th>ARR</th></tr></thead>';
-  var tb=document.getElementById('ae-stalemod-table'); if(tb)tb.innerHTML=list.length?'<table class="lb">'+head+'<tbody>'+list.map(_aeStaleModRow).join('')+'</tbody></table>':'<p style="color:var(--text2);padding:1rem 0">Nenhum deal.</p>';
+  var tb=document.getElementById('ae-stalemod-table'); if(tb)tb.innerHTML=list.length?'<table class="lb">'+head+'<tbody>'+list.map(_aeStaleModRow).join('')+'</tbody></table>':AxUI.emptyState('Nenhum deal.');
 }
 function aeStaleDrill(idx,bucket){
   _aeStaleModAll=_aeStaleBase().filter(function(d){return _aeStaleClass(d)!=null;});
@@ -1436,7 +1437,7 @@ function _aeMeetingBase(){ var today=_aeTodayStr(); return _rawDeals().filter(fu
 function _aeMeetingRows(deals){ return deals.map(function(d){ var hsUrl=d.hs_id?'https://app.hubspot.com/contacts/44715285/deal/'+d.hs_id:'#'; var nameCell=d.hs_id?'<a href="'+hsUrl+'" target="_blank" rel="noopener" style="color:var(--teal);text-decoration:none">'+_ne(d.dealname)+'</a>':_ne(d.dealname); var mc=_aeMeetingClass(d); var mLbl=mc==='sim'?'Sim':mc==='nao'?'Não':'—'; var mCol=mc==='sim'?'var(--green)':mc==='nao'?'var(--red)':'var(--muted)'; var reag=d.data_reagendamento_exec?' <span title="reagendada" style="color:var(--yellow);font-weight:700">↻</span>':''; return '<tr><td style="text-align:left;min-width:150px;max-width:210px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+nameCell+'</td><td style="text-align:left;white-space:nowrap">'+_ne(d.ae)+'</td><td>'+_ne(d.pipeline)+'</td><td style="white-space:nowrap">'+_ne(d.stage)+'</td><td>'+_ni(d.vidas)+'</td><td>'+_revShort(_annualRev(d))+'</td><td style="white-space:nowrap">'+_nd(_aeMeetingDate(d))+reag+'</td><td style="white-space:nowrap;color:'+mCol+';font-weight:600">'+mLbl+'</td></tr>'; }).join(''); }
 function _aeMeetingHead(){ return '<thead><tr><th style="text-align:left">Deal</th><th style="text-align:left">AE</th><th>Pipe</th><th>Etapa</th><th>Vidas</th><th>ARR</th><th>Reunião (↻ = reag.)</th><th>Reunião Ocorreu</th></tr></thead>'; }
 // A16 | drill de um mês: lista com a coluna "Reunião Ocorreu".
-function _aeMeetingListModal(title,deals){ if(!deals||!deals.length){ openModal(title,'<p style="color:var(--text2);padding:1rem 0">Nenhum deal.</p>'); return; } openModal(title+' ('+deals.length+')','<table class="lb">'+_aeMeetingHead()+'<tbody>'+_aeMeetingRows(deals)+'</tbody></table>'); }
+function _aeMeetingListModal(title,deals){ if(!deals||!deals.length){ openModal(title,AxUI.emptyState('Nenhum deal.')); return; } openModal(title+' ('+deals.length+')','<table class="lb">'+_aeMeetingHead()+'<tbody>'+_aeMeetingRows(deals)+'</tbody></table>'); }
 // A14 | modal com filtro de executivo + KPIs de reunião (totais | realizadas | taxa) + lista.
 var _aeMtgFltAll=[], _aeMtgFltSel=null;
 function _aeMtgKpis(list){ var s=list.filter(function(d){return _aeMeetingClass(d)==='sim';}).length; var n=list.filter(function(d){return _aeMeetingClass(d)==='nao';}).length; var den=s+n; var rate=den>0?(Math.round(s/den*1000)/10).toFixed(1).replace('.',','):null; return '<div class="kpi-row" style="grid-template-columns:repeat(3,1fr);margin-bottom:1rem">'+
@@ -1504,7 +1505,7 @@ function buildAERadar(){
   var el=document.getElementById('ae-radar-table'); if(!el) return;
   var all=_rawDeals(), open=_novoOpen(), won=_novoWon(), lost=_novoLost();
   var aes=_getAEs().filter(_isCoreAE).filter(function(ae){ return all.some(function(d){return d.ae===ae;}); });
-  if(!aes.length){ el.innerHTML='<p style="color:var(--text2);padding:1rem 0">Nenhum AE.</p>'; return; }
+  if(!aes.length){ el.innerHTML=AxUI.emptyState('Nenhum AE.'); return; }
   var rows=aes.map(function(ae){
     var op=open.filter(function(d){return d.ae===ae;});
     var w=won.filter(function(d){return d.ae===ae;}).length;
