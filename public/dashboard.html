@@ -236,6 +236,14 @@ table.lb tfoot td{font-weight:600;border-top:2px solid var(--border);position:st
 .novo-prob-save{width:48px;height:48px;border-radius:50%;border:none;background:var(--teal);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s}
 .novo-prob-save:hover{background:#2ea5a4}
 
+/* Histórico de Prob AE (mouse-over | material de estudo, nunca alimenta cálculo) */
+.novo-probae-hint{border-bottom:1px dotted var(--text2);cursor:help}
+#novo-probhist-pop{position:fixed;z-index:4000;max-width:230px;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:.55rem .7rem;font-size:.72rem;color:var(--text);box-shadow:0 6px 24px rgba(0,0,0,.35);display:none;pointer-events:none}
+#novo-probhist-pop .ph-title{font-weight:700;margin-bottom:.3rem;color:var(--text2);font-size:.64rem;text-transform:uppercase;letter-spacing:.04em}
+#novo-probhist-pop .ph-row{display:flex;justify-content:space-between;gap:.6rem;padding:.1rem 0}
+#novo-probhist-pop .ph-date{color:var(--text2)}
+#novo-probhist-pop .ph-val{font-weight:600}
+
 /* Help drawer (desliza da direita, desfoca o fundo) */
 .novo-help-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:3000;opacity:0;pointer-events:none;transition:opacity .25s ease}
 .novo-help-backdrop.open{opacity:1;pointer-events:auto}
@@ -1753,6 +1761,70 @@ function _calcProbInfo(d) {
   return ProbEngine.calcProbInfo(d, { cfg: _novoStageProbCfg, funnelProbPipe: NOVO_FUNNEL_PROB_PIPE }); // fonte única (prob-engine.js)
 }
 
+// ── Histórico de Prob AE (mouse-over) ───────────────────────────────────────
+// Decisão nº 6 (reunião de forecast, 31-jul-2026): "Histórico de probabilidade
+// do AE como material de estudo (mouse-over no dash): não para cálculo — para
+// contar a história da conta (o que aconteceu quando subiu/desceu)." Puramente
+// visual/storytelling: busca lazy em /api/deal-prob-history (isolado, não usado
+// por nenhum cálculo de receita/probabilidade do dashboard).
+var _novoProbHistCache = {};
+var _novoProbHistEl = null;
+function _novoProbHistEnsureEl() {
+  if (_novoProbHistEl) return _novoProbHistEl;
+  var el = document.createElement('div');
+  el.id = 'novo-probhist-pop';
+  document.body.appendChild(el);
+  _novoProbHistEl = el;
+  return el;
+}
+function _novoProbHistRender(list) {
+  if (!list || !list.length) {
+    return '<div class="ph-title">Histórico | Prob AE</div><div style="color:var(--text2)">Sem histórico de alteração</div>';
+  }
+  var rows = list.map(function(h) {
+    var v = h.value != null ? (h.value * 100).toFixed(1) + '%' : '—';
+    return '<div class="ph-row"><span class="ph-date">' + _nd(h.date) + '</span><span class="ph-val">' + v + '</span></div>';
+  }).join('');
+  return '<div class="ph-title">Histórico | Prob AE</div>' + rows;
+}
+function _novoProbHistPosition(el, evt) {
+  var x = evt.clientX, y = evt.clientY;
+  el.style.left = Math.max(4, Math.min(x + 12, window.innerWidth - 250)) + 'px';
+  el.style.top  = Math.max(4, Math.min(y + 12, window.innerHeight - 140)) + 'px';
+}
+function _novoProbHistShow(evt, dealId) {
+  if (!dealId) return;
+  var el = _novoProbHistEnsureEl();
+  _novoProbHistPosition(el, evt);
+  el.style.display = 'block';
+  if (_novoProbHistCache[dealId]) { el.innerHTML = _novoProbHistRender(_novoProbHistCache[dealId]); return; }
+  el.innerHTML = '<div class="ph-title">Histórico | Prob AE</div><div style="color:var(--text2)">Carregando…</div>';
+  fetch('/api/deal-prob-history?id=' + encodeURIComponent(dealId), { credentials: 'include' })
+    .then(function(r) { return r.json(); })
+    .then(function(j) {
+      var list = (j && j.success) ? j.history : [];
+      _novoProbHistCache[dealId] = list;
+      if (el.style.display !== 'none') el.innerHTML = _novoProbHistRender(list);
+    })
+    .catch(function() {
+      if (el.style.display !== 'none') el.innerHTML = '<div class="ph-title">Histórico | Prob AE</div><div style="color:var(--red)">Falha ao carregar histórico</div>';
+    });
+}
+function _novoProbHistMove(evt) {
+  if (_novoProbHistEl && _novoProbHistEl.style.display !== 'none') _novoProbHistPosition(_novoProbHistEl, evt);
+}
+function _novoProbHistHide() {
+  if (_novoProbHistEl) _novoProbHistEl.style.display = 'none';
+}
+// Célula "Prob AE" da tabela de deals: hoverável (mostra histórico) quando o
+// deal tem hs_id (precisa do id do HubSpot p/ buscar o histórico); senão,
+// mesmo texto plano de sempre.
+function _novoProbAeCell(d) {
+  var val = _np(d.probabilidade);
+  if (!d.hs_id) return val;
+  return '<span class="novo-probae-hint" onmouseenter="_novoProbHistShow(event,\'' + d.hs_id + '\')" onmousemove="_novoProbHistMove(event)" onmouseleave="_novoProbHistHide()">' + val + '</span>';
+}
+
 function _novoDealsRows(deals) {
   return deals.map(function(d) {
     var hsUrl = 'https://app.hubspot.com/contacts/44715285/deal/' + d.hs_id;
@@ -1777,7 +1849,7 @@ function _novoDealsRows(deals) {
       '<td style="white-space:nowrap">'+_ne(d.modelo_remuneracao)+'</td>'+
       '<td>'+_nb(d.possui_agenciamento)+'</td>'+
       '<td>'+_nb(d.possui_vitalicio)+'</td>'+
-      '<td>'+_np(d.probabilidade)+'</td>'+
+      '<td>'+_novoProbAeCell(d)+'</td>'+
       '<td>'+_np(pi.sp)+'</td>'+
       '<td>'+_np(pi.final)+'</td>'+
       '<td style="white-space:nowrap">'+_ne(d.quarter)+'</td>'+
@@ -1824,7 +1896,7 @@ function _novoP01Rows(deals) {
       '<td style="white-space:nowrap">'+_ne(d.modelo_remuneracao)+'</td>'+
       '<td>'+_nb(d.possui_agenciamento)+'</td>'+
       '<td>'+_nb(d.possui_vitalicio)+'</td>'+
-      '<td>'+_np(d.probabilidade)+'</td>'+
+      '<td>'+_novoProbAeCell(d)+'</td>'+
       '<td>'+_np(pi.sp)+'</td>'+
       '<td>'+_np(pi.final)+'</td>'+
       '<td style="white-space:nowrap">'+_ne(d.quarter)+'</td>'+
