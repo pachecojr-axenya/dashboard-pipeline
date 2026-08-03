@@ -66,6 +66,8 @@ const REWRITES = {
   '/novo-bdr-no-show': '/bdr-no-show.html',
   '/novo-bdr-list-attack': '/bdr-list-attack.html',
   '/novo-bdr-treble': '/bdr-treble.html',
+  '/growth': '/growth.html',
+  '/growth/mkt-budget': '/mkt-budget.html',
   '/novo-board': '/board.html',
   '/novo-48h': '/48h.html',
   '/novo-cs': '/cs.html',

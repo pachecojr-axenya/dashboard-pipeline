@@ -97,5 +97,5 @@ assert(nav.includes("url:'/novo-bdr/treble',file:'bdr-treble.html',sub:'bdr',hea
 assert(premium.includes("href: '/novo-bdr/workload', label: 'Workload | Intraday', health: 'y'"), 'Workload deve estar amarelo no menu interno');
 assert(premium.includes("href: '/novo-bdr/list-attack', label: 'Ataque à Lista', health: 'r'"), 'Ataque à Lista deve estar vermelho no menu interno');
 assert(premium.includes("href: '/novo-bdr/treble', label: 'Treble', health: 'g'"), 'Treble deve estar verde no menu interno');
-bdrPages.forEach((page, index) => assert(page.includes('/premium.js?v=10'), `página BDR ${index} sem cache-buster canônico do menu`));
+bdrPages.forEach((page, index) => assert(page.includes('/premium.js?v=11'), `página BDR ${index} sem cache-buster canônico do menu`));
 console.log('PASS bdr-workload-v2 UI static tests');

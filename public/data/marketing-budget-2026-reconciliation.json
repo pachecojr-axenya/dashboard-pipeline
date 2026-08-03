@@ -1,0 +1,109 @@
+{
+  "metadata": {
+    "title": "Reconciliação do orçamento de Marketing 2026",
+    "version": "annual-reconciliation-v2",
+    "currency": "BRL",
+    "updatedAt": "2026-07-21",
+    "sourceFile": "Marketing_2026 (1).xlsx",
+    "sourceTab": "Planilha1",
+    "sourceExportDate": "2026-07-21",
+    "julySource": "Growth Playground BigQuery /api/marketing-budget (fechamento de julho)",
+    "sourceOfTruth": "Planilha consolidada da Cíntia para realizado jan-jun; fechamento informado/registrado para julho; premissas oficiais de recorrência e envelope estratégico para ago-dez.",
+    "notes": [
+      "Janeiro a junho são valores realizados pela soma das linhas atuais da planilha consolidada.",
+      "Julho é fechamento já informado/registrado.",
+      "Agosto a dezembro são tetos planejados: recorrência comprometida mais envelope estratégico, não gasto realizado.",
+      "LinkedIn Sales Navigator está comprometido em R$ 4.553,76 por mês de agosto a dezembro.",
+      "CONARH: parcelas de R$ 15.750 já estão refletidas em junho e julho; custos de execução nas datas devem consumir o envelope estratégico.",
+      "Jantares e roundtables pequenos devem consumir o envelope estratégico, sem nova recorrência automática."
+    ]
+  },
+  "annualBudget": 1250000.00,
+  "actuals": {
+    "janJunTotal": 885596.10,
+    "july": 48460.91,
+    "throughJuly": 934057.01,
+    "monthly": [
+      { "month": "2026-01", "label": "jan/2026", "status": "Realizado", "amount": 37228.49 },
+      { "month": "2026-02", "label": "fev/2026", "status": "Realizado", "amount": 260204.57 },
+      { "month": "2026-03", "label": "mar/2026", "status": "Realizado", "amount": 199291.76 },
+      { "month": "2026-04", "label": "abr/2026", "status": "Realizado", "amount": 177466.39 },
+      { "month": "2026-05", "label": "mai/2026", "status": "Realizado", "amount": 164133.43 },
+      { "month": "2026-06", "label": "jun/2026", "status": "Realizado", "amount": 47271.46 },
+      { "month": "2026-07", "label": "jul/2026", "status": "Realizado", "amount": 48460.91 }
+    ]
+  },
+  "balanceAtJuly31": 315942.99,
+  "futureRecurring": {
+    "total": 75092.45,
+    "monthly": [
+      { "month": "2026-08", "label": "ago/2026", "amount": 15918.49 },
+      { "month": "2026-09", "label": "set/2026", "amount": 15918.49 },
+      { "month": "2026-10", "label": "out/2026", "amount": 14418.49 },
+      { "month": "2026-11", "label": "nov/2026", "amount": 14418.49 },
+      { "month": "2026-12", "label": "dez/2026", "amount": 14418.49 }
+    ],
+    "baseMonthlyOutDec": 14418.49,
+    "baseItems": [
+      { "name": "Agência de PR", "monthlyAmount": 6950.00 },
+      { "name": "Zapier", "monthlyAmount": 160.00 },
+      { "name": "Google Cloud", "monthlyAmount": 130.00 },
+      { "name": "Vercel", "monthlyAmount": 200.00 },
+      { "name": "Adobe", "monthlyAmount": 200.00 },
+      { "name": "Canva", "monthlyAmount": 195.83 },
+      { "name": "MLabs", "monthlyAmount": 49.90 },
+      { "name": "StreamYard", "monthlyAmount": 1500.00 },
+      { "name": "Apify", "monthlyAmount": 29.00 },
+      { "name": "Depósito", "monthlyAmount": 450.00 },
+      { "name": "LinkedIn Sales Navigator", "monthlyAmount": 4553.76 }
+    ],
+    "temporaryItems": [
+      { "name": "Freela anúncios pagos", "months": ["2026-08", "2026-09"], "monthlyAmount": 1500.00 }
+    ],
+    "excludedItems": [
+      { "name": "Lusha", "futureForecastAmount": 0.00, "reason": "Excluída/zerada do forecast futuro." }
+    ]
+  },
+  "strategicEnvelope": {
+    "freeAfterRecurring": 240850.54,
+    "distribution": [
+      { "month": "2026-08", "label": "ago/2026", "percent": 28, "amount": 67438.15 },
+      { "month": "2026-09", "label": "set/2026", "percent": 28, "amount": 67438.15 },
+      { "month": "2026-10", "label": "out/2026", "percent": 24, "amount": 57804.13 },
+      { "month": "2026-11", "label": "nov/2026", "percent": 15, "amount": 36127.58 },
+      { "month": "2026-12", "label": "dez/2026", "percent": 5, "amount": 12042.53 }
+    ]
+  },
+  "plannedMonthlyCeilings": [
+    { "month": "2026-08", "label": "ago/2026", "recurring": 15918.49, "strategicEnvelope": 67438.15, "ceiling": 83356.64 },
+    { "month": "2026-09", "label": "set/2026", "recurring": 15918.49, "strategicEnvelope": 67438.15, "ceiling": 83356.64 },
+    { "month": "2026-10", "label": "out/2026", "recurring": 14418.49, "strategicEnvelope": 57804.13, "ceiling": 72222.62 },
+    { "month": "2026-11", "label": "nov/2026", "recurring": 14418.49, "strategicEnvelope": 36127.58, "ceiling": 50546.07 },
+    { "month": "2026-12", "label": "dez/2026", "recurring": 14418.49, "strategicEnvelope": 12042.53, "ceiling": 26461.02 }
+  ],
+  "scenarios": {
+    "minimumCommittedYear": 1009149.46,
+    "fullStrategicEnvelopeUse": 1250000.00
+  },
+  "historicalMeceJanJun": {
+    "total": 885596.10,
+    "categories": [
+      { "name": "Eventos", "amount": 478497.56, "percent": 54.0 },
+      { "name": "Mídia Paga", "amount": 74837.81, "percent": 8.5 },
+      { "name": "Agência/SEO", "amount": 60047.15, "percent": 6.8 },
+      { "name": "SaaS/Ferramentas", "amount": 22585.08, "percent": 2.6 },
+      { "name": "Associações/Institucional", "amount": 41404.97, "percent": 4.7 },
+      { "name": "Alimentação/Hospitalidade", "amount": 37747.27, "percent": 4.3 },
+      { "name": "Brindes/Material Promocional", "amount": 53685.17, "percent": 6.1 },
+      { "name": "Serviços de Apoio a Eventos", "amount": 14194.31, "percent": 1.6 },
+      { "name": "Pessoas/Freelancers", "amount": 15079.00, "percent": 1.7 },
+      { "name": "Educação/Consultoria", "amount": 32035.86, "percent": 3.6 },
+      { "name": "Diversos/Operacional", "amount": 55481.92, "percent": 6.3 }
+    ]
+  },
+  "openQuestions": [
+    "Quais ativações de CONARH ainda entrarão no envelope estratégico por data de execução?",
+    "Quais jantares ou roundtables pequenos serão priorizados dentro do teto de alocação mensal?",
+    "Qual parte do envelope estratégico deve ficar contingenciada versus liberada para campanhas?"
+  ]
+}
