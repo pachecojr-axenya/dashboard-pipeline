@@ -1,5 +1,26 @@
 # Dashboard Enhancement Loop — Status Log
 
+### CI | `npm run check` automático a cada push/PR via GitHub Actions (2026-08-02)
+
+> Motivado por auditoria de arquitetura: até aqui, `npm run check`/`npm run predeploy`
+> só rodavam se a pessoa lembrasse de rodar manualmente antes do deploy — dependia
+> 100% de disciplina humana.
+
+- **`.github/workflows/ci.yml`** (novo): roda `npm run check` (todos os `node --check`,
+  `check-semantic.js` e a suíte de testes) em toda branch a cada `push` e em todo
+  `pull_request` contra `main`. Sem segredos/credenciais configuradas — os testes já
+  usam stubs/mocks de BigQuery e HubSpot, então o job passa sem `.env`/secrets, do
+  jeito que já passa localmente numa máquina sem `.env.local`.
+- ⚠ Ressalva conhecida: `scripts/test-bdr-workload-v2.js` (território do Samuel) tem
+  uma checagem que usa a data real do dia (`Date.now()`) e retorna cedo em fim de
+  semana — o CI vai aparecer vermelho aos sábados/domingos por esse motivo, não por
+  regressão real. Fica registrado aqui para não gerar alarme falso; correção de raiz
+  (mockar a data no teste) fica para coordenar com o Samuel, por ser arquivo dele.
+- Não configurei branch protection / "required check" no GitHub — isso exige acesso
+  administrativo ao repositório e decisão explícita do dono (é também o escopo do
+  ADR-009, ainda "proposta"). O que este commit entrega é só a checagem RODANDO e
+  visível a cada push/PR; torná-la bloqueante é um passo separado.
+
 ### ⚠ Incidente | DW `fact_deployment_status` congelado desde 30/07 16:05 BRT (2026-07-31)
 
 > Detectado ao investigar dados desatualizados no painel BDR | Treble.
@@ -1849,7 +1870,7 @@ Recurring every 20min (job `55d3b136`). Purpose: identify and close gaps so the 
 1. **Separador de texto é SEMPRE a barra vertical `|`.** Nunca usar travessão `—`, en-dash `–`, hífen `-` nem middot `·` como separador, em nenhum texto exibido ao usuário (títulos, tooltips, labels, subtítulos, ajuda, fórmulas). Ao criar ou editar qualquer string, já escrever com `|`. O travessão só é permitido como placeholder de "sem dado" (`'—'`), nunca como separador.
 2. **Menu lateral e dropdown de painéis têm fonte única — agora em `public/nav.js`.** (2026-07-13: o bloco `PANELS` que antes era COPIADO em cada HTML foi extraído para `public/nav.js`, que injeta o CSS, monta `#nav-drawer` e `#panel-dd`, marca a página ativa por URL e roda no load. 2026-07-14: merge do main resolvido a favor do `nav.js` — o bloco inline que o main ainda tinha foi descartado e as novidades dele, grupo BDR com Workload|Intraday e Treble, portadas para o `nav.js`.) Cada página só inclui `<script src="/nav.js?v=N"></script>` + tem os mount points `#nav-drawer` e `.panel-switcher` no corpo. **Para mudar QUALQUER item/ordem/ícone/saúde/acordeão do menu, editar APENAS `public/nav.js`** — nunca recriar bloco `PANELS` inline numa página. Acordeão é por grupo (`acc:'<g>'` no cabeçalho, `sub:'<g>'` nos filhos; hoje `fc`=Forecast, `bdr`=BDR) via `toggleNavGroup`. Depende de globais que cada página define (`closeDrawer`, `doLogout`/`logout`, `toggleTheme`). ⚠ Exceção que ainda é segunda fonte: as SUBPÁGINAS BDR (workload, treble, no-show, list-attack) usam `premium.js`/`NAV_MODEL` + `buildCanonicalNav` — mudança de menu precisa ser espelhada lá até a unificação.
 3. **Toda receita vem de duas bases canônicas (fonte única).** Nenhum painel recalcula receita por conta própria; todo gráfico ou KPI de receita, em qualquer tela, consome estas duas séries: (a) **previsão real** = valor mensal do faturamento manual dos deals em Ganho/Implantação que já faturam (`api/faturamento-manual.js`, Upstash KV, fonte única `_fcDealMonthly`, sem cutoff de `createdate`); (b) **previsão probabilizada** = régua de receita por modelo (`revenue-engine.js` → `calcReceitaMes`) ponderada pela probabilidade de etapa puxada ao vivo do funil (C06). Deals duplos (mesmo cliente com fee por vida e corretagem) contam uma vez: menor TCV de 12 meses e prazo de pagamento mais longo. Se dois painéis divergem no número de receita, é bug de fonte, não de arredondamento. **Atualização (2026-07-01):** o gráfico de forecast do CRO Dashboard (N06B | "Forecast Total") foi religado no motor compartilhado `forecast-engine.js` (`ForecastEngine.dealMonthly` + `bdrCohorts`, régua via `calcReceitaMes`, faturamento manual via `faturamento-manual.js`) e bate mês a mês, em Real e Probabilizado, com o painel **Forecast Overall** (o do `forecast-stage.html`). **Atualização (2026-07-01, seguinte):** o **N05** (Cobertura do Pipeline) também foi religado — N06B e N05 agora consomem a MESMA função `_novoForecastSeries()` (série mensal única extraída do N06B), então Receita Real e Probabilizada do N05 batem mês a mês com o N06B por construção (verificado com dados de produção: idênticos nos 24 meses). O N05 ganhou toggle **Cobertura (×) ↔ Receita (R$)**. Com isso a fonte única de receita está completa no dashboard. Código morto restante para limpeza futura: `_novoCoverageTarget` (var órfã) e a família `_novoFc*`/`_novoForecastCalcReceita` antiga ainda usada pelo **modal** do N06B (`_novoOpenN06BForecastModal`), que segue no motor antigo.
-4. **GitHub é a fonte da verdade de deploy.** Regra prática: se não está commitado e pushado, não vai para produção. Antes de deploy: `git fetch origin`, `git status --short --branch`, `git log --oneline --decorate -5`, `npm run check`, `npm run predeploy` e checagem do que está no ar. Deploy só de base limpa/rastreável, uma pessoa por vez com LOCK/UNLOCK no Slack. Runbook: `docs/github-source-of-truth.md`.
+4. **GitHub é a fonte da verdade de deploy.** Regra prática: se não está commitado e pushado, não vai para produção. Antes de deploy: `git fetch origin`, `git status --short --branch`, `git log --oneline --decorate -5`, `npm run check`, `npm run predeploy` e checagem do que está no ar. Deploy só de base limpa/rastreável, uma pessoa por vez com LOCK/UNLOCK no Slack. Runbook: `docs/github-source-of-truth.md`. **(2026-08-02) `npm run check` agora também roda sozinho via GitHub Actions** (`.github/workflows/ci.yml`) a cada push/PR — não substitui rodar localmente antes do deploy, é uma segunda rede de segurança que não depende de lembrar.
 
 ### Trabalho em sessões paralelas — regras de coordenação
 

@@ -43,6 +43,14 @@ npm run predeploy
 
 `npm run predeploy` é a forma canônica; ele chama `node scripts/preflight-deploy.js`.
 
+> **(2026-08-02) `npm run check` também roda sozinho no GitHub Actions**
+> (`.github/workflows/ci.yml`) a cada `push` e em todo `pull_request` contra `main` —
+> não requer segredo/credencial configurada. Isso não substitui rodar localmente
+> antes do deploy (continue rodando os passos abaixo); é uma segunda checagem que
+> não depende de lembrar. Ainda não é "required check" bloqueante no GitHub (exige
+> decisão do dono + acesso admin ao repo, ver ADR-009 em
+> `docs/dashboard-2.0/decisoes-adr.md`).
+
 Deploy só se:
 
 - working tree limpa;
