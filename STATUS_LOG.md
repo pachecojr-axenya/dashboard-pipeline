@@ -1,6 +1,19 @@
 # Dashboard Enhancement Loop — Status Log
 
-### Fix (não deployado) | Implantação conta como Ganho no `/forecast-delta` (2026-08-02)
+### 🚀 DEPLOY DE PRODUÇÃO | Implantação conta como Ganho no `/forecast-delta` (2026-08-02)
+
+> Autorização explícita do dono ("Sim", em resposta a "quer que eu siga com o
+> commit e deploy?"). Commit `46bb4c0` (branch `pacheco/implantacao-ganho-delta-2026-08-02`,
+> fast-forward em `main`, `== origin/main`; preflight PASS). Deployment
+> `dpl_GVmG62jEAoc3Rztc4mFn81W4KbA1` (READY, production), alias
+> `project-bsmfu.vercel.app`. Pós-deploy confirmado: 10 rotas HTML 200
+> (`/`, `/novo`, `/novo-board`, `/novo-ae`, `/novo-bdr`, `/novo-48h`, `/novo-cs`,
+> `/novo-cotacao`, `/forecast`, `/forecast-delta`); `/api/history` 401 sem sessão
+> (auth ativa); confirmado no HTML servido de produção: label "Ganho/Implantação"
+> presente na barra Fechado, no filtro de Movimentação e nos textos de ajuda do
+> `/forecast-delta`. Detalhe técnico do fix na entrada abaixo (mesma sessão).
+
+### Fix | Implantação conta como Ganho no `/forecast-delta` (2026-08-02)
 
 > Pedido direto do dono: "Nós consideramos a etapa de Implantação como Ganho. Ajuste no Delta."
 > Antes deste fix, o painel já tinha o conceito em outro lugar — `CLOSED_STAGES =
