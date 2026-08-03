@@ -4,7 +4,7 @@
 
 > Migração da página `marketing-budget-2026.html` (Growth Playground → pipeline
 > dashboard) como nova aba **Growth** com a primeira sub-aba **MKT Budget** em
-> `/growth/mkt-budget`, + export CSV de todas as linhas. PR `#…` (preenchido no merge).
+> `/growth/mkt-budget`, + export CSV de todas as linhas. PR #29 (`70688c0` + `c7fb382`).
 
 - **Novas rotas** (`vercel.json` + `scripts/local-server.js`): `/growth` → `growth.html`
   (hub da aba) e `/growth/mkt-budget` → `mkt-budget.html`.
