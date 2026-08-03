@@ -1,5 +1,30 @@
 # Dashboard Enhancement Loop — Status Log
 
+### 🚀 FIX DEPLOYADO | UI quebrada em /growth e /growth/mkt-budget (2026-08-03)
+
+> Reportado pelo dono após o deploy da aba: ao clicar em MKT Budget, "a UI quebrou,
+> foi pra baixo, deixando no topo espaço em branco". Causa raiz: o `premium.css`
+> **só pinta a pele** do drawer (comentário interno: "cada view traz uma cópia
+> inline própria destas classes") — as subpáginas BDR carregam o bloco chrome
+> inline; as páginas novas da aba Growth não tinham. Resultado: `.nav-drawer`
+> renderizava como bloco estático no fluxo (280×412px) empurrando topbar+conteúdo
+> ~412px para baixo; `.topbar` sem `sticky`; `.nav-backdrop` sem `fixed`.
+> Fix (PR #30, merge `d47dd6c`, base `3b8d834`): bloco chrome canônico inline em
+> `growth.html` e `mkt-budget.html` — drawer fixed, backdrop fixed, topbar sticky
+> + `.scrolled`, `#page` transition, `body.nav-docked #page`, `.content-blur`,
+> `.hdr-btn`/`.hdr-actions`, `.health-dot` (com vars `--green/--yellow/--red`
+> adicionadas ao `:root`), `.subtitle`, media queries 820/720; `h1` global escopado
+> para `.hero h1` (título do topbar agora 1.5rem, não 58px).
+> Preflight PASS (`main` == `origin/main` `d47dd6c`). Deployment
+> `dpl_BZ99SGkQZwaRkHCKmYSVrh7hkBis` (READY, production, 16s), alias
+> `dashboard-axenya-mc7e6mgz2-axenya-f1a041f6.vercel.app`.
+> Pós-deploy confirmado (Playwright, produção): nas 3 rotas (`/growth`,
+> `/growth/mkt-budget`, `/novo-bdr/treble`) drawer `fixed` h=900, topbar `sticky`
+> y=0, wrap y=88/98, backdrop `fixed` — antes: drawer static h=412, topbar y=412,
+> wrap y=524. Interações: drawer abre/fecha, `nav-docked` desloca page 280px, tema
+> light alterna. `npm run check` exit 0; harness render+CSV PASS (522 linhas, CSV
+> 523/28.504 bytes — funcionalidade intacta, fix puramente CSS).
+
 ### 🚀 DEPLOY DE PRODUÇÃO | Aba Growth | MKT Budget (2026-08-03)
 
 > Merge do PR #29 (rebase em `main` após conflito com o design system de 08-02 —
