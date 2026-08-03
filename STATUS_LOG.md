@@ -1,5 +1,39 @@
 # Dashboard Enhancement Loop — Status Log
 
+### ⚠ Fix pontual (fora de coordenação prévia) | `scripts/test-bdr-workload-v2.js` bloqueava deploy em fim de semana (2026-08-02)
+
+> **Contexto:** o deploy de produção desta data falhou no build do Vercel
+> (`npm run build` → `npm run check`) porque `scripts/test-bdr-workload-v2.js:228`
+> falha estruturalmente aos sábados/domingos — **não é fragilidade nova, já estava
+> documentada em todas as entradas desta sessão**, mas até hoje nunca tinha
+> bloqueado um deploy de verdade (deploys anteriores caíram em dias úteis).
+> **Este arquivo é território do Samuel** (testa `api/bdr-workload-compare.js`,
+> `api/bdr-*`) — decisão consciente do dono de aplicar o fix agora, sem
+> coordenação prévia, para destravar o deploy, com o combinado de avisar o
+> Samuel depois. **Samuel: se discordar do ajuste, é uma linha só, reverter é
+> trivial — avise e a gente ajusta.**
+
+- **Causa raiz confirmada por leitura direta do código** (não suposição): em
+  `api/bdr-workload-compare.js`, `applyLiveFallback` tem
+  `if (requested.businessDays && !isBusiness(today)) return {...}` — ou seja,
+  em dia não-útil a função retorna ANTES de chegar no trecho que setaria
+  `quality.blockedByFilters = true`. A asserção da linha 228
+  (`assert.equal(blockedFallback.quality.blockedByFilters, true)`) portanto
+  **não pode passar** aos fins de semana com o código de produção atual — não é
+  condição de corrida, é estrutural.
+- **Fix aplicado**: a mesma guarda `if (cmp.isBusiness(cmp.todayBrt()))` que as
+  asserções vizinhas do MESMO teste já usam (linhas 217, 219, 222-224, todas do
+  mesmo bloco) foi aplicada também na linha 228, que parecia ter ficado de fora
+  por esquecimento — não é um padrão novo, é consistência com o que o próprio
+  arquivo já fazia ao lado.
+- **Escopo do fix**: só o arquivo de teste. Nenhuma linha de
+  `api/bdr-workload-compare.js`/`lib/bdr-team.js`/qualquer código de produção do
+  Samuel foi tocada. De segunda a sexta, a asserção roda exatamente como antes —
+  zero perda de cobertura nos dias em que o teste cumpre seu propósito original.
+- **Validado**: `node scripts/test-bdr-workload-v2.js` isolado PASS; `npm run check`
+  completo PASS sem interrupção (primeira vez nesta sessão inteira que a cadeia
+  `&&` completa sem precisar rodar o resto manualmente).
+
 ### CI | `npm run check` automático a cada push/PR via GitHub Actions (2026-08-02)
 
 > Motivado por auditoria de arquitetura: até aqui, `npm run check`/`npm run predeploy`

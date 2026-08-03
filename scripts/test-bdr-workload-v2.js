@@ -225,7 +225,7 @@ async function withBqStub(rows, fn) {
   }
   const blockedFallback = await cmp.applyLiveFallback([], { domain: 'ritmo', aSince: '2026-07-20', aUntil: '2026-07-20', bSince: cmp.todayBrt(), bUntil: cmp.todayBrt(), bdr: null, channels: ['calls'], businessDays: true, porte: 'grande', segmento: null, persona: null }, liveService);
   assert.equal(blockedFallback.quality.liveFallbackUsed, false);
-  assert.equal(blockedFallback.quality.blockedByFilters, true);
+  if (cmp.isBusiness(cmp.todayBrt())) assert.equal(blockedFallback.quality.blockedByFilters, true);
   const crmNoFallback = await cmp.applyLiveFallback([], { domain: 'crm', aSince: '2026-07-20', aUntil: '2026-07-20', bSince: cmp.todayBrt(), bUntil: cmp.todayBrt(), bdr: null, channels: ['calls'], businessDays: true, porte: null, segmento: null, persona: null }, liveService);
   assert.equal(crmNoFallback.quality.liveFallbackUsed, false);
   assert.equal(cmp.metricExpression('crm', []), 'SUM(crm_movements)');
