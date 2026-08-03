@@ -348,6 +348,13 @@
     }
 
     // Exporta TODAS as linhas de jan-jun em CSV (ignora filtros e paginação).
+    // csvCell: neutraliza CSV injection (células com prefixo =, +, -, @, tab, CR)
+    // e escapa aspas/separador — BOM + ';' + decimais pt-BR para Excel BR.
+    function csvCell(raw) {
+      let s = String(raw ?? '');
+      if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+      return /[";\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+    }
     function exportCsv() {
       const rows = [['Linha fonte', 'Mês', 'Origem', 'Tipo original', 'Categoria MECE', 'Valor (R$)']];
       lineState.items.forEach(item => {
@@ -356,10 +363,7 @@
           Number(item.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
         ]);
       });
-      const csv = '\uFEFF' + rows.map(row => row.map(cell => {
-        const s = String(cell ?? '');
-        return /[";\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
-      }).join(';')).join('\n');
+      const csv = '\uFEFF' + rows.map(row => row.map(csvCell).join(';')).join('\n');
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
