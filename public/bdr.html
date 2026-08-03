@@ -252,14 +252,16 @@ function novoToggleInfo(){_novoShowInfo=!_novoShowInfo;document.body.classList.t
 
 // Fichas por gráfico/KPI (padrão do CRO Dashboard): key = mesmo key passado ao _infoBtn.
 // Clique no "i" abre a ficha do gráfico; o "?" do header abre todas.
-// Time de BDRs = os 13 nomes do drawer de Configurações (window.BDR_LIST), com grafias do
+// Time de BDRs = os nomes do drawer de Configurações (window.BDR_LIST), com grafias do
+// HubSpot normalizadas. REGRA DE VIGÊNCIA (2026-08-03): _isTeamBdr aplica _bdrIsActive
+// pelo mês de originação — Anderson, Cintia, Thauan e Yokyko contam só até 2026-07.
 // HubSpot mapeadas (BDR_HS_ALIAS). Filtro de período do painel (AxFilter) = data de ENTRADA
 // em Reunião Agendada (data_reuniao_agendada), salvo indicação na ficha.
 var BDR_HELP_CHARTS=[
   {key:'kpi-orig-deals',title:'Deals Originados no Período | BDRs (R01)',
-    desc:'Nº de deals originados na JANELA DO FILTRO de período apenas pelo time de BDRs (os 13 nomes do drawer de Configurações). Sem filtro ativo, usa o mês corrente. Originado = data de ENTRADA na etapa Reunião Agendada (pipeline Vendas), não a data de criação. Deals sem essa data não contam. Segue o filtro de período. Clique no card para ver os deals.',
+    desc:'Nº de deals originados na JANELA DO FILTRO de período apenas pelo time de BDRs ATIVO (13 BDRs até 2026-07; a partir de 2026-08 Anderson, Cintia, Thauan e Yokyko saem — vigência pelo mês de originação). Sem filtro ativo, usa o mês corrente. Originado = data de ENTRADA na etapa Reunião Agendada (pipeline Vendas), não a data de criação. Deals sem essa data não contam. Segue o filtro de período. Clique no card para ver os deals.',
     formula:'R01 = COUNT(deals com sdr no time E mês de data_reuniao_agendada dentro da janela do filtro; sem filtro = mês corrente)',
-    fields:[['sdr','Origem BDR; comparado (com tolerância de acento/grafia) aos 13 nomes do drawer.'],['hs_v2_date_entered_1144746905','Data de entrada em Reunião Agendada (exposta como data_reuniao_agendada). Define o mês da originação.']]},
+    fields:[['sdr','Origem BDR; comparado (com tolerância de acento/grafia) ao roster do drawer, com vigência temporal: Anderson, Cintia, Thauan e Yokyko saem a partir de 2026-08.'],['hs_v2_date_entered_1144746905','Data de entrada em Reunião Agendada (exposta como data_reuniao_agendada). Define o mês da originação e da vigência.']]},
   {key:'kpi-orig-colabs',title:'Colaboradores Originados no Período | BDRs (R02)',
     desc:'Soma do campo colaboradores dos MESMOS deals do R01: originados na janela do filtro (sem filtro = mês corrente) pelo time de BDRs. Deals sem o campo contam 0. Segue o filtro de período.',
     formula:'R02 = Σ quantidade_de_colaboradores dos deals do R01',
@@ -269,8 +271,8 @@ var BDR_HELP_CHARTS=[
     formula:'R03 = COUNT(deals do time com dealstage = Reunião Agendada E data_reuniao_agendada ≤ hoje − 30 dias)',
     fields:[['dealstage','Estágio atual = Reunião Agendada (Vendas).'],['hs_v2_date_entered_1144746905','Data de entrada na etapa; hoje − entrada > 30 dias.'],['sdr','Origem BDR (time do drawer).']]},
   {key:'origin-bdr',title:'Originação por BDR ou por Canal (R12)',
-    desc:'Deals (ou vidas, ou colaboradores) originados por cada BDR do TIME (13 do drawer; rótulo usa o nome canônico) OU por CANAL (origem__originacao_ do deal). Originação = entrada em Reunião Agendada; o filtro de período usa essa data. No modo Por BDR × Deals, a cor da barra indica o atingimento da META do BDR no período (verde ≥100% | amarelo ≥85% | laranja ≥70% | vermelho abaixo); no modo Por Canal não há cor de meta. REGRA EXCEPCIONAL DE JULHO/2026: só conta no realizado da meta o deal com colaboradores entre 30 e 2.000, inclusive. Esse teto de 2.000 vale somente para julho de 2026; nos demais meses permanece o piso de colaboradores ≥ 30, sem teto. A barra continua mostrando todos os deals, enquanto o percentual e a cor usam apenas os elegíveis. Metas: botão "Metas" abre a tabela mês × BDR; a meta da janela é a soma das metas mensais, com fallback para a meta padrão. Clique numa barra para ver os deals.',
-    formula:'meta(BDR, janela) = Σ meta_mensal[mês][BDR] | realizado_meta(BDR) = COUNT(deals com colaboradores >= 30) | exceção 2026-07: colaboradores >= 30 E <= 2000',
+    desc:'Deals (ou vidas, ou colaboradores) originados por cada BDR do TIME ATIVO (13 do drawer até 2026-07; Anderson, Cintia, Thauan e Yokyko saem a partir de 2026-08 — vigência pelo mês de originação; rótulo usa o nome canônico) OU por CANAL (origem__originacao_ do deal). Originação = entrada em Reunião Agendada; o filtro de período usa essa data. No modo Por BDR × Deals, a cor da barra indica o atingimento da META do BDR no período (verde ≥100% | amarelo ≥85% | laranja ≥70% | vermelho abaixo); no modo Por Canal não há cor de meta. REGRA EXCEPCIONAL DE JULHO/2026: só conta no realizado da meta o deal com colaboradores entre 30 e 2.000, inclusive. Esse teto de 2.000 vale somente para julho de 2026; nos demais meses permanece o piso de colaboradores ≥ 30, sem teto. A barra continua mostrando todos os deals, enquanto o percentual e a cor usam apenas os elegíveis. REGRA DE META (2026-08-03): a partir de 2026-08 a meta de TODO BDR ativo é fixa em 16 reuniões/mês (saídos não têm meta); antes disso vale a meta mensal cadastrada (fallback meta padrão). Metas: botão "Metas" abre a tabela mês × BDR; a meta da janela é a soma das metas mensais dos meses (meses do período ativo usam a meta fixa de 16). Clique numa barra para ver os deals.',
+    formula:'meta(BDR, janela) = Σ meta_mensal[mês][BDR] | REGRA 2026-08-03: meses ≥ 2026-08 usam meta fixa 16 (ativos) / 0 (saídos) | realizado_meta(BDR) = COUNT(deals com colaboradores >= 30) | exceção 2026-07: colaboradores >= 30 E <= 2000',
     fields:[['sdr','Define o BDR; grafias do HubSpot são mapeadas ao nome canônico.'],['quantidade_de_colaboradores','Elegibilidade da meta: mínimo de 30 em todos os meses; em julho/2026 também há teto inclusivo de 2.000. O teto não altera outros meses nem a soma exibida no modo Colaboradores.'],['origem__originacao_','Dimensão Por Canal. "(sem origem)" reúne deals sem preenchimento.'],['hs_v2_date_entered_1144746905','Data da originação; também define em qual mês a regra de elegibilidade é aplicada.'],['vidas','Somado apenas no modo Vidas; não define elegibilidade da meta.']]},
   {key:'metas-attainment',title:'Atingimento de Meta | Time de BDRs (R23)',
     desc:'Percentual da meta em deals atingida pelo time em Mês atual, Mês passado e Últimos 3 meses. Realizado = deals originados pela entrada em Reunião Agendada. Elegibilidade normal: colaboradores preenchido e ≥ 30. Exceção temporária: em julho de 2026, contam apenas deals entre 30 e 2.000 colaboradores, inclusive. O teto de 2.000 não se aplica a nenhum outro mês. Meta = soma das metas mensais dos BDRs; mês sem meta cadastrada usa a meta padrão. Clique num card para abrir o realizado e a meta por BDR.',
@@ -283,7 +285,7 @@ var BDR_HELP_CHARTS=[
     desc:'Geração mensal do time de BDRs, empilhada com TODOS os BDRs/grupos (sem colapso em "Outros", mesmo desenho do Weekly R13): últimos 12 meses pela ENTRADA em Reunião Agendada — AEs não entram. Alterna a métrica (Deals | Vidas | Colaboradores) e a DIMENSÃO do empilhamento: Por BDR, Por Origem (origem__originacao_ do deal) ou Por Porte. Rótulo no topo = total do mês. Clique num segmento para ver os deals.',
     fields:[['sdr','Define o BDR (time do drawer); sdr vazio (origem AE) fica de fora.'],['origem__originacao_','Dimensão "Por Origem" (fonte do deal).'],['hs_v2_date_entered_1144746905','Mês da originação (data_reuniao_agendada) | dimensão do filtro de período.'],['vidas','Peso no modo Vidas.'],['quantidade_de_colaboradores','Peso no modo Colaboradores | faixa da dimensão Por Porte.']]},
   {key:'handoff',title:'BDR → AE Handoff Matrix (R15)',
-    desc:'Quantos deals cada BDR passou para cada AE. Linhas = AEs (executivos; excluídos Anderson, Gabriel e membros do time de BDRs que aparecem como owner), colunas = os 13 BDRs do time; célula = nº de deals do par, cor por volume. Considera deals que entraram em Reunião Agendada no período (o filtro usa essa data), com BDR e AE preenchidos. Clique numa célula para ver os deals do par.',
+    desc:'Quantos deals cada BDR passou para cada AE. Linhas = AEs (executivos; excluídos Anderson, Gabriel e membros do time de BDRs que aparecem como owner), colunas = os BDRs do time ATIVO no período (13 até 2026-07; Anderson, Cintia, Thauan e Yokyko saem a partir de 2026-08 — vigência pelo mês de originação); célula = nº de deals do par, cor por volume. Considera deals que entraram em Reunião Agendada no período (o filtro usa essa data), com BDR e AE preenchidos. Clique numa célula para ver os deals do par.',
     fields:[['sdr','BDR da coluna (time do drawer, nome canônico).'],['hubspot_owner_id','AE da linha (responsável atual do deal).'],['hs_v2_date_entered_1144746905','Janela do período (data_reuniao_agendada).']]},
   {key:'net-flow',title:'Fluxo de Pipeline | Deals (R07)',
     desc:'Entradas vs saídas por mês, APENAS o time de BDRs (drawer de Configurações): entrada = deals que entraram em Reunião Agendada no mês; saída = ganhos e perdidos (por close_date); linha Net = entrada − saídas. Ganho = etapa Ganho (+ Implantação conforme o toggle global "Implantação = Ganho"). Rótulos visíveis em cada segmento.',
@@ -302,7 +304,7 @@ var BDR_HELP_CHARTS=[
     desc:'Deals por faixa de porte (< 50 / 50–200 / 200–500 / 500+), APENAS originados pelo time de BDRs. O toggle define o campo da faixa: Colaboradores usa quantidade_de_colaboradores; Vidas usa vidas (nunca misturam). Filtro de período pela entrada em Reunião Agendada.',
     fields:[['quantidade_de_colaboradores','Faixa no modo Colaboradores (padrão).'],['vidas','Faixa no modo Vidas.'],['sdr','Origem BDR (time do drawer).'],['hs_v2_date_entered_1144746905','Janela do período.']]},
   {key:'leads-funnel',title:'Funil de Lead Status (R16)',
-    desc:'Fotografia do funil de CONTATOS do time de BDRs no fim do período selecionado: cada contato conta no status que tinha naquela data, reconstruído a partir do histórico completo de hs_lead_status (propertiesWithHistory da API). Sem filtro = status atual. Contato do time = hubspot_owner_id do CONTATO é um dos 13 BDRs do drawer (o campo custom bdr de contato está vazio no portal). Percentual = share do total com status. Clique numa barra para ver os contatos.',
+    desc:'Fotografia do funil de CONTATOS do time de BDRs no fim do período selecionado: cada contato conta no status que tinha naquela data, reconstruído a partir do histórico completo de hs_lead_status (propertiesWithHistory da API). Sem filtro = status atual. Contato do time = hubspot_owner_id do CONTATO é um BDR do drawer, com vigência pelo mês de criação do contato (Anderson, Cintia, Thauan e Yokyko saem a partir de 2026-08; o campo custom bdr de contato está vazio no portal). Percentual = share do total com status. Clique numa barra para ver os contatos.',
     formula:'R16[status] = COUNT(contatos cujo último evento de hs_lead_status ≤ fim da janela é status)',
     fields:[['hs_lead_status','Status do funil (histórico completo via propertiesWithHistory; timestamps em UTC).'],['hubspot_owner_id','Atribuição ao BDR (owner do contato).']]},
   {key:'leads-contact-rate',title:'Taxa de Contato por Coorte Semanal (R17)',
@@ -355,7 +357,7 @@ function _bdrHelpSection(c){
 function _bdrOpenHelp(headerTitle,charts){
   var detailRows=BDR_HELP_DETAIL.map(function(f){return _bdrHelpRow(f[0],f[1]);}).join('');
   var html=
-    '<p style="font-size:.78rem;color:var(--muted);margin:0 0 1.1rem">Fonte: <code style="color:var(--text2)">GET /api/forecast-table?includeLost=true</code> (deals dos pipelines Vendas + Bid). Time de BDRs = os 13 nomes do drawer de Configurações. Filtro de período do painel = data de entrada em Reunião Agendada.</p>'+
+    '<p style="font-size:.78rem;color:var(--muted);margin:0 0 1.1rem">Fonte: <code style="color:var(--text2)">GET /api/forecast-table?includeLost=true</code> (deals dos pipelines Vendas + Bid). Time de BDRs = roster do drawer de Configurações com vigência por mês de originação (13 BDRs até 2026-07; Anderson, Cintia, Thauan e Yokyko saem a partir de 2026-08). Filtro de período do painel = data de entrada em Reunião Agendada.</p>'+
     charts.map(_bdrHelpSection).join('')+
     '<div style="margin-top:.5rem;padding-top:1rem;border-top:1px solid var(--border)">'+
       '<h3 style="font-size:.92rem;color:var(--text);margin:0 0 .25rem">Tabela de detalhe (comum a todos)</h3>'+
@@ -445,7 +447,56 @@ function _teamBdrByName(s){
   return null;
 }
 function _teamBdrName(d){ return _teamBdrByName(_bdrName(d)); }
-function _isTeamBdr(d){ return !!_teamBdrName(d); }
+function _isTeamBdr(d){
+  var n=_teamBdrName(d);
+  if(!n) return false;
+  return _bdrIsActive(n,_oym(d));
+}
+
+// ── REGRA DE VIGÊNCIA DO TIME + META (decisão do dono, 2026-08-03) ──────────────
+// A partir de 2026-08, Anderson Souza, Cintia Rodrigues, Thauan Pontes e
+// Yokyko Muramoto deixam o time ATIVO de BDRs desta página (BDR Performance).
+//   • A vigência é determinada pelo MÊS DE ORIGINAÇÃO do deal (entrada em
+//     Reunião Agendada, campo data_reuniao_agendada) — e, na seção de cadência,
+//     pelo mês de CRIAÇÃO do contato. Antes do corte o histórico continua
+//     contando normalmente (13 BDRs); a partir do corte os saídos não pertencem
+//     mais ao time (some das abas, totais, handoff e metas).
+//   • META: a partir do corte, TODO BDR ativo tem meta fixa de 16 reuniões/mês
+//     (reunião = deal com entrada em Reunião Agendada — a régua de elegibilidade
+//     de colaboradores ≥ 30 continua valendo no realizado). Metas mensais
+//     cadastradas continuam valendo para meses ANTERIORES ao corte; para o
+//     período ativo a constante BDR_GOAL_ACTIVE vence (16 para todos, sem
+//     diferenciação por BDR). BDRs saídos não têm meta no período ativo.
+//   • Implementação: condicional por mês (não remoção definitiva do roster) —
+//     filtros e metas consultam _bdrIsActive/_bdrGoalForMonth, que decidem pela
+//     data. Nenhuma tabela/constante do roster global foi alterada; outras
+//     páginas (workload, no-show, treble) seguem com o roster completo.
+var BDR_TEAM_EFFECTIVE_FROM='2026-08';   // YYYY-MM do corte (mês atual na decisão)
+var BDR_TEAM_EXITED=['Anderson Souza','Cintia Rodrigues','Thauan Pontes','Yokyko Muramoto'];
+var BDR_GOAL_ACTIVE=16;                  // meta padrão (reuniões/mês) p/ BDR ativo no corte+
+var _bdrExitedSet={}; BDR_TEAM_EXITED.forEach(function(n){_bdrExitedSet[n]=1;});
+function _bdrIsExited(name){ return !!_bdrExitedSet[name]; }
+function _bdrCurrentYm(){ var n=new Date(); return n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0'); }
+function _bdrNextYm(ym){ var y=parseInt(ym.substring(0,4),10), m=parseInt(ym.substring(5,7),10); m++; if(m>12){m=1;y++;} return y+'-'+String(m).padStart(2,'0'); }
+// BDR é ATIVO no mês ym (YYYY-MM)? ym null/ausente (deal/contato sem data) = assume
+// o mês corrente — regra ativa. Saídos contam só até o mês anterior ao corte.
+// Formato inválido (não YYYY-MM) também cai no mês corrente para nunca classificar errado.
+function _bdrIsActive(name, ym){
+  if(!_bdrIsExited(name)) return true;
+  if(!ym || !/^\d{4}-\d{2}$/.test(ym)) ym=_bdrCurrentYm();
+  return ym < BDR_TEAM_EFFECTIVE_FROM;
+}
+// Meta efetiva de um BDR em UM mês (YYYY-MM). Corte+ = fixa (16 p/ ativo, 0 p/
+// saído); antes do corte = meta mensal cadastrada, fallback na flat legada.
+function _bdrGoalForMonth(name, ym){
+  if(ym && ym>=BDR_TEAM_EFFECTIVE_FROM){
+    if(_bdrIsExited(name)) return 0;
+    return BDR_GOAL_ACTIVE;
+  }
+  var mm=window.BDR_METAS_MONTHLY||{};
+  var v=mm[ym]&&mm[ym][name]; if(v!=null) return v;
+  return _bdrFlatGoal(name);
+}
 // Elegibilidade da meta em deals (R12/R23): colaboradores >= 30 em todos os meses.
 // Exceção temporária solicitada em 2026-07-24: deals originados em julho/2026 também
 // precisam ter colaboradores <= 2.000. O teto não retroage nem avança para outros meses.
@@ -586,17 +637,30 @@ function _bdrFlatGoal(name){
 // Meta efetiva de um BDR para a janela atual: Σ metas mensais dos meses da janela
 // (fallback: meta flat legada por mês). Sem filtro: Σ das metas MENSAIS cadastradas
 // (sem fallback — all-time não tem janela p/ aplicar a meta flat); 0/null = sem cor.
+// REGRA DE VIGÊNCIA (2026-08-03): cada mês da janela resolve em _bdrGoalForMonth —
+// a partir de 2026-08 a meta é FIXA (16 p/ BDRs ativos, 0 p/ saídos), independente
+// de cadastro; antes do corte vale a meta mensal cadastrada com fallback flat.
 function _bdrGoalFor(name){
-  var mm=window.BDR_METAS_MONTHLY||{}, flat=_bdrFlatGoal(name);
+  var flat=_bdrFlatGoal(name);
   var months=_bdrFilterMonths();
   if(months===null){
+    // Sem filtro: soma metas mensais cadastradas (somente meses ANTERIORES ao corte —
+    // meses >= corte são cobertos pela regra fixa do loop abaixo, evitando dupla contagem)
+    // + garante a regra fixa do período ativo (meses >= corte até hoje) mesmo sem KV.
+    var mm=window.BDR_METAS_MONTHLY||{};
     var tot=0, any=false;
-    Object.keys(mm).forEach(function(ym){ var v=mm[ym]&&mm[ym][name]; if(v!=null){tot+=v;any=true;} });
+    Object.keys(mm).forEach(function(ym){ if(ym>=BDR_TEAM_EFFECTIVE_FROM) return; var v=mm[ym]&&mm[ym][name]; if(v!=null){tot+=v;any=true;} });
+    var ym=BDR_TEAM_EFFECTIVE_FROM, now=_bdrCurrentYm(), guard=0;
+    while(ym<=now && guard++<60){
+      var v2=_bdrGoalForMonth(name, ym);
+      if(v2>0){ tot+=v2; any=true; }
+      ym=_bdrNextYm(ym);
+    }
     if(any) return tot;
     return flat; // sem nenhuma meta mensal cadastrada: comportamento legado (meta flat)
   }
   var sum=0, has=false;
-  months.forEach(function(ym){ var v=mm[ym]&&mm[ym][name]; if(v==null) v=flat; if(v!=null){sum+=v;has=true;} });
+  months.forEach(function(ym){ var v=_bdrGoalForMonth(name, ym); if(v!=null){sum+=v;has=true;} });
   return has?sum:null;
 }
 // ── Atingimento de meta em DEALS por janela FIXA (independe do filtro do painel) ──
@@ -609,12 +673,16 @@ function _lastNMonths(n){
 }
 // Meta do time (Σ por BDR) para um conjunto explícito de meses: para cada mês×BDR usa a
 // meta mensal cadastrada; na falta, cai na meta flat/padrão do BDR. Só BDRs do drawer.
+// REGRA DE VIGÊNCIA (2026-08-03): por BDR×mês resolve em _bdrGoalForMonth — a partir de
+// 2026-08 BDRs saídos têm meta 0 (somem da soma) e ativos têm meta fixa 16.
 function _teamGoalForMonths(months){
-  var mm=window.BDR_METAS_MONTHLY||{}, list=window.BDR_LIST||[];
+  var list=window.BDR_LIST||[];
   var sum=0, has=false;
   list.forEach(function(b){
-    var flat=_bdrFlatGoal(b.name);
-    months.forEach(function(ym){ var v=mm[ym]&&mm[ym][b.name]; if(v==null) v=flat; if(v!=null){sum+=v;has=true;} });
+    months.forEach(function(ym){
+      var v=_bdrGoalForMonth(b.name, ym);
+      if(v!=null){ sum+=v; if(v>0) has=true; }
+    });
   });
   return has?sum:null;
 }
@@ -642,7 +710,7 @@ function bdrOpenMetasModal(){
     '<button class="hdr-btn" onclick="bdrMetasYear(-1)" aria-label="Ano anterior">‹</button>'+
     '<strong style="font-size:1rem">'+y+'</strong>'+
     '<button class="hdr-btn" onclick="bdrMetasYear(1)" aria-label="Próximo ano">›</button>'+
-    '<span style="font-size:.72rem;color:var(--text2)">Metas de deals originados por mês. Vazio = usa a meta padrão do BDR ('+(NOVO_LANG==='en'?'Settings drawer':'drawer de Configurações')+') nos períodos filtrados. Salvar publica para TODOS os usuários.</span>'+
+    '<span style="font-size:.72rem;color:var(--text2)">Metas de deals originados por mês. Vazio = usa a meta padrão do BDR ('+(NOVO_LANG==='en'?'Settings drawer':'drawer de Configurações')+') nos períodos filtrados. REGRA DE VIGÊNCIA (2026-08-03): a partir de '+BDR_TEAM_EFFECTIVE_FROM+' a meta é FIXA em '+BDR_GOAL_ACTIVE+' reuniões/mês para todos os BDRs ativos (células não editáveis); BDRs que saíram do time ficam fora (—). Salvar publica para TODOS os usuários.</span>'+
   '</div>'+
   '<div style="overflow-x:auto"><table class="lb" style="font-size:.74rem;width:100%"><thead><tr><th style="text-align:left;position:sticky;left:0;background:var(--card2)">BDR</th>'+
     yms.map(function(ym,i){return '<th style="text-align:center">'+mAbbr[i]+'</th>';}).join('')+'</tr></thead><tbody>';
@@ -650,6 +718,10 @@ function bdrOpenMetasModal(){
     h+='<tr><td style="text-align:left;white-space:nowrap;font-weight:600;position:sticky;left:0;background:var(--card)">'+_ne(b.name)+'</td>';
     yms.forEach(function(ym){
       var v=mm[ym]&&mm[ym][b.name];
+      if(ym>=BDR_TEAM_EFFECTIVE_FROM){ // REGRA DE VIGÊNCIA (2026-08-03): meta fixa para ativos; fora do time = —
+        h+='<td style="text-align:center;padding:.15rem;color:'+(_bdrIsExited(b.name)?'var(--muted)':'var(--teal)')+';font-weight:700">'+(_bdrIsExited(b.name)?'—':BDR_GOAL_ACTIVE)+'</td>';
+        return;
+      }
       h+='<td style="text-align:center;padding:.15rem"><input type="number" min="0" step="1" data-bdr="'+_ne(b.name)+'" data-ym="'+ym+'" value="'+(v!=null?v:'')+'" placeholder="'+(b.goal!=null?b.goal:'')+'" style="width:52px;text-align:center;background:var(--card2);border:1px solid var(--border);border-radius:5px;color:var(--text);padding:.2rem .1rem;font-size:.74rem"></td>';
     });
     h+='</tr>';
@@ -668,6 +740,7 @@ function bdrMetasSave(){
   for(var m=1;m<=12;m++) monthly[y+'-'+String(m).padStart(2,'0')]={};
   var bad=null;
   inputs.forEach(function(inp){
+    if(inp.disabled) return; // células fixas pela REGRA DE VIGÊNCIA não são editáveis
     var raw=inp.value.trim(); if(raw==='') return;
     var v=parseInt(raw,10);
     if(isNaN(v)||v<0){ bad=inp.getAttribute('data-bdr')+' ('+inp.getAttribute('data-ym')+')'; return; }
@@ -703,7 +776,11 @@ function bdrLoadLeads(force){
     .then(function(d){ _bdrLeadsLoading=false; if(!d||!d.success) throw new Error((d&&d.error)||'resposta inválida'); _bdrLeads=d; if(_novoDeals) novoRender(); })
     .catch(function(e){ _bdrLeadsLoading=false; _bdrLeadsErr=String(e&&e.message||e); if(_novoDeals) novoRender(); });
 }
-function _lContacts(){ return (_bdrLeads&&_bdrLeads.contacts)||[]; }
+// REGRA DE VIGÊNCIA (2026-08-03): o contato pertence ao time se o BDR dele está ATIVO
+// no MÊS DE CRIAÇÃO do contato (criado YYYY-MM; ausente => mês corrente = regra ativa).
+// Contatos de BDRs saídos (Anderson, Cintia, Thauan, Yokyko) só contam se criados antes
+// de BDR_TEAM_EFFECTIVE_FROM. Filtro na origem: TODOS os charts de contatos herdam.
+function _lContacts(){ var list=(_bdrLeads&&_bdrLeads.contacts)||[]; var now=_bdrCurrentYm(); return list.filter(function(c){ var ym=(c.criado||'').substring(0,7)||now; return c.bdr&&_bdrIsActive(c.bdr,ym); }); }
 // Janela do filtro como limites ISO completos (UTC) | null = sem limite.
 function _lWin(){ var s=_filterState(); return { start:s.start?(s.start+'T00:00:00.000Z'):null, end:s.end?(s.end+'T23:59:59.999Z'):null }; }
 // Status do contato NA DATA (último evento ≤ end); end null = status atual.
@@ -949,9 +1026,9 @@ function novoRender(){
   var cutStr=_cut.getFullYear()+'-'+String(_cut.getMonth()+1).padStart(2,'0')+'-'+String(_cut.getDate()).padStart(2,'0');
   var raStale=deals.filter(function(d){ return _isTeamBdr(d) && d.stage==='Reunião Agendada' && _origDate(d) && _origDate(d)<=cutStr; });
   var _winSuf=_kpiWin.filtered?'no período':'no mês corrente';
-  var tipOrigDeals='Nº de deals originados '+_winSuf+' ('+_kpiWin.label+') APENAS pelo time de BDRs (os 13 nomes do drawer de Configurações; grafias do HubSpot mapeadas para o drawer). Originado = data de ENTRADA na etapa Reunião Agendada, não a data de criação. Deals sem essa data não contam. Segue o filtro de período (sem filtro = mês corrente). Clique para ver os deals.';
+  var tipOrigDeals='Nº de deals originados '+_winSuf+' ('+_kpiWin.label+') APENAS pelo time de BDRs ATIVO (13 BDRs até 2026-07; a partir de 2026-08 Anderson, Cintia, Thauan e Yokyko saem — vigência pelo mês de originação; grafias do HubSpot mapeadas para o drawer). Originado = data de ENTRADA na etapa Reunião Agendada, não a data de criação. Deals sem essa data não contam. Segue o filtro de período (sem filtro = mês corrente). Clique para ver os deals.';
   var tipOrigColabs='Soma do campo colaboradores (quantidade_de_colaboradores no HubSpot) dos MESMOS deals do KPI R01: originados '+_winSuf+' ('+_kpiWin.label+') pelo time de BDRs (drawer de Configurações). Deals sem o campo contam 0. Segue o filtro de período (sem filtro = mês corrente). Clique para ver os deals.';
-  var tipRaStale='Deals cujo estágio ATUAL é Reunião Agendada e que ENTRARAM na etapa há mais de 30 dias — reuniões marcadas paradas sem avanço. APENAS deals originados pelo time de BDRs (os 13 nomes do drawer de Configurações). Deals em Reunião Agendada sem a data de entrada registrada ficam de fora. Snapshot vivo | não segue o filtro de período. Clique para ver os deals.';
+  var tipRaStale='Deals cujo estágio ATUAL é Reunião Agendada e que ENTRARAM na etapa há mais de 30 dias — reuniões marcadas paradas sem avanço. APENAS deals originados pelo time de BDRs ATIVO (13 BDRs até 2026-07; Anderson, Cintia, Thauan e Yokyko saem a partir de 2026-08 — vigência pelo mês de originação). Deals em Reunião Agendada sem a data de entrada registrada ficam de fora. Snapshot vivo | não segue o filtro de período. Clique para ver os deals.';
 
   var kpi=function(lbl,val,sub,col,key,kind,tip){ return '<div class="kpi-card'+(kind?' kpi-click':'')+'" '+(kind?'onclick="bdrKpiOpen(\''+kind+'\')"':'')+'><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.35rem"><div class="kpi-label">'+lbl+'</div>'+(tip?_infoBtn(tip,key):_codeTag(key))+'</div><div class="kpi-value" style="color:'+(col||'var(--text)')+'">'+val+'</div><div class="kpi-sub">'+sub+'</div></div>'; };
   var c=function(title,tip,id,h,tabs,noEmoji){ return '<div class="novo-card"><div class="novo-card-header"><h3>'+(noEmoji?'':'🟡 ')+title+'</h3>'+_infoBtn(tip,id)+(tabs||'')+'</div><canvas id="chart-bdr-'+id+'" style="max-height:'+(h||340)+'px"></canvas></div>'; };
@@ -966,12 +1043,12 @@ function novoRender(){
     '</div>'+
     '<div class="novo-cards">'+
       '<div class="section-hdr"><h2>Originação</h2></div>'+
-      cWide('Originação por BDR'+_cntSpan(createdTeam),'Quantos deals (ou vidas, ou colaboradores) foram originados por cada BDR do TIME (os 13 nomes do drawer de Configurações; grafias do HubSpot mapeadas para o drawer) OU por CANAL (origem__originacao_ do deal: inbound, outbound, evento etc., conforme preenchido no HubSpot). Originação = data de ENTRADA em Reunião Agendada (não createdate); o filtro de período usa essa data. No modo Por BDR × Deals, a cor da barra indica o atingimento da META do BDR no período (verde ≥100% · amarelo ≥85% · laranja ≥70% · vermelho abaixo) — REGRA: só conta para a meta o deal com colaboradores preenchido e ≥ 30 (a barra em si mostra o total de deals); no modo Por Canal a meta não se aplica (metas são por BDR, não por canal). Metas: botão "Metas" no card abre a tabela mês × BDR (edição GLOBAL, persistida no servidor); com filtro ativo, a meta comparada = SOMA das metas mensais dos meses da janela (meses sem meta mensal usam a meta padrão do BDR); sem filtro, a soma de todas as metas mensais cadastradas. Clique numa barra para ver os deals.','origin-bdr',320,_subTabs('bdr-origin-tabs',_bdrOriginMode,[{mode:'deals',label:'Deals',fn:'bdrSwitchOrigin'},{mode:'vidas',label:'Vidas',fn:'bdrSwitchOrigin'},{mode:'colaboradores',label:'Colaboradores',fn:'bdrSwitchOrigin'}])+'<span style="width:.15rem"></span>'+_subTabs('bdr-origin-dim-tabs',_bdrOriginDim,[{mode:'bdr',label:'Por BDR',fn:'bdrSwitchOriginDim'},{mode:'canal',label:'Por Canal',fn:'bdrSwitchOriginDim'}])+'<button onclick="bdrOpenMetasModal()" style="background:var(--card2);color:var(--teal);border:1px solid var(--border);border-radius:8px;padding:.3rem .7rem;font-size:.74rem;font-weight:600;cursor:pointer;margin-left:.4rem" title="Editar metas mensais por BDR (global)">Metas</button>',true)+
+      cWide('Originação por BDR'+_cntSpan(createdTeam),'Quantos deals (ou vidas, ou colaboradores) foram originados por cada BDR do TIME ATIVO (13 do drawer até 2026-07; a partir de 2026-08 Anderson, Cintia, Thauan e Yokyko saem — vigência pelo mês de originação; grafias do HubSpot mapeadas para o drawer) OU por CANAL (origem__originacao_ do deal: inbound, outbound, evento etc., conforme preenchido no HubSpot). Originação = data de ENTRADA em Reunião Agendada (não createdate); o filtro de período usa essa data. No modo Por BDR × Deals, a cor da barra indica o atingimento da META do BDR no período (verde ≥100% · amarelo ≥85% · laranja ≥70% · vermelho abaixo) — REGRA: só conta para a meta o deal com colaboradores preenchido e ≥ 30 (a barra em si mostra o total de deals); no modo Por Canal a meta não se aplica (metas são por BDR, não por canal). REGRA DE META (2026-08-03): a partir de 2026-08 a meta de TODO BDR ativo é fixa em 16 reuniões/mês (saídos não têm meta); antes disso vale a meta mensal cadastrada (fallback meta padrão). Metas: botão "Metas" no card abre a tabela mês × BDR (edição GLOBAL, persistida no servidor); com filtro ativo, a meta comparada = SOMA das metas mensais dos meses da janela (meses do período ativo usam a meta fixa de 16); sem filtro, a soma de todas as metas mensais cadastradas + regra fixa do período ativo. Clique numa barra para ver os deals.','origin-bdr',320,_subTabs('bdr-origin-tabs',_bdrOriginMode,[{mode:'deals',label:'Deals',fn:'bdrSwitchOrigin'},{mode:'vidas',label:'Vidas',fn:'bdrSwitchOrigin'},{mode:'colaboradores',label:'Colaboradores',fn:'bdrSwitchOrigin'}])+'<span style="width:.15rem"></span>'+_subTabs('bdr-origin-dim-tabs',_bdrOriginDim,[{mode:'bdr',label:'Por BDR',fn:'bdrSwitchOriginDim'},{mode:'canal',label:'Por Canal',fn:'bdrSwitchOriginDim'}])+'<button onclick="bdrOpenMetasModal()" style="background:var(--card2);color:var(--teal);border:1px solid var(--border);border-radius:8px;padding:.3rem .7rem;font-size:.74rem;font-weight:600;cursor:pointer;margin-left:.4rem" title="Editar metas mensais por BDR (global)">Metas</button>',true)+
       '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header"><h3>Atingimento de Meta | Time de BDRs</h3>'+_infoBtn('% da meta em DEALS atingida pelo time de BDRs em 3 janelas fixas (independem do filtro de período do painel): Mês atual, Mês passado e Últimos 3 meses. Realizado = deals do time originados (entrada em Reunião Agendada) nos meses da janela, CONTANDO SÓ deals com colaboradores preenchido e ≥ 30. Meta = Σ das metas mensais cadastradas por BDR nesses meses (fallback: meta padrão do BDR quando o mês não tem meta cadastrada). Clique num card para ver o detalhe por BDR do período.','metas-attainment')+'</div><div id="bdr-metas-attainment" style="margin-top:.5rem"></div></div>'+
       cWide('Weekly Origination'+_cntSpan(createdTeam),'Geração semanal APENAS do time de BDRs (drawer de Configurações): barras empilhadas com TODOS os BDRs/grupos (sem colapso), últimas 13 semanas pela data de ENTRADA em Reunião Agendada (não createdate); o filtro de período usa essa data. Alterna a métrica (Deals | Vidas | Colaboradores) e a DIMENSÃO do empilhamento: por BDR, por Origem do deal (origem__originacao_) ou por Porte.','weekly-origin',320,_subTabs('bdr-weekly-tabs',_bdrWeeklyMode,[{mode:'deals',label:'Deals',fn:'bdrSwitchWeekly'},{mode:'vidas',label:'Vidas',fn:'bdrSwitchWeekly'},{mode:'colaboradores',label:'Colaboradores',fn:'bdrSwitchWeekly'}])+'<span style="width:.15rem"></span>'+_DIM_TABS('bdr-weekly-dim-tabs',_bdrWeeklyDim,'bdrSwitchWeeklyDim'),true)+
       cWide('Monthly Origination'+_cntSpan(createdTeam),'Geração mensal APENAS do time de BDRs (drawer de Configurações), empilhada com TODOS os BDRs/grupos (sem colapso, mesmo desenho do Weekly): últimos 12 meses pela data de ENTRADA em Reunião Agendada (não createdate); o filtro de período usa essa data. AEs não entram. Alterna a métrica (Deals | Vidas | Colaboradores) e a DIMENSÃO do empilhamento: por BDR, por Origem do deal (origem__originacao_) ou por Porte. Clique num segmento para ver os deals.','leads-origin',300,_subTabs('bdr-leads-tabs',_bdrLeadsMode,[{mode:'deals',label:'Deals',fn:'bdrSwitchLeads'},{mode:'vidas',label:'Vidas',fn:'bdrSwitchLeads'},{mode:'colaboradores',label:'Colaboradores',fn:'bdrSwitchLeads'}])+'<span style="width:.15rem"></span>'+_DIM_TABS('bdr-leads-dim-tabs',_bdrMonthlyDim,'bdrSwitchMonthlyDim'),true)+
       '<div class="section-hdr"><h2>Handoff BDR → AE</h2></div>'+
-      '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header"><h3>BDR → AE Handoff Matrix</h3>'+_infoBtn('Cruza a quantidade de deals passados de cada BDR para cada AE. Linhas = AEs (executivos; Anderson e Gabriel excluídos a pedido), colunas = BDRs do TIME (drawer de Configurações); célula = nº de deals, cor por volume. Considera deals que entraram em Reunião Agendada no período (o filtro usa essa data), com BDR e AE preenchidos. Clique numa célula para ver os deals do par.','handoff')+'</div><div id="bdr-handoff-matrix" style="overflow-x:auto;margin-top:.5rem"></div></div>'+
+      '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header"><h3>BDR → AE Handoff Matrix</h3>'+_infoBtn('Cruza a quantidade de deals passados de cada BDR para cada AE. Linhas = AEs (executivos; Anderson e Gabriel excluídos a pedido), colunas = BDRs do TIME ATIVO no período (13 até 2026-07; Anderson, Cintia, Thauan e Yokyko saem a partir de 2026-08 — vigência pelo mês de originação); célula = nº de deals, cor por volume. Considera deals que entraram em Reunião Agendada no período (o filtro usa essa data), com BDR e AE preenchidos. Clique numa célula para ver os deals do par.','handoff')+'</div><div id="bdr-handoff-matrix" style="overflow-x:auto;margin-top:.5rem"></div></div>'+
       '<div class="section-hdr"><h2>Fluxo de Pipeline</h2></div>'+
       cWide(t('bdr_net_flow')+_cntSpan(createdBdr),t('bdr_net_flow_tip'),'net-flow',300,null,true)+
       cWide(t('bdr_net_vidas')+_cntSpan(createdBdr),t('bdr_net_vidas_tip'),'net-vidas',300,null,true)+
@@ -1016,12 +1093,12 @@ function _bdrLeadsSectionHtml(){
   var meta='<div style="grid-column:1/-1;font-size:.74rem;color:var(--text2);margin:-.4rem 0 .1rem">'+_ni(all.length)+' contatos com lead status | '+_ni(_bdrLeads.semStatus)+' do time ainda sem status (fora do funil) | '+_ni(cohortN)+' entraram na cadência no período | fonte: histórico de hs_lead_status (HubSpot)'+(_bdrLeads.stale?' | ⚠ DADOS EM CACHE (HubSpot indisponível no momento; atualize em alguns minutos)':(_bdrLeads.cached?' | cache':''))+'</div>';
   var cW=function(title,tip,id,h,tabs){ return '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header"><h3>'+title+'</h3>'+_infoBtn(tip,id)+(tabs||'')+'</div><canvas id="chart-bdr-'+id+'" style="max-height:'+(h||320)+'px"></canvas></div>'; };
   var cN=function(title,tip,id,h){ return '<div class="novo-card"><div class="novo-card-header"><h3>'+title+'</h3>'+_infoBtn(tip,id)+'</div><canvas id="chart-bdr-'+id+'" style="max-height:'+(h||320)+'px"></canvas></div>'; };
-  var tipFunnel='Fotografia do funil de contatos do time no FIM do período selecionado (sem filtro = agora): cada contato conta no status que tinha naquela data, reconstruído do histórico de hs_lead_status. Percentual = share do total com status. Clique numa barra para ver os contatos.';
+  var tipFunnel='Fotografia do funil de contatos do time ATIVO no FIM do período selecionado (sem filtro = agora): cada contato conta no status que tinha naquela data, reconstruído do histórico de hs_lead_status. REGRA DE VIGÊNCIA (2026-08-03): o contato pertence ao time se o BDR dele está ativo no mês de CRIAÇÃO do contato — Anderson, Cintia, Thauan e Yokyko saem a partir de 2026-08 (contatos deles criados antes do corte continuam contando). Percentual = share do total com status. Clique numa barra para ver os contatos.';
   var tipRate='Coorte = contatos cujo PRIMEIRO evento de lead status caiu na semana. Barras = tamanho da coorte; linhas = % que atingiu Tentativa de contato ou além (taxa de contato) e % que atingiu Conectado ou além (taxa de conexão), até hoje. Por coorte, não por toque — evita inflar a taxa. Clique numa barra para ver a coorte da semana.';
   var tipTable='Cadência no período por dimensão (toggle): coorte trabalhada, quantos atingiram Tentativa+, Conectado+, desqualificados e as taxas. Porte usa colaboradores do contato (fallback: da empresa associada); Origem usa axenya_origem_canonica (fallback: origem). Clique numa linha para abrir os contatos.';
   var tipDisq='Eventos de Desqualificado (UNQUALIFIED) e Bad timing (BAD_TIMING) por dia, pelo timestamp do histórico. O portal NÃO tem campo de motivo de desqualificação de contato: o recorte possível é o tipo + BDR/origem no clique (ver ficha). Últimos 45 dias da janela.';
-  var tipDaily='Contatos DISTINTOS com alguma mudança de lead status no dia, empilhado por BDR (todos os BDRs, sem colapso) — ritmo operacional da cadência. Últimos 30 dias da janela. Clique num dia para ver os contatos.';
-  var tipPen='Média de contatos trabalhados por empresa, por BDR (coorte do período; só contatos com empresa associada) — mede multi-threading nas contas. Clique numa barra para ver os contatos do BDR.';
+  var tipDaily='Contatos DISTINTOS com alguma mudança de lead status no dia, empilhado por BDR (todos os BDRs do time ATIVO no mês de criação do contato, sem colapso) — ritmo operacional da cadência. Últimos 30 dias da janela. Clique num dia para ver os contatos.';
+  var tipPen='Média de contatos trabalhados por empresa, por BDR (coorte do período; só contatos com empresa associada) — mede multi-threading nas contas. REGRA DE VIGÊNCIA (2026-08-03): BDRs que saíram do time a partir de 2026-08 só aparecem com contatos criados antes do corte. Clique numa barra para ver os contatos do BDR.';
   var tipWeek='Contatos com mudança de lead status nos últimos 7 dias e onde cada um está agora. Independe do filtro de período. "Explorar com filtros" abre o modal com chips de BDR, status, porte e origem.';
   return hdr+meta+
     cW('Funil de Lead Status'+_lCnt(inFunnel),tipFunnel,'leads-funnel',360)+
@@ -1049,7 +1126,8 @@ function bdrKpiOpen(kind){
 }
 
 function buildBdrOrigin(){
-  // R12: APENAS o time de BDRs (13 nomes do drawer, via _isTeamBdr); rótulo = nome canônico.
+  // R12: APENAS o time de BDRs ATIVO (via _isTeamBdr, com vigência por mês de
+  // originação); rótulo = nome canônico.
   var th=_novoTheme(), created=_origDeals().filter(_isTeamBdr);
   var colab=_bdrOriginMode==='colaboradores';
   var vidas=_bdrOriginMode==='vidas';
@@ -1174,18 +1252,23 @@ function buildBdrMetasAttainment(){
 }
 var _bdrAttMemo=[];
 // Drilldown: detalhe por BDR (realizado × meta × %) do card clicado.
+// REGRA DE VIGÊNCIA (2026-08-03): BDRs que saíram do time a partir de 2026-08 só
+// aparecem neste detalhe quando TODOS os meses da janela são anteriores ao corte;
+// meta por BDR×mês vem de _bdrGoalForMonth (16 fixo p/ ativos no corte+).
 function bdrOpenAttainmentModal(label){
   var att=_bdrAttMemo.filter(function(a){return a.label===label;})[0]; if(!att)return;
-  var months=att.months, mm=window.BDR_METAS_MONTHLY||{}, list=window.BDR_LIST||[];
+  var months=att.months, list=window.BDR_LIST||[];
   var set={}; months.forEach(function(m){set[m]=1;});
   var deals=_rawDeals().filter(function(d){ if(!_isTeamBdr(d))return false; if(!_bdrCountsForGoal(d))return false; var ym=_oym(d); return !!ym && set[ym]===1; });
   var byBdr={}; deals.forEach(function(d){ var b=_teamBdrName(d); byBdr[b]=(byBdr[b]||0)+1; });
   var rows=list.map(function(b){
-    var flat=_bdrFlatGoal(b.name), sum=0, has=false;
-    months.forEach(function(ym){ var v=mm[ym]&&mm[ym][b.name]; if(v==null) v=flat; if(v!=null){sum+=v;has=true;} });
+    var sum=0, has=false;
+    months.forEach(function(ym){ var v=_bdrGoalForMonth(b.name, ym); if(v!=null){sum+=v; if(v>0)has=true;} });
+    // BDR que saiu antes do período (meta 0 em todos os meses da janela) some do detalhe.
+    if(!has && !byBdr[b.name]) return null;
     var real=byBdr[b.name]||0, goal=has?sum:null, pct=(goal!=null&&goal>0)?(real/goal):null;
     return {bdr:b.name,real:real,goal:goal,pct:pct};
-  }).sort(function(a,b){ if(a.pct==null&&b.pct==null) return b.real-a.real; if(a.pct==null) return 1; if(b.pct==null) return -1; return b.pct-a.pct; });
+  }).filter(Boolean).sort(function(a,b){ if(a.pct==null&&b.pct==null) return b.real-a.real; if(a.pct==null) return 1; if(b.pct==null) return -1; return b.pct-a.pct; });
   var html='<table class="lb" style="font-size:.78rem;width:100%"><thead><tr><th style="text-align:left">BDR</th><th>Realizado</th><th>Meta</th><th>%</th></tr></thead><tbody>'+
     rows.map(function(r){
       var pctTxt=r.pct==null?'—':Math.round(r.pct*100)+'%';

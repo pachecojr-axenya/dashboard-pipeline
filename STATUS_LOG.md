@@ -1,5 +1,35 @@
 # Dashboard Enhancement Loop — Status Log
 
+### 🚀 DEPLOY DE PRODUÇÃO | BDR Performance | Vigência do time + meta fixa 16 (2026-08-03)
+
+> Decisão do dono: a partir de **2026-08**, Anderson Souza, Cintia Rodrigues,
+> Thauan Pontes e Yokyko Muramoto deixam o time ATIVO de BDRs da página
+> `/novo-bdr` (BDR Performance); **meta fixa de 16 reuniões/mês para TODOS os
+> BDRs ativos**. Implementado como **condicional por mês** (nada de remoção do
+> roster global): filtros e metas consultam `_bdrIsActive`/`_bdrGoalForMonth`,
+> que decidem pela data.
+>
+> **Regras de vigência** (documentadas em `public/bdr.html`):
+> - **Deals**: vigência pelo mês de ORIGINAÇÃO (`data_reuniao_agendada`) — saídos
+>   contam até 2026-07; a partir do corte não pertencem ao time (somem de R01–R03,
+>   R12–R15, R23, totais e handoff).
+> - **Cadência (contatos)**: vigência pelo mês de CRIAÇÃO do contato — aplicada no
+>   front (`_lContacts`) e espelhada na API (`/api/bdr-leads`: payload `contacts`
+>   filtrado server-side + `semStatus` com `createdate < 2026-08-01`).
+> - **Metas**: `BDR_GOAL_ACTIVE = 16` vence a partir do corte (ativos); saídos têm
+>   meta 0. Metas mensais cadastradas continuam valendo para meses anteriores.
+>   Modal "Metas" mostra células fixas (16/—) não editáveis a partir do corte.
+> - **Fronteira**: `ym` ausente/inválido ⇒ mês corrente (regra ativa); comparação
+>   `YYYY-MM` com guarda de formato.
+>
+> Arquivos: `public/bdr.html` (bloco de regra + `_isTeamBdr`/`_bdrGoalFor`/
+> `_teamGoalForMonths`/`bdrOpenAttainmentModal`/modal de metas/`_lContacts` +
+> fichas e tooltips) e `api/bdr-leads.js` (payload + `countTeamNoStatus`).
+> Validação: `node --check` API+JS inline OK; unit tests das regras 16/16 + 9/9;
+> reviewer 2 rodadas (REPROVADO → APROVADO 9/10; issues: `IN []` na Search API e
+> alinhamento API×front corrigidos); página `/novo-bdr` 200 local.
+> Preflight: a preencher pós-commit. Deployment: a preencher.
+
 ### 🚀 FIX DEPLOYADO | UI quebrada em /growth e /growth/mkt-budget (2026-08-03)
 
 > Reportado pelo dono após o deploy da aba: ao clicar em MKT Budget, "a UI quebrou,

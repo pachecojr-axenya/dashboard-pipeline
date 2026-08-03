@@ -28,6 +28,14 @@ const CONTACT_PROPS = [
   'origem', 'axenya_origem_canonica', 'numero_de_colaboradores', 'associatedcompanyid',
 ];
 
+// ── REGRA DE VIGÊNCIA DO TIME (decisão do dono, 2026-08-03; espelha public/bdr.html) ──
+// A partir de 2026-08, Anderson Souza, Cintia Rodrigues, Thauan Pontes e Yokyko
+// Muramoto deixam o time ATIVO de BDRs. Na cadência, a vigência é pelo MÊS DE CRIAÇÃO
+// do contato: contatos dos BDRs saídos criados ANTES do corte continuam contando;
+// criados a partir do corte saem do total (teamIdsAtivos + createdate < corte).
+const BDR_TEAM_EFFECTIVE_FROM = '2026-08';
+const BDR_TEAM_EXITED = ['Anderson Souza', 'Cintia Rodrigues', 'Thauan Pontes', 'Yokyko Muramoto'];
+
 // Cache em memória por instância serverless (mesmo padrão do fetchOwners).
 let _cache = { at: 0, data: null };
 const CACHE_TTL = 10 * 60 * 1000;
@@ -87,14 +95,37 @@ async function searchTeamContacts(token, teamIds) {
   return all;
 }
 
-async function countTeamNoStatus(token, teamIds) {
-  const resp = await hubspotPost(token, '/crm/v3/objects/contacts/search', {
-    filterGroups: [{
+// Contagem de contatos do time SEM lead status. REGRA DE VIGÊNCIA (2026-08-03):
+// BDRs que saíram do time (BDR_TEAM_EXITED) só contam se o contato foi criado ANTES
+// de BDR_TEAM_EFFECTIVE_FROM; ativos contam sempre. Dois filterGroups (OR); grupos
+// com lista vazia são omitidos (Search API rejeita IN com values: []).
+async function countTeamNoStatus(token, idToBdr) {
+  const ativos = [];
+  const saidos = [];
+  Object.keys(idToBdr).forEach(id => {
+    (BDR_TEAM_EXITED.includes(idToBdr[id]) ? saidos : ativos).push(id);
+  });
+  const groups = [];
+  if (ativos.length) {
+    groups.push({
       filters: [
-        { propertyName: 'hubspot_owner_id', operator: 'IN', values: teamIds },
+        { propertyName: 'hubspot_owner_id', operator: 'IN', values: ativos },
         { propertyName: 'hs_lead_status', operator: 'NOT_HAS_PROPERTY' },
       ],
-    }],
+    });
+  }
+  if (saidos.length) {
+    groups.push({
+      filters: [
+        { propertyName: 'hubspot_owner_id', operator: 'IN', values: saidos },
+        { propertyName: 'hs_lead_status', operator: 'NOT_HAS_PROPERTY' },
+        { propertyName: 'createdate', operator: 'LT', value: `${BDR_TEAM_EFFECTIVE_FROM}-01T00:00:00Z` },
+      ],
+    });
+  }
+  if (!groups.length) return 0;
+  const resp = await hubspotPost(token, '/crm/v3/objects/contacts/search', {
+    filterGroups: groups,
     limit: 1,
   });
   return resp.total || 0;
@@ -149,7 +180,7 @@ async function buildPayload(token) {
 
   const [contactsRaw, semStatus] = await Promise.all([
     searchTeamContacts(token, teamIds),
-    countTeamNoStatus(token, teamIds),
+    countTeamNoStatus(token, idToBdr),
   ]);
 
   const hist = await fetchStatusHistory(token, contactsRaw.map(c => c.id));
@@ -181,13 +212,22 @@ async function buildPayload(token) {
     };
   });
 
+  // REGRA DE VIGÊNCIA (2026-08-03): contatos de BDRs que saíram do time só entram
+  // no payload se criados ANTES do corte (mês de criação < BDR_TEAM_EFFECTIVE_FROM).
+  // O front aplica o mesmo filtro em _lContacts (defense-in-depth).
+  const nowYm = new Date().toISOString().substring(0, 7);
+  const activeContacts = contacts.filter(c => {
+    if (!c.bdr || !BDR_TEAM_EXITED.includes(c.bdr)) return true;
+    return (c.criado || nowYm).substring(0, 7) < BDR_TEAM_EFFECTIVE_FROM;
+  });
+
   return {
     success: true,
     generatedAt: new Date().toISOString(),
     team: BDR_TEAM,
     semStatus,
-    total: contacts.length,
-    contacts,
+    total: activeContacts.length,
+    contacts: activeContacts,
   };
 }
 
