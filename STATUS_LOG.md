@@ -1,5 +1,46 @@
 # Dashboard Enhancement Loop — Status Log
 
+### 🚀 DEPLOY DE PRODUÇÃO | Premissas de forecast (POC/menor-prob/Fechado) + Design System Tier 1-2 (2026-08-02)
+
+> Autorização explícita do dono ("podemos fazer o commit e o deploy"). Deploy de tudo
+> acumulado na sessão: mudanças de premissa de forecast pedidas na reunião de 31/07
+> + as duas primeiras camadas (Tier 1 e Tier 2) da unificação de design system.
+
+- **Commit deployado:** `b497b3a` (`== origin/main`; preflight PASS). Inclui, desde o
+  último deploy (`ef937a2`): diretriz de CI (GitHub Actions), skill `axenya-forecast`
+  documentada no STATUS_LOG do lado do dashboard, POC volta a gerar receita (ARR e
+  forecast de caixa), probabilidade final = menor(etapa, AE) — validada com a CFO —,
+  waterfall com barra "Fechado", fix do bug do Perdido aparecendo como "avanço" no
+  drill (causa raiz: `sort()` instável em `lib/snapshot-history.js`), card D09 (ARR
+  do Q3 por semana vs. meta), hover de histórico de probabilidade do AE, `forecast-delta.html`
+  religado ao `premium.css`/`premium.js`, módulos novos `help-drawer.js`/`ax-ui.js`,
+  `settings-modal.js` ligado em cs/cotação, cache-buster do `revenue-engine.js`
+  sincronizado entre `forecast.html`/`forecast-stage.html`, e o fix do teste de dia
+  útil (entrada acima) que destravou este próprio deploy.
+- **Deployment:** `dpl_CHRzqg6ht9PUWbcpy6JXmdfUXhhp` (`dashboard-axenya-2y5rzdwiu`,
+  READY, production), alias `project-bsmfu.vercel.app`.
+- **Pós-deploy confirmado:** 11 páginas 200 (`/`, `/novo`, `/novo-board`, `/novo-ae`,
+  `/novo-bdr`, `/novo-48h`, `/novo-cs`, `/novo-cotacao`, `/forecast`,
+  `/forecast-overall`, `/forecast-delta`); 5 APIs 401 sem sessão (auth ativa,
+  incluindo o endpoint novo `/api/deal-prob-history`); confirmado no HTML servido de
+  produção: barra "Fechado" + D09 + `ax-ui.js`/`premium.css` em `/forecast-delta`,
+  `help-drawer.js`/`ax-ui.js` em `/novo`, `settings-modal.js` em `/novo-cs` e
+  `/novo-cotacao`, `revenue-engine.js?v=2` em `/forecast-overall`.
+- **Tentativa de deploy anterior nesta mesma sessão falhou** (build error no Vercel,
+  `npm run build` → `npm run check` interrompido por
+  `scripts/test-bdr-workload-v2.js:228`, fragilidade de dia útil já documentada) —
+  resolvida pelo fix registrado na entrada logo abaixo, sem tocar código de produção
+  do Samuel.
+- **Pendências conhecidas, não resolvidas neste deploy** (documentadas para
+  acompanhamento): nenhuma validação visual em navegador com dado real foi feita
+  (só via `local-server.js`/grep, por falta de credencial nos worktrees); análise do
+  "R$2M do Q3" pedida pela Cíntia ainda não tem lastro deal-a-deal confirmado
+  (`_analise-r2m-q3-2026-08-02.md`, fora deste repo); código morto com fórmula antiga
+  de probabilidade em `shared-charts.js`/`ae.html` (`sharedProbFinal`/`_aeProbAdj`,
+  confirmado sem uso); paleta de health-dot semanticamente errada em
+  `bdr-workload.html`; família BDR (5 arquivos do Samuel) segue sem migração de
+  design system, aguardando coordenação com ele.
+
 ### ⚠ Fix pontual (fora de coordenação prévia) | `scripts/test-bdr-workload-v2.js` bloqueava deploy em fim de semana (2026-08-02)
 
 > **Contexto:** o deploy de produção desta data falhou no build do Vercel
