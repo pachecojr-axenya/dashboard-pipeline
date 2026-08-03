@@ -1,10 +1,26 @@
 # Dashboard Enhancement Loop — Status Log
 
+### 🚀 DEPLOY DE PRODUÇÃO | Aba Growth | MKT Budget (2026-08-03)
+
+> Merge do PR #29 (rebase em `main` após conflito com o design system de 08-02 —
+> `main` avançou 35 arquivos; resolvido: união dos 2 lados em `package.json` e
+> `STATUS_LOG.md`, nada perdido). Preflight PASS (`main` == `origin/main` `8fac337`,
+> projeto canônico `prj_Wlrmz...`). Deployment `dpl_8dvSkpRBtjQS9ML4ts1VJsFdjnnG`
+> (READY, production, 13s), alias `dashboard-axenya-k9y2okyyi-axenya-f1a041f6.vercel.app`.
+> Pós-deploy confirmado: `/growth` e `/growth/mkt-budget` 200; os 2 JSONs de dados 200
+> (line-items com 522 itens, primeiro `{"sourceRow":4,"month":"2026-01","origin":"CC",
+> ...}` idêntico ao local); `premium.js?v=11` servido; `/growth2` → 404 (rewrites com
+> escopo fechado); harness funcional em produção: render "522 lançamentos |
+> R$ 885.596,10" + CSV 523 linhas/28.504 bytes com exemplo `4;2026-01;CC;Sem tipo;
+> Brindes/Material Promocional;2.550,00`; nav PASS em `/growth/mkt-budget`, `/growth`,
+> `/novo-bdr/treble` e `/novo`. Nada além das rotas novas foi tocado no deploy.
+
 ### 🚀 NOVA ABA | Growth | MKT Budget (2026-08-03)
 
 > Migração da página `marketing-budget-2026.html` (Growth Playground → pipeline
 > dashboard) como nova aba **Growth** com a primeira sub-aba **MKT Budget** em
-> `/growth/mkt-budget`, + export CSV de todas as linhas. PR #29 (`70688c0` + `c7fb382`).
+> `/growth/mkt-budget`, + export CSV de todas as linhas. PR #29 (merge commit `8fac337`,
+> base: `387a14a` + `947c86a` + `0cfa9a6` após rebase).
 
 - **Novas rotas** (`vercel.json` + `scripts/local-server.js`): `/growth` → `growth.html`
   (hub da aba) e `/growth/mkt-budget` → `mkt-budget.html`.
