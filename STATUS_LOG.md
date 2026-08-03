@@ -28,7 +28,11 @@
 > Validação: `node --check` API+JS inline OK; unit tests das regras 16/16 + 9/9;
 > reviewer 2 rodadas (REPROVADO → APROVADO 9/10; issues: `IN []` na Search API e
 > alinhamento API×front corrigidos); página `/novo-bdr` 200 local.
-> Preflight: a preencher pós-commit. Deployment: a preencher.
+> Preflight PASS (`main` == `origin/main` `9cf434f`, projeto canônico
+> `prj_Wlrmz...`). Deployment `dpl_<hash>` (READY, production, 17s), alias
+> `dashboard-axenya-9c8peej67-axenya-f1a041f6.vercel.app`. Pós-deploy confirmado
+> (produção): `/novo-bdr`, `/novo` e `/forecast` 200; regra
+> `BDR_TEAM_EFFECTIVE_FROM` presente no HTML servido.
 
 ### 🚀 FIX DEPLOYADO | UI quebrada em /growth e /growth/mkt-budget (2026-08-03)
 
