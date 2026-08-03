@@ -125,6 +125,29 @@ MEASURES.forEach(m => {
   check('Σ Δ(etapa) == Δtotal com deal fechado no período | ' + m, near(sumDeltaWon, snapWonB.totals[m] - snapWonA.totals[m]));
 });
 
+// ── Parte 1d | Implantação conta como Ganho no Delta (2026-08-02) ────────────
+// Decisão do dono: um deal que vira "Implantação" entre A e B deve ser tratado
+// exatamente como "foi para Ganho" — mesma barra Fechado, mesmo tipo 'ganho' no
+// drill (_classifySaiu usa CLOSED_STAGES = {Implantação, Ganho}, não só 'Ganho').
+console.log('\n== UNIT Implantação = Ganho no Delta (2026-08-02) ==');
+const dealsImplA = [
+  { hs_id: '20', dealname: 'Kikkoman', stage: 'Negociação', pipeline: 'Vendas', vidas: 300, arr_estimado: 200000, createdate: '2025-10-01', modelo_remuneracao: 'Fee por vida', primeira_fatura: 16000, data_prevista_para_receita: '2026-08-01', probabilidade: 0.5 },
+];
+const dealsImplB = [
+  { hs_id: '20', dealname: 'Kikkoman', stage: 'Implantação', pipeline: 'Vendas', vidas: 300, arr_estimado: 200000, createdate: '2025-10-01', modelo_remuneracao: 'Fee por vida', primeira_fatura: 16000, data_prevista_para_receita: '2026-08-01', probabilidade: 0.5 },
+];
+const scopedImplA = FC.applyDeltaScope(dealsImplA, 'ativos');
+const scopedImplB = FC.applyDeltaScope(dealsImplB, 'ativos');
+const rawBImpl = {}; dealsImplB.forEach(d => { rawBImpl[d.hs_id] = d.stage; });
+const cImplA = FC.dealContributions(scopedImplA, '2026-05-15', {});
+const cImplB = FC.dealContributions(scopedImplB, '2026-06-15', {});
+const fechadoImpl = FC.closedWonAgg(cImplA, cImplB, rawBImpl);
+check('closedWonAgg trata Implantação como Ganho (Kikkoman entra no Fechado)', fechadoImpl.deals === 1);
+check('closedWonAgg soma o ARR de Kikkoman na foto A (200.000)', near(fechadoImpl.arr, 200000));
+const drillImpl = FC.drillRow(cImplA, cImplB, 'neg', 'arr', rawBImpl);
+const kikkomanRow = drillImpl.deals.find(d => d.id === '20');
+check('drillRow classifica Kikkoman (foi p/ Implantação) como tipo "ganho"', kikkomanRow && kikkomanRow.tipo === 'ganho');
+
 // ── Parte 2 | INTEGRAÇÃO (server local) ──────────────────────────────────────
 // Porta: arg1 ou env PORT (default 3004). Ex.: node scripts/test-delta-invariant.js 3002
 const PORT = parseInt(process.argv[2], 10) || parseInt(process.env.PORT, 10) || 3004;

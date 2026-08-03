@@ -1,5 +1,46 @@
 # Dashboard Enhancement Loop — Status Log
 
+### Fix (não deployado) | Implantação conta como Ganho no `/forecast-delta` (2026-08-02)
+
+> Pedido direto do dono: "Nós consideramos a etapa de Implantação como Ganho. Ajuste no Delta."
+> Antes deste fix, o painel já tinha o conceito em outro lugar — `CLOSED_STAGES =
+> {Implantação, Ganho}` (usado no escopo Ativos/Tudo) e a linha "Ganho / Implantação"
+> do Overall — mas a classificação "foi para Ganho" da barra **Fechado** e do drill
+> "Deals que saíram do pipe" (D05) só reconhecia o destino bruto `'Ganho'` literal;
+> um deal que virava **Implantação** entre A e B caía no balde genérico "Avançou"
+> em vez de contar como fechamento no card Fechado.
+
+- **`lib/forecast-compute.js`** — `_classifySaiu(stageA, rawDestino)`: trocado
+  `if (destino === 'Ganho') return 'ganho';` por `if (CLOSED_STAGES.has(destino))
+  return 'ganho';`, reusando o mesmo `CLOSED_STAGES` já definido no arquivo (linha
+  ~252) em vez de duplicar a lista. Efeito em cascata (mesma função alimenta as
+  duas features): `closedWonAgg` (barra "Fechado") agora soma também os deals que
+  foram para Implantação; `drillRow`/D05 agora classifica esses deals como tipo
+  `'ganho'` ("Foi para Ganho/Implantação") em vez de `'avancou'`. **Não tocado**: a
+  classificação de movimento do D07 (`stageUnified`, tabela unificada por etapa) —
+  ali "Avançou" já incluía Ganho/Implantação por design desde 2026-07-20 (requisito
+  do Samuel), é uma métrica diferente (movimento por etapa do funil, não a barra de
+  dinheiro fechado) e continua correta como estava.
+- **`public/forecast-delta.html`** — textos atualizados para refletir a mudança:
+  label do filtro de Movimentação (`'Foi para Ganho'` → `'Foi para Ganho/
+  Implantação'`), label da barra (`'Fechado (Ganho no período)'` → `'Fechado
+  (Ganho/Implantação no período)'`), título do modal de drill, e os dois textos do
+  botão `i` de ajuda (D02 e D05) — o de D05 tinha um exemplo desatualizado
+  ("Avançou... ex.: Implantação com filtro Ativos") que foi removido, já que depois
+  deste fix não há mais nenhum caminho realista para esse balde no escopo Ativos
+  (as únicas etapas com rank maior que Negociação são Implantação/Ganho, ambas
+  agora unificadas em "ganho").
+- **`scripts/test-delta-invariant.js`** — novo bloco "Implantação = Ganho no Delta"
+  espelhando o teste existente do caso Cappta (Ganho), com um deal sintético
+  (Kikkoman) que migra de Negociação para Implantação: confirma que
+  `closedWonAgg` conta o deal e soma o ARR corretamente, e que `drillRow`
+  classifica como tipo `'ganho'`.
+- **Validado**: `node scripts/test-delta-invariant.js` (novo bloco PASS, nenhum
+  teste existente quebrou) + `npm run check` completo PASS (exit 0, incluindo o
+  teste de fim de semana do Samuel). Servidor local reiniciado (mudou `lib/`);
+  `/forecast-delta` confirmado 200 e servindo o HTML com os textos novos.
+- **Não deployado ainda** — aguardando confirmação do dono para commit/deploy.
+
 ### 🚀 DEPLOY DE PRODUÇÃO | Premissas de forecast (POC/menor-prob/Fechado) + Design System Tier 1-2 (2026-08-02)
 
 > Autorização explícita do dono ("podemos fazer o commit e o deploy"). Deploy de tudo

@@ -415,7 +415,7 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
   var drillFmt = null;   // formatador dos valores da coluna (BRL ou número, conforme o KPI)
   var drillMov = {};   // filtro de Movimentação: chave->true; vazio = todas
   // 'avancou' ≠ 'saiu': sair do conjunto por avanço de etapa é diferente de sair por perda (2026-07-24)
-  var MOV = [ { k: 'novo', label: 'Novo' }, { k: 'permaneceu', label: 'Permaneceu' }, { k: 'avancou', label: 'Avançou' }, { k: 'saiu', label: 'Caiu (Perdido)' }, { k: 'ganho', label: 'Foi para Ganho' } ];
+  var MOV = [ { k: 'novo', label: 'Novo' }, { k: 'permaneceu', label: 'Permaneceu' }, { k: 'avancou', label: 'Avançou' }, { k: 'saiu', label: 'Caiu (Perdido)' }, { k: 'ganho', label: 'Foi para Ganho/Implantação' } ];
   function movLbl(t){ for(var i=0;i<MOV.length;i++){ if(MOV[i].k===t) return MOV[i].label; } return t; }
   var DRILL_COLS = [
     { key: 'dealname', label: 'Deal', align: 'left', type: 'str' },
@@ -571,14 +571,15 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
       run = to;
     });
     labels.push('Total @ B'); data.push([0, run]); colors.push('rgba(58,184,183,.85)'); dataline.push(run); kinds.push('total');
-    // Fechado (pedido do dono, reunião 2026-07-31): hoje um deal que vira Ganho entre
-    // A e B "derruba" o Total B como se fosse perda de valor — na verdade é vitória,
+    // Fechado (pedido do dono, reunião 2026-07-31; ajuste 2026-08-02: Implantação
+    // conta como Ganho): hoje um deal que vira Ganho (ou Implantação) entre A e B
+    // "derruba" o Total B como se fosse perda de valor — na verdade é vitória,
     // o valor só migrou de pipe aberto ponderado para fechado/contratado. Exposição
     // ADITIVA/informativa (barra própria + "Total B + Fechado"), NÃO participa do
     // Σ Δ do waterfall nem da barra Total @ B (ver caveat do card e ficha i do D02).
     var fechadoVal = (j.fechado && j.fechado[m]) || 0;
     if(j.fechado){
-      labels.push('Fechado (Ganho no período)'); data.push([0, fechadoVal]); colors.push('rgba(63,185,80,.5)'); dataline.push(fechadoVal); kinds.push('fechado');
+      labels.push('Fechado (Ganho/Implantação no período)'); data.push([0, fechadoVal]); colors.push('rgba(63,185,80,.5)'); dataline.push(fechadoVal); kinds.push('fechado');
       labels.push('Total B + Fechado'); data.push([0, run + fechadoVal]); colors.push('rgba(58,184,183,.5)'); dataline.push(run + fechadoVal); kinds.push('composto');
     }
 
@@ -595,7 +596,7 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
         onClick:function(evt, els){
           if(!els||!els.length) return; var i=els[0].index;
           if(kinds[i]==='delta'){ var w=j.waterfall[i-1]; if(w) openDrill(w.key, 'Deals | '+w.label, fmtBRL); return; }
-          if(kinds[i]==='fechado'){ openDrill('kpi:arrTotal', 'Deals | Fechado (foram para Ganho)', fmtBRL, null, 'ganho'); return; }
+          if(kinds[i]==='fechado'){ openDrill('kpi:arrTotal', 'Deals | Fechado (foram para Ganho/Implantação)', fmtBRL, null, 'ganho'); return; }
         },
         onHover:function(evt, els){ var t=evt&&evt.native&&evt.native.target; if(!t) return; var i=els&&els.length?els[0].index:-1; t.style.cursor=(i>=0&&(kinds[i]==='delta'||kinds[i]==='fechado'))?'pointer':''; },
         plugins:{
@@ -1069,7 +1070,7 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
       '<p class="hk"><b>Medidas |</b> Horizonte <b>ARR</b>: Probabilizada = <code>arr_estimado</code> × prob. final da etapa | Real = ARR estimado bruto. Horizonte <b>Pipeline total</b>: receita da régua no horizonte completo (motor canônico <code>forecast-compute</code> → <code>forecast-engine</code>, Regra primária nº 3), ancorada na data de cada foto.</p>'+
       '<p class="hk"><b>Fórmula |</b> a barra da etapa é Σ(B) − Σ(A). Invariante verificado: Σ Δ das etapas = Δ do total (selo nos KPIs).</p>'+
       '<p class="hk"><b>Escopo |</b> segue o filtro Ativos/Tudo do header (sem Bid e Stand by).</p>'+
-      '<p class="hk"><b>Fechado (2026-08-02) |</b> hoje um deal que vira Ganho entre A e B "derruba" o Total @ B como se fosse perda de valor — na verdade é vitória: o valor só migrou de pipe aberto ponderado para fechado/contratado. A barra <b>Fechado</b> soma ARR/ARR Ponderado (na foto A) dos deals que foram para Ganho no período (clique para ver a lista); a barra <b>Total B + Fechado</b> comunica o quadro completo (o que já foi executado + o que ainda está por vir). São barras INFORMATIVAS/aditivas — não entram no Σ Δ nem no invariante das etapas.</p>' },
+      '<p class="hk"><b>Fechado (2026-08-02) |</b> hoje um deal que vira Ganho entre A e B "derruba" o Total @ B como se fosse perda de valor — na verdade é vitória: o valor só migrou de pipe aberto ponderado para fechado/contratado. <b>Implantação conta como Ganho</b> nesta barra (decisão do dono, 2026-08-02). A barra <b>Fechado</b> soma ARR/ARR Ponderado (na foto A) dos deals que foram para Ganho ou Implantação no período (clique para ver a lista); a barra <b>Total B + Fechado</b> comunica o quadro completo (o que já foi executado + o que ainda está por vir). São barras INFORMATIVAS/aditivas — não entram no Σ Δ nem no invariante das etapas.</p>' },
     D03: { title: 'KPIs comparativos | A → B', sem: ['arr_estimado_fallback','arr_ponderado_forecast'], html:
       '<p class="hk"><b>O que mostra |</b> os mesmos KPIs do D01, só que em A → B com delta absoluto e %.</p>'+
       '<p class="hk"><b>Point-in-time |</b> o ARR Ponderado de cada foto usa a config vigente NELA (mesma medida única do D02) — derisks e reclassificações do período aparecem no delta. Deals, Vidas e ARR Total independem de probabilidade.</p>'+
@@ -1081,7 +1082,7 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
       '<p class="hk"><b>Drill |</b> clique na etapa para ver os deals e a Movimentação de cada um.</p>' },
     D05: { title: 'Deals que saíram do pipe', sem: [], html:
       '<p class="hk"><b>O que mostra |</b> deals presentes na Foto A que não estão mais no escopo na Foto B, com o destino final e o valor.</p>'+
-      '<p class="hk"><b>Classificação |</b> destino = etapa bruta em B: <b>Foi para Ganho</b> | <b>Caiu (Perdido)</b> | <b>Avançou</b> (foi para etapa posterior fora do escopo, ex.: Implantação com filtro Ativos) | fora do pipe.</p>'+
+      '<p class="hk"><b>Classificação |</b> destino = etapa bruta em B: <b>Foi para Ganho/Implantação</b> (2026-08-02: Implantação conta como Ganho) | <b>Caiu (Perdido)</b> | <b>Avançou</b> (foi para etapa posterior ainda dentro do funil, fora do escopo do filtro) | fora do pipe.</p>'+
       '<p class="hk"><b>Valor |</b> ARR estimado do deal na Foto A (<code>arr_estimado</code> com fallbacks).</p>' },
     D06: { title: 'ARR por Quarter previsto', sem: ['quarter_fallback','arr_ponderado_forecast'], html:
       '<p class="hk"><b>O que mostra |</b> ARR Total e ARR Ponderado somados por quarter previsto de fechamento, em A → B.</p>'+

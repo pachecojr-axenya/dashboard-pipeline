@@ -141,6 +141,11 @@
 > Duas correções pedidas na reunião de forecast de 2026-07-31 (caso concreto: deal
 > Cappta, −R$345k de fatura+vigência que na verdade era vitória).
 >
+> **Atualização (2026-08-02, mesmo dia):** "deals que foram para Ganho no período"
+> abaixo passou a incluir também **Implantação** — pedido direto do dono ("Nós
+> consideramos a etapa de Implantação como Ganho. Ajuste no Delta."). Ver entrada
+> própria no topo do `STATUS_LOG.md`.
+>
 > **1. Waterfall ganha "Fechado" (`api/history.js` compare + `lib/forecast-compute.js`
 > `closedWonAgg`).** Hoje um deal que vira Ganho entre a Foto A e a Foto B "derruba"
 > o Total @ B do waterfall como se fosse perda de valor — na verdade é uma vitória, o
