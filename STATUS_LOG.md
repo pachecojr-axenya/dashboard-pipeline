@@ -1,5 +1,27 @@
 # Dashboard Enhancement Loop — Status Log
 
+### 🚀 NOVA ABA | Growth | MKT Budget (2026-08-03)
+
+> Migração da página `marketing-budget-2026.html` (Growth Playground → pipeline
+> dashboard) como nova aba **Growth** com a primeira sub-aba **MKT Budget** em
+> `/growth/mkt-budget`, + export CSV de todas as linhas. PR `#…` (preenchido no merge).
+
+- **Novas rotas** (`vercel.json` + `scripts/local-server.js`): `/growth` → `growth.html`
+  (hub da aba) e `/growth/mkt-budget` → `mkt-budget.html`.
+- **Novos arquivos:** `public/mkt-budget.html` (port fiel do Growth Playground com
+  chrome do dashboard: tema dark/light, menu canônico premium.js, health-dot `g`,
+  separador `|` no lugar de `·`) e `public/growth.html` (hub mínimo da aba, no padrão
+  das subpáginas BDR). Dados estáticos em `public/data/marketing-budget-2026-{reconciliation,line-items}.json`.
+- **Menu:** grupo acordeão `Growth` (pai → hub) + sub-item `MKT Budget` adicionado no
+  `NAV_MODEL` do `premium.js` e no `PANELS` do `nav.js` (duas fontes, mesmo padrão BDR).
+  Cache-busters bumpados: `premium.js?v=5→6` (10 páginas), `premium.js?v=10→11`
+  (5 subpáginas BDR + 2 novas), `nav.js?v=4→5` (11 páginas).
+- **Export CSV:** botão no bloco de lançamentos exporta **TODAS as linhas** (522, ignora
+  filtros/paginação) com BOM UTF-8, separador `;` e decimais pt-BR para compatibilidade
+  com Excel BR.
+- **Validação:** `npm run check` + `_check-inline-js` nas páginas novas + JSON parse dos
+  dados + smoke local (200 em `/growth`, `/growth/mkt-budget` e nos 2 JSONs) + reviewer
+  code PASS antes do PR.
 ### 🚀 DEPLOY DE PRODUÇÃO | Implantação conta como Ganho no `/forecast-delta` (2026-08-02)
 
 > Autorização explícita do dono ("Sim", em resposta a "quer que eu siga com o

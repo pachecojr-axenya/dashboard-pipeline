@@ -255,6 +255,10 @@
     { href: '/novo-bdr/no-show', label: 'No-Show', health: 'g', sub: true, grp: 'bdr', svg: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="14" y1="14" x2="10" y2="18"/><line x1="10" y1="14" x2="14" y2="18"/></svg>' },
     { href: '/novo-bdr/list-attack', label: 'Ataque à Lista', health: 'r', sub: true, grp: 'bdr', svg: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>' },
     { href: '/novo-bdr/treble', label: 'Treble', health: 'g', sub: true, grp: 'bdr', svg: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a4 4 0 0 1-4 4H7l-4 4V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/><path d="M8 9h8"/><path d="M8 13h5"/></svg>' },
+    /* Grupo Growth (acordeão): "Growth" é o pai e leva ao hub; as subpáginas
+       ficam recolhidas atrás da setinha, no mesmo padrão do grupo BDR. */
+    { href: '/growth', label: 'Growth', health: 'g', acc: true, grp: 'growth', svg: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>' },
+    { href: '/growth/mkt-budget', label: 'MKT Budget', health: 'g', sub: true, grp: 'growth', svg: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4z"/></svg>' },
     { href: '/novo-48h', label: 'Last 48h', health: 'g', svg: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>' },
     // CS Dashboard e Cotação ocultos do menu (pedido do dono, 2026-07-16) — rotas
     // /novo-cs e /novo-cotacao continuam vivas; espelho do hidden:true do nav.js.
@@ -274,6 +278,8 @@
     if (current === '/dashboard/bdr/no-show' || current === '/novo-bdr-no-show' || page === 'bdr-no-show') current = '/novo-bdr/no-show';
     if (current === '/dashboard/bdr/list-attack' || current === '/novo-bdr-list-attack' || page === 'bdr-list-attack') current = '/novo-bdr/list-attack';
     if (current === '/dashboard/bdr/treble' || current === '/novo-bdr-treble' || page === 'bdr-treble') current = '/novo-bdr/treble';
+    if (current === '/dashboard/growth' || page === 'growth') current = '/growth';
+    if (current === '/dashboard/growth/mkt-budget' || current === '/growth-mkt-budget' || page === 'mkt-budget') current = '/growth/mkt-budget';
 
     function dot(h) {
       if (!h) return '';

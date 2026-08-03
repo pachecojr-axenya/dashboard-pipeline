@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MKT Budget | Axenya</title>
+  <meta name="description" content="Reconciliação anual do orçamento de Marketing 2026, separando realizado e planejado." />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0d1117;
+      --card: #171f2e;
+      --card2: #1e2a3c;
+      --border: rgba(41, 58, 80, .65);
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --teal: #3ab8b7;
+      --blue: #38bdf8;
+      --dark: #2f4150;
+      --shadow: 0 18px 44px rgba(0, 0, 0, .35);
+    }
+    html[data-theme="light"] {
+      --bg: #f6f8fa;
+      --card: #ffffff;
+      --card2: #eaeef2;
+      --border: rgba(12, 20, 22, .12);
+      --text: #111817;
+      --muted: #66726f;
+      --teal: #0d7377;
+      --blue: #3896b4;
+      --dark: #243033;
+      --shadow: 0 18px 44px rgba(15, 23, 42, .06);
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Roboto, system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); }
+    .wrap { max-width: 1180px; margin: 0 auto; padding: 28px 18px 56px; }
+    .hero, .card { border: 1px solid var(--border); background: var(--card); border-radius: 22px; box-shadow: var(--shadow); }
+    .hero { padding: 28px; background: linear-gradient(135deg, rgba(58,184,183,.14), transparent 56%, rgba(56,150,180,.08)); }
+    .card { padding: 22px; }
+    .kicker { display: inline-flex; padding: 7px 12px; border: 1px solid rgba(58,184,183,.35); border-radius: 999px; color: var(--teal); background: rgba(58,184,183,.08); font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+    h1 { margin: 16px 0 10px; font-size: clamp(34px, 5vw, 58px); line-height: .96; font-weight: 300; letter-spacing: -.05em; }
+    h2 { margin: 0 0 8px; font-size: 23px; font-weight: 500; letter-spacing: -.03em; }
+    p { margin: 0; color: var(--muted); line-height: 1.55; }
+    strong { color: var(--text); }
+    .section-title { margin: 0 0 8px; color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+    .grid { display: grid; gap: 16px; margin-top: 16px; }
+    .grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .grid-2 { grid-template-columns: 1.15fr .85fr; }
+    .metric { border: 1px solid var(--border); border-radius: 16px; padding: 16px; background: var(--card2); }
+    .metric small { display: block; margin-bottom: 7px; color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+    .metric strong { display: block; font-size: 25px; letter-spacing: -.04em; }
+    .metric span { display: block; margin-top: 6px; color: var(--muted); font-size: 12px; line-height: 1.4; }
+    table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 13px; }
+    .table-wrap { width: 100%; overflow-x: auto; }
+    th, td { padding: 10px 8px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
+    th { background: var(--card2); color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+    .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .bar-list { display: grid; gap: 12px; margin-top: 16px; }
+    .bar-row { display: grid; grid-template-columns: 118px 1fr 116px; gap: 12px; align-items: center; font-size: 13px; }
+    .bar { height: 13px; border-radius: 999px; background: var(--card2); overflow: hidden; }
+    .bar span { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--blue), var(--teal)); }
+    .timeline { display: grid; gap: 10px; margin-top: 16px; }
+    .month { display: grid; grid-template-columns: 86px 96px 1fr 126px; gap: 12px; align-items: center; padding: 10px; border: 1px solid var(--border); border-radius: 14px; background: var(--card); }
+    .badge { display: inline-flex; justify-content: center; padding: 5px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; color: var(--teal); background: rgba(58,184,183,.10); }
+    .badge.plan { color: var(--blue); background: rgba(56,150,180,.12); }
+    .stack { height: 14px; display: flex; border-radius: 999px; overflow: hidden; background: var(--card2); }
+    .actual { background: var(--blue); }
+    .recurring { background: var(--dark); }
+    .envelope { background: var(--teal); }
+    .legend { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 12px; color: var(--muted); font-size: 12px; }
+    .legend span { display: inline-flex; align-items: center; gap: 7px; }
+    .swatch { width: 14px; height: 9px; border-radius: 999px; display: inline-block; }
+    .controls { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+    select, button { min-height: 42px; border: 1px solid var(--border); border-radius: 999px; padding: 0 14px; background: var(--card); color: var(--text); font: inherit; font-size: 13px; }
+    button { cursor: pointer; font-weight: 700; }
+    button.active { color: #fff; background: var(--dark); border-color: var(--dark); }
+    button:disabled { opacity: .45; cursor: not-allowed; }
+    .toggle { display: inline-flex; align-items: center; gap: 8px; min-height: 42px; border: 1px solid var(--border); border-radius: 999px; padding: 0 14px; background: var(--card); font-size: 13px; font-weight: 700; cursor: pointer; }
+    .toggle input { accent-color: var(--teal); }
+    details summary { cursor: pointer; list-style: none; }
+    details summary::-webkit-details-marker { display: none; }
+    .table-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; margin-top: 12px; }
+    .lever-card { border: 1px solid var(--border); border-radius: 16px; padding: 16px; background: var(--card2); }
+    .lever-card strong { display: block; font-size: 17px; }
+    .lever-card .value { margin-top: 8px; font-size: 23px; letter-spacing: -.04em; }
+    ul { margin: 12px 0 0; padding-left: 18px; color: var(--muted); line-height: 1.55; font-size: 13px; }
+    .footer { margin-top: 18px; color: var(--muted); font-size: 12px; }
+    .card-link { display: block; border: 1px solid var(--border); border-radius: 18px; padding: 20px; background: var(--card2); color: var(--text); text-decoration: none; transition: border-color .15s, transform .15s; }
+    .card-link:hover { border-color: var(--teal); transform: translateY(-2px); }
+    .card-link small { display: block; color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 6px; }
+    .card-link strong { font-size: 19px; letter-spacing: -.02em; }
+    .card-link p { margin-top: 6px; }
+    @media (max-width: 920px) {
+      .grid-4, .grid-3, .grid-2 { grid-template-columns: 1fr; }
+      .bar-row, .month { grid-template-columns: 1fr; }
+      .wrap { padding: 16px 12px 40px; }
+      .hero, .card { padding: 18px; }
+    }
+  </style>
+  <link rel="stylesheet" href="/premium.css?v=5">
+  <script src="/premium.js?v=11"></script>
+</head>
+<body>
+  <nav class="nav-drawer" id="nav-drawer"><div class="nav-drawer-header"><span class="nav-drawer-brand">Dashboard Axenya</span><button class="hdr-btn" onclick="closeDrawer()" aria-label="Fechar menu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div><ul class="nav-menu"><li class="nav-item active" data-href="/growth/mkt-budget">MKT Budget<span class="health-dot g" title="live" aria-label="live"></span></li></ul></nav>
+  <div class="nav-backdrop" id="nav-backdrop" onclick="closeDrawer()"></div>
+  <div id="page">
+    <header class="topbar" id="topbar"><div style="display:flex;align-items:center;gap:.75rem"><button class="hdr-btn" onclick="toggleDrawer()" data-tooltip="Menu" aria-label="Abrir menu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button><div><h1>MKT Budget <span class="health-dot g title-health" title="live" aria-label="live"></span></h1><div class="subtitle">Reconciliação do orçamento de Marketing 2026 | realizado vs planejado</div></div></div><div class="hdr-actions"><button class="hdr-btn" onclick="toggleTheme()" data-tooltip="Tema" aria-label="Alternar tema"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg></button></div></header>
+    <main class="wrap">
+      <section class="hero">
+        <span class="kicker">Reconciliação anual</span>
+        <h1>Marketing Budget <span style="color: var(--teal);">2026</span></h1>
+        <p>Visão contábil para separar <strong>passado realizado</strong> de <strong>futuro planejado</strong>. Jan-jun vêm da planilha consolidada; julho é fechamento informado/registrado; ago-dez são recorrência comprometida mais envelope estratégico como teto de alocação.</p>
+        <div class="grid grid-4" id="heroMetrics"></div>
+      </section>
+
+      <section class="grid grid-2">
+        <article class="card">
+          <p class="section-title">Ponte contábil anual</p>
+          <h2>Do orçamento anual ao teto disponível</h2>
+          <div class="table-wrap"><table><tbody id="bridgeTable"></tbody></table></div>
+        </article>
+        <article class="card">
+          <p class="section-title">Cenários</p>
+          <h2>Mínimo comprometido vs uso integral</h2>
+          <div class="bar-list" id="scenarioBars"></div>
+        </article>
+      </section>
+
+      <section class="card" style="margin-top:16px;">
+        <p class="section-title">Linha do tempo jan-dez</p>
+        <h2>Realizado até julho; comprometido de agosto a dezembro</h2>
+        <p>A partir de agosto, a barra e o valor à direita mostram somente a recorrência já comprometida. O envelope estratégico permanece separado nas seções abaixo.</p>
+        <div class="timeline" id="timeline"></div>
+        <div class="legend">
+          <span><i class="swatch actual" style="background: var(--blue);"></i>Realizado</span>
+          <span><i class="swatch recurring" style="background: var(--dark);"></i>Recorrência comprometida</span>
+        </div>
+      </section>
+
+      <section class="grid grid-2">
+        <article class="card">
+          <p class="section-title">Recorrências futuras</p>
+          <h2>Base aprovada para ago-dez</h2>
+          <p>A premissa oficial soma R$ 75.092,45 sem Lusha e inclui LinkedIn Sales Navigator por R$ 4.553,76/mês. Apollo, Canva e Sales Navigator permanecem classificados como ferramentas.</p>
+          <div class="table-wrap"><table id="recurringTable"></table></div>
+        </article>
+        <article class="card">
+          <p class="section-title">Envelope estratégico</p>
+          <h2>Concentrado até novembro; dezembro fraco</h2>
+          <div class="bar-list" id="envelopeBars"></div>
+        </article>
+      </section>
+
+      <section class="card" style="margin-top:16px;">
+        <p class="section-title">Simulador local</p>
+        <h2>Uso do envelope estratégico por alavanca</h2>
+        <p>Aloca apenas o saldo livre após recorrências fixas. É proposta, não compromisso contábil: simulação local; não altera o orçamento oficial.</p>
+        <div class="controls" id="strategyPresets"></div>
+        <div class="controls" id="strategyToggles"></div>
+        <div class="grid grid-3" id="strategyLevers"></div>
+        <div class="table-wrap"><table><tbody id="strategyMatrix"></tbody></table></div>
+        <p class="footer" id="strategyTotal"></p>
+      </section>
+
+      <section class="grid grid-2">
+        <article class="card">
+          <p class="section-title">Categorias MECE históricas</p>
+          <h2>Realizado jan-jun por natureza</h2>
+          <div class="bar-list" id="meceBars"></div>
+        </article>
+        <article class="card">
+          <p class="section-title">Premissas e fonte da verdade</p>
+          <h2>Como interpretar a reconciliação</h2>
+          <ul id="assumptions"></ul>
+          <div class="table-wrap"><table><tbody id="sourceTable"></tbody></table></div>
+        </article>
+      </section>
+
+      <section class="card" style="margin-top:16px;">
+        <details id="lineItemsDetails">
+          <summary>
+            <p class="section-title">Histórico público</p>
+            <h2>Lançamentos linha a linha</h2>
+            <p>Abra para filtrar os 522 lançamentos de jan-jun. A coluna Conta/fornecedor e nomes de pessoas foram omitidos do JSON público por privacidade; a classificação MECE usou esses campos apenas internamente para reconciliar os totais.</p>
+          </summary>
+          <div class="controls">
+            <select id="lineMonth" aria-label="Filtrar por mês"></select>
+            <select id="lineCategory" aria-label="Filtrar por categoria"></select>
+            <select id="lineOrigin" aria-label="Filtrar por origem"></select>
+          </div>
+          <div class="table-actions">
+            <strong id="lineSummary">Carregando lançamentos...</strong>
+            <div class="controls" style="margin-top:0;">
+              <button type="button" id="exportCsv" title="Exporta TODAS as linhas em CSV (522 lançamentos jan-jun, independente dos filtros)">Exportar CSV</button>
+              <button type="button" id="prevPage">Anterior</button>
+              <span id="pageInfo" class="footer" style="margin-top:0;"></span>
+              <button type="button" id="nextPage">Próxima</button>
+            </div>
+          </div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Linha fonte</th><th>Mês</th><th>Origem</th><th>Tipo original</th><th>Categoria MECE</th><th class="num">Valor</th></tr></thead>
+            <tbody id="lineItemsTable"></tbody>
+          </table></div>
+        </details>
+      </section>
+
+      <section class="card" style="margin-top:16px;">
+        <p class="section-title">Dúvidas em aberto</p>
+        <h2>Decisões para liberar uso do envelope</h2>
+        <ul id="openQuestions"></ul>
+      </section>
+
+      <p class="footer">Fonte estática: <span id="dataPath">public/data/marketing-budget-2026-reconciliation.json</span>. Página standalone sem edição operacional, atualização por APIs ou dependências novas. Migrada do Growth Playground em 2026-08-03.</p>
+    </main>
+  </div>
+  <script>
+    window.__mktBudgetSmokeError = null;
+    window.addEventListener('error', function (e) { window.__mktBudgetSmokeError = e.message || 'js_error'; });
+    (function () {
+      var s = localStorage.getItem('axenya_theme') || 'dark';
+      if (s === 'light') document.documentElement.setAttribute('data-theme', 'light');
+    })();
+    function toggleTheme() {
+      var cur = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', cur);
+      try { localStorage.setItem('axenya_theme', cur); } catch (e) {}
+    }
+    function setContentBlur(on) {
+      var el = document.getElementById('page');
+      if (el) el.classList.toggle('content-blur', on);
+    }
+    function _setNavOpen(open) {
+      document.getElementById('nav-drawer').classList.toggle('open', open);
+      document.body.classList.toggle('nav-docked', open);
+      var narrow = window.matchMedia('(max-width:820px)').matches;
+      document.getElementById('nav-backdrop').classList.toggle('open', open && narrow);
+      try { localStorage.setItem('novo_nav_open', open ? 'true' : 'false'); } catch (e) {}
+    }
+    function openDrawer() { _setNavOpen(true); }
+    function closeDrawer() { _setNavOpen(false); setContentBlur(false); }
+    function toggleDrawer() { _setNavOpen(!document.getElementById('nav-drawer').classList.contains('open')); }
+    window.addEventListener('scroll', function () {
+      var h = document.getElementById('topbar');
+      if (h) h.classList.toggle('scrolled', window.scrollY > 8);
+    });
+    window.addEventListener('DOMContentLoaded', function () {
+      try {
+        if (localStorage.getItem('novo_nav_open') === 'true' && !window.matchMedia('(max-width:820px)').matches) openDrawer();
+      } catch (e) {}
+    });
+  </script>
+  <script>
+    const DATA_URL = '/data/marketing-budget-2026-reconciliation.json';
+    const LINE_ITEMS_URL = '/data/marketing-budget-2026-line-items.json';
+    const PAGE_SIZE = 50;
+    const strategyPresets = {
+      equilibrado: { label: 'Equilibrado', objective: 'Distribuição balanceada entre relacionamento, aquisição e capacidade operacional.', shares: { miniEvents: 40, paidMedia: 45, tooling: 15 } },
+      aquisicao: { label: 'Aquisição', objective: 'Prioriza campanhas e testes de aquisição.', shares: { miniEvents: 25, paidMedia: 60, tooling: 15 } },
+      relacionamento: { label: 'Relacionamento', objective: 'Prioriza jantares, roundtables e encontros menores.', shares: { miniEvents: 60, paidMedia: 25, tooling: 15 } },
+      eficiencia: { label: 'Eficiência', objective: 'Aumenta peso de stack, automação, inteligência e produção.', shares: { miniEvents: 30, paidMedia: 35, tooling: 35 } }
+    };
+    const strategyLevers = {
+      miniEvents: { label: 'Mini-eventos', description: 'Jantares, roundtables e encontros menores.' },
+      paidMedia: { label: 'Mídia paga', description: 'Campanhas e testes de aquisição.' },
+      tooling: { label: 'Ferramental', description: 'Stack, automação, inteligência e produção.' }
+    };
+    const strategyState = { preset: 'equilibrado', active: { miniEvents: true, paidMedia: true, tooling: true } };
+    const lineState = { items: [], page: 1, filters: { month: '', category: '', origin: '' } };
+    const fmtBRL = value => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0);
+    const fmtPct = value => `${new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 }).format(value || 0)}%`;
+    const escapeHTML = value => String(value ?? '').replace(/[&<>'"]/g, character => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+    })[character]);
+
+    function renderMetric(label, value, detail) {
+      return `<div class="metric"><small>${escapeHTML(label)}</small><strong>${escapeHTML(value)}</strong><span>${escapeHTML(detail)}</span></div>`;
+    }
+
+    function renderBarRow(label, amount, max, detail = '') {
+      const width = Math.max(1, Math.min(100, (amount / max) * 100));
+      return `<div class="bar-row"><strong>${escapeHTML(label)}</strong><div class="bar"><span style="width:${width}%"></span></div><span class="num">${fmtBRL(amount)}</span>${detail ? `<p style="grid-column:1/-1; font-size:12px;">${escapeHTML(detail)}</p>` : ''}</div>`;
+    }
+
+    function cents(value) { return Math.round(Number(value) * 100); }
+    function fromCents(value) { return value / 100; }
+
+    function adjustedStrategyShares() {
+      const preset = strategyPresets[strategyState.preset];
+      const activeKeys = Object.keys(strategyState.active).filter(key => strategyState.active[key]);
+      const activeBase = activeKeys.reduce((sum, key) => sum + preset.shares[key], 0);
+      const shares = {};
+      activeKeys.forEach((key, index) => {
+        shares[key] = index === activeKeys.length - 1
+          ? 100 - Object.values(shares).reduce((sum, value) => sum + value, 0)
+          : Math.round((preset.shares[key] / activeBase) * 10000) / 100;
+      });
+      return shares;
+    }
+
+    function renderStrategy(data) {
+      const envelopeCents = cents(data.strategicEnvelope.freeAfterRecurring);
+      const shares = adjustedStrategyShares();
+      const activeKeys = Object.keys(shares);
+      const allocations = activeKeys.map((key, index) => {
+        const allocatedCents = index === activeKeys.length - 1
+          ? envelopeCents - activeKeys.slice(0, -1).reduce((sum, previousKey) => sum + cents(data.strategicEnvelope.freeAfterRecurring * shares[previousKey] / 100), 0)
+          : cents(data.strategicEnvelope.freeAfterRecurring * shares[key] / 100);
+        return { key, percent: shares[key], amount: fromCents(allocatedCents) };
+      });
+
+      document.getElementById('strategyPresets').innerHTML = Object.entries(strategyPresets).map(([key, preset]) => `<button type="button" class="${key === strategyState.preset ? 'active' : ''}" data-preset="${escapeHTML(key)}">${escapeHTML(preset.label)}</button>`).join('');
+      document.getElementById('strategyToggles').innerHTML = Object.entries(strategyLevers).map(([key, lever]) => `<label class="toggle"><input type="checkbox" data-lever="${escapeHTML(key)}" ${strategyState.active[key] ? 'checked' : ''}>${escapeHTML(lever.label)}</label>`).join('');
+      document.getElementById('strategyLevers').innerHTML = allocations.map(item => {
+        const lever = strategyLevers[item.key];
+        return `<div class="lever-card"><strong>${escapeHTML(lever.label)}</strong><p>${escapeHTML(lever.description)}</p><div class="value">${fmtPct(item.percent)}</div><p><strong>${fmtBRL(item.amount)}</strong> no envelope anual</p><p>Média mensal ago-dez: <strong>${fmtBRL(item.amount / 5)}</strong></p></div>`;
+      }).join('');
+      document.getElementById('strategyMatrix').innerHTML = Object.values(strategyPresets).map(preset => `<tr><th>${escapeHTML(preset.label)}</th><td>${escapeHTML(preset.objective)}</td></tr>`).join('');
+      document.getElementById('strategyTotal').textContent = `Total simulado: 100% | ${fmtBRL(data.strategicEnvelope.freeAfterRecurring)}. Simulação local; não altera o orçamento oficial.`;
+      document.querySelectorAll('[data-preset]').forEach(button => button.addEventListener('click', () => { strategyState.preset = button.dataset.preset; renderStrategy(data); }));
+      document.querySelectorAll('[data-lever]').forEach(input => input.addEventListener('change', () => {
+        const key = input.dataset.lever;
+        const activeCount = Object.values(strategyState.active).filter(Boolean).length;
+        if (!input.checked && activeCount === 1) { input.checked = true; return; }
+        strategyState.active[key] = input.checked;
+        renderStrategy(data);
+      }));
+    }
+
+    function renderLineItems() {
+      const filtered = lineState.items.filter(item =>
+        (!lineState.filters.month || item.month === lineState.filters.month) &&
+        (!lineState.filters.category || item.meceCategory === lineState.filters.category) &&
+        (!lineState.filters.origin || item.origin === lineState.filters.origin)
+      );
+      const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+      lineState.page = Math.min(lineState.page, totalPages);
+      const total = filtered.reduce((sum, item) => sum + item.amount, 0);
+      const pageItems = filtered.slice((lineState.page - 1) * PAGE_SIZE, lineState.page * PAGE_SIZE);
+      document.getElementById('lineSummary').textContent = `${filtered.length} lançamentos | ${fmtBRL(total)}`;
+      document.getElementById('pageInfo').textContent = `Página ${lineState.page} de ${totalPages}`;
+      document.getElementById('prevPage').disabled = lineState.page === 1;
+      document.getElementById('nextPage').disabled = lineState.page === totalPages;
+      document.getElementById('lineItemsTable').innerHTML = pageItems.map(item => `<tr><td>${escapeHTML(item.sourceRow)}</td><td>${escapeHTML(item.month)}</td><td>${escapeHTML(item.origin)}</td><td>${escapeHTML(item.originalType)}</td><td>${escapeHTML(item.meceCategory)}</td><td class="num">${fmtBRL(item.amount)}</td></tr>`).join('');
+    }
+
+    // Exporta TODAS as linhas de jan-jun em CSV (ignora filtros e paginação).
+    function exportCsv() {
+      const rows = [['Linha fonte', 'Mês', 'Origem', 'Tipo original', 'Categoria MECE', 'Valor (R$)']];
+      lineState.items.forEach(item => {
+        rows.push([
+          item.sourceRow, item.month, item.origin, item.originalType, item.meceCategory,
+          Number(item.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+        ]);
+      });
+      const csv = '\uFEFF' + rows.map(row => row.map(cell => {
+        const s = String(cell ?? '');
+        return /[";\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+      }).join(';')).join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `marketing-budget-2026-line-items-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    function fillLineFilter(id, values, label) {
+      document.getElementById(id).innerHTML = `<option value="">${escapeHTML(label)}</option>` + values.map(value => `<option value="${escapeHTML(value)}">${escapeHTML(value)}</option>`).join('');
+    }
+
+    function initLineItems(payload) {
+      lineState.items = payload.items || [];
+      fillLineFilter('lineMonth', [...new Set(lineState.items.map(item => item.month))].sort(), 'Todos os meses');
+      fillLineFilter('lineCategory', [...new Set(lineState.items.map(item => item.meceCategory))].sort(), 'Todas as categorias');
+      fillLineFilter('lineOrigin', [...new Set(lineState.items.map(item => item.origin))].sort(), 'Todas as origens');
+      [['lineMonth', 'month'], ['lineCategory', 'category'], ['lineOrigin', 'origin']].forEach(([id, key]) => {
+        document.getElementById(id).addEventListener('change', event => { lineState.filters[key] = event.target.value; lineState.page = 1; renderLineItems(); });
+      });
+      document.getElementById('prevPage').addEventListener('click', () => { lineState.page -= 1; renderLineItems(); });
+      document.getElementById('nextPage').addEventListener('click', () => { lineState.page += 1; renderLineItems(); });
+      document.getElementById('exportCsv').addEventListener('click', exportCsv);
+      renderLineItems();
+    }
+
+    function render(data) {
+      const maxMonth = Math.max(...data.actuals.monthly.map(m => m.amount), ...data.plannedMonthlyCeilings.map(m => m.recurring));
+      document.getElementById('heroMetrics').innerHTML = [
+        renderMetric('Orçamento anual', fmtBRL(data.annualBudget), 'Teto aprovado para Marketing 2026'),
+        renderMetric('Realizado até julho', fmtBRL(data.actuals.throughJuly), 'Jan-jun planilha consolidada + julho fechado'),
+        renderMetric('Saldo em 31/jul', fmtBRL(data.balanceAtJuly31), 'Disponível antes das recorrências futuras'),
+        renderMetric('Envelope estratégico', fmtBRL(data.strategicEnvelope.freeAfterRecurring), 'Teto de alocação após recorrências')
+      ].join('');
+
+      document.getElementById('bridgeTable').innerHTML = `
+        <tr><th>Orçamento anual</th><td class="num">${fmtBRL(data.annualBudget)}</td></tr>
+        <tr><th>Realizado jan-jun</th><td class="num">-${fmtBRL(data.actuals.janJunTotal)}</td></tr>
+        <tr><th>Realizado julho</th><td class="num">-${fmtBRL(data.actuals.july)}</td></tr>
+        <tr><th>Saldo anual em 31/jul</th><td class="num"><strong>${fmtBRL(data.balanceAtJuly31)}</strong></td></tr>
+        <tr><th>Recorrência comprometida ago-dez</th><td class="num">-${fmtBRL(data.futureRecurring.total)}</td></tr>
+        <tr><th>Saldo livre após recorrências</th><td class="num"><strong>${fmtBRL(data.strategicEnvelope.freeAfterRecurring)}</strong></td></tr>
+      `;
+
+      const scenarioMax = data.annualBudget;
+      document.getElementById('scenarioBars').innerHTML = [
+        renderBarRow('Cenário mínimo comprometido no ano', data.scenarios.minimumCommittedYear, scenarioMax, 'Realizado até julho + recorrência comprometida futura.'),
+        renderBarRow('Uso integral do envelope estratégico', data.scenarios.fullStrategicEnvelopeUse, scenarioMax, 'Realizado + recorrências + envelope estratégico = orçamento anual.')
+      ].join('');
+
+      const plannedByMonth = Object.fromEntries(data.plannedMonthlyCeilings.map(item => [item.month, item]));
+      document.getElementById('timeline').innerHTML = [
+        ...data.actuals.monthly.map(item => ({ ...item, kind: 'actual', total: item.amount })),
+        ...data.plannedMonthlyCeilings.map(item => ({ ...item, kind: 'planned', total: item.recurring }))
+      ].map(item => {
+        const planned = plannedByMonth[item.month];
+        const total = item.total;
+        const actualPct = item.kind === 'actual' ? (total / maxMonth) * 100 : 0;
+        const recurringPct = planned ? (planned.recurring / maxMonth) * 100 : 0;
+        return `<div class="month"><strong>${escapeHTML(item.label)}</strong><span class="badge ${item.kind === 'planned' ? 'plan' : ''}">${item.kind === 'actual' ? 'Realizado' : 'Comprometido'}</span><div class="stack">${item.kind === 'actual' ? `<span class="actual" style="width:${actualPct}%"></span>` : `<span class="recurring" style="width:${recurringPct}%"></span>`}</div><span class="num">${fmtBRL(total)}</span></div>`;
+      }).join('');
+
+      document.getElementById('recurringTable').innerHTML = `
+        <thead><tr><th>Item</th><th class="num">Valor mensal</th><th>Observação</th></tr></thead>
+        <tbody>
+          ${data.futureRecurring.baseItems.map(item => `<tr><td>${escapeHTML(item.name)}</td><td class="num">${fmtBRL(item.monthlyAmount)}</td><td>Base mensal out-dez</td></tr>`).join('')}
+          ${data.futureRecurring.temporaryItems.map(item => `<tr><td>${escapeHTML(item.name)}</td><td class="num">${fmtBRL(item.monthlyAmount)}</td><td>Apenas ago-set</td></tr>`).join('')}
+          ${data.futureRecurring.excludedItems.map(item => `<tr><td><strong>${escapeHTML(item.name)}</strong></td><td class="num">${fmtBRL(item.futureForecastAmount)}</td><td>${escapeHTML(item.reason)}</td></tr>`).join('')}
+          <tr><td><strong>Total recorrências ago-dez</strong></td><td class="num"><strong>${fmtBRL(data.futureRecurring.total)}</strong></td><td>Premissa oficial da projeção</td></tr>
+        </tbody>`;
+
+      const maxEnvelope = Math.max(...data.strategicEnvelope.distribution.map(item => item.amount));
+      document.getElementById('envelopeBars').innerHTML = data.strategicEnvelope.distribution.map(item => renderBarRow(`${item.label} | ${fmtPct(item.percent)}`, item.amount, maxEnvelope, 'Teto de alocação, não gasto realizado.')).join('');
+      renderStrategy(data);
+
+      const maxMece = Math.max(...data.historicalMeceJanJun.categories.map(item => item.amount));
+      document.getElementById('meceBars').innerHTML = data.historicalMeceJanJun.categories.map(item => renderBarRow(`${item.name} | ${fmtPct(item.percent)}`, item.amount, maxMece)).join('');
+
+      document.getElementById('assumptions').innerHTML = data.metadata.notes.map(note => `<li>${escapeHTML(note)}</li>`).join('');
+      document.getElementById('sourceTable').innerHTML = `
+        <tr><th>Fonte da verdade</th><td>${escapeHTML(data.metadata.sourceOfTruth)}</td></tr>
+        <tr><th>Arquivo / aba</th><td>${escapeHTML(data.metadata.sourceFile)} · ${escapeHTML(data.metadata.sourceTab)}</td></tr>
+        <tr><th>Exportação</th><td>${escapeHTML(data.metadata.sourceExportDate)}</td></tr>
+        <tr><th>Fonte julho</th><td>${escapeHTML(data.metadata.julySource)}</td></tr>
+        <tr><th>Versão</th><td>${escapeHTML(data.metadata.version)}</td></tr>
+        <tr><th>Atualização</th><td>${escapeHTML(data.metadata.updatedAt)}</td></tr>
+        <tr><th>Moeda</th><td>${escapeHTML(data.metadata.currency)}</td></tr>`;
+      document.getElementById('openQuestions').innerHTML = data.openQuestions.map(item => `<li>${escapeHTML(item)}</li>`).join('');
+    }
+
+    fetch(DATA_URL, { cache: 'no-store' })
+      .then(response => response.json())
+      .then(render)
+      .catch(error => {
+        const section = document.createElement('section');
+        section.className = 'card';
+        const title = document.createElement('strong');
+        title.textContent = 'Erro ao carregar dados.';
+        const detail = document.createElement('p');
+        detail.textContent = error instanceof Error ? error.message : 'Falha desconhecida.';
+        section.append(title, detail);
+        document.querySelector('main').prepend(section);
+      });
+
+    fetch(LINE_ITEMS_URL, { cache: 'no-store' })
+      .then(response => response.json())
+      .then(initLineItems)
+      .catch(error => {
+        document.getElementById('lineSummary').textContent = error instanceof Error ? `Erro ao carregar lançamentos: ${error.message}` : 'Erro ao carregar lançamentos.';
+      });
+  </script>
+</body>
+</html>

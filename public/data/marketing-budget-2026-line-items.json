@@ -1,0 +1,4248 @@
+{
+  "metadata": {
+    "title": "Lançamentos linha a linha do Marketing Budget 2026",
+    "version": "line-items-v1",
+    "currency": "BRL",
+    "updatedAt": "2026-07-21",
+    "sourceFile": "Marketing_2026 (1).xlsx",
+    "sourceTab": "Planilha1",
+    "sourceRows": "Linhas 3 em diante com data válida na coluna B e valor numérico na coluna F.",
+    "privacy": "A coluna Conta/fornecedor e nomes de pessoas foram omitidos do JSON público por privacidade. A classificação MECE usou esses campos apenas internamente para reconciliação."
+  },
+  "summary": {
+    "itemCount": 522,
+    "totalAmount": 885596.1,
+    "months": [
+      "2026-01",
+      "2026-02",
+      "2026-03",
+      "2026-04",
+      "2026-05",
+      "2026-06"
+    ],
+    "categories": [
+      {
+        "name": "Eventos",
+        "amount": 478497.56
+      },
+      {
+        "name": "Mídia Paga",
+        "amount": 74837.81
+      },
+      {
+        "name": "Agência/SEO",
+        "amount": 60047.15
+      },
+      {
+        "name": "SaaS/Ferramentas",
+        "amount": 22585.08
+      },
+      {
+        "name": "Associações/Institucional",
+        "amount": 41404.97
+      },
+      {
+        "name": "Alimentação/Hospitalidade",
+        "amount": 37747.27
+      },
+      {
+        "name": "Brindes/Material Promocional",
+        "amount": 53685.17
+      },
+      {
+        "name": "Serviços de Apoio a Eventos",
+        "amount": 14194.31
+      },
+      {
+        "name": "Pessoas/Freelancers",
+        "amount": 15079.0
+      },
+      {
+        "name": "Educação/Consultoria",
+        "amount": 32035.86
+      },
+      {
+        "name": "Diversos/Operacional",
+        "amount": 55481.92
+      }
+    ]
+  },
+  "items": [
+    {
+      "sourceRow": 4,
+      "month": "2026-01",
+      "origin": "CC",
+      "originalType": "Sem tipo",
+      "meceCategory": "Brindes/Material Promocional",
+      "amount": 2550.0
+    },
+    {
+      "sourceRow": 5,
+      "month": "2026-01",
+      "origin": "CC",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 149.0
+    },
+    {
+      "sourceRow": 6,
+      "month": "2026-01",
+      "origin": "CC",
+      "originalType": "Sem tipo",
+      "meceCategory": "Brindes/Material Promocional",
+      "amount": 885.42
+    },
+    {
+      "sourceRow": 7,
+      "month": "2026-01",
+      "origin": "CC",
+      "originalType": "Agência",
+      "meceCategory": "Agência/SEO",
+      "amount": 7660.0
+    },
+    {
+      "sourceRow": 8,
+      "month": "2026-01",
+      "origin": "CC",
+      "originalType": "Agência",
+      "meceCategory": "Agência/SEO",
+      "amount": 2246.92
+    },
+    {
+      "sourceRow": 9,
+      "month": "2026-01",
+      "origin": "CC",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 149.45
+    },
+    {
+      "sourceRow": 10,
+      "month": "2026-01",
+      "origin": "CC",
+      "originalType": "Sem tipo",
+      "meceCategory": "Brindes/Material Promocional",
+      "amount": 3190.0
+    },
+    {
+      "sourceRow": 11,
+      "month": "2026-01",
+      "origin": "CC",
+      "originalType": "Sem tipo",
+      "meceCategory": "Alimentação/Hospitalidade",
+      "amount": 2216.22
+    },
+    {
+      "sourceRow": 12,
+      "month": "2026-01",
+      "origin": "CC",
+      "originalType": "Agência",
+      "meceCategory": "Agência/SEO",
+      "amount": 3200.0
+    },
+    {
+      "sourceRow": 13,
+      "month": "2026-01",
+      "origin": "CC",
+      "originalType": "Sem tipo",
+      "meceCategory": "Alimentação/Hospitalidade",
+      "amount": 4000.0
+    },
+    {
+      "sourceRow": 14,
+      "month": "2026-01",
+      "origin": "CC",
+      "originalType": "Sem tipo",
+      "meceCategory": "Pessoas/Freelancers",
+      "amount": 3520.0
+    },
+    {
+      "sourceRow": 15,
+      "month": "2026-01",
+      "origin": "CC",
+      "originalType": "Evento",
+      "meceCategory": "Eventos",
+      "amount": 3425.0
+    },
+    {
+      "sourceRow": 16,
+      "month": "2026-01",
+      "origin": "Conta Simples",
+      "originalType": "Evento",
+      "meceCategory": "Eventos",
+      "amount": 221.98
+    },
+    {
+      "sourceRow": 17,
+      "month": "2026-01",
+      "origin": "Conta Simples",
+      "originalType": "Saas",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 301.03
+    },
+    {
+      "sourceRow": 18,
+      "month": "2026-01",
+      "origin": "Conta Simples",
+      "originalType": "Saas",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 10.54
+    },
+    {
+      "sourceRow": 19,
+      "month": "2026-01",
+      "origin": "Conta Simples",
+      "originalType": "Saas",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 81.31
+    },
+    {
+      "sourceRow": 20,
+      "month": "2026-01",
+      "origin": "Conta Simples",
+      "originalType": "Saas",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 2323.0
+    },
+    {
+      "sourceRow": 21,
+      "month": "2026-01",
+      "origin": "Itaucard",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 1098.62
+    },
+    {
+      "sourceRow": 22,
+      "month": "2026-02",
+      "origin": "CC",
+      "originalType": "Sem tipo",
+      "meceCategory": "Pessoas/Freelancers",
+      "amount": 1070.0
+    },
+    {
+      "sourceRow": 23,
+      "month": "2026-02",
+      "origin": "CC",
+      "originalType": "Evento",
+      "meceCategory": "Eventos",
+      "amount": 5000.0
+    },
+    {
+      "sourceRow": 24,
+      "month": "2026-02",
+      "origin": "CC",
+      "originalType": "Evento",
+      "meceCategory": "Eventos",
+      "amount": 15000.0
+    },
+    {
+      "sourceRow": 25,
+      "month": "2026-02",
+      "origin": "CC",
+      "originalType": "Sem tipo",
+      "meceCategory": "Associações/Institucional",
+      "amount": 2815.5
+    },
+    {
+      "sourceRow": 26,
+      "month": "2026-02",
+      "origin": "CC",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 39.98
+    },
+    {
+      "sourceRow": 27,
+      "month": "2026-02",
+      "origin": "CC",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 2244.73
+    },
+    {
+      "sourceRow": 28,
+      "month": "2026-02",
+      "origin": "CC",
+      "originalType": "Sem tipo",
+      "meceCategory": "Alimentação/Hospitalidade",
+      "amount": 5000.0
+    },
+    {
+      "sourceRow": 29,
+      "month": "2026-02",
+      "origin": "CC",
+      "originalType": "Sem tipo",
+      "meceCategory": "Pessoas/Freelancers",
+      "amount": 1070.0
+    },
+    {
+      "sourceRow": 30,
+      "month": "2026-02",
+      "origin": "CC",
+      "originalType": "Sem tipo",
+      "meceCategory": "Educação/Consultoria",
+      "amount": 14077.5
+    },
+    {
+      "sourceRow": 31,
+      "month": "2026-02",
+      "origin": "CC",
+      "originalType": "Sem tipo",
+      "meceCategory": "Alimentação/Hospitalidade",
+      "amount": 278.48
+    },
+    {
+      "sourceRow": 32,
+      "month": "2026-02",
+      "origin": "CC",
+      "originalType": "Agência",
+      "meceCategory": "Agência/SEO",
+      "amount": 7652.5
+    },
+    {
+      "sourceRow": 33,
+      "month": "2026-02",
+      "origin": "CC",
+      "originalType": "Sem tipo",
+      "meceCategory": "Brindes/Material Promocional",
+      "amount": 1091.84
+    },
+    {
+      "sourceRow": 34,
+      "month": "2026-02",
+      "origin": "CC",
+      "originalType": "Evento",
+      "meceCategory": "Eventos",
+      "amount": 2420.0
+    },
+    {
+      "sourceRow": 35,
+      "month": "2026-02",
+      "origin": "CC",
+      "originalType": "Sem tipo",
+      "meceCategory": "Pessoas/Freelancers",
+      "amount": 619.0
+    },
+    {
+      "sourceRow": 36,
+      "month": "2026-02",
+      "origin": "CC",
+      "originalType": "Evento",
+      "meceCategory": "Eventos",
+      "amount": 1760.48
+    },
+    {
+      "sourceRow": 37,
+      "month": "2026-02",
+      "origin": "CC",
+      "originalType": "Evento",
+      "meceCategory": "Eventos",
+      "amount": 20000.0
+    },
+    {
+      "sourceRow": 38,
+      "month": "2026-02",
+      "origin": "CC",
+      "originalType": "Evento",
+      "meceCategory": "Eventos",
+      "amount": 47504.67
+    },
+    {
+      "sourceRow": 39,
+      "month": "2026-02",
+      "origin": "CC",
+      "originalType": "Evento",
+      "meceCategory": "Eventos",
+      "amount": 101954.38
+    },
+    {
+      "sourceRow": 40,
+      "month": "2026-02",
+      "origin": "CC",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 8238.34
+    },
+    {
+      "sourceRow": 41,
+      "month": "2026-02",
+      "origin": "CC",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 8318.14
+    },
+    {
+      "sourceRow": 42,
+      "month": "2026-02",
+      "origin": "CC",
+      "originalType": "Sem tipo",
+      "meceCategory": "Brindes/Material Promocional",
+      "amount": 364.84
+    },
+    {
+      "sourceRow": 43,
+      "month": "2026-02",
+      "origin": "CC",
+      "originalType": "Sem tipo",
+      "meceCategory": "Brindes/Material Promocional",
+      "amount": 121.87
+    },
+    {
+      "sourceRow": 44,
+      "month": "2026-02",
+      "origin": "CC",
+      "originalType": "Sem tipo",
+      "meceCategory": "Brindes/Material Promocional",
+      "amount": 7363.2
+    },
+    {
+      "sourceRow": 45,
+      "month": "2026-02",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 33.73
+    },
+    {
+      "sourceRow": 46,
+      "month": "2026-02",
+      "origin": "Conta Simples",
+      "originalType": "Saas",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 5.23
+    },
+    {
+      "sourceRow": 47,
+      "month": "2026-02",
+      "origin": "Conta Simples",
+      "originalType": "Saas",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 149.32
+    },
+    {
+      "sourceRow": 48,
+      "month": "2026-02",
+      "origin": "Conta Simples",
+      "originalType": "Saas",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 141.0
+    },
+    {
+      "sourceRow": 49,
+      "month": "2026-02",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 395.94
+    },
+    {
+      "sourceRow": 50,
+      "month": "2026-02",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 49.3
+    },
+    {
+      "sourceRow": 51,
+      "month": "2026-02",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 39.11
+    },
+    {
+      "sourceRow": 52,
+      "month": "2026-02",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 258.78
+    },
+    {
+      "sourceRow": 53,
+      "month": "2026-02",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 16.74
+    },
+    {
+      "sourceRow": 54,
+      "month": "2026-02",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 4.73
+    },
+    {
+      "sourceRow": 55,
+      "month": "2026-02",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 25.46
+    },
+    {
+      "sourceRow": 56,
+      "month": "2026-02",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 22.48
+    },
+    {
+      "sourceRow": 57,
+      "month": "2026-02",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 22.69
+    },
+    {
+      "sourceRow": 58,
+      "month": "2026-02",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 36.72
+    },
+    {
+      "sourceRow": 59,
+      "month": "2026-02",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 13.82
+    },
+    {
+      "sourceRow": 60,
+      "month": "2026-02",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 5.89
+    },
+    {
+      "sourceRow": 61,
+      "month": "2026-02",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 168.18
+    },
+    {
+      "sourceRow": 62,
+      "month": "2026-02",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 1787.2
+    },
+    {
+      "sourceRow": 63,
+      "month": "2026-02",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 30.93
+    },
+    {
+      "sourceRow": 64,
+      "month": "2026-02",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 16.84
+    },
+    {
+      "sourceRow": 65,
+      "month": "2026-02",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 30.0
+    },
+    {
+      "sourceRow": 66,
+      "month": "2026-02",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 528.0
+    },
+    {
+      "sourceRow": 67,
+      "month": "2026-02",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 16.28
+    },
+    {
+      "sourceRow": 68,
+      "month": "2026-02",
+      "origin": "Itaucard",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 791.72
+    },
+    {
+      "sourceRow": 69,
+      "month": "2026-02",
+      "origin": "Itaucard",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 161.8
+    },
+    {
+      "sourceRow": 70,
+      "month": "2026-02",
+      "origin": "Itaucard",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 449.99
+    },
+    {
+      "sourceRow": 71,
+      "month": "2026-02",
+      "origin": "Itaucard",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 374.99
+    },
+    {
+      "sourceRow": 72,
+      "month": "2026-02",
+      "origin": "Itaucard",
+      "originalType": "Evento",
+      "meceCategory": "Eventos",
+      "amount": 622.25
+    },
+    {
+      "sourceRow": 73,
+      "month": "2026-03",
+      "origin": "CC",
+      "originalType": "Evento",
+      "meceCategory": "Eventos",
+      "amount": 342.16
+    },
+    {
+      "sourceRow": 74,
+      "month": "2026-03",
+      "origin": "CC",
+      "originalType": "Evento",
+      "meceCategory": "Eventos",
+      "amount": 1942.79
+    },
+    {
+      "sourceRow": 75,
+      "month": "2026-03",
+      "origin": "CC",
+      "originalType": "Agência",
+      "meceCategory": "Agência/SEO",
+      "amount": 12200.5
+    },
+    {
+      "sourceRow": 76,
+      "month": "2026-03",
+      "origin": "CC",
+      "originalType": "Evento",
+      "meceCategory": "Eventos",
+      "amount": 52965.0
+    },
+    {
+      "sourceRow": 77,
+      "month": "2026-03",
+      "origin": "CC",
+      "originalType": "Evento",
+      "meceCategory": "Eventos",
+      "amount": 11250.0
+    },
+    {
+      "sourceRow": 78,
+      "month": "2026-03",
+      "origin": "CC",
+      "originalType": "Evento",
+      "meceCategory": "Eventos",
+      "amount": 4192.31
+    },
+    {
+      "sourceRow": 79,
+      "month": "2026-03",
+      "origin": "CC",
+      "originalType": "Evento",
+      "meceCategory": "Eventos",
+      "amount": 2737.8
+    },
+    {
+      "sourceRow": 80,
+      "month": "2026-03",
+      "origin": "CC",
+      "originalType": "Evento",
+      "meceCategory": "Eventos",
+      "amount": 1460.0
+    },
+    {
+      "sourceRow": 81,
+      "month": "2026-03",
+      "origin": "CC",
+      "originalType": "Evento",
+      "meceCategory": "Eventos",
+      "amount": 8508.99
+    },
+    {
+      "sourceRow": 82,
+      "month": "2026-03",
+      "origin": "CC",
+      "originalType": "Evento",
+      "meceCategory": "Eventos",
+      "amount": 8100.0
+    },
+    {
+      "sourceRow": 83,
+      "month": "2026-03",
+      "origin": "CC",
+      "originalType": "Evento",
+      "meceCategory": "Eventos",
+      "amount": 600.0
+    },
+    {
+      "sourceRow": 84,
+      "month": "2026-03",
+      "origin": "CC",
+      "originalType": "Evento",
+      "meceCategory": "Eventos",
+      "amount": 2399.99
+    },
+    {
+      "sourceRow": 85,
+      "month": "2026-03",
+      "origin": "CC",
+      "originalType": "Evento",
+      "meceCategory": "Eventos",
+      "amount": 15000.0
+    },
+    {
+      "sourceRow": 86,
+      "month": "2026-03",
+      "origin": "CC",
+      "originalType": "Evento",
+      "meceCategory": "Eventos",
+      "amount": 11250.0
+    },
+    {
+      "sourceRow": 87,
+      "month": "2026-03",
+      "origin": "CC",
+      "originalType": "Evento",
+      "meceCategory": "Eventos",
+      "amount": 9060.0
+    },
+    {
+      "sourceRow": 88,
+      "month": "2026-03",
+      "origin": "CC",
+      "originalType": "Evento",
+      "meceCategory": "Eventos",
+      "amount": 8250.0
+    },
+    {
+      "sourceRow": 89,
+      "month": "2026-03",
+      "origin": "CC",
+      "originalType": "Evento",
+      "meceCategory": "Eventos",
+      "amount": 10000.0
+    },
+    {
+      "sourceRow": 90,
+      "month": "2026-03",
+      "origin": "Conta Simples",
+      "originalType": "Evento",
+      "meceCategory": "Eventos",
+      "amount": 366.0
+    },
+    {
+      "sourceRow": 91,
+      "month": "2026-03",
+      "origin": "Conta Simples",
+      "originalType": "Evento",
+      "meceCategory": "Eventos",
+      "amount": 11.56
+    },
+    {
+      "sourceRow": 92,
+      "month": "2026-03",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 449.99
+    },
+    {
+      "sourceRow": 93,
+      "month": "2026-03",
+      "origin": "Conta Simples",
+      "originalType": "Saas",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 78.66
+    },
+    {
+      "sourceRow": 94,
+      "month": "2026-03",
+      "origin": "Conta Simples",
+      "originalType": "Saas",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 2247.3
+    },
+    {
+      "sourceRow": 95,
+      "month": "2026-03",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Associações/Institucional",
+      "amount": 10000.0
+    },
+    {
+      "sourceRow": 96,
+      "month": "2026-03",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 449.99
+    },
+    {
+      "sourceRow": 97,
+      "month": "2026-03",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 12.51
+    },
+    {
+      "sourceRow": 98,
+      "month": "2026-03",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 5.7
+    },
+    {
+      "sourceRow": 99,
+      "month": "2026-03",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 4.0
+    },
+    {
+      "sourceRow": 100,
+      "month": "2026-03",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 20.38
+    },
+    {
+      "sourceRow": 101,
+      "month": "2026-03",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 4.73
+    },
+    {
+      "sourceRow": 102,
+      "month": "2026-03",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 135.2
+    },
+    {
+      "sourceRow": 103,
+      "month": "2026-03",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 4.73
+    },
+    {
+      "sourceRow": 104,
+      "month": "2026-03",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 135.2
+    },
+    {
+      "sourceRow": 105,
+      "month": "2026-03",
+      "origin": "Conta Simples",
+      "originalType": "Saas",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 188.0
+    },
+    {
+      "sourceRow": 106,
+      "month": "2026-03",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 500.0
+    },
+    {
+      "sourceRow": 107,
+      "month": "2026-03",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 664.47
+    },
+    {
+      "sourceRow": 108,
+      "month": "2026-03",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 6.52
+    },
+    {
+      "sourceRow": 109,
+      "month": "2026-03",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 186.32
+    },
+    {
+      "sourceRow": 110,
+      "month": "2026-03",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 9.32
+    },
+    {
+      "sourceRow": 111,
+      "month": "2026-03",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 266.17
+    },
+    {
+      "sourceRow": 112,
+      "month": "2026-03",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 602.4
+    },
+    {
+      "sourceRow": 113,
+      "month": "2026-03",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 7.44
+    },
+    {
+      "sourceRow": 114,
+      "month": "2026-03",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 212.7
+    },
+    {
+      "sourceRow": 115,
+      "month": "2026-03",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 1.86
+    },
+    {
+      "sourceRow": 116,
+      "month": "2026-03",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 53.17
+    },
+    {
+      "sourceRow": 117,
+      "month": "2026-03",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 500.0
+    },
+    {
+      "sourceRow": 118,
+      "month": "2026-03",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 166.33
+    },
+    {
+      "sourceRow": 119,
+      "month": "2026-03",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 5.82
+    },
+    {
+      "sourceRow": 120,
+      "month": "2026-03",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 500.0
+    },
+    {
+      "sourceRow": 121,
+      "month": "2026-03",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 947.2
+    },
+    {
+      "sourceRow": 122,
+      "month": "2026-03",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 500.0
+    },
+    {
+      "sourceRow": 123,
+      "month": "2026-03",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Educação/Consultoria",
+      "amount": 12881.0
+    },
+    {
+      "sourceRow": 124,
+      "month": "2026-03",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 4.01
+    },
+    {
+      "sourceRow": 125,
+      "month": "2026-03",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 114.63
+    },
+    {
+      "sourceRow": 126,
+      "month": "2026-03",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 1.87
+    },
+    {
+      "sourceRow": 127,
+      "month": "2026-03",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 53.29
+    },
+    {
+      "sourceRow": 128,
+      "month": "2026-03",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 862.76
+    },
+    {
+      "sourceRow": 129,
+      "month": "2026-03",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 6.59
+    },
+    {
+      "sourceRow": 130,
+      "month": "2026-03",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 188.35
+    },
+    {
+      "sourceRow": 131,
+      "month": "2026-03",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 2.83
+    },
+    {
+      "sourceRow": 132,
+      "month": "2026-03",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 80.72
+    },
+    {
+      "sourceRow": 133,
+      "month": "2026-03",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 80.72
+    },
+    {
+      "sourceRow": 134,
+      "month": "2026-03",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 2.83
+    },
+    {
+      "sourceRow": 135,
+      "month": "2026-03",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 107.63
+    },
+    {
+      "sourceRow": 136,
+      "month": "2026-03",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 3.77
+    },
+    {
+      "sourceRow": 137,
+      "month": "2026-03",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 53.81
+    },
+    {
+      "sourceRow": 138,
+      "month": "2026-03",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 1.88
+    },
+    {
+      "sourceRow": 139,
+      "month": "2026-03",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 500.0
+    },
+    {
+      "sourceRow": 140,
+      "month": "2026-03",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 5.76
+    },
+    {
+      "sourceRow": 141,
+      "month": "2026-03",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 18.34
+    },
+    {
+      "sourceRow": 142,
+      "month": "2026-03",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 17.5
+    },
+    {
+      "sourceRow": 143,
+      "month": "2026-03",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 6.7
+    },
+    {
+      "sourceRow": 144,
+      "month": "2026-03",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 191.5
+    },
+    {
+      "sourceRow": 145,
+      "month": "2026-03",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 4.79
+    },
+    {
+      "sourceRow": 146,
+      "month": "2026-03",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 136.78
+    },
+    {
+      "sourceRow": 147,
+      "month": "2026-03",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 26.27
+    },
+    {
+      "sourceRow": 148,
+      "month": "2026-03",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 2.87
+    },
+    {
+      "sourceRow": 149,
+      "month": "2026-03",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 82.07
+    },
+    {
+      "sourceRow": 150,
+      "month": "2026-03",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 0.96
+    },
+    {
+      "sourceRow": 151,
+      "month": "2026-03",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 27.36
+    },
+    {
+      "sourceRow": 152,
+      "month": "2026-03",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 500.0
+    },
+    {
+      "sourceRow": 153,
+      "month": "2026-03",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 1034.38
+    },
+    {
+      "sourceRow": 154,
+      "month": "2026-03",
+      "origin": "Itaucard",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 449.99
+    },
+    {
+      "sourceRow": 155,
+      "month": "2026-03",
+      "origin": "Itaucard",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 374.99
+    },
+    {
+      "sourceRow": 156,
+      "month": "2026-03",
+      "origin": "Itaucard",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 1874.32
+    },
+    {
+      "sourceRow": 157,
+      "month": "2026-03",
+      "origin": "Itaucard",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 84.3
+    },
+    {
+      "sourceRow": 158,
+      "month": "2026-03",
+      "origin": "Itaucard",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 2.98
+    },
+    {
+      "sourceRow": 159,
+      "month": "2026-04",
+      "origin": "CC",
+      "originalType": "Sem tipo",
+      "meceCategory": "Brindes/Material Promocional",
+      "amount": 322.0
+    },
+    {
+      "sourceRow": 160,
+      "month": "2026-04",
+      "origin": "CC",
+      "originalType": "Sem tipo",
+      "meceCategory": "Associações/Institucional",
+      "amount": 2815.5
+    },
+    {
+      "sourceRow": 161,
+      "month": "2026-04",
+      "origin": "CC",
+      "originalType": "Sem tipo",
+      "meceCategory": "Associações/Institucional",
+      "amount": 2815.5
+    },
+    {
+      "sourceRow": 162,
+      "month": "2026-04",
+      "origin": "CC",
+      "originalType": "Sem tipo",
+      "meceCategory": "Associações/Institucional",
+      "amount": 7482.57
+    },
+    {
+      "sourceRow": 163,
+      "month": "2026-04",
+      "origin": "CC",
+      "originalType": "Agência",
+      "meceCategory": "Agência/SEO",
+      "amount": 12200.5
+    },
+    {
+      "sourceRow": 164,
+      "month": "2026-04",
+      "origin": "CC",
+      "originalType": "Sem tipo",
+      "meceCategory": "Brindes/Material Promocional",
+      "amount": 1390.0
+    },
+    {
+      "sourceRow": 165,
+      "month": "2026-04",
+      "origin": "CC",
+      "originalType": "Sem tipo",
+      "meceCategory": "Brindes/Material Promocional",
+      "amount": 196.0
+    },
+    {
+      "sourceRow": 166,
+      "month": "2026-04",
+      "origin": "CC",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 110.8
+    },
+    {
+      "sourceRow": 167,
+      "month": "2026-04",
+      "origin": "CC",
+      "originalType": "Sem tipo",
+      "meceCategory": "Brindes/Material Promocional",
+      "amount": 1790.0
+    },
+    {
+      "sourceRow": 168,
+      "month": "2026-04",
+      "origin": "CC",
+      "originalType": "Sem tipo",
+      "meceCategory": "Educação/Consultoria",
+      "amount": 77.36
+    },
+    {
+      "sourceRow": 169,
+      "month": "2026-04",
+      "origin": "CC",
+      "originalType": "Evento",
+      "meceCategory": "Eventos",
+      "amount": 540.0
+    },
+    {
+      "sourceRow": 170,
+      "month": "2026-04",
+      "origin": "CC",
+      "originalType": "Evento",
+      "meceCategory": "Eventos",
+      "amount": 1970.0
+    },
+    {
+      "sourceRow": 171,
+      "month": "2026-04",
+      "origin": "CC",
+      "originalType": "Evento",
+      "meceCategory": "Eventos",
+      "amount": 87261.5
+    },
+    {
+      "sourceRow": 172,
+      "month": "2026-04",
+      "origin": "CC",
+      "originalType": "Evento",
+      "meceCategory": "Eventos",
+      "amount": 3470.0
+    },
+    {
+      "sourceRow": 173,
+      "month": "2026-04",
+      "origin": "CC",
+      "originalType": "Evento",
+      "meceCategory": "Eventos",
+      "amount": 9350.0
+    },
+    {
+      "sourceRow": 174,
+      "month": "2026-04",
+      "origin": "CC",
+      "originalType": "Evento",
+      "meceCategory": "Eventos",
+      "amount": 506.15
+    },
+    {
+      "sourceRow": 175,
+      "month": "2026-04",
+      "origin": "CC",
+      "originalType": "Evento",
+      "meceCategory": "Eventos",
+      "amount": 506.15
+    },
+    {
+      "sourceRow": 176,
+      "month": "2026-04",
+      "origin": "CC",
+      "originalType": "Evento",
+      "meceCategory": "Eventos",
+      "amount": 8390.4
+    },
+    {
+      "sourceRow": 177,
+      "month": "2026-04",
+      "origin": "CC",
+      "originalType": "Evento",
+      "meceCategory": "Eventos",
+      "amount": 3360.0
+    },
+    {
+      "sourceRow": 178,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 500.0
+    },
+    {
+      "sourceRow": 179,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 500.0
+    },
+    {
+      "sourceRow": 180,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 6.65
+    },
+    {
+      "sourceRow": 181,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 189.97
+    },
+    {
+      "sourceRow": 182,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 449.99
+    },
+    {
+      "sourceRow": 183,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 449.99
+    },
+    {
+      "sourceRow": 184,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 449.99
+    },
+    {
+      "sourceRow": 185,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Saas",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 78.46
+    },
+    {
+      "sourceRow": 186,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Saas",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 2241.6
+    },
+    {
+      "sourceRow": 187,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 4079.88
+    },
+    {
+      "sourceRow": 188,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 449.99
+    },
+    {
+      "sourceRow": 189,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 1000.0
+    },
+    {
+      "sourceRow": 190,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 7.6
+    },
+    {
+      "sourceRow": 191,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 217.1
+    },
+    {
+      "sourceRow": 192,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 161.87
+    },
+    {
+      "sourceRow": 193,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 5.67
+    },
+    {
+      "sourceRow": 194,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 2.83
+    },
+    {
+      "sourceRow": 195,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 80.94
+    },
+    {
+      "sourceRow": 196,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 133.56
+    },
+    {
+      "sourceRow": 197,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 4.67
+    },
+    {
+      "sourceRow": 198,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 986.59
+    },
+    {
+      "sourceRow": 199,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 6.54
+    },
+    {
+      "sourceRow": 200,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 186.98
+    },
+    {
+      "sourceRow": 201,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 186.98
+    },
+    {
+      "sourceRow": 202,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 6.54
+    },
+    {
+      "sourceRow": 203,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 1000.0
+    },
+    {
+      "sourceRow": 204,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 700.59
+    },
+    {
+      "sourceRow": 205,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 1000.0
+    },
+    {
+      "sourceRow": 206,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 188.53
+    },
+    {
+      "sourceRow": 207,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 6.6
+    },
+    {
+      "sourceRow": 208,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 411.0
+    },
+    {
+      "sourceRow": 209,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 53.87
+    },
+    {
+      "sourceRow": 210,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 1.89
+    },
+    {
+      "sourceRow": 211,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 53.87
+    },
+    {
+      "sourceRow": 212,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 1.89
+    },
+    {
+      "sourceRow": 213,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 108.75
+    },
+    {
+      "sourceRow": 214,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 3.81
+    },
+    {
+      "sourceRow": 215,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 492.0
+    },
+    {
+      "sourceRow": 216,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 53.99
+    },
+    {
+      "sourceRow": 217,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 3.81
+    },
+    {
+      "sourceRow": 218,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 108.97
+    },
+    {
+      "sourceRow": 219,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 136.21
+    },
+    {
+      "sourceRow": 220,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 4.77
+    },
+    {
+      "sourceRow": 221,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 289.8
+    },
+    {
+      "sourceRow": 222,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 54.48
+    },
+    {
+      "sourceRow": 223,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 1.91
+    },
+    {
+      "sourceRow": 224,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 54.48
+    },
+    {
+      "sourceRow": 225,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 1.91
+    },
+    {
+      "sourceRow": 226,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 43.59
+    },
+    {
+      "sourceRow": 227,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 1.53
+    },
+    {
+      "sourceRow": 228,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 190.69
+    },
+    {
+      "sourceRow": 229,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 6.67
+    },
+    {
+      "sourceRow": 230,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 5.72
+    },
+    {
+      "sourceRow": 231,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 163.45
+    },
+    {
+      "sourceRow": 232,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 108.97
+    },
+    {
+      "sourceRow": 233,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 3.81
+    },
+    {
+      "sourceRow": 234,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 56.59
+    },
+    {
+      "sourceRow": 235,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 1000.0
+    },
+    {
+      "sourceRow": 236,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 870.21
+    },
+    {
+      "sourceRow": 237,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 0.94
+    },
+    {
+      "sourceRow": 238,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 26.92
+    },
+    {
+      "sourceRow": 239,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 0.94
+    },
+    {
+      "sourceRow": 240,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 26.92
+    },
+    {
+      "sourceRow": 241,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 2.83
+    },
+    {
+      "sourceRow": 242,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 80.76
+    },
+    {
+      "sourceRow": 243,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 80.32
+    },
+    {
+      "sourceRow": 244,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 1000.0
+    },
+    {
+      "sourceRow": 245,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 59.68
+    },
+    {
+      "sourceRow": 246,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 309.0
+    },
+    {
+      "sourceRow": 247,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 1.89
+    },
+    {
+      "sourceRow": 248,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 53.93
+    },
+    {
+      "sourceRow": 249,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 26.96
+    },
+    {
+      "sourceRow": 250,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 0.94
+    },
+    {
+      "sourceRow": 251,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 26.96
+    },
+    {
+      "sourceRow": 252,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 0.94
+    },
+    {
+      "sourceRow": 253,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 80.89
+    },
+    {
+      "sourceRow": 254,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 2.83
+    },
+    {
+      "sourceRow": 255,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 3.99
+    },
+    {
+      "sourceRow": 256,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 64.57
+    },
+    {
+      "sourceRow": 257,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Alimentação/Hospitalidade",
+      "amount": 22.6
+    },
+    {
+      "sourceRow": 258,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 1000.0
+    },
+    {
+      "sourceRow": 259,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 0.95
+    },
+    {
+      "sourceRow": 260,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 27.21
+    },
+    {
+      "sourceRow": 261,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 108.84
+    },
+    {
+      "sourceRow": 262,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 3.81
+    },
+    {
+      "sourceRow": 263,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 799.0
+    },
+    {
+      "sourceRow": 264,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 168.0
+    },
+    {
+      "sourceRow": 265,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 58.81
+    },
+    {
+      "sourceRow": 266,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 327.7
+    },
+    {
+      "sourceRow": 267,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 420.77
+    },
+    {
+      "sourceRow": 268,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 254.01
+    },
+    {
+      "sourceRow": 269,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 38.93
+    },
+    {
+      "sourceRow": 270,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 28.3
+    },
+    {
+      "sourceRow": 271,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Alimentação/Hospitalidade",
+      "amount": 663.68
+    },
+    {
+      "sourceRow": 272,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 26.99
+    },
+    {
+      "sourceRow": 273,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 55.94
+    },
+    {
+      "sourceRow": 274,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 31.7
+    },
+    {
+      "sourceRow": 275,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Saas",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 111.77
+    },
+    {
+      "sourceRow": 276,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Saas",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 3.91
+    },
+    {
+      "sourceRow": 277,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 5.81
+    },
+    {
+      "sourceRow": 278,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 166.03
+    },
+    {
+      "sourceRow": 279,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 50.0
+    },
+    {
+      "sourceRow": 280,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 200.0
+    },
+    {
+      "sourceRow": 281,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Saas",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 2.15
+    },
+    {
+      "sourceRow": 282,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Saas",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 61.44
+    },
+    {
+      "sourceRow": 283,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Saas",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 6.45
+    },
+    {
+      "sourceRow": 284,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Saas",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 184.21
+    },
+    {
+      "sourceRow": 285,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 16.03
+    },
+    {
+      "sourceRow": 286,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 210.57
+    },
+    {
+      "sourceRow": 287,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 3.99
+    },
+    {
+      "sourceRow": 288,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 114.13
+    },
+    {
+      "sourceRow": 289,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 400.0
+    },
+    {
+      "sourceRow": 290,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 449.99
+    },
+    {
+      "sourceRow": 291,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 449.99
+    },
+    {
+      "sourceRow": 292,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 449.99
+    },
+    {
+      "sourceRow": 293,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Saas",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 3784.76
+    },
+    {
+      "sourceRow": 294,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Saas",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 132.47
+    },
+    {
+      "sourceRow": 295,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 200.08
+    },
+    {
+      "sourceRow": 296,
+      "month": "2026-04",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 449.99
+    },
+    {
+      "sourceRow": 297,
+      "month": "2026-05",
+      "origin": "CC",
+      "originalType": "Sem tipo",
+      "meceCategory": "Alimentação/Hospitalidade",
+      "amount": 6320.0
+    },
+    {
+      "sourceRow": 298,
+      "month": "2026-05",
+      "origin": "CC",
+      "originalType": "Sem tipo",
+      "meceCategory": "Pessoas/Freelancers",
+      "amount": 5700.0
+    },
+    {
+      "sourceRow": 299,
+      "month": "2026-05",
+      "origin": "CC",
+      "originalType": "Sem tipo",
+      "meceCategory": "Serviços de Apoio a Eventos",
+      "amount": 1800.31
+    },
+    {
+      "sourceRow": 300,
+      "month": "2026-05",
+      "origin": "CC",
+      "originalType": "Sem tipo",
+      "meceCategory": "Pessoas/Freelancers",
+      "amount": 2000.0
+    },
+    {
+      "sourceRow": 301,
+      "month": "2026-05",
+      "origin": "CC",
+      "originalType": "Sem tipo",
+      "meceCategory": "Brindes/Material Promocional",
+      "amount": 1090.0
+    },
+    {
+      "sourceRow": 302,
+      "month": "2026-05",
+      "origin": "CC",
+      "originalType": "Sem tipo",
+      "meceCategory": "Alimentação/Hospitalidade",
+      "amount": 6320.0
+    },
+    {
+      "sourceRow": 303,
+      "month": "2026-05",
+      "origin": "CC",
+      "originalType": "Sem tipo",
+      "meceCategory": "Alimentação/Hospitalidade",
+      "amount": 8390.0
+    },
+    {
+      "sourceRow": 304,
+      "month": "2026-05",
+      "origin": "CC",
+      "originalType": "Sem tipo",
+      "meceCategory": "Brindes/Material Promocional",
+      "amount": 3470.0
+    },
+    {
+      "sourceRow": 305,
+      "month": "2026-05",
+      "origin": "CC",
+      "originalType": "Sem tipo",
+      "meceCategory": "Serviços de Apoio a Eventos",
+      "amount": 10530.0
+    },
+    {
+      "sourceRow": 306,
+      "month": "2026-05",
+      "origin": "CC",
+      "originalType": "Sem tipo",
+      "meceCategory": "Brindes/Material Promocional",
+      "amount": 9350.0
+    },
+    {
+      "sourceRow": 307,
+      "month": "2026-05",
+      "origin": "CC",
+      "originalType": "Sem tipo",
+      "meceCategory": "Pessoas/Freelancers",
+      "amount": 1100.0
+    },
+    {
+      "sourceRow": 308,
+      "month": "2026-05",
+      "origin": "CC",
+      "originalType": "Sem tipo",
+      "meceCategory": "Associações/Institucional",
+      "amount": 12200.5
+    },
+    {
+      "sourceRow": 309,
+      "month": "2026-05",
+      "origin": "CC",
+      "originalType": "Sem tipo",
+      "meceCategory": "Serviços de Apoio a Eventos",
+      "amount": 1864.0
+    },
+    {
+      "sourceRow": 310,
+      "month": "2026-05",
+      "origin": "CC",
+      "originalType": "Sem tipo",
+      "meceCategory": "Brindes/Material Promocional",
+      "amount": 3930.0
+    },
+    {
+      "sourceRow": 311,
+      "month": "2026-05",
+      "origin": "CC",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 140.0
+    },
+    {
+      "sourceRow": 312,
+      "month": "2026-05",
+      "origin": "CC",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 136.45
+    },
+    {
+      "sourceRow": 313,
+      "month": "2026-05",
+      "origin": "CC",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 70.0
+    },
+    {
+      "sourceRow": 314,
+      "month": "2026-05",
+      "origin": "CC",
+      "originalType": "Sem tipo",
+      "meceCategory": "Brindes/Material Promocional",
+      "amount": 10010.0
+    },
+    {
+      "sourceRow": 315,
+      "month": "2026-05",
+      "origin": "CC",
+      "originalType": "Sem tipo",
+      "meceCategory": "Alimentação/Hospitalidade",
+      "amount": 500.0
+    },
+    {
+      "sourceRow": 316,
+      "month": "2026-05",
+      "origin": "CC",
+      "originalType": "Agência",
+      "meceCategory": "Agência/SEO",
+      "amount": 6630.0
+    },
+    {
+      "sourceRow": 317,
+      "month": "2026-05",
+      "origin": "CC",
+      "originalType": "Sem tipo",
+      "meceCategory": "Brindes/Material Promocional",
+      "amount": 6570.0
+    },
+    {
+      "sourceRow": 318,
+      "month": "2026-05",
+      "origin": "CC",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 474.0
+    },
+    {
+      "sourceRow": 319,
+      "month": "2026-05",
+      "origin": "CC",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 37.0
+    },
+    {
+      "sourceRow": 320,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 149.77
+    },
+    {
+      "sourceRow": 321,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 129.35
+    },
+    {
+      "sourceRow": 322,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 155.79
+    },
+    {
+      "sourceRow": 323,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 850.0
+    },
+    {
+      "sourceRow": 324,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 910.04
+    },
+    {
+      "sourceRow": 325,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 1027.4
+    },
+    {
+      "sourceRow": 326,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 824.0
+    },
+    {
+      "sourceRow": 327,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 1000.0
+    },
+    {
+      "sourceRow": 328,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 5775.9
+    },
+    {
+      "sourceRow": 329,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 292.0
+    },
+    {
+      "sourceRow": 330,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Saas",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 19.65
+    },
+    {
+      "sourceRow": 331,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Saas",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 561.4
+    },
+    {
+      "sourceRow": 332,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 449.99
+    },
+    {
+      "sourceRow": 333,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 449.99
+    },
+    {
+      "sourceRow": 334,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 224.99
+    },
+    {
+      "sourceRow": 335,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 449.99
+    },
+    {
+      "sourceRow": 336,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 1000.0
+    },
+    {
+      "sourceRow": 337,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 1000.0
+    },
+    {
+      "sourceRow": 338,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 62.14
+    },
+    {
+      "sourceRow": 339,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 1348.11
+    },
+    {
+      "sourceRow": 340,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 11.92
+    },
+    {
+      "sourceRow": 341,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 340.44
+    },
+    {
+      "sourceRow": 342,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 1500.0
+    },
+    {
+      "sourceRow": 343,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 16.0
+    },
+    {
+      "sourceRow": 344,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 3.0
+    },
+    {
+      "sourceRow": 345,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 1110.24
+    },
+    {
+      "sourceRow": 346,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 20.0
+    },
+    {
+      "sourceRow": 347,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Saas",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 3.79
+    },
+    {
+      "sourceRow": 348,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Saas",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 108.41
+    },
+    {
+      "sourceRow": 349,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 1000.0
+    },
+    {
+      "sourceRow": 350,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 4.5
+    },
+    {
+      "sourceRow": 351,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 47.42
+    },
+    {
+      "sourceRow": 352,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 60.55
+    },
+    {
+      "sourceRow": 353,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 7.2
+    },
+    {
+      "sourceRow": 354,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 1289.44
+    },
+    {
+      "sourceRow": 355,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 20.29
+    },
+    {
+      "sourceRow": 356,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 1000.0
+    },
+    {
+      "sourceRow": 357,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 99.0
+    },
+    {
+      "sourceRow": 358,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 72.22
+    },
+    {
+      "sourceRow": 359,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 449.99
+    },
+    {
+      "sourceRow": 360,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 91.43
+    },
+    {
+      "sourceRow": 361,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 1000.0
+    },
+    {
+      "sourceRow": 362,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 18.0
+    },
+    {
+      "sourceRow": 363,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 53.3
+    },
+    {
+      "sourceRow": 364,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 451.44
+    },
+    {
+      "sourceRow": 365,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 69.99
+    },
+    {
+      "sourceRow": 366,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 1000.0
+    },
+    {
+      "sourceRow": 367,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 1022.01
+    },
+    {
+      "sourceRow": 368,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 1000.0
+    },
+    {
+      "sourceRow": 369,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 1000.0
+    },
+    {
+      "sourceRow": 370,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 1000.0
+    },
+    {
+      "sourceRow": 371,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 1500.0
+    },
+    {
+      "sourceRow": 372,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 30.0
+    },
+    {
+      "sourceRow": 373,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 1000.0
+    },
+    {
+      "sourceRow": 374,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 774.2
+    },
+    {
+      "sourceRow": 375,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 24.0
+    },
+    {
+      "sourceRow": 376,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 2000.0
+    },
+    {
+      "sourceRow": 377,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 1.81
+    },
+    {
+      "sourceRow": 378,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 51.79
+    },
+    {
+      "sourceRow": 379,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 28.05
+    },
+    {
+      "sourceRow": 380,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 801.4
+    },
+    {
+      "sourceRow": 381,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 1000.0
+    },
+    {
+      "sourceRow": 382,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 800.0
+    },
+    {
+      "sourceRow": 383,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 1410.0
+    },
+    {
+      "sourceRow": 384,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 1000.0
+    },
+    {
+      "sourceRow": 385,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 30.99
+    },
+    {
+      "sourceRow": 386,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 27.15
+    },
+    {
+      "sourceRow": 387,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 932.25
+    },
+    {
+      "sourceRow": 388,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 270.99
+    },
+    {
+      "sourceRow": 389,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 40.0
+    },
+    {
+      "sourceRow": 390,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Saas",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 23.0
+    },
+    {
+      "sourceRow": 391,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Saas",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 95.0
+    },
+    {
+      "sourceRow": 392,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 54.4
+    },
+    {
+      "sourceRow": 393,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 47.61
+    },
+    {
+      "sourceRow": 394,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Saas",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 1987.02
+    },
+    {
+      "sourceRow": 395,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 582.29
+    },
+    {
+      "sourceRow": 396,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 5.57
+    },
+    {
+      "sourceRow": 397,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 159.14
+    },
+    {
+      "sourceRow": 398,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Alimentação/Hospitalidade",
+      "amount": 67.5
+    },
+    {
+      "sourceRow": 399,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Alimentação/Hospitalidade",
+      "amount": 1832.0
+    },
+    {
+      "sourceRow": 400,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 12.9
+    },
+    {
+      "sourceRow": 401,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 449.99
+    },
+    {
+      "sourceRow": 402,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 449.99
+    },
+    {
+      "sourceRow": 403,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 500.0
+    },
+    {
+      "sourceRow": 404,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Alimentação/Hospitalidade",
+      "amount": 2136.79
+    },
+    {
+      "sourceRow": 405,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 579.1
+    },
+    {
+      "sourceRow": 406,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 100.0
+    },
+    {
+      "sourceRow": 407,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 300.0
+    },
+    {
+      "sourceRow": 408,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 85.97
+    },
+    {
+      "sourceRow": 409,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 26.3
+    },
+    {
+      "sourceRow": 410,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 14.0
+    },
+    {
+      "sourceRow": 411,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 48.94
+    },
+    {
+      "sourceRow": 412,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 25.9
+    },
+    {
+      "sourceRow": 413,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 302.13
+    },
+    {
+      "sourceRow": 414,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 500.0
+    },
+    {
+      "sourceRow": 415,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 45.98
+    },
+    {
+      "sourceRow": 416,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 57.83
+    },
+    {
+      "sourceRow": 417,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 34.0
+    },
+    {
+      "sourceRow": 418,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 300.0
+    },
+    {
+      "sourceRow": 419,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 54.0
+    },
+    {
+      "sourceRow": 420,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 300.0
+    },
+    {
+      "sourceRow": 421,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 110.0
+    },
+    {
+      "sourceRow": 422,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Evento",
+      "meceCategory": "Eventos",
+      "amount": 56.0
+    },
+    {
+      "sourceRow": 423,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Evento",
+      "meceCategory": "Eventos",
+      "amount": 122.0
+    },
+    {
+      "sourceRow": 424,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Evento",
+      "meceCategory": "Eventos",
+      "amount": 144.0
+    },
+    {
+      "sourceRow": 425,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Evento",
+      "meceCategory": "Eventos",
+      "amount": 188.0
+    },
+    {
+      "sourceRow": 426,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Evento",
+      "meceCategory": "Eventos",
+      "amount": 128.0
+    },
+    {
+      "sourceRow": 427,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Evento",
+      "meceCategory": "Eventos",
+      "amount": 72.0
+    },
+    {
+      "sourceRow": 428,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Evento",
+      "meceCategory": "Eventos",
+      "amount": 338.0
+    },
+    {
+      "sourceRow": 429,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 70.0
+    },
+    {
+      "sourceRow": 430,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 70.0
+    },
+    {
+      "sourceRow": 431,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 70.0
+    },
+    {
+      "sourceRow": 432,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 431.05
+    },
+    {
+      "sourceRow": 433,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 15.09
+    },
+    {
+      "sourceRow": 434,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 12.0
+    },
+    {
+      "sourceRow": 435,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 120.0
+    },
+    {
+      "sourceRow": 436,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 125.0
+    },
+    {
+      "sourceRow": 437,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 115.0
+    },
+    {
+      "sourceRow": 438,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 125.0
+    },
+    {
+      "sourceRow": 439,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 125.0
+    },
+    {
+      "sourceRow": 440,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 12.16
+    },
+    {
+      "sourceRow": 441,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 30.97
+    },
+    {
+      "sourceRow": 442,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 15.45
+    },
+    {
+      "sourceRow": 443,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 40.0
+    },
+    {
+      "sourceRow": 444,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 40.0
+    },
+    {
+      "sourceRow": 445,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 57.97
+    },
+    {
+      "sourceRow": 446,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 99.67
+    },
+    {
+      "sourceRow": 447,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 21.5
+    },
+    {
+      "sourceRow": 448,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 57.98
+    },
+    {
+      "sourceRow": 449,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 34.8
+    },
+    {
+      "sourceRow": 450,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 10.49
+    },
+    {
+      "sourceRow": 451,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 35.0
+    },
+    {
+      "sourceRow": 452,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 56.76
+    },
+    {
+      "sourceRow": 453,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 21.97
+    },
+    {
+      "sourceRow": 454,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 80.98
+    },
+    {
+      "sourceRow": 455,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 27.08
+    },
+    {
+      "sourceRow": 456,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 110.0
+    },
+    {
+      "sourceRow": 457,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Associações/Institucional",
+      "amount": 53.0
+    },
+    {
+      "sourceRow": 458,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Associações/Institucional",
+      "amount": 291.0
+    },
+    {
+      "sourceRow": 459,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Associações/Institucional",
+      "amount": 53.0
+    },
+    {
+      "sourceRow": 460,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Associações/Institucional",
+      "amount": 62.9
+    },
+    {
+      "sourceRow": 461,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 40.0
+    },
+    {
+      "sourceRow": 462,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 391.04
+    },
+    {
+      "sourceRow": 463,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 166.0
+    },
+    {
+      "sourceRow": 464,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 60.0
+    },
+    {
+      "sourceRow": 465,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 60.0
+    },
+    {
+      "sourceRow": 466,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 449.99
+    },
+    {
+      "sourceRow": 467,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 350.0
+    },
+    {
+      "sourceRow": 468,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 110.0
+    },
+    {
+      "sourceRow": 469,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 449.99
+    },
+    {
+      "sourceRow": 470,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 449.99
+    },
+    {
+      "sourceRow": 471,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Saas",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 4209.21
+    },
+    {
+      "sourceRow": 472,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Saas",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 147.32
+    },
+    {
+      "sourceRow": 473,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 449.99
+    },
+    {
+      "sourceRow": 474,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 115.0
+    },
+    {
+      "sourceRow": 475,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 120.0
+    },
+    {
+      "sourceRow": 476,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 130.0
+    },
+    {
+      "sourceRow": 477,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 23.27
+    },
+    {
+      "sourceRow": 478,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 99.0
+    },
+    {
+      "sourceRow": 479,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 13.9
+    },
+    {
+      "sourceRow": 480,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Saas",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 10.26
+    },
+    {
+      "sourceRow": 481,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Saas",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 293.25
+    },
+    {
+      "sourceRow": 482,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 254.17
+    },
+    {
+      "sourceRow": 483,
+      "month": "2026-05",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 8.9
+    },
+    {
+      "sourceRow": 484,
+      "month": "2026-06",
+      "origin": "CC",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 537.84
+    },
+    {
+      "sourceRow": 485,
+      "month": "2026-06",
+      "origin": "CC",
+      "originalType": "Agência",
+      "meceCategory": "Agência/SEO",
+      "amount": 1626.73
+    },
+    {
+      "sourceRow": 486,
+      "month": "2026-06",
+      "origin": "CC",
+      "originalType": "Agência",
+      "meceCategory": "Agência/SEO",
+      "amount": 6630.0
+    },
+    {
+      "sourceRow": 487,
+      "month": "2026-06",
+      "origin": "CC",
+      "originalType": "Sem tipo",
+      "meceCategory": "Educação/Consultoria",
+      "amount": 5000.0
+    },
+    {
+      "sourceRow": 488,
+      "month": "2026-06",
+      "origin": "CC",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 1250.0
+    },
+    {
+      "sourceRow": 489,
+      "month": "2026-06",
+      "origin": "CC",
+      "originalType": "Evento",
+      "meceCategory": "Eventos",
+      "amount": 15750.0
+    },
+    {
+      "sourceRow": 490,
+      "month": "2026-06",
+      "origin": "CC",
+      "originalType": "Sem tipo",
+      "meceCategory": "Associações/Institucional",
+      "amount": 2815.5
+    },
+    {
+      "sourceRow": 491,
+      "month": "2026-06",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 1200.0
+    },
+    {
+      "sourceRow": 492,
+      "month": "2026-06",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 1000.0
+    },
+    {
+      "sourceRow": 493,
+      "month": "2026-06",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 1500.0
+    },
+    {
+      "sourceRow": 494,
+      "month": "2026-06",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 1000.0
+    },
+    {
+      "sourceRow": 495,
+      "month": "2026-06",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 5.41
+    },
+    {
+      "sourceRow": 496,
+      "month": "2026-06",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 154.62
+    },
+    {
+      "sourceRow": 497,
+      "month": "2026-06",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 503.86
+    },
+    {
+      "sourceRow": 498,
+      "month": "2026-06",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 2177.97
+    },
+    {
+      "sourceRow": 499,
+      "month": "2026-06",
+      "origin": "Conta Simples",
+      "originalType": "Saas",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 76.33
+    },
+    {
+      "sourceRow": 500,
+      "month": "2026-06",
+      "origin": "Conta Simples",
+      "originalType": "Saas",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 2.67
+    },
+    {
+      "sourceRow": 501,
+      "month": "2026-06",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 15.4
+    },
+    {
+      "sourceRow": 502,
+      "month": "2026-06",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 114.34
+    },
+    {
+      "sourceRow": 503,
+      "month": "2026-06",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 4.0
+    },
+    {
+      "sourceRow": 504,
+      "month": "2026-06",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 17.39
+    },
+    {
+      "sourceRow": 505,
+      "month": "2026-06",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 19.9
+    },
+    {
+      "sourceRow": 506,
+      "month": "2026-06",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 449.99
+    },
+    {
+      "sourceRow": 507,
+      "month": "2026-06",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 449.99
+    },
+    {
+      "sourceRow": 508,
+      "month": "2026-06",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 224.99
+    },
+    {
+      "sourceRow": 509,
+      "month": "2026-06",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 449.99
+    },
+    {
+      "sourceRow": 510,
+      "month": "2026-06",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 449.99
+    },
+    {
+      "sourceRow": 511,
+      "month": "2026-06",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 449.99
+    },
+    {
+      "sourceRow": 512,
+      "month": "2026-06",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 0.32
+    },
+    {
+      "sourceRow": 513,
+      "month": "2026-06",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 9.18
+    },
+    {
+      "sourceRow": 514,
+      "month": "2026-06",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 224.99
+    },
+    {
+      "sourceRow": 515,
+      "month": "2026-06",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 449.99
+    },
+    {
+      "sourceRow": 516,
+      "month": "2026-06",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 1.83
+    },
+    {
+      "sourceRow": 517,
+      "month": "2026-06",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 52.21
+    },
+    {
+      "sourceRow": 518,
+      "month": "2026-06",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 1000.0
+    },
+    {
+      "sourceRow": 519,
+      "month": "2026-06",
+      "origin": "Conta Simples",
+      "originalType": "Saas",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 19.35
+    },
+    {
+      "sourceRow": 520,
+      "month": "2026-06",
+      "origin": "Conta Simples",
+      "originalType": "Saas",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 552.77
+    },
+    {
+      "sourceRow": 521,
+      "month": "2026-06",
+      "origin": "Conta Simples",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 49.9
+    },
+    {
+      "sourceRow": 522,
+      "month": "2026-06",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 449.99
+    },
+    {
+      "sourceRow": 523,
+      "month": "2026-06",
+      "origin": "Conta Simples",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 449.99
+    },
+    {
+      "sourceRow": 524,
+      "month": "2026-06",
+      "origin": "Conta Simples",
+      "originalType": "Saas",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 4.53
+    },
+    {
+      "sourceRow": 525,
+      "month": "2026-06",
+      "origin": "Conta Simples",
+      "originalType": "Saas",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 129.51
+    }
+  ]
+}
