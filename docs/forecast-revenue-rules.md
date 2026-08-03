@@ -22,8 +22,14 @@ projetada chama `dealMonthly` (ou, no server, `forecast-compute`).
 ## 2. A régua por etapa (`dealMonthly`)
 
 Precedência (antes de olhar a etapa):
-1. **POC** (`É POC? = Sim`) → **zero** em Real e Probabilizada, em todos os painéis.
-2. **Faturamento manual** → substitui **integralmente** a projeção pelos valores digitados.
+1. **Faturamento manual** → substitui **integralmente** a projeção pelos valores digitados.
+
+> **POC não zera mais (2026-08-02):** até 2026-07-13/2026-08-02 o motor tratava POC
+> (`É POC? = Sim`) como precedência 0, zerando Real e Probabilizada antes de olhar a etapa.
+> Revertido por decisão da reunião de forecast de 31/07 ("POC não pode valer zero no
+> forecast" — ver seção 2b). Hoje um deal POC flui pela MESMA régua por etapa de qualquer
+> outro deal, sem guard especial; a probabilidade baixa vem do ajuste manual do AE/comitê
+> (item "Probabilidade" abaixo), não de uma fórmula nova.
 
 Por etapa (`valor` = receita real do mês; `início` = 1º mês com receita):
 
@@ -57,32 +63,45 @@ O **ARR de cada deal** (coluna "ARR Est." do `/forecast` e KPIs ARR Total/Ponder
 `/forecast-delta`) é derivado assim (`api/forecast-table.js` + `lib/forecast-compute.js`
 `mapFotoDeal`, iguais por espelho):
 
-0. **POC → sem ARR (2026-07-28):** se `É POC? = Sim`, o ARR é `—`, **antes de qualquer
-   outro passo** — nem `arr_estimado`, nem `1ª Fatura × 12`, nem o fallback VPV se aplicam.
-   Precede toda a cascata, espelhando a precedência de POC no `dealMonthly` (POC zera Real
-   e Probabilizada em todos os painéis, Regra primária nº 3). Antes deste guard, um POC de
-   Cot/Cons/Neg com 1ª Fatura vazia caía no fallback VPV e exibia ARR (ex.: **BRF/MARFRIG -
-   POC**, 4.500 vidas → `4.500 × 24 × 12 = R$ 1.296.000`), contradizendo o zero do caixa.
 1. `arr_estimado` (campo do HubSpot), se > 0; senão
 2. `1ª Fatura × 12`, se > 0; senão
 3. **Fallback VPV (2026-07-20):** nas etapas **Diagnóstico/Cotação/Consultoria/Negociação**,
    `(vidas || colaboradores) × VPV × 12` (VPV por faixa 36/24/12); senão
 4. `—` (sem ARR).
 
-Assim, um deal de Cot/Cons/Neg sem 1ª Fatura passa a ter **ARR estimado** (coluna + KPIs)
-coerente com a projeção de caixa por VPV — **exceto POC, que fica sem ARR**. A coluna
-"Fatura Atual" (plano vigente do cliente) continua **não** entrando no ARR.
+**POC entra na mesma cascata, sem guard especial (2026-08-02):** o guard "POC → sem ARR"
+introduzido em 2026-07-28 foi **revertido** por decisão da reunião de forecast de 31/07 —
+"POC não pode valer zero no forecast: se a probabilidade real fosse zero, a conta deveria
+morrer (se não acreditamos que vai dar receita, liberamos o tempo do Rafa); POC entra com
+valor e probabilidade baixa, o conservadorismo de caixa é problema do CFO, o forecast
+reflete crença." Um deal POC de Cot/Cons/Neg sem 1ª Fatura volta a cair no fallback VPV
+como qualquer outro deal (ex.: um POC de 4.500 vidas em Cotação → `4.500 × 24 × 12`). A
+probabilidade baixa de um POC não vem de uma fórmula nova — é o valor que o AE/comitê já
+ajusta manualmente por deal em `Probabilidade (campo)` / HubSpot, igual a qualquer deal.
+A coluna "Fatura Atual" (plano vigente do cliente) continua **não** entrando no ARR.
 
-> Nota sobre fotos do Delta: o guard de POC no `mapFotoDeal` só dispara em fotos que
-> capturam `É POC?` (a partir de 2026-07-13). Fotos anteriores não têm o campo e não são
-> afetadas — igual à precedência de POC já existente no `dealMonthly` sobre fotos antigas.
+> Nota (resolvida em 2026-08-02): o **forecast de caixa mensal** (`dealMonthly` em
+> `forecast-engine.js`) também zerava Real e Probabilizada para POC desde 2026-07-13 — regra
+> mais antiga e mais ampla que a de ARR (zerava a série mensal inteira). Revertida na mesma
+> decisão da reunião de 31/07: POC agora flui pela mesma régua por etapa em TODOS os
+> painéis que consomem `dealMonthly` (Forecast Overall, `/forecast-delta`, N05/N06B do CRO
+> Dashboard) — sem divergência remanescente entre o campo ARR e o forecast de caixa.
 
 - **Demais etapas** (Proposta Enviada, Standby, Implantação, Ganho, …)
   - início = `data_prevista`; valor = `calcReceitaMes(n)`; **cap 24 meses**.
 
 - **Probabilizada** = `valor × probAdj`.
-  - `probAdj` = `prob_final_deal` (régua `forecast_flat` / `ProbEngine`, com ajuste ±10% do AE)
+  - `probAdj` = `prob_final_deal` (régua `forecast_flat` / `ProbEngine.calcProbInfo`)
     **exceto Diagnóstico**, que é **fixo em 6% sem ajuste do AE**; BID usa `bidProb` (0,5%).
+  - **Regra do mínimo (2026-08-02):** o ajuste automático da prob. do AE deixou de ser
+    ±10% por divergência ≥30pp e passou a ser a **MENOR entre a prob. de etapa (régua) e a
+    prob. que o AE colocou manualmente no deal** — decisão da reunião de forecast de 31/07,
+    validada com a CFO ("um AE que baixa a própria probabilidade tem motivo real; a régua
+    de etapa carrega o otimismo natural de quem não mexeu em nada"). Sem prob. do AE, usa a
+    de etapa. Um override manual **por deal** ("P. Ajust." explícito do comitê, decisão
+    2026-07-27) continua valendo **por cima** dessa regra — o mínimo é só o cálculo
+    DEFAULT/automático, não substitui um ajuste explícito já feito em reunião. Detalhe em
+    `public/prob-engine.js` (`_autoProbInfo`/`calcProbInfo`).
 
 ## 3. Onde se aplica (auditoria 2026-07-20)
 
@@ -91,6 +110,14 @@ coerente com a projeção de caixa por VPV — **exceto POC, que fica sem ARR**.
 (comparativo), CRO Dashboard — *headline* de coverage N05/N06B (`_novoForecastSeries` →
 `dealMonthly`), AE Performance (`ae.html`), Board (TCV via `calcTCV`). `api/forecast-table.js`
 não projeta receita (só entrega campos crus + fallback de ARR).
+
+> **Nota (2026-08-02):** a probabilidade que N05/N06B (`dashboard.html`, `_novoFcProbAdj`) e
+> A07 (`ae.html`, `_novoFcProbAdj`) injetam em `dealMonthly` sempre foi um MIRROR local do
+> cálculo de `prob-engine.js`, não uma chamada direta — motivo pelo qual a regra do mínimo
+> (seção 2 acima) precisou ser replicada manualmente nesses dois arquivos além do
+> `prob-engine.js`, para as três séries continuarem batendo mês a mês. Demais consumidores
+> de probabilidade (C04 do CRO/Board, Forecast, Overall, Delta) chamam `ProbEngine.calcProbInfo`
+> diretamente e herdaram a mudança sem edição própria.
 
 ## 4. Divergências conhecidas (a corrigir — motores paralelos)
 

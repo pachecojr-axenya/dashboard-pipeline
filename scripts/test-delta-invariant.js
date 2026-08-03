@@ -88,6 +88,43 @@ const betaConvA = cA_rl.find(x => x.id === '2');
 check('Beta (parado em Cotação): Δ composição = 0 (probTotal)', near(betaCompB.probTotal - betaCompA.probTotal, 0));
 check('Beta (parado em Cotação): Δ convicção > 0 (probTotal, régua 10% → 18,58%)', (betaCompB.probTotal - betaConvA.probTotal) > 1);
 
+// ── Parte 1c | Fechado (2026-08-02): barra informativa "foi para Ganho" ──────
+// Pedido do dono (reunião 2026-07-31, caso Cappta): hoje um deal que vira Ganho
+// entre A e B "derruba" o Total B como se fosse perda de valor — na verdade é
+// vitória. FC.closedWonAgg soma ARR/ARR Ponderado (na foto A) dos deals que
+// saíram do escopo aberto porque foram para Ganho. É ADITIVO/informativo por
+// design: NÃO deve alterar o invariante Σ Δ(etapa) == Δtotal das barras já
+// existentes (ver nota em lib/forecast-compute.js).
+console.log('\n== UNIT Fechado (2026-08-02): agregado correto + invariante das barras preservado ==');
+const dealsWonA = [
+  { hs_id: '10', dealname: 'Cappta', stage: 'Negociação', pipeline: 'Vendas', vidas: 1000, arr_estimado: 345000, createdate: '2025-10-01', modelo_remuneracao: 'Fee por vida', primeira_fatura: 28750, data_prevista_para_receita: '2026-08-01', probabilidade: 0.5 },
+  { hs_id: '11', dealname: 'Fica', stage: 'Cotação', pipeline: 'Vendas', vidas: 400, arr_estimado: 120000, createdate: '2025-12-01', modelo_remuneracao: 'Fee por vida', primeira_fatura: 10000, data_prevista_para_receita: '2026-09-01', probabilidade: 0.2 },
+];
+const dealsWonB = [
+  { hs_id: '10', dealname: 'Cappta', stage: 'Ganho', pipeline: 'Vendas', vidas: 1000, arr_estimado: 345000, createdate: '2025-10-01', modelo_remuneracao: 'Fee por vida', primeira_fatura: 28750, data_prevista_para_receita: '2026-08-01', probabilidade: 0.5 },
+  { hs_id: '11', dealname: 'Fica', stage: 'Cotação', pipeline: 'Vendas', vidas: 400, arr_estimado: 120000, createdate: '2025-12-01', modelo_remuneracao: 'Fee por vida', primeira_fatura: 10000, data_prevista_para_receita: '2026-09-01', probabilidade: 0.2 },
+];
+// Escopo Ativos (o padrão do painel): Ganho não é etapa ativa, então Cappta sai do
+// conjunto escopado em B — exatamente o caso que "derrubava" o Total B.
+const scopedWonA = FC.applyDeltaScope(dealsWonA, 'ativos');
+const scopedWonB = FC.applyDeltaScope(dealsWonB, 'ativos');
+const rawBWon = {}; dealsWonB.forEach(d => { rawBWon[d.hs_id] = d.stage; });
+const snapWonA = FC.computeSnapshot(scopedWonA, '2026-05-15', {});
+const snapWonB = FC.computeSnapshot(scopedWonB, '2026-06-15', {});
+const cWonA = FC.dealContributions(scopedWonA, '2026-05-15', {});
+const cWonB = FC.dealContributions(scopedWonB, '2026-06-15', {});
+const fechadoAgg = FC.closedWonAgg(cWonA, cWonB, rawBWon);
+check('closedWonAgg identifica o deal que foi para Ganho (Cappta)', fechadoAgg.deals === 1);
+check('closedWonAgg soma o ARR de Cappta na foto A (345.000)', near(fechadoAgg.arr, 345000));
+check('closedWonAgg não conta quem permaneceu no escopo (Fica)', fechadoAgg.arr < 345000 + 120000);
+// Invariante das barras EXISTENTES preservado mesmo com um deal fechado no período:
+// Fechado é calculado à parte (FC.closedWonAgg) e não entra nesta soma.
+const byAWon = {}; snapWonA.stages.forEach(s => byAWon[s.key] = s);
+MEASURES.forEach(m => {
+  const sumDeltaWon = snapWonB.stages.reduce((acc, s) => acc + (s[m] - (byAWon[s.key] ? byAWon[s.key][m] : 0)), 0);
+  check('Σ Δ(etapa) == Δtotal com deal fechado no período | ' + m, near(sumDeltaWon, snapWonB.totals[m] - snapWonA.totals[m]));
+});
+
 // ── Parte 2 | INTEGRAÇÃO (server local) ──────────────────────────────────────
 // Porta: arg1 ou env PORT (default 3004). Ex.: node scripts/test-delta-invariant.js 3002
 const PORT = parseInt(process.argv[2], 10) || parseInt(process.env.PORT, 10) || 3004;

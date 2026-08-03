@@ -12,8 +12,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-:root{--bg:#0d1117;--card:#171f2e;--card2:#1e2a3c;--border:#293a50;--text:#e6edf3;--text2:#8b949e;--muted:#6e7681;--teal:#3ab8b7;--green:#3fb950;--red:#f85149;--orange:#d29922;--yellow:#e3b341;--hover:rgba(255,255,255,0.06);--even-s:#131b28;--hover-s:#1c2b40;--hdr-glass:rgba(13,17,23,.78)}
-html[data-theme="light"]{--bg:#f6f8fa;--card:#ffffff;--card2:#eaeef2;--border:#d0d7de;--text:#1f2328;--text2:#57606a;--teal:#0d7377;--green:#1a7f37;--yellow:#9a6700;--red:#cf222e;--hover:rgba(0,0,0,0.05);--even-s:#f1f4f8;--hover-s:#e8eef4;--hdr-glass:rgba(246,248,250,.82)}
 body{background:var(--bg);color:var(--text);font-family:Inter,'Segoe UI',system-ui,sans-serif;font-size:13px;line-height:1.5}
 button,input,select,textarea{font-family:inherit}
 h1{font-size:1.5rem;font-weight:700;letter-spacing:-.02em;margin-bottom:.15rem}
@@ -50,7 +48,6 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
 [data-theme="light"] .novo-theme-sun{display:none}[data-theme="light"] .novo-theme-moon{display:block}
 .novo-lang-btn{width:auto !important;padding:0 9px;font-size:.71rem;font-weight:700;letter-spacing:.06em}
 .novo-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(480px,1fr));gap:1rem;padding-bottom:2rem}
-.novo-card{background:var(--card);border-radius:10px;padding:1.25rem 1.5rem}
 .novo-card-header{display:flex;align-items:center;gap:.6rem;margin-bottom:1rem;flex-wrap:wrap}
 .novo-card-header h3{font-size:.88rem;font-weight:600;color:var(--text);margin:0;flex:1}
 .novo-code-tag{display:none;align-items:center;font-size:.6rem;font-weight:700;letter-spacing:.04em;font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--teal);background:rgba(58,184,183,.14);border:1px solid rgba(58,184,183,.32);border-radius:5px;padding:.05rem .32rem;line-height:1.35;flex-shrink:0}
@@ -64,7 +61,6 @@ html[data-theme="light"] #novo-tip{background:rgba(246,248,250,.82)}
 #novo-tip .nt-code{font-size:.62rem;font-weight:700;color:var(--teal);font-family:ui-monospace,Menlo,Consolas,monospace;margin-top:.3rem;padding-top:.28rem;border-top:1px solid rgba(255,255,255,.12);letter-spacing:.07em}
 html[data-theme="light"] #novo-tip .nt-code{border-top-color:rgba(0,0,0,.1)}
 .kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.75rem;margin-bottom:.75rem}
-.kpi-card{background:var(--card);border-radius:14px;padding:clamp(1rem,.6rem+1.3vw,1.6rem) clamp(1.05rem,.5rem+1.6vw,1.8rem);transition:box-shadow .18s}
 .kpi-click{cursor:pointer}
 .kpi-label{font-size:.66rem;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;line-height:1}
 .kpi-value{font-size:clamp(1.35rem,.95rem+1.3vw,2rem);font-weight:800;line-height:1.1;margin:.35rem 0 .25rem}
@@ -105,6 +101,8 @@ body.nav-docked #view-novo{margin-left:280px}
 <link rel="stylesheet" href="/premium.css?v=5">
 <script src="/premium.js?v=5"></script>
 <script src="/filter-bar.js?v=1"></script>
+<script src="/settings-modal.js?v=2"></script>
+<script src="/ax-ui.js?v=1"></script>
 </head>
 <body>
 
@@ -132,11 +130,12 @@ body.nav-docked #view-novo{margin-left:280px}
     </div>
     <div class="hdr-actions">
       <button class="hdr-btn" id="btn-info-toggle" onclick="novoToggleInfo()" data-tooltip="Mostrar/ocultar IDs e auditoria" style="font-size:.9rem;font-weight:800">?</button>
+      <button class="hdr-btn" onclick="novoOpenSettings()" data-tooltip="Configurações"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
       <button class="hdr-btn highlighted" id="btn-refresh" onclick="_novoDeals=null;novoLoadData();" data-tooltip="Atualizar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></button>
     </div>
   </div>
   <div id="novo-content" style="max-width:1400px;margin:0 auto;padding:2rem">
-    <div style="text-align:center;padding:3rem 0;color:var(--text2)">Aguardando dados…</div>
+    <div class="ax-empty ax-empty-lg">Aguardando dados…</div>
   </div>
 </div>
 
@@ -180,12 +179,19 @@ function _mlbl(ym){ var p=ym.split('-'); return ['Jan','Fev','Mar','Abr','Mai','
 function _annualRev(d){ if(d.arr_estimado!=null&&d.arr_estimado>0)return d.arr_estimado; if(d.primeira_fatura!=null&&d.primeira_fatura>0)return d.primeira_fatura*12; return 0; }
 
 var NOVO_WON_STAGE='Ganho';
+var _novoImplWon=(function(){try{return localStorage.getItem('novo_impl_won')!=='0';}catch(e){return true;}})();
+var _novoActiveMeetings=(function(){try{return localStorage.getItem('novo_active_meetings')!=='0';}catch(e){return true;}})();
+var _novoActiveStandby=(function(){try{return localStorage.getItem('novo_active_standby')==='1';}catch(e){return false;}})();
+function _novoIsWon(d){ return d.stage===NOVO_WON_STAGE||(_novoImplWon&&d.stage==='Implantação'); }
+function novoToggleImplWon(){ _novoImplWon=!_novoImplWon; try{localStorage.setItem('novo_impl_won',_novoImplWon?'1':'0');}catch(e){} _gsSync(); if(_novoDeals)novoRender(); }
+function novoToggleActiveMeetings(){ _novoActiveMeetings=!_novoActiveMeetings; try{localStorage.setItem('novo_active_meetings',_novoActiveMeetings?'1':'0');}catch(e){} _gsSync(); if(_novoDeals)novoRender(); }
+function novoToggleActiveStandby(){ _novoActiveStandby=!_novoActiveStandby; try{localStorage.setItem('novo_active_standby',_novoActiveStandby?'1':'0');}catch(e){} _gsSync(); if(_novoDeals)novoRender(); }
 var NOVO_FONT='Inter,\'Segoe UI\',system-ui,sans-serif';
 function _novoTheme(){ var isLight=document.documentElement.getAttribute('data-theme')==='light'; return { cText:isLight?'#1f2328':'#e6edf3', cText2:isLight?'#57606a':'#8b949e', cGrid:isLight?'rgba(0,0,0,.08)':'rgba(255,255,255,.06)', isLight:isLight }; }
 var _novoCharts={};
 function _novoMkChart(id,cfg){ var ctx=document.getElementById(id); if(!ctx)return; if(cfg&&cfg.options&&cfg.options.onClick&&!cfg.options.onHover){ cfg.options.onHover=function(e,els){ var t=e&&e.native&&e.native.target; if(t) t.style.cursor=(els&&els.length)?'pointer':''; }; } if(_novoCharts[id]) _novoCharts[id].destroy(); _novoCharts[id]=new Chart(ctx,cfg); }
 function _novoDealsRows(deals){ return deals.map(function(d){ var hsUrl=d.hs_id?'https://app.hubspot.com/contacts/44715285/deal/'+d.hs_id:'#'; var nameCell=d.hs_id?'<a href="'+hsUrl+'" target="_blank" rel="noopener" style="color:var(--teal);text-decoration:none">'+_ne(d.dealname)+'</a>':_ne(d.dealname); return '<tr><td style="text-align:left;min-width:140px;max-width:190px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+nameCell+'</td><td style="text-align:left;white-space:nowrap">'+_ne(d.ae)+'</td><td style="white-space:nowrap">'+_ne(d.stage)+'</td><td>'+_ni(d.vidas)+'</td><td>'+_revShort(_annualRev(d))+'</td></tr>'; }).join(''); }
-function novoOpenDealsModal(title,deals){ if(!deals||!deals.length){ openModal(title,'<p style="color:var(--text2);padding:1rem 0">Nenhum deal.</p>'); return; } var html='<table class="lb"><thead><tr><th style="text-align:left">Deal</th><th style="text-align:left">AE</th><th>Etapa</th><th>Vidas</th><th>ARR</th></tr></thead><tbody>'+_novoDealsRows(deals)+'</tbody></table>'; openModal(title+' ('+deals.length+')',html); }
+function novoOpenDealsModal(title,deals){ if(!deals||!deals.length){ openModal(title,AxUI.emptyState('Nenhum deal.')); return; } var html='<table class="lb"><thead><tr><th style="text-align:left">Deal</th><th style="text-align:left">AE</th><th>Etapa</th><th>Vidas</th><th>ARR</th></tr></thead><tbody>'+_novoDealsRows(deals)+'</tbody></table>'; openModal(title+' ('+deals.length+')',html); }
 
 function _placeholder(icon,title,body,fields){
   var fHtml=fields?fields.map(function(f){return '<span class="ph-field">'+f+'</span>';}).join(' '):'';
@@ -199,7 +205,7 @@ function _csOwner(id){ var o=(_csData&&_csData.owners)||{}; return o[id]||(id?St
 function _csComps(){ return (_csData&&_csData.companies)||[]; }
 function _csAtivas(){ return _csComps().filter(function(c){return c.ativo_ou_inativo_==='Ativo';}); }
 function _csCompRows(comps){ return comps.map(function(c){ var url=c.hs_object_id?'https://app.hubspot.com/contacts/44715285/company/'+c.hs_object_id:null; var nameCell=url?'<a href="'+url+'" target="_blank" rel="noopener" style="color:var(--teal);text-decoration:none">'+_ne(c.name)+'</a>':_ne(c.name); return '<tr><td style="text-align:left;min-width:150px;max-width:230px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+nameCell+'</td><td style="text-align:left;white-space:nowrap">'+_ne(_csOwner(c.kam_responsavel))+'</td><td>'+(_csNum(c.premio_mensal)>0?_fmtBig(_csNum(c.premio_mensal)):'—')+'</td><td style="white-space:nowrap">'+_ne(c.vigencia_do_contrato_atual||'—')+'</td><td>'+_ne(c.ativo_ou_inativo_||'—')+'</td></tr>'; }).join(''); }
-function csOpenCompsModal(title,comps){ if(!comps||!comps.length){ openModal(title,'<p style="color:var(--text2);padding:1rem 0">Nenhuma empresa.</p>'); return; } var html='<table class="lb"><thead><tr><th style="text-align:left">Empresa</th><th style="text-align:left">KAM</th><th>Prêmio Mensal</th><th>Fim da Vigência</th><th>Status</th></tr></thead><tbody>'+_csCompRows(comps)+'</tbody></table>'; openModal(title+' ('+comps.length+')',html); }
+function csOpenCompsModal(title,comps){ if(!comps||!comps.length){ openModal(title,AxUI.emptyState('Nenhuma empresa.')); return; } var html='<table class="lb"><thead><tr><th style="text-align:left">Empresa</th><th style="text-align:left">KAM</th><th>Prêmio Mensal</th><th>Fim da Vigência</th><th>Status</th></tr></thead><tbody>'+_csCompRows(comps)+'</tbody></table>'; openModal(title+' ('+comps.length+')',html); }
 function novoLoadData(){
   var btn=document.getElementById('btn-refresh'); if(btn) btn.classList.add('spinning');
   document.getElementById('novo-content').innerHTML='<div style="text-align:center;padding:3rem 0;color:var(--text2)">Buscando dados…</div>';
@@ -211,13 +217,13 @@ function novoLoadData(){
     novoRender();
   }).catch(function(err){
     if(btn) btn.classList.remove('spinning');
-    document.getElementById('novo-content').innerHTML='<div style="text-align:center;padding:3rem 0;color:var(--red)">Erro: '+_ne(String(err))+'<br><br><button onclick="novoLoadData()" style="background:var(--teal);color:#fff;border:none;border-radius:8px;padding:.5rem 1.2rem;cursor:pointer">Tentar novamente</button></div>';
+    document.getElementById('novo-content').innerHTML=AxUI.banner('Erro: '+_ne(String(err)), { severity:'error', retry:'novoLoadData()', retryLabel:'Tentar novamente' });
   });
 }
 
 function novoRender(){
   var deals=window._novoDealsRaw||_novoDeals||[];
-  var won=deals.filter(function(d){return d.stage===NOVO_WON_STAGE;});
+  var won=deals.filter(function(d){return _novoIsWon(d);});
   var ts=new Date().toLocaleTimeString('pt-BR',{timeZone:'America/Sao_Paulo',hour:'2-digit',minute:'2-digit'});
   var comps=_csComps();
   var ativas=_csAtivas();
@@ -286,7 +292,7 @@ function csKpiOpen(kind){
 
 function buildCSProduto(){
   var th=_novoTheme();
-  var won=(_novoDeals||[]).filter(function(d){return d.stage===NOVO_WON_STAGE;});
+  var won=(_novoDeals||[]).filter(function(d){return _novoIsWon(d);});
   var map={}; won.forEach(function(d){ var k=d.produto||'(sem produto)'; map[k]=(map[k]||0)+_annualRev(d); });
   var labels=Object.keys(map).sort(function(a,b){return map[b]-map[a];}).slice(0,8);
   var vals=labels.map(function(l){return Math.round(map[l]);});
@@ -301,7 +307,7 @@ function buildCSProduto(){
 
 function buildCSModelo(){
   var th=_novoTheme();
-  var won=(_novoDeals||[]).filter(function(d){return d.stage===NOVO_WON_STAGE;});
+  var won=(_novoDeals||[]).filter(function(d){return _novoIsWon(d);});
   var map={}; won.forEach(function(d){ var k=d.modelo_remuneracao||'(não informado)'; map[k]=(map[k]||0)+1; });
   var labels=Object.keys(map), vals=labels.map(function(l){return map[l];});
   var colors=['rgba(88,166,255,.75)','rgba(63,185,80,.75)','rgba(210,153,34,.8)','rgba(147,112,219,.75)','rgba(248,81,73,.65)'];
@@ -314,7 +320,7 @@ function buildCSModelo(){
 
 function buildCSVidasProd(){
   var th=_novoTheme();
-  var won=(_novoDeals||[]).filter(function(d){return d.stage===NOVO_WON_STAGE;});
+  var won=(_novoDeals||[]).filter(function(d){return _novoIsWon(d);});
   var map={}; won.forEach(function(d){ var k=d.produto||'(sem produto)'; map[k]=(map[k]||0)+(d.vidas||0); });
   var labels=Object.keys(map).sort(function(a,b){return map[b]-map[a];}).slice(0,8);
   var vals=labels.map(function(l){return map[l];});
@@ -329,7 +335,7 @@ function buildCSVidasProd(){
 
 function buildCSConcentration(){
   var th=_novoTheme();
-  var won=(_novoDeals||[]).filter(function(d){return d.stage===NOVO_WON_STAGE;}).slice().sort(function(a,b){return _annualRev(b)-_annualRev(a);});
+  var won=(_novoDeals||[]).filter(function(d){return _novoIsWon(d);}).slice().sort(function(a,b){return _annualRev(b)-_annualRev(a);});
   var total=won.reduce(function(s,d){return s+_annualRev(d);},0)||1;
   var tops=[1,3,5,10];
   var pcts=tops.map(function(n){return Math.round(won.slice(0,n).reduce(function(s,d){return s+_annualRev(d);},0)/total*100);});

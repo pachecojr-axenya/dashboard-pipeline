@@ -53,16 +53,8 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
 .novo-card{background:var(--card);border-radius:10px;padding:1.25rem 1.5rem}
 .novo-card-header{display:flex;align-items:center;gap:.6rem;margin-bottom:1rem;flex-wrap:wrap}
 .novo-card-header h3{font-size:.88rem;font-weight:600;color:var(--text);margin:0;flex:1}
-.novo-code-tag{display:none;align-items:center;font-size:.6rem;font-weight:700;letter-spacing:.04em;font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--teal);background:rgba(58,184,183,.14);border:1px solid rgba(58,184,183,.32);border-radius:5px;padding:.05rem .32rem;line-height:1.35;flex-shrink:0}
-.novo-info-btn{width:16px;height:16px;border-radius:50%;border:1.5px solid var(--text2);background:none;color:var(--text2);font-size:.62rem;font-style:normal;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;position:relative;flex-shrink:0;padding:0;line-height:1}
-body:not(.novo-info-on) .novo-card .novo-info-btn{display:none}
-body.novo-info-on .novo-code-tag{display:inline-flex}
-#novo-tip{position:fixed;z-index:9999;background:rgba(23,31,46,.78);backdrop-filter:blur(14px) saturate(1.5);border-radius:6px;padding:.45rem .7rem;width:278px;pointer-events:none;display:none;box-shadow:0 6px 20px rgba(0,0,0,.3)}
-html[data-theme="light"] #novo-tip{background:rgba(246,248,250,.82)}
-#novo-tip.nt-show{display:block}
-#novo-tip .nt-text{font-size:.73rem;color:var(--text);font-weight:400;line-height:1.5}
-#novo-tip .nt-code{font-size:.62rem;font-weight:700;color:var(--teal);font-family:ui-monospace,Menlo,Consolas,monospace;margin-top:.3rem;padding-top:.28rem;border-top:1px solid rgba(255,255,255,.12);letter-spacing:.07em}
-html[data-theme="light"] #novo-tip .nt-code{border-top-color:rgba(0,0,0,.1)}
+/* Botão "i", tag de código, tooltip (#novo-tip) e drawer de ajuda: extraídos
+   para /help-drawer.js (2026-08-02, ver STATUS_LOG.md). */
 .kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.75rem;margin-bottom:.75rem}
 .kpi-card{background:var(--card);border-radius:14px;padding:clamp(1rem,.6rem+1.3vw,1.6rem) clamp(1.05rem,.5rem+1.6vw,1.8rem);transition:box-shadow .18s}
 .kpi-card:hover{box-shadow:0 0 0 2px rgba(58,184,183,.35)}
@@ -123,13 +115,7 @@ html[data-theme="light"] .tab-sub-thumb{background:#fff;box-shadow:0 1px 4px rgb
 body.nav-docked #view-novo{margin-left:280px}
 @media(max-width:820px){body.nav-docked #view-novo{margin-left:0}}
 .content-blur{filter:blur(4px);pointer-events:none;user-select:none}
-.novo-help-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:3000;opacity:0;pointer-events:none;transition:opacity .25s ease}
-.novo-help-backdrop.open{opacity:1;pointer-events:auto}
-.novo-help-drawer{position:fixed;top:0;right:-580px;width:540px;max-width:100vw;height:100vh;background:var(--card);border-left:1px solid var(--border);z-index:3001;display:flex;flex-direction:column;transition:right .28s cubic-bezier(0.4,0,0.2,1);box-shadow:-8px 0 32px rgba(0,0,0,.25)}
-.novo-help-drawer.open{right:0}
-.novo-help-hdr{display:flex;align-items:center;justify-content:space-between;padding:1.25rem 1.5rem;border-bottom:1px solid var(--border);flex-shrink:0}
-.novo-help-hdr h3{margin:0;font-size:1.15rem;font-weight:600;color:var(--text)}
-.novo-help-body{flex:1;overflow-y:auto;padding:1.25rem 1.5rem}
+/* Drawer de ajuda (backdrop/shell): extraído para /help-drawer.js. */
 .section-hdr{grid-column:1/-1;margin:1.5rem 0 .25rem;border-top:1px solid var(--border);padding-top:1.25rem}
 .section-hdr h2{font-size:.78rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.1em;margin:0}
 </style>
@@ -142,6 +128,8 @@ body.nav-docked #view-novo{margin-left:280px}
 <script src="/revenue-engine.js?v=1"></script>
 <script src="/forecast-overall-core.js?v=3"></script>
 <script src="/prob-engine.js?v=4"></script>
+<script src="/help-drawer.js?v=1"></script>
+<script src="/ax-ui.js?v=1"></script>
 </head>
 <body>
 
@@ -168,30 +156,24 @@ body.nav-docked #view-novo{margin-left:280px}
       <div class="panel-switcher" id="panel-switcher"><button class="panel-switch-btn" type="button" onclick="togglePanelMenu(event)" aria-haspopup="true" aria-expanded="false"><h1>Board View</h1><svg class="panel-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button><div class="panel-dd" id="panel-dd" role="menu"></div></div>
     </div>
     <div class="hdr-actions">
-      <button class="hdr-btn" id="btn-info-toggle" onclick="boardToggleInfo()" data-tooltip="Mostrar/ocultar IDs e auditoria" style="font-size:.9rem;font-weight:800">?</button>
+      <button class="hdr-btn" id="btn-info-toggle" onclick="novoToggleInfo()" data-tooltip="Mostrar/ocultar IDs e auditoria" style="font-size:.9rem;font-weight:800">?</button>
       <button class="hdr-btn" onclick="novoHelp()" data-tooltip="Campos HubSpot"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></button>
       <button class="hdr-btn" onclick="novoOpenSettings()" data-tooltip="Configurações"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
       <button class="hdr-btn highlighted" id="btn-refresh" onclick="_novoDeals=null;novoLoadData();" data-tooltip="Atualizar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></button>
     </div>
   </div>
   <div id="novo-content" style="max-width:1400px;margin:0 auto;padding:2rem">
-    <div style="text-align:center;padding:3rem 0;color:var(--text2)">Aguardando dados…</div>
+    <div class="ax-empty ax-empty-lg">Aguardando dados…</div>
   </div>
 </div>
 
-<div id="novo-tip"><div class="nt-text"></div><div class="nt-code"></div></div>
+<!-- Info-button tooltip + Help drawer: injetados por /help-drawer.js -->
 
 <div class="modal-overlay" id="modal-overlay" onclick="if(event.target===this)closeModal()">
   <div class="modal">
     <div class="modal-header"><h2 id="modal-title"></h2><button class="btn-export" onclick="exportModalCSV()">&#11015; CSV</button><button class="modal-close" onclick="closeModal()">&times;</button></div>
     <div class="modal-body" id="modal-body"></div>
   </div>
-</div>
-
-<div class="novo-help-backdrop" id="novo-help-backdrop" onclick="novoCloseHelp()"></div>
-<div class="novo-help-drawer" id="novo-help-drawer">
-  <div class="novo-help-hdr"><h3>Campos do HubSpot</h3><button class="hdr-btn" onclick="novoCloseHelp()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
-  <div class="novo-help-body" id="novo-help-body"></div>
 </div>
 
 <!-- Settings drawer (global, compartilhado entre painéis via localStorage) -->
@@ -256,14 +238,7 @@ var BOARD_CARD_CODES={
   'top-ae':'B15','watchlist':'B16',
   'entry-exit':'B11'
 };
-var _boardShowInfo=(function(){try{return localStorage.getItem('board_show_info')!=='0';}catch(e){return true;}})();
-function _boardCodeTag(key){ var code=BOARD_CARD_CODES[key]||''; return code?'<span class="novo-code-tag">'+code+'</span>':''; }
-function boardToggleInfo(){
-  _boardShowInfo=!_boardShowInfo;
-  document.body.classList.toggle('novo-info-on',_boardShowInfo);
-  var b=document.getElementById('btn-info-toggle'); if(b)b.classList.toggle('highlighted',_boardShowInfo);
-  try{localStorage.setItem('board_show_info',_boardShowInfo?'1':'0');}catch(e){}
-}
+// Botão "i"/tooltip/toggle "?": help-drawer.js (window.novoToggleInfo, window._infoBtn).
 
 // Mapa por gráfico (mesmo formato do CRO Dashboard): campos INTERNOS do HubSpot
 // que alimentam cada card, com descrição e fórmula opcional. Indexado pelo id do
@@ -300,6 +275,9 @@ var BOARD_HELP_CHARTS=[
     desc:'Entradas pela data de entrada na etapa Reunião Agendada (evento real do BDR, só pipeline Vendas); saídas por close_date, separando ganhos e perdidos. Deals sem Reunião Agendada (ex.: Bid) não entram na série de entrada.',
     fields:[['data_reuniao_agendada','Entrada = data em que o deal entrou na etapa Reunião Agendada (hs_v2_date_entered, Vendas).'],['close_date','Saída por ganho/perda.'],['stage','Separa ganhos e perdidos.']]},
 ];
+// Mecanismo do botão "i"/tooltip/drawer vive em help-drawer.js (2026-08-02);
+// aqui só configuramos com o conteúdo específico deste painel.
+HelpDrawer.configure({ variant: 'panel', blur: true, storageKey: 'board_show_info', charts: BOARD_HELP_CHARTS, codes: BOARD_CARD_CODES });
 
 // Qual dimensão de data o FILTRO GLOBAL de período usa em cada gráfico.
 var BOARD_FILT_FIELD={
@@ -375,26 +353,17 @@ function _boardOpenHelp(headerTitle,charts){
       '<p style="font-size:.8rem;line-height:1.6;color:var(--text2);margin:0 0 .5rem">Colunas exibidas ao clicar em qualquer barra.</p>'+
       '<table class="lb" style="width:100%;font-size:.78rem"><tbody>'+detailRows+'</tbody></table>'+
     '</div>';
-  var ttl=document.querySelector('#novo-help-drawer .novo-help-hdr h3');
-  if(ttl) ttl.textContent=headerTitle;
-  document.getElementById('novo-help-body').innerHTML=html;
-  setContentBlur(true);
-  document.getElementById('novo-help-backdrop').classList.add('open');
-  document.getElementById('novo-help-drawer').classList.add('open');
+  HelpDrawer.open(headerTitle, html);
 }
 // Botão "i" de cada gráfico: abre o drawer com os campos só daquele gráfico.
-function boardHelpChart(key){
+// (Toggle "?" = novoToggleInfo(); fechar drawer = novoCloseHelp(); ambas em help-drawer.js.)
+function novoHelpChart(key){
   var c=BOARD_HELP_CHARTS.filter(function(x){ return x.key===key; });
   if(!c.length) return;
   _boardOpenHelp('Campos do HubSpot | '+c[0].title.replace(/^(?:🟡|🟢|🟠|🔴) /,''),c);
 }
 // Botão de ajuda do topo: abre o drawer com todos os gráficos.
 function novoHelp(){ _boardOpenHelp('Campos do HubSpot por gráfico',BOARD_HELP_CHARTS); }
-function novoCloseHelp(){ document.getElementById('novo-help-backdrop').classList.remove('open'); document.getElementById('novo-help-drawer').classList.remove('open'); setContentBlur(false); }
-document.addEventListener('mouseover',function(e){ var btn=e.target.closest('.novo-info-btn'); if(!btn)return; var tip=document.getElementById('novo-tip'); tip.querySelector('.nt-text').textContent=btn.getAttribute('data-tip')||''; tip.querySelector('.nt-code').textContent=btn.getAttribute('data-code')||''; tip.classList.add('nt-show'); });
-document.addEventListener('mouseout',function(e){ if(!e.target.closest('.novo-info-btn')) document.getElementById('novo-tip').classList.remove('nt-show'); });
-document.addEventListener('mousemove',function(e){ var tip=document.getElementById('novo-tip'); if(!tip.classList.contains('nt-show'))return; var r=tip.getBoundingClientRect(); var x=e.clientX+14; var y=e.clientY+14; if(x+r.width>window.innerWidth-8) x=e.clientX-r.width-10; if(y+r.height>window.innerHeight-8) y=e.clientY-r.height-10; tip.style.left=x+'px'; tip.style.top=y+'px'; });
-function _infoBtn(tip,code){ var hasHelp=BOARD_HELP_CHARTS.some(function(x){ return x.key===code; }); return _boardCodeTag(code)+'<button class="novo-info-btn" data-tip="'+_ne(tip)+'" data-code="'+(BOARD_CARD_CODES[code]||code||'')+'"'+(hasHelp?' onclick="event.stopPropagation();boardHelpChart(\''+code+'\')"':'')+' aria-label="Campos do HubSpot">i</button>'; }
 window.addEventListener('scroll',function(){ document.getElementById('novo-hdr').classList.toggle('scrolled',window.scrollY>10); },{passive:true});
 
 var _ne=function(s){ return (s==null?'—':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); };
@@ -473,7 +442,7 @@ function _novoTheme(){ var isLight=document.documentElement.getAttribute('data-t
 var _novoCharts={};
 function _novoMkChart(id,cfg){ var ctx=document.getElementById(id); if(!ctx)return; if(cfg&&cfg.options&&cfg.options.onClick&&!cfg.options.onHover){ cfg.options.onHover=function(e,els){ var t=e&&e.native&&e.native.target; if(t) t.style.cursor=(els&&els.length)?'pointer':''; }; } if(_novoCharts[id]) _novoCharts[id].destroy(); _novoCharts[id]=new Chart(ctx,cfg); }
 function _novoDealsRows(deals){ return deals.map(function(d){ var hsUrl=d.hs_id?'https://app.hubspot.com/contacts/44715285/deal/'+d.hs_id:'#'; var nameCell=d.hs_id?'<a href="'+hsUrl+'" target="_blank" rel="noopener" style="color:var(--teal);text-decoration:none">'+_ne(d.dealname)+'</a>':_ne(d.dealname); var p=d.probabilidade!=null?Math.round(d.probabilidade*100)+'%':'—'; return '<tr><td style="text-align:left;min-width:150px;max-width:210px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+nameCell+'</td><td style="text-align:left;white-space:nowrap">'+_ne(d.ae)+'</td><td>'+_ne(d.pipeline)+'</td><td style="white-space:nowrap">'+_ne(d.stage)+'</td><td>'+_ni(d.vidas)+'</td><td>'+_revShort(_annualRev(d))+'</td><td>'+p+'</td><td style="white-space:nowrap">'+(d.createdate||'—')+'</td><td style="white-space:nowrap">'+(d.close_date||'—')+'</td><td style="white-space:nowrap">'+(d.data_prevista_para_receita||'—')+'</td><td style="text-align:left">'+_ne(d.lost_reason||'')+'</td></tr>'; }).join(''); }
-function novoOpenDealsModal(title,deals){ if(!deals||!deals.length){ openModal(title,'<p style="color:var(--text2);padding:1rem 0">Nenhum deal.</p>'); return; } var html='<table class="lb"><thead><tr><th style="text-align:left">Deal</th><th style="text-align:left">AE</th><th>Pipe</th><th>Etapa</th><th>Vidas</th><th>ARR</th><th>Prob.</th><th>Criado</th><th>Fechado</th><th>Dt. Receita</th><th style="text-align:left">Motivo perda</th></tr></thead><tbody>'+_novoDealsRows(deals)+'</tbody></table>'; openModal(title+' ('+deals.length+')',html); }
+function novoOpenDealsModal(title,deals){ if(!deals||!deals.length){ openModal(title,AxUI.emptyState('Nenhum deal.')); return; } var html='<table class="lb"><thead><tr><th style="text-align:left">Deal</th><th style="text-align:left">AE</th><th>Pipe</th><th>Etapa</th><th>Vidas</th><th>ARR</th><th>Prob.</th><th>Criado</th><th>Fechado</th><th>Dt. Receita</th><th style="text-align:left">Motivo perda</th></tr></thead><tbody>'+_novoDealsRows(deals)+'</tbody></table>'; openModal(title+' ('+deals.length+')',html); }
 function _getMonths(n){ var st=_filterState(), months=[]; if(st.start&&st.end){ var s=new Date(st.start+'T00:00:00'), e=new Date(st.end+'T00:00:00'); var y=s.getFullYear(), m=s.getMonth(); while(y<e.getFullYear()||(y===e.getFullYear()&&m<=e.getMonth())){ months.push(y+'-'+String(m+1).padStart(2,'0')); m++; if(m>11){m=0;y++;} } return months; } var now=new Date(); for(var i=n-1;i>=0;i--){ var dd=new Date(now.getFullYear(),now.getMonth()-i,1); months.push(dd.getFullYear()+'-'+String(dd.getMonth()+1).padStart(2,'0')); } return months; }
 function _stageNorm(s){ return s==='Stand by'?'Standby':s; }
 
@@ -489,7 +458,7 @@ function novoLoadData(){
     _boardLoadFunnel();
   }).catch(function(err){
     if(btn) btn.classList.remove('spinning');
-    document.getElementById('novo-content').innerHTML='<div style="text-align:center;padding:3rem 0;color:var(--red)">'+t('error_prefix')+_ne(String(err))+'<br><br><button onclick="novoLoadData()" style="background:var(--teal);color:#fff;border:none;border-radius:8px;padding:.5rem 1.2rem;cursor:pointer">'+t('retry')+'</button></div>';
+    document.getElementById('novo-content').innerHTML=AxUI.banner(t('error_prefix')+_ne(String(err)), { severity:'error', retry:'novoLoadData()', retryLabel:t('retry') });
   });
 }
 
@@ -700,7 +669,7 @@ function buildBdTopAE(){
   });
   var rows=Object.keys(agg).map(function(k){return agg[k];}).sort(function(a,b){return b.weighted-a.weighted;}).slice(0,5);
   _bdTopAeRows=rows;
-  if(!rows.length){ el.innerHTML='<p style="color:var(--text2);padding:1rem 0">Nenhum deal ativo.</p>'; return; }
+  if(!rows.length){ el.innerHTML=AxUI.emptyState('Nenhum deal ativo.'); return; }
   var html='<table class="lb"><thead><tr><th>#</th><th style="text-align:left">AE</th><th>Open Deals</th><th>Vidas</th><th>ARR Estimado</th><th>ARR Ponderado</th></tr></thead><tbody>';
   rows.forEach(function(r,i){
     var aeCell='<a href="#" onclick="event.preventDefault();bdTopAeOpen('+i+')" title="Clique para ver os deals ativos de '+_ne(r.ae)+'" style="color:var(--teal);text-decoration:none;cursor:pointer" onmouseover="this.style.textDecoration=\'underline\'" onmouseout="this.style.textDecoration=\'none\'">'+_ne(r.ae)+'</a>';
@@ -715,7 +684,7 @@ function buildBdWatchlist(){
   var arr=_croActivePipeline().map(function(d){ var p=_calcProbInfo(d).final||0; return {d:d,p:p,w:_annualRev(d)*p}; });
   arr.sort(function(a,b){return b.w-a.w;});
   var rows=arr.slice(0,10);
-  if(!rows.length){ el.innerHTML='<p style="color:var(--text2);padding:1rem 0">Nenhum deal ativo.</p>'; return; }
+  if(!rows.length){ el.innerHTML=AxUI.emptyState('Nenhum deal ativo.'); return; }
   var html='<table class="lb"><thead><tr><th style="text-align:left">Deal</th><th>Etapa</th><th>Vidas</th><th>ARR</th><th>Prob.</th><th>ARR Ponderado</th><th>Dias no Pipe</th><th style="text-align:left">AE</th></tr></thead><tbody>';
   rows.forEach(function(r){
     var d=r.d;
@@ -825,8 +794,6 @@ function _stageNorm(s){ return s==='Stand by'?'Standby':s; }
 (function(){
   try{ if(localStorage.getItem('novo_nav_open')==='true') _setNavOpen(true); }catch(e){}
   (function(_e){if(_e)_e.textContent=NOVO_LANG.toUpperCase();})(document.getElementById('novo-lang-label'));
-  document.body.classList.toggle('novo-info-on',_boardShowInfo);
-  var _ib=document.getElementById('btn-info-toggle'); if(_ib)_ib.classList.toggle('highlighted',_boardShowInfo);
   novoLoadData();
 })();
 </script>

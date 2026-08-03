@@ -124,7 +124,7 @@ Corte PME: 200 vidas. Fuso canônico: America/Sao_Paulo.
 | `periodo_contrato` | Período do contrato | fonte | deal | `periodo_do_contrato___vg` | enum | revops | MIGRADO em 2026-07-15 (decisão do dono): fonte primária = periodo_do_contrato___vg ('Período do Contrato'); fallback = campo legado 'Contrato atual é de 12, 24 ou 36 meses?'. Motivo do fallback: preenchimento no pente-fino era 4 deals (novo) × 43 (legado) — migração seca perderia dado; quando o novo campo for adotado no CRM, o fallback aposenta. Valores: '12 Meses'/'24 Meses'/'36 meses'/'Não Possui'. Sem período → 12 (anualiza), regra contrato_meses. |
 | `possui_agenciamento` | Possui Agenciamento | fonte | deal | `possui_agenciamento` | booleano | revops | Só adiciona o pico pontual de entrada; não muda a cauda recorrente. |
 | `possui_vitalicio` | Possui Vitalício | fonte | deal | `possui_vitalicio` | booleano | revops |  |
-| `is_poc` | É POC? | fonte | deal | `e_poc` | booleano | revops | POC não gera receita: zera Real e Probabilizada em todos os painéis (regra receita_mensal_deal). |
+| `is_poc` | É POC? | fonte | deal | `e_poc` | booleano | revops | Até 2026-08-02 zerava Real e Probabilizada em todos os painéis (regra receita_mensal_deal); revertido — POC flui pela régua normal, probabilidade baixa vem do ajuste manual do AE/comitê (decisão da reunião de forecast de 31/07). |
 | `probabilidade_ae` | Probabilidade (AE) | fonte | deal | `probabilidade_de_fechamento_` | fracao_0_1 | vendas | Digitada pelo AE no HubSpot (dado de fonte para o dash, manual para o AE). Normalizada: >1 divide por 100. |
 | `probabilidade_etapa_hs` | Probabilidade da etapa (HubSpot) | fonte | deal | `hs_deal_stage_probability` | fracao_0_1 | revops |  |
 | `quarter_fechamento` | Quarter de fechamento | fonte | deal | `qual_quarter_de_fechamento` | enum | vendas | Opções do radio no portal: Q1..Q4 (SEM ano) e Q1 2027..Q4 2027. Convenção (decisão do dono 2026-07-15): Qx sem ano = 2026. Fallback: derivado de data_prevista_para_receita quando vazio/inválido (regra quarter_fallback). |
@@ -203,7 +203,7 @@ Corte PME: 200 vidas. Fuso canônico: America/Sao_Paulo.
 - **Tipo:** hibrido · **Grain:** deal × mês calendário · **Status:** em_revisao · **Vigente desde:** 2026-07-14 · **Dono:** revops
 - **Usa dados:** `is_poc`, `faturamento_manual`, `vidas`, `colaboradores`, `createdate`, `modelo_remuneracao`, `vigencia`, `data_prevista_para_receita`, `primeira_fatura`, `possui_agenciamento`, `vencimento_primeira_fatura`
 - **Usa referência:** `valor_por_vida`, `etapas`
-- **Precedência:** 1º É POC? → série zerada. 2º Faturamento manual existe → substitui INTEGRALMENTE a régua (probAdj=1). 3º Senão → régua por etapa abaixo.
+- **Precedência:** 1º Faturamento manual existe → substitui INTEGRALMENTE a régua (probAdj=1). 2º Senão → régua por etapa abaixo. (Até 2026-08-02, É POC? era o 1º passo e zerava a série; revertido por decisão da reunião de forecast de 31/07 — POC flui pela régua normal, sem guard especial.)
 - **Fórmula:** Por etapa: Diagnóstico → (vidas\|\|colaboradores) × VPV(faixa); início = createdate + delay (vidas<=200: 9m \| <=4999: 14m \| senão 18m), com piso na referenceDate. Reunião Agendada → (vidas\|\|colaboradores) × R$24; início = createdate + 15m, sem piso. Cotação/Consultoria/Negociação → início por modelo (corretagem: vigência futura+2m senão prevista+2m \| fee: prevista+2m \| sem modelo: prevista) e valor = receita_regua_mensal(n), cap 24 meses. Demais etapas → início na data prevista, receita_regua_mensal(n), cap 24 meses. Probabilizada = valor × probAdj (regra prob_final_deal ou régua da página).
 - **Ponto no tempo:** referenceDate injetável via ForecastEngine.config() (Delta 1A); sem ela, ancora em hoje
 - **Código (1.0):** public/forecast-engine.js:44 (dealMonthly) · public/forecast-engine.js:32 (_refNow)
@@ -233,10 +233,10 @@ Corte PME: 200 vidas. Fuso canônico: America/Sao_Paulo.
 - **Tipo:** calculado · **Grain:** deal · **Status:** em_revisao · **Vigente desde:** 2026-07-14 · **Dono:** revops
 - **Usa dados:** `dealstage`, `pipeline`, `probabilidade_ae`, `prob_override_etapa`
 - **Usa referência:** `reguas_probabilidade.forecast_flat`, `reguas_probabilidade.calculada_funil`
-- **Precedência:** prob de etapa = override manual (por pipeline) > calculada do funil (C07, por pipeline) > RÉGUA ÚNICA forecast_flat (D4/D4b, 2026-07-15 — antes era a painel_default, aposentada)
-- **Fórmula:** final = prob_etapa, ajustada pela prob do AE só quando diverge >= 30pp: AE <= etapa-0,3 → etapa×0,9 \| AE >= etapa+0,3 → etapa×1,1 \| senão = etapa.
-- **Código (1.0):** public/prob-engine.js:62 (stageProbFor) · public/prob-engine.js:77 (calcProbInfo)
-- **Notas:** ADR-008 (toggle global forçada × calculada) muda a precedência para uma escolha explícita do usuário na Fase 4. Histórico da divergência de Implantação: referencia.reguas_probabilidade.painel_default_APOSENTADA.
+- **Precedência:** prob de etapa = override manual (por pipeline) > calculada do funil (C07, por pipeline) > RÉGUA ÚNICA forecast_flat (D4/D4b, 2026-07-15 — antes era a painel_default, aposentada). Override manual POR DEAL (probManual/'P. Ajust.', 2026-07-27) vence tudo abaixo, inclusive a regra do mínimo.
+- **Fórmula:** final = MENOR entre a prob de etapa e a prob do AE (2026-08-02, decisão validada com a CFO na reunião de forecast de 31/07: um AE que baixa a própria prob tem motivo real, a régua de etapa carrega o otimismo natural de quem não mexeu em nada); sem prob do AE → prob de etapa. Substitui o ajuste ±10% por divergência ≥30pp (regra anterior, aposentada em 2026-08-02).
+- **Código (1.0):** public/prob-engine.js:62 (stageProbFor) · public/prob-engine.js:89 (_autoProbInfo) · public/prob-engine.js:120 (calcProbInfo)
+- **Notas:** ADR-008 (toggle global forçada × calculada) muda a precedência para uma escolha explícita do usuário na Fase 4. Histórico da divergência de Implantação: referencia.reguas_probabilidade.painel_default_APOSENTADA. 2026-08-02: fórmula do ajuste automático trocada de ±10%/30pp para o mínimo etapa×AE; o override manual por deal (probManual) não muda.
 
 ### `filtro_deals_ativos` | Filtro de deals ativos (payload principal)
 
@@ -275,27 +275,27 @@ Corte PME: 200 vidas. Fuso canônico: America/Sao_Paulo.
 - **Tipo:** calculado · **Grain:** deal · **Status:** em_revisao · **Vigente desde:** 2026-07-16 · **Dono:** revops
 - **Usa dados:** `arr_estimado`, `primeira_fatura`, `dealstage`, `probabilidade_ae`
 - **Depende de:** `arr_estimado_fallback`, `prob_final_forecast`
-- **Fórmula:** ARR Ponderado = ARR estimado (sem ARR → 1ª fatura × 12, regra arr_estimado_fallback) × P. Ajust. (probabilidade final da etapa + ajuste ±10% do AE, a mesma da coluna P. Ajust. do painel). Puramente informativa: NÃO altera a receita probabilizada nem os totais mensais. Diferenças residuais contra o Board vêm da fonte da probabilidade (Forecast: régua flat; Board: C07 por pipeline quando há amostra) — visíveis nas colunas P. Etapa / P. Realtime.
+- **Fórmula:** ARR Ponderado = ARR estimado (sem ARR → 1ª fatura × 12, regra arr_estimado_fallback) × P. Ajust. (probabilidade final = menor entre etapa e AE, 2026-08-02, a mesma da coluna P. Ajust. do painel). Puramente informativa: NÃO altera a receita probabilizada nem os totais mensais. Diferenças residuais contra o Board vêm da fonte da probabilidade (Forecast: régua flat; Board: C07 por pipeline quando há amostra) — visíveis nas colunas P. Etapa / P. Realtime.
 - **Código (1.0):** public/forecast.html (coluna arr_pond) · public/forecast-stage.html (idem)
 
 ### `prob_final_forecast` | Probabilidade final no Forecast (régua flat + ajuste do AE)
 
-> A coluna P. Etapa segue a régua flat validada do Forecast; a probabilidade informada pelo AE só ajusta ±10% quando diverge muito da etapa.
+> A coluna P. Etapa segue a régua flat validada do Forecast; a probabilidade final usa a MENOR entre essa régua e a probabilidade que o AE informou no deal (2026-08-02).
 
 - **Tipo:** calculado · **Grain:** deal · **Status:** em_revisao · **Vigente desde:** 2026-07-14 · **Dono:** revops
 - **Usa dados:** `dealstage`, `probabilidade_ae`, `prob_override_etapa`
 - **Usa referência:** `reguas_probabilidade.forecast_flat`
-- **Precedência:** override manual em Configurações > régua flat do Forecast. Overrides legados iguais aos defaults antigos são limpos automaticamente (fix 2026-07-14).
-- **Fórmula:** P.Etapa = régua flat. Ajuste pelo AE: sem prob. do AE → P.Etapa; dentro de ±30 pp → P.Etapa; AE >= P.Etapa+30pp → P.Etapa × 1,10; AE <= P.Etapa−30pp → P.Etapa × 0,90.
+- **Precedência:** override manual em Configurações > régua flat do Forecast. Overrides legados iguais aos defaults antigos são limpos automaticamente (fix 2026-07-14). Override manual POR DEAL (probManual/'P. Ajust.') vence a regra do mínimo abaixo.
+- **Fórmula:** P.Etapa = régua flat. Prob. final (2026-08-02, decisão validada com a CFO): sem prob. do AE → P.Etapa; senão → MENOR(P.Etapa, Prob. AE). Substitui o ajuste ±10% por divergência ≥30pp (regra anterior, aposentada).
 
 | Situação | Probabilidade final |
 |---|---|
-| AE não informou | P.Etapa (sem ajuste) |
-| Prob. AE dentro de ±30 pp da P.Etapa | P.Etapa (sem ajuste) |
-| Prob. AE >= P.Etapa + 30 pp | P.Etapa × 1,10 (+10%) |
-| Prob. AE <= P.Etapa − 30 pp | P.Etapa × 0,90 (−10%) |
+| AE não informou | P.Etapa |
+| Prob. AE >= P.Etapa | P.Etapa (a menor) |
+| Prob. AE < P.Etapa | Prob. AE (a menor) |
 
-- **Código (1.0):** public/forecast.html (P. Etapa \| fix 2026-07-14) · public/forecast-stage.html
+- **Código (1.0):** public/forecast.html (P. Etapa \| fix 2026-07-14) · public/forecast-stage.html · public/prob-engine.js:89 (_autoProbInfo)
+- **Notas:** 2026-08-02: fórmula do ajuste automático trocada de ±10%/30pp para o mínimo etapa×AE (decisão da reunião de forecast de 31/07, validada com a CFO).
 
 ### `arr_estimado_fallback` | ARR com fallback
 

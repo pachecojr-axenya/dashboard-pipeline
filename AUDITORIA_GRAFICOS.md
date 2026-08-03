@@ -1,5 +1,95 @@
 # Auditoria crítica dos gráficos 🟡 | 2026-06-12
 
+## Adendo | Delta religado ao design system (premium.css/premium.js) (2026-08-02)
+
+> **Estado inalterado: 🟢 validado** (D01–D08) / 🟡 D09 (ver adendo seguinte) — esta
+> rodada é **só CSS/nomes de classe**, sem tocar em lógica de cálculo. Tier 1, item 1
+> de `docs/design-system-proposal.md`: `forecast-delta.html` era o único painel
+> "principal" sem `premium.css`/`premium.js`, renderizando com paleta antiga
+> (`:root` local vivo, sem nada que o sobrescrevesse) e um toggle sem thumb
+> deslizante.
+>
+> - Adicionado `<link rel="stylesheet" href="/premium.css?v=5">` +
+>   `<script src="/premium.js?v=5"></script>` no `<head>`, logo após o `<style>`
+>   inline — mesma posição relativa usada por `dashboard.html`/`board.html`.
+> - Renomeadas as classes locais para os equivalentes canônicos (mantendo toda a
+>   lógica JS que lê/escreve essas classes): `.card` → `.novo-card` (9 usos no HTML +
+>   regra da media query); `.kpi`/`.k`/`.v` → `.kpi-card`/`.kpi-label`/`.kpi-value`
+>   (CSS + todas as strings HTML geradas em JS: KPIs do D01/D03/D09).
+> - `.tab-sub` reconstruído com o padrão real (só existia 1 instância: o botão
+>   "📸 Capturar agora" da faixa de captura manual, sempre "ativo"): elemento
+>   `.tab-sub-thumb` deslizante (via `left`/`width`) + classe de estado `.active`
+>   (era `.on`), copiando a implementação de `dashboard.html`
+>   (`_moveTabSubThumb`/`_initTabSubs`, replicadas aqui porque cada página implementa
+>   o próprio toggle — `STATUS_LOG.md`, Regra de código). `_initTabSubs()` é
+>   re-chamada quando a faixa de captura (inicialmente `display:none`) fica visível,
+>   para o thumb medir a largura real.
+> - `.ibtn` (botão de info 24px próprio) mantido como está — fora do escopo desta
+>   rodada (drawer de info é extração separada).
+> - Removido o `:root` local morto (paleta antiga `--bg:#0d1117` etc.) — todas as
+>   vars usadas (`--font`, `--hover` inclusive) já são cobertas por `premium.css`.
+> - Gate de paridade: grep no arquivo inteiro por classes órfãs (`class="card"`,
+>   `class="kpi"`, `class="k"`/`class="v"` soltas, `tab-sub-btn.on`, `:root`
+>   remanescente) — zero ocorrências após o rename. A barra **Fechado** e o card
+>   **D09** (mesclados nesta branch antes desta rodada) foram só reembalados em
+>   `.novo-card`/`.kpi-card`; nenhuma linha de cálculo tocada.
+> - Validação: `node scripts/_check-inline-js.js public/forecast-delta.html` = 0
+>   erros; `npm run check` (exceto a falha conhecida de
+>   `test-bdr-workload-v2.js`, não relacionada); `scripts/test-forecast-delta-e2e.js`,
+>   `scripts/test-forecast-delta-leva2.js` e `scripts/test-delta-invariant.js` = PASS
+>   (invariante Σ Δ = Δtotal intacto).
+
+## Adendo | Cotação | fix do CSS órfão (regressão) + settings-modal.js + limpeza de `:root` morto (2026-08-02)
+
+> Trabalho de `docs/design-system-proposal.md` (seção 2.2, itens Tier 1.2/1.5/2.7), sem
+> mudança de estado de validação do painel (continua 🟡 não validado contra o portal, ver
+> adendo de 2026-07-29 abaixo — nenhum dado/cálculo de ticket foi tocado).
+>
+> 1. **Regressão corrigida**: o CSS de `.modal`/`.modal-header`/`.modal-close`/
+>    `.modal-body`/`.btn-export`/`table.lb` estava de novo fisicamente depois de
+>    `</html>` (fora de qualquer `<style>`, ignorado pelo navegador) — o MESMO tipo de
+>    bug que o adendo de 2026-07-29 (linha abaixo) já registrava como corrigido uma vez.
+>    Movido de volta para dentro do `<style>` do `<head>`.
+> 2. `:root`/`.novo-card`/`.kpi-card` locais (paleta pré-`premium.css`) removidos —
+>    código morto, já sobrescrito pelo `premium.css` em runtime; zero mudança visual.
+> 3. `settings-modal.js` ligado: o painel agora respeita o toggle global "Implantação =
+>    Ganho" (via `_novoIsWon(d)`) em vez do `NOVO_WON_STAGE='Ganho'` hardcoded — mesma
+>    correção de comportamento pendente para `cs.html` (não feita nesta tarefa).
+>
+> Detalhe completo de cada um dos três pontos: `STATUS_LOG.md`, entradas de 2026-08-02
+> ("Cotação | fix: CSS do modal órfão...", "Cotação | limpeza: `:root`/`.novo-card`/
+> `.kpi-card`...", "Cotação | liga `settings-modal.js`...").
+
+## Adendo | Delta ganha o D09, ARR do quarter corrente vs Meta (2026-08-02)
+
+> **Estado: 🟡 não validado contra o HubSpot** (card novo; painel Delta segue 🟢
+> validado nos D01–D08 já auditados). Pedido do CRO (Ivan) na reunião de forecast de
+> 31/07/2026: uma visão de como o ARR probabilizado do quarter CORRENTE evoluiu
+> semana a semana, comparado com a meta.
+>
+> | # | Card | Nota |
+> |---|---|---|
+> | D09 | ARR do quarter corrente vs Meta \| evolução semanal | linha (ARR Total/Ponderado, toggle) por foto semanal, com marcador tracejado da meta trimestral |
+>
+> **Front-only por construção (sem mudar `api/history.js`)**: looping do front sobre
+> os dois endpoints que já existiam — `action=fotos` (cadência semanal oficial, sem
+> `cadence=`) para a lista de fotos, e `action=compare` (mesmo `quarters[]` que já
+> alimenta o D06) para o ARR do quarter corrente EM CADA foto — lê o lado `b` (ou `a`
+> para o primeiro ponto) de cada chamada, todas com a mesma foto mais antiga da janela
+> como base A (até 16 fotos semanais mais recentes, paralelizadas via `Promise.all`).
+> Nenhuma agregação nova no backend.
+>
+> Escopo sempre "Tudo" (Ganho/Implantação incluídos, sem Bid/Standby) e SEM os filtros
+> de Executivo/Quarter/Escopo do cabeçalho — visão executiva do total da empresa,
+> deliberadamente independente do resto da página (documentado no drawer "i" do D09).
+> Meta trimestral = meta anual configurada em Configurações (⚙, mesma fonte do CRO
+> Dashboard, `NOVO_META_MTD`) ÷ 4, lida diretamente do `localStorage` do navegador
+> (`novo_meta_mtd`) — o painel Delta não inclui `settings-modal.js`, então não há UI
+> própria para editar a meta aqui; se nunca foi configurada neste navegador, o card
+> mostra "sem meta em Configurações" em vez de uma meta zerada silenciosa.
+> Ressalva a validar: a série pode incluir fotos de ANTES do início do quarter
+> corrente (contexto de tendência) quando ainda há poucas fotos dentro do quarter.
+
 ## Adendo | Cotação religado nos tickets reais (2026-07-29)
 
 > **Estado: 🟡 não validado contra o portal** (painel segue oculto/🔴 no menu até
@@ -46,6 +136,43 @@
 > definição oficial de cliente ativo; `vigencia_do_contrato_atual` = data de renovação;
 > `premio_mensal` da company vs o do deal.
 
+## Adendo | D02 ganha a barra "Fechado" + fix do bug do Perdido no drill (2026-08-02)
+
+> Duas correções pedidas na reunião de forecast de 2026-07-31 (caso concreto: deal
+> Cappta, −R$345k de fatura+vigência que na verdade era vitória).
+>
+> **1. Waterfall ganha "Fechado" (`api/history.js` compare + `lib/forecast-compute.js`
+> `closedWonAgg`).** Hoje um deal que vira Ganho entre a Foto A e a Foto B "derruba"
+> o Total @ B do waterfall como se fosse perda de valor — na verdade é uma vitória, o
+> valor só migrou de pipe aberto ponderado para fechado/contratado. O card D02 ganhou
+> duas barras novas após Total @ B: **Fechado** (Σ ARR/ARR Ponderado, na foto A, dos
+> deals que foram para Ganho no período — clicável, abre a mesma lista do D05 filtrada
+> por "Foi para Ganho") e **Total B + Fechado** (a soma, comunicando "o que já foi
+> executado + o que ainda está por vir"). **Design deliberado: exposição
+> ADITIVA/informativa** — não entra no Σ Δ(etapa) nem no invariante Σ Δ = Δtotal já
+> testado (`scripts/test-delta-invariant.js`, `scripts/test-forecast-delta-e2e.js`),
+> porque Ganho não tem linha própria no waterfall em escopo Ativos (some do conjunto
+> por definição); somar ali mudaria a semântica do invariante existente em vez de só
+> anotá-lo ao lado. Payload novo: `fechado: { deals, arr, arrPond, real12, prob12,
+> realTotal, probTotal }`.
+>
+> **2. Bug corrigido: deal Perdido aparecendo como "movimentação" (avanço) no drill.**
+> Causa raiz em `lib/snapshot-history.js` (`valueAt`, usada pelo backfill histórico
+> HubSpot→BQ, `scripts/backfill-hubspot-bq.js`): o comparador de ordenação do
+> histórico de propriedade (`a.timestamp < b.timestamp ? 1 : -1`) devolvia -1 também
+> quando os timestamps eram IGUAIS — viola o contrato de ordem total do
+> `Array.prototype.sort`. Quando o HubSpot registra duas mudanças de `dealstage` no
+> mesmo instante (workflow em cadeia, ex.: Negociação → Perdido no mesmo request), o
+> sort podia reordenar errado um array que o HubSpot já entrega correto
+> (mais-recente-primeiro) e `valueAt()` devolvia a etapa INTERMEDIÁRIA em vez do
+> estado FINAL — daí o deal Perdido "vazando" como avanço de etapa no drill do
+> waterfall. Fix: comparador numérico próprio (0 em empate) → sort estável, preserva
+> a ordem que o HubSpot entrega. Reproduzido e coberto por
+> `scripts/test-snapshot-history.js` (novo, no `npm run check`). A classificação em
+> si (`_classifySaiu` no `lib/forecast-compute.js`, e o equivalente em
+> `stageUnified`) já priorizava Perdido/Ganho antes do rank de avanço desde 2026-07-24
+> — o bug estava na ETAPA reconstruída chegando errada, não na regra de classificação.
+
 ## Adendo | Delta (ex-Comparativo), códigos D01–D07 (2026-07-24)
 
 > **Estado: 🟢 validado (2026-07-27, decisão do dono)** — o pill do header passou de
@@ -56,7 +183,7 @@
 > | # | Card | Nota |
 > |---|---|---|
 > | D01 | Fotografia do forecast (foto B) | KPIs da foto isolada |
-> | D02 | Waterfall do forecast por etapa | motor canônico (Regra nº 3), invariante Σ Δ = Δtotal. **Medida ÚNICA point-in-time (2026-07-30, decisão do dono — toggle composição×convicção removido)**: cada foto avaliada com a config vigente NELA (sidecar `snapshot_config` ao vivo ou backfill reconstruído embutido); pill indica a origem da config; foto sem config → fallback atual com flag amarela. TODO o painel (KPIs, tabelas, drill) usa a mesma avaliação — o Σ do drill fecha com a barra. A medida "composição" (config atual nas 2 fotos) foi aposentada. |
+> | D02 | Waterfall do forecast por etapa | motor canônico (Regra nº 3), invariante Σ Δ = Δtotal. **Medida ÚNICA point-in-time (2026-07-30, decisão do dono — toggle composição×convicção removido)**: cada foto avaliada com a config vigente NELA (sidecar `snapshot_config` ao vivo ou backfill reconstruído embutido); pill indica a origem da config; foto sem config → fallback atual com flag amarela. TODO o painel (KPIs, tabelas, drill) usa a mesma avaliação — o Σ do drill fecha com a barra. A medida "composição" (config atual nas 2 fotos) foi aposentada. **2026-08-02: ganhou as barras informativas "Fechado" e "Total B + Fechado"** (deals que foram para Ganho no período não "derrubam" mais o Total B; ver adendo abaixo) e o bug do deal Perdido aparecendo como avanço no drill foi corrigido. |
 > | D03 | KPIs comparativos A → B | TCV e MRR removidos a pedido do dono (2026-07-24). ARR Ponderado point-in-time (mesma medida única do D02). |
 > | D04 | Funil / deals por etapa | contagem A × B |
 > | D05 | Deals que saíram do pipe | lista direta no card; destino distingue Caiu / Ganho / Avançou |

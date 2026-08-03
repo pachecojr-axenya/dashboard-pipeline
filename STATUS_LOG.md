@@ -21,6 +21,705 @@
   ADR-009, ainda "proposta"). O que este commit entrega é só a checagem RODANDO e
   visível a cada push/PR; torná-la bloqueante é um passo separado.
 
+### Componente de estado vazio/erro/aviso | `AxUI` — FASE 2, item 8: `48h.html` (2026-08-02)
+
+> Continuação da Fase 1 (`AxUI` — módulo + dashboard/board/ae, entrada acima). Seguiu à
+> risca o "para o próximo agente" documentado ali: incluir `<script src="/ax-ui.js?v=1">`
+> no `<head>`, trocar texto solto de vazio/erro por `AxUI.emptyState(...)`/`AxUI.banner(...)`
+> sem mudar o TEXTO da mensagem, e para o placeholder ANTES do 1º load (antes do JS rodar)
+> aplicar a classe `ax-empty ax-empty-lg` direto na tag em vez de chamar a função — mesmo
+> padrão usado em `board.html`/`ae.html`.
+- **`public/48h.html`:** adicionado `<script src="/ax-ui.js?v=1"></script>` no `<head>`
+  (junto de `settings-modal.js`). 6 pontos migrados:
+  - Placeholder estático de página inteira antes do 1º load ("Aguardando dados…") →
+    `<div class="ax-empty ax-empty-lg">Aguardando dados…</div>`.
+  - `novoOpenDealsModal` ("Nenhum deal.") → `AxUI.emptyState('Nenhum deal.')`.
+  - Erro principal de `novoLoadData()` (fetch de `/api/forecast-table`, com botão de
+    retry) → `AxUI.banner(t('error_prefix')+_ne(String(err)), {severity:'error',
+    retry:'novoLoadData()', retryLabel:t('retry')})` no lugar do
+    `<div style="color:var(--red)">…<button style="background:var(--teal)…">` inline.
+  - `buildH48ChartAE` ("Nenhum deal criado nas últimas 48h.", quando não há barras) →
+    `AxUI.emptyState(...)`.
+  - `buildH48WonTable` ("Nenhum deal ganho nas últimas 48h.") → `AxUI.emptyState(...)`.
+  - `buildH48NewTable` ("Nenhum deal criado nas últimas 48h.") → `AxUI.emptyState(...)`.
+  - **Não migrado (fora de escopo)**: o texto de "carregando" (`t('loading')`, dentro de
+    `novoLoadData()`) permanece como `<div style="...color:var(--text2)">` solto — mesmo
+    padrão preservado em `board.html`/`ae.html`, pois é um estado de carregamento, não
+    vazio/erro/aviso. O bloco `.alert-card` (`buildH48Alerts`, incl. o caso "Nenhum alerta
+    no período.") também não foi tocado: é um componente próprio do painel com 4 variantes
+    simultâneas (default/verde/amarelo, várias podem aparecer empilhadas ao mesmo tempo),
+    não existe em nenhum outro painel, e não mapeia 1:1 para o modelo de severidade única
+    do `AxUI.banner` (`info`/`warn`/`error`, sem verde de sucesso) — não é "texto solto"
+    no sentido do gate de paridade, é um sistema de alertas já desenhado.
+- **Validação:** `node scripts/_check-inline-js.js public/48h.html` → 0 erros. `npm run
+  check` completo: única falha é a conhecida `test-bdr-workload-v2.js`
+  (`AssertionError: false == true`), sinalizada de antemão como não sendo responsabilidade
+  desta rodada (falha de fim de semana, sem relação com este painel); todo o resto passou
+  (`check-semantic`, `test-bdr-treble-dw`, `test-bdr-no-show`, `test-bdr-cohort-analytics`,
+  `_check-inline-js` dos demais painéis).
+
+### Componente de estado vazio/erro/aviso | `AxUI` — FASE 2: `forecast-delta.html` (2026-08-02)
+
+> Tier 2, item 8 de `docs/design-system-proposal.md`, continuação da FASE 1 (módulo
+> `public/ax-ui.js` + dashboard/board/ae, ver entrada mais antiga desta mesma seção).
+> `forecast-delta.html` incluído no `<head>` e todo texto solto de erro/vazio/aviso
+> migrado para `AxUI.banner`/`AxUI.emptyState` (conteúdo preservado 100%, só o
+> invólucro mudou). Barra "Fechado" (D02) e card "D09" — features recém-adicionadas —
+> tiveram a lógica de dados intocada; só as mensagens de erro/vazio que passavam por
+> eles foram reembaladas.
+- **`<script src="/ax-ui.js?v=1"></script>`** adicionado ao `<head>`.
+- **D02 (waterfall, `#chart-state`):** placeholder estático "Selecione duas fotos…"
+  ganhou a classe `ax-empty` direto na tag (padrão do "antes do JS rodar" da Fase 1);
+  "Escolha as duas datas." → `AxUI.emptyState(...)`; "A Foto B (depois) precisa ser
+  posterior à Foto A (antes)." e os 3 erros de fetch/API (validação de resposta,
+  catch de rede, catch do load inicial de fotos) → `AxUI.banner(msg, {severity:'error'})`.
+  O spinner "Calculando…" permanece como estava (não é erro/vazio).
+- **D02 (caveat, `#caveat`):** o aviso `⚠ ${caveat}` (ex.: explica a barra Fechado ou
+  foto sem sidecar) → `AxUI.banner('⚠ '+msg, {severity:'warn'})`. Só o wrapper mudou —
+  a barra "Fechado" em si (dado/cálculo/onClick do Chart.js) não foi tocada.
+- **D07/D08 (`renderUnifiedTable`, tabelas de etapa e de Bid):** célula de "sem
+  atividade" ("Sem etapas com atividade entre A e B." / "Nenhum deal de Bid nas fotos
+  selecionadas.") → `AxUI.emptyState(...)` dentro do `<td>`, no lugar do `style` inline
+  manual (mesmo padrão já usado nas tabelas do BoD em `board.html` na Fase 1).
+- **D05 (`#saiu-list`, lista de deals que saíram) e modal de drill (`#drill-body`):**
+  os 2 erros de cada (resposta sem sucesso da API + catch de rede) →
+  `AxUI.banner(esc(msg), {severity:'error'})`. Os "Carregando…"/spinner permanecem.
+- **D09 (`#q3trend-state`):** "Histórico insuficiente (mínimo 2 fotos semanais)." →
+  `AxUI.emptyState(...)`; os 2 erros (catch do cálculo de série + catch do load
+  inicial de fotos semanais) → `AxUI.banner('Erro: '+msg, {severity:'error'})`. Só o
+  wrapper das mensagens mudou — o cálculo de ARR do quarter corrente, a meta e o
+  gráfico (`drawQ3TrendChart`/`renderQ3TrendKpis`) não foram tocados.
+- **Revisado e deliberadamente NÃO migrado:** `#saiu-summary` ("Nenhum deal saiu do
+  escopo entre A e B.") e `#capture-snapshot-status` (mensagem "Erro: "+msg da captura
+  manual, feature só localhost/admin) — os dois são um único slot de texto reusado
+  tanto para o caso "vazio"/"erro" quanto para mensagens de status normais (contagem,
+  progresso), então virar caixa `ax-empty`/`ax-banner` só no caso vazio quebraria a
+  consistência visual com os demais estados do mesmo elemento; ficam como estão, no
+  mesmo espírito das exclusões já registradas na Fase 1 (formatação/label de dado, não
+  estado de vazio/erro dedicado). `wf-config-flag` (pill de origem da config) também
+  não foi tocado pelo mesmo motivo — é uma badge de qualidade de dado, não um estado de
+  vazio/erro.
+- **Validação:** `node scripts/_check-inline-js.js public/forecast-delta.html` = 0
+  erros; `scripts/test-forecast-delta-e2e.js` e `scripts/test-delta-invariant.js`
+  passam (invariante Σ Δ = Δtotal, barra Fechado, D09 point-in-time); `npm run check`
+  completo — única falha é a conhecida `test-bdr-workload-v2.js` (fim de semana), sem
+  relação com esta mudança.
+
+### Cotação | fix: CSS do modal órfão depois de `</html>` (regressão do fix de 2026-07-29) (2026-08-02)
+
+> Item Tier 1.5 de `docs/design-system-proposal.md` (seção 2.2, achado #5): a proposta já
+> tinha confirmado por leitura direta que `public/cotacao.html` tinha um bloco de CSS
+> (`.modal-overlay`, `.modal`, `.modal-header`, `.modal-close`, `.modal-body`, `.btn-export`,
+> `table.lb`) fisicamente DEPOIS da tag `</html>` de fechamento — fora de qualquer `<style>`,
+> então o navegador o ignorava por completo. O `STATUS_LOG.md` de 2026-07-29 já registrava
+> essa EXATA classe de bug como corrigida uma vez ("CSS do modal/tabela estava órfão...
+> movido para dentro do `<style>`") — este achado é uma **regressão** (ou o fix de 07-29 não
+> cobriu este trecho específico do arquivo).
+- **`public/cotacao.html`:** as ~15 linhas de CSS órfãs (linhas 364-379 antes do fix) foram
+  movidas para dentro do `<style>` real do `<head>` (logo antes do `</style>` de fechamento,
+  depois de `.kpi-sub`). Nenhuma dessas classes existia duplicada dentro do `<style>` já
+  existente, então foi um MOVE puro, sem reconciliação de conflito necessária. Efeito: o
+  modal de drill-down (usado por `novoOpenDealsModal`/`cotOpenTickets`) volta a ter
+  `position:fixed`, `display:flex`, dimensões e transição de entrada — antes do fix, o
+  `.modal-overlay` não tinha NENHUMA dessas propriedades (só o pouco que `premium.css`
+  cobre para `.modal`/`.modal-overlay`, que não inclui posicionamento nem dimensões),
+  então o modal provavelmente não se comportava como overlay de tela cheia.
+- Confirmado servindo o arquivo por um `local-server.js` isolado (porta alternativa 3211,
+  para não colidir com sessão paralela já rodando na 3002): resposta HTTP do
+  `/novo-cotacao` bate byte-a-byte com o arquivo em disco, um único `</html>` no documento,
+  CSS do modal presente dentro do `<style>` do `<head>`.
+
+### Cotação | limpeza: `:root`/`.novo-card`/`.kpi-card` locais mortos removidos (2026-08-02)
+
+> Item Tier 1.2 de `docs/design-system-proposal.md` (seção 2.2, achado #1). Confirmado por
+> grep no `<head>` que `public/cotacao.html` já inclui `<link rel="stylesheet"
+> href="/premium.css?v=5">` **depois** do `<style>` inline — como os seletores `:root`,
+> `html[data-theme="light"]`, `.novo-card` e `.kpi-card` têm especificidade idêntica nos
+> dois lugares, `premium.css` (carregado por último) vence a cascata para TODAS as
+> propriedades que o `:root`/`.novo-card`/`.kpi-card` locais declaravam.
+- **`public/cotacao.html`:** removidos o `:root{...}` e o `html[data-theme="light"]{...}`
+  locais (paleta pré-`premium.css`, ex. `--bg:#0d1117 --teal:#3ab8b7`), e as regras
+  `.novo-card{...}`/`.kpi-card{...}` locais — todas as variáveis/propriedades que elas
+  declaravam já são redefinidas pelo `premium.css` (`:root`/light equivalentes e
+  `.novo-card`/`.kpi-card` das seções 1 e 6). **Não removido**: `.novo-cards` (grid/padding
+  não cobertos pelo premium), `.kpi-click`, `.kpi-label`, `.kpi-value`, `.kpi-sub` — essas
+  regras têm propriedades (cursor, text-transform, line-height, margin) que o `premium.css`
+  NÃO redefine, então continuam vivas e em uso; removê-las mudaria o visual.
+- **Zero mudança visual esperada** — código morto (a cascata já era decidida pelo
+  `premium.css` antes do fix); confirmado comparando a resposta HTTP servida com o arquivo
+  em disco (idênticos) e via `node scripts/_check-inline-js.js public/cotacao.html` (0 erros).
+
+### Cotação | liga `settings-modal.js` (toggle global Implantação=Ganho) (2026-08-02)
+
+> Item Tier 2.7 de `docs/design-system-proposal.md` (seção 2.2, achado #8): `cs.html` e
+> `cotacao.html` eram os dois únicos painéis "principais" sem `settings-modal.js`, com
+> `NOVO_WON_STAGE='Ganho'` fixo no código — divergindo silenciosamente do resto do app
+> sempre que o dono muda o toggle "Implantação = Ganho" em outro painel (board/ae/bdr/48h).
+- **`public/cotacao.html` `<head>`:** adicionado `<script src="/settings-modal.js?v=2">`,
+  logo depois de `filter-bar.js`, mesma ordem usada por `board.html`/`48h.html`.
+- **Header:** novo botão de engrenagem "Configurações" (`onclick="novoOpenSettings()"`),
+  entre o botão "?" e o de Atualizar — mesmo ícone/posição do `48h.html`.
+- **JS:** adicionados `_novoImplWon`/`_novoActiveMeetings`/`_novoActiveStandby`
+  (localStorage-backed, mesmos nomes/defaults de `board.html`/`48h.html`),
+  `_novoIsWon(d)` (`d.stage==='Ganho'||(_novoImplWon&&d.stage==='Implantação')`),
+  `novoToggleImplWon`/`novoToggleActiveMeetings`/`novoToggleActiveStandby` e
+  `setContentBlur` (alvo `#view-novo`, mesma classe `.content-blur` que já existia no
+  arquivo) — o conjunto mínimo que o comentário de `settings-modal.js` documenta como
+  dependência de qualquer painel que o inclua, evitando erro de referência ao clicar nos
+  toggles do drawer de Configurações.
+- **`novoRender()`:** `var won=(_deals||[]).filter(function(d){return
+  d.stage===NOVO_WON_STAGE;})` virou `var won=(_deals||[]).filter(_novoIsWon);`. Confirmado
+  por grep que `won` **não é consumido em nenhum outro lugar do arquivo** (era, e continua,
+  uma variável sem efeito no render de hoje) — a troca não altera nenhum KPI/contagem
+  visível do painel agora, mas corrige a fonte para quando `won` (ou qualquer novo card)
+  passar a ser usado, e alinha o painel ao padrão dos demais. `NOVO_WON_STAGE='Ganho'`
+  manteve-se declarada (mesmo padrão de `board.html`/`48h.html`, que também a mantêm sem
+  uso direto) por não ser referenciada por nenhum módulo compartilhado (`shared-charts.js`,
+  `filter-bar.js`, `settings-modal.js` — confirmado por grep).
+- **Validação:** `node scripts/_check-inline-js.js public/cotacao.html` — 0 erros.
+  `npm run check` — mesma suíte PASS (única falha: `test-bdr-workload-v2.js`, fragilidade
+  preexistente de checagem de dia útil hardcoded, hoje 02/08/2026 é domingo, não
+  relacionada). Testes específicos de forecast (`test-forecast-delta-leva2.js`,
+  `test-forecast-delta-e2e.js`) rodados à parte, PASS integral (não tocam `cotacao.html`,
+  mas confirmam que nada no motor compartilhado quebrou).
+- Branch: `pacheco/design-cotacao-cleanup-2026-08-02` (sem push, sem deploy).
+
+### `public/cs.html` | Limpeza de design system (Tier 1.2) + liga `settings-modal.js` (Tier 2.7) (2026-08-02)
+
+> Duas correções de `docs/design-system-proposal.md` (seção 2.2, achados #1 e #8), sem
+> tocar no achado #2 (`filter-bar.js` incluído e nunca usado) — fica para tarefa futura.
+
+- **Tier 1.2 — `:root`/`.novo-card`/`.kpi-card` locais mortos removidos.** O `<style>`
+  inline de `cs.html` tinha um `:root` (dark + `html[data-theme="light"]`) com paleta
+  pré-`premium.css`, mais as regras `.novo-card{background:...;border-radius:10px;...}` e
+  `.kpi-card{background:...;border-radius:14px;...}` — todas sobrescritas em runtime pelo
+  `premium.css?v=5` (incluído depois, no `<head>`, mesma especificidade `:root`/seletor de
+  classe, vence por ordem de cascata). Confirmado var a var que todas as custom properties
+  do `:root` removido (`--bg,--card,--card2,--border,--text,--text2,--muted,--teal,--green,
+  --red,--orange,--yellow,--hover,--even-s,--hover-s,--hdr-glass`) já existem em
+  `premium.css:20-46` (dark) e `:71-92` (light). Servido via `local-server.js` numa porta
+  isolada (3011, para não colidir com outra sessão ativa na 3002) e comparado byte a byte
+  contra o HTML anterior via grep — **zero mudança visual**.
+- **Tier 2.7 — `settings-modal.js?v=2` ligado.** Antes, `NOVO_WON_STAGE='Ganho'` era o único
+  critério de "cliente ganho" nos 5 gráficos-proxy de Vendas (ARR por Produto, Clientes por
+  Modelo, Vidas por Produto, Concentração de ARR, KPI de topo) — cs.html divergia
+  silenciosamente do resto do app sempre que o toggle global "Implantação = Ganho" mudava em
+  outro painel (Board/AE/CRO/48h). Adicionado `<script src="/settings-modal.js?v=2"></script>`
+  (mesma posição de `board.html`/`ae.html`, depois de `filter-bar.js`) + botão "Configurações"
+  no header (mesmo ícone/posição de `board.html:173`) + o trio canônico
+  `_novoImplWon`/`_novoActiveMeetings`/`_novoActiveStandby` (localStorage, mesmas chaves
+  `novo_impl_won`/`novo_active_meetings`/`novo_active_standby` usadas por
+  dashboard/board/ae/48h) + `_novoIsWon(d)` (`d.stage==='Ganho'||(_novoImplWon&&d.stage===
+  'Implantação')`) + `novoToggleImplWon/ActiveMeetings/ActiveStandby()` (exigidos pelo
+  contrato do módulo, chamam `_gsSync()`). Os 5 usos de `d.stage===NOVO_WON_STAGE` viraram
+  `_novoIsWon(d)`. `_novoActiveMeetings`/`_novoActiveStandby` existem só para satisfazer o
+  contrato do drawer compartilhado (CS não tem conceito de "deals ativos") — não têm
+  consumidor no painel, comportamento idêntico ao presente em `48h.html`.
+- **Validado:** `node scripts/_check-inline-js.js public/cs.html` (0 erros); `npm run check`
+  completo (só falhou `test-bdr-workload-v2.js`, assert dependente de dia útil — hoje é
+  sábado, falha conhecida de fim de semana, não relacionada a esta mudança); rotas `/novo`,
+  `/novo-board`, `/novo-ae`, `/novo-bdr`, `/novo-cs` todas 200 no `local-server.js`.
+
+### Design System | `48h.html` — limpeza de `:root`/`.novo-card`/`.kpi-card` mortos + 2 hardcodes de cor (2026-08-02)
+
+> Segue `docs/design-system-proposal.md` (levantamento de fragmentação visual entre
+> painéis), Tier 1, itens 2 e 3, para o trio `cs.html`/`cotacao.html`/`48h.html`
+> (seção 2.2). Escopo desta sessão: só `48h.html`.
+
+- **Tier 1.2 (código morto, zero mudança visual):** removidos o `:root` local
+  (paleta pré-premium, `--teal:#3ab8b7` etc.) e seu par
+  `html[data-theme="light"]{...}`, e as regras locais `.novo-card{...}` e
+  `.kpi-card{...}` (`public/48h.html`, antigo bloco `<style>` inline,
+  linhas ~15-16, 70, 90). Confirmado que `premium.css`/`premium.js`/
+  `settings-modal.js` já estavam incluídos (linhas 129-132) e que `premium.css`
+  já vencia em runtime — os 4 blocos removidos eram idênticos em padrão ao que
+  o `dashboard.html` (padrão-ouro) também carrega sem efeito prático (mesma
+  cascata, `premium.css` carregado depois no `<head>`). Nenhuma mudança visual.
+- **Tier 1.3, hardcode nº 1 — `.kpi-card:hover`:** a regra local
+  `.kpi-card:hover{box-shadow:0 0 0 2px rgba(58,184,183,.35)}` (teal antigo)
+  foi **removida** (não atualizada para `var(--teal)`). Motivo: comparado com
+  `dashboard.html:157`, que tem a MESMA regra byte-a-byte — e nos dois casos
+  ela é totalmente sobrescrita pelo `.kpi-card:hover` de `premium.css`
+  (`box-shadow:var(--pm-card-shadow-hover)`, carregado depois no documento,
+  mesma especificidade, mesma propriedade). Ou seja, já era código morto,
+  igual ao padrão-ouro — remover (em vez de portar pra `var(--teal)`) evita
+  perpetuar uma regra sem efeito e mantém o hover 100% a cargo do
+  `premium.css`. Zero mudança visual.
+- **Tier 1.3, hardcode nº 2 — cor órfã do gráfico de doughnut por etapa**
+  (`buildH48ChartStage`, `public/48h.html` ~linha 461): o 7º item da paleta
+  `rgba(230,150,80,.75)` (`#e69650`, laranja-marrom) não corresponde a
+  nenhuma das 8 entradas de `MAP_DARK`/`MAP_LIGHT` do `premium.js` — não era
+  remapeado em runtime, cor genuinamente fora do sistema. Substituído por
+  `var(--orange)` (`premium.css`: dark `#f59e0b`, light `#d97706`), mesmo
+  papel/posição na paleta (7ª etapa do doughnut, ordem de séries inalterada).
+  Diferente da correção acima, este É um ajuste visual real (a cor muda de
+  laranja-marrom estranho para o laranja oficial do sistema, em ambos os
+  temas) — esperado e intencional.
+- **Validação:** `node scripts/_check-inline-js.js public/48h.html` → 0 erros.
+  `npm run check` → mesma falha pré-existente e não relacionada de
+  `test-bdr-workload-v2.js` (`blockedByFilters`, fragilidade de dia útil
+  hardcoded; hoje, 02/08/2026, é domingo) interrompe a cadeia `&&`; os scripts
+  seguintes (`test-bdr-workload-v2-ui.js`, `test-snapshot-resilience.js`,
+  `test-snapshot-history.js`, `test-forecast-delta-leva2.js`,
+  `test-forecast-delta-e2e.js`) rodados manualmente à parte, todos PASS.
+- Branch `pacheco/design-48h-cleanup-2026-08-02`, arquivo único tocado
+  (`public/48h.html`). Sem push, sem deploy.
+
+### Design System | Limpeza CSS dos gêmeos `forecast.html`/`forecast-stage.html` (Tier 1.2-1.4) (2026-08-02)
+
+> Execução dos itens Tier 1.2, 1.3 e 1.4 de `docs/design-system-proposal.md` (seção 2.3),
+> restrita a CSS puro + uma função de posicionamento de UI — nenhuma lógica de
+> receita/probabilidade tocada.
+
+- **(Tier 1.2) `:root` local morto removido dos dois arquivos.** `forecast.html:15-51` e
+  `forecast-stage.html:15-51` tinham um bloco `:root` + `html[data-theme="light"]`
+  byte-a-byte idêntico entre si, com a paleta pré-`premium.css` (`--bg:#0d1117
+  --teal:#3ab8b7` etc.). Confirmado que `premium.css?v=5` já está incluído nos dois
+  (`<link>` vem DEPOIS do `<style>` inline no `<head>`, então já vencia a cascata) e que
+  TODAS as vars do bloco morto (`--bg/--card/--card2/--border/--text/--text2/--teal/
+  --green/--yellow/--red/--font/--warn-s/--warn-sh/--even-s/--hover-s/--accent/--hover`,
+  dark e light) já têm equivalente em `premium.css:20-69` (dark) e `:71-107` (light) —
+  removido sem qualquer mudança visual.
+- **(Tier 1.3) Hardcodes de `rgba(58,184,183,*)`/`#f85149` (paleta antiga) corrigidos em
+  CSS puro, fora do alcance do remap de `premium.js` (que só intercepta `new Chart(...)`,
+  não `box-shadow`/`border`/`background` estático).** `--teal` atual (`premium.css:29`,
+  dark) = `#2dd4bf` = `rgb(45,212,191)`; `--red` atual (`premium.css:31`) = `#fb7185`.
+  Corrigido nos DOIS arquivos, mesma alpha preservada em cada regra:
+  - `.filter-pill` — `background: rgba(58,184,183,0.15)` → `rgba(45,212,191,0.15)`
+  - `.search-input-full:focus` — `box-shadow …rgba(58,184,183,.12)` → `…rgba(45,212,191,.12)`
+  - `.domain-badge` — `background:rgba(58,184,183,.1)` → `rgba(45,212,191,.1)`;
+    `border:1px solid rgba(58,184,183,.2)` → `rgba(45,212,191,.2)`
+  - FAB mobile (`.mob-filter-fab`) — `box-shadow …rgba(58,184,183,.45)…` →
+    `…rgba(45,212,191,.45)…`
+  - `.error-msg` — `color:#f85149` (hex fixo) → `color:var(--red)`
+  - `.dm-pipe` — `background:rgba(58,184,183,.14)` → `rgba(45,212,191,.14)`;
+    `border:1px solid rgba(58,184,183,.32)` → `rgba(45,212,191,.32)`. **Achado que corrige
+    o levantamento**: `docs/design-system-proposal.md` listava `.dm-pipe` como existente só
+    em `forecast-stage.html:1343` — grep direto mostrou que a regra (e o uso em
+    `pipeTag`/`dm-pipe`) também existe, idêntica, em `forecast.html:1284` e `:2670`.
+    Corrigido nos DOIS arquivos por consistência, já que é exatamente o mesmo bug de cor
+    legada que o item pede para eliminar.
+  - Deliberadamente NÃO tocado (fora do escopo pedido, mesmo sendo `rgba(58,184,183,*)`/
+    `#f85149` em CSS puro): `.fbtn.a-todos.active`, `td.col-hl`, `td.m.now`/`th.m.now`,
+    `.cmpb-down`/`td.dneg`/`.cmp-nv.down`/`.cmp-exits *` e demais `#f85149` inline em
+    lógica de coloração de dias/status — não fazem parte da lista explícita desta tarefa.
+- **(Tier 1.4) `_syncSegThumb()` portado de `forecast.html` para `forecast-stage.html`.**
+  `forecast-stage.html` usava `.seg-ctrl.on-historico::before{transform:translateX(100%)}`
+  fixo, assumindo 2 botões de largura idêntica (quebra com rótulos desiguais). Portado:
+  função `_syncSegThumb()` (mede `offsetWidth`/`offsetLeft` do botão ativo e seta
+  `--seg-tw`/`--seg-tx`), `window.addEventListener('resize'/'load', _syncSegThumb)`, CSS de
+  `.seg-ctrl::before` trocado para `left:0; width:var(--seg-tw, calc(50% - 3px));
+  transform:translateX(var(--seg-tx, 3px))` (idêntico ao de `forecast.html`), regra
+  `.seg-ctrl.on-historico::before` removida (substituída pela var dinâmica). Ligado nos
+  MESMOS pontos que `forecast.html` usa: dentro de `switchView()` (troca de aba
+  Pipeline/Histórico) e nos dois branches de `checkSession()` (bypass local + sessão
+  autenticada), antes do `load()`.
+- **Cuidado especial respeitado**: nenhuma linha de `revenue-engine.js`,
+  `forecast-engine.js`, `prob-engine.js` ou cálculo de ARR/probabilidade foi tocada; o
+  `<script src="/revenue-engine.js?v=2">` permanece `v=2` nos dois arquivos (inalterado).
+- **Validação**: `node scripts/_check-inline-js.js` limpo (0 erros) nos dois arquivos;
+  `npm run check` — mesma suíte PASS (única falha: `test-bdr-workload-v2.js`, fragilidade
+  preexistente de dia útil hardcoded — hoje, 02/08/2026, é domingo — não relacionada);
+  `scripts/test-delta-invariant.js`, `scripts/test-forecast-delta-leva2.js` e
+  `scripts/test-forecast-delta-e2e.js` rodados à parte, PASS integral (confirma que a
+  fonte única de receita não foi afetada). Rotas locais confirmadas: `/forecast` (200) e
+  `/forecast-overall` (rota real de `forecast-stage.html` no `vercel.json`, 200).
+- Branch: `pacheco/design-forecast-twins-cleanup-2026-08-02` (sem push, sem deploy).
+
+### Design | `help-drawer.js` — extração do botão "i"/tooltip/drawer de ajuda (dashboard.html + board.html + ae.html) (2026-08-02)
+
+> Item 6 do Tier 2 do `docs/design-system-proposal.md` (seção "3.4 O módulo novo
+> proposto", bullet `help-drawer.js`). **Extração de código, zero mudança de
+> comportamento esperada** — mesmo padrão de auto-inclusão já usado por
+> `public/nav.js`/`public/filter-bar.js`/`public/settings-modal.js`.
+> `public/bdr.html` tem a MESMA implementação duplicada mas fica FORA desta
+> rodada (arquivo de outro desenvolvedor, Samuel; pendência documentada para
+> quando ele puder coordenar).
+
+- **Novo módulo `public/help-drawer.js`:** auto-injeta CSS (botão "i" `.novo-info-btn`,
+  tag `.novo-code-tag`, tooltip `#novo-tip`, drawer lateral `.novo-help-backdrop`/
+  `.novo-help-drawer`) e o próprio DOM do tooltip/drawer (se ainda não existirem na
+  página), do mesmo jeito que `nav.js` injeta `#nav-drawer`. Expõe `window._infoBtn(tip,
+  helpKey)` (equivalente ao antigo `_infoBtn`), `window.novoToggleInfo()` (toggle "?"),
+  `window.novoCloseHelp()` e `window.HelpDrawer.{configure,open}`. Cada painel chama
+  `HelpDrawer.configure({ variant, blur, storageKey, charts, codes })` logo depois de
+  declarar seu PRÓPRIO mapa de ajuda (`NOVO_HELP_CHARTS`/`BOARD_HELP_CHARTS`/
+  `AE_HELP_CHARTS` + `NOVO_CARD_CODES`/`BOARD_CARD_CODES`/`AE_CARD_CODES`) — esses
+  mapas e todo o RENDER de conteúdo por gráfico (`_novoHelpSection`/`_boardHelpSection`/
+  `_aeHelpSection`, `NOVO_FILT_FIELD`/`NOVO_HELP_DETAIL` e equivalentes, a função que
+  monta o texto de cada ficha, ex. `novoHelpChart(key)`) **continuam 100% em cada HTML,
+  intactos** — só o mecanismo (botão/tag/tooltip/shell do drawer/toggle "?") saiu para o
+  módulo.
+- **3 painéis atualizados** (`public/dashboard.html`, `public/board.html`,
+  `public/ae.html`): incluem `<script src="/help-drawer.js?v=1"></script>` no `<head>`
+  (antes do `<script>` inline que declara o mapa de ajuda) e tiveram removidos: CSS
+  duplicado do botão/tag/tooltip/drawer; markup duplicado de `#novo-tip` e
+  `.novo-help-backdrop`/`.novo-help-drawer`; as funções `_infoBtn`, `novoCloseHelp`, o
+  toggle "?" (`novoToggleInfo`/`boardToggleInfo`) e os listeners de tooltip
+  (mouseover/mouseout/mousemove/scroll). `board.html`'s `boardHelpChart`/`aeHelpChart`
+  (ae.html) renomeadas para `novoHelpChart` (mesmo nome nos 3 painéis agora, já que o
+  botão "i" compartilhado precisa de UM nome canônico para chamar); a "?" do board.html
+  passou a chamar `novoToggleInfo()` (era `boardToggleInfo()`).
+- **Diferenças reais encontradas entre as 3 implementações "idênticas" (não eram
+  100% idênticas — preservadas via config, não corrigidas, por ser extração):**
+  1. **Tamanho/escopo do botão "i":** dashboard.html usava 14px/`.56rem` oculto por
+     padrão e revelado GLOBALMENTE por `body.novo-info-on` (em QUALQUER lugar da
+     página); board.html/ae.html usavam 16px/`.62rem`, visível por padrão e ocultado só
+     DENTRO de `.novo-card` — por isso, historicamente, os "i" de `.kpi-card` em
+     board/ae **nunca respeitaram o toggle "?"** (ficam sempre visíveis). Mantido via
+     `configure({ variant: 'cro' | 'panel' })` (dashboard = `'cro'`; board/ae = `'panel'`,
+     default).
+  2. **Posição do tooltip:** dashboard.html ancorava embaixo/em cima do botão (calculado
+     1x no `mouseover`); board.html/ae.html seguiam o cursor (`mousemove`). Mesma
+     variante `'cro'`/`'panel'` controla isso.
+  3. **`data-code` sem code mapeado:** dashboard.html omitia o atributo; board.html/
+     ae.html caíam para a própria `key` como fallback (tooltip mostrava a key crua).
+     Mesma variante.
+  4. **Blur de fundo ao abrir a ficha:** dashboard.html e board.html sempre chamavam
+     `setContentBlur(true/false)`; **ae.html nunca chamava** (apesar de ter
+     `setContentBlur` disponível e usá-la em outros lugares — inconsistência
+     pré-existente, não um bug desta extração). Preservado via `configure({ blur: false
+     })` só em ae.html.
+  5. **Chave de localStorage do toggle "?"** era por painel (`novo_show_info` |
+     `board_show_info` | `ae_show_info`) — preservada via `configure({ storageKey })`
+     para não resetar a preferência já salva de quem já usa o dashboard.
+  6. `ae.html` tinha `_codeTag()` reaproveitado FORA do botão "i" (nos `.kpi-card`,
+     só a tag, sem botão) — não fazia parte do mecanismo extraído; deixado intacto no
+     próprio `ae.html`.
+- **Validação:** `node --check public/help-drawer.js` OK; `node scripts/_check-inline-js.js`
+  limpo em `dashboard.html`/`board.html`/`ae.html` (0 erros nos 3); `npm run check` —
+  mesma suíte PASS, única falha conhecida `test-bdr-workload-v2.js` (fragilidade
+  pré-existente de dia útil hardcoded, hoje é domingo, não relacionada). Smoke manual:
+  servidor local numa porta alternativa (3011, para não colidir com outra sessão já
+  ativa na 3002) confirmou `/novo`, `/novo-board`, `/novo-ae` e `/help-drawer.js` todos
+  200, com o `<script src="/help-drawer.js?v=1">` presente nos 3 HTMLs.
+- **Pendência documentada:** `public/bdr.html` tem a mesma implementação duplicada,
+  fora do escopo desta extração (coordenar com Samuel antes de tocar).
+- Branch `pacheco/design-help-drawer-extraction-2026-08-02` (sem push, sem deploy).
+
+### Design System | `forecast-panel.html` — remoção do CSS morto de `.nav-drawer`/`.nav-item`/`.panel-switcher` (Tier 1.2) (2026-08-02)
+
+> Item Tier 1.2 de `docs/design-system-proposal.md` (seção 2.3, achado #3 do
+> `forecast-panel.html`): o arquivo (109 linhas, placeholder "em construção") replicava
+> manualmente o bloco `.nav-drawer`/`.nav-item`/`.panel-switcher` (linhas ~21-63) com valores
+> que o documento descreveu como já cobertos por `premium.css` + pelo CSS que `nav.js`
+> injeta. Confirmado por leitura direta de `public/nav.js` e `public/premium.css` (não
+> tomado de forma cega do documento) antes de remover qualquer coisa.
+
+- **Achado importante que o documento não capturou:** nem tudo no bloco é 100% coberto
+  externamente. `nav.js` injeta um `.panel-dd` **sem** `max-height:70vh;overflow-y:auto`
+  (só o `forecast-panel.html` tinha esse cap local — nenhuma outra página principal define
+  `.panel-dd` inline); e o posicionamento/layout de `.nav-drawer` (`position/top/left/height/
+  z-index/transition/display`), `.nav-backdrop` (`position/inset/z-index/opacity/
+  pointer-events/transition`), `.novo-hdr` (`display/align-items/justify-content/gap/
+  position/z-index/transition`), `#view-novo`, `.nav-drawer-footer`/`.nav-foot-btn` (footer
+  do drawer) e o `gap`/`margin-left` específicos de `.nav-item.nav-sub`/`.nav-acc-chevron`
+  **não existem** em `premium.css` nem no CSS injetado por `nav.js` — são mecânica de
+  layout que cada página principal (`dashboard.html`, `board.html`, `ae.html`, `forecast.html`
+  etc.) também mantém localmente, não duplicação morta.
+- **O que foi de fato removido (redundante, coberto/sobrescrito 100% por `premium.css`
+  linhas 348-437 e/ou pelo CSS injetado por `nav.js` linhas 19-51):** `.nav-drawer-header`,
+  `.nav-drawer-brand`, `.nav-item` (regra base), `.nav-item.nav-sub svg`,
+  `.nav-item.nav-sub.nav-collapsed`, `.nav-acc-chevron:hover`, `.nav-acc-chevron.open`,
+  `.nav-item:hover`, `.nav-item.active`, `.nav-item.active svg`, `.novo-hdr.scrolled`,
+  `.novo-theme-sun`/`.novo-theme-moon` (+ variante light), `.panel-switcher`,
+  `.panel-switch-btn`, `.panel-chevron`, `.panel-switcher.open .panel-chevron`,
+  `.panel-switch-btn:hover .panel-chevron`, `.panel-dd-item` (+ hover/active/svg/light),
+  `.health-dot` (regra base) + `@keyframes health-glow`, `.nav-item .health-dot,
+  .panel-dd-item .health-dot`, `.panel-switch-btn .health-dot` — além de propriedades
+  individuais mortas "aparadas" de dentro de regras mistas que tinham uma parte coberta e
+  uma parte não (`.nav-drawer`: `background`/`width`/`border-right`; `.nav-backdrop`:
+  `background`; `.nav-menu`: `list-style`/`padding`/`margin`, mantido só `overflow-y:auto`;
+  `.nav-item.nav-sub`: `padding-left`/`font-size`, mantido só `gap`; `.nav-acc-chevron`:
+  tudo exceto `margin-left`; `.novo-hdr`: `padding`; `.panel-dd`: tudo exceto
+  `max-height`/`overflow-y`). Total: arquivo caiu de 109 para 85 linhas.
+- **Não tocado (confirmado):** `.health-dot.g/.y/.r` (paleta Flat UI `#2ecc71`/`#f1c40f`/
+  `#e74c3c`, linhas ~36-38 após a edição) — mudança coordenada em paralelo com `nav.js`,
+  fora do escopo desta tarefa. `.ph-card` (estado "em construção" 🚧) e o `:root` parcial do
+  topo também não foram tocados.
+- **Validação:** `node scripts/_check-inline-js.js public/forecast-panel.html` — 0 erros.
+  `npm run check` — mesma falha pré-existente e não relacionada de fim de semana em
+  `test-bdr-workload-v2.js` (dia útil hardcoded); todo o resto (incluindo
+  `check-semantic`, `_check-inline-js` dos demais HTMLs, `test-bdr-treble-dw`,
+  `test-bdr-no-show`, `test-bdr-cohort-analytics`, `test-snapshot-resilience`,
+  `test-snapshot-history`, `test-forecast-delta-leva2`, `test-forecast-delta-e2e`) PASS.
+- Commit na branch `pacheco/design-forecast-panel-cleanup-2026-08-02` (sem push, sem merge).
+
+### Design system | `.health-dot` migrado para as vars oficiais `--green`/`--yellow`/`--red` (2026-08-02)
+
+> Tier 2, item 9 de `docs/design-system-proposal.md`: o indicador de saúde do painel no menu
+> lateral (`.health-dot.g/.y/.r`) usava uma paleta "Flat UI" hardcoded que não correspondia a
+> nenhuma variável oficial do `premium.css` nem à paleta antiga do projeto.
+
+- **`public/nav.js`** (linhas 39-41, bloco CSS injetado globalmente — fonte única do menu,
+  Regra primária nº 2) e **`public/forecast-panel.html`** (linhas 61-63, cópia duplicada do
+  mesmo bloco): `background` dos 3 estados trocado de hex fixo para `var(--green)`/
+  `var(--yellow)`/`var(--red)`. Antes → depois: `#2ecc71` → `var(--green)`, `#f1c40f` →
+  `var(--yellow)`, `#e74c3c` → `var(--red)`. O glow (`--hg`, `rgba(...)` usado só no
+  `box-shadow` do keyframe) não foi tocado — fora do escopo do item 9. Como `premium.css`
+  define `--green`/`--yellow`/`--red` diferentes por tema (`:root` dark: `#34d399`/
+  `#fbbf24`/`#fb7185`; `html[data-theme="light"]`: `#15803d`/`#a16207`/`#e11d48`), o dot
+  agora acompanha o tema automaticamente em vez de ficar fixo na paleta Flat UI antiga.
+- **`public/bdr-workload.html` deliberadamente FORA de escopo:** tem uma paleta de
+  health-dot semanticamente errada (`--green:#3896B4`, que é azul) só no próprio fallback
+  morto — não é a mesma paleta Flat UI de `nav.js`/`forecast-panel.html` e fica para outra
+  rodada (dono: Samuel).
+- **Validação:** `node --check public/nav.js` OK; `node scripts/_check-inline-js.js
+  public/forecast-panel.html` (0 erros); `npm run check` completo OK, exceto a falha
+  conhecida de fim de semana em `scripts/test-bdr-workload-v2.js` (`blockedByFilters`
+  depende de `cmp.isBusiness(cmp.todayBrt())` — não relacionada a esta mudança). Os demais
+  scripts do pipeline (`test-bdr-workload-v2-ui.js`, `test-snapshot-resilience.js`,
+  `test-snapshot-history.js`, `test-forecast-delta-leva2.js`, `test-forecast-delta-e2e.js`)
+  rodados manualmente após o corte da cadeia `&&` — todos PASS.
+
+### Forecast | Probabilidade final = MENOR entre etapa × AE (autorizado, validado com a CFO) (2026-08-02)
+
+> Decisão da reunião de forecast de 31/07, agora autorizada: "para fins de forecast, usar
+> sempre a MENOR entre a probabilidade da etapa (régua estatística) e a probabilidade que o
+> executivo colocou manualmente." Racional: um AE que baixa a própria probabilidade tem
+> motivo real; a régua de etapa carrega o otimismo natural de quem não mexeu em nada.
+> Precedência preservada: ajuste explícito do comitê em reunião ("P. Ajust." via override
+> manual por deal, decisão 2026-07-27) continua valendo por cima — a regra do mínimo é só o
+> cálculo DEFAULT/automático.
+
+- **`public/prob-engine.js` (`_autoProbInfo`, ~linha 89-104):** substituído o ajuste
+  ±10%-se-divergir-≥30pp por `final = cp < sp ? cp : sp` (MENOR entre prob. de etapa `sp` e
+  prob. do AE `cp`); sem prob. do AE, mantém `sp` (inalterado). Diagnóstico continua fixo em
+  6% sem ajuste do AE (regra separada, não tocada). `calcProbInfo` — a camada que aplica o
+  override manual por deal (`probManual`/"P. Ajust.") por cima do cálculo automático — **não
+  foi alterada**: a precedência do ajuste do comitê continua intacta (verificado pelo teste
+  `probManual` de `test-forecast-delta-leva2.js`, que segue passando).
+- **Alcance:** `prob-engine.js` é a fonte única de `calcProbInfo` para CRO Dashboard (C04),
+  Board, `/forecast`, `/forecast-stage`, `forecast-overall-core.js` e `/forecast-delta`
+  (`lib/forecast-compute.js`, que faz `require('./prob-engine.js')` no server) — todos
+  herdaram a regra do mínimo só com esta edição.
+- **Mirrors locais corrigidos também (Regra primária nº 3 — nenhum painel deveria recalcular
+  por conta própria, mas dois já faziam antes de hoje):** `public/dashboard.html`
+  (`_novoFcProbAdj`, ~linha 3931 — alimenta a série de N05/N06B via `_novoForecastSeries`) e
+  `public/ae.html` (`_novoFcProbAdj`, ~linha 626 — alimenta A07 via `_aeForecastByAE`) tinham
+  cada um sua PRÓPRIA cópia do ajuste ±10%, que NÃO passava por `prob-engine.js`. Corrigidas
+  para o mesmo `cp < sp ? cp : sp`, senão N05/N06B/A07 continuariam na régua antiga enquanto
+  o resto do dashboard já usava a nova. Nenhum dos dois tinha (nem tem agora) suporte ao
+  override manual por deal — comportamento pré-existente, fora do escopo desta mudança.
+- **Encontrado e NÃO tocado (código morto):** `public/shared-charts.js` (`sharedProbFinal`) e
+  `public/ae.html` (`_aeProbAdj`, que sobrescreve `sharedProbFinal` "só neste painel") ainda
+  têm a fórmula ±10% antiga. Confirmado por grep de chamadas: a cadeia
+  `sharedDealProjectedRevenue → sharedPipeRevMonthValue → sharedProbFinal` não é chamada por
+  nenhum HTML — é código órfão (provavelmente superado pela migração para `ForecastEngine`/
+  `_novoFcProbAdj`). Não editado por não ter efeito em produção; sinalizado aqui para limpeza
+  futura oportunística.
+- **Documentação:** `docs/forecast-revenue-rules.md` (seção 2, bullet "Probabilizada", e nova
+  nota na seção 3) e `semantic/regras.json` (`prob_final_deal`, `prob_final_forecast`,
+  `arr_ponderado_forecast`) atualizados; `docs/dashboard-2.0/catalogo.md` e
+  `public/semantic-ref.js` regenerados (`check-semantic` OK, 0 avisos).
+- **Validação:** `npm run check` PASS (única falha: fragilidade preexistente de dia útil
+  hardcoded em `test-bdr-workload-v2.js`); `node --check` limpo em `prob-engine.js` e
+  `forecast-engine.js`; `_check-inline-js.js` limpo em `dashboard.html`/`ae.html`/`board.html`.
+  `test-delta-invariant.js`, `test-forecast-delta-leva2.js` (inclui o teste específico de
+  `probManual`/"P. Ajust." final forçada) e `test-forecast-delta-e2e.js` rodados à parte,
+  PASS integral.
+- Commit separado, mesma branch `pacheco/poc-nao-zera-arr-2026-08-02` (sem push, sem
+  deploy).
+
+### Forecast | POC volta a gerar receita no forecast de caixa (dealMonthly) — fecha a divergência (2026-08-02)
+
+> Autorização explícita do dono, seguida à entrada anterior: "a intenção é POC carregar
+> valor em qualquer lugar do painel, não só na coluna ARR." Estende a reversão de POC (ver
+> entrada abaixo) ao motor de forecast de caixa mensal, fechando a divergência que a
+> entrada anterior tinha deixado documentada como "conhecida".
+
+- **`public/forecast-engine.js` (`dealMonthly`, ~linha 52-54):** removido o guard
+  `if (d.is_poc === true) return NIL;` (regra de 2026-07-13). POC agora flui pela MESMA
+  régua por etapa de qualquer outro deal (Real e Probabilizada), em TODOS os painéis que
+  consomem `dealMonthly` — Forecast Overall (`forecast.html`/`forecast-stage.html`),
+  `/forecast-delta` (via `lib/forecast-compute.js`, mesma função reusada no server), e o
+  N05/N06B do CRO Dashboard (`_novoForecastSeries()` chama `ForecastEngine.dealMonthly`
+  diretamente — mesma função, sem cópia — então os três continuam batendo mês a mês **por
+  construção**, sem precisar de correção separada em `dashboard.html`).
+- **`docs/forecast-revenue-rules.md`:** seção 2 (precedência do `dealMonthly`) e seção 2b
+  atualizadas — a nota de "divergência conhecida" (POC sem ARR zerado, mas ainda zerado no
+  caixa) foi marcada como **resolvida**; não há mais divergência entre o campo ARR e o
+  forecast de caixa para deals POC.
+- **`semantic/regras.json`** (regra `receita_mensal_deal`, campo `precedencia`) e
+  **`semantic/dados.json`** (campo `is_poc.notas`) atualizados para não documentar mais o
+  zero de POC como comportamento vigente; `docs/dashboard-2.0/catalogo.md` e
+  `public/semantic-ref.js` regenerados via `node scripts/semantic-view.js` +
+  `node scripts/gen-semantic-front.js` (`check-semantic` OK, 0 avisos — também limpou 3
+  avisos de staleness pré-existentes, não relacionados a esta mudança).
+- **Validação:** `npm run check` — mesma suíte PASS (única falha: fragilidade preexistente
+  de dia útil hardcoded em `test-bdr-workload-v2.js`, não relacionada). `test-delta-invariant.js`,
+  `test-forecast-delta-leva2.js` e `test-forecast-delta-e2e.js` rodados à parte, PASS
+  integral — os invariantes Σ Δ(etapa) == Δtotal continuam batendo com POC fluindo na
+  régua normal.
+- Commit separado, mesma branch `pacheco/poc-nao-zera-arr-2026-08-02` (sem push, sem
+  deploy).
+
+### Forecast | POC volta a estimar ARR — reversão da regra de 28/07 (2026-08-02)
+
+> Decisão estrutural da reunião de forecast de 31/07 ("05 - Consolidado da reunião.md"):
+> "POC não pode valer zero no forecast. Se a probabilidade real fosse zero, a conta deveria
+> morrer (se não acreditamos que vai dar receita, liberamos o tempo do Rafa). POC entra com
+> valor e probabilidade baixa — o conservadorismo de caixa é problema da Cíntia (CFO), o
+> forecast reflete crença." Isso reverte a regra de 2026-07-28 (STATUS_LOG abaixo) que
+> zerava o ARR de qualquer deal `É POC? = Sim`.
+
+- **`lib/forecast-compute.js` (`mapFotoDeal`, cascata de `arr_estimado`) e
+  `api/forecast-table.js` (cascata de `arr`):** removido o guard "POC → sem ARR". POC volta
+  a fluir pela MESMA cascata de ARR de qualquer outro deal (`arr_estimado` → `1ª Fatura ×
+  12` → fallback VPV por vidas → `—`), sem tratamento especial. A probabilidade baixa de um
+  POC continua vindo do campo já ajustado manualmente pelo AE/comitê no HubSpot
+  (`Probabilidade (campo)`) — nenhuma fórmula nova de probabilidade foi criada.
+- **`docs/forecast-revenue-rules.md` (seção 2b):** guard "0. POC → sem ARR (2026-07-28)"
+  removido da cascata documentada; nota adicionada explicando a reversão e citando a
+  decisão de 31/07.
+- **Divergência conhecida, deixada FORA do escopo desta mudança:** `public/forecast-engine.js`
+  (`dealMonthly`, regra de 2026-07-13, mais antiga e mais ampla que a de ARR) continua
+  zerando Real/Probabilizada de deals POC no **forecast de caixa mensal** (waterfall do
+  Forecast Overall, TCV, N05/N06B do CRO Dashboard) — hoje um POC mostra ARR normal na
+  coluna/KPIs, mas ainda não contribui em R$ para o forecast de caixa. Não mexido por ser
+  regra distinta (zera a série mensal inteira, não o campo ARR) e fora do pedido desta
+  tarefa; se a intenção de 31/07 for estendida ao caixa, precisa de decisão/sessão dedicada.
+- **Validação:** `npm run check` — mesma suíte de sempre PASS; a única falha
+  (`test-bdr-workload-v2.js`, assert `blockedByFilters` na linha 228) é fragilidade
+  pré-existente de checagem de dia útil hardcoded (hoje, 02/08/2026, é domingo) — não
+  relacionada a esta mudança. `scripts/test-delta-invariant.js`,
+  `scripts/test-forecast-delta-leva2.js` e `scripts/test-forecast-delta-e2e.js` rodados à
+  parte (fora da cadeia interrompida pelo teste de fim de semana), PASS integral.
+- Branch: `pacheco/poc-nao-zera-arr-2026-08-02` (sem push, sem deploy — aguardando revisão
+  humana).
+
+### Delta | D02 ganha a barra "Fechado" (2026-08-02)
+
+> Pedido da reunião de forecast de 2026-07-31 (caso concreto: deal Cappta, −R$345k de
+> fatura+vigência que na verdade era vitória): "hoje deal ganho derruba o Total B...
+> Total B + Fechado = o número executado + a executar."
+
+- **`lib/forecast-compute.js`:** nova função `closedWonAgg(contribA, contribB,
+  rawBStageById)` — soma ARR/ARR Ponderado/receita (na foto A, mesmo critério "valor
+  = ARR estimado na foto A" do D05) dos deals que saíram do conjunto escopado A→B
+  porque foram para Ganho (mesma classificação `_classifySaiu` do D05). Exportada.
+- **`api/history.js` (action=compare):** chama `FC.closedWonAgg(cA, cB,
+  rawBStageById)` e expõe `fechado: { deals, arr, arrPond, real12, prob12, realTotal,
+  probTotal }` no payload, + caveat novo explicando a barra.
+- **`public/forecast-delta.html` (D02):** duas barras novas no waterfall após "Total
+  @ B" — **Fechado** (clicável, abre o drill filtrado em "Foi para Ganho", reusa
+  `openDrill('kpi:arrTotal', ..., 'ganho')`) e **Total B + Fechado** (soma, não
+  clicável). Ficha **i** do D02 e clickhint atualizados.
+- **Design deliberado (aditivo, não parte da soma):** Fechado é uma exposição
+  INFORMATIVA — não entra no Σ Δ(etapa) nem no invariante Σ Δ = Δtotal já testado,
+  porque Ganho não tem linha própria no waterfall em escopo Ativos (sai do conjunto
+  por definição); somar ali mudaria a semântica do invariante em vez de só anotá-lo
+  ao lado. Verificado que, para escopo Tudo (onde Ganho já tem linha própria), o
+  agregado corretamente zera (sem double-count).
+- **Testes:** `scripts/test-delta-invariant.js` ganhou a seção "UNIT Fechado" (deal
+  sintético Cappta: `closedWonAgg` identifica e soma corretamente + invariante das
+  barras existentes preservado em todas as 4 medidas). `scripts/test-forecast-delta-e2e.js`
+  ganhou o deal "Cappta" (Negociação→Ganho) + asserts do campo `fechado` no payload
+  real do endpoint. `npm run check` PASS (exceto a fragilidade pré-existente conhecida
+  do `test-bdr-workload-v2.js` em fim de semana, ver entrada abaixo).
+
+### Delta | fix: deal Perdido aparecendo como "movimentação" (avanço) no drill (2026-08-02)
+
+> Bug relatado ao vivo na reunião de forecast de 2026-07-31.
+
+- **Causa raiz:** `lib/snapshot-history.js` (`valueAt`) — função que reconstrói "qual
+  era o valor de uma propriedade num corte de data" para o backfill histórico
+  HubSpot→BQ (`scripts/backfill-hubspot-bq.js`, fonte da maioria das fotos
+  comparáveis do Delta). O comparador de sort (`a.timestamp < b.timestamp ? 1 : -1`)
+  devolvia -1 também em EMPATE de timestamp — viola o contrato de ordem total do
+  `Array.prototype.sort`. Quando o HubSpot grava duas mudanças de `dealstage` no
+  MESMO instante (workflow em cadeia, ex.: Negociação→Perdido no mesmo request), o
+  sort podia embaralhar um array que o HubSpot já entrega correto
+  (mais-recente-primeiro) e `valueAt()` devolvia a etapa INTERMEDIÁRIA em vez do
+  estado FINAL (Perdido) — daí o deal "vazando" como avanço no drill. Reproduzido e
+  confirmado empiricamente (com o comparador antigo, array com empate no fim devolvia
+  a etapa errada; com o fix, resolve certo). A classificação em si (`_classifySaiu`
+  em `lib/forecast-compute.js`, e o equivalente em `stageUnified`) já priorizava
+  Perdido/Ganho antes do rank de avanço desde 2026-07-24 (`91678be`) — o bug estava na
+  ETAPA reconstruída chegando errada, não na regra de classificação.
+- **Fix:** comparador numérico próprio (`new Date(b.timestamp) - new
+  Date(a.timestamp)`, 0 em empate) → sort ESTÁVEL, preserva a ordem que o HubSpot já
+  entrega para os empates em vez de arriscar reordená-los errado.
+- **Teste novo:** `scripts/test-snapshot-history.js` (adicionado ao `npm run check`)
+  — cobre o empate de timestamp (isolado e em histórico longo), o caminho feliz sem
+  empate (regressão) e o efeito downstream na classificação do drill (`_classifySaiu`
+  via `FC.drillGeneric`). Confirmado que o teste FALHA contra o código antigo e PASSA
+  com o fix.
+
+### Delta | D09, ARR do quarter corrente vs Meta, evolução semanal (2026-08-02)
+
+> Pedido do CRO (Ivan) na reunião de forecast de 31/07/2026: uma visão de como o ARR
+> probabilizado do Q3 (trimestre corrente) evoluiu semana a semana, comparado com a
+> meta. Front-only em `public/forecast-delta.html`. Sessão em duas fases: Fase 1
+> (investigação) concluiu que dava para montar a visão só com front-end, então a
+> Fase 2 (construção) prosseguiu — **`api/history.js` NÃO foi tocado** (evita
+> conflito com outra sessão trabalhando nesse arquivo em paralelo). **NÃO commitado
+> em `main`; branch própria, não deployado.**
+
+- **Fase 1 (investigação, sem código):** `action=fotos` (sem `cadence=`) já lista as
+  fotos semanais oficiais; `action=compare` já devolve `quarters[]` (o mesmo array
+  que alimenta o card D06, "ARR por Quarter previsto") com o ARR Total/Ponderado de
+  CADA quarter tanto no lado `a` quanto no lado `b` — ou seja, dá pra obter o ARR de
+  um quarter especifico EM QUALQUER foto individual, sem agregação nova no backend,
+  só chamando `compare` repetidas vezes com a MESMA foto mais antiga como base `a` e
+  lendo o lado `b` de cada chamada (e o lado `a` da primeira, para o ponto inicial).
+  Meta: não existe um endpoint de "meta" — o valor configurável já existente é
+  `NOVO_META_MTD` (meta ANUAL de receita ganha), setado no modal de Configurações
+  (`settings-modal.js`) e persistido só no `localStorage` do navegador
+  (`novo_meta_mtd`), sem backend. `forecast-delta.html` não inclui
+  `settings-modal.js`; a meta é lida direto do `localStorage` (mesma chave, mesma
+  origem/domínio, portanto visível de qualquer painel que o usuário já tenha
+  configurado no CRO Dashboard).
+- **Fase 2 (card D09):** novo card no painel Delta, depois do D08. Eixo X = até 16
+  fotos semanais mais recentes (`action=fotos` oficial); eixo Y = ARR do quarter
+  CORRENTE (calculado a partir da data de hoje, formato `Q<n> <ano>` igual ao D06)
+  probabilizado (toggle Ponderado/ARR Total, default Ponderado, igual ao D06); linha
+  tracejada = meta trimestral (`NOVO_META_MTD` ÷ 4). KPIs: ARR do quarter na foto
+  mais recente, meta trimestral e % de atingimento. Toggle Apple-style e botão "i"
+  de memória de cálculo seguem o padrão dos cards vizinhos (D06/D07/D08). Escopo
+  sempre "Tudo" (Ganho/Implantação incluídos, sem Bid/Standby) e **sem** os filtros
+  de Executivo/Quarter/Escopo do cabeçalho — decisão deliberada para dar a visão
+  executiva do total da empresa, documentada no drawer "i" do D09 e no
+  `AUDITORIA_GRAFICOS.md`.
+- **Validação:** `node scripts/_check-inline-js.js public/forecast-delta.html` = 0
+  erros; `npm run check` passou em todos os gates, exceto a falha PRÉ-EXISTENTE
+  conhecida de `test-bdr-workload-v2.js` (checagem de dia útil que falha aos fins
+  de semana — hoje é domingo — não relacionada a esta mudança).
+- Sem servidor local com credenciais no worktree (sem `.env.local`), a validação
+  visual em navegador com dados reais fica pendente para quando este trabalho for
+  integrado/revisado pelo dono.
+
+### Prob AE | histórico no mouse-over (material de estudo, não alimenta cálculo) (2026-08-02)
+
+> Item de backlog, decisão nº 6 da reunião de forecast de 31-jul-2026: "Histórico de
+> probabilidade do AE como material de estudo (mouse-over no dash): não para cálculo —
+> para contar a história da conta (o que aconteceu quando subiu/desceu)."
+
+- **Onde encontrei "Prob AE" hoje:** só o **CRO Dashboard** (`public/dashboard.html`)
+  tem uma coluna dedicada "Prob AE" (`d.probabilidade`, propriedade HubSpot
+  `probabilidade_de_fechamento_`) nas tabelas de drill de deals (`_novoDealsRows` e
+  `_novoP01Rows`, coluna 13). `public/ae.html` **não** tem essa coluna própria — só
+  exibe a probabilidade FINAL já ajustada (`r.p`/`_novoFcProbAdj`), não o valor cru
+  do AE isolado — então não mexi nele.
+- **Endpoint novo, isolado:** `api/deal-prob-history.js` (`GET
+  ?id=<dealId>`), espelhando o padrão já existente de `action=owner-history` em
+  `api/history.js` (busca `propertiesWithHistory=probabilidade_de_fechamento_` de 1
+  deal, normaliza 0–100/0–1 como o `forecast-table.js`, colapsa re-saves sem mudança
+  real). **Não editei `api/history.js`** (outra sessão mexendo nele em paralelo).
+- **Front (`public/dashboard.html`):** CSS `.novo-probae-hint`/`#novo-probhist-pop`;
+  JS `_novoProbHist*` (cache por deal, popup flutuante que segue o mouse, fetch
+  lazy só no primeiro hover); célula "Prob AE" agora passa por `_novoProbAeCell(d)`
+  (sublinhado pontilhado quando `d.hs_id` existe). Puramente visual — nenhum cálculo
+  de receita/probabilidade lê o histórico; a fonte de cálculo continua o valor atual
+  de `d.probabilidade` (Regra primária nº 3).
+- **Testes:** `node --check api/deal-prob-history.js` OK; `node
+  scripts/_check-inline-js.js public/dashboard.html` → 1 bloco, 0 erros; `npm run
+  check` passou em tudo, exceto uma falha pré-existente e não relacionada em
+  `scripts/test-bdr-workload-v2.js` (não toca `dashboard.html` nem o endpoint novo —
+  já falhava antes desta mudança, provável efeito de outro trabalho em paralelo no
+  worktree).
+- **Branch:** `pacheco/ae-prob-historico-hover-2026-08-02` (sem push, sem merge).
+
 ### ⚠ Incidente | DW `fact_deployment_status` congelado desde 30/07 16:05 BRT (2026-07-31)
 
 > Detectado ao investigar dados desatualizados no painel BDR | Treble.
@@ -4011,3 +4710,95 @@ Registro curto, uma linha por interação (a cada alteração).
 - **Regressões da extração do nav.js corrigidas** (o bloco inline do merge-base tinha coisas que o nav.js perdeu): footer chama `(doLogout||logout)` — 8 das 10 páginas só definem `doLogout`, o botão Sair dava ReferenceError; botão de idioma PT/EN de volta (condicional a `novoToggleLang`; forecast/forecast-stage não têm); ícone de tema sun/moon; **Escape em cascata** (settings → ajuda → modal → dropdown) restaurado — 8 páginas tinham perdido o Esc-fecha.
 - **Regra primária nº 2 atualizada** com a ressalva do main: subpáginas BDR (workload, treble, no-show, list-attack) ainda usam `premium.js`/`NAV_MODEL` como segunda fonte de menu — espelhar mudanças lá até a unificação.
 - **Validação:** `node --check nav.js` OK; `npm run check` OK; `_check-inline-js` 10/10 OK; fix `35b30eb` presente nos forecast*; servidor local reiniciado (api/lib mudaram); 17 rotas 200 (incl. `/novo-bdr/workload`, `/novo-bdr/treble`, `/nav.js`); `_smoke-render` OK nos 8 painéis novo*; menu montado em mini-DOM com os 4 sub-itens BDR + footer completo. ⚠ `/api/bdr-workload` local dá 500 "autenticação falhou" — token do `.env.local` sem os escopos de engagements/owners que o endpoint usa (funciona em produção; não é defeito do merge).
+
+## Delta | religado ao design system compartilhado (premium.css/premium.js) (2026-08-02)
+
+> Tier 1, item 1 de `docs/design-system-proposal.md`: `forecast-delta.html` era o
+> único painel "principal" sem `premium.css`/`premium.js` — renderizava com paleta
+> antiga (`:root` local vivo, sem override) e um toggle sem thumb deslizante.
+> Rodada **só CSS/nomes de classe**, sem tocar lógica de cálculo; preservadas as
+> features recém-mescladas nesta branch (barra "Fechado" no D02, card D09).
+
+- **Includes adicionados** no `<head>`, mesma posição relativa de `dashboard.html`/`board.html` (logo após o `<style>` inline): `<link rel="stylesheet" href="/premium.css?v=5">` + `<script src="/premium.js?v=5"></script>`.
+- **Classes renomeadas para os canônicos** (lógica JS que lê/escreve essas classes preservada): `.card` → `.novo-card` (9 divs + regra de media query); `.kpi`/`.k`/`.v` → `.kpi-card`/`.kpi-label`/`.kpi-value` (CSS + todas as strings de KPI geradas em JS, D01/D03/D09). `.d` (linha de delta) e `.ibtn` (botão de info 24px) mantidos como estão — fora do escopo desta rodada.
+- **`.tab-sub` reconstruído com thumb real:** única instância era o botão "📸 Capturar agora" (faixa de captura manual, sempre "ativo"). Adicionado `.tab-sub-thumb` (desliza via `left`/`width`) + classe de estado `.active` (era `.on`), com `_moveTabSubThumb`/`_initTabSubs` copiadas de `dashboard.html` (cada página implementa o próprio toggle, por convenção do projeto). `_initTabSubs()` é rechamada quando a faixa de captura (`display:none` até a checagem de acesso) fica visível.
+- **`:root` local morto removido** — `--bg`/`--card`/`--teal`/etc. da paleta antiga, incluindo `--font`/`--hover`; todas cobertas por `premium.css`.
+- **Gate de paridade (grep no arquivo inteiro):** zero classes órfãs (`class="card"`, `class="kpi"`/`"k"`/`"v"` soltas, `tab-sub-btn.on`, `:root` remanescente) após o rename.
+- **Validação:** `node scripts/_check-inline-js.js public/forecast-delta.html` = 0 erros; `npm run check` (única falha é a conhecida `test-bdr-workload-v2.js`, não relacionada); `scripts/test-forecast-delta-e2e.js`, `scripts/test-forecast-delta-leva2.js` e `scripts/test-delta-invariant.js` = PASS (invariante Σ Δ = Δtotal intacto; barra Fechado e card D09 confirmados por inspeção de código, sem servidor com dado real neste worktree).
+
+## Componente de estado vazio/erro/aviso | `AxUI` — FASE 1: módulo + dashboard/board/ae (2026-08-02)
+
+> Tier 2, item 8 de `docs/design-system-proposal.md` (seções 1.9 "Estado vazio/erro",
+> 2.5 "Síntese" e 3.4 "O módulo novo proposto"): o projeto tinha 7+ variações
+> diferentes de "sem dados"/"erro"/"aviso" (texto solto `color:var(--red)`/
+> `var(--text2)` na maioria, `.banner-api`, `.state`/`.state.err`, `.banner-warn`
+> etc.) e nem o próprio `dashboard.html` (padrão-ouro) tinha um componente
+> dedicado. **Esta é só a FASE 1** de uma migração maior: o componente + os 3
+> painéis que já compartilham `help-drawer.js` (dashboard/board/ae). Os demais
+> painéis (cs, cotação, 48h, forecast, forecast-stage, forecast-delta) ficam
+> para uma PRÓXIMA rodada, construindo em cima deste módulo — não foram tocados
+> aqui.
+
+- **Novo módulo `public/ax-ui.js`** (arquivo IRMÃO de `help-drawer.js`, não o mesmo arquivo — extrair para um módulo dedicado casa com o padrão já usado por `nav.js`/`filter-bar.js`/`settings-modal.js`/`help-drawer.js`: um `<script>` a mais por página, responsabilidade única; misturar com `help-drawer.js` acoplaria dois conceitos sem relação, o drawer de ajuda de campos do HubSpot e o aviso de estado vazio/erro). Segue o MESMO estilo de auto-inclusão do `help-drawer.js`: IIFE que injeta um único `<style id="ax-ui-css">` na primeira carga (idempotente, `getElementById` guard) e expõe `window.AxUI`. Sem `configure()` — não há estado global, só 2 funções puras que retornam STRING html (para casar com o padrão já usado nos painéis: `el.innerHTML = '...'` ou `openModal(title, htmlString)`).
+- **API exposta:**
+  - `AxUI.emptyState(msg, opts?)` — `opts.size: 'sm'` (default, dentro de modal/card, `padding:1.5rem 1rem`) | `'lg'` (estado de página inteira antes do 1º load, `padding:3rem 0`). Retorna `<div class="ax-empty[ ax-empty-lg]">msg</div>`.
+  - `AxUI.banner(msg, opts?)` — `opts.severity: 'info'|'warn'|'error'` (default `'error'`); `opts.retry`: string com o JS a rodar no `onclick` do botão (ex. `'novoLoadData()'`), omitido = sem botão; `opts.retryLabel` (default `'Tentar novamente'`). Retorna `<div class="ax-banner ax-banner-{sev}">` com borda esquerda de 3px + texto na cor da severidade (`var(--blue)`/`var(--yellow)`/`var(--red)`, nunca hex fixo), fundo `var(--card2)`, `border-radius:10px`.
+- **Aplicado em `dashboard.html`, `board.html`, `ae.html`** (conteúdo/texto preservado 100%, só o invólucro mudou):
+  - Placeholder estático "Aguardando dados…" antes do 1º load (`novo-status`/div em `#novo-content`, os 3 arquivos) → classe `ax-empty ax-empty-lg` (aplicada direto no HTML estático, sem precisar de JS para essa troca — o contrato são as classes CSS que o módulo injeta).
+  - Erro principal de `novoLoadData()` (fetch de `/api/forecast-table`) nos 3 arquivos → `AxUI.banner(t('error_prefix')+msg, {severity:'error', retry:'novoLoadData()', retryLabel:t('retry')})` no lugar do `<span style="color:var(--red)">…</span><br><button style="background:var(--teal)…">` inline.
+  - `ae.html`: banner de rate-limit do HubSpot (retry automático com contagem regressiva) → `AxUI.banner(msg, {severity:'warn'})` (sem botão, é auto-retry).
+  - `dashboard.html`: erro do funil horizontal (`buildNovoFunnelHorizChart`, catch) → `AxUI.banner('Erro: '+msg, {severity:'error'})`; empty state do modal de Cobertura (N05, "No deals."/"Nenhum deal.") → `AxUI.emptyState(...)`.
+  - `board.html`: `novoOpenDealsModal` ("Nenhum deal.") + 2 tabelas do BoD watchlist/top-AE ("Nenhum deal ativo.") → `AxUI.emptyState(...)`.
+  - `ae.html`: 12 chamadas `<p style="color:var(--text2);padding:1rem 0">…</p>` (7× "Nenhum deal.", + "Nenhum deal estagnado.", "Nenhum deal na etapa.", "Nenhuma pendência de reunião | tudo em dia ✅", "Nenhum deal parado há 15+ dias ✅", "Nenhum AE.") → `AxUI.emptyState(...)`, mesmo texto.
+  - **Fora do escopo, deliberadamente não tocado:** o popover flutuante de histórico de probabilidade (`#novo-probhist-pop`, `dashboard.html`, ~250px de largura) mantém `color:var(--red)`/`var(--text2)` soltos — é um mini-tooltip que segue o cursor, não um card/página; encaixar o banner/empty-state de largura fixa ali quebraria o layout. Também não tocados: cores condicionais de célula de tabela (ex. `ae.html` destaque vermelho de valor acima do limiar) e labels de dado (ex. "No Show", "Risk Score") — não são estados de vazio/erro, são formatação de dado.
+- **Validação:** `node --check public/ax-ui.js` OK; `node scripts/_check-inline-js.js` = 0 erros em `dashboard.html`/`board.html`/`ae.html`; `npm run check` completo (única falha é a conhecida `test-bdr-workload-v2.js`, sem relação, sinalizada como não sendo responsabilidade desta rodada).
+- **Para o próximo agente que for consumir isso num painel novo:** incluir `<script src="/ax-ui.js?v=1"></script>` no `<head>` (qualquer posição, sem dependência de ordem com `premium.js`/`help-drawer.js`); trocar qualquer texto solto de "sem dados"/"vazio" por `AxUI.emptyState('mesmo texto de antes')` e qualquer erro/aviso com ou sem botão de retry por `AxUI.banner('mesmo texto', {severity:'error'|'warn'|'info', retry:'nomeDaFuncao()'})`; **não mudar o texto/conteúdo da mensagem**, só a chamada que a envolve (gate de paridade); para estado ANTES do JS rodar (placeholder estático no HTML), aplicar a classe `ax-empty`/`ax-empty ax-empty-lg` direto na tag em vez de chamar a função (o módulo só precisa estar incluído para o CSS existir).
+
+## Componente de estado vazio/erro/aviso | `AxUI` — FASE 2: cs.html + cotacao.html (2026-08-02)
+
+> Tier 2, item 8, continuação da FASE 1 acima. Painéis desta rodada: `cs.html` e
+> `cotacao.html` — os dois deixados de fora explicitamente na FASE 1.
+
+- **`cs.html`:** incluído `<script src="/ax-ui.js?v=1"></script>` no `<head>`. Migrados:
+  - Placeholder estático "Aguardando dados…" (antes do 1º load) → classe `ax-empty ax-empty-lg` direto na tag (mesmo padrão de `dashboard.html`/`board.html`/`ae.html`).
+  - Erro principal de `novoLoadData()` (fetch de `/api/forecast-table` + `/api/cs-accounts`) → `AxUI.banner('Erro: '+_ne(String(err)), {severity:'error', retry:'novoLoadData()', retryLabel:'Tentar novamente'})` no lugar do `<div style="color:var(--red)">…<button>` inline.
+  - `novoOpenDealsModal` ("Nenhum deal.") e `csOpenCompsModal` ("Nenhuma empresa.") → `AxUI.emptyState(...)`, mesmo texto.
+  - **Não tocado:** a mensagem de loading "Buscando dados…" (setada em `novoLoadData()` antes do fetch) — mesmo critério já usado na FASE 1 em `board.html`/`ae.html`, onde esse texto solto ficou como está (não é estado de erro/vazio, é um "carregando", e a FASE 1 não migrou o equivalente lá); `.banner-api` no CSS local — já estava morta antes desta rodada (nenhum uso em `cs.html`, confirmado por grep, e documentado como tal no cabeçalho de `ax-ui.js`), fora do escopo explícito desta tarefa (só cobria a remoção condicional em `cotacao.html`), então ficou como estava.
+- **`cotacao.html`:** incluído `<script src="/ax-ui.js?v=1"></script>` no `<head>`. O levantamento (`docs/design-system-proposal.md`, achados 2.2.4/2.2.6) apontou que o painel tinha DOIS padrões diferentes de erro para dois fetches parecidos: `.banner-api` só para o fetch de tickets (`POST /api/pull-tickets`) e texto solto para o fetch de deals (`/api/forecast-table`). Migrados e unificados (mesma severidade `error` para os dois):
+  - Erro principal de `novoLoadData()` (fetch de `/api/forecast-table`) → `AxUI.banner('Erro: '+_ne(String(err)), {severity:'error', retry:'novoLoadData()', retryLabel:'Tentar novamente'})`.
+  - Erro de `POST /api/pull-tickets` (`tkErr`, renderizado inline em `novoRender()` sem derrubar o painel) → `AxUI.banner(...)` com `severity:'error'`, combinando em uma única string (com `<br>`) o texto que antes estava em `<h4>`+2×`<p>` do `.banner-api` — título, mensagem do erro (`_ne(tkErr)`) e a nota sobre `HUBSPOT_TOKEN`, TEXTO idêntico ao original.
+  - `novoOpenDealsModal` ("Nenhum deal."), `cotOpenTickets` ("Nenhum ticket.") e os dois empty-states de gráfico em `buildCotAE`/`buildCotVidas` ("Nenhum deal em etapa Cotação.") → `AxUI.emptyState(...)`, mesmo texto.
+  - **`.banner-api` removido do CSS local** de `cotacao.html`: depois da migração do `tkErr`, era o único uso da classe no arquivo (confirmado por grep antes de remover) — ficou 100% morta, então o bloco de 4 regras foi apagado.
+- **Validação:** `node scripts/_check-inline-js.js public/cs.html` e `public/cotacao.html` = 0 erros nos 2; `npm run check` completo (única falha é a conhecida `test-bdr-workload-v2.js`, não relacionada, sinalizada como não sendo responsabilidade desta rodada).
+
+## Componente de estado vazio/erro/aviso | `AxUI` — FASE 2: forecast.html + forecast-stage.html (2026-08-02)
+
+> Continuação da FASE 1 (entrada acima), item 8 do Tier 2 de `docs/design-system-proposal.md`
+> (achado 2.3.9: `.state`/`.state.err` — texto puro — era a "terceira variação" de
+> vazio/erro do projeto, `forecast.html:1061-1070` e 5 pontos em `forecast-stage.html`).
+> Escopo estritamente visual: nenhuma linha de `revenue-engine.js`/`forecast-engine.js`/
+> `prob-engine.js` ou de lógica de cálculo de ARR/probabilidade foi tocada.
+
+- **`<script src="/ax-ui.js?v=1"></script>` adicionado ao `<head>` dos dois arquivos** (não
+  estava incluído antes).
+- **5 pontos migrados em cada arquivo** (`forecast.html` e `forecast-stage.html`, mesma
+  estrutura nos dois irmãos, texto preservado 100%):
+  - Placeholder estático "Buscando dados do HubSpot..." antes do 1º load (`<div class="table-wrap" id="tw">`) → classe `ax-empty ax-empty-lg` aplicada direto na tag (mesmo padrão do placeholder "Aguardando dados…" da Fase 1, sem precisar de JS pra essa troca).
+  - Mesmo texto duplicado dentro de `load()` (reset do `#tw` antes do fetch) → `AxUI.emptyState('Buscando dados do HubSpot...', {size:'lg'})`.
+  - Erro do fetch principal (`!resp.ok || !data.success`) → `AxUI.banner('Erro: '+esc(data.error||String(resp.status)), {severity:'error'})`.
+  - Erro de conexão (`catch` de `load()`) → `AxUI.banner('Erro de conexão: '+esc(e.message), {severity:'error'})`.
+  - Erro de `loadHistoricoSnapshot(tab)` (painel Histórico) → `AxUI.banner('Erro: '+esc(e.message), {severity:'error'})`.
+  - Nenhum dos 5 pontos tinha botão de retry antes da migração (era só texto), então nenhum `opts.retry` foi adicionado — manter o gate de "só o invólucro muda", sem introduzir comportamento novo (mesmo critério do erro do funil horizontal em `dashboard.html`/Fase 1, que também ficou sem retry).
+- **`.state`/`.state.err` removidos** (CSS morto): confirmado por grep que os 5 usos por
+  arquivo eram os únicos (a única outra ocorrência da palavra "state" nos dois arquivos é
+  o comentário `/* Filter active state */`, não relacionado) — regra CSS excluída dos dois.
+- **Validação:** `node scripts/_check-inline-js.js public/forecast.html` e
+  `public/forecast-stage.html` → 0 erro(s) nos 2; `npm run check` completo parou na falha
+  conhecida de `test-bdr-workload-v2.js` (não relacionada, sinalizada como não sendo
+  responsabilidade desta rodada — mesma ressalva da Fase 1); `scripts/test-forecast-delta-e2e.js`
+  e `scripts/test-delta-invariant.js` rodados manualmente após a falha do `npm run check` →
+  100% PASS nos dois, confirmando que a lógica de receita/delta não foi afetada.
+- **Fora do escopo, deliberadamente não tocado:** o hex fixo `.error-msg{color:#f85149}`
+  (achado 2.3 #4 do `design-system-proposal.md`, `forecast.html:1586`/`forecast-stage.html:1586`)
+  é uma classe CSS diferente, não usada nos pontos `.state`/`.state.err` migrados aqui — fica
+  para uma rodada futura de correção de hardcode de cor (Tier 3 item 3 da proposta).

@@ -421,11 +421,11 @@ module.exports = async function handler(req, res) {
         })();
 
         const arr = (() => {
-          // POC não estima ARR (2026-07-28): coerente com o forecast de caixa, que zera POC
-          // em Real e Probabilizada (Regra primária nº 3 / dealMonthly). Sem este guard o
-          // fallback VPV inflava o ARR Est. de deals POC (ex.: BRF/MARFRIG - POC, R$ 1,296MM
-          // por vidas), contradizendo o zero do caixa. Precede toda a cascata de ARR.
-          if (normalizeBool(p.e_poc) === true) return null;
+          // POC volta a estimar ARR (2026-08-02): reverte o guard de 2026-07-28. Decisão da
+          // reunião de forecast de 31/07 — "POC não pode valer zero no forecast" (se a
+          // probabilidade real fosse zero, a conta deveria morrer; conservadorismo de caixa é
+          // problema do CFO, o forecast reflete crença). POC flui pela mesma cascata de ARR
+          // de qualquer outro deal (probabilidade baixa já é ajustada manualmente por deal).
           const a = parseFloat(p.arr_estimado);
           if (!isNaN(a) && a > 0) return a;
           const pf = parseFloat(p.primeira_fatura);

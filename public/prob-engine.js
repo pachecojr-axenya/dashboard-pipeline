@@ -12,8 +12,14 @@
  * Precedência da prob. de ETAPA (stageProbFor):
  *   override manual (por pipeline) > C07 do funil (por pipeline) > default fixo
  *   (ctx.defaults injetado pelo chamador, senão a régua única DEFAULT).
- * Ajuste do AE (calcProbInfo): a prob. custom do deal NÃO substitui a da etapa; só
- * empurra ±10% se divergir da etapa em ≥ 30 pontos percentuais (0.3).
+ * Prob. FINAL automática (calcProbInfo, 2026-08-02): a MENOR entre a prob. de etapa e a
+ * prob. que o AE colocou manualmente no deal (decisão da reunião de forecast de 31/07,
+ * validada com a CFO — um AE que baixa a própria probabilidade tem motivo real; a régua
+ * de etapa carrega o otimismo natural de quem não mexeu em nada). Sem prob. do AE, usa a
+ * de etapa. Substitui o ajuste ±10% por divergência ≥30pp (regra anterior, aposentada).
+ * Override manual POR DEAL (probManual/"P. Ajust.", decisão 2026-07-27) SEGUE VALENDO por
+ * cima de tudo: ajuste explícito do comitê em reunião não é substituído pela regra do
+ * mínimo, que é só o cálculo DEFAULT/automático (sem override).
  * Diagnóstico: SEMPRE 6% fixo, sem funil e sem ajuste do AE (decisão do dono; antes
  * só forecast/core aplicavam — unificado aqui em 2026-07-24).
  *
@@ -85,7 +91,7 @@
     return D[stage];
   }
 
-  // Cálculo AUTOMÁTICO (régua/C07 + Diagnóstico fixo + ajuste ±10% do AE).
+  // Cálculo AUTOMÁTICO (régua/C07 + Diagnóstico fixo + menor entre etapa × AE).
   function _autoProbInfo(deal, ctx) {
     // Diagnóstico: probabilidade SEMPRE fixa em 6% (não deriva do funil nem ajusta pelo AE).
     if (deal.stage === 'Diagnóstico') return { sp: 0.06, cp: deal.probabilidade, final: 0.06, modStr: 'Diagnóstico: fixa em 6% (sem ajuste do AE)' };
@@ -93,9 +99,14 @@
     if (sp == null) return { sp: null, cp: null, final: null, modStr: '' };
     var cp = deal.probabilidade;
     if (cp == null) return { sp: sp, cp: null, final: sp, modStr: 'AE não informou (usando P. Etapa)' };
-    if (cp <= sp - 0.3) return { sp: sp, cp: cp, final: sp * 0.9, modStr: 'Penalidade (-10% sobre P. Etapa)' };
-    if (cp >= sp + 0.3) return { sp: sp, cp: cp, final: sp * 1.1, modStr: 'Bônus (+10% sobre P. Etapa)' };
-    return { sp: sp, cp: cp, final: sp, modStr: 'Dentro da margem (sem ajuste)' };
+    // Menor entre a régua da etapa e a prob. do AE (2026-08-02, decisão validada com a
+    // CFO na reunião de forecast de 31/07): um AE que baixa a própria probabilidade tem
+    // motivo real; a régua de etapa carrega o otimismo natural de quem não mexeu em nada.
+    // Substitui o antigo ajuste ±10% por divergência ≥30pp. Não se aplica por cima de um
+    // override manual por deal ("P. Ajust." explícito do comitê) — esse segue vencendo
+    // em calcProbInfo, que chama esta função só quando NÃO há override.
+    if (cp < sp) return { sp: sp, cp: cp, final: cp, modStr: 'Menor valor (Prob. AE < P. Etapa)' };
+    return { sp: sp, cp: cp, final: sp, modStr: 'Menor valor (P. Etapa ≤ Prob. AE)' };
   }
 
   // ── Override MANUAL por deal (decisão do dono 2026-07-27) ───────────────────

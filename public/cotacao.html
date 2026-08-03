@@ -12,8 +12,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-:root{--bg:#0d1117;--card:#171f2e;--card2:#1e2a3c;--border:#293a50;--text:#e6edf3;--text2:#8b949e;--muted:#6e7681;--teal:#3ab8b7;--green:#3fb950;--red:#f85149;--orange:#d29922;--yellow:#e3b341;--hover:rgba(255,255,255,0.06);--even-s:#131b28;--hover-s:#1c2b40;--hdr-glass:rgba(13,17,23,.78)}
-html[data-theme="light"]{--bg:#f6f8fa;--card:#ffffff;--card2:#eaeef2;--border:#d0d7de;--text:#1f2328;--text2:#57606a;--teal:#0d7377;--green:#1a7f37;--yellow:#9a6700;--red:#cf222e;--hover:rgba(0,0,0,0.05);--even-s:#f1f4f8;--hover-s:#e8eef4;--hdr-glass:rgba(246,248,250,.82)}
 body{background:var(--bg);color:var(--text);font-family:Inter,'Segoe UI',system-ui,sans-serif;font-size:13px;line-height:1.5}
 button,input,select,textarea{font-family:inherit}
 h1{font-size:1.5rem;font-weight:700;letter-spacing:-.02em;margin-bottom:.15rem}
@@ -50,7 +48,6 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
 [data-theme="light"] .novo-theme-sun{display:none}[data-theme="light"] .novo-theme-moon{display:block}
 .novo-lang-btn{width:auto !important;padding:0 9px;font-size:.71rem;font-weight:700;letter-spacing:.06em}
 .novo-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(460px,1fr));gap:1rem;padding-bottom:2rem}
-.novo-card{background:var(--card);border-radius:10px;padding:1.25rem 1.5rem}
 .novo-card-header{display:flex;align-items:center;gap:.6rem;margin-bottom:1rem;flex-wrap:wrap}
 .novo-card-header h3{font-size:.88rem;font-weight:600;color:var(--text);margin:0;flex:1}
 .novo-code-tag{display:none;align-items:center;font-size:.6rem;font-weight:700;letter-spacing:.04em;font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--teal);background:rgba(58,184,183,.14);border:1px solid rgba(58,184,183,.32);border-radius:5px;padding:.05rem .32rem;line-height:1.35;flex-shrink:0}
@@ -69,25 +66,37 @@ body.nav-docked #view-novo{margin-left:280px}
 .content-blur{filter:blur(4px);pointer-events:none;user-select:none}
 .section-hdr{grid-column:1/-1;margin:1.5rem 0 .25rem;border-top:1px solid var(--border);padding-top:1.25rem}
 .section-hdr h2{font-size:.78rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.1em;margin:0}
-.banner-api{grid-column:1/-1;background:rgba(248,81,73,.1);border:1.5px dashed rgba(248,81,73,.4);border-radius:10px;padding:1.4rem 1.5rem;margin-bottom:.25rem}
-.banner-api h4{color:var(--red);font-size:.9rem;margin-bottom:.5rem}
-.banner-api p{font-size:.8rem;color:var(--text2);line-height:1.7;margin:.25rem 0}
-.banner-api code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.75rem;background:rgba(248,81,73,.15);padding:.1rem .35rem;border-radius:3px;color:var(--red)}
 .placeholder-card{background:var(--card);border:1.5px dashed var(--border);border-radius:10px;padding:2rem 1.5rem;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.75rem;text-align:center;min-height:220px}
 .placeholder-card .ph-icon{font-size:2.5rem;opacity:.4}
 .placeholder-card .ph-title{font-size:.88rem;font-weight:600;color:var(--text2)}
 .placeholder-card .ph-body{font-size:.75rem;color:var(--muted);max-width:320px;line-height:1.6}
 .placeholder-card .ph-field{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.7rem;color:var(--teal);background:rgba(58,184,183,.08);padding:.15rem .4rem;border-radius:3px;margin:.1rem;display:inline-block}
 .kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.75rem;margin-bottom:.75rem}
-.kpi-card{background:var(--card);border-radius:14px;padding:clamp(1rem,.6rem+1.3vw,1.6rem) clamp(1.05rem,.5rem+1.6vw,1.8rem);transition:box-shadow .18s}
 .kpi-click{cursor:pointer}
 .kpi-label{font-size:.66rem;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;line-height:1}
 .kpi-value{font-size:clamp(1.35rem,.95rem+1.3vw,2rem);font-weight:800;line-height:1.1;margin:.35rem 0 .25rem}
 .kpi-sub{font-size:.7rem;color:var(--muted);line-height:1.35}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:2000;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s linear;backdrop-filter:blur(5px)}
+.modal-overlay.open{opacity:1;pointer-events:auto}
+.modal{background:var(--card);border:1px solid var(--border);border-radius:14px;width:90vw;max-width:960px;max-height:85vh;display:flex;flex-direction:column;transform:translateY(20px);transition:transform .28s cubic-bezier(0.4,0,0.2,1)}
+.modal-overlay.open .modal{transform:translateY(0)}
+.modal-header{display:flex;justify-content:space-between;align-items:center;padding:1.2rem 1.5rem;border-bottom:1px solid var(--border)}
+.modal-header h2{font-size:1rem;font-weight:600;color:var(--text)}
+.modal-close{background:none;border:none;color:var(--text2);font-size:1.4rem;cursor:pointer;padding:.2rem .5rem;border-radius:4px}
+.modal-body{padding:1.2rem 1.5rem;overflow-y:auto;flex:1}
+.btn-export{background:transparent;border:1px solid var(--border);color:var(--text2);border-radius:8px;padding:.3rem .7rem;font-size:.7rem;cursor:pointer;margin-left:auto}
+table.lb{width:100%;border-collapse:separate;border-spacing:0;font-size:14px}
+table.lb th{text-align:right;color:var(--teal);font-size:.72rem;font-weight:700;text-transform:uppercase;padding:.6rem 1rem;border-bottom:2px solid var(--teal);white-space:nowrap;position:sticky;top:0;background:var(--card)}
+table.lb th:first-child{text-align:left}
+table.lb td{padding:.38rem 1rem;border-bottom:1px solid var(--border);color:var(--text);text-align:right}
+table.lb td:first-child{text-align:left;font-weight:600}
+table.lb tbody tr:nth-child(even) td{background:var(--even-s)}
 </style>
 <link rel="stylesheet" href="/premium.css?v=5">
 <script src="/premium.js?v=5"></script>
 <script src="/filter-bar.js?v=1"></script>
+<script src="/settings-modal.js?v=2"></script>
+<script src="/ax-ui.js?v=1"></script>
 </head>
 <body>
 
@@ -115,6 +124,7 @@ body.nav-docked #view-novo{margin-left:280px}
     </div>
     <div class="hdr-actions">
       <button class="hdr-btn" id="btn-info-toggle" onclick="novoToggleInfo()" data-tooltip="Mostrar/ocultar IDs e auditoria" style="font-size:.9rem;font-weight:800">?</button>
+      <button class="hdr-btn" onclick="novoOpenSettings()" data-tooltip="Configurações"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
       <button class="hdr-btn highlighted" id="btn-refresh" onclick="novoLoadData();" data-tooltip="Atualizar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></button>
     </div>
   </div>
@@ -154,6 +164,14 @@ document.addEventListener('click',function(e){ if(e.target&&e.target.closest&&e.
 window.addEventListener('scroll',function(){ document.getElementById('novo-hdr').classList.toggle('scrolled',window.scrollY>10); },{passive:true});
 
 var NOVO_WON_STAGE='Ganho';
+var _novoImplWon=(function(){try{return localStorage.getItem('novo_impl_won')!=='0';}catch(e){return true;}})();
+var _novoActiveMeetings=(function(){try{return localStorage.getItem('novo_active_meetings')!=='0';}catch(e){return true;}})();
+var _novoActiveStandby=(function(){try{return localStorage.getItem('novo_active_standby')==='1';}catch(e){return false;}})();
+function _novoIsWon(d){ return d.stage==='Ganho'||(_novoImplWon&&d.stage==='Implantação'); }
+function novoToggleImplWon(){ _novoImplWon=!_novoImplWon; try{localStorage.setItem('novo_impl_won',_novoImplWon?'1':'0');}catch(e){} _gsSync(); if(_deals)novoRender(); }
+function novoToggleActiveMeetings(){ _novoActiveMeetings=!_novoActiveMeetings; try{localStorage.setItem('novo_active_meetings',_novoActiveMeetings?'1':'0');}catch(e){} _gsSync(); if(_deals)novoRender(); }
+function novoToggleActiveStandby(){ _novoActiveStandby=!_novoActiveStandby; try{localStorage.setItem('novo_active_standby',_novoActiveStandby?'1':'0');}catch(e){} _gsSync(); if(_deals)novoRender(); }
+function setContentBlur(on){ var el=document.getElementById('view-novo'); if(el) el.classList.toggle('content-blur',on); }
 var NOVO_FONT='Inter,\'Segoe UI\',system-ui,sans-serif';
 var _novoCharts={};
 function _novoTheme(){ var isLight=document.documentElement.getAttribute('data-theme')==='light'; return { cText:isLight?'#1f2328':'#e6edf3', cText2:isLight?'#57606a':'#8b949e', cGrid:isLight?'rgba(0,0,0,.08)':'rgba(255,255,255,.06)', isLight:isLight }; }
@@ -164,7 +182,7 @@ function _annualRev(d){ if(d.arr_estimado!=null&&d.arr_estimado>0)return d.arr_e
 function _revShort(v){ if(!v||v<=0)return 'R$0'; return v>=1000000?('R$'+(v/1000000).toFixed(1)+'M'):('R$'+Math.round(v/1000)+'k'); }
 function _mlbl(ym){ var p=ym.split('-'); return ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][parseInt(p[1])-1]+'/'+p[0].slice(2); }
 function _dealsRows(deals){ return (deals||[]).map(function(d){ var hsUrl=d.hs_id?'https://app.hubspot.com/contacts/44715285/deal/'+d.hs_id:'#'; var name=d.hs_id?'<a href="'+hsUrl+'" target="_blank" rel="noopener" style="color:var(--teal);text-decoration:none">'+_ne(d.dealname)+'</a>':_ne(d.dealname); return '<tr><td style="text-align:left;max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+name+'</td><td style="text-align:left;white-space:nowrap">'+_ne(d.ae)+'</td><td>'+_ne(d.pipeline)+'</td><td>'+_ne(d.stage)+'</td><td>'+_ni(d.vidas)+'</td><td>'+_revShort(_annualRev(d))+'</td><td>'+_ne(d.createdate)+'</td><td>'+_ne(d.data_prevista_para_receita)+'</td></tr>'; }).join(''); }
-function novoOpenDealsModal(title,deals){ if(!deals||!deals.length){ openModal(title,'<p style="color:var(--text2);padding:1rem 0">Nenhum deal.</p>'); return; } openModal(title+' ('+deals.length+')','<table class="lb"><thead><tr><th style="text-align:left">Deal</th><th style="text-align:left">AE</th><th>Pipe</th><th>Etapa</th><th>Vidas</th><th>ARR</th><th>Criado</th><th>Dt. Receita</th></tr></thead><tbody>'+_dealsRows(deals)+'</tbody></table>'); }
+function novoOpenDealsModal(title,deals){ if(!deals||!deals.length){ openModal(title,AxUI.emptyState('Nenhum deal.')); return; } openModal(title+' ('+deals.length+')','<table class="lb"><thead><tr><th style="text-align:left">Deal</th><th style="text-align:left">AE</th><th>Pipe</th><th>Etapa</th><th>Vidas</th><th>ARR</th><th>Criado</th><th>Dt. Receita</th></tr></thead><tbody>'+_dealsRows(deals)+'</tbody></table>'); }
 
 function _placeholder(icon,title,body,fields){
   var fHtml=fields?fields.map(function(f){return '<span class="ph-field">'+f+'</span>';}).join(' '):'';
@@ -211,14 +229,14 @@ function novoLoadData(){
     novoRender();
   }).catch(function(err){
     if(btn) btn.classList.remove('spinning');
-    document.getElementById('novo-content').innerHTML='<div style="text-align:center;padding:3rem 0;color:var(--red)">Erro: '+_ne(String(err))+'<br><br><button onclick="novoLoadData()" style="background:var(--teal);color:#fff;border:none;border-radius:8px;padding:.5rem 1.2rem;cursor:pointer">Tentar novamente</button></div>';
+    document.getElementById('novo-content').innerHTML=AxUI.banner('Erro: '+_ne(String(err)), { severity:'error', retry:'novoLoadData()', retryLabel:'Tentar novamente' });
   });
 }
 
 function novoRender(){
   _deals=window._dealsRaw||_deals||[];
   var ts=new Date().toLocaleTimeString('pt-BR',{timeZone:'America/Sao_Paulo',hour:'2-digit',minute:'2-digit'});
-  var won=(_deals||[]).filter(function(d){return d.stage===NOVO_WON_STAGE;});
+  var won=(_deals||[]).filter(_novoIsWon);
   var cotacao=(_deals||[]).filter(function(d){ var s=d.stage||''; return s.toLowerCase().indexOf('cota')>=0; });
 
   var kpi=function(lbl,val,sub,col,key,kind,tip){ return '<div class="kpi-card'+(kind?' kpi-click':'')+'" '+(kind?'onclick="cotKpiOpen(\''+kind+'\')"':'')+'><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.35rem"><div class="kpi-label">'+lbl+'</div><div style="display:flex;align-items:center;gap:.2rem">'+(tip?_infoBtn(tip,key):_codeTag(key))+'</div></div><div class="kpi-value" style="color:'+(col||'var(--text)')+'">'+val+'</div><div class="kpi-sub">'+sub+'</div></div>'; };
@@ -258,7 +276,7 @@ function novoRender(){
     '<div class="novo-cards">'+
 
     '<div class="section-hdr"><h2>Tickets de Cotação | POST /api/pull-tickets | pipeline 847948895 | 🟡 não validado</h2></div>'+
-    (tkErr?('<div class="banner-api"><h4>Não foi possível carregar os tickets</h4><p>'+_ne(tkErr)+'</p><p style="margin-top:.6rem">O endpoint <code>POST /api/pull-tickets</code> exige sessão autenticada e <code>HUBSPOT_TOKEN</code> no ambiente. Os cards de proxy abaixo seguem funcionando.</p></div>'):'')+
+    (tkErr?AxUI.banner('<strong>Não foi possível carregar os tickets</strong><br>'+_ne(tkErr)+'<br><br>O endpoint <code>POST /api/pull-tickets</code> exige sessão autenticada e <code>HUBSPOT_TOKEN</code> no ambiente. Os cards de proxy abaixo seguem funcionando.', { severity:'error' }):'')+
 
     '<div class="section-hdr"><h2>Proxy Vendas | deals atualmente em etapa Cotação via /api/forecast-table | sem filtro de período</h2></div>'+
     '<div class="kpi-row" style="grid-column:1/-1">'+
@@ -300,7 +318,7 @@ function _tkRows(list,modo){
   }).join('');
 }
 function cotOpenTickets(title,list,modo){
-  if(!list||!list.length){ openModal(title,'<p style="color:var(--text2);padding:1rem 0">Nenhum ticket.</p>'); return; }
+  if(!list||!list.length){ openModal(title,AxUI.emptyState('Nenhum ticket.')); return; }
   var ord=list.slice().sort(function(a,b){
     var x=modo==='idade'?_tkIdade(a):_tkCiclo(a), y=modo==='idade'?_tkIdade(b):_tkCiclo(b);
     return (y==null?-1:y)-(x==null?-1:x);
@@ -324,7 +342,7 @@ function buildCotAE(){
   var map={}; cotacao.forEach(function(d){var ae=d.ae||'(sem AE)'; map[ae]=(map[ae]||0)+1;});
   var labels=Object.keys(map).sort(function(a,b){return map[b]-map[a];});
   var vals=labels.map(function(l){return map[l];});
-  if(!labels.length){ document.getElementById('chart-cot-ae').parentElement.insertAdjacentHTML('beforeend','<p style="color:var(--text2);font-size:.8rem;padding:.5rem 0">Nenhum deal em etapa Cotação.</p>'); return; }
+  if(!labels.length){ document.getElementById('chart-cot-ae').parentElement.insertAdjacentHTML('beforeend',AxUI.emptyState('Nenhum deal em etapa Cotação.')); return; }
   _novoMkChart('chart-cot-ae',{type:'bar',plugins:[ChartDataLabels],
     data:{labels:labels,datasets:[{data:vals,backgroundColor:'rgba(58,184,183,.75)',borderRadius:4}]},
     options:{indexAxis:'y',responsive:true,layout:{padding:{right:45}},plugins:{legend:{display:false},
@@ -340,7 +358,7 @@ function buildCotVidas(){
   var map={}; cotacao.forEach(function(d){var ae=d.ae||'(sem AE)'; map[ae]=(map[ae]||0)+(d.vidas||0);});
   var labels=Object.keys(map).sort(function(a,b){return map[b]-map[a];});
   var vals=labels.map(function(l){return map[l];});
-  if(!labels.length){ document.getElementById('chart-cot-vidas').parentElement.insertAdjacentHTML('beforeend','<p style="color:var(--text2);font-size:.8rem;padding:.5rem 0">Nenhum deal em etapa Cotação.</p>'); return; }
+  if(!labels.length){ document.getElementById('chart-cot-vidas').parentElement.insertAdjacentHTML('beforeend',AxUI.emptyState('Nenhum deal em etapa Cotação.')); return; }
   _novoMkChart('chart-cot-vidas',{type:'bar',plugins:[ChartDataLabels],
     data:{labels:labels,datasets:[{data:vals,backgroundColor:'rgba(63,185,80,.75)',borderRadius:4}]},
     options:{indexAxis:'y',responsive:true,layout:{padding:{right:65}},plugins:{legend:{display:false},
@@ -361,18 +379,3 @@ function buildCotVidas(){
 <script src="/nav.js?v=4"></script>
 </body>
 </html>
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:2000;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s linear;backdrop-filter:blur(5px)}
-.modal-overlay.open{opacity:1;pointer-events:auto}
-.modal{background:var(--card);border:1px solid var(--border);border-radius:14px;width:90vw;max-width:960px;max-height:85vh;display:flex;flex-direction:column;transform:translateY(20px);transition:transform .28s cubic-bezier(0.4,0,0.2,1)}
-.modal-overlay.open .modal{transform:translateY(0)}
-.modal-header{display:flex;justify-content:space-between;align-items:center;padding:1.2rem 1.5rem;border-bottom:1px solid var(--border)}
-.modal-header h2{font-size:1rem;font-weight:600;color:var(--text)}
-.modal-close{background:none;border:none;color:var(--text2);font-size:1.4rem;cursor:pointer;padding:.2rem .5rem;border-radius:4px}
-.modal-body{padding:1.2rem 1.5rem;overflow-y:auto;flex:1}
-.btn-export{background:transparent;border:1px solid var(--border);color:var(--text2);border-radius:8px;padding:.3rem .7rem;font-size:.7rem;cursor:pointer;margin-left:auto}
-table.lb{width:100%;border-collapse:separate;border-spacing:0;font-size:14px}
-table.lb th{text-align:right;color:var(--teal);font-size:.72rem;font-weight:700;text-transform:uppercase;padding:.6rem 1rem;border-bottom:2px solid var(--teal);white-space:nowrap;position:sticky;top:0;background:var(--card)}
-table.lb th:first-child{text-align:left}
-table.lb td{padding:.38rem 1rem;border-bottom:1px solid var(--border);color:var(--text);text-align:right}
-table.lb td:first-child{text-align:left;font-weight:600}
-table.lb tbody tr:nth-child(even) td{background:var(--even-s)}

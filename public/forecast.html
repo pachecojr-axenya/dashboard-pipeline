@@ -11,45 +11,6 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" rel="stylesheet">
   <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
   <style>
-    /* ── TOKENS ──────────────────────────────────────────────────────────────── */
-    :root {
-      --bg: #0d1117;
-      --card: #171f2e;
-      --card2: #1e2a3c;
-      --border: #293a50;
-      --text: #e6edf3;
-      --text2: #8b949e;
-      --teal: #3ab8b7;
-      --green: #3fb950;
-      --yellow: #d29922;
-      --red: #f85149;
-      --font: 'Inter', 'Segoe UI', system-ui, sans-serif;
-      --warn-s: #1f0e0d;
-      --warn-sh: #2c1211;
-      --even-s: #131b28;
-      --hover-s: #1c2b40;
-      --accent: var(--teal);
-      --hover: rgba(255,255,255,0.06);
-    }
-
-    html[data-theme="light"] {
-      --bg: #f6f8fa;
-      --card: #ffffff;
-      --card2: #eaeef2;
-      --border: #d0d7de;
-      --text: #1f2328;
-      --text2: #57606a;
-      --teal: #0d7377;
-      --green: #1a7f37;
-      --yellow: #9a6700;
-      --red: #cf222e;
-      --warn-s: #fde8e7;
-      --warn-sh: #f9d0cf;
-      --even-s: #f1f4f8;
-      --hover-s: #e8eef4;
-      --hover: rgba(0,0,0,0.05);
-    }
-
     /* ── RESET & BASE ─────────────────────────────────────────────────────────── */
     * {
       box-sizing: border-box;
@@ -430,7 +391,7 @@
     .filter-pill {
       display: inline-flex; align-items: center; gap: 0.28rem;
       padding: 0.15rem 0.5rem; border-radius: 99px; font-size: 0.76rem;
-      background: rgba(58,184,183,0.15);
+      background: rgba(45,212,191,0.15);
       color: var(--teal); font-family: var(--font);
     }
     html[data-theme="light"] .filter-pill { background: #c7f1f1; color: #0d7377; }
@@ -530,7 +491,7 @@
     }
 
     .search-input-full:focus {
-      box-shadow: 0 0 0 3px rgba(58, 184, 183, .12);
+      box-shadow: 0 0 0 3px rgba(45, 212, 191, .12);
     }
 
     .search-clear {
@@ -1057,18 +1018,6 @@
       margin-left: .2rem;
     }
 
-    /* Loading / error */
-    .state {
-      text-align: center;
-      padding: 4rem;
-      color: var(--text2);
-      font-size: .95rem;
-    }
-
-    .state.err {
-      color: var(--red);
-    }
-
     /* Deal link */
     a.deal-link {
       color: var(--teal);
@@ -1320,7 +1269,7 @@
     .deal-modal-sub { font-size: .84rem; color: var(--text); margin-top: .45rem; }
     .deal-modal-sub .dm-stage-days { color: var(--text2); }
     .deal-modal-exec { font-size: .82rem; color: var(--text2); margin-top: .32rem; }
-    .dm-pipe { display: inline-block; font-size: .62rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--teal); background: rgba(58,184,183,.14); border: 1px solid rgba(58,184,183,.32); border-radius: 5px; padding: .14rem .5rem; margin-bottom: .55rem; }
+    .dm-pipe { display: inline-block; font-size: .62rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--teal); background: rgba(45,212,191,.14); border: 1px solid rgba(45,212,191,.32); border-radius: 5px; padding: .14rem .5rem; margin-bottom: .55rem; }
     .deal-trail.trail3 .dt-row { display: grid; grid-template-columns: 1fr auto 92px; gap: .8rem; align-items: baseline; }
     .deal-trail.trail3 .dt-head { font-size: .66rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); border-bottom-color: var(--border); }
     .deal-trail .dt-days { color: var(--text2); font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
@@ -1574,8 +1523,8 @@
       align-items: center;
       gap: .4rem;
       padding: .3rem .7rem;
-      background: rgba(58, 184, 183, .1);
-      border: 1px solid rgba(58, 184, 183, .2);
+      background: rgba(45, 212, 191, .1);
+      border: 1px solid rgba(45, 212, 191, .2);
       border-radius: 20px;
       font-size: .75rem;
       color: var(--teal);
@@ -1583,7 +1532,7 @@
     }
 
     .error-msg {
-      color: #f85149;
+      color: var(--red);
       font-size: .8rem;
       margin-top: 1rem;
       min-height: 1.2rem;
@@ -1650,7 +1599,7 @@
         font-size: 1.25rem;
         align-items: center;
         justify-content: center;
-        box-shadow: 0 4px 16px rgba(58,184,183,.45), 0 2px 6px rgba(0,0,0,.35);
+        box-shadow: 0 4px 16px rgba(45,212,191,.45), 0 2px 6px rgba(0,0,0,.35);
         cursor: pointer;
         z-index: 500;
         transition: transform .12s, box-shadow .12s;
@@ -1829,6 +1778,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
 <script src="/faturamento-manual.js?v=1"></script>
 <script src="/forecast-engine.js?v=1"></script>
 <script src="/meta-ach.js?v=4"></script>
+<script src="/ax-ui.js?v=1"></script>
 </head>
 
 <body>
@@ -2173,7 +2123,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
   <div id="comp-banner" style="display:none;"></div>
 
   <div class="table-wrap" id="tw">
-    <div class="state">Buscando dados do HubSpot...</div>
+    <div class="ax-empty ax-empty-lg">Buscando dados do HubSpot...</div>
   </div>
 
   <!-- ── Painel Histórico ─────────────────────────────────────────────── -->
@@ -4054,13 +4004,13 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       const btn = document.getElementById('btn-r');
       btn.disabled = true;
       btn.classList.add('spinning');
-      document.getElementById('tw').innerHTML = '<div class="state">Buscando dados do HubSpot...</div>';
+      document.getElementById('tw').innerHTML = AxUI.emptyState('Buscando dados do HubSpot...', { size: 'lg' });
 
       try {
         const resp = await fetch('/api/forecast-table', { credentials: 'same-origin' });
         const data = await resp.json();
         if (!resp.ok || !data.success) {
-          document.getElementById('tw').innerHTML = `<div class="state err">Erro: ${esc(data.error || String(resp.status))}</div>`;
+          document.getElementById('tw').innerHTML = AxUI.banner('Erro: ' + esc(data.error || String(resp.status)), { severity: 'error' });
           return;
         }
         // Store de faturamento manual (Receita Real dos deals em Ganho/Implantação já faturando).
@@ -4092,7 +4042,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
         if (document.querySelector('.seg-btn.active')?.dataset.view === 'meta') renderMetaAch();
         _fcLoadFunnelProb();   // em 2º plano: puxa as probabilidades ao vivo do funil e re-renderiza
       } catch (e) {
-        document.getElementById('tw').innerHTML = `<div class="state err">Erro de conexão: ${esc(e.message)}</div>`;
+        document.getElementById('tw').innerHTML = AxUI.banner('Erro de conexão: ' + esc(e.message), { severity: 'error' });
       } finally {
         btn.disabled = false;
         btn.classList.remove('spinning');
@@ -5087,7 +5037,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
         updateHistKPIs(historicoDeals);
         renderComparativo();
       } catch (e) {
-        panel.innerHTML = `<div class="state err">Erro: ${esc(e.message)}</div>`;
+        panel.innerHTML = AxUI.banner('Erro: ' + esc(e.message), { severity: 'error' });
         document.getElementById('hist-kpis').style.display = 'none';
       } finally {
         loading.style.display = 'none';

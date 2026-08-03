@@ -250,7 +250,7 @@
       "hubspot": "e_poc",
       "unidade": "booleano",
       "dono": "revops",
-      "notas": "POC não gera receita: zera Real e Probabilizada em todos os painéis (regra receita_mensal_deal).",
+      "notas": "Até 2026-08-02 zerava Real e Probabilizada em todos os painéis (regra receita_mensal_deal); revertido — POC flui pela régua normal, probabilidade baixa vem do ajuste manual do AE/comitê (decisão da reunião de forecast de 31/07).",
       "label_portal": "É POC?"
     },
     "probabilidade_ae": {
