@@ -1,7 +1,7 @@
 {
   "metadata": {
     "title": "Lançamentos linha a linha do Marketing Budget 2026",
-    "version": "line-items-v2",
+    "version": "line-items-v3",
     "currency": "BRL",
     "updatedAt": "2026-08-04",
     "sourceFile": "Marketing_2026 (1).xlsx",
@@ -9,9 +9,10 @@
     "sourceRows": "Linhas 3 em diante com data válida na coluna B e valor numérico na coluna F.",
     "privacy": "A coluna Conta/fornecedor e nomes de pessoas foram omitidos do JSON público por privacidade. A classificação MECE usou esses campos apenas internamente para reconciliação.",
     "notes": [
-      "Janeiro a julho: lançamentos realizados (planilha consolidada; julho com fechamento registrado em 04/08 incluindo Apollo e Google Cloud).",
-      "Agosto a dezembro: linhas PROJETADAS (origin=Recorrência/Temporário, tipo original=Projeção) a partir das premissas de recorrência do reconciliation — compromissos esperados, não gasto realizado.",
-      "Sales Navigator: 9 de 13 BDRs (R$ 3.152,60/mês). Canva e StreamYard cortadas (ausentes em ago-dez). Depósito apenas em ago. Apollo R$ 1.632,00/mês (320 USD × 5,10)."
+      "Janeiro a junho: 522 lançamentos realizados da planilha consolidada, agora com o nome do gasto/fornecedor exibido; identidades em Pessoas/Freelancers permanecem protegidas.",
+      "Julho: permanece somente como fechamento consolidado no reconciliation (R$ 54.074,41); a fonte detalhada de julho não foi fornecida e, portanto, não há linhas inventadas nesta tabela.",
+      "Agosto a dezembro: 48 linhas projetadas, com nome do compromisso, a partir das premissas de recorrência; são valores esperados, não gasto realizado.",
+      "Sales Navigator: 9 de 13 BDRs (R$ 3.152,60/mês). Canva e StreamYard cortadas. Depósito apenas em agosto. Apollo R$ 1.632,00/mês (320 USD × 5,10)."
     ]
   },
   "summary": {
@@ -84,7 +85,8 @@
       "origin": "CC",
       "originalType": "Sem tipo",
       "meceCategory": "Brindes/Material Promocional",
-      "amount": 2550.0
+      "amount": 2550.0,
+      "expenseName": "FLASH URBANO"
     },
     {
       "sourceRow": 5,
@@ -92,7 +94,8 @@
       "origin": "CC",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 149.0
+      "amount": 149.0,
+      "expenseName": "SMARTERS SERV DE INTERNET LTDA"
     },
     {
       "sourceRow": 6,
@@ -100,7 +103,8 @@
       "origin": "CC",
       "originalType": "Sem tipo",
       "meceCategory": "Brindes/Material Promocional",
-      "amount": 885.42
+      "amount": 885.42,
+      "expenseName": "GALERIAPIX PERSONALIZACAO LTDA"
     },
     {
       "sourceRow": 7,
@@ -108,7 +112,8 @@
       "origin": "CC",
       "originalType": "Agência",
       "meceCategory": "Agência/SEO",
-      "amount": 7660.0
+      "amount": 7660.0,
+      "expenseName": "MESTRE SEO OTIMIZACAO DE SITES PARA FERRAMENTAS DE BUSCA LTDA"
     },
     {
       "sourceRow": 8,
@@ -116,7 +121,8 @@
       "origin": "CC",
       "originalType": "Agência",
       "meceCategory": "Agência/SEO",
-      "amount": 2246.92
+      "amount": 2246.92,
+      "expenseName": "MESTRE SEO OTIMIZACAO DE SITES PARA FERRAMENTAS DE BUSCA LTDA"
     },
     {
       "sourceRow": 9,
@@ -124,7 +130,8 @@
       "origin": "CC",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 149.45
+      "amount": 149.45,
+      "expenseName": "SMARTERS SERV DE INTERNET LTDA"
     },
     {
       "sourceRow": 10,
@@ -132,7 +139,8 @@
       "origin": "CC",
       "originalType": "Sem tipo",
       "meceCategory": "Brindes/Material Promocional",
-      "amount": 3190.0
+      "amount": 3190.0,
+      "expenseName": "GALERIAPIX PERSONALIZACAO LTDA"
     },
     {
       "sourceRow": 11,
@@ -140,7 +148,8 @@
       "origin": "CC",
       "originalType": "Sem tipo",
       "meceCategory": "Alimentação/Hospitalidade",
-      "amount": 2216.22
+      "amount": 2216.22,
+      "expenseName": "DONA DO DOCE B G LTDA ME"
     },
     {
       "sourceRow": 12,
@@ -148,7 +157,8 @@
       "origin": "CC",
       "originalType": "Agência",
       "meceCategory": "Agência/SEO",
-      "amount": 3200.0
+      "amount": 3200.0,
+      "expenseName": "PINA UNA COMUNICACAO LTDA"
     },
     {
       "sourceRow": 13,
@@ -156,7 +166,8 @@
       "origin": "CC",
       "originalType": "Sem tipo",
       "meceCategory": "Alimentação/Hospitalidade",
-      "amount": 4000.0
+      "amount": 4000.0,
+      "expenseName": "DELICIAS BY LOUISE BUFFET A DOMICILIO LTDA"
     },
     {
       "sourceRow": 14,
@@ -164,7 +175,8 @@
       "origin": "CC",
       "originalType": "Sem tipo",
       "meceCategory": "Pessoas/Freelancers",
-      "amount": 3520.0
+      "amount": 3520.0,
+      "expenseName": "Pessoa/Freelancer — identidade protegida"
     },
     {
       "sourceRow": 15,
@@ -172,7 +184,8 @@
       "origin": "CC",
       "originalType": "Evento",
       "meceCategory": "Eventos",
-      "amount": 3425.0
+      "amount": 3425.0,
+      "expenseName": "FARINHA NA COZINHA"
     },
     {
       "sourceRow": 16,
@@ -180,7 +193,8 @@
       "origin": "Conta Simples",
       "originalType": "Evento",
       "meceCategory": "Eventos",
-      "amount": 221.98
+      "amount": 221.98,
+      "expenseName": "ALPHAGRAPHICS"
     },
     {
       "sourceRow": 17,
@@ -188,7 +202,8 @@
       "origin": "Conta Simples",
       "originalType": "Saas",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 301.03
+      "amount": 301.03,
+      "expenseName": "APOLLO.IO"
     },
     {
       "sourceRow": 18,
@@ -196,7 +211,8 @@
       "origin": "Conta Simples",
       "originalType": "Saas",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 10.54
+      "amount": 10.54,
+      "expenseName": "APOLLO.IO"
     },
     {
       "sourceRow": 19,
@@ -204,7 +220,8 @@
       "origin": "Conta Simples",
       "originalType": "Saas",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 81.31
+      "amount": 81.31,
+      "expenseName": "APOLLO.IO"
     },
     {
       "sourceRow": 20,
@@ -212,7 +229,8 @@
       "origin": "Conta Simples",
       "originalType": "Saas",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 2323.0
+      "amount": 2323.0,
+      "expenseName": "APOLLO.IO"
     },
     {
       "sourceRow": 21,
@@ -220,7 +238,8 @@
       "origin": "Itaucard",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 1098.62
+      "amount": 1098.62,
+      "expenseName": "DL*GOOGLE ADS419"
     },
     {
       "sourceRow": 22,
@@ -228,7 +247,8 @@
       "origin": "CC",
       "originalType": "Sem tipo",
       "meceCategory": "Pessoas/Freelancers",
-      "amount": 1070.0
+      "amount": 1070.0,
+      "expenseName": "Pessoa/Freelancer — identidade protegida"
     },
     {
       "sourceRow": 23,
@@ -236,7 +256,8 @@
       "origin": "CC",
       "originalType": "Evento",
       "meceCategory": "Eventos",
-      "amount": 5000.0
+      "amount": 5000.0,
+      "expenseName": "DELICIAS BY LOUISE BUFFET A DOMICILIO LTDA"
     },
     {
       "sourceRow": 24,
@@ -244,7 +265,8 @@
       "origin": "CC",
       "originalType": "Evento",
       "meceCategory": "Eventos",
-      "amount": 15000.0
+      "amount": 15000.0,
+      "expenseName": "INSTASURREAL SERVICOS E COMERCIO"
     },
     {
       "sourceRow": 25,
@@ -252,7 +274,8 @@
       "origin": "CC",
       "originalType": "Sem tipo",
       "meceCategory": "Associações/Institucional",
-      "amount": 2815.5
+      "amount": 2815.5,
+      "expenseName": "CONFRABUSINESS GESTAO EMPRESARIAL LTDA"
     },
     {
       "sourceRow": 26,
@@ -260,7 +283,8 @@
       "origin": "CC",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 39.98
+      "amount": 39.98,
+      "expenseName": "RAINA SANTOS CANDIDO"
     },
     {
       "sourceRow": 27,
@@ -268,7 +292,8 @@
       "origin": "CC",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 2244.73
+      "amount": 2244.73,
+      "expenseName": "MESTRE SEO OTIMIZACAO DE SITES PARA FERRAMENTAS DE"
     },
     {
       "sourceRow": 28,
@@ -276,7 +301,8 @@
       "origin": "CC",
       "originalType": "Sem tipo",
       "meceCategory": "Alimentação/Hospitalidade",
-      "amount": 5000.0
+      "amount": 5000.0,
+      "expenseName": "DELICIAS BY LOUISE BUFFET A DOMICILIO LTDA"
     },
     {
       "sourceRow": 29,
@@ -284,7 +310,8 @@
       "origin": "CC",
       "originalType": "Sem tipo",
       "meceCategory": "Pessoas/Freelancers",
-      "amount": 1070.0
+      "amount": 1070.0,
+      "expenseName": "Pessoa/Freelancer — identidade protegida"
     },
     {
       "sourceRow": 30,
@@ -292,7 +319,8 @@
       "origin": "CC",
       "originalType": "Sem tipo",
       "meceCategory": "Educação/Consultoria",
-      "amount": 14077.5
+      "amount": 14077.5,
+      "expenseName": "FLUXUS EDUCACAO LTDA"
     },
     {
       "sourceRow": 31,
@@ -300,7 +328,8 @@
       "origin": "CC",
       "originalType": "Sem tipo",
       "meceCategory": "Alimentação/Hospitalidade",
-      "amount": 278.48
+      "amount": 278.48,
+      "expenseName": "DONA DO DOCE B G LTDA ME"
     },
     {
       "sourceRow": 32,
@@ -308,7 +337,8 @@
       "origin": "CC",
       "originalType": "Agência",
       "meceCategory": "Agência/SEO",
-      "amount": 7652.5
+      "amount": 7652.5,
+      "expenseName": "MESTRE SEO OTIMIZACAO DE SITES PARA FERRAMENTAS DE"
     },
     {
       "sourceRow": 33,
@@ -316,7 +346,8 @@
       "origin": "CC",
       "originalType": "Sem tipo",
       "meceCategory": "Brindes/Material Promocional",
-      "amount": 1091.84
+      "amount": 1091.84,
+      "expenseName": "GALERIAPIX"
     },
     {
       "sourceRow": 34,
@@ -324,7 +355,8 @@
       "origin": "CC",
       "originalType": "Evento",
       "meceCategory": "Eventos",
-      "amount": 2420.0
+      "amount": 2420.0,
+      "expenseName": "GUSTAVO VICENTE DE ALVARENGA"
     },
     {
       "sourceRow": 35,
@@ -332,7 +364,8 @@
       "origin": "CC",
       "originalType": "Sem tipo",
       "meceCategory": "Pessoas/Freelancers",
-      "amount": 619.0
+      "amount": 619.0,
+      "expenseName": "Pessoa/Freelancer — identidade protegida"
     },
     {
       "sourceRow": 36,
@@ -340,7 +373,8 @@
       "origin": "CC",
       "originalType": "Evento",
       "meceCategory": "Eventos",
-      "amount": 1760.48
+      "amount": 1760.48,
+      "expenseName": "YAPAY PAGAMENTOS ONLINE LTDA"
     },
     {
       "sourceRow": 37,
@@ -348,7 +382,8 @@
       "origin": "CC",
       "originalType": "Evento",
       "meceCategory": "Eventos",
-      "amount": 20000.0
+      "amount": 20000.0,
+      "expenseName": "AYA HUB LTDA."
     },
     {
       "sourceRow": 38,
@@ -356,7 +391,8 @@
       "origin": "CC",
       "originalType": "Evento",
       "meceCategory": "Eventos",
-      "amount": 47504.67
+      "amount": 47504.67,
+      "expenseName": "GUPY TECNOLOGIA E R LTDA ME"
     },
     {
       "sourceRow": 39,
@@ -364,7 +400,8 @@
       "origin": "CC",
       "originalType": "Evento",
       "meceCategory": "Eventos",
-      "amount": 101954.38
+      "amount": 101954.38,
+      "expenseName": "TD ORIGINALS S A"
     },
     {
       "sourceRow": 40,
@@ -372,7 +409,8 @@
       "origin": "CC",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 8238.34
+      "amount": 8238.34,
+      "expenseName": "EMEV HOME E CO. LTDA"
     },
     {
       "sourceRow": 41,
@@ -380,7 +418,8 @@
       "origin": "CC",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 8318.14
+      "amount": 8318.14,
+      "expenseName": "EMEV HOME E CO. LTDA"
     },
     {
       "sourceRow": 42,
@@ -388,7 +427,8 @@
       "origin": "CC",
       "originalType": "Sem tipo",
       "meceCategory": "Brindes/Material Promocional",
-      "amount": 364.84
+      "amount": 364.84,
+      "expenseName": "GALERIAPIX PERSONALIZACAO LTDA"
     },
     {
       "sourceRow": 43,
@@ -396,7 +436,8 @@
       "origin": "CC",
       "originalType": "Sem tipo",
       "meceCategory": "Brindes/Material Promocional",
-      "amount": 121.87
+      "amount": 121.87,
+      "expenseName": "GALERIAPIX PERSONALIZACAO LTDA"
     },
     {
       "sourceRow": 44,
@@ -404,7 +445,8 @@
       "origin": "CC",
       "originalType": "Sem tipo",
       "meceCategory": "Brindes/Material Promocional",
-      "amount": 7363.2
+      "amount": 7363.2,
+      "expenseName": "GALERIAPIX PERSONALIZACAO LTDA"
     },
     {
       "sourceRow": 45,
@@ -412,7 +454,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 33.73
+      "amount": 33.73,
+      "expenseName": "IFD*BR"
     },
     {
       "sourceRow": 46,
@@ -420,7 +463,8 @@
       "origin": "Conta Simples",
       "originalType": "Saas",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 5.23
+      "amount": 5.23,
+      "expenseName": "LOVABLE"
     },
     {
       "sourceRow": 47,
@@ -428,7 +472,8 @@
       "origin": "Conta Simples",
       "originalType": "Saas",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 149.32
+      "amount": 149.32,
+      "expenseName": "LOVABLE"
     },
     {
       "sourceRow": 48,
@@ -436,7 +481,8 @@
       "origin": "Conta Simples",
       "originalType": "Saas",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 141.0
+      "amount": 141.0,
+      "expenseName": "EBN*CANVA0476"
     },
     {
       "sourceRow": 49,
@@ -444,7 +490,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 395.94
+      "amount": 395.94,
+      "expenseName": "MERCADOLIVRE*3PRODUTOS"
     },
     {
       "sourceRow": 50,
@@ -452,7 +499,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 49.3
+      "amount": 49.3,
+      "expenseName": "UBER *TRIP HELP.UBER.COM"
     },
     {
       "sourceRow": 51,
@@ -460,7 +508,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 39.11
+      "amount": 39.11,
+      "expenseName": "IFD*BR"
     },
     {
       "sourceRow": 52,
@@ -468,7 +517,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 258.78
+      "amount": 258.78,
+      "expenseName": "IFD*BR"
     },
     {
       "sourceRow": 53,
@@ -476,7 +526,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 16.74
+      "amount": 16.74,
+      "expenseName": "UBER *TRIP HELP.UBER.COM"
     },
     {
       "sourceRow": 54,
@@ -484,7 +535,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 4.73
+      "amount": 4.73,
+      "expenseName": "UBER *TRIP HELP.UBER.COM"
     },
     {
       "sourceRow": 55,
@@ -492,7 +544,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 25.46
+      "amount": 25.46,
+      "expenseName": "UBER * PENDING"
     },
     {
       "sourceRow": 56,
@@ -500,7 +553,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 22.48
+      "amount": 22.48,
+      "expenseName": "DL          *UBERRIDES"
     },
     {
       "sourceRow": 57,
@@ -508,7 +562,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 22.69
+      "amount": 22.69,
+      "expenseName": "UBER * PENDING"
     },
     {
       "sourceRow": 58,
@@ -516,7 +571,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 36.72
+      "amount": 36.72,
+      "expenseName": "UBER * PENDING"
     },
     {
       "sourceRow": 59,
@@ -524,7 +580,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 13.82
+      "amount": 13.82,
+      "expenseName": "UBER * PENDING"
     },
     {
       "sourceRow": 60,
@@ -532,7 +589,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 5.89
+      "amount": 5.89,
+      "expenseName": "ZAPIER.COM/CHARGE"
     },
     {
       "sourceRow": 61,
@@ -540,7 +598,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 168.18
+      "amount": 168.18,
+      "expenseName": "ZAPIER.COM/CHARGE"
     },
     {
       "sourceRow": 62,
@@ -548,7 +607,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 1787.2
+      "amount": 1787.2,
+      "expenseName": "EC     *MONCLOACHAFRA"
     },
     {
       "sourceRow": 63,
@@ -556,7 +616,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 30.93
+      "amount": 30.93,
+      "expenseName": "UBER *TRIP HELP.UBER.COM"
     },
     {
       "sourceRow": 64,
@@ -564,7 +625,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 16.84
+      "amount": 16.84,
+      "expenseName": "UBER * PENDING"
     },
     {
       "sourceRow": 65,
@@ -572,7 +634,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 30.0
+      "amount": 30.0,
+      "expenseName": "WORKUP SERVICOS COMPART"
     },
     {
       "sourceRow": 66,
@@ -580,7 +643,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 528.0
+      "amount": 528.0,
+      "expenseName": "JSA COPIADORA"
     },
     {
       "sourceRow": 67,
@@ -588,7 +652,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 16.28
+      "amount": 16.28,
+      "expenseName": "UBER *TRIP HELP.UBER.COM"
     },
     {
       "sourceRow": 68,
@@ -596,7 +661,8 @@
       "origin": "Itaucard",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 791.72
+      "amount": 791.72,
+      "expenseName": "LINKEDIN"
     },
     {
       "sourceRow": 69,
@@ -604,7 +670,8 @@
       "origin": "Itaucard",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 161.8
+      "amount": 161.8,
+      "expenseName": "LINKEDIN"
     },
     {
       "sourceRow": 70,
@@ -612,7 +679,8 @@
       "origin": "Itaucard",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 449.99
+      "amount": 449.99,
+      "expenseName": "LINKEDIN"
     },
     {
       "sourceRow": 71,
@@ -620,7 +688,8 @@
       "origin": "Itaucard",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 374.99
+      "amount": 374.99,
+      "expenseName": "LINKEDIN"
     },
     {
       "sourceRow": 72,
@@ -628,7 +697,8 @@
       "origin": "Itaucard",
       "originalType": "Evento",
       "meceCategory": "Eventos",
-      "amount": 622.25
+      "amount": 622.25,
+      "expenseName": "ADOCRIACAO"
     },
     {
       "sourceRow": 73,
@@ -636,7 +706,8 @@
       "origin": "CC",
       "originalType": "Evento",
       "meceCategory": "Eventos",
-      "amount": 342.16
+      "amount": 342.16,
+      "expenseName": "BETA GRAPH COM SERV GRAF LTDA"
     },
     {
       "sourceRow": 74,
@@ -644,7 +715,8 @@
       "origin": "CC",
       "originalType": "Evento",
       "meceCategory": "Eventos",
-      "amount": 1942.79
+      "amount": 1942.79,
+      "expenseName": "GALERIAPIX PERSONALIZACAO LTDA"
     },
     {
       "sourceRow": 75,
@@ -652,7 +724,8 @@
       "origin": "CC",
       "originalType": "Agência",
       "meceCategory": "Agência/SEO",
-      "amount": 12200.5
+      "amount": 12200.5,
+      "expenseName": "VCRP BRASIL EMPRESA DE COMUNICACAO LTDA"
     },
     {
       "sourceRow": 76,
@@ -660,7 +733,8 @@
       "origin": "CC",
       "originalType": "Evento",
       "meceCategory": "Eventos",
-      "amount": 52965.0
+      "amount": 52965.0,
+      "expenseName": "GUPY TECNOLOGIA E R LTDA ME"
     },
     {
       "sourceRow": 77,
@@ -668,7 +742,8 @@
       "origin": "CC",
       "originalType": "Evento",
       "meceCategory": "Eventos",
-      "amount": 11250.0
+      "amount": 11250.0,
+      "expenseName": "INNOVAPROMO COMERCIAL LTDA"
     },
     {
       "sourceRow": 78,
@@ -676,7 +751,8 @@
       "origin": "CC",
       "originalType": "Evento",
       "meceCategory": "Eventos",
-      "amount": 4192.31
+      "amount": 4192.31,
+      "expenseName": "SAMPA1 SERVICOS DE MARKETING LTDA"
     },
     {
       "sourceRow": 79,
@@ -684,7 +760,8 @@
       "origin": "CC",
       "originalType": "Evento",
       "meceCategory": "Eventos",
-      "amount": 2737.8
+      "amount": 2737.8,
+      "expenseName": "SAMPA1 SERVICOS DE MARKETING LTDA"
     },
     {
       "sourceRow": 80,
@@ -692,7 +769,8 @@
       "origin": "CC",
       "originalType": "Evento",
       "meceCategory": "Eventos",
-      "amount": 1460.0
+      "amount": 1460.0,
+      "expenseName": "GRAFICA SENADOR LTDA - ME"
     },
     {
       "sourceRow": 81,
@@ -700,7 +778,8 @@
       "origin": "CC",
       "originalType": "Evento",
       "meceCategory": "Eventos",
-      "amount": 8508.99
+      "amount": 8508.99,
+      "expenseName": "SAMPA1 SERVICOS DE MARKETING LTDA"
     },
     {
       "sourceRow": 82,
@@ -708,7 +787,8 @@
       "origin": "CC",
       "originalType": "Evento",
       "meceCategory": "Eventos",
-      "amount": 8100.0
+      "amount": 8100.0,
+      "expenseName": "CLICK'S VIP"
     },
     {
       "sourceRow": 83,
@@ -716,7 +796,8 @@
       "origin": "CC",
       "originalType": "Evento",
       "meceCategory": "Eventos",
-      "amount": 600.0
+      "amount": 600.0,
+      "expenseName": "DESTAK STANDS"
     },
     {
       "sourceRow": 84,
@@ -724,7 +805,8 @@
       "origin": "CC",
       "originalType": "Evento",
       "meceCategory": "Eventos",
-      "amount": 2399.99
+      "amount": 2399.99,
+      "expenseName": "ALPHAGRAPHICS"
     },
     {
       "sourceRow": 85,
@@ -732,7 +814,8 @@
       "origin": "CC",
       "originalType": "Evento",
       "meceCategory": "Eventos",
-      "amount": 15000.0
+      "amount": 15000.0,
+      "expenseName": "INSTASURREAL SERVICOS E COMERCIO"
     },
     {
       "sourceRow": 86,
@@ -740,7 +823,8 @@
       "origin": "CC",
       "originalType": "Evento",
       "meceCategory": "Eventos",
-      "amount": 11250.0
+      "amount": 11250.0,
+      "expenseName": "INNOVAPROMO COMERCIAL LTDA"
     },
     {
       "sourceRow": 87,
@@ -748,7 +832,8 @@
       "origin": "CC",
       "originalType": "Evento",
       "meceCategory": "Eventos",
-      "amount": 9060.0
+      "amount": 9060.0,
+      "expenseName": "GALERIAPIX PERSONALIZACAO LTDA"
     },
     {
       "sourceRow": 88,
@@ -756,7 +841,8 @@
       "origin": "CC",
       "originalType": "Evento",
       "meceCategory": "Eventos",
-      "amount": 8250.0
+      "amount": 8250.0,
+      "expenseName": "BRIGADAYROS"
     },
     {
       "sourceRow": 89,
@@ -764,7 +850,8 @@
       "origin": "CC",
       "originalType": "Evento",
       "meceCategory": "Eventos",
-      "amount": 10000.0
+      "amount": 10000.0,
+      "expenseName": "INNOVAPROMO COMERCIAL LTDA"
     },
     {
       "sourceRow": 90,
@@ -772,7 +859,8 @@
       "origin": "Conta Simples",
       "originalType": "Evento",
       "meceCategory": "Eventos",
-      "amount": 366.0
+      "amount": 366.0,
+      "expenseName": "MERCADOLIVRE*3PRODUTOS"
     },
     {
       "sourceRow": 91,
@@ -780,7 +868,8 @@
       "origin": "Conta Simples",
       "originalType": "Evento",
       "meceCategory": "Eventos",
-      "amount": 11.56
+      "amount": 11.56,
+      "expenseName": "UBER *TRIP HELP.UBER.COM"
     },
     {
       "sourceRow": 92,
@@ -788,7 +877,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 449.99
+      "amount": 449.99,
+      "expenseName": "LINKEDIN"
     },
     {
       "sourceRow": 93,
@@ -796,7 +886,8 @@
       "origin": "Conta Simples",
       "originalType": "Saas",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 78.66
+      "amount": 78.66,
+      "expenseName": "APOLLO.IO"
     },
     {
       "sourceRow": 94,
@@ -804,7 +895,8 @@
       "origin": "Conta Simples",
       "originalType": "Saas",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 2247.3
+      "amount": 2247.3,
+      "expenseName": "APOLLO.IO"
     },
     {
       "sourceRow": 95,
@@ -812,7 +904,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Associações/Institucional",
-      "amount": 10000.0
+      "amount": 10000.0,
+      "expenseName": "JIM.COM* PASTORI  ASSOCIA"
     },
     {
       "sourceRow": 96,
@@ -820,7 +913,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 449.99
+      "amount": 449.99,
+      "expenseName": "LINKEDIN"
     },
     {
       "sourceRow": 97,
@@ -828,7 +922,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 12.51
+      "amount": 12.51,
+      "expenseName": "UBER * PENDING"
     },
     {
       "sourceRow": 98,
@@ -836,7 +931,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 5.7
+      "amount": 5.7,
+      "expenseName": "UBER *TRIP HELP.UBER.COM"
     },
     {
       "sourceRow": 99,
@@ -844,7 +940,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 4.0
+      "amount": 4.0,
+      "expenseName": "BANCA BARROCO"
     },
     {
       "sourceRow": 100,
@@ -852,7 +949,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 20.38
+      "amount": 20.38,
+      "expenseName": "UBER * PENDING"
     },
     {
       "sourceRow": 101,
@@ -860,7 +958,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 4.73
+      "amount": 4.73,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 102,
@@ -868,7 +967,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 135.2
+      "amount": 135.2,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 103,
@@ -876,7 +976,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 4.73
+      "amount": 4.73,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 104,
@@ -884,7 +985,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 135.2
+      "amount": 135.2,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 105,
@@ -892,7 +994,8 @@
       "origin": "Conta Simples",
       "originalType": "Saas",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 188.0
+      "amount": 188.0,
+      "expenseName": "EBN*CANVA04800 48"
     },
     {
       "sourceRow": 106,
@@ -900,7 +1003,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 500.0
+      "amount": 500.0,
+      "expenseName": "FACEBK *KC393J53C2"
     },
     {
       "sourceRow": 107,
@@ -908,7 +1012,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 664.47
+      "amount": 664.47,
+      "expenseName": "LINKEDIN"
     },
     {
       "sourceRow": 108,
@@ -916,7 +1021,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 6.52
+      "amount": 6.52,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 109,
@@ -924,7 +1030,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 186.32
+      "amount": 186.32,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 110,
@@ -932,7 +1039,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 9.32
+      "amount": 9.32,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 111,
@@ -940,7 +1048,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 266.17
+      "amount": 266.17,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 112,
@@ -948,7 +1057,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 602.4
+      "amount": 602.4,
+      "expenseName": "LINKEDIN"
     },
     {
       "sourceRow": 113,
@@ -956,7 +1066,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 7.44
+      "amount": 7.44,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 114,
@@ -964,7 +1075,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 212.7
+      "amount": 212.7,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 115,
@@ -972,7 +1084,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 1.86
+      "amount": 1.86,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 116,
@@ -980,7 +1093,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 53.17
+      "amount": 53.17,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 117,
@@ -988,7 +1102,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 500.0
+      "amount": 500.0,
+      "expenseName": "FACEBK *FW42MFM2C2"
     },
     {
       "sourceRow": 118,
@@ -996,7 +1111,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 166.33
+      "amount": 166.33,
+      "expenseName": "ZAPIER.COM/CHARGE"
     },
     {
       "sourceRow": 119,
@@ -1004,7 +1120,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 5.82
+      "amount": 5.82,
+      "expenseName": "ZAPIER.COM/CHARGE"
     },
     {
       "sourceRow": 120,
@@ -1012,7 +1129,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 500.0
+      "amount": 500.0,
+      "expenseName": "FACEBK *YBHCKED2C2"
     },
     {
       "sourceRow": 121,
@@ -1020,7 +1138,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 947.2
+      "amount": 947.2,
+      "expenseName": "LINKEDIN"
     },
     {
       "sourceRow": 122,
@@ -1028,7 +1147,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 500.0
+      "amount": 500.0,
+      "expenseName": "FACEBK *GW5CVGR2C2"
     },
     {
       "sourceRow": 123,
@@ -1036,7 +1156,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Educação/Consultoria",
-      "amount": 12881.0
+      "amount": 12881.0,
+      "expenseName": "PG *LOBBY TECNOLOGIA E"
     },
     {
       "sourceRow": 124,
@@ -1044,7 +1165,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 4.01
+      "amount": 4.01,
+      "expenseName": "CLAUDE.AI SUBSCRIPTION"
     },
     {
       "sourceRow": 125,
@@ -1052,7 +1174,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 114.63
+      "amount": 114.63,
+      "expenseName": "CLAUDE.AI SUBSCRIPTION"
     },
     {
       "sourceRow": 126,
@@ -1060,7 +1183,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 1.87
+      "amount": 1.87,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 127,
@@ -1068,7 +1192,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 53.29
+      "amount": 53.29,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 128,
@@ -1076,7 +1201,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 862.76
+      "amount": 862.76,
+      "expenseName": "LINKEDIN"
     },
     {
       "sourceRow": 129,
@@ -1084,7 +1210,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 6.59
+      "amount": 6.59,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 130,
@@ -1092,7 +1219,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 188.35
+      "amount": 188.35,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 131,
@@ -1100,7 +1228,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 2.83
+      "amount": 2.83,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 132,
@@ -1108,7 +1237,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 80.72
+      "amount": 80.72,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 133,
@@ -1116,7 +1246,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 80.72
+      "amount": 80.72,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 134,
@@ -1124,7 +1255,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 2.83
+      "amount": 2.83,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 135,
@@ -1132,7 +1264,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 107.63
+      "amount": 107.63,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 136,
@@ -1140,7 +1273,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 3.77
+      "amount": 3.77,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 137,
@@ -1148,7 +1282,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 53.81
+      "amount": 53.81,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 138,
@@ -1156,7 +1291,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 1.88
+      "amount": 1.88,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 139,
@@ -1164,7 +1300,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 500.0
+      "amount": 500.0,
+      "expenseName": "FACEBK *4YEA9HV2C2"
     },
     {
       "sourceRow": 140,
@@ -1172,7 +1309,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 5.76
+      "amount": 5.76,
+      "expenseName": "UBER * PENDING"
     },
     {
       "sourceRow": 141,
@@ -1180,7 +1318,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 18.34
+      "amount": 18.34,
+      "expenseName": "UBER * PENDING"
     },
     {
       "sourceRow": 142,
@@ -1188,7 +1327,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 17.5
+      "amount": 17.5,
+      "expenseName": "UBER *TRIP HELP.UBER.COM"
     },
     {
       "sourceRow": 143,
@@ -1196,7 +1336,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 6.7
+      "amount": 6.7,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 144,
@@ -1204,7 +1345,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 191.5
+      "amount": 191.5,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 145,
@@ -1212,7 +1354,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 4.79
+      "amount": 4.79,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 146,
@@ -1220,7 +1363,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 136.78
+      "amount": 136.78,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 147,
@@ -1228,7 +1372,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 26.27
+      "amount": 26.27,
+      "expenseName": "UBER *TRIP HELP.UBER.COM"
     },
     {
       "sourceRow": 148,
@@ -1236,7 +1381,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 2.87
+      "amount": 2.87,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 149,
@@ -1244,7 +1390,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 82.07
+      "amount": 82.07,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 150,
@@ -1252,7 +1399,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 0.96
+      "amount": 0.96,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 151,
@@ -1260,7 +1408,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 27.36
+      "amount": 27.36,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 152,
@@ -1268,7 +1417,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 500.0
+      "amount": 500.0,
+      "expenseName": "FACEBK *C3NTWED2C2"
     },
     {
       "sourceRow": 153,
@@ -1276,7 +1426,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 1034.38
+      "amount": 1034.38,
+      "expenseName": "LINKEDIN"
     },
     {
       "sourceRow": 154,
@@ -1284,7 +1435,8 @@
       "origin": "Itaucard",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 449.99
+      "amount": 449.99,
+      "expenseName": "LINKEDIN"
     },
     {
       "sourceRow": 155,
@@ -1292,7 +1444,8 @@
       "origin": "Itaucard",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 374.99
+      "amount": 374.99,
+      "expenseName": "LINKEDIN"
     },
     {
       "sourceRow": 156,
@@ -1300,7 +1453,8 @@
       "origin": "Itaucard",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 1874.32
+      "amount": 1874.32,
+      "expenseName": "LINKEDIN"
     },
     {
       "sourceRow": 157,
@@ -1308,7 +1462,8 @@
       "origin": "Itaucard",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 84.3
+      "amount": 84.3,
+      "expenseName": "FIGMA"
     },
     {
       "sourceRow": 158,
@@ -1316,7 +1471,8 @@
       "origin": "Itaucard",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 2.98
+      "amount": 2.98,
+      "expenseName": "IOF COMPRA INTERNACIONA"
     },
     {
       "sourceRow": 159,
@@ -1324,7 +1480,8 @@
       "origin": "CC",
       "originalType": "Sem tipo",
       "meceCategory": "Brindes/Material Promocional",
-      "amount": 322.0
+      "amount": 322.0,
+      "expenseName": "GALERIAPIX PERSONALIZACAO LTDA"
     },
     {
       "sourceRow": 160,
@@ -1332,7 +1489,8 @@
       "origin": "CC",
       "originalType": "Sem tipo",
       "meceCategory": "Associações/Institucional",
-      "amount": 2815.5
+      "amount": 2815.5,
+      "expenseName": "CONFRABUSINESS"
     },
     {
       "sourceRow": 161,
@@ -1340,7 +1498,8 @@
       "origin": "CC",
       "originalType": "Sem tipo",
       "meceCategory": "Associações/Institucional",
-      "amount": 2815.5
+      "amount": 2815.5,
+      "expenseName": "CONFRABUSINESS"
     },
     {
       "sourceRow": 162,
@@ -1348,7 +1507,8 @@
       "origin": "CC",
       "originalType": "Sem tipo",
       "meceCategory": "Associações/Institucional",
-      "amount": 7482.57
+      "amount": 7482.57,
+      "expenseName": "COMITE ALIMENTOS"
     },
     {
       "sourceRow": 163,
@@ -1356,7 +1516,8 @@
       "origin": "CC",
       "originalType": "Agência",
       "meceCategory": "Agência/SEO",
-      "amount": 12200.5
+      "amount": 12200.5,
+      "expenseName": "VCRP BRASIL EMPRESA DE COMUNICACAO LTDA"
     },
     {
       "sourceRow": 164,
@@ -1364,7 +1525,8 @@
       "origin": "CC",
       "originalType": "Sem tipo",
       "meceCategory": "Brindes/Material Promocional",
-      "amount": 1390.0
+      "amount": 1390.0,
+      "expenseName": "GALERIAPIX PERSONALIZACAO LTDA"
     },
     {
       "sourceRow": 165,
@@ -1372,7 +1534,8 @@
       "origin": "CC",
       "originalType": "Sem tipo",
       "meceCategory": "Brindes/Material Promocional",
-      "amount": 196.0
+      "amount": 196.0,
+      "expenseName": "GALERIAPIX PERSONALIZACAO LTDA"
     },
     {
       "sourceRow": 166,
@@ -1380,7 +1543,8 @@
       "origin": "CC",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 110.8
+      "amount": 110.8,
+      "expenseName": "PJBANK PAGAMENTOS S.A."
     },
     {
       "sourceRow": 167,
@@ -1388,7 +1552,8 @@
       "origin": "CC",
       "originalType": "Sem tipo",
       "meceCategory": "Brindes/Material Promocional",
-      "amount": 1790.0
+      "amount": 1790.0,
+      "expenseName": "GALERIAPIX PERSONALIZACAO LTDA"
     },
     {
       "sourceRow": 168,
@@ -1396,7 +1561,8 @@
       "origin": "CC",
       "originalType": "Sem tipo",
       "meceCategory": "Educação/Consultoria",
-      "amount": 77.36
+      "amount": 77.36,
+      "expenseName": "LOBBY TECNOLOGIA E PRODUTOS PERSONALIZADOS LTDA."
     },
     {
       "sourceRow": 169,
@@ -1404,7 +1570,8 @@
       "origin": "CC",
       "originalType": "Evento",
       "meceCategory": "Eventos",
-      "amount": 540.0
+      "amount": 540.0,
+      "expenseName": "VS CENOGRAFIA LTDA"
     },
     {
       "sourceRow": 170,
@@ -1412,7 +1579,8 @@
       "origin": "CC",
       "originalType": "Evento",
       "meceCategory": "Eventos",
-      "amount": 1970.0
+      "amount": 1970.0,
+      "expenseName": "TV EVENTOS PRODUCAO"
     },
     {
       "sourceRow": 171,
@@ -1420,7 +1588,8 @@
       "origin": "CC",
       "originalType": "Evento",
       "meceCategory": "Eventos",
-      "amount": 87261.5
+      "amount": 87261.5,
+      "expenseName": "TD ORIGINALS S A"
     },
     {
       "sourceRow": 172,
@@ -1428,7 +1597,8 @@
       "origin": "CC",
       "originalType": "Evento",
       "meceCategory": "Eventos",
-      "amount": 3470.0
+      "amount": 3470.0,
+      "expenseName": "TUYO IMPORTACAO E COMERCIO LTDA"
     },
     {
       "sourceRow": 173,
@@ -1436,7 +1606,8 @@
       "origin": "CC",
       "originalType": "Evento",
       "meceCategory": "Eventos",
-      "amount": 9350.0
+      "amount": 9350.0,
+      "expenseName": "INNOVAPROMO COMERCIAL LTDA"
     },
     {
       "sourceRow": 174,
@@ -1444,7 +1615,8 @@
       "origin": "CC",
       "originalType": "Evento",
       "meceCategory": "Eventos",
-      "amount": 506.15
+      "amount": 506.15,
+      "expenseName": "FLUIT TECNOLOGIA S.A."
     },
     {
       "sourceRow": 175,
@@ -1452,7 +1624,8 @@
       "origin": "CC",
       "originalType": "Evento",
       "meceCategory": "Eventos",
-      "amount": 506.15
+      "amount": 506.15,
+      "expenseName": "FLUIT TECNOLOGIA S.A."
     },
     {
       "sourceRow": 176,
@@ -1460,7 +1633,8 @@
       "origin": "CC",
       "originalType": "Evento",
       "meceCategory": "Eventos",
-      "amount": 8390.4
+      "amount": 8390.4,
+      "expenseName": "RESTAURANTE ILHA PAULISTA"
     },
     {
       "sourceRow": 177,
@@ -1468,7 +1642,8 @@
       "origin": "CC",
       "originalType": "Evento",
       "meceCategory": "Eventos",
-      "amount": 3360.0
+      "amount": 3360.0,
+      "expenseName": "ALEM DA MIDIA"
     },
     {
       "sourceRow": 178,
@@ -1476,7 +1651,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 500.0
+      "amount": 500.0,
+      "expenseName": "FACEBK *N222KFD3C2"
     },
     {
       "sourceRow": 179,
@@ -1484,7 +1660,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 500.0
+      "amount": 500.0,
+      "expenseName": "FACEBK *4BZK2K53C2"
     },
     {
       "sourceRow": 180,
@@ -1492,7 +1669,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 6.65
+      "amount": 6.65,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 181,
@@ -1500,7 +1678,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 189.97
+      "amount": 189.97,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 182,
@@ -1508,7 +1687,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 449.99
+      "amount": 449.99,
+      "expenseName": "LINKEDIN"
     },
     {
       "sourceRow": 183,
@@ -1516,7 +1696,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 449.99
+      "amount": 449.99,
+      "expenseName": "LINKEDIN"
     },
     {
       "sourceRow": 184,
@@ -1524,7 +1705,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 449.99
+      "amount": 449.99,
+      "expenseName": "LINKEDIN"
     },
     {
       "sourceRow": 185,
@@ -1532,7 +1714,8 @@
       "origin": "Conta Simples",
       "originalType": "Saas",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 78.46
+      "amount": 78.46,
+      "expenseName": "APOLLO.IO"
     },
     {
       "sourceRow": 186,
@@ -1540,7 +1723,8 @@
       "origin": "Conta Simples",
       "originalType": "Saas",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 2241.6
+      "amount": 2241.6,
+      "expenseName": "APOLLO.IO"
     },
     {
       "sourceRow": 187,
@@ -1548,7 +1732,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 4079.88
+      "amount": 4079.88,
+      "expenseName": "LINKEDIN"
     },
     {
       "sourceRow": 188,
@@ -1556,7 +1741,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 449.99
+      "amount": 449.99,
+      "expenseName": "LINKEDIN"
     },
     {
       "sourceRow": 189,
@@ -1564,7 +1750,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 1000.0
+      "amount": 1000.0,
+      "expenseName": "FACEBK *6V5RVFZ2C2"
     },
     {
       "sourceRow": 190,
@@ -1572,7 +1759,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 7.6
+      "amount": 7.6,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 191,
@@ -1580,7 +1768,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 217.1
+      "amount": 217.1,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 192,
@@ -1588,7 +1777,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 161.87
+      "amount": 161.87,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 193,
@@ -1596,7 +1786,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 5.67
+      "amount": 5.67,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 194,
@@ -1604,7 +1795,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 2.83
+      "amount": 2.83,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 195,
@@ -1612,7 +1804,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 80.94
+      "amount": 80.94,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 196,
@@ -1620,7 +1813,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 133.56
+      "amount": 133.56,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 197,
@@ -1628,7 +1822,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 4.67
+      "amount": 4.67,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 198,
@@ -1636,7 +1831,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 986.59
+      "amount": 986.59,
+      "expenseName": "AIRBNB * HM445ZH8NK"
     },
     {
       "sourceRow": 199,
@@ -1644,7 +1840,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 6.54
+      "amount": 6.54,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 200,
@@ -1652,7 +1849,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 186.98
+      "amount": 186.98,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 201,
@@ -1660,7 +1858,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 186.98
+      "amount": 186.98,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 202,
@@ -1668,7 +1867,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 6.54
+      "amount": 6.54,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 203,
@@ -1676,7 +1876,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 1000.0
+      "amount": 1000.0,
+      "expenseName": "FACEBK *ABE5PGM2C2"
     },
     {
       "sourceRow": 204,
@@ -1684,7 +1885,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 700.59
+      "amount": 700.59,
+      "expenseName": "LINKEDIN"
     },
     {
       "sourceRow": 205,
@@ -1692,7 +1894,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 1000.0
+      "amount": 1000.0,
+      "expenseName": "FACEBK *DS3MLG93C2"
     },
     {
       "sourceRow": 206,
@@ -1700,7 +1903,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 188.53
+      "amount": 188.53,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 207,
@@ -1708,7 +1912,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 6.6
+      "amount": 6.6,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 208,
@@ -1716,7 +1921,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 411.0
+      "amount": 411.0,
+      "expenseName": "AMAZONMKTPLC*JFROQUEDO"
     },
     {
       "sourceRow": 209,
@@ -1724,7 +1930,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 53.87
+      "amount": 53.87,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 210,
@@ -1732,7 +1939,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 1.89
+      "amount": 1.89,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 211,
@@ -1740,7 +1948,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 53.87
+      "amount": 53.87,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 212,
@@ -1748,7 +1957,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 1.89
+      "amount": 1.89,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 213,
@@ -1756,7 +1966,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 108.75
+      "amount": 108.75,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 214,
@@ -1764,7 +1975,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 3.81
+      "amount": 3.81,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 215,
@@ -1772,7 +1984,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 492.0
+      "amount": 492.0,
+      "expenseName": "AIRBNB * HM93SM2NYW"
     },
     {
       "sourceRow": 216,
@@ -1780,7 +1993,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 53.99
+      "amount": 53.99,
+      "expenseName": "UBER* PENDING"
     },
     {
       "sourceRow": 217,
@@ -1788,7 +2002,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 3.81
+      "amount": 3.81,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 218,
@@ -1796,7 +2011,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 108.97
+      "amount": 108.97,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 219,
@@ -1804,7 +2020,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 136.21
+      "amount": 136.21,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 220,
@@ -1812,7 +2029,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 4.77
+      "amount": 4.77,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 221,
@@ -1820,7 +2038,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 289.8
+      "amount": 289.8,
+      "expenseName": "EBN    *DATAFORSEO"
     },
     {
       "sourceRow": 222,
@@ -1828,7 +2047,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 54.48
+      "amount": 54.48,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 223,
@@ -1836,7 +2056,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 1.91
+      "amount": 1.91,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 224,
@@ -1844,7 +2065,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 54.48
+      "amount": 54.48,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 225,
@@ -1852,7 +2074,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 1.91
+      "amount": 1.91,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 226,
@@ -1860,7 +2083,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 43.59
+      "amount": 43.59,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 227,
@@ -1868,7 +2092,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 1.53
+      "amount": 1.53,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 228,
@@ -1876,7 +2101,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 190.69
+      "amount": 190.69,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 229,
@@ -1884,7 +2110,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 6.67
+      "amount": 6.67,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 230,
@@ -1892,7 +2119,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 5.72
+      "amount": 5.72,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 231,
@@ -1900,7 +2128,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 163.45
+      "amount": 163.45,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 232,
@@ -1908,7 +2137,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 108.97
+      "amount": 108.97,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 233,
@@ -1916,7 +2146,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 3.81
+      "amount": 3.81,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 234,
@@ -1924,7 +2155,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 56.59
+      "amount": 56.59,
+      "expenseName": "UBER* PENDING"
     },
     {
       "sourceRow": 235,
@@ -1932,7 +2164,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 1000.0
+      "amount": 1000.0,
+      "expenseName": "FACEBK *MKPDYG93C2"
     },
     {
       "sourceRow": 236,
@@ -1940,7 +2173,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 870.21
+      "amount": 870.21,
+      "expenseName": "LINKEDIN"
     },
     {
       "sourceRow": 237,
@@ -1948,7 +2182,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 0.94
+      "amount": 0.94,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 238,
@@ -1956,7 +2191,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 26.92
+      "amount": 26.92,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 239,
@@ -1964,7 +2200,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 0.94
+      "amount": 0.94,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 240,
@@ -1972,7 +2209,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 26.92
+      "amount": 26.92,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 241,
@@ -1980,7 +2218,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 2.83
+      "amount": 2.83,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 242,
@@ -1988,7 +2227,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 80.76
+      "amount": 80.76,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 243,
@@ -1996,7 +2236,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 80.32
+      "amount": 80.32,
+      "expenseName": "DL          *UBERRIDES"
     },
     {
       "sourceRow": 244,
@@ -2004,7 +2245,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 1000.0
+      "amount": 1000.0,
+      "expenseName": "FACEBK *TPL4DGH2C2"
     },
     {
       "sourceRow": 245,
@@ -2012,7 +2254,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 59.68
+      "amount": 59.68,
+      "expenseName": "UBER* TRIP"
     },
     {
       "sourceRow": 246,
@@ -2020,7 +2263,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 309.0
+      "amount": 309.0,
+      "expenseName": "AIRBNB * HM93SM2NYW"
     },
     {
       "sourceRow": 247,
@@ -2028,7 +2272,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 1.89
+      "amount": 1.89,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 248,
@@ -2036,7 +2281,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 53.93
+      "amount": 53.93,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 249,
@@ -2044,7 +2290,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 26.96
+      "amount": 26.96,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 250,
@@ -2052,7 +2299,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 0.94
+      "amount": 0.94,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 251,
@@ -2060,7 +2308,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 26.96
+      "amount": 26.96,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 252,
@@ -2068,7 +2317,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 0.94
+      "amount": 0.94,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 253,
@@ -2076,7 +2326,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 80.89
+      "amount": 80.89,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 254,
@@ -2084,7 +2335,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 2.83
+      "amount": 2.83,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 255,
@@ -2092,7 +2344,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 3.99
+      "amount": 3.99,
+      "expenseName": "UBER* PENDING"
     },
     {
       "sourceRow": 256,
@@ -2100,7 +2353,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 64.57
+      "amount": 64.57,
+      "expenseName": "UBER* PENDING"
     },
     {
       "sourceRow": 257,
@@ -2108,7 +2362,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Alimentação/Hospitalidade",
-      "amount": 22.6
+      "amount": 22.6,
+      "expenseName": "RESTAURANTE SANTA JULI"
     },
     {
       "sourceRow": 258,
@@ -2116,7 +2371,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 1000.0
+      "amount": 1000.0,
+      "expenseName": "FACEBK *L899BL53C2"
     },
     {
       "sourceRow": 259,
@@ -2124,7 +2380,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 0.95
+      "amount": 0.95,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 260,
@@ -2132,7 +2389,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 27.21
+      "amount": 27.21,
+      "expenseName": "ANTHROPIC"
     },
     {
       "sourceRow": 261,
@@ -2140,7 +2398,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 108.84
+      "amount": 108.84,
+      "expenseName": "VERCEL INC."
     },
     {
       "sourceRow": 262,
@@ -2148,7 +2407,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 3.81
+      "amount": 3.81,
+      "expenseName": "VERCEL INC."
     },
     {
       "sourceRow": 263,
@@ -2156,7 +2416,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 799.0
+      "amount": 799.0,
+      "expenseName": "EBN*CANVA04828 43"
     },
     {
       "sourceRow": 264,
@@ -2164,7 +2425,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 168.0
+      "amount": 168.0,
+      "expenseName": "MERCADO*VIXEECOMMERCE"
     },
     {
       "sourceRow": 265,
@@ -2172,7 +2434,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 58.81
+      "amount": 58.81,
+      "expenseName": "UBER* PENDING"
     },
     {
       "sourceRow": 266,
@@ -2180,7 +2443,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 327.7
+      "amount": 327.7,
+      "expenseName": "MERCADOLIVRE*MERCADOLI"
     },
     {
       "sourceRow": 267,
@@ -2188,7 +2452,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 420.77
+      "amount": 420.77,
+      "expenseName": "ASSAI ATACADISTA"
     },
     {
       "sourceRow": 268,
@@ -2196,7 +2461,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 254.01
+      "amount": 254.01,
+      "expenseName": "DL          *UBERRIDES"
     },
     {
       "sourceRow": 269,
@@ -2204,7 +2470,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 38.93
+      "amount": 38.93,
+      "expenseName": "UBER *TRIP HELP.UBER.COM"
     },
     {
       "sourceRow": 270,
@@ -2212,7 +2479,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 28.3
+      "amount": 28.3,
+      "expenseName": "UBER* TRIP"
     },
     {
       "sourceRow": 271,
@@ -2220,7 +2488,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Alimentação/Hospitalidade",
-      "amount": 663.68
+      "amount": 663.68,
+      "expenseName": "RESTAURANTE MANIOCA"
     },
     {
       "sourceRow": 272,
@@ -2228,7 +2497,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 26.99
+      "amount": 26.99,
+      "expenseName": "UBER * PENDING"
     },
     {
       "sourceRow": 273,
@@ -2236,7 +2506,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 55.94
+      "amount": 55.94,
+      "expenseName": "AEMAR BAR E RESTAURA"
     },
     {
       "sourceRow": 274,
@@ -2244,7 +2515,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 31.7
+      "amount": 31.7,
+      "expenseName": "99*"
     },
     {
       "sourceRow": 275,
@@ -2252,7 +2524,8 @@
       "origin": "Conta Simples",
       "originalType": "Saas",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 111.77
+      "amount": 111.77,
+      "expenseName": "APOLLO.IO"
     },
     {
       "sourceRow": 276,
@@ -2260,7 +2533,8 @@
       "origin": "Conta Simples",
       "originalType": "Saas",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 3.91
+      "amount": 3.91,
+      "expenseName": "APOLLO.IO"
     },
     {
       "sourceRow": 277,
@@ -2268,7 +2542,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 5.81
+      "amount": 5.81,
+      "expenseName": "ZAPIER.COM/CHARGE"
     },
     {
       "sourceRow": 278,
@@ -2276,7 +2551,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 166.03
+      "amount": 166.03,
+      "expenseName": "ZAPIER.COM/CHARGE"
     },
     {
       "sourceRow": 279,
@@ -2284,7 +2560,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 50.0
+      "amount": 50.0,
+      "expenseName": "GOOGLE ADS7105678288"
     },
     {
       "sourceRow": 280,
@@ -2292,7 +2569,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 200.0
+      "amount": 200.0,
+      "expenseName": "GOOGLE ADS7105678288"
     },
     {
       "sourceRow": 281,
@@ -2300,7 +2578,8 @@
       "origin": "Conta Simples",
       "originalType": "Saas",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 2.15
+      "amount": 2.15,
+      "expenseName": "APOLLO.IO"
     },
     {
       "sourceRow": 282,
@@ -2308,7 +2587,8 @@
       "origin": "Conta Simples",
       "originalType": "Saas",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 61.44
+      "amount": 61.44,
+      "expenseName": "APOLLO.IO"
     },
     {
       "sourceRow": 283,
@@ -2316,7 +2596,8 @@
       "origin": "Conta Simples",
       "originalType": "Saas",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 6.45
+      "amount": 6.45,
+      "expenseName": "APOLLO.IO"
     },
     {
       "sourceRow": 284,
@@ -2324,7 +2605,8 @@
       "origin": "Conta Simples",
       "originalType": "Saas",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 184.21
+      "amount": 184.21,
+      "expenseName": "APOLLO.IO"
     },
     {
       "sourceRow": 285,
@@ -2332,7 +2614,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 16.03
+      "amount": 16.03,
+      "expenseName": "GOOGLE CLOUD XXVWKS"
     },
     {
       "sourceRow": 286,
@@ -2340,7 +2623,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 210.57
+      "amount": 210.57,
+      "expenseName": "GOOGLE ADS7105678288"
     },
     {
       "sourceRow": 287,
@@ -2348,7 +2632,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 3.99
+      "amount": 3.99,
+      "expenseName": "CLAUDE.AI SUBSCRIPTION"
     },
     {
       "sourceRow": 288,
@@ -2356,7 +2641,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 114.13
+      "amount": 114.13,
+      "expenseName": "CLAUDE.AI SUBSCRIPTION"
     },
     {
       "sourceRow": 289,
@@ -2364,7 +2650,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 400.0
+      "amount": 400.0,
+      "expenseName": "GOOGLE ADS7105678288"
     },
     {
       "sourceRow": 290,
@@ -2372,7 +2659,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 449.99
+      "amount": 449.99,
+      "expenseName": "LINKEDIN"
     },
     {
       "sourceRow": 291,
@@ -2380,7 +2668,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 449.99
+      "amount": 449.99,
+      "expenseName": "LINKEDIN"
     },
     {
       "sourceRow": 292,
@@ -2388,7 +2677,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 449.99
+      "amount": 449.99,
+      "expenseName": "LINKEDIN"
     },
     {
       "sourceRow": 293,
@@ -2396,7 +2686,8 @@
       "origin": "Conta Simples",
       "originalType": "Saas",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 3784.76
+      "amount": 3784.76,
+      "expenseName": "APOLLO.IO"
     },
     {
       "sourceRow": 294,
@@ -2404,7 +2695,8 @@
       "origin": "Conta Simples",
       "originalType": "Saas",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 132.47
+      "amount": 132.47,
+      "expenseName": "APOLLO.IO"
     },
     {
       "sourceRow": 295,
@@ -2412,7 +2704,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 200.08
+      "amount": 200.08,
+      "expenseName": "MERCADOLIVRE*MERCADOLI"
     },
     {
       "sourceRow": 296,
@@ -2420,7 +2713,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 449.99
+      "amount": 449.99,
+      "expenseName": "LINKEDIN"
     },
     {
       "sourceRow": 297,
@@ -2428,7 +2722,8 @@
       "origin": "CC",
       "originalType": "Sem tipo",
       "meceCategory": "Alimentação/Hospitalidade",
-      "amount": 6320.0
+      "amount": 6320.0,
+      "expenseName": "KAFE.ITINERANTE"
     },
     {
       "sourceRow": 298,
@@ -2436,7 +2731,8 @@
       "origin": "CC",
       "originalType": "Sem tipo",
       "meceCategory": "Pessoas/Freelancers",
-      "amount": 5700.0
+      "amount": 5700.0,
+      "expenseName": "Pessoa/Freelancer — identidade protegida"
     },
     {
       "sourceRow": 299,
@@ -2444,7 +2740,8 @@
       "origin": "CC",
       "originalType": "Sem tipo",
       "meceCategory": "Serviços de Apoio a Eventos",
-      "amount": 1800.31
+      "amount": 1800.31,
+      "expenseName": "FLUIT TECNOLOGIA S.A."
     },
     {
       "sourceRow": 300,
@@ -2452,7 +2749,8 @@
       "origin": "CC",
       "originalType": "Sem tipo",
       "meceCategory": "Pessoas/Freelancers",
-      "amount": 2000.0
+      "amount": 2000.0,
+      "expenseName": "Pessoa/Freelancer — identidade protegida"
     },
     {
       "sourceRow": 301,
@@ -2460,7 +2758,8 @@
       "origin": "CC",
       "originalType": "Sem tipo",
       "meceCategory": "Brindes/Material Promocional",
-      "amount": 1090.0
+      "amount": 1090.0,
+      "expenseName": "GALERIAPIX"
     },
     {
       "sourceRow": 302,
@@ -2468,7 +2767,8 @@
       "origin": "CC",
       "originalType": "Sem tipo",
       "meceCategory": "Alimentação/Hospitalidade",
-      "amount": 6320.0
+      "amount": 6320.0,
+      "expenseName": "KAFE.ITINERANTE"
     },
     {
       "sourceRow": 303,
@@ -2476,7 +2776,8 @@
       "origin": "CC",
       "originalType": "Sem tipo",
       "meceCategory": "Alimentação/Hospitalidade",
-      "amount": 8390.0
+      "amount": 8390.0,
+      "expenseName": "RESTAURANTE ILHA PAULISTA"
     },
     {
       "sourceRow": 304,
@@ -2484,7 +2785,8 @@
       "origin": "CC",
       "originalType": "Sem tipo",
       "meceCategory": "Brindes/Material Promocional",
-      "amount": 3470.0
+      "amount": 3470.0,
+      "expenseName": "TUYO IMPORTACAO E COMERCIO LTDA"
     },
     {
       "sourceRow": 305,
@@ -2492,7 +2794,8 @@
       "origin": "CC",
       "originalType": "Sem tipo",
       "meceCategory": "Serviços de Apoio a Eventos",
-      "amount": 10530.0
+      "amount": 10530.0,
+      "expenseName": "SONSER ENTRETENIMENTO"
     },
     {
       "sourceRow": 306,
@@ -2500,7 +2803,8 @@
       "origin": "CC",
       "originalType": "Sem tipo",
       "meceCategory": "Brindes/Material Promocional",
-      "amount": 9350.0
+      "amount": 9350.0,
+      "expenseName": "INNOVAPROMO COMERCIAL LTDA"
     },
     {
       "sourceRow": 307,
@@ -2508,7 +2812,8 @@
       "origin": "CC",
       "originalType": "Sem tipo",
       "meceCategory": "Pessoas/Freelancers",
-      "amount": 1100.0
+      "amount": 1100.0,
+      "expenseName": "Pessoa/Freelancer — identidade protegida"
     },
     {
       "sourceRow": 308,
@@ -2516,7 +2821,8 @@
       "origin": "CC",
       "originalType": "Sem tipo",
       "meceCategory": "Associações/Institucional",
-      "amount": 12200.5
+      "amount": 12200.5,
+      "expenseName": "VCRP BRASIL"
     },
     {
       "sourceRow": 309,
@@ -2524,7 +2830,8 @@
       "origin": "CC",
       "originalType": "Sem tipo",
       "meceCategory": "Serviços de Apoio a Eventos",
-      "amount": 1864.0
+      "amount": 1864.0,
+      "expenseName": "YAPAY PAGAMENTOS ONLINE LTDA"
     },
     {
       "sourceRow": 310,
@@ -2532,7 +2839,8 @@
       "origin": "CC",
       "originalType": "Sem tipo",
       "meceCategory": "Brindes/Material Promocional",
-      "amount": 3930.0
+      "amount": 3930.0,
+      "expenseName": "TV EVENTOS PRODUCAO"
     },
     {
       "sourceRow": 311,
@@ -2540,7 +2848,8 @@
       "origin": "CC",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 140.0
+      "amount": 140.0,
+      "expenseName": "TALL ONE BUSINESS"
     },
     {
       "sourceRow": 312,
@@ -2548,7 +2857,8 @@
       "origin": "CC",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 136.45
+      "amount": 136.45,
+      "expenseName": "RODRIGUES SOLUCOES EMPRESARIAIS"
     },
     {
       "sourceRow": 313,
@@ -2556,7 +2866,8 @@
       "origin": "CC",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 70.0
+      "amount": 70.0,
+      "expenseName": "EVBS SOLUCOES"
     },
     {
       "sourceRow": 314,
@@ -2564,7 +2875,8 @@
       "origin": "CC",
       "originalType": "Sem tipo",
       "meceCategory": "Brindes/Material Promocional",
-      "amount": 10010.0
+      "amount": 10010.0,
+      "expenseName": "MOBILE BOX"
     },
     {
       "sourceRow": 315,
@@ -2572,7 +2884,8 @@
       "origin": "CC",
       "originalType": "Sem tipo",
       "meceCategory": "Alimentação/Hospitalidade",
-      "amount": 500.0
+      "amount": 500.0,
+      "expenseName": "KAFE.ITINERANTE"
     },
     {
       "sourceRow": 316,
@@ -2580,7 +2893,8 @@
       "origin": "CC",
       "originalType": "Agência",
       "meceCategory": "Agência/SEO",
-      "amount": 6630.0
+      "amount": 6630.0,
+      "expenseName": "CAMP1"
     },
     {
       "sourceRow": 317,
@@ -2588,7 +2902,8 @@
       "origin": "CC",
       "originalType": "Sem tipo",
       "meceCategory": "Brindes/Material Promocional",
-      "amount": 6570.0
+      "amount": 6570.0,
+      "expenseName": "GALERIAPIX"
     },
     {
       "sourceRow": 318,
@@ -2596,7 +2911,8 @@
       "origin": "CC",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 474.0
+      "amount": 474.0,
+      "expenseName": "ALEM DA MIDIA"
     },
     {
       "sourceRow": 319,
@@ -2604,7 +2920,8 @@
       "origin": "CC",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 37.0
+      "amount": 37.0,
+      "expenseName": "MAURILHO ANGELO FERREIRA"
     },
     {
       "sourceRow": 320,
@@ -2612,7 +2929,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 149.77
+      "amount": 149.77,
+      "expenseName": "TURBI"
     },
     {
       "sourceRow": 321,
@@ -2620,7 +2938,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 129.35
+      "amount": 129.35,
+      "expenseName": "TURBI FECHAMENTO"
     },
     {
       "sourceRow": 322,
@@ -2628,7 +2947,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 155.79
+      "amount": 155.79,
+      "expenseName": "LOCALIZA"
     },
     {
       "sourceRow": 323,
@@ -2636,7 +2956,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 850.0
+      "amount": 850.0,
+      "expenseName": "FACEBK *XCZQ8N53C2"
     },
     {
       "sourceRow": 324,
@@ -2644,7 +2965,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 910.04
+      "amount": 910.04,
+      "expenseName": "IBIS BUDGET SP JARDINS"
     },
     {
       "sourceRow": 325,
@@ -2652,7 +2974,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 1027.4
+      "amount": 1027.4,
+      "expenseName": "IBIS BUDGET SP JARDINS"
     },
     {
       "sourceRow": 326,
@@ -2660,7 +2983,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 824.0
+      "amount": 824.0,
+      "expenseName": "SAINT GERMAIN PANIFICADOR"
     },
     {
       "sourceRow": 327,
@@ -2668,7 +2992,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 1000.0
+      "amount": 1000.0,
+      "expenseName": "FACEBK *SH5FCJD2C2"
     },
     {
       "sourceRow": 328,
@@ -2676,7 +3001,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 5775.9
+      "amount": 5775.9,
+      "expenseName": "MERCADO*19PRODUTOS"
     },
     {
       "sourceRow": 329,
@@ -2684,7 +3010,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 292.0
+      "amount": 292.0,
+      "expenseName": "SAINT GERMAIN PANIFICADOR"
     },
     {
       "sourceRow": 330,
@@ -2692,7 +3019,8 @@
       "origin": "Conta Simples",
       "originalType": "Saas",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 19.65
+      "amount": 19.65,
+      "expenseName": "APOLLO.IO"
     },
     {
       "sourceRow": 331,
@@ -2700,7 +3028,8 @@
       "origin": "Conta Simples",
       "originalType": "Saas",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 561.4
+      "amount": 561.4,
+      "expenseName": "APOLLO.IO"
     },
     {
       "sourceRow": 332,
@@ -2708,7 +3037,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 449.99
+      "amount": 449.99,
+      "expenseName": "LINKEDIN"
     },
     {
       "sourceRow": 333,
@@ -2716,7 +3046,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 449.99
+      "amount": 449.99,
+      "expenseName": "LINKEDIN"
     },
     {
       "sourceRow": 334,
@@ -2724,7 +3055,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 224.99
+      "amount": 224.99,
+      "expenseName": "LINKEDIN"
     },
     {
       "sourceRow": 335,
@@ -2732,7 +3064,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 449.99
+      "amount": 449.99,
+      "expenseName": "LINKEDIN"
     },
     {
       "sourceRow": 336,
@@ -2740,7 +3073,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 1000.0
+      "amount": 1000.0,
+      "expenseName": "FACEBK *USEVKKM2C2"
     },
     {
       "sourceRow": 337,
@@ -2748,7 +3082,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 1000.0
+      "amount": 1000.0,
+      "expenseName": "FACEBK *BY24RJH2C2"
     },
     {
       "sourceRow": 338,
@@ -2756,7 +3091,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 62.14
+      "amount": 62.14,
+      "expenseName": "GOL LINHAS A*YRLT"
     },
     {
       "sourceRow": 339,
@@ -2764,7 +3100,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 1348.11
+      "amount": 1348.11,
+      "expenseName": "GOL LINHAS A*YRLT"
     },
     {
       "sourceRow": 340,
@@ -2772,7 +3109,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 11.92
+      "amount": 11.92,
+      "expenseName": "VSA_TIXU.AI"
     },
     {
       "sourceRow": 341,
@@ -2780,7 +3118,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 340.44
+      "amount": 340.44,
+      "expenseName": "VSA_TIXU.AI"
     },
     {
       "sourceRow": 342,
@@ -2788,7 +3127,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 1500.0
+      "amount": 1500.0,
+      "expenseName": "FACEBK *D8RM6MV2C2"
     },
     {
       "sourceRow": 343,
@@ -2796,7 +3136,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 16.0
+      "amount": 16.0,
+      "expenseName": "PARK PARK ESTACION"
     },
     {
       "sourceRow": 344,
@@ -2804,7 +3145,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 3.0
+      "amount": 3.0,
+      "expenseName": "BASE ESTACIONAMENTOS"
     },
     {
       "sourceRow": 345,
@@ -2812,7 +3154,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 1110.24
+      "amount": 1110.24,
+      "expenseName": "ADOBE       *ADOBE"
     },
     {
       "sourceRow": 346,
@@ -2820,7 +3163,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 20.0
+      "amount": 20.0,
+      "expenseName": "OLIMPARK VILA OLIMPIA"
     },
     {
       "sourceRow": 347,
@@ -2828,7 +3172,8 @@
       "origin": "Conta Simples",
       "originalType": "Saas",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 3.79
+      "amount": 3.79,
+      "expenseName": "MANUS AI"
     },
     {
       "sourceRow": 348,
@@ -2836,7 +3181,8 @@
       "origin": "Conta Simples",
       "originalType": "Saas",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 108.41
+      "amount": 108.41,
+      "expenseName": "MANUS AI"
     },
     {
       "sourceRow": 349,
@@ -2844,7 +3190,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 1000.0
+      "amount": 1000.0,
+      "expenseName": "FACEBK *MRJCTK93C2"
     },
     {
       "sourceRow": 350,
@@ -2852,7 +3199,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 4.5
+      "amount": 4.5,
+      "expenseName": "DL*UBERRIDES"
     },
     {
       "sourceRow": 351,
@@ -2860,7 +3208,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 47.42
+      "amount": 47.42,
+      "expenseName": "DL*UBERRIDES"
     },
     {
       "sourceRow": 352,
@@ -2868,7 +3217,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 60.55
+      "amount": 60.55,
+      "expenseName": "99*"
     },
     {
       "sourceRow": 353,
@@ -2876,7 +3226,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 7.2
+      "amount": 7.2,
+      "expenseName": "99*"
     },
     {
       "sourceRow": 354,
@@ -2884,7 +3235,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 1289.44
+      "amount": 1289.44,
+      "expenseName": "CASA LA PASTINA"
     },
     {
       "sourceRow": 355,
@@ -2892,7 +3244,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 20.29
+      "amount": 20.29,
+      "expenseName": "DL*UBERRIDES"
     },
     {
       "sourceRow": 356,
@@ -2900,7 +3253,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 1000.0
+      "amount": 1000.0,
+      "expenseName": "FACEBK *9P9N2KD2C2"
     },
     {
       "sourceRow": 357,
@@ -2908,7 +3262,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 99.0
+      "amount": 99.0,
+      "expenseName": "MERCADO*MERCADOLIVRE"
     },
     {
       "sourceRow": 358,
@@ -2916,7 +3271,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 72.22
+      "amount": 72.22,
+      "expenseName": "DL*UBERRIDES"
     },
     {
       "sourceRow": 359,
@@ -2924,7 +3280,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 449.99
+      "amount": 449.99,
+      "expenseName": "PPRO*LINKEDIN"
     },
     {
       "sourceRow": 360,
@@ -2932,7 +3289,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 91.43
+      "amount": 91.43,
+      "expenseName": "DL*UBERRIDES"
     },
     {
       "sourceRow": 361,
@@ -2940,7 +3298,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 1000.0
+      "amount": 1000.0,
+      "expenseName": "FACEBK *LQFZ6P53C2"
     },
     {
       "sourceRow": 362,
@@ -2948,7 +3307,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 18.0
+      "amount": 18.0,
+      "expenseName": "TREVO"
     },
     {
       "sourceRow": 363,
@@ -2956,7 +3316,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 53.3
+      "amount": 53.3,
+      "expenseName": "ELISEU GUILHERME 200"
     },
     {
       "sourceRow": 364,
@@ -2964,7 +3325,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 451.44
+      "amount": 451.44,
+      "expenseName": "TUTTO DI NAPOLI BAR E"
     },
     {
       "sourceRow": 365,
@@ -2972,7 +3334,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 69.99
+      "amount": 69.99,
+      "expenseName": "NNP PARTICIPACOES E SE"
     },
     {
       "sourceRow": 366,
@@ -2980,7 +3343,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 1000.0
+      "amount": 1000.0,
+      "expenseName": "FACEBK *RYN5AP53C2"
     },
     {
       "sourceRow": 367,
@@ -2988,7 +3352,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 1022.01
+      "amount": 1022.01,
+      "expenseName": "LINKEDIN"
     },
     {
       "sourceRow": 368,
@@ -2996,7 +3361,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 1000.0
+      "amount": 1000.0,
+      "expenseName": "FACEBK *S6VSJKH2C2"
     },
     {
       "sourceRow": 369,
@@ -3004,7 +3370,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 1000.0
+      "amount": 1000.0,
+      "expenseName": "FACEBK *TMDW9L93C2"
     },
     {
       "sourceRow": 370,
@@ -3012,7 +3379,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 1000.0
+      "amount": 1000.0,
+      "expenseName": "FACEBK *QCXP8LZ2C2"
     },
     {
       "sourceRow": 371,
@@ -3020,7 +3388,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 1500.0
+      "amount": 1500.0,
+      "expenseName": "FACEBK *5GMALLM2C2"
     },
     {
       "sourceRow": 372,
@@ -3028,7 +3397,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 30.0
+      "amount": 30.0,
+      "expenseName": "23M- 23 DE MAIO"
     },
     {
       "sourceRow": 373,
@@ -3036,7 +3406,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 1000.0
+      "amount": 1000.0,
+      "expenseName": "FACEBK *U55LEL93C2"
     },
     {
       "sourceRow": 374,
@@ -3044,7 +3415,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 774.2
+      "amount": 774.2,
+      "expenseName": "LINKEDIN"
     },
     {
       "sourceRow": 375,
@@ -3052,7 +3424,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 24.0
+      "amount": 24.0,
+      "expenseName": "REBECA"
     },
     {
       "sourceRow": 376,
@@ -3060,7 +3433,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 2000.0
+      "amount": 2000.0,
+      "expenseName": "FACEBK *7PZSFL93C2"
     },
     {
       "sourceRow": 377,
@@ -3068,7 +3442,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 1.81
+      "amount": 1.81,
+      "expenseName": "PADDLE.NET* N8N CLOUD1"
     },
     {
       "sourceRow": 378,
@@ -3076,7 +3451,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 51.79
+      "amount": 51.79,
+      "expenseName": "PADDLE.NET* N8N CLOUD1"
     },
     {
       "sourceRow": 379,
@@ -3084,7 +3460,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 28.05
+      "amount": 28.05,
+      "expenseName": "VERCEL INC."
     },
     {
       "sourceRow": 380,
@@ -3092,7 +3469,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 801.4
+      "amount": 801.4,
+      "expenseName": "VERCEL INC."
     },
     {
       "sourceRow": 381,
@@ -3100,7 +3478,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 1000.0
+      "amount": 1000.0,
+      "expenseName": "FACEBK *PEC9SLM2C2"
     },
     {
       "sourceRow": 382,
@@ -3108,7 +3487,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 800.0
+      "amount": 800.0,
+      "expenseName": "GOOGLE ADS7105678288"
     },
     {
       "sourceRow": 383,
@@ -3116,7 +3496,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 1410.0
+      "amount": 1410.0,
+      "expenseName": "EBN*CANVA0485"
     },
     {
       "sourceRow": 384,
@@ -3124,7 +3505,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 1000.0
+      "amount": 1000.0,
+      "expenseName": "FACEBK *UKD8YKH2C2"
     },
     {
       "sourceRow": 385,
@@ -3132,7 +3514,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 30.99
+      "amount": 30.99,
+      "expenseName": "DL*UBERRIDES"
     },
     {
       "sourceRow": 386,
@@ -3140,7 +3523,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 27.15
+      "amount": 27.15,
+      "expenseName": "DL*UBERRIDES"
     },
     {
       "sourceRow": 387,
@@ -3148,7 +3532,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 932.25
+      "amount": 932.25,
+      "expenseName": "BARBACOA"
     },
     {
       "sourceRow": 388,
@@ -3156,7 +3541,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 270.99
+      "amount": 270.99,
+      "expenseName": "IFD*MANDA MIMO CESTAS"
     },
     {
       "sourceRow": 389,
@@ -3164,7 +3550,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 40.0
+      "amount": 40.0,
+      "expenseName": "3A ESTACIONAMENTO"
     },
     {
       "sourceRow": 390,
@@ -3172,7 +3559,8 @@
       "origin": "Conta Simples",
       "originalType": "Saas",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 23.0
+      "amount": 23.0,
+      "expenseName": "EBN         *ADOBE"
     },
     {
       "sourceRow": 391,
@@ -3180,7 +3568,8 @@
       "origin": "Conta Simples",
       "originalType": "Saas",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 95.0
+      "amount": 95.0,
+      "expenseName": "EBN         *ADOBE"
     },
     {
       "sourceRow": 392,
@@ -3188,7 +3577,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 54.4
+      "amount": 54.4,
+      "expenseName": "DL*UBERRIDES"
     },
     {
       "sourceRow": 393,
@@ -3196,7 +3586,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 47.61
+      "amount": 47.61,
+      "expenseName": "DL*UBERRIDES"
     },
     {
       "sourceRow": 394,
@@ -3204,7 +3595,8 @@
       "origin": "Conta Simples",
       "originalType": "Saas",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 1987.02
+      "amount": 1987.02,
+      "expenseName": "TREBLE.AI"
     },
     {
       "sourceRow": 395,
@@ -3212,7 +3604,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 582.29
+      "amount": 582.29,
+      "expenseName": "DROGASIL1971"
     },
     {
       "sourceRow": 396,
@@ -3220,7 +3613,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 5.57
+      "amount": 5.57,
+      "expenseName": "ZAPIER.COM/CHARGE"
     },
     {
       "sourceRow": 397,
@@ -3228,7 +3622,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 159.14
+      "amount": 159.14,
+      "expenseName": "ZAPIER.COM/CHARGE"
     },
     {
       "sourceRow": 398,
@@ -3236,7 +3631,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Alimentação/Hospitalidade",
-      "amount": 67.5
+      "amount": 67.5,
+      "expenseName": "BUTIQUIM DO CELSO"
     },
     {
       "sourceRow": 399,
@@ -3244,7 +3640,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Alimentação/Hospitalidade",
-      "amount": 1832.0
+      "amount": 1832.0,
+      "expenseName": "BUTIQUIM DO CELSO"
     },
     {
       "sourceRow": 400,
@@ -3252,7 +3649,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 12.9
+      "amount": 12.9,
+      "expenseName": "IFD*IFOOD"
     },
     {
       "sourceRow": 401,
@@ -3260,7 +3658,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 449.99
+      "amount": 449.99,
+      "expenseName": "LINKEDIN"
     },
     {
       "sourceRow": 402,
@@ -3268,7 +3667,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 449.99
+      "amount": 449.99,
+      "expenseName": "LINKEDIN"
     },
     {
       "sourceRow": 403,
@@ -3276,7 +3676,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 500.0
+      "amount": 500.0,
+      "expenseName": "PG *TRANSFORMACAO DIGI"
     },
     {
       "sourceRow": 404,
@@ -3284,7 +3685,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Alimentação/Hospitalidade",
-      "amount": 2136.79
+      "amount": 2136.79,
+      "expenseName": "HOTEL AT BOOKING.COM"
     },
     {
       "sourceRow": 405,
@@ -3292,7 +3694,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 579.1
+      "amount": 579.1,
+      "expenseName": "GOOGLE ADS7105678288"
     },
     {
       "sourceRow": 406,
@@ -3300,7 +3703,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 100.0
+      "amount": 100.0,
+      "expenseName": "POSTO PAISAGEM LTDA"
     },
     {
       "sourceRow": 407,
@@ -3308,7 +3712,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 300.0
+      "amount": 300.0,
+      "expenseName": "PG *TRANSFORMACAO DIGI"
     },
     {
       "sourceRow": 408,
@@ -3316,7 +3721,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 85.97
+      "amount": 85.97,
+      "expenseName": "DL          *UBERRIDES"
     },
     {
       "sourceRow": 409,
@@ -3324,7 +3730,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 26.3
+      "amount": 26.3,
+      "expenseName": "PIRIQUITO PAES"
     },
     {
       "sourceRow": 410,
@@ -3332,7 +3739,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 14.0
+      "amount": 14.0,
+      "expenseName": "SKINA 10 COMERCIO DE AL"
     },
     {
       "sourceRow": 411,
@@ -3340,7 +3748,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 48.94
+      "amount": 48.94,
+      "expenseName": "DL          *UBERRIDES"
     },
     {
       "sourceRow": 412,
@@ -3348,7 +3757,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 25.9
+      "amount": 25.9,
+      "expenseName": "LRC MARKET"
     },
     {
       "sourceRow": 413,
@@ -3356,7 +3766,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 302.13
+      "amount": 302.13,
+      "expenseName": "DROGARIA SAO PAULO 271"
     },
     {
       "sourceRow": 414,
@@ -3364,7 +3775,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 500.0
+      "amount": 500.0,
+      "expenseName": "PG *TRANSFORMACAO DIGI"
     },
     {
       "sourceRow": 415,
@@ -3372,7 +3784,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 45.98
+      "amount": 45.98,
+      "expenseName": "DL          *UBERRIDES"
     },
     {
       "sourceRow": 416,
@@ -3380,7 +3793,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 57.83
+      "amount": 57.83,
+      "expenseName": "DL          *UBERRIDES"
     },
     {
       "sourceRow": 417,
@@ -3388,7 +3802,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 34.0
+      "amount": 34.0,
+      "expenseName": "MMT FEIRAS E EVENTOS L"
     },
     {
       "sourceRow": 418,
@@ -3396,7 +3811,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 300.0
+      "amount": 300.0,
+      "expenseName": "PG *TRANSFORMACAO DIGI"
     },
     {
       "sourceRow": 419,
@@ -3404,7 +3820,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 54.0
+      "amount": 54.0,
+      "expenseName": "DOMINGOS DE MORAES"
     },
     {
       "sourceRow": 420,
@@ -3412,7 +3829,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 300.0
+      "amount": 300.0,
+      "expenseName": "PG *TRANSFORMACAO DIGI"
     },
     {
       "sourceRow": 421,
@@ -3420,7 +3838,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 110.0
+      "amount": 110.0,
+      "expenseName": "LIMACRUZCOMERCIO"
     },
     {
       "sourceRow": 422,
@@ -3428,7 +3847,8 @@
       "origin": "Conta Simples",
       "originalType": "Evento",
       "meceCategory": "Eventos",
-      "amount": 56.0
+      "amount": 56.0,
+      "expenseName": "RAFAEL NARDI EVENTOS"
     },
     {
       "sourceRow": 423,
@@ -3436,7 +3856,8 @@
       "origin": "Conta Simples",
       "originalType": "Evento",
       "meceCategory": "Eventos",
-      "amount": 122.0
+      "amount": 122.0,
+      "expenseName": "RAFAEL NARDI EVENTOS"
     },
     {
       "sourceRow": 424,
@@ -3444,7 +3865,8 @@
       "origin": "Conta Simples",
       "originalType": "Evento",
       "meceCategory": "Eventos",
-      "amount": 144.0
+      "amount": 144.0,
+      "expenseName": "RAFAEL NARDI EVENTOS"
     },
     {
       "sourceRow": 425,
@@ -3452,7 +3874,8 @@
       "origin": "Conta Simples",
       "originalType": "Evento",
       "meceCategory": "Eventos",
-      "amount": 188.0
+      "amount": 188.0,
+      "expenseName": "RAFAEL NARDI EVENTOS"
     },
     {
       "sourceRow": 426,
@@ -3460,7 +3883,8 @@
       "origin": "Conta Simples",
       "originalType": "Evento",
       "meceCategory": "Eventos",
-      "amount": 128.0
+      "amount": 128.0,
+      "expenseName": "RAFAEL NARDI EVENTOS"
     },
     {
       "sourceRow": 427,
@@ -3468,7 +3892,8 @@
       "origin": "Conta Simples",
       "originalType": "Evento",
       "meceCategory": "Eventos",
-      "amount": 72.0
+      "amount": 72.0,
+      "expenseName": "RAFAEL NARDI EVENTOS"
     },
     {
       "sourceRow": 428,
@@ -3476,7 +3901,8 @@
       "origin": "Conta Simples",
       "originalType": "Evento",
       "meceCategory": "Eventos",
-      "amount": 338.0
+      "amount": 338.0,
+      "expenseName": "RAFAEL NARDI EVENTOS"
     },
     {
       "sourceRow": 429,
@@ -3484,7 +3910,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 70.0
+      "amount": 70.0,
+      "expenseName": "CRUZEIROS BAR, LA"
     },
     {
       "sourceRow": 430,
@@ -3492,7 +3919,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 70.0
+      "amount": 70.0,
+      "expenseName": "CRUZEIROS BAR, LA"
     },
     {
       "sourceRow": 431,
@@ -3500,7 +3928,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 70.0
+      "amount": 70.0,
+      "expenseName": "CRUZEIROS BAR, LA"
     },
     {
       "sourceRow": 432,
@@ -3508,7 +3937,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 431.05
+      "amount": 431.05,
+      "expenseName": "POSTMAN TEAM (MONTHLY)"
     },
     {
       "sourceRow": 433,
@@ -3516,7 +3946,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 15.09
+      "amount": 15.09,
+      "expenseName": "POSTMAN TEAM (MONTHLY)"
     },
     {
       "sourceRow": 434,
@@ -3524,7 +3955,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 12.0
+      "amount": 12.0,
+      "expenseName": "3B EVENTOS"
     },
     {
       "sourceRow": 435,
@@ -3532,7 +3964,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 120.0
+      "amount": 120.0,
+      "expenseName": "SCP EXPO CENTER N"
     },
     {
       "sourceRow": 436,
@@ -3540,7 +3973,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 125.0
+      "amount": 125.0,
+      "expenseName": "SCP EXPO CENTER N"
     },
     {
       "sourceRow": 437,
@@ -3548,7 +3982,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 115.0
+      "amount": 115.0,
+      "expenseName": "SCP EXPO CENTER N"
     },
     {
       "sourceRow": 438,
@@ -3556,7 +3991,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 125.0
+      "amount": 125.0,
+      "expenseName": "SCP EXPO CENTER N"
     },
     {
       "sourceRow": 439,
@@ -3564,7 +4000,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 125.0
+      "amount": 125.0,
+      "expenseName": "SCP EXPO CENTER N"
     },
     {
       "sourceRow": 440,
@@ -3572,7 +4009,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 12.16
+      "amount": 12.16,
+      "expenseName": "DL          *UBERRIDES"
     },
     {
       "sourceRow": 441,
@@ -3580,7 +4018,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 30.97
+      "amount": 30.97,
+      "expenseName": "DL          *UBERRIDES"
     },
     {
       "sourceRow": 442,
@@ -3588,7 +4027,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 15.45
+      "amount": 15.45,
+      "expenseName": "UBER * PENDING"
     },
     {
       "sourceRow": 443,
@@ -3596,7 +4036,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 40.0
+      "amount": 40.0,
+      "expenseName": "FABRICIO ESTADIA E MAN"
     },
     {
       "sourceRow": 444,
@@ -3604,7 +4045,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 40.0
+      "amount": 40.0,
+      "expenseName": "FABRICIO ESTADIA E MAN"
     },
     {
       "sourceRow": 445,
@@ -3612,7 +4054,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 57.97
+      "amount": 57.97,
+      "expenseName": "DL          *UBERRIDES"
     },
     {
       "sourceRow": 446,
@@ -3620,7 +4063,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 99.67
+      "amount": 99.67,
+      "expenseName": "DL          *UBERRIDES"
     },
     {
       "sourceRow": 447,
@@ -3628,7 +4072,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 21.5
+      "amount": 21.5,
+      "expenseName": "PIRIQUITO PAES"
     },
     {
       "sourceRow": 448,
@@ -3636,7 +4081,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 57.98
+      "amount": 57.98,
+      "expenseName": "DL          *UBERRIDES"
     },
     {
       "sourceRow": 449,
@@ -3644,7 +4090,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 34.8
+      "amount": 34.8,
+      "expenseName": "PAO DE ACUCAR-0001"
     },
     {
       "sourceRow": 450,
@@ -3652,7 +4099,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 10.49
+      "amount": 10.49,
+      "expenseName": "PAO DE ACUCAR-0001"
     },
     {
       "sourceRow": 451,
@@ -3660,7 +4108,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 35.0
+      "amount": 35.0,
+      "expenseName": "LEVITA CAFE"
     },
     {
       "sourceRow": 452,
@@ -3668,7 +4117,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 56.76
+      "amount": 56.76,
+      "expenseName": "DL          *UBERRIDES"
     },
     {
       "sourceRow": 453,
@@ -3676,7 +4126,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 21.97
+      "amount": 21.97,
+      "expenseName": "DL          *UBERRIDES"
     },
     {
       "sourceRow": 454,
@@ -3684,7 +4135,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 80.98
+      "amount": 80.98,
+      "expenseName": "DL          *UBERRIDES"
     },
     {
       "sourceRow": 455,
@@ -3692,7 +4144,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 27.08
+      "amount": 27.08,
+      "expenseName": "DL          *UBERRIDES"
     },
     {
       "sourceRow": 456,
@@ -3700,7 +4153,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 110.0
+      "amount": 110.0,
+      "expenseName": "AR FAST FOOD"
     },
     {
       "sourceRow": 457,
@@ -3708,7 +4162,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Associações/Institucional",
-      "amount": 53.0
+      "amount": 53.0,
+      "expenseName": "JIM.COM* THIAGO SILVA BLA"
     },
     {
       "sourceRow": 458,
@@ -3716,7 +4171,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Associações/Institucional",
-      "amount": 291.0
+      "amount": 291.0,
+      "expenseName": "JIM.COM* THIAGO SILVA BLA"
     },
     {
       "sourceRow": 459,
@@ -3724,7 +4180,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Associações/Institucional",
-      "amount": 53.0
+      "amount": 53.0,
+      "expenseName": "JIM.COM* THIAGO SILVA BLA"
     },
     {
       "sourceRow": 460,
@@ -3732,7 +4189,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Associações/Institucional",
-      "amount": 62.9
+      "amount": 62.9,
+      "expenseName": "JIM.COM* 47843092 ERIVALD"
     },
     {
       "sourceRow": 461,
@@ -3740,7 +4198,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 40.0
+      "amount": 40.0,
+      "expenseName": "3A ESTACIONAMENTO"
     },
     {
       "sourceRow": 462,
@@ -3748,7 +4207,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 391.04
+      "amount": 391.04,
+      "expenseName": "AUTOPOSTO"
     },
     {
       "sourceRow": 463,
@@ -3756,7 +4216,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 166.0
+      "amount": 166.0,
+      "expenseName": "3B EVENTOS"
     },
     {
       "sourceRow": 464,
@@ -3764,7 +4225,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 60.0
+      "amount": 60.0,
+      "expenseName": "PDVS"
     },
     {
       "sourceRow": 465,
@@ -3772,7 +4234,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 60.0
+      "amount": 60.0,
+      "expenseName": "PDVS"
     },
     {
       "sourceRow": 466,
@@ -3780,7 +4243,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 449.99
+      "amount": 449.99,
+      "expenseName": "PPRO*LINKEDIN"
     },
     {
       "sourceRow": 467,
@@ -3788,7 +4252,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 350.0
+      "amount": 350.0,
+      "expenseName": "NORTE BAR E TRATORIA L"
     },
     {
       "sourceRow": 468,
@@ -3796,7 +4261,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 110.0
+      "amount": 110.0,
+      "expenseName": "SCP EXPO CENTER N"
     },
     {
       "sourceRow": 469,
@@ -3804,7 +4270,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 449.99
+      "amount": 449.99,
+      "expenseName": "LINKEDIN"
     },
     {
       "sourceRow": 470,
@@ -3812,7 +4279,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 449.99
+      "amount": 449.99,
+      "expenseName": "LINKEDIN"
     },
     {
       "sourceRow": 471,
@@ -3820,7 +4288,8 @@
       "origin": "Conta Simples",
       "originalType": "Saas",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 4209.21
+      "amount": 4209.21,
+      "expenseName": "APOLLO.IO"
     },
     {
       "sourceRow": 472,
@@ -3828,7 +4297,8 @@
       "origin": "Conta Simples",
       "originalType": "Saas",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 147.32
+      "amount": 147.32,
+      "expenseName": "APOLLO.IO"
     },
     {
       "sourceRow": 473,
@@ -3836,7 +4306,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 449.99
+      "amount": 449.99,
+      "expenseName": "LINKEDIN"
     },
     {
       "sourceRow": 474,
@@ -3844,7 +4315,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 115.0
+      "amount": 115.0,
+      "expenseName": "SCP EXPO CENTER N"
     },
     {
       "sourceRow": 475,
@@ -3852,7 +4324,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 120.0
+      "amount": 120.0,
+      "expenseName": "SCP EXPO CENTER N"
     },
     {
       "sourceRow": 476,
@@ -3860,7 +4333,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 130.0
+      "amount": 130.0,
+      "expenseName": "SCP EXPO CENTER N"
     },
     {
       "sourceRow": 477,
@@ -3868,7 +4342,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 23.27
+      "amount": 23.27,
+      "expenseName": "DL          *UBERRIDES"
     },
     {
       "sourceRow": 478,
@@ -3876,7 +4351,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 99.0
+      "amount": 99.0,
+      "expenseName": "DL          *UBERRIDES"
     },
     {
       "sourceRow": 479,
@@ -3884,7 +4360,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 13.9
+      "amount": 13.9,
+      "expenseName": "DL          *UBERRIDES"
     },
     {
       "sourceRow": 480,
@@ -3892,7 +4369,8 @@
       "origin": "Conta Simples",
       "originalType": "Saas",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 10.26
+      "amount": 10.26,
+      "expenseName": "APOLLO.IO"
     },
     {
       "sourceRow": 481,
@@ -3900,7 +4378,8 @@
       "origin": "Conta Simples",
       "originalType": "Saas",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 293.25
+      "amount": 293.25,
+      "expenseName": "APOLLO.IO"
     },
     {
       "sourceRow": 482,
@@ -3908,7 +4387,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 254.17
+      "amount": 254.17,
+      "expenseName": "DEEPSTASH APP"
     },
     {
       "sourceRow": 483,
@@ -3916,7 +4396,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 8.9
+      "amount": 8.9,
+      "expenseName": "DEEPSTASH APP"
     },
     {
       "sourceRow": 484,
@@ -3924,7 +4405,8 @@
       "origin": "CC",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 537.84
+      "amount": 537.84,
+      "expenseName": "JOAO ALFREDO MARTINS RODRIGUES"
     },
     {
       "sourceRow": 485,
@@ -3932,7 +4414,8 @@
       "origin": "CC",
       "originalType": "Agência",
       "meceCategory": "Agência/SEO",
-      "amount": 1626.73
+      "amount": 1626.73,
+      "expenseName": "VCRP BRASIL EMPRESA DE COMUNICACAO LTDA"
     },
     {
       "sourceRow": 486,
@@ -3940,7 +4423,8 @@
       "origin": "CC",
       "originalType": "Agência",
       "meceCategory": "Agência/SEO",
-      "amount": 6630.0
+      "amount": 6630.0,
+      "expenseName": "CAMP1"
     },
     {
       "sourceRow": 487,
@@ -3948,7 +4432,8 @@
       "origin": "CC",
       "originalType": "Sem tipo",
       "meceCategory": "Educação/Consultoria",
-      "amount": 5000.0
+      "amount": 5000.0,
+      "expenseName": "EMBRPART CONSULTORIA"
     },
     {
       "sourceRow": 488,
@@ -3956,7 +4441,8 @@
       "origin": "CC",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 1250.0
+      "amount": 1250.0,
+      "expenseName": "ART BRINDES"
     },
     {
       "sourceRow": 489,
@@ -3964,7 +4450,8 @@
       "origin": "CC",
       "originalType": "Evento",
       "meceCategory": "Eventos",
-      "amount": 15750.0
+      "amount": 15750.0,
+      "expenseName": "Conarh"
     },
     {
       "sourceRow": 490,
@@ -3972,7 +4459,8 @@
       "origin": "CC",
       "originalType": "Sem tipo",
       "meceCategory": "Associações/Institucional",
-      "amount": 2815.5
+      "amount": 2815.5,
+      "expenseName": "CONFRABUSINESS"
     },
     {
       "sourceRow": 491,
@@ -3980,7 +4468,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 1200.0
+      "amount": 1200.0,
+      "expenseName": "DL *GOOGLE ADS71056782"
     },
     {
       "sourceRow": 492,
@@ -3988,7 +4477,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 1000.0
+      "amount": 1000.0,
+      "expenseName": "FACEBK *CKMVRRR2C2"
     },
     {
       "sourceRow": 493,
@@ -3996,7 +4486,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 1500.0
+      "amount": 1500.0,
+      "expenseName": "FACEBK *2WS9LPD2C2"
     },
     {
       "sourceRow": 494,
@@ -4004,7 +4495,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 1000.0
+      "amount": 1000.0,
+      "expenseName": "FACEBK *TN8VDQD3C2"
     },
     {
       "sourceRow": 495,
@@ -4012,7 +4504,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 5.41
+      "amount": 5.41,
+      "expenseName": "IOF - ZAPIER.COM/CHARGE"
     },
     {
       "sourceRow": 496,
@@ -4020,7 +4513,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 154.62
+      "amount": 154.62,
+      "expenseName": "ZAPIER.COM/CHARGE"
     },
     {
       "sourceRow": 497,
@@ -4028,7 +4522,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 503.86
+      "amount": 503.86,
+      "expenseName": "LINKEDIN"
     },
     {
       "sourceRow": 498,
@@ -4036,7 +4531,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 2177.97
+      "amount": 2177.97,
+      "expenseName": "DL *GOOGLE ADS71056782"
     },
     {
       "sourceRow": 499,
@@ -4044,7 +4540,8 @@
       "origin": "Conta Simples",
       "originalType": "Saas",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 76.33
+      "amount": 76.33,
+      "expenseName": "FIGMA"
     },
     {
       "sourceRow": 500,
@@ -4052,7 +4549,8 @@
       "origin": "Conta Simples",
       "originalType": "Saas",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 2.67
+      "amount": 2.67,
+      "expenseName": "FIGMA"
     },
     {
       "sourceRow": 501,
@@ -4060,7 +4558,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 15.4
+      "amount": 15.4,
+      "expenseName": "DL          *UBERRIDES"
     },
     {
       "sourceRow": 502,
@@ -4068,7 +4567,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 114.34
+      "amount": 114.34,
+      "expenseName": "CLAUDE.AI SUBSCRIPTION"
     },
     {
       "sourceRow": 503,
@@ -4076,7 +4576,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 4.0
+      "amount": 4.0,
+      "expenseName": "CLAUDE.AI SUBSCRIPTION"
     },
     {
       "sourceRow": 504,
@@ -4084,7 +4585,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 17.39
+      "amount": 17.39,
+      "expenseName": "DL          *UBERRIDES"
     },
     {
       "sourceRow": 505,
@@ -4092,7 +4594,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 19.9
+      "amount": 19.9,
+      "expenseName": "UBER *ONE MEMBERSHIP UBER"
     },
     {
       "sourceRow": 506,
@@ -4100,7 +4603,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 449.99
+      "amount": 449.99,
+      "expenseName": "LINKEDIN"
     },
     {
       "sourceRow": 507,
@@ -4108,7 +4612,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 449.99
+      "amount": 449.99,
+      "expenseName": "LINKEDIN"
     },
     {
       "sourceRow": 508,
@@ -4116,7 +4621,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 224.99
+      "amount": 224.99,
+      "expenseName": "LINKEDIN"
     },
     {
       "sourceRow": 509,
@@ -4124,7 +4630,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 449.99
+      "amount": 449.99,
+      "expenseName": "LINKEDIN"
     },
     {
       "sourceRow": 510,
@@ -4132,7 +4639,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 449.99
+      "amount": 449.99,
+      "expenseName": "LINKEDIN"
     },
     {
       "sourceRow": 511,
@@ -4140,7 +4648,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 449.99
+      "amount": 449.99,
+      "expenseName": "PPRO*LINKEDIN"
     },
     {
       "sourceRow": 512,
@@ -4148,7 +4657,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 0.32
+      "amount": 0.32,
+      "expenseName": "ANTHROPIC  CLAUDE TEAM"
     },
     {
       "sourceRow": 513,
@@ -4156,7 +4666,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 9.18
+      "amount": 9.18,
+      "expenseName": "ANTHROPIC  CLAUDE TEAM"
     },
     {
       "sourceRow": 514,
@@ -4164,7 +4675,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 224.99
+      "amount": 224.99,
+      "expenseName": "LINKEDIN"
     },
     {
       "sourceRow": 515,
@@ -4172,7 +4684,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 449.99
+      "amount": 449.99,
+      "expenseName": "LINKEDIN"
     },
     {
       "sourceRow": 516,
@@ -4180,7 +4693,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 1.83
+      "amount": 1.83,
+      "expenseName": "PADDLE.NET* N8N CLOUD1"
     },
     {
       "sourceRow": 517,
@@ -4188,7 +4702,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 52.21
+      "amount": 52.21,
+      "expenseName": "PADDLE.NET* N8N CLOUD1"
     },
     {
       "sourceRow": 518,
@@ -4196,7 +4711,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 1000.0
+      "amount": 1000.0,
+      "expenseName": "FACEBK *D9M82Q93C2"
     },
     {
       "sourceRow": 519,
@@ -4204,7 +4720,8 @@
       "origin": "Conta Simples",
       "originalType": "Saas",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 19.35
+      "amount": 19.35,
+      "expenseName": "VERCEL INC."
     },
     {
       "sourceRow": 520,
@@ -4212,7 +4729,8 @@
       "origin": "Conta Simples",
       "originalType": "Saas",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 552.77
+      "amount": 552.77,
+      "expenseName": "VERCEL INC."
     },
     {
       "sourceRow": 521,
@@ -4220,7 +4738,8 @@
       "origin": "Conta Simples",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
-      "amount": 49.9
+      "amount": 49.9,
+      "expenseName": "IFD*GLOBAL PRODUCTS SO"
     },
     {
       "sourceRow": 522,
@@ -4228,7 +4747,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 449.99
+      "amount": 449.99,
+      "expenseName": "LINKEDIN"
     },
     {
       "sourceRow": 523,
@@ -4236,7 +4756,8 @@
       "origin": "Conta Simples",
       "originalType": "Mídia",
       "meceCategory": "Mídia Paga",
-      "amount": 449.99
+      "amount": 449.99,
+      "expenseName": "LINKEDIN"
     },
     {
       "sourceRow": 524,
@@ -4244,7 +4765,8 @@
       "origin": "Conta Simples",
       "originalType": "Saas",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 4.53
+      "amount": 4.53,
+      "expenseName": "TWILIO SENDGRID"
     },
     {
       "sourceRow": 525,
@@ -4252,7 +4774,8 @@
       "origin": "Conta Simples",
       "originalType": "Saas",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 129.51
+      "amount": 129.51,
+      "expenseName": "TWILIO SENDGRID"
     },
     {
       "sourceRow": 526,
@@ -4260,7 +4783,8 @@
       "origin": "Recorrência",
       "originalType": "Projeção",
       "meceCategory": "Agência/SEO",
-      "amount": 6950.0
+      "amount": 6950.0,
+      "expenseName": "Agência de PR"
     },
     {
       "sourceRow": 527,
@@ -4268,7 +4792,8 @@
       "origin": "Recorrência",
       "originalType": "Projeção",
       "meceCategory": "Agência/SEO",
-      "amount": 6950.0
+      "amount": 6950.0,
+      "expenseName": "Agência de PR"
     },
     {
       "sourceRow": 528,
@@ -4276,7 +4801,8 @@
       "origin": "Recorrência",
       "originalType": "Projeção",
       "meceCategory": "Agência/SEO",
-      "amount": 6950.0
+      "amount": 6950.0,
+      "expenseName": "Agência de PR"
     },
     {
       "sourceRow": 529,
@@ -4284,7 +4810,8 @@
       "origin": "Recorrência",
       "originalType": "Projeção",
       "meceCategory": "Agência/SEO",
-      "amount": 6950.0
+      "amount": 6950.0,
+      "expenseName": "Agência de PR"
     },
     {
       "sourceRow": 530,
@@ -4292,7 +4819,8 @@
       "origin": "Recorrência",
       "originalType": "Projeção",
       "meceCategory": "Agência/SEO",
-      "amount": 6950.0
+      "amount": 6950.0,
+      "expenseName": "Agência de PR"
     },
     {
       "sourceRow": 531,
@@ -4300,7 +4828,8 @@
       "origin": "Recorrência",
       "originalType": "Projeção",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 160.0
+      "amount": 160.0,
+      "expenseName": "Zapier"
     },
     {
       "sourceRow": 532,
@@ -4308,7 +4837,8 @@
       "origin": "Recorrência",
       "originalType": "Projeção",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 160.0
+      "amount": 160.0,
+      "expenseName": "Zapier"
     },
     {
       "sourceRow": 533,
@@ -4316,7 +4846,8 @@
       "origin": "Recorrência",
       "originalType": "Projeção",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 160.0
+      "amount": 160.0,
+      "expenseName": "Zapier"
     },
     {
       "sourceRow": 534,
@@ -4324,7 +4855,8 @@
       "origin": "Recorrência",
       "originalType": "Projeção",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 160.0
+      "amount": 160.0,
+      "expenseName": "Zapier"
     },
     {
       "sourceRow": 535,
@@ -4332,7 +4864,8 @@
       "origin": "Recorrência",
       "originalType": "Projeção",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 160.0
+      "amount": 160.0,
+      "expenseName": "Zapier"
     },
     {
       "sourceRow": 536,
@@ -4340,7 +4873,8 @@
       "origin": "Recorrência",
       "originalType": "Projeção",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 130.0
+      "amount": 130.0,
+      "expenseName": "Google Cloud"
     },
     {
       "sourceRow": 537,
@@ -4348,7 +4882,8 @@
       "origin": "Recorrência",
       "originalType": "Projeção",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 130.0
+      "amount": 130.0,
+      "expenseName": "Google Cloud"
     },
     {
       "sourceRow": 538,
@@ -4356,7 +4891,8 @@
       "origin": "Recorrência",
       "originalType": "Projeção",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 130.0
+      "amount": 130.0,
+      "expenseName": "Google Cloud"
     },
     {
       "sourceRow": 539,
@@ -4364,7 +4900,8 @@
       "origin": "Recorrência",
       "originalType": "Projeção",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 130.0
+      "amount": 130.0,
+      "expenseName": "Google Cloud"
     },
     {
       "sourceRow": 540,
@@ -4372,7 +4909,8 @@
       "origin": "Recorrência",
       "originalType": "Projeção",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 130.0
+      "amount": 130.0,
+      "expenseName": "Google Cloud"
     },
     {
       "sourceRow": 541,
@@ -4380,7 +4918,8 @@
       "origin": "Recorrência",
       "originalType": "Projeção",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 200.0
+      "amount": 200.0,
+      "expenseName": "Vercel"
     },
     {
       "sourceRow": 542,
@@ -4388,7 +4927,8 @@
       "origin": "Recorrência",
       "originalType": "Projeção",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 200.0
+      "amount": 200.0,
+      "expenseName": "Vercel"
     },
     {
       "sourceRow": 543,
@@ -4396,7 +4936,8 @@
       "origin": "Recorrência",
       "originalType": "Projeção",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 200.0
+      "amount": 200.0,
+      "expenseName": "Vercel"
     },
     {
       "sourceRow": 544,
@@ -4404,7 +4945,8 @@
       "origin": "Recorrência",
       "originalType": "Projeção",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 200.0
+      "amount": 200.0,
+      "expenseName": "Vercel"
     },
     {
       "sourceRow": 545,
@@ -4412,7 +4954,8 @@
       "origin": "Recorrência",
       "originalType": "Projeção",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 200.0
+      "amount": 200.0,
+      "expenseName": "Vercel"
     },
     {
       "sourceRow": 546,
@@ -4420,7 +4963,8 @@
       "origin": "Recorrência",
       "originalType": "Projeção",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 200.0
+      "amount": 200.0,
+      "expenseName": "Adobe"
     },
     {
       "sourceRow": 547,
@@ -4428,7 +4972,8 @@
       "origin": "Recorrência",
       "originalType": "Projeção",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 200.0
+      "amount": 200.0,
+      "expenseName": "Adobe"
     },
     {
       "sourceRow": 548,
@@ -4436,7 +4981,8 @@
       "origin": "Recorrência",
       "originalType": "Projeção",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 200.0
+      "amount": 200.0,
+      "expenseName": "Adobe"
     },
     {
       "sourceRow": 549,
@@ -4444,7 +4990,8 @@
       "origin": "Recorrência",
       "originalType": "Projeção",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 200.0
+      "amount": 200.0,
+      "expenseName": "Adobe"
     },
     {
       "sourceRow": 550,
@@ -4452,7 +4999,8 @@
       "origin": "Recorrência",
       "originalType": "Projeção",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 200.0
+      "amount": 200.0,
+      "expenseName": "Adobe"
     },
     {
       "sourceRow": 551,
@@ -4460,7 +5008,8 @@
       "origin": "Recorrência",
       "originalType": "Projeção",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 49.9
+      "amount": 49.9,
+      "expenseName": "MLabs"
     },
     {
       "sourceRow": 552,
@@ -4468,7 +5017,8 @@
       "origin": "Recorrência",
       "originalType": "Projeção",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 49.9
+      "amount": 49.9,
+      "expenseName": "MLabs"
     },
     {
       "sourceRow": 553,
@@ -4476,7 +5026,8 @@
       "origin": "Recorrência",
       "originalType": "Projeção",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 49.9
+      "amount": 49.9,
+      "expenseName": "MLabs"
     },
     {
       "sourceRow": 554,
@@ -4484,7 +5035,8 @@
       "origin": "Recorrência",
       "originalType": "Projeção",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 49.9
+      "amount": 49.9,
+      "expenseName": "MLabs"
     },
     {
       "sourceRow": 555,
@@ -4492,7 +5044,8 @@
       "origin": "Recorrência",
       "originalType": "Projeção",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 49.9
+      "amount": 49.9,
+      "expenseName": "MLabs"
     },
     {
       "sourceRow": 556,
@@ -4500,7 +5053,8 @@
       "origin": "Recorrência",
       "originalType": "Projeção",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 29.0
+      "amount": 29.0,
+      "expenseName": "Apify"
     },
     {
       "sourceRow": 557,
@@ -4508,7 +5062,8 @@
       "origin": "Recorrência",
       "originalType": "Projeção",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 29.0
+      "amount": 29.0,
+      "expenseName": "Apify"
     },
     {
       "sourceRow": 558,
@@ -4516,7 +5071,8 @@
       "origin": "Recorrência",
       "originalType": "Projeção",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 29.0
+      "amount": 29.0,
+      "expenseName": "Apify"
     },
     {
       "sourceRow": 559,
@@ -4524,7 +5080,8 @@
       "origin": "Recorrência",
       "originalType": "Projeção",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 29.0
+      "amount": 29.0,
+      "expenseName": "Apify"
     },
     {
       "sourceRow": 560,
@@ -4532,7 +5089,8 @@
       "origin": "Recorrência",
       "originalType": "Projeção",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 29.0
+      "amount": 29.0,
+      "expenseName": "Apify"
     },
     {
       "sourceRow": 561,
@@ -4540,7 +5098,8 @@
       "origin": "Recorrência",
       "originalType": "Projeção",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 1632.0
+      "amount": 1632.0,
+      "expenseName": "Apollo"
     },
     {
       "sourceRow": 562,
@@ -4548,7 +5107,8 @@
       "origin": "Recorrência",
       "originalType": "Projeção",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 1632.0
+      "amount": 1632.0,
+      "expenseName": "Apollo"
     },
     {
       "sourceRow": 563,
@@ -4556,7 +5116,8 @@
       "origin": "Recorrência",
       "originalType": "Projeção",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 1632.0
+      "amount": 1632.0,
+      "expenseName": "Apollo"
     },
     {
       "sourceRow": 564,
@@ -4564,7 +5125,8 @@
       "origin": "Recorrência",
       "originalType": "Projeção",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 1632.0
+      "amount": 1632.0,
+      "expenseName": "Apollo"
     },
     {
       "sourceRow": 565,
@@ -4572,7 +5134,8 @@
       "origin": "Recorrência",
       "originalType": "Projeção",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 1632.0
+      "amount": 1632.0,
+      "expenseName": "Apollo"
     },
     {
       "sourceRow": 566,
@@ -4580,7 +5143,8 @@
       "origin": "Recorrência",
       "originalType": "Projeção",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 3152.6
+      "amount": 3152.6,
+      "expenseName": "LinkedIn Sales Navigator (9 de 13 BDRs)"
     },
     {
       "sourceRow": 567,
@@ -4588,7 +5152,8 @@
       "origin": "Recorrência",
       "originalType": "Projeção",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 3152.6
+      "amount": 3152.6,
+      "expenseName": "LinkedIn Sales Navigator (9 de 13 BDRs)"
     },
     {
       "sourceRow": 568,
@@ -4596,7 +5161,8 @@
       "origin": "Recorrência",
       "originalType": "Projeção",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 3152.6
+      "amount": 3152.6,
+      "expenseName": "LinkedIn Sales Navigator (9 de 13 BDRs)"
     },
     {
       "sourceRow": 569,
@@ -4604,7 +5170,8 @@
       "origin": "Recorrência",
       "originalType": "Projeção",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 3152.6
+      "amount": 3152.6,
+      "expenseName": "LinkedIn Sales Navigator (9 de 13 BDRs)"
     },
     {
       "sourceRow": 570,
@@ -4612,7 +5179,8 @@
       "origin": "Recorrência",
       "originalType": "Projeção",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 3152.6
+      "amount": 3152.6,
+      "expenseName": "LinkedIn Sales Navigator (9 de 13 BDRs)"
     },
     {
       "sourceRow": 571,
@@ -4620,7 +5188,8 @@
       "origin": "Temporário",
       "originalType": "Projeção",
       "meceCategory": "Pessoas/Freelancers",
-      "amount": 1500.0
+      "amount": 1500.0,
+      "expenseName": "Freela anúncios pagos"
     },
     {
       "sourceRow": 572,
@@ -4628,7 +5197,8 @@
       "origin": "Temporário",
       "originalType": "Projeção",
       "meceCategory": "Pessoas/Freelancers",
-      "amount": 1500.0
+      "amount": 1500.0,
+      "expenseName": "Freela anúncios pagos"
     },
     {
       "sourceRow": 573,
@@ -4636,7 +5206,8 @@
       "origin": "Temporário",
       "originalType": "Projeção",
       "meceCategory": "Diversos/Operacional",
-      "amount": 450.0
+      "amount": 450.0,
+      "expenseName": "Depósito"
     }
   ]
 }
