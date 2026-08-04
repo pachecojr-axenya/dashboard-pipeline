@@ -1,24 +1,34 @@
 {
   "metadata": {
     "title": "Lançamentos linha a linha do Marketing Budget 2026",
-    "version": "line-items-v1",
+    "version": "line-items-v2",
     "currency": "BRL",
-    "updatedAt": "2026-07-21",
+    "updatedAt": "2026-08-04",
     "sourceFile": "Marketing_2026 (1).xlsx",
     "sourceTab": "Planilha1",
     "sourceRows": "Linhas 3 em diante com data válida na coluna B e valor numérico na coluna F.",
-    "privacy": "A coluna Conta/fornecedor e nomes de pessoas foram omitidos do JSON público por privacidade. A classificação MECE usou esses campos apenas internamente para reconciliação."
+    "privacy": "A coluna Conta/fornecedor e nomes de pessoas foram omitidos do JSON público por privacidade. A classificação MECE usou esses campos apenas internamente para reconciliação.",
+    "notes": [
+      "Janeiro a julho: lançamentos realizados (planilha consolidada; julho com fechamento registrado em 04/08 incluindo Apollo e Google Cloud).",
+      "Agosto a dezembro: linhas PROJETADAS (origin=Recorrência/Temporário, tipo original=Projeção) a partir das premissas de recorrência do reconciliation — compromissos esperados, não gasto realizado.",
+      "Sales Navigator: 9 de 13 BDRs (R$ 3.152,60/mês). Canva e StreamYard cortadas (ausentes em ago-dez). Depósito apenas em ago. Apollo R$ 1.632,00/mês (320 USD × 5,10)."
+    ]
   },
   "summary": {
-    "itemCount": 522,
-    "totalAmount": 885596.1,
+    "itemCount": 570,
+    "totalAmount": 951563.6,
     "months": [
       "2026-01",
       "2026-02",
       "2026-03",
       "2026-04",
       "2026-05",
-      "2026-06"
+      "2026-06",
+      "2026-08",
+      "2026-09",
+      "2026-10",
+      "2026-11",
+      "2026-12"
     ],
     "categories": [
       {
@@ -26,16 +36,24 @@
         "amount": 478497.56
       },
       {
+        "name": "Agência/SEO",
+        "amount": 94797.15
+      },
+      {
         "name": "Mídia Paga",
         "amount": 74837.81
       },
       {
-        "name": "Agência/SEO",
-        "amount": 60047.15
+        "name": "Diversos/Operacional",
+        "amount": 55931.92
+      },
+      {
+        "name": "Brindes/Material Promocional",
+        "amount": 53685.17
       },
       {
         "name": "SaaS/Ferramentas",
-        "amount": 22585.08
+        "amount": 50352.58
       },
       {
         "name": "Associações/Institucional",
@@ -46,24 +64,16 @@
         "amount": 37747.27
       },
       {
-        "name": "Brindes/Material Promocional",
-        "amount": 53685.17
-      },
-      {
-        "name": "Serviços de Apoio a Eventos",
-        "amount": 14194.31
-      },
-      {
-        "name": "Pessoas/Freelancers",
-        "amount": 15079.0
-      },
-      {
         "name": "Educação/Consultoria",
         "amount": 32035.86
       },
       {
-        "name": "Diversos/Operacional",
-        "amount": 55481.92
+        "name": "Pessoas/Freelancers",
+        "amount": 18079.0
+      },
+      {
+        "name": "Serviços de Apoio a Eventos",
+        "amount": 14194.31
       }
     ]
   },
@@ -4243,6 +4253,390 @@
       "originalType": "Saas",
       "meceCategory": "SaaS/Ferramentas",
       "amount": 129.51
+    },
+    {
+      "sourceRow": 526,
+      "month": "2026-08",
+      "origin": "Recorrência",
+      "originalType": "Projeção",
+      "meceCategory": "Agência/SEO",
+      "amount": 6950.0
+    },
+    {
+      "sourceRow": 527,
+      "month": "2026-09",
+      "origin": "Recorrência",
+      "originalType": "Projeção",
+      "meceCategory": "Agência/SEO",
+      "amount": 6950.0
+    },
+    {
+      "sourceRow": 528,
+      "month": "2026-10",
+      "origin": "Recorrência",
+      "originalType": "Projeção",
+      "meceCategory": "Agência/SEO",
+      "amount": 6950.0
+    },
+    {
+      "sourceRow": 529,
+      "month": "2026-11",
+      "origin": "Recorrência",
+      "originalType": "Projeção",
+      "meceCategory": "Agência/SEO",
+      "amount": 6950.0
+    },
+    {
+      "sourceRow": 530,
+      "month": "2026-12",
+      "origin": "Recorrência",
+      "originalType": "Projeção",
+      "meceCategory": "Agência/SEO",
+      "amount": 6950.0
+    },
+    {
+      "sourceRow": 531,
+      "month": "2026-08",
+      "origin": "Recorrência",
+      "originalType": "Projeção",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 160.0
+    },
+    {
+      "sourceRow": 532,
+      "month": "2026-09",
+      "origin": "Recorrência",
+      "originalType": "Projeção",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 160.0
+    },
+    {
+      "sourceRow": 533,
+      "month": "2026-10",
+      "origin": "Recorrência",
+      "originalType": "Projeção",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 160.0
+    },
+    {
+      "sourceRow": 534,
+      "month": "2026-11",
+      "origin": "Recorrência",
+      "originalType": "Projeção",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 160.0
+    },
+    {
+      "sourceRow": 535,
+      "month": "2026-12",
+      "origin": "Recorrência",
+      "originalType": "Projeção",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 160.0
+    },
+    {
+      "sourceRow": 536,
+      "month": "2026-08",
+      "origin": "Recorrência",
+      "originalType": "Projeção",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 130.0
+    },
+    {
+      "sourceRow": 537,
+      "month": "2026-09",
+      "origin": "Recorrência",
+      "originalType": "Projeção",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 130.0
+    },
+    {
+      "sourceRow": 538,
+      "month": "2026-10",
+      "origin": "Recorrência",
+      "originalType": "Projeção",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 130.0
+    },
+    {
+      "sourceRow": 539,
+      "month": "2026-11",
+      "origin": "Recorrência",
+      "originalType": "Projeção",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 130.0
+    },
+    {
+      "sourceRow": 540,
+      "month": "2026-12",
+      "origin": "Recorrência",
+      "originalType": "Projeção",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 130.0
+    },
+    {
+      "sourceRow": 541,
+      "month": "2026-08",
+      "origin": "Recorrência",
+      "originalType": "Projeção",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 200.0
+    },
+    {
+      "sourceRow": 542,
+      "month": "2026-09",
+      "origin": "Recorrência",
+      "originalType": "Projeção",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 200.0
+    },
+    {
+      "sourceRow": 543,
+      "month": "2026-10",
+      "origin": "Recorrência",
+      "originalType": "Projeção",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 200.0
+    },
+    {
+      "sourceRow": 544,
+      "month": "2026-11",
+      "origin": "Recorrência",
+      "originalType": "Projeção",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 200.0
+    },
+    {
+      "sourceRow": 545,
+      "month": "2026-12",
+      "origin": "Recorrência",
+      "originalType": "Projeção",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 200.0
+    },
+    {
+      "sourceRow": 546,
+      "month": "2026-08",
+      "origin": "Recorrência",
+      "originalType": "Projeção",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 200.0
+    },
+    {
+      "sourceRow": 547,
+      "month": "2026-09",
+      "origin": "Recorrência",
+      "originalType": "Projeção",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 200.0
+    },
+    {
+      "sourceRow": 548,
+      "month": "2026-10",
+      "origin": "Recorrência",
+      "originalType": "Projeção",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 200.0
+    },
+    {
+      "sourceRow": 549,
+      "month": "2026-11",
+      "origin": "Recorrência",
+      "originalType": "Projeção",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 200.0
+    },
+    {
+      "sourceRow": 550,
+      "month": "2026-12",
+      "origin": "Recorrência",
+      "originalType": "Projeção",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 200.0
+    },
+    {
+      "sourceRow": 551,
+      "month": "2026-08",
+      "origin": "Recorrência",
+      "originalType": "Projeção",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 49.9
+    },
+    {
+      "sourceRow": 552,
+      "month": "2026-09",
+      "origin": "Recorrência",
+      "originalType": "Projeção",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 49.9
+    },
+    {
+      "sourceRow": 553,
+      "month": "2026-10",
+      "origin": "Recorrência",
+      "originalType": "Projeção",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 49.9
+    },
+    {
+      "sourceRow": 554,
+      "month": "2026-11",
+      "origin": "Recorrência",
+      "originalType": "Projeção",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 49.9
+    },
+    {
+      "sourceRow": 555,
+      "month": "2026-12",
+      "origin": "Recorrência",
+      "originalType": "Projeção",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 49.9
+    },
+    {
+      "sourceRow": 556,
+      "month": "2026-08",
+      "origin": "Recorrência",
+      "originalType": "Projeção",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 29.0
+    },
+    {
+      "sourceRow": 557,
+      "month": "2026-09",
+      "origin": "Recorrência",
+      "originalType": "Projeção",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 29.0
+    },
+    {
+      "sourceRow": 558,
+      "month": "2026-10",
+      "origin": "Recorrência",
+      "originalType": "Projeção",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 29.0
+    },
+    {
+      "sourceRow": 559,
+      "month": "2026-11",
+      "origin": "Recorrência",
+      "originalType": "Projeção",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 29.0
+    },
+    {
+      "sourceRow": 560,
+      "month": "2026-12",
+      "origin": "Recorrência",
+      "originalType": "Projeção",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 29.0
+    },
+    {
+      "sourceRow": 561,
+      "month": "2026-08",
+      "origin": "Recorrência",
+      "originalType": "Projeção",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 1632.0
+    },
+    {
+      "sourceRow": 562,
+      "month": "2026-09",
+      "origin": "Recorrência",
+      "originalType": "Projeção",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 1632.0
+    },
+    {
+      "sourceRow": 563,
+      "month": "2026-10",
+      "origin": "Recorrência",
+      "originalType": "Projeção",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 1632.0
+    },
+    {
+      "sourceRow": 564,
+      "month": "2026-11",
+      "origin": "Recorrência",
+      "originalType": "Projeção",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 1632.0
+    },
+    {
+      "sourceRow": 565,
+      "month": "2026-12",
+      "origin": "Recorrência",
+      "originalType": "Projeção",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 1632.0
+    },
+    {
+      "sourceRow": 566,
+      "month": "2026-08",
+      "origin": "Recorrência",
+      "originalType": "Projeção",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 3152.6
+    },
+    {
+      "sourceRow": 567,
+      "month": "2026-09",
+      "origin": "Recorrência",
+      "originalType": "Projeção",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 3152.6
+    },
+    {
+      "sourceRow": 568,
+      "month": "2026-10",
+      "origin": "Recorrência",
+      "originalType": "Projeção",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 3152.6
+    },
+    {
+      "sourceRow": 569,
+      "month": "2026-11",
+      "origin": "Recorrência",
+      "originalType": "Projeção",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 3152.6
+    },
+    {
+      "sourceRow": 570,
+      "month": "2026-12",
+      "origin": "Recorrência",
+      "originalType": "Projeção",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 3152.6
+    },
+    {
+      "sourceRow": 571,
+      "month": "2026-08",
+      "origin": "Temporário",
+      "originalType": "Projeção",
+      "meceCategory": "Pessoas/Freelancers",
+      "amount": 1500.0
+    },
+    {
+      "sourceRow": 572,
+      "month": "2026-09",
+      "origin": "Temporário",
+      "originalType": "Projeção",
+      "meceCategory": "Pessoas/Freelancers",
+      "amount": 1500.0
+    },
+    {
+      "sourceRow": 573,
+      "month": "2026-08",
+      "origin": "Temporário",
+      "originalType": "Projeção",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 450.0
     }
   ]
 }

@@ -1,9 +1,9 @@
 {
   "metadata": {
     "title": "Reconciliação do orçamento de Marketing 2026",
-    "version": "annual-reconciliation-v2",
+    "version": "annual-reconciliation-v3",
     "currency": "BRL",
-    "updatedAt": "2026-07-21",
+    "updatedAt": "2026-08-04",
     "sourceFile": "Marketing_2026 (1).xlsx",
     "sourceTab": "Planilha1",
     "sourceExportDate": "2026-07-21",
@@ -11,94 +11,306 @@
     "sourceOfTruth": "Planilha consolidada da Cíntia para realizado jan-jun; fechamento informado/registrado para julho; premissas oficiais de recorrência e envelope estratégico para ago-dez.",
     "notes": [
       "Janeiro a junho são valores realizados pela soma das linhas atuais da planilha consolidada.",
-      "Julho é fechamento já informado/registrado.",
+      "Julho é fechamento registrado, atualizado em 04/08: inclui Apollo R$ 4.513,50 (885 USD × 5,10) e Google Cloud R$ 1.100,00.",
       "Agosto a dezembro são tetos planejados: recorrência comprometida mais envelope estratégico, não gasto realizado.",
-      "LinkedIn Sales Navigator está comprometido em R$ 4.553,76 por mês de agosto a dezembro.",
+      "Câmbio aplicado para itens em USD: 5,10 BRL/USD.",
+      "LinkedIn Sales Navigator reduzido de 13 para 9 BDRs a partir de ago/2026: R$ 4.553,76 → R$ 3.152,60/mês (economia R$ 1.401,16/mês).",
+      "Canva não é mais paga a partir de ago/2026 (economia R$ 195,83/mês).",
+      "StreamYard cortada a partir de ago/2026 no momento (economia R$ 1.500,00/mês).",
+      "Depósito pago apenas em ago/2026 (R$ 450,00); de out em diante não há custo.",
+      "Apollo adicionada: R$ 1.632,00/mês (320 USD × 5,10) de ago em diante.",
       "CONARH: parcelas de R$ 15.750 já estão refletidas em junho e julho; custos de execução nas datas devem consumir o envelope estratégico.",
       "Jantares e roundtables pequenos devem consumir o envelope estratégico, sem nova recorrência automática."
     ]
   },
-  "annualBudget": 1250000.00,
+  "annualBudget": 1250000.0,
   "actuals": {
-    "janJunTotal": 885596.10,
-    "july": 48460.91,
-    "throughJuly": 934057.01,
+    "janJunTotal": 885596.1,
+    "july": 54074.41,
+    "throughJuly": 939670.51,
     "monthly": [
-      { "month": "2026-01", "label": "jan/2026", "status": "Realizado", "amount": 37228.49 },
-      { "month": "2026-02", "label": "fev/2026", "status": "Realizado", "amount": 260204.57 },
-      { "month": "2026-03", "label": "mar/2026", "status": "Realizado", "amount": 199291.76 },
-      { "month": "2026-04", "label": "abr/2026", "status": "Realizado", "amount": 177466.39 },
-      { "month": "2026-05", "label": "mai/2026", "status": "Realizado", "amount": 164133.43 },
-      { "month": "2026-06", "label": "jun/2026", "status": "Realizado", "amount": 47271.46 },
-      { "month": "2026-07", "label": "jul/2026", "status": "Realizado", "amount": 48460.91 }
+      {
+        "month": "2026-01",
+        "label": "jan/2026",
+        "status": "Realizado",
+        "amount": 37228.49
+      },
+      {
+        "month": "2026-02",
+        "label": "fev/2026",
+        "status": "Realizado",
+        "amount": 260204.57
+      },
+      {
+        "month": "2026-03",
+        "label": "mar/2026",
+        "status": "Realizado",
+        "amount": 199291.76
+      },
+      {
+        "month": "2026-04",
+        "label": "abr/2026",
+        "status": "Realizado",
+        "amount": 177466.39
+      },
+      {
+        "month": "2026-05",
+        "label": "mai/2026",
+        "status": "Realizado",
+        "amount": 164133.43
+      },
+      {
+        "month": "2026-06",
+        "label": "jun/2026",
+        "status": "Realizado",
+        "amount": 47271.46
+      },
+      {
+        "month": "2026-07",
+        "label": "jul/2026",
+        "status": "Realizado",
+        "amount": 54074.41
+      }
     ]
   },
-  "balanceAtJuly31": 315942.99,
+  "balanceAtJuly31": 310329.49,
   "futureRecurring": {
-    "total": 75092.45,
+    "total": 65967.5,
     "monthly": [
-      { "month": "2026-08", "label": "ago/2026", "amount": 15918.49 },
-      { "month": "2026-09", "label": "set/2026", "amount": 15918.49 },
-      { "month": "2026-10", "label": "out/2026", "amount": 14418.49 },
-      { "month": "2026-11", "label": "nov/2026", "amount": 14418.49 },
-      { "month": "2026-12", "label": "dez/2026", "amount": 14418.49 }
+      {
+        "month": "2026-08",
+        "label": "ago/2026",
+        "amount": 14453.5
+      },
+      {
+        "month": "2026-09",
+        "label": "set/2026",
+        "amount": 14003.5
+      },
+      {
+        "month": "2026-10",
+        "label": "out/2026",
+        "amount": 12503.5
+      },
+      {
+        "month": "2026-11",
+        "label": "nov/2026",
+        "amount": 12503.5
+      },
+      {
+        "month": "2026-12",
+        "label": "dez/2026",
+        "amount": 12503.5
+      }
     ],
-    "baseMonthlyOutDec": 14418.49,
+    "baseMonthlyOutDec": 12503.5,
     "baseItems": [
-      { "name": "Agência de PR", "monthlyAmount": 6950.00 },
-      { "name": "Zapier", "monthlyAmount": 160.00 },
-      { "name": "Google Cloud", "monthlyAmount": 130.00 },
-      { "name": "Vercel", "monthlyAmount": 200.00 },
-      { "name": "Adobe", "monthlyAmount": 200.00 },
-      { "name": "Canva", "monthlyAmount": 195.83 },
-      { "name": "MLabs", "monthlyAmount": 49.90 },
-      { "name": "StreamYard", "monthlyAmount": 1500.00 },
-      { "name": "Apify", "monthlyAmount": 29.00 },
-      { "name": "Depósito", "monthlyAmount": 450.00 },
-      { "name": "LinkedIn Sales Navigator", "monthlyAmount": 4553.76 }
+      {
+        "name": "Agência de PR",
+        "monthlyAmount": 6950.0
+      },
+      {
+        "name": "Zapier",
+        "monthlyAmount": 160.0
+      },
+      {
+        "name": "Google Cloud",
+        "monthlyAmount": 130.0
+      },
+      {
+        "name": "Vercel",
+        "monthlyAmount": 200.0
+      },
+      {
+        "name": "Adobe",
+        "monthlyAmount": 200.0
+      },
+      {
+        "name": "MLabs",
+        "monthlyAmount": 49.9
+      },
+      {
+        "name": "Apify",
+        "monthlyAmount": 29.0
+      },
+      {
+        "name": "Apollo",
+        "monthlyAmount": 1632.0
+      },
+      {
+        "name": "LinkedIn Sales Navigator (9 de 13 BDRs)",
+        "monthlyAmount": 3152.6
+      }
     ],
     "temporaryItems": [
-      { "name": "Freela anúncios pagos", "months": ["2026-08", "2026-09"], "monthlyAmount": 1500.00 }
+      {
+        "name": "Freela anúncios pagos",
+        "months": [
+          "2026-08",
+          "2026-09"
+        ],
+        "monthlyAmount": 1500.0
+      },
+      {
+        "name": "Depósito",
+        "months": [
+          "2026-08"
+        ],
+        "monthlyAmount": 450.0
+      }
     ],
     "excludedItems": [
-      { "name": "Lusha", "futureForecastAmount": 0.00, "reason": "Excluída/zerada do forecast futuro." }
+      {
+        "name": "Lusha",
+        "futureForecastAmount": 0.0,
+        "reason": "Excluída/zerada do forecast futuro."
+      },
+      {
+        "name": "Canva",
+        "futureForecastAmount": 0.0,
+        "reason": "Não é mais paga a partir de ago/2026 (corte de custo recorrente)."
+      },
+      {
+        "name": "StreamYard",
+        "futureForecastAmount": 0.0,
+        "reason": "Cortada no momento: sem custo de ago/2026 em diante."
+      }
     ]
   },
   "strategicEnvelope": {
-    "freeAfterRecurring": 240850.54,
+    "freeAfterRecurring": 244361.99,
     "distribution": [
-      { "month": "2026-08", "label": "ago/2026", "percent": 28, "amount": 67438.15 },
-      { "month": "2026-09", "label": "set/2026", "percent": 28, "amount": 67438.15 },
-      { "month": "2026-10", "label": "out/2026", "percent": 24, "amount": 57804.13 },
-      { "month": "2026-11", "label": "nov/2026", "percent": 15, "amount": 36127.58 },
-      { "month": "2026-12", "label": "dez/2026", "percent": 5, "amount": 12042.53 }
+      {
+        "month": "2026-08",
+        "label": "ago/2026",
+        "percent": 28.000000000000004,
+        "amount": 68421.36
+      },
+      {
+        "month": "2026-09",
+        "label": "set/2026",
+        "percent": 28.000000000000004,
+        "amount": 68421.36
+      },
+      {
+        "month": "2026-10",
+        "label": "out/2026",
+        "percent": 24.0,
+        "amount": 58646.88
+      },
+      {
+        "month": "2026-11",
+        "label": "nov/2026",
+        "percent": 15.0,
+        "amount": 36654.3
+      },
+      {
+        "month": "2026-12",
+        "label": "dez/2026",
+        "percent": 5.0,
+        "amount": 12218.09
+      }
     ]
   },
   "plannedMonthlyCeilings": [
-    { "month": "2026-08", "label": "ago/2026", "recurring": 15918.49, "strategicEnvelope": 67438.15, "ceiling": 83356.64 },
-    { "month": "2026-09", "label": "set/2026", "recurring": 15918.49, "strategicEnvelope": 67438.15, "ceiling": 83356.64 },
-    { "month": "2026-10", "label": "out/2026", "recurring": 14418.49, "strategicEnvelope": 57804.13, "ceiling": 72222.62 },
-    { "month": "2026-11", "label": "nov/2026", "recurring": 14418.49, "strategicEnvelope": 36127.58, "ceiling": 50546.07 },
-    { "month": "2026-12", "label": "dez/2026", "recurring": 14418.49, "strategicEnvelope": 12042.53, "ceiling": 26461.02 }
+    {
+      "month": "2026-08",
+      "label": "ago/2026",
+      "recurring": 14453.5,
+      "strategicEnvelope": 68421.36,
+      "ceiling": 82874.86
+    },
+    {
+      "month": "2026-09",
+      "label": "set/2026",
+      "recurring": 14003.5,
+      "strategicEnvelope": 68421.36,
+      "ceiling": 82424.86
+    },
+    {
+      "month": "2026-10",
+      "label": "out/2026",
+      "recurring": 12503.5,
+      "strategicEnvelope": 58646.88,
+      "ceiling": 71150.38
+    },
+    {
+      "month": "2026-11",
+      "label": "nov/2026",
+      "recurring": 12503.5,
+      "strategicEnvelope": 36654.3,
+      "ceiling": 49157.8
+    },
+    {
+      "month": "2026-12",
+      "label": "dez/2026",
+      "recurring": 12503.5,
+      "strategicEnvelope": 12218.09,
+      "ceiling": 24721.59
+    }
   ],
   "scenarios": {
-    "minimumCommittedYear": 1009149.46,
-    "fullStrategicEnvelopeUse": 1250000.00
+    "minimumCommittedYear": 1005638.01,
+    "fullStrategicEnvelopeUse": 1250000.0
   },
   "historicalMeceJanJun": {
-    "total": 885596.10,
+    "total": 885596.1,
     "categories": [
-      { "name": "Eventos", "amount": 478497.56, "percent": 54.0 },
-      { "name": "Mídia Paga", "amount": 74837.81, "percent": 8.5 },
-      { "name": "Agência/SEO", "amount": 60047.15, "percent": 6.8 },
-      { "name": "SaaS/Ferramentas", "amount": 22585.08, "percent": 2.6 },
-      { "name": "Associações/Institucional", "amount": 41404.97, "percent": 4.7 },
-      { "name": "Alimentação/Hospitalidade", "amount": 37747.27, "percent": 4.3 },
-      { "name": "Brindes/Material Promocional", "amount": 53685.17, "percent": 6.1 },
-      { "name": "Serviços de Apoio a Eventos", "amount": 14194.31, "percent": 1.6 },
-      { "name": "Pessoas/Freelancers", "amount": 15079.00, "percent": 1.7 },
-      { "name": "Educação/Consultoria", "amount": 32035.86, "percent": 3.6 },
-      { "name": "Diversos/Operacional", "amount": 55481.92, "percent": 6.3 }
+      {
+        "name": "Eventos",
+        "amount": 478497.56,
+        "percent": 54.0
+      },
+      {
+        "name": "Mídia Paga",
+        "amount": 74837.81,
+        "percent": 8.5
+      },
+      {
+        "name": "Agência/SEO",
+        "amount": 60047.15,
+        "percent": 6.8
+      },
+      {
+        "name": "SaaS/Ferramentas",
+        "amount": 22585.08,
+        "percent": 2.6
+      },
+      {
+        "name": "Associações/Institucional",
+        "amount": 41404.97,
+        "percent": 4.7
+      },
+      {
+        "name": "Alimentação/Hospitalidade",
+        "amount": 37747.27,
+        "percent": 4.3
+      },
+      {
+        "name": "Brindes/Material Promocional",
+        "amount": 53685.17,
+        "percent": 6.1
+      },
+      {
+        "name": "Serviços de Apoio a Eventos",
+        "amount": 14194.31,
+        "percent": 1.6
+      },
+      {
+        "name": "Pessoas/Freelancers",
+        "amount": 15079.0,
+        "percent": 1.7
+      },
+      {
+        "name": "Educação/Consultoria",
+        "amount": 32035.86,
+        "percent": 3.6
+      },
+      {
+        "name": "Diversos/Operacional",
+        "amount": 55481.92,
+        "percent": 6.3
+      }
     ]
   },
   "openQuestions": [
