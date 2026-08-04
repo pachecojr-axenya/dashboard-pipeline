@@ -232,7 +232,7 @@
           <summary>
             <p class="section-title">Histórico público</p>
             <h2>Lançamentos linha a linha</h2>
-            <p>Abra para filtrar os 570 lançamentos de jan-dez: 522 realizados (jan-jun, da planilha consolidada) + 48 projeções de ago-dez (recorrências e temporários do reconciliation). A coluna Conta/fornecedor e nomes de pessoas foram omitidos do JSON público por privacidade; a classificação MECE usou esses campos apenas internamente para reconciliar os totais.</p>
+            <p>Abra para filtrar os 570 lançamentos detalhados: 522 realizados de jan-jun, com nome do gasto, + 48 projeções de ago-dez. Julho permanece como fechamento consolidado no resumo acima, pois sua fonte detalhada ainda não foi fornecida. Identidades em Pessoas/Freelancers continuam protegidas.</p>
           </summary>
           <div class="controls">
             <select id="lineMonth" aria-label="Filtrar por mês"></select>
@@ -242,14 +242,14 @@
           <div class="table-actions">
             <strong id="lineSummary">Carregando lançamentos...</strong>
             <div class="controls" style="margin-top:0;">
-              <button type="button" id="exportCsv" title="Exporta TODAS as linhas em CSV (570 lançamentos jan-dez: 522 realizados + 48 projeções, independente dos filtros)">Exportar CSV</button>
+              <button type="button" id="exportCsv" title="Exporta TODAS as linhas detalhadas em CSV (522 realizados de jan-jun + 48 projeções de ago-dez; julho permanece consolidado)">Exportar CSV</button>
               <button type="button" id="prevPage">Anterior</button>
               <span id="pageInfo" class="footer" style="margin-top:0;"></span>
               <button type="button" id="nextPage">Próxima</button>
             </div>
           </div>
           <div class="table-wrap"><table>
-            <thead><tr><th>Linha fonte</th><th>Mês</th><th>Origem</th><th>Tipo original</th><th>Categoria MECE</th><th class="num">Valor</th></tr></thead>
+            <thead><tr><th>Linha fonte</th><th>Mês</th><th>Origem</th><th>Nome do gasto</th><th>Tipo original</th><th>Categoria MECE</th><th class="num">Valor</th></tr></thead>
             <tbody id="lineItemsTable"></tbody>
           </table></div>
         </details>
@@ -391,10 +391,11 @@
       document.getElementById('pageInfo').textContent = `Página ${lineState.page} de ${totalPages}`;
       document.getElementById('prevPage').disabled = lineState.page === 1;
       document.getElementById('nextPage').disabled = lineState.page === totalPages;
-      document.getElementById('lineItemsTable').innerHTML = pageItems.map(item => `<tr><td>${escapeHTML(item.sourceRow)}</td><td>${escapeHTML(item.month)}</td><td>${escapeHTML(item.origin)}</td><td>${escapeHTML(item.originalType)}</td><td>${escapeHTML(item.meceCategory)}</td><td class="num">${fmtBRL(item.amount)}</td></tr>`).join('');
+      document.getElementById('lineItemsTable').innerHTML = pageItems.map(item => `<tr><td>${escapeHTML(item.sourceRow)}</td><td>${escapeHTML(item.month)}</td><td>${escapeHTML(item.origin)}</td><td>${escapeHTML(item.expenseName || 'Nome não disponível')}</td><td>${escapeHTML(item.originalType)}</td><td>${escapeHTML(item.meceCategory)}</td><td class="num">${fmtBRL(item.amount)}</td></tr>`).join('');
     }
 
-    // Exporta TODAS as linhas de jan-jun em CSV (ignora filtros e paginação).
+    // Exporta todas as linhas detalhadas disponíveis (jan-jun realizados + ago-dez projetados).
+    // Julho permanece no reconciliation como fechamento consolidado, sem linhas inventadas.
     // csvCell: neutraliza CSV injection (células com prefixo =, +, -, @, tab, CR)
     // e escapa aspas/separador — BOM + ';' + decimais pt-BR para Excel BR.
     function csvCell(raw) {
@@ -403,10 +404,10 @@
       return /[";\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
     }
     function exportCsv() {
-      const rows = [['Linha fonte', 'Mês', 'Origem', 'Tipo original', 'Categoria MECE', 'Valor (R$)']];
+      const rows = [['Linha fonte', 'Mês', 'Origem', 'Nome do gasto', 'Tipo original', 'Categoria MECE', 'Valor (R$)']];
       lineState.items.forEach(item => {
         rows.push([
-          item.sourceRow, item.month, item.origin, item.originalType, item.meceCategory,
+          item.sourceRow, item.month, item.origin, item.expenseName || 'Nome não disponível', item.originalType, item.meceCategory,
           Number(item.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
         ]);
       });
