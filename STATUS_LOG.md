@@ -1,5 +1,24 @@
 # Dashboard Enhancement Loop — Status Log
 
+### 🚀 PREMISSAS ATUALIZADAS | Google Cloud + Vercel | MKT Budget (2026-08-04)
+
+> Decisão do dono: de agosto a dezembro, **Google Cloud = R$ 600,00/mês**
+> (antes R$ 130,00) e **Vercel = R$ 350,00/mês** (antes R$ 200,00). PR #34,
+> merge `0281f3d`, base `7facc06`: reconciliation v4 e line-items v4 recalculados
+> sem alterar o saldo de 31/jul (R$ 310.329,49). A mudança adiciona R$ 620/mês,
+> ou R$ 3.100,00 no semestre: recorrências ago-dez agora R$ 69.067,50; envelope
+> livre R$ 241.261,99; cenário mínimo do ano R$ 1.008.738,01; line-items
+> R$ 954.663,60. Tetos: ago R$ 82.626,86 | set R$ 82.176,86 | out R$ 71.026,38 |
+> nov R$ 49.312,80 | dez R$ 25.186,59.
+> Deployment `dpl_7Cfks2GqcQjNSLFFgTiA7t1K1pSG` (Ready, production, 18s).
+> Pós-deploy Playwright: `/growth` e `/growth/mkt-budget` sem page errors;
+> recorrências R$ 69.067,50, envelope R$ 241.261,99, agosto R$ 15.073,50 e os
+> cinco tetos confirmados. Evidências: check
+> `cd1af4db00a0a7762f7d24f518b5b91f645db7a72e315c94d14254ba423cc000` |
+> predeploy `c764730f65a0e2d60b017a7a7ca30a043e652c1ae2a3d4fbe5fd28529fef0328` |
+> deploy `68d107508a09d45067711bc5bdca4705306500c2fe8b00faabd410467b236ff4` |
+> smoke `b0052a5e25fcd8928916a8c21b68b264ae83b79099fc99e1128bdb50d6827d6d`.
+
 ### 🚀 LANÇAMENTOS COM NOME DO GASTO | MKT Budget (2026-08-04)
 
 > O dono apontou que a tabela linha a linha só mostrava categoria MECE (por
