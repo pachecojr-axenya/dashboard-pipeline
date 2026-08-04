@@ -1,5 +1,26 @@
 # Dashboard Enhancement Loop — Status Log
 
+### 🚀 CORREÇÃO DE LEITURA | Teto mensal completo no MKT Budget (2026-08-04)
+
+> O dono apontou a inconsistência aparente: saldo de R$ 310.329,49 em 31/jul,
+> mas a linha do tempo de ago-dez parecia mostrar apenas o disponível mensal
+> parcial. Causa raiz: a página usava `item.recurring` (R$ 12,5–14,5 mil/mês)
+> como valor e largura da barra futura, embora o dado canônico de alocação fosse
+> `item.ceiling` = recorrência + envelope estratégico. O saldo não mudou:
+> R$ 65.967,50 são recorrências obrigatórias e R$ 244.361,99 são o envelope;
+> os cinco tetos somam exatamente R$ 310.329,49.
+> Fix (PR #32, merge `0683150`, base `fa6db23`): a linha do tempo agora exibe
+> badge e barra de **Teto planejado**, com ago R$ 82.874,86 | set R$ 82.424,86 |
+> out R$ 71.150,38 | nov R$ 49.157,80 | dez R$ 24.721,59. A legenda e a copy de
+> recorrências foram alinhadas às premissas v3 (R$ 65.967,50; Sales Navigator
+> 9/13; Apollo; Canva/StreamYard zeradas; Depósito apenas em agosto).
+> Deployment `dpl_8LHQoy4ENvVF76qB2e9b1V3Ao7sD` (Ready, production, 17s).
+> Pós-deploy: `/growth` e `/growth/mkt-budget` carregaram sem page errors; os
+> cinco tetos, saldo e envelope foram confirmados em produção. Evidências:
+> check `cd1af4db00a0a7762f7d24f518b5b91f645db7a72e315c94d14254ba423cc000` |
+> predeploy `76d486a407300ab202b1bb2492fdfbd4eadc06e03621ba94974156a7d8600fbd` |
+> smoke produção `669e45a73221a9daf93154728719d797388b72a36dbfe8a1f1b7f2cc393e0c94`.
+
 ### 🚀 PREMISSAS AGO-DEZ + LANÇAMENTOS PROJETADOS | MKT Budget (2026-08-04)
 
 > Novas premissas do dono, câmbio USD→BRL a 5,10 (PR #31, merge `c0733a0`,
