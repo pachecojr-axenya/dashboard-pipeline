@@ -179,12 +179,12 @@
 
       <section class="card" style="margin-top:16px;">
         <p class="section-title">Linha do tempo jan-dez</p>
-        <h2>Realizado até julho; comprometido de agosto a dezembro</h2>
-        <p>A partir de agosto, a barra e o valor à direita mostram somente a recorrência já comprometida. O envelope estratégico permanece separado nas seções abaixo.</p>
+        <h2>Realizado até julho; teto planejado de agosto a dezembro</h2>
+        <p>A partir de agosto, a barra e o valor à direita mostram o teto mensal completo: recorrência já comprometida + envelope estratégico. Os cinco tetos somam o saldo anual disponível em 31/jul.</p>
         <div class="timeline" id="timeline"></div>
         <div class="legend">
           <span><i class="swatch actual" style="background: var(--blue);"></i>Realizado</span>
-          <span><i class="swatch recurring" style="background: var(--dark);"></i>Recorrência comprometida</span>
+          <span><i class="swatch recurring" style="background: var(--dark);"></i>Teto planejado (recorrência + envelope)</span>
         </div>
       </section>
 
@@ -192,7 +192,7 @@
         <article class="card">
           <p class="section-title">Recorrências futuras</p>
           <h2>Base aprovada para ago-dez</h2>
-          <p>A premissa oficial soma R$ 75.092,45 sem Lusha e inclui LinkedIn Sales Navigator por R$ 4.553,76/mês. Apollo, Canva e Sales Navigator permanecem classificados como ferramentas.</p>
+          <p>A premissa oficial soma R$ 65.967,50 de ago-dez. Inclui Sales Navigator para 9 de 13 BDRs (R$ 3.152,60/mês) e Apollo (R$ 1.632,00/mês); Canva e StreamYard estão zeradas, e Depósito entra somente em agosto.</p>
           <div class="table-wrap"><table id="recurringTable"></table></div>
         </article>
         <article class="card">
@@ -441,7 +441,7 @@
     }
 
     function render(data) {
-      const maxMonth = Math.max(...data.actuals.monthly.map(m => m.amount), ...data.plannedMonthlyCeilings.map(m => m.recurring));
+      const maxMonth = Math.max(...data.actuals.monthly.map(m => m.amount), ...data.plannedMonthlyCeilings.map(m => m.ceiling));
       document.getElementById('heroMetrics').innerHTML = [
         renderMetric('Orçamento anual', fmtBRL(data.annualBudget), 'Teto aprovado para Marketing 2026'),
         renderMetric('Realizado até julho', fmtBRL(data.actuals.throughJuly), 'Jan-jun planilha consolidada + julho fechado'),
@@ -467,13 +467,13 @@
       const plannedByMonth = Object.fromEntries(data.plannedMonthlyCeilings.map(item => [item.month, item]));
       document.getElementById('timeline').innerHTML = [
         ...data.actuals.monthly.map(item => ({ ...item, kind: 'actual', total: item.amount })),
-        ...data.plannedMonthlyCeilings.map(item => ({ ...item, kind: 'planned', total: item.recurring }))
+        ...data.plannedMonthlyCeilings.map(item => ({ ...item, kind: 'planned', total: item.ceiling }))
       ].map(item => {
         const planned = plannedByMonth[item.month];
         const total = item.total;
         const actualPct = item.kind === 'actual' ? (total / maxMonth) * 100 : 0;
-        const recurringPct = planned ? (planned.recurring / maxMonth) * 100 : 0;
-        return `<div class="month"><strong>${escapeHTML(item.label)}</strong><span class="badge ${item.kind === 'planned' ? 'plan' : ''}">${item.kind === 'actual' ? 'Realizado' : 'Comprometido'}</span><div class="stack">${item.kind === 'actual' ? `<span class="actual" style="width:${actualPct}%"></span>` : `<span class="recurring" style="width:${recurringPct}%"></span>`}</div><span class="num">${fmtBRL(total)}</span></div>`;
+        const plannedPct = planned ? (planned.ceiling / maxMonth) * 100 : 0;
+        return `<div class="month"><strong>${escapeHTML(item.label)}</strong><span class="badge ${item.kind === 'planned' ? 'plan' : ''}">${item.kind === 'actual' ? 'Realizado' : 'Teto planejado'}</span><div class="stack">${item.kind === 'actual' ? `<span class="actual" style="width:${actualPct}%"></span>` : `<span class="recurring" style="width:${plannedPct}%"></span>`}</div><span class="num">${fmtBRL(total)}</span></div>`;
       }).join('');
 
       document.getElementById('recurringTable').innerHTML = `
