@@ -1,7 +1,7 @@
 {
   "metadata": {
     "title": "Lançamentos linha a linha do Marketing Budget 2026",
-    "version": "line-items-v3",
+    "version": "line-items-v4",
     "currency": "BRL",
     "updatedAt": "2026-08-04",
     "sourceFile": "Marketing_2026 (1).xlsx",
@@ -12,12 +12,13 @@
       "Janeiro a junho: 522 lançamentos realizados da planilha consolidada, agora com o nome do gasto/fornecedor exibido; identidades em Pessoas/Freelancers permanecem protegidas.",
       "Julho: permanece somente como fechamento consolidado no reconciliation (R$ 54.074,41); a fonte detalhada de julho não foi fornecida e, portanto, não há linhas inventadas nesta tabela.",
       "Agosto a dezembro: 48 linhas projetadas, com nome do compromisso, a partir das premissas de recorrência; são valores esperados, não gasto realizado.",
-      "Sales Navigator: 9 de 13 BDRs (R$ 3.152,60/mês). Canva e StreamYard cortadas. Depósito apenas em agosto. Apollo R$ 1.632,00/mês (320 USD × 5,10)."
+      "Sales Navigator: 9 de 13 BDRs (R$ 3.152,60/mês). Canva e StreamYard cortadas. Depósito apenas em agosto. Apollo R$ 1.632,00/mês (320 USD × 5,10).",
+      "Google Cloud R$ 600,00/mês e Vercel R$ 350,00/mês a partir de ago/2026; linhas projetadas e totais foram recalculados."
     ]
   },
   "summary": {
     "itemCount": 570,
-    "totalAmount": 951563.6,
+    "totalAmount": 954663.6,
     "months": [
       "2026-01",
       "2026-02",
@@ -54,7 +55,7 @@
       },
       {
         "name": "SaaS/Ferramentas",
-        "amount": 50352.58
+        "amount": 53452.58
       },
       {
         "name": "Associações/Institucional",
@@ -4873,7 +4874,7 @@
       "origin": "Recorrência",
       "originalType": "Projeção",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 130.0,
+      "amount": 600.0,
       "expenseName": "Google Cloud"
     },
     {
@@ -4882,7 +4883,7 @@
       "origin": "Recorrência",
       "originalType": "Projeção",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 130.0,
+      "amount": 600.0,
       "expenseName": "Google Cloud"
     },
     {
@@ -4891,7 +4892,7 @@
       "origin": "Recorrência",
       "originalType": "Projeção",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 130.0,
+      "amount": 600.0,
       "expenseName": "Google Cloud"
     },
     {
@@ -4900,7 +4901,7 @@
       "origin": "Recorrência",
       "originalType": "Projeção",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 130.0,
+      "amount": 600.0,
       "expenseName": "Google Cloud"
     },
     {
@@ -4909,7 +4910,7 @@
       "origin": "Recorrência",
       "originalType": "Projeção",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 130.0,
+      "amount": 600.0,
       "expenseName": "Google Cloud"
     },
     {
@@ -4918,7 +4919,7 @@
       "origin": "Recorrência",
       "originalType": "Projeção",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 200.0,
+      "amount": 350.0,
       "expenseName": "Vercel"
     },
     {
@@ -4927,7 +4928,7 @@
       "origin": "Recorrência",
       "originalType": "Projeção",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 200.0,
+      "amount": 350.0,
       "expenseName": "Vercel"
     },
     {
@@ -4936,7 +4937,7 @@
       "origin": "Recorrência",
       "originalType": "Projeção",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 200.0,
+      "amount": 350.0,
       "expenseName": "Vercel"
     },
     {
@@ -4945,7 +4946,7 @@
       "origin": "Recorrência",
       "originalType": "Projeção",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 200.0,
+      "amount": 350.0,
       "expenseName": "Vercel"
     },
     {
@@ -4954,7 +4955,7 @@
       "origin": "Recorrência",
       "originalType": "Projeção",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 200.0,
+      "amount": 350.0,
       "expenseName": "Vercel"
     },
     {

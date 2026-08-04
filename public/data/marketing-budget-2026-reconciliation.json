@@ -1,7 +1,7 @@
 {
   "metadata": {
     "title": "Reconciliação do orçamento de Marketing 2026",
-    "version": "annual-reconciliation-v3",
+    "version": "annual-reconciliation-v4",
     "currency": "BRL",
     "updatedAt": "2026-08-04",
     "sourceFile": "Marketing_2026 (1).xlsx",
@@ -20,7 +20,8 @@
       "Depósito pago apenas em ago/2026 (R$ 450,00); de out em diante não há custo.",
       "Apollo adicionada: R$ 1.632,00/mês (320 USD × 5,10) de ago em diante.",
       "CONARH: parcelas de R$ 15.750 já estão refletidas em junho e julho; custos de execução nas datas devem consumir o envelope estratégico.",
-      "Jantares e roundtables pequenos devem consumir o envelope estratégico, sem nova recorrência automática."
+      "Jantares e roundtables pequenos devem consumir o envelope estratégico, sem nova recorrência automática.",
+      "Google Cloud passa a R$ 600,00/mês e Vercel a R$ 350,00/mês de ago/2026 em diante."
     ]
   },
   "annualBudget": 1250000.0,
@@ -75,35 +76,35 @@
   },
   "balanceAtJuly31": 310329.49,
   "futureRecurring": {
-    "total": 65967.5,
+    "total": 69067.5,
     "monthly": [
       {
         "month": "2026-08",
         "label": "ago/2026",
-        "amount": 14453.5
+        "amount": 15073.5
       },
       {
         "month": "2026-09",
         "label": "set/2026",
-        "amount": 14003.5
+        "amount": 14623.5
       },
       {
         "month": "2026-10",
         "label": "out/2026",
-        "amount": 12503.5
+        "amount": 13123.5
       },
       {
         "month": "2026-11",
         "label": "nov/2026",
-        "amount": 12503.5
+        "amount": 13123.5
       },
       {
         "month": "2026-12",
         "label": "dez/2026",
-        "amount": 12503.5
+        "amount": 13123.5
       }
     ],
-    "baseMonthlyOutDec": 12503.5,
+    "baseMonthlyOutDec": 13123.5,
     "baseItems": [
       {
         "name": "Agência de PR",
@@ -115,11 +116,11 @@
       },
       {
         "name": "Google Cloud",
-        "monthlyAmount": 130.0
+        "monthlyAmount": 600.0
       },
       {
         "name": "Vercel",
-        "monthlyAmount": 200.0
+        "monthlyAmount": 350.0
       },
       {
         "name": "Adobe",
@@ -178,37 +179,37 @@
     ]
   },
   "strategicEnvelope": {
-    "freeAfterRecurring": 244361.99,
+    "freeAfterRecurring": 241261.99,
     "distribution": [
       {
         "month": "2026-08",
         "label": "ago/2026",
         "percent": 28.000000000000004,
-        "amount": 68421.36
+        "amount": 67553.36
       },
       {
         "month": "2026-09",
         "label": "set/2026",
         "percent": 28.000000000000004,
-        "amount": 68421.36
+        "amount": 67553.36
       },
       {
         "month": "2026-10",
         "label": "out/2026",
         "percent": 24.0,
-        "amount": 58646.88
+        "amount": 57902.88
       },
       {
         "month": "2026-11",
         "label": "nov/2026",
         "percent": 15.0,
-        "amount": 36654.3
+        "amount": 36189.3
       },
       {
         "month": "2026-12",
         "label": "dez/2026",
         "percent": 5.0,
-        "amount": 12218.09
+        "amount": 12063.09
       }
     ]
   },
@@ -216,41 +217,41 @@
     {
       "month": "2026-08",
       "label": "ago/2026",
-      "recurring": 14453.5,
-      "strategicEnvelope": 68421.36,
-      "ceiling": 82874.86
+      "recurring": 15073.5,
+      "strategicEnvelope": 67553.36,
+      "ceiling": 82626.86
     },
     {
       "month": "2026-09",
       "label": "set/2026",
-      "recurring": 14003.5,
-      "strategicEnvelope": 68421.36,
-      "ceiling": 82424.86
+      "recurring": 14623.5,
+      "strategicEnvelope": 67553.36,
+      "ceiling": 82176.86
     },
     {
       "month": "2026-10",
       "label": "out/2026",
-      "recurring": 12503.5,
-      "strategicEnvelope": 58646.88,
-      "ceiling": 71150.38
+      "recurring": 13123.5,
+      "strategicEnvelope": 57902.88,
+      "ceiling": 71026.38
     },
     {
       "month": "2026-11",
       "label": "nov/2026",
-      "recurring": 12503.5,
-      "strategicEnvelope": 36654.3,
-      "ceiling": 49157.8
+      "recurring": 13123.5,
+      "strategicEnvelope": 36189.3,
+      "ceiling": 49312.8
     },
     {
       "month": "2026-12",
       "label": "dez/2026",
-      "recurring": 12503.5,
-      "strategicEnvelope": 12218.09,
-      "ceiling": 24721.59
+      "recurring": 13123.5,
+      "strategicEnvelope": 12063.09,
+      "ceiling": 25186.59
     }
   ],
   "scenarios": {
-    "minimumCommittedYear": 1005638.01,
+    "minimumCommittedYear": 1008738.01,
     "fullStrategicEnvelopeUse": 1250000.0
   },
   "historicalMeceJanJun": {
