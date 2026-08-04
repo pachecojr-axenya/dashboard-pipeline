@@ -1,34 +1,31 @@
 {
   "metadata": {
     "title": "Reconciliação do orçamento de Marketing 2026",
-    "version": "annual-reconciliation-v4",
+    "version": "annual-reconciliation-v5",
     "currency": "BRL",
     "updatedAt": "2026-08-04",
-    "sourceFile": "Marketing_2026 (1).xlsx",
+    "sourceFile": "Marketing_2026 (1).xlsx + Mkt Julho2026.xlsx",
     "sourceTab": "Planilha1",
     "sourceExportDate": "2026-07-21",
-    "julySource": "Growth Playground BigQuery /api/marketing-budget (fechamento de julho)",
-    "sourceOfTruth": "Planilha consolidada da Cíntia para realizado jan-jun; fechamento informado/registrado para julho; premissas oficiais de recorrência e envelope estratégico para ago-dez.",
+    "julySource": "Mkt Julho2026.xlsx: 83 linhas (R$ 52.964,91) + Google Cloud confirmado (R$ 1.100,00)",
+    "sourceOfTruth": "Planilha consolidada para realizado jan-jun; Mkt Julho2026.xlsx mais ajuste confirmado de Google Cloud para julho; premissas oficiais para ago-dez.",
     "notes": [
-      "Janeiro a junho são valores realizados pela soma das linhas atuais da planilha consolidada.",
-      "Julho é fechamento registrado, atualizado em 04/08: inclui Apollo R$ 4.513,50 (885 USD × 5,10) e Google Cloud R$ 1.100,00.",
+      "Janeiro a junho são valores realizados pela soma das linhas da planilha consolidada.",
+      "Julho foi reconciliado em 84 linhas: R$ 52.964,91 da planilha Mkt Julho2026.xlsx + R$ 1.100,00 de Google Cloud, total R$ 54.064,91. A planilha detalhada substitui o agregado anterior e já contém as linhas de Apollo.",
       "Agosto a dezembro são tetos planejados: recorrência comprometida mais envelope estratégico, não gasto realizado.",
-      "Câmbio aplicado para itens em USD: 5,10 BRL/USD.",
-      "LinkedIn Sales Navigator reduzido de 13 para 9 BDRs a partir de ago/2026: R$ 4.553,76 → R$ 3.152,60/mês (economia R$ 1.401,16/mês).",
-      "Canva não é mais paga a partir de ago/2026 (economia R$ 195,83/mês).",
-      "StreamYard cortada a partir de ago/2026 no momento (economia R$ 1.500,00/mês).",
-      "Depósito pago apenas em ago/2026 (R$ 450,00); de out em diante não há custo.",
-      "Apollo adicionada: R$ 1.632,00/mês (320 USD × 5,10) de ago em diante.",
-      "CONARH: parcelas de R$ 15.750 já estão refletidas em junho e julho; custos de execução nas datas devem consumir o envelope estratégico.",
-      "Jantares e roundtables pequenos devem consumir o envelope estratégico, sem nova recorrência automática.",
+      "Câmbio aplicado às premissas futuras em USD: 5,10 BRL/USD.",
+      "LinkedIn Sales Navigator reduzido de 13 para 9 BDRs a partir de ago/2026: R$ 4.553,76 → R$ 3.152,60/mês.",
+      "Canva e StreamYard zeradas a partir de ago/2026; Depósito pago apenas em agosto.",
+      "Apollo projetado em R$ 1.632,00/mês de ago em diante (320 USD × 5,10).",
+      "CONARH: parcelas de R$ 15.750 já estão refletidas em junho e julho; custos de execução devem consumir o envelope estratégico.",
       "Google Cloud passa a R$ 600,00/mês e Vercel a R$ 350,00/mês de ago/2026 em diante."
     ]
   },
   "annualBudget": 1250000.0,
   "actuals": {
     "janJunTotal": 885596.1,
-    "july": 54074.41,
-    "throughJuly": 939670.51,
+    "july": 54064.91,
+    "throughJuly": 939661.01,
     "monthly": [
       {
         "month": "2026-01",
@@ -70,11 +67,11 @@
         "month": "2026-07",
         "label": "jul/2026",
         "status": "Realizado",
-        "amount": 54074.41
+        "amount": 54064.91
       }
     ]
   },
-  "balanceAtJuly31": 310329.49,
+  "balanceAtJuly31": 310338.99,
   "futureRecurring": {
     "total": 69067.5,
     "monthly": [
@@ -179,37 +176,37 @@
     ]
   },
   "strategicEnvelope": {
-    "freeAfterRecurring": 241261.99,
+    "freeAfterRecurring": 241271.49,
     "distribution": [
       {
         "month": "2026-08",
         "label": "ago/2026",
         "percent": 28.000000000000004,
-        "amount": 67553.36
+        "amount": 67556.02
       },
       {
         "month": "2026-09",
         "label": "set/2026",
         "percent": 28.000000000000004,
-        "amount": 67553.36
+        "amount": 67556.02
       },
       {
         "month": "2026-10",
         "label": "out/2026",
         "percent": 24.0,
-        "amount": 57902.88
+        "amount": 57905.16
       },
       {
         "month": "2026-11",
         "label": "nov/2026",
         "percent": 15.0,
-        "amount": 36189.3
+        "amount": 36190.72
       },
       {
         "month": "2026-12",
         "label": "dez/2026",
         "percent": 5.0,
-        "amount": 12063.09
+        "amount": 12063.57
       }
     ]
   },
@@ -218,40 +215,40 @@
       "month": "2026-08",
       "label": "ago/2026",
       "recurring": 15073.5,
-      "strategicEnvelope": 67553.36,
-      "ceiling": 82626.86
+      "strategicEnvelope": 67556.02,
+      "ceiling": 82629.52
     },
     {
       "month": "2026-09",
       "label": "set/2026",
       "recurring": 14623.5,
-      "strategicEnvelope": 67553.36,
-      "ceiling": 82176.86
+      "strategicEnvelope": 67556.02,
+      "ceiling": 82179.52
     },
     {
       "month": "2026-10",
       "label": "out/2026",
       "recurring": 13123.5,
-      "strategicEnvelope": 57902.88,
-      "ceiling": 71026.38
+      "strategicEnvelope": 57905.16,
+      "ceiling": 71028.66
     },
     {
       "month": "2026-11",
       "label": "nov/2026",
       "recurring": 13123.5,
-      "strategicEnvelope": 36189.3,
-      "ceiling": 49312.8
+      "strategicEnvelope": 36190.72,
+      "ceiling": 49314.22
     },
     {
       "month": "2026-12",
       "label": "dez/2026",
       "recurring": 13123.5,
-      "strategicEnvelope": 12063.09,
-      "ceiling": 25186.59
+      "strategicEnvelope": 12063.57,
+      "ceiling": 25187.07
     }
   ],
   "scenarios": {
-    "minimumCommittedYear": 1008738.01,
+    "minimumCommittedYear": 1008728.51,
     "fullStrategicEnvelopeUse": 1250000.0
   },
   "historicalMeceJanJun": {
