@@ -1,5 +1,28 @@
 # Dashboard Enhancement Loop — Status Log
 
+### 🚀 LANÇAMENTOS COM NOME DO GASTO | MKT Budget (2026-08-04)
+
+> O dono apontou que a tabela linha a linha só mostrava categoria MECE (por
+> exemplo, `Agência/SEO`), sem identificar o gasto — e que julho não aparecia.
+> Fonte validada: `~/Downloads/Marketing_2026 (1).xlsx` contém as **522** linhas
+> detalhadas de jan-jun, todas com descrição de gasto e reconciliação exata por
+> linha/mês/origem/tipo/valor; ela não contém julho. Por decisão do dono, julho
+> permanece no reconciliation como fechamento consolidado de R$ 54.074,41, sem
+> linhas artificiais.
+> PR #33 (merge `2f238de`, base `072bd90`): `line-items-v3` restaura o campo
+> `expenseName` nas 522 linhas históricas e nas 48 projeções de ago-dez; a tabela
+> e o CSV agora têm a coluna **Nome do gasto** (7 colunas). Pessoas/Freelancers
+> preservam identidade protegida. Em agosto, os 11 compromissos agora identificam
+> nomes como Agência de PR e Apollo, em vez de apenas a categoria MECE.
+> Deployment `dpl_BpYvo1wgcDMhmfGffkmk2uDQhBvg` (Ready, production, 18s).
+> Pós-deploy: `/growth` e `/growth/mkt-budget` carregaram sem page errors;
+> 570 linhas têm nome, agosto identifica Agência de PR+Apollo e julho não foi
+> artificialmente incluído. Evidências: check
+> `cd1af4db00a0a7762f7d24f518b5b91f645db7a72e315c94d14254ba423cc000` |
+> predeploy `21c26792d7edf783ccd71c80732d6b27befbdee2ad3dccd47446469f9c3eef0e` |
+> deploy `4c6a04b7fb67258f5d6bf6b4b9bdb5e67b60a83d75a36a65b54f18ea3aee8ef4` |
+> smoke `dc5c30ba60f5fd5c5a3c44784673e78586da81576399b90a8b78e1079e3d8468`.
+
 ### 🚀 CORREÇÃO DE LEITURA | Teto mensal completo no MKT Budget (2026-08-04)
 
 > O dono apontou a inconsistência aparente: saldo de R$ 310.329,49 em 31/jul,
