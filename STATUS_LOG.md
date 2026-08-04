@@ -1,5 +1,31 @@
 # Dashboard Enhancement Loop — Status Log
 
+### 🚀 JULHO RECONCILIADO LINHA A LINHA | MKT Budget (2026-08-04)
+
+> Nova fonte entregue pelo dono: `~/Downloads/Mkt Julho2026.xlsx`. A planilha
+> contém 83 lançamentos, total R$ 52.964,91. O Google Cloud de R$ 1.100,00,
+> informado anteriormente e ausente do arquivo, foi incluído como ajuste
+> confirmado: **84 linhas | R$ 54.064,91**. A fonte detalhada substitui o
+> agregado anterior e já contém Apollo; portanto, o ajuste estimado de Apollo
+> não foi duplicado. Diferença final contra o fechamento anterior: -R$ 9,50.
+> PR #35 (merge `36acb9f`, base `2e222ff`): reconciliation v5 e line-items v5;
+> a tabela agora cobre os 12 meses, com 654 linhas e R$ 1.008.728,51. Nomes de
+> fornecedores são exibidos; identidades de Pessoas/Freelancers são protegidas
+> e nenhum dado de cartão é publicado. Realizado até julho R$ 939.661,01; saldo
+> R$ 310.338,99; recorrências R$ 69.067,50; envelope R$ 241.271,49; mínimo do
+> ano R$ 1.008.728,51. Tetos: ago R$ 82.629,52 | set R$ 82.179,52 |
+> out R$ 71.028,66 | nov R$ 49.314,22 | dez R$ 25.187,07.
+> Deployment `dpl_585nDCEo8wH2LXZLzHVZ6GxFbTCM` (Ready, production, 17s).
+> Pós-deploy: filtro julho = 84 linhas/R$ 54.064,91; total = 654 linhas/
+> R$ 1.008.728,51; CSV = 655 linhas; quatro rotas 200; zero page errors.
+> Evidências: dados/PII-safe
+> `30fd48d3b2323110eedb4fbff0c9dcdd0e89d63a2ca3852a087e9eba887774f5` |
+> browser produção `b5fb79b03939c02acadf8e08451b19697c3b2abff530f12f2916b618010f3d9d` |
+> npm check `cd1af4db00a0a7762f7d24f518b5b91f645db7a72e315c94d14254ba423cc000` |
+> predeploy `8f2a0effba6d3ce67d135ab5e9a1d53965489a5f0754b8c7474e6c9ea512b3d5` |
+> deploy `61a72f495e143e164706a24998ff1463d01440244ff62eecea2f5f2149a84b7f` |
+> rotas `c0cb5a12ed4c89aeab8ad47f3c0d9e28b62045fe351996619452700a6965e56f`.
+
 ### Fix | Meta BDR | teto de colaboradores renovado para agosto (2026-08-04)
 
 > Pedido do dono: o atingimento de meta de agosto também deve contabilizar somente
