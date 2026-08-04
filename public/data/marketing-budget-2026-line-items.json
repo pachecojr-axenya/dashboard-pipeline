@@ -1,24 +1,24 @@
 {
   "metadata": {
     "title": "Lançamentos linha a linha do Marketing Budget 2026",
-    "version": "line-items-v4",
+    "version": "line-items-v5",
     "currency": "BRL",
     "updatedAt": "2026-08-04",
-    "sourceFile": "Marketing_2026 (1).xlsx",
+    "sourceFile": "Marketing_2026 (1).xlsx + Mkt Julho2026.xlsx",
     "sourceTab": "Planilha1",
-    "sourceRows": "Linhas 3 em diante com data válida na coluna B e valor numérico na coluna F.",
-    "privacy": "A coluna Conta/fornecedor e nomes de pessoas foram omitidos do JSON público por privacidade. A classificação MECE usou esses campos apenas internamente para reconciliação.",
+    "sourceRows": "Jan-jun: planilha consolidada. Julho: linhas 3-85 de Mkt Julho2026.xlsx + ajuste confirmado de Google Cloud. Ago-dez: premissas projetadas.",
+    "privacy": "Nomes de fornecedores são exibidos; identidades de Pessoas/Freelancers são protegidas. Dados de cartão não são exportados.",
     "notes": [
-      "Janeiro a junho: 522 lançamentos realizados da planilha consolidada, agora com o nome do gasto/fornecedor exibido; identidades em Pessoas/Freelancers permanecem protegidas.",
-      "Julho: permanece somente como fechamento consolidado no reconciliation (R$ 54.074,41); a fonte detalhada de julho não foi fornecida e, portanto, não há linhas inventadas nesta tabela.",
-      "Agosto a dezembro: 48 linhas projetadas, com nome do compromisso, a partir das premissas de recorrência; são valores esperados, não gasto realizado.",
+      "Janeiro a junho: 522 lançamentos realizados da planilha consolidada, com nome do gasto.",
+      "Julho: 84 linhas realizadas e reconciliadas em R$ 54.064,91 — 83 linhas da planilha Mkt Julho2026.xlsx (R$ 52.964,91) + Google Cloud confirmado (R$ 1.100,00). A planilha detalhada substitui o agregado anterior e já contém Apollo.",
+      "Agosto a dezembro: 48 linhas projetadas a partir das premissas de recorrência; são valores esperados, não gasto realizado.",
       "Sales Navigator: 9 de 13 BDRs (R$ 3.152,60/mês). Canva e StreamYard cortadas. Depósito apenas em agosto. Apollo R$ 1.632,00/mês (320 USD × 5,10).",
-      "Google Cloud R$ 600,00/mês e Vercel R$ 350,00/mês a partir de ago/2026; linhas projetadas e totais foram recalculados."
+      "Google Cloud R$ 600,00/mês e Vercel R$ 350,00/mês a partir de ago/2026."
     ]
   },
   "summary": {
-    "itemCount": 570,
-    "totalAmount": 954663.6,
+    "itemCount": 654,
+    "totalAmount": 1008728.51,
     "months": [
       "2026-01",
       "2026-02",
@@ -26,6 +26,7 @@
       "2026-04",
       "2026-05",
       "2026-06",
+      "2026-07",
       "2026-08",
       "2026-09",
       "2026-10",
@@ -39,23 +40,23 @@
       },
       {
         "name": "Agência/SEO",
-        "amount": 94797.15
+        "amount": 102417.15
       },
       {
         "name": "Mídia Paga",
-        "amount": 74837.81
-      },
-      {
-        "name": "Diversos/Operacional",
-        "amount": 55931.92
-      },
-      {
-        "name": "Brindes/Material Promocional",
-        "amount": 53685.17
+        "amount": 91728.9
       },
       {
         "name": "SaaS/Ferramentas",
-        "amount": 53452.58
+        "amount": 72582.61
+      },
+      {
+        "name": "Brindes/Material Promocional",
+        "amount": 57454.45
+      },
+      {
+        "name": "Diversos/Operacional",
+        "amount": 56557.02
       },
       {
         "name": "Associações/Institucional",
@@ -63,7 +64,7 @@
       },
       {
         "name": "Alimentação/Hospitalidade",
-        "amount": 37747.27
+        "amount": 39605.39
       },
       {
         "name": "Educação/Consultoria",
@@ -71,11 +72,11 @@
       },
       {
         "name": "Pessoas/Freelancers",
-        "amount": 18079.0
+        "amount": 21294.0
       },
       {
         "name": "Serviços de Apoio a Eventos",
-        "amount": 14194.31
+        "amount": 15150.6
       }
     ]
   },
@@ -4777,6 +4778,846 @@
       "meceCategory": "SaaS/Ferramentas",
       "amount": 129.51,
       "expenseName": "TWILIO SENDGRID"
+    },
+    {
+      "sourceRow": "JUL-3",
+      "month": "2026-07",
+      "origin": "Conta Simples",
+      "expenseName": "Apollo",
+      "originalType": "Saas",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 4693.24,
+      "transactionDate": "2026-06-08T07:22"
+    },
+    {
+      "sourceRow": "JUL-4",
+      "month": "2026-07",
+      "origin": "Conta Simples",
+      "expenseName": "Apollo",
+      "originalType": "Saas",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 164.26,
+      "transactionDate": "2026-06-08T07:22"
+    },
+    {
+      "sourceRow": "JUL-5",
+      "month": "2026-07",
+      "origin": "Conta Simples",
+      "expenseName": "LinkedIn / Sales Navigator",
+      "originalType": "Saas",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 449.99,
+      "transactionDate": "2026-06-08T13:19"
+    },
+    {
+      "sourceRow": "JUL-6",
+      "month": "2026-07",
+      "origin": "Conta Simples",
+      "expenseName": "LinkedIn / Sales Navigator",
+      "originalType": "Saas",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 449.99,
+      "transactionDate": "2026-06-09T07:42"
+    },
+    {
+      "sourceRow": "JUL-7",
+      "month": "2026-07",
+      "origin": "Conta Simples",
+      "expenseName": "LinkedIn / Sales Navigator",
+      "originalType": "Saas",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 449.99,
+      "transactionDate": "2026-06-09T12:08"
+    },
+    {
+      "sourceRow": "JUL-8",
+      "month": "2026-07",
+      "origin": "Conta Simples",
+      "expenseName": "LinkedIn / Sales Navigator",
+      "originalType": "Saas",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 449.99,
+      "transactionDate": "2026-06-09T12:09"
+    },
+    {
+      "sourceRow": "JUL-9",
+      "month": "2026-07",
+      "origin": "Conta Simples",
+      "expenseName": "LinkedIn / Sales Navigator",
+      "originalType": "Saas",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 449.99,
+      "transactionDate": "2026-06-09T12:09"
+    },
+    {
+      "sourceRow": "JUL-10",
+      "month": "2026-07",
+      "origin": "Conta Simples",
+      "expenseName": "LinkedIn / Sales Navigator",
+      "originalType": "Saas",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 449.99,
+      "transactionDate": "2026-06-09T12:09"
+    },
+    {
+      "sourceRow": "JUL-11",
+      "month": "2026-07",
+      "origin": "Conta Simples",
+      "expenseName": "LinkedIn / Sales Navigator",
+      "originalType": "Saas",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 449.99,
+      "transactionDate": "2026-06-09T12:10"
+    },
+    {
+      "sourceRow": "JUL-12",
+      "month": "2026-07",
+      "origin": "Conta Simples",
+      "expenseName": "LinkedIn / Sales Navigator",
+      "originalType": "Saas",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 449.99,
+      "transactionDate": "2026-06-09T12:11"
+    },
+    {
+      "sourceRow": "JUL-13",
+      "month": "2026-07",
+      "origin": "Conta Simples",
+      "expenseName": "LinkedIn / Sales Navigator",
+      "originalType": "Saas",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 449.99,
+      "transactionDate": "2026-06-12T08:11"
+    },
+    {
+      "sourceRow": "JUL-14",
+      "month": "2026-07",
+      "origin": "Conta Simples",
+      "expenseName": "StreamYard",
+      "originalType": "Saas",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 236.65,
+      "transactionDate": "2026-06-15T09:20"
+    },
+    {
+      "sourceRow": "JUL-15",
+      "month": "2026-07",
+      "origin": "Conta Simples",
+      "expenseName": "StreamYard",
+      "originalType": "Saas",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 8.28,
+      "transactionDate": "2026-06-15T09:20"
+    },
+    {
+      "sourceRow": "JUL-16",
+      "month": "2026-07",
+      "origin": "Conta Simples",
+      "expenseName": "Uber",
+      "originalType": "Evento",
+      "meceCategory": "Serviços de Apoio a Eventos",
+      "amount": 27.96,
+      "transactionDate": "2026-06-16T06:03"
+    },
+    {
+      "sourceRow": "JUL-17",
+      "month": "2026-07",
+      "origin": "Conta Simples",
+      "expenseName": "LinkedIn / Sales Navigator",
+      "originalType": "Saas",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 449.99,
+      "transactionDate": "2026-06-16T06:47"
+    },
+    {
+      "sourceRow": "JUL-18",
+      "month": "2026-07",
+      "origin": "Conta Simples",
+      "expenseName": "Uber",
+      "originalType": "Evento",
+      "meceCategory": "Serviços de Apoio a Eventos",
+      "amount": 40.68,
+      "transactionDate": "2026-06-16T08:25"
+    },
+    {
+      "sourceRow": "JUL-19",
+      "month": "2026-07",
+      "origin": "Conta Simples",
+      "expenseName": "Uber",
+      "originalType": "Evento",
+      "meceCategory": "Serviços de Apoio a Eventos",
+      "amount": 14.15,
+      "transactionDate": "2026-06-16T12:22"
+    },
+    {
+      "sourceRow": "JUL-20",
+      "month": "2026-07",
+      "origin": "Conta Simples",
+      "expenseName": "Anthropic",
+      "originalType": "Saas",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 0.93,
+      "transactionDate": "2026-06-22T13:33"
+    },
+    {
+      "sourceRow": "JUL-21",
+      "month": "2026-07",
+      "origin": "Conta Simples",
+      "expenseName": "Anthropic",
+      "originalType": "Saas",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 26.62,
+      "transactionDate": "2026-06-22T13:33"
+    },
+    {
+      "sourceRow": "JUL-22",
+      "month": "2026-07",
+      "origin": "Conta Simples",
+      "expenseName": "Make",
+      "originalType": "Saas",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 56.33,
+      "transactionDate": "2026-06-23T07:00"
+    },
+    {
+      "sourceRow": "JUL-23",
+      "month": "2026-07",
+      "origin": "Conta Simples",
+      "expenseName": "Make",
+      "originalType": "Saas",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 1.97,
+      "transactionDate": "2026-06-23T07:00"
+    },
+    {
+      "sourceRow": "JUL-24",
+      "month": "2026-07",
+      "origin": "Conta Simples",
+      "expenseName": "Catito Salgados",
+      "originalType": "Evento",
+      "meceCategory": "Alimentação/Hospitalidade",
+      "amount": 1742.5,
+      "transactionDate": "2026-06-23T14:30"
+    },
+    {
+      "sourceRow": "JUL-25",
+      "month": "2026-07",
+      "origin": "Conta Simples",
+      "expenseName": "Uber",
+      "originalType": "Evento",
+      "meceCategory": "Serviços de Apoio a Eventos",
+      "amount": 38.19,
+      "transactionDate": "2026-06-24T03:16"
+    },
+    {
+      "sourceRow": "JUL-26",
+      "month": "2026-07",
+      "origin": "Conta Simples",
+      "expenseName": "Localiza",
+      "originalType": "Evento",
+      "meceCategory": "Serviços de Apoio a Eventos",
+      "amount": 290.75,
+      "transactionDate": "2026-06-24T03:46"
+    },
+    {
+      "sourceRow": "JUL-27",
+      "month": "2026-07",
+      "origin": "Conta Simples",
+      "expenseName": "Auto Ban",
+      "originalType": "Evento",
+      "meceCategory": "Serviços de Apoio a Eventos",
+      "amount": 13.7,
+      "transactionDate": "2026-06-24T05:22"
+    },
+    {
+      "sourceRow": "JUL-28",
+      "month": "2026-07",
+      "origin": "Conta Simples",
+      "expenseName": "Posto do Campo Belo",
+      "originalType": "Evento",
+      "meceCategory": "Serviços de Apoio a Eventos",
+      "amount": 202.64,
+      "transactionDate": "2026-06-24T19:10"
+    },
+    {
+      "sourceRow": "JUL-29",
+      "month": "2026-07",
+      "origin": "Conta Simples",
+      "expenseName": "Uber",
+      "originalType": "Evento",
+      "meceCategory": "Serviços de Apoio a Eventos",
+      "amount": 43.17,
+      "transactionDate": "2026-06-24T19:17"
+    },
+    {
+      "sourceRow": "JUL-30",
+      "month": "2026-07",
+      "origin": "Conta Simples",
+      "expenseName": "Localiza",
+      "originalType": "Evento",
+      "meceCategory": "Serviços de Apoio a Eventos",
+      "amount": 153.59,
+      "transactionDate": "2026-06-24T19:18"
+    },
+    {
+      "sourceRow": "JUL-31",
+      "month": "2026-07",
+      "origin": "Conta Simples",
+      "expenseName": "LinkedIn / Sales Navigator",
+      "originalType": "Saas",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 449.99,
+      "transactionDate": "2026-06-30T12:05"
+    },
+    {
+      "sourceRow": "JUL-32",
+      "month": "2026-07",
+      "origin": "Conta Simples",
+      "expenseName": "LinkedIn / Sales Navigator",
+      "originalType": "Saas",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 449.99,
+      "transactionDate": "2026-06-30T12:06"
+    },
+    {
+      "sourceRow": "JUL-33",
+      "month": "2026-07",
+      "origin": "Conta Simples",
+      "expenseName": "Apollo",
+      "originalType": "Saas",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 9.38,
+      "transactionDate": "2026-07-01T06:42"
+    },
+    {
+      "sourceRow": "JUL-34",
+      "month": "2026-07",
+      "origin": "Conta Simples",
+      "expenseName": "Apollo",
+      "originalType": "Saas",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 267.86,
+      "transactionDate": "2026-07-01T06:42"
+    },
+    {
+      "sourceRow": "JUL-35",
+      "month": "2026-07",
+      "origin": "Conta Simples",
+      "expenseName": "Mercado Livre",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 77.8,
+      "transactionDate": "2026-07-03T13:46"
+    },
+    {
+      "sourceRow": "JUL-36",
+      "month": "2026-07",
+      "origin": "Conta Simples",
+      "expenseName": "Lojas Mel Paraíso",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 181.49,
+      "transactionDate": "2026-07-06T08:40"
+    },
+    {
+      "sourceRow": "JUL-37",
+      "month": "2026-07",
+      "origin": "Conta Simples",
+      "expenseName": "Uber",
+      "originalType": "Evento",
+      "meceCategory": "Serviços de Apoio a Eventos",
+      "amount": 28.33,
+      "transactionDate": "2026-07-06T09:00"
+    },
+    {
+      "sourceRow": "JUL-38",
+      "month": "2026-07",
+      "origin": "Conta Simples",
+      "expenseName": "PromoPress",
+      "originalType": "Evento",
+      "meceCategory": "Brindes/Material Promocional",
+      "amount": 2136.0,
+      "transactionDate": "2026-07-06T09:34"
+    },
+    {
+      "sourceRow": "JUL-39",
+      "month": "2026-07",
+      "origin": "Conta Simples",
+      "expenseName": "Pessoa/Freelancer — identidade protegida",
+      "originalType": "Sem tipo",
+      "meceCategory": "Pessoas/Freelancers",
+      "amount": 130.0,
+      "transactionDate": "2026-07-06T10:43"
+    },
+    {
+      "sourceRow": "JUL-40",
+      "month": "2026-07",
+      "origin": "Conta Simples",
+      "expenseName": "LinkedIn / Sales Navigator",
+      "originalType": "Saas",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 224.99,
+      "transactionDate": "2026-07-06T12:46"
+    },
+    {
+      "sourceRow": "JUL-41",
+      "month": "2026-07",
+      "origin": "Conta Simples",
+      "expenseName": "Apollo",
+      "originalType": "Saas",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 4736.61,
+      "transactionDate": "2026-07-06T12:48"
+    },
+    {
+      "sourceRow": "JUL-42",
+      "month": "2026-07",
+      "origin": "Conta Simples",
+      "expenseName": "Apollo",
+      "originalType": "Saas",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 165.78,
+      "transactionDate": "2026-07-06T12:48"
+    },
+    {
+      "sourceRow": "JUL-43",
+      "month": "2026-07",
+      "origin": "Conta Simples",
+      "expenseName": "LinkedIn / Sales Navigator",
+      "originalType": "Saas",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 224.99,
+      "transactionDate": "2026-07-06T14:18"
+    },
+    {
+      "sourceRow": "JUL-44",
+      "month": "2026-07",
+      "origin": "Conta Simples",
+      "expenseName": "Krispy Kreme",
+      "originalType": "Evento",
+      "meceCategory": "Alimentação/Hospitalidade",
+      "amount": 53.6,
+      "transactionDate": "2026-07-06T17:27"
+    },
+    {
+      "sourceRow": "JUL-45",
+      "month": "2026-07",
+      "origin": "Conta Simples",
+      "expenseName": "Taxa operacional",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 50.0,
+      "transactionDate": "2026-07-06T21:05"
+    },
+    {
+      "sourceRow": "JUL-46",
+      "month": "2026-07",
+      "origin": "Conta Simples",
+      "expenseName": "Uber",
+      "originalType": "Evento",
+      "meceCategory": "Serviços de Apoio a Eventos",
+      "amount": 16.13,
+      "transactionDate": "2026-07-07T04:01"
+    },
+    {
+      "sourceRow": "JUL-47",
+      "month": "2026-07",
+      "origin": "Conta Simples",
+      "expenseName": "Táxi",
+      "originalType": "Evento",
+      "meceCategory": "Serviços de Apoio a Eventos",
+      "amount": 87.0,
+      "transactionDate": "2026-07-07T06:04"
+    },
+    {
+      "sourceRow": "JUL-48",
+      "month": "2026-07",
+      "origin": "Conta Simples",
+      "expenseName": "Fazenda Pedra",
+      "originalType": "Evento",
+      "meceCategory": "Alimentação/Hospitalidade",
+      "amount": 32.55,
+      "transactionDate": "2026-07-07T09:45"
+    },
+    {
+      "sourceRow": "JUL-49",
+      "month": "2026-07",
+      "origin": "Conta Simples",
+      "expenseName": "VS Eletro",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 139.99,
+      "transactionDate": "2026-07-07T10:24"
+    },
+    {
+      "sourceRow": "JUL-50",
+      "month": "2026-07",
+      "origin": "Conta Simples",
+      "expenseName": "LinkedIn / Sales Navigator",
+      "originalType": "Saas",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 224.99,
+      "transactionDate": "2026-07-07T10:50"
+    },
+    {
+      "sourceRow": "JUL-51",
+      "month": "2026-07",
+      "origin": "Conta Simples",
+      "expenseName": "Supermercados BH",
+      "originalType": "Evento",
+      "meceCategory": "Alimentação/Hospitalidade",
+      "amount": 29.47,
+      "transactionDate": "2026-07-07T13:28"
+    },
+    {
+      "sourceRow": "JUL-52",
+      "month": "2026-07",
+      "origin": "Clara",
+      "expenseName": "Google Ads",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 891.09,
+      "transactionDate": "2026-07-01T00:00"
+    },
+    {
+      "sourceRow": "JUL-53",
+      "month": "2026-07",
+      "origin": "Clara",
+      "expenseName": "LinkedIn / Sales Navigator",
+      "originalType": "Saas",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 172.63,
+      "transactionDate": "2026-07-01T00:00"
+    },
+    {
+      "sourceRow": "JUL-54",
+      "month": "2026-07",
+      "origin": "Clara",
+      "expenseName": "IOF — compra internacional",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 5.57,
+      "transactionDate": "2026-06-30T00:00"
+    },
+    {
+      "sourceRow": "JUL-55",
+      "month": "2026-07",
+      "origin": "Clara",
+      "expenseName": "Zapier",
+      "originalType": "Saas",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 159.06,
+      "transactionDate": "2026-06-29T00:00"
+    },
+    {
+      "sourceRow": "JUL-56",
+      "month": "2026-07",
+      "origin": "Clara",
+      "expenseName": "Meta Ads",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 1000.0,
+      "transactionDate": "2026-06-26T00:00"
+    },
+    {
+      "sourceRow": "JUL-57",
+      "month": "2026-07",
+      "origin": "Clara",
+      "expenseName": "IOF — compra internacional",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 14.77,
+      "transactionDate": "2026-06-25T00:00"
+    },
+    {
+      "sourceRow": "JUL-58",
+      "month": "2026-07",
+      "origin": "Clara",
+      "expenseName": "Vercel",
+      "originalType": "Saas",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 421.89,
+      "transactionDate": "2026-06-24T00:00"
+    },
+    {
+      "sourceRow": "JUL-59",
+      "month": "2026-07",
+      "origin": "Clara",
+      "expenseName": "IOF — compra internacional",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 5.48,
+      "transactionDate": "2026-06-24T00:00"
+    },
+    {
+      "sourceRow": "JUL-60",
+      "month": "2026-07",
+      "origin": "Clara",
+      "expenseName": "Meta Ads",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 1000.0,
+      "transactionDate": "2026-06-23T00:00"
+    },
+    {
+      "sourceRow": "JUL-61",
+      "month": "2026-07",
+      "origin": "Clara",
+      "expenseName": "Apify",
+      "originalType": "Saas",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 156.54,
+      "transactionDate": "2026-06-23T00:00"
+    },
+    {
+      "sourceRow": "JUL-62",
+      "month": "2026-07",
+      "origin": "Clara",
+      "expenseName": "Meta Ads",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 1000.0,
+      "transactionDate": "2026-06-21T00:00"
+    },
+    {
+      "sourceRow": "JUL-63",
+      "month": "2026-07",
+      "origin": "Clara",
+      "expenseName": "Meta Ads",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 1000.0,
+      "transactionDate": "2026-06-19T00:00"
+    },
+    {
+      "sourceRow": "JUL-64",
+      "month": "2026-07",
+      "origin": "Clara",
+      "expenseName": "Meta Ads",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 1000.0,
+      "transactionDate": "2026-06-17T00:00"
+    },
+    {
+      "sourceRow": "JUL-65",
+      "month": "2026-07",
+      "origin": "Clara",
+      "expenseName": "MLabs",
+      "originalType": "Saas",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 49.9,
+      "transactionDate": "2026-06-16T00:00"
+    },
+    {
+      "sourceRow": "JUL-66",
+      "month": "2026-07",
+      "origin": "Clara",
+      "expenseName": "Meta Ads",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 1000.0,
+      "transactionDate": "2026-06-14T00:00"
+    },
+    {
+      "sourceRow": "JUL-67",
+      "month": "2026-07",
+      "origin": "Clara",
+      "expenseName": "Meta Ads",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 1000.0,
+      "transactionDate": "2026-06-12T00:00"
+    },
+    {
+      "sourceRow": "JUL-68",
+      "month": "2026-07",
+      "origin": "Clara",
+      "expenseName": "Meta Ads",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 1000.0,
+      "transactionDate": "2026-06-10T00:00"
+    },
+    {
+      "sourceRow": "JUL-69",
+      "month": "2026-07",
+      "origin": "Clara",
+      "expenseName": "LinkedIn / Sales Navigator",
+      "originalType": "Saas",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 627.25,
+      "transactionDate": "2026-06-10T00:00"
+    },
+    {
+      "sourceRow": "JUL-70",
+      "month": "2026-07",
+      "origin": "Clara",
+      "expenseName": "Meta Ads",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 1000.0,
+      "transactionDate": "2026-06-09T00:00"
+    },
+    {
+      "sourceRow": "JUL-71",
+      "month": "2026-07",
+      "origin": "Clara",
+      "expenseName": "Google Ads",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 2000.0,
+      "transactionDate": "2026-06-08T00:00"
+    },
+    {
+      "sourceRow": "JUL-72",
+      "month": "2026-07",
+      "origin": "Clara",
+      "expenseName": "Meta Ads",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 1000.0,
+      "transactionDate": "2026-06-08T00:00"
+    },
+    {
+      "sourceRow": "JUL-73",
+      "month": "2026-07",
+      "origin": "Clara",
+      "expenseName": "Meta Ads",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 1000.0,
+      "transactionDate": "2026-06-07T00:00"
+    },
+    {
+      "sourceRow": "JUL-74",
+      "month": "2026-07",
+      "origin": "Clara",
+      "expenseName": "Meta Ads",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 1000.0,
+      "transactionDate": "2026-06-06T00:00"
+    },
+    {
+      "sourceRow": "JUL-75",
+      "month": "2026-07",
+      "origin": "Clara",
+      "expenseName": "Meta Ads",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 1000.0,
+      "transactionDate": "2026-06-05T00:00"
+    },
+    {
+      "sourceRow": "JUL-76",
+      "month": "2026-07",
+      "origin": "Clara",
+      "expenseName": "Meta Ads",
+      "originalType": "Mídia",
+      "meceCategory": "Mídia Paga",
+      "amount": 1000.0,
+      "transactionDate": "2026-06-04T00:00"
+    },
+    {
+      "sourceRow": "JUL-77",
+      "month": "2026-07",
+      "origin": "Itaú",
+      "expenseName": "Pessoa/Freelancer — identidade protegida",
+      "originalType": "Sem tipo",
+      "meceCategory": "Pessoas/Freelancers",
+      "amount": 1500.0,
+      "transactionDate": null
+    },
+    {
+      "sourceRow": "JUL-78",
+      "month": "2026-07",
+      "origin": "Itaú",
+      "expenseName": "Art Brindes",
+      "originalType": "Evento",
+      "meceCategory": "Brindes/Material Promocional",
+      "amount": 1250.0,
+      "transactionDate": null
+    },
+    {
+      "sourceRow": "JUL-79",
+      "month": "2026-07",
+      "origin": "Itaú",
+      "expenseName": "ByCyber",
+      "originalType": "Agência",
+      "meceCategory": "Agência/SEO",
+      "amount": 1120.0,
+      "transactionDate": null
+    },
+    {
+      "sourceRow": "JUL-80",
+      "month": "2026-07",
+      "origin": "Itaú",
+      "expenseName": "GaleriaPix",
+      "originalType": "Evento",
+      "meceCategory": "Brindes/Material Promocional",
+      "amount": 383.28,
+      "transactionDate": null
+    },
+    {
+      "sourceRow": "JUL-81",
+      "month": "2026-07",
+      "origin": "Itaú",
+      "expenseName": "Camp1 — Agência de PR",
+      "originalType": "Agência",
+      "meceCategory": "Agência/SEO",
+      "amount": 6500.0,
+      "transactionDate": null
+    },
+    {
+      "sourceRow": "JUL-82",
+      "month": "2026-07",
+      "origin": "Itaú",
+      "expenseName": "Pessoa/Freelancer — identidade protegida",
+      "originalType": "Sem tipo",
+      "meceCategory": "Pessoas/Freelancers",
+      "amount": 40.0,
+      "transactionDate": null
+    },
+    {
+      "sourceRow": "JUL-83",
+      "month": "2026-07",
+      "origin": "Itaú",
+      "expenseName": "Pessoa/Freelancer — identidade protegida",
+      "originalType": "Sem tipo",
+      "meceCategory": "Pessoas/Freelancers",
+      "amount": 45.0,
+      "transactionDate": null
+    },
+    {
+      "sourceRow": "JUL-84",
+      "month": "2026-07",
+      "origin": "Itaú",
+      "expenseName": "Pessoa/Freelancer — identidade protegida",
+      "originalType": "Sem tipo",
+      "meceCategory": "Pessoas/Freelancers",
+      "amount": 1500.0,
+      "transactionDate": null
+    },
+    {
+      "sourceRow": "JUL-85",
+      "month": "2026-07",
+      "origin": "Itaú",
+      "expenseName": "KLTC Administrativo",
+      "originalType": "Sem tipo",
+      "meceCategory": "Diversos/Operacional",
+      "amount": 150.0,
+      "transactionDate": null
+    },
+    {
+      "sourceRow": "JUL-GCP",
+      "month": "2026-07",
+      "origin": "Ajuste confirmado",
+      "expenseName": "Google Cloud",
+      "originalType": "Saas",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 1100.0,
+      "transactionDate": null
     },
     {
       "sourceRow": 526,

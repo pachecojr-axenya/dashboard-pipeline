@@ -232,7 +232,7 @@
           <summary>
             <p class="section-title">Histórico público</p>
             <h2>Lançamentos linha a linha</h2>
-            <p>Abra para filtrar os 570 lançamentos detalhados: 522 realizados de jan-jun, com nome do gasto, + 48 projeções de ago-dez. Julho permanece como fechamento consolidado no resumo acima, pois sua fonte detalhada ainda não foi fornecida. Identidades em Pessoas/Freelancers continuam protegidas.</p>
+            <p>Abra para filtrar os 654 lançamentos detalhados: 522 realizados de jan-jun, 84 realizados de julho e 48 projeções de ago-dez. Os nomes dos gastos estão disponíveis; identidades em Pessoas/Freelancers continuam protegidas.</p>
           </summary>
           <div class="controls">
             <select id="lineMonth" aria-label="Filtrar por mês"></select>
@@ -242,7 +242,7 @@
           <div class="table-actions">
             <strong id="lineSummary">Carregando lançamentos...</strong>
             <div class="controls" style="margin-top:0;">
-              <button type="button" id="exportCsv" title="Exporta TODAS as linhas detalhadas em CSV (522 realizados de jan-jun + 48 projeções de ago-dez; julho permanece consolidado)">Exportar CSV</button>
+              <button type="button" id="exportCsv" title="Exporta TODAS as linhas detalhadas em CSV (522 realizados de jan-jun + 84 realizados de julho + 48 projeções de ago-dez)">Exportar CSV</button>
               <button type="button" id="prevPage">Anterior</button>
               <span id="pageInfo" class="footer" style="margin-top:0;"></span>
               <button type="button" id="nextPage">Próxima</button>
@@ -394,8 +394,7 @@
       document.getElementById('lineItemsTable').innerHTML = pageItems.map(item => `<tr><td>${escapeHTML(item.sourceRow)}</td><td>${escapeHTML(item.month)}</td><td>${escapeHTML(item.origin)}</td><td>${escapeHTML(item.expenseName || 'Nome não disponível')}</td><td>${escapeHTML(item.originalType)}</td><td>${escapeHTML(item.meceCategory)}</td><td class="num">${fmtBRL(item.amount)}</td></tr>`).join('');
     }
 
-    // Exporta todas as linhas detalhadas disponíveis (jan-jun realizados + ago-dez projetados).
-    // Julho permanece no reconciliation como fechamento consolidado, sem linhas inventadas.
+    // Exporta todas as linhas detalhadas disponíveis (jan-jul realizados + ago-dez projetados).
     // csvCell: neutraliza CSV injection (células com prefixo =, +, -, @, tab, CR)
     // e escapa aspas/separador — BOM + ';' + decimais pt-BR para Excel BR.
     function csvCell(raw) {
