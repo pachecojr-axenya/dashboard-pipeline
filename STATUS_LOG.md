@@ -1,5 +1,25 @@
 # Dashboard Enhancement Loop — Status Log
 
+### 🚀 PREMISSAS AGO-DEZ + LANÇAMENTOS PROJETADOS | MKT Budget (2026-08-04)
+
+> Novas premissas do dono, câmbio USD→BRL a 5,10 (PR #31, merge `c0733a0`,
+> base `d7b1a0a`; deployment `dpl_98zU7xtkoURKb659FJig1o6Wdrm9`, Ready 19s):
+> **Sales Navigator 13→9 BDRs** (R$ 4.553,76 → R$ 3.152,60/mês, economia
+> R$ 1.401,16/mês) · **Canva cortada** (R$ 195,83/mês) · **StreamYard cortada no
+> momento** (R$ 1.500,00/mês) · **Depósito só em ago** (R$ 450,00) · **Apollo nova**
+> (julho R$ 4.513,50 = 885 USD; ago+ R$ 1.632,00/mês = 320 USD) · **GCP julho
+> +R$ 1.100,00** no realizado.
+> Reconciliation v3: julho realizado 54.074,41; throughJuly 939.670,51; saldo
+> 31/jul 310.329,49; recorrência ago-dez 65.967,50 (**economia R$ 9.124,95**);
+> envelope livre 244.361,99; mínimo do ano 1.005.638,01; tetos mensais e cenários
+> recalculados (somas validadas).
+> Line-items v2: **+48 linhas projetadas de ago-dez** (origin Recorrência/
+> Temporário, tipo Projeção) geradas das recorrências — filtro de mês agora cobre
+> ago-dez; total 570 lançamentos / R$ 951.563,60; textos atualizados. Pós-deploy
+> Playwright produção: 11/11 checks PASS (big numbers, filtro ago/2026 = 11
+> lançamentos R$ 14.453,50, Apollo/SalesNav-9/Canva-0/StreamYard-0/Depósito-ago,
+> total recorrências 65.967,50), sem page errors; `npm run check` exit 0.
+
 ### 🚀 DEPLOY DE PRODUÇÃO | BDR Performance | Vigência do time + meta fixa 16 (2026-08-03)
 
 > Decisão do dono: a partir de **2026-08**, Anderson Souza, Cintia Rodrigues,
