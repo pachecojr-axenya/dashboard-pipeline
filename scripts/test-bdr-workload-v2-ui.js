@@ -76,20 +76,23 @@ assert(js.includes('function sectorWarehouse') && js.includes('sectorWarehouse(d
 assert(info.includes("querySelectorAll('.v2-kpi')") && info.includes("querySelectorAll('.card h2')"), 'todos os KPIs e gráficos devem receber memória específica');
 assert(info.includes('Não mede se porte, segmento ou persona estão preenchidos') && info.includes('Não informa se os contatos receberam abordagem'), 'cobertura de toque e completude de atributo devem permanecer distintas');
 assert(info.includes("'CRM': 'Movimentos no CRM'") && info.includes("'SQL': 'Leads qualificados (SQL)'") && info.includes("'Elegíveis': 'Empresas elegíveis'"), 'rótulos técnicos devem ser traduzidos para linguagem de negócio');
-// Regra temporária de meta: julho/2026 tem piso e teto inclusivos; outros meses só piso.
-assert(bdrHtml.includes("var BDR_GOAL_CAPPED_MONTH='2026-07'"), 'mês excepcional da meta ausente');
-assert(bdrHtml.includes("_oym(d)===BDR_GOAL_CAPPED_MONTH ? d.colaboradores<=2000 : true"), 'teto de 2.000 deve valer somente em julho/2026');
+// Regra temporária de meta: julho e agosto/2026 têm piso e teto inclusivos; outros meses só piso.
+assert(bdrHtml.includes("var BDR_GOAL_CAPPED_MONTHS={'2026-07':true,'2026-08':true}"), 'meses excepcionais da meta ausentes');
+assert(bdrHtml.includes("BDR_GOAL_CAPPED_MONTHS[_oym(d)] ? d.colaboradores<=2000 : true"), 'teto de 2.000 deve valer em julho e agosto/2026');
 assert(bdrHtml.includes('d.colaboradores==null || d.colaboradores<30'), 'piso inclusivo de 30 ausente');
-assert(bdrHtml.includes('REGRA EXCEPCIONAL DE JULHO/2026') && bdrHtml.includes('O teto de 2.000 não se aplica a nenhum outro mês'), 'caveat mensal deve estar explícito no ícone de informação');
+assert(bdrHtml.includes('REGRA TEMPORÁRIA DE JULHO E AGOSTO/2026') && bdrHtml.includes('O teto de 2.000 não se aplica aos demais meses'), 'caveat mensal deve estar explícito no ícone de informação');
 const goalMatch = bdrHtml.match(/function _bdrCountsForGoal\(d\)\{([\s\S]*?)\n\}/);
 assert(goalMatch, 'função real de elegibilidade da meta não encontrada');
-const goal = new Function('d', '_oym', 'BDR_GOAL_CAPPED_MONTH', goalMatch[1]);
-const counts = (colaboradores, month) => goal({ colaboradores }, () => month, '2026-07');
+const goal = new Function('d', '_oym', 'BDR_GOAL_CAPPED_MONTHS', goalMatch[1]);
+const counts = (colaboradores, month) => goal({ colaboradores }, () => month, { '2026-07': true, '2026-08': true });
 assert.strictEqual(counts(29, '2026-07'), false, '29 não conta em julho');
 assert.strictEqual(counts(30, '2026-07'), true, '30 conta em julho');
 assert.strictEqual(counts(2000, '2026-07'), true, '2.000 conta em julho');
 assert.strictEqual(counts(2001, '2026-07'), false, '2.001 não conta em julho');
-assert.strictEqual(counts(2001, '2026-08'), true, 'fora de julho, preserva regra vigente sem teto');
+assert.strictEqual(counts(30, '2026-08'), true, '30 conta em agosto');
+assert.strictEqual(counts(2000, '2026-08'), true, '2.000 conta em agosto');
+assert.strictEqual(counts(2001, '2026-08'), false, '2.001 não conta em agosto');
+assert.strictEqual(counts(2001, '2026-09'), true, 'fora de julho e agosto, preserva regra vigente sem teto');
 // Semáforo solicitado no menu canônico.
 assert(nav.includes("url:'/novo-bdr/workload',file:'bdr-workload.html',sub:'bdr',health:'y'"), 'Workload deve estar amarelo');
 assert(nav.includes("url:'/novo-bdr/list-attack',file:'bdr-list-attack.html',sub:'bdr',health:'r'"), 'Ataque à Lista deve estar vermelho');

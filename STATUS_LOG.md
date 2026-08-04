@@ -1,5 +1,19 @@
 # Dashboard Enhancement Loop — Status Log
 
+### Fix | Meta BDR | teto de colaboradores renovado para agosto (2026-08-04)
+
+> Pedido do dono: o atingimento de meta de agosto também deve contabilizar somente
+> deals com **30 a 2.000 colaboradores**, inclusive. `public/bdr.html` agora usa
+> `BDR_GOAL_CAPPED_MONTHS` para aplicar o teto em **2026-07 e 2026-08**; o predicado
+> único `_bdrCountsForGoal` continua alimentando tanto R12 (cor/percentual da
+> Originação por BDR) quanto R23 (Atingimento de Meta). A contagem literal das barras
+> não muda; somente o realizado usado contra a meta é filtrado. A memória de cálculo
+> de R12/R23 e o tooltip de R23 foram atualizados. O teste cobre 29/30/2.000/2.001
+> para julho e agosto, e confirma que 2.001 volta a contar em setembro. Evidências:
+> inline JS `a555805ae3bb1884d5718b88de53d98278fec3147025bc86fb1cfc42ebdb8682` |
+> regressão BDR `98a79d0fe23c8167e97df4ba95701b68cb4c5d79847f09e844b37ca3fc5cba47`.
+> Deploy de produção autorizado; o commit e o release canônico registram a publicação.
+
 ### 🚀 PREMISSAS ATUALIZADAS | Google Cloud + Vercel | MKT Budget (2026-08-04)
 
 > Decisão do dono: de agosto a dezembro, **Google Cloud = R$ 600,00/mês**
