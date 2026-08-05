@@ -1,5 +1,23 @@
 # Auditoria crítica dos gráficos 🟡 | 2026-06-12
 
+## Adendo | Meta vs Ach: fonte Inter explícita, menos negrito, André por último (2026-08-05)
+
+> **Estado inalterado: 🟡 não validado contra o HubSpot** — ajuste puramente visual/de
+> ordenação em `public/meta-ach.js`, nenhuma fórmula de cálculo tocada. Fonte Inter agora
+> declarada explicitamente em `.ma-root`; os 6 `font-weight:800` do módulo baixados para
+> `700` (teto do resto do design system); André (meta zerada desde o adendo anterior) agora
+> sempre aparece por último na lista de AEs, independente do quanto fechou no tri. Detalhe em
+> `STATUS_LOG.md`, entrada de 2026-08-05.
+
+## Adendo | Meta vs Ach: Fausto fora, meta de André zerada, 500k/AE nos 3 restantes (2026-08-05)
+
+> **Estado inalterado: 🟡 não validado contra o HubSpot** — pedido do dono sobre o ROSTER/META
+> do time, sem tocar a fórmula de cálculo por conta. Fausto saiu do time (removido do painel).
+> André saiu da empresa, mas fica LISTADO porque fechou uma venda no trimestre — meta zerada,
+> não conta mais para a meta do time. Os R$ 1,5MM do time seguem inteiros, agora divididos só
+> entre Guilherme, Juliana e Rafael: **R$ 500k/AE** cada (antes: 300k/AE × 5 AEs). Detalhe em
+> `STATUS_LOG.md`, entrada de 2026-08-05.
+
 ## Adendo | Delta religado ao design system (premium.css/premium.js) (2026-08-02)
 
 > **Estado inalterado: 🟢 validado** (D01–D08) / 🟡 D09 (ver adendo seguinte) — esta

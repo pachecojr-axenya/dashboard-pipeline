@@ -1,5 +1,39 @@
 # Dashboard Enhancement Loop — Status Log
 
+### Fix | Meta vs Ach (`/forecast`): fonte Inter explícita, menos negrito, André por último (2026-08-05)
+
+> Pedido direto do dono, front-only em `public/meta-ach.js` (sem tocar `compute()`/valores).
+> **Fonte:** `.ma-root` ganhou `font-family:var(--font,'Inter','Segoe UI',system-ui,sans-serif)`
+> explícito — antes o módulo não declarava fonte nenhuma e dependia de herdar do `body` do
+> host (já era Inter em `forecast.html` via `premium.css`, mas sem garantia caso o módulo seja
+> reusado em outra página). **Negrito:** as 6 ocorrências de `font-weight:800` (título, valor
+> de KPI, valores/percentual do time, título do modal, rodapé da tabela) foram baixadas para
+> `700` — teto usado em todo o resto do design system (`.kpi-value`/`.kpi-label` no
+> `premium.css` nunca passam de 700; 800 era inconsistente com o resto do painel). **Ordem:**
+> `compute()` agora ordena os AEs por fechado desc como antes, mas empurra para o fim da lista
+> qualquer AE com `meta<=0` (hoje só o André, por causa do fix anterior) — antes ele podia
+> aparecer no meio/topo do ranking se tivesse fechado algo no tri, mesmo sem competir pela meta
+> do time. Cache-bust `meta-ach.js?v=5` → `v=6` em `public/forecast.html`. Validação:
+> `node --check public/meta-ach.js` OK; `node scripts/_check-inline-js.js public/forecast.html`
+> = 0 erros; smoke local `/forecast` e `/meta-ach.js?v=6` = 200.
+
+### Fix | Meta vs Ach (`/forecast`): Fausto removido, meta de André zerada, R$500k/AE nos 3 restantes (2026-08-05)
+
+> Pedido direto do dono. Fausto saiu do time e foi removido do roster/painel. André saiu da
+> empresa, mas fez uma venda no trimestre — fica LISTADO (para não sumir a venda), com meta
+> zerada (não conta mais para a meta do time). Os R$ 1,5MM da meta do time seguem inteiros,
+> agora divididos só entre os 3 com meta ativa: Guilherme, Juliana e Rafael, R$ 500k/AE cada
+> (antes: 300k/AE × 5 AEs). `public/meta-ach.js`: `DEFAULT_ROSTER` perdeu a entrada Fausto e
+> ganhou `meta: 0` na entrada André; `META_PER_AE` 300000 → 500000; `compute()` agora lê a
+> meta por AE do roster (override quando presente) em vez de aplicar o valor flat a todos, e
+> `team.meta` passou a ser a soma das metas individuais em vez de `roster.length × metaAe`
+> (necessário porque a meta não é mais uniforme entre os AEs). Textos de memória de cálculo
+> (PT/EN) e legenda ("Meta (300k)" → "Meta (por AE)") atualizados para não mentir sobre o
+> roster/valor. Cache-bust `meta-ach.js?v=4` → `v=5` em `public/forecast.html` (única página
+> que consome o módulo). Validação: `node --check public/meta-ach.js` OK; `compute()` roda
+> contra o payload real de `/api/forecast-table` local — team.meta = 1.500.000, Guilherme/
+> Juliana/Rafael com meta 500.000 cada, André com meta 0 e o deal dele preservado no fechado.
+
 ### 🚀 JULHO RECONCILIADO LINHA A LINHA | MKT Budget (2026-08-04)
 
 > Nova fonte entregue pelo dono: `~/Downloads/Mkt Julho2026.xlsx`. A planilha
@@ -220,6 +254,7 @@
 - **Validação:** `npm run check` + `_check-inline-js` nas páginas novas + JSON parse dos
   dados + smoke local (200 em `/growth`, `/growth/mkt-budget` e nos 2 JSONs) + reviewer
   code PASS antes do PR.
+
 ### 🚀 DEPLOY DE PRODUÇÃO | Implantação conta como Ganho no `/forecast-delta` (2026-08-02)
 
 > Autorização explícita do dono ("Sim", em resposta a "quer que eu siga com o

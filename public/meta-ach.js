@@ -8,9 +8,13 @@
  *     MetaAch.render(document.getElementById('meta-panel'), deals);
  *     // opcional: MetaAch.render(el, deals, { quarter: {y:2026,q:3}, lang:'pt' });
  *
- * Regra (decisão do dono 2026-07-22):
- *  - Meta do TRIMESTRE = R$ 300k de ARR por executivo; time = 5 AEs = R$ 1,5MM.
- *    Roster: André, Fausto, Guilherme, Juliana, Rafael (Ágatta FORA, por decisão do dono).
+ * Regra (decisão do dono 2026-07-22; atualizada 2026-08-05):
+ *  - Meta do TRIMESTRE = R$ 1,5MM no total, dividida entre os executivos com meta ATIVA.
+ *    Roster: André, Guilherme, Juliana, Rafael (Ágatta FORA, por decisão do dono).
+ *    **Fausto saiu do time e foi removido do painel.** **André saiu da empresa mas
+ *    permanece listado** (fechou uma venda no trimestre) **com meta zerada** — não conta
+ *    mais para a meta do time. Os R$ 1,5MM ficam divididos só entre Guilherme, Juliana e
+ *    Rafael: R$ 500k/AE cada (decisão do dono 2026-08-05).
  *  - "Fechado" = Σ arr_estimado das contas cuja ENTRADA em Implantação (data_implantacao)
  *    — ou, na falta dela, em Ganho (data_ganho) — cai dentro do trimestre. É RECEITA
  *    FECHADA (bookings por data de entrada), NÃO receita que "caiu" no tri.
@@ -24,10 +28,12 @@
  */
 (function (root) {
   // Roster do time (nomes próprios). Ágatta fora por decisão do dono (2026-07-22).
+  // Fausto removido (saiu do time, 2026-08-05). André saiu da empresa mas fica listado
+  // (fechou uma venda no tri) com meta 0 — não conta mais para a meta do time; os R$ 1,5MM
+  // ficam divididos só entre os 3 com meta ativa (500k/AE cada, decisão do dono 2026-08-05).
   // Match por primeiro nome, tolerante a acento (espelha _isCoreAE do painel AE).
   var DEFAULT_ROSTER = [
-    { first: 'andré', display: 'André' },
-    { first: 'fausto', display: 'Fausto' },
+    { first: 'andré', display: 'André', meta: 0 },
     { first: 'guilherme', display: 'Guilherme' },
     { first: 'juliana', display: 'Juliana' },
     { first: 'rafael', display: 'Rafael' }
@@ -35,7 +41,7 @@
   // Aliases de primeiro nome (sem acento) → forma canônica do roster.
   var FIRST_ALIAS = { 'andre': 'andré' };
 
-  var META_PER_AE = 300000;
+  var META_PER_AE = 500000;
 
   // Régua GLOBAL de probabilidade por etapa (fonte única: semantic forecast_flat, via
   // semantic-ref.js). O literal é espelho p/ páginas sem semantic-ref — idêntico ao
@@ -61,7 +67,7 @@
       rule: 'regra: ARR estimado × régua de etapa (Implantação 80% · Ganho 100%)',
       metaTime: 'Meta do time', fechado: 'Fechado', gap: 'Gap p/ meta',
       contas: 'Contas no tri', daMeta: 'da meta', faltam: 'faltam',
-      legFechado: 'Fechado (ponderado)', legMeta: 'Meta (300k)',
+      legFechado: 'Fechado (ponderado)', legMeta: 'Meta (por AE)',
       batido: 'batido', noRitmo: 'no ritmo', atras: 'atrás',
       timeLabel: 'Time', ritmoLabel: 'ritmo esperado',
       colDeal: 'Deal', colStage: 'Etapa', colVidas: 'Vidas', colArr: 'ARR est.',
@@ -69,7 +75,7 @@
       modalTitle: 'contas fechadas no tri', semContas: 'Nenhuma conta fechada no trimestre.',
       empty: 'Sem contas fechadas no trimestre ainda.',
       memoria: 'Campos: <b>arr_estimado</b> (ARR estimado) × <b>prob. de etapa</b> pela régua global (semantic <code>forecast_flat</code>: Implantação 80% · Ganho 100%) · <b>data_implantacao</b> (entrada em Implantação) com fallback <b>data_ganho</b> · <b>hubspot_owner_id</b> (AE). ' +
-               'Fórmula: Σ (arr_estimado × régua da etapa) das contas cuja entrada em Implantação (ou Ganho) cai no trimestre, por AE do time (André, Fausto, Guilherme, Juliana, Rafael). Meta = 300k/AE. ' +
+               'Fórmula: Σ (arr_estimado × régua da etapa) das contas cuja entrada em Implantação (ou Ganho) cai no trimestre, por AE do time (Guilherme, Juliana, Rafael — meta 500k/AE cada). André saiu da empresa e fica listado só pela venda fechada no tri, com meta zerada (não conta mais para a meta do time). Fausto saiu do time e foi removido do painel. ' +
                'Status: ritmo esperado = % de dias decorridos do trimestre. ' +
                '⚠ Métrica de <b>bookings ponderados</b> (ARR estimado × régua de etapa), não a receita canônica da Regra primária nº 3 (Real/Probabilizada). Não validado no HubSpot.'
     },
@@ -77,7 +83,7 @@
       rule: 'rule: closed revenue (entered implementation within the quarter)',
       metaTime: 'Team target', fechado: 'Closed', gap: 'Gap to target',
       contas: 'Accounts in qtr', daMeta: 'of target', faltam: 'missing',
-      legFechado: 'Closed (weighted)', legMeta: 'Target (300k)',
+      legFechado: 'Closed (weighted)', legMeta: 'Target (per AE)',
       batido: 'hit', noRitmo: 'on pace', atras: 'behind',
       timeLabel: 'Team', ritmoLabel: 'expected pace',
       colDeal: 'Deal', colStage: 'Stage', colVidas: 'Lives', colArr: 'Est. ARR',
@@ -85,7 +91,7 @@
       modalTitle: 'accounts closed in qtr', semContas: 'No accounts closed this quarter.',
       empty: 'No accounts closed this quarter yet.',
       memoria: 'Fields: <b>arr_estimado</b> (estimated ARR) × <b>stage prob.</b> from the global ruler (semantic <code>forecast_flat</code>: Implementation 80% · Won 100%) · <b>data_implantacao</b> (entered Implementation) fallback <b>data_ganho</b> · <b>hubspot_owner_id</b> (AE). ' +
-               'Formula: Σ (arr_estimado × stage ruler) of accounts whose entry into Implementation (or Won) falls within the quarter, per team AE. Target = 300k/AE. ' +
+               'Formula: Σ (arr_estimado × stage ruler) of accounts whose entry into Implementation (or Won) falls within the quarter, per team AE (Guilherme, Juliana, Rafael — 500k target each). André left the company and stays listed only for the account he closed in the quarter, with a zeroed target (no longer counts toward the team target). Fausto left the team and was removed from the panel. ' +
                'Status: expected pace = % of quarter days elapsed. ' +
                '⚠ This is a <b>weighted bookings</b> metric (estimated ARR × stage ruler), not the canonical revenue of primary rule #3. Not validated against HubSpot.'
     }
@@ -148,7 +154,9 @@
 
     var idx = {};                        // first -> registro do AE
     roster.forEach(function (r) {
-      idx[r.first] = { first: r.first, display: r.display, fechado: 0, meta: metaAe, deals: [] };
+      // meta por AE: usa override do roster (ex.: André = 0) se presente, senão a flat.
+      var m = (r.meta != null) ? r.meta : metaAe;
+      idx[r.first] = { first: r.first, display: r.display, fechado: 0, meta: m, deals: [] };
     });
 
     for (var i = 0; i < deals.length; i++) {
@@ -173,11 +181,16 @@
       return a;
     });
     // Ordena por fechado desc (líder no topo), como o leaderboard dos outros painéis.
-    aes.sort(function (a, b) { return b.fechado - a.fechado; });
+    // AEs sem meta ativa (meta<=0, ex.: André) vão sempre para o final da lista,
+    // mesmo que tenham fechado algo no tri — não competem pelo ranking do time.
+    aes.sort(function (a, b) {
+      var aOut = a.meta <= 0, bOut = b.meta <= 0;
+      if (aOut !== bOut) return aOut ? 1 : -1;
+      return b.fechado - a.fechado;
+    });
 
-    var fechadoTotal = 0, contas = 0;
-    aes.forEach(function (a) { fechadoTotal += a.fechado; contas += a.deals.length; });
-    var metaTime = roster.length * metaAe;
+    var fechadoTotal = 0, contas = 0, metaTime = 0;
+    aes.forEach(function (a) { fechadoTotal += a.fechado; contas += a.deals.length; metaTime += a.meta; });
     var team = {
       meta: metaTime, fechado: fechadoTotal,
       pct: metaTime > 0 ? fechadoTotal / metaTime : 0,
@@ -217,16 +230,16 @@
     if (CSS_INJECTED) return;
     CSS_INJECTED = true;
     var css = [
-      '.ma-root{max-width:1100px;margin:0 auto;padding:1.4rem 0 3rem}',
+      '.ma-root{max-width:1100px;margin:0 auto;padding:1.4rem 0 3rem;font-family:var(--font,\'Inter\',\'Segoe UI\',system-ui,sans-serif)}',
       '.ma-head{display:flex;align-items:baseline;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:1.25rem}',
-      '.ma-title{font-size:1.35rem;font-weight:800;letter-spacing:-.01em;color:var(--text,#e6edf3)}',
+      '.ma-title{font-size:1.35rem;font-weight:700;letter-spacing:-.01em;color:var(--text,#e6edf3)}',
       '.ma-title .ma-months{color:var(--text2,#8b949e);font-weight:600}',
       '.ma-rule{font-size:.8rem;color:var(--muted,#6e7681)}',
       '.ma-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:.9rem;margin-bottom:1.6rem}',
       '@media(max-width:760px){.ma-kpis{grid-template-columns:repeat(2,1fr)}}',
       '.ma-kpi{background:var(--card,#161b22);border:1px solid var(--border,#30363d);border-radius:14px;padding:1rem 1.1rem}',
       '.ma-kpi .k-lab{font-size:.78rem;color:var(--text2,#8b949e);margin-bottom:.35rem;line-height:1.25}',
-      '.ma-kpi .k-val{font-size:1.7rem;font-weight:800;letter-spacing:-.02em;color:var(--text,#e6edf3);line-height:1}',
+      '.ma-kpi .k-val{font-size:1.7rem;font-weight:700;letter-spacing:-.02em;color:var(--text,#e6edf3);line-height:1}',
       '.ma-kpi .k-sub{font-size:.8rem;margin-top:.4rem;font-weight:600}',
       '.ma-legend{display:flex;gap:1.2rem;align-items:center;flex-wrap:wrap;margin-bottom:1.1rem;font-size:.8rem;color:var(--text2,#8b949e)}',
       '.ma-legend .lg{display:inline-flex;align-items:center;gap:.4rem}',
@@ -236,8 +249,8 @@
       '.ma-team-top{display:flex;align-items:baseline;justify-content:space-between;gap:1rem;margin-bottom:.7rem;flex-wrap:wrap}',
       '.ma-team-lab{font-size:.95rem;font-weight:700;color:var(--text,#e6edf3)}',
       '.ma-team-vals{font-size:.92rem;color:var(--text2,#8b949e);font-variant-numeric:tabular-nums}',
-      '.ma-team-vals b{color:var(--text,#e6edf3);font-weight:800;font-size:1.05rem}',
-      '.ma-team-pct{font-size:1.05rem;font-weight:800;margin-left:.5rem}',
+      '.ma-team-vals b{color:var(--text,#e6edf3);font-weight:700;font-size:1.05rem}',
+      '.ma-team-pct{font-size:1.05rem;font-weight:700;margin-left:.5rem}',
       '.ma-track-lg{height:20px;border-radius:10px}',
       '.ma-pace{position:absolute;top:-4px;bottom:-4px;width:0;border-left:2px dashed var(--text2,#8b949e);opacity:.8}',
       '.ma-pace-lab{position:absolute;top:-1.35rem;transform:translateX(-50%);font-size:.66rem;color:var(--text2,#8b949e);white-space:nowrap}',
@@ -269,7 +282,7 @@
       '.ma-ov{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9998;display:flex;align-items:center;justify-content:center;padding:1.2rem}',
       '.ma-modal{background:var(--card,#161b22);border:1px solid var(--border,#30363d);border-radius:16px;max-width:820px;width:100%;max-height:82vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.5)}',
       '.ma-modal-h{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:1.1rem 1.3rem;border-bottom:1px solid var(--border,#30363d)}',
-      '.ma-modal-h .mt{font-size:1.05rem;font-weight:800;color:var(--text,#e6edf3)}',
+      '.ma-modal-h .mt{font-size:1.05rem;font-weight:700;color:var(--text,#e6edf3)}',
       '.ma-modal-h .ms{font-size:.8rem;color:var(--text2,#8b949e);margin-top:.15rem}',
       '.ma-x{cursor:pointer;background:none;border:none;color:var(--text2,#8b949e);font-size:1.4rem;line-height:1;padding:.2rem .4rem;border-radius:8px}',
       '.ma-x:hover{background:var(--card2,rgba(255,255,255,.08));color:var(--text,#e6edf3)}',
@@ -282,7 +295,7 @@
       '.ma-tbl th.num{text-align:right}',
       '.ma-tbl a{color:var(--teal,#3ab8b7);text-decoration:none}',
       '.ma-tbl a:hover{text-decoration:underline}',
-      '.ma-tbl tfoot td{font-weight:800;color:var(--text,#e6edf3);border-top:2px solid var(--border,#30363d)}'
+      '.ma-tbl tfoot td{font-weight:700;color:var(--text,#e6edf3);border-top:2px solid var(--border,#30363d)}'
     ].join('');
     var el = document.createElement('style');
     el.id = 'ma-style';
