@@ -1,5 +1,18 @@
 # Dashboard Enhancement Loop — Status Log
 
+### 🚀 DEPLOY DE PRODUÇÃO | Meta vs Ach: fonte Inter, menos negrito, André por último (2026-08-05)
+
+> Autorização explícita do dono ("Faça o commit e o deploy"). Commit `e0b467a`
+> (rebase limpo sobre `origin/main`, que havia avançado 25 commits — PRs #29-#35 de
+> MKT Budget/Growth, fix de meta BDR de agosto — desde a última sincronização local;
+> conflito resolvido só em `STATUS_LOG.md`, mantendo as duas entradas; `forecast.html`
+> mesclou automático). `npm run check` e `npm run predeploy` PASS (`main` ==
+> `origin/main` `e0b467a`, projeto canônico `dashboard-axenya`). Deployment
+> `dpl_9F47nT4CfNutADeej63AXp2kTnqc` (READY, production), alias
+> `project-bsmfu.vercel.app`. Pós-deploy confirmado: `/`, `/novo`, `/forecast` = 200;
+> `/api/auth/me`, `/api/forecast-table` = 401 (auth ativa); HTML servido contém
+> `meta-ach.js?v=6`.
+
 ### Fix | Meta vs Ach (`/forecast`): fonte Inter explícita, menos negrito, André por último (2026-08-05)
 
 > Pedido direto do dono, front-only em `public/meta-ach.js` (sem tocar `compute()`/valores).
