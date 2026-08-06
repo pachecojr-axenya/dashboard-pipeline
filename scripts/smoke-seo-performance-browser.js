@@ -8,6 +8,11 @@
  * ordem, que a busca filtre, que a troca de visão e de granularidade redesenhe,
  * que os drilldowns abram com linhas dentro e que o console esteja limpo.
  *
+ * Cobre também o modo AGREGADO (colunas absolutas + participação, sem Δ), a visão
+ * NOVOS (sem coluna "antes", ordenada por impressão, referência declarada), a
+ * janela LIVRE de/até com o aviso de intervalo não múltiplo de 7, e a regressão do
+ * rótulo de página (fragmento e host precisam distinguir as linhas).
+ *
  * Rodar:
  *   node scripts/smoke-seo-performance-browser.js --base-url=http://localhost:3007 --base=wow
  */
@@ -124,7 +129,7 @@ async function run() {
   assert(shape.cards >= 4, `Poucos cards: ${shape.cards}.`);
   assert(shape.barras > 0, 'Linha do tempo sem barras.');
   assert.strictEqual(shape.posLinha, 1, 'Linha de posição média não desenhou.');
-  assert.strictEqual(shape.tabs, 8, `Esperava 8 visões, veio ${shape.tabs}.`);
+  assert.strictEqual(shape.tabs, 10, `Esperava 10 visões, veio ${shape.tabs}.`);
   assert(shape.ths >= 9, `Cabeçalho sem colunas ordenáveis suficientes: ${shape.ths}.`);
   assert(shape.linhas > 0, 'Tabela de movimentação veio vazia.');
   assert(shape.covItems >= 6, `Bloco de cobertura incompleto: ${shape.covItems}.`);
@@ -297,9 +302,105 @@ async function run() {
   const higiene = await evaluate("document.querySelectorAll('.alert-row').length");
   assert(higiene > 0, 'Bloco de higiene não renderizou nenhuma linha.');
 
+  // 12) Modo Agregado troca as colunas por absoluto + participação
+  await evaluate("document.querySelector('[data-modo=\"agregado\"]').click()");
+  await sleep(600);
+  const agg = JSON.parse(await evaluate(`JSON.stringify({
+    modo: document.getElementById('content').getAttribute('data-modo-atual'),
+    cabecalhos: Array.prototype.slice.call(document.querySelectorAll('th.sortable')).map(function(t){return t.textContent.replace(/[↕↑↓]/g,'').trim();}),
+    linhas: document.querySelectorAll('#content tbody tr[data-row]').length,
+    primeiraShare: (function(){
+      var tr=document.querySelector('#content tbody tr[data-row]');
+      if(!tr) return null;
+      var td=tr.querySelectorAll('td');
+      return td.length>3 ? td[3].textContent.trim() : null;
+    })()
+  })`));
+  assert.strictEqual(agg.modo, 'agregado', 'Estado de modo não virou agregado.');
+  assert(agg.cabecalhos.indexOf('% dos cliques') >= 0, `Modo agregado sem coluna de participação: ${agg.cabecalhos.join(' / ')}`);
+  assert(agg.cabecalhos.every((h) => h.indexOf('Δ') < 0), `Modo agregado ainda mostra coluna de variação: ${agg.cabecalhos.join(' / ')}`);
+  assert(agg.linhas > 0, 'Modo agregado ficou sem linhas.');
+  assert(/%$/.test(agg.primeiraShare || ''), `Coluna de participação não formatou como porcentagem: "${agg.primeiraShare}"`);
+  // Participação da maior linha não pode passar de 100%: prova que o denominador
+  // é o total da dimensão e não a soma das linhas carregadas.
+  const shareNum = parseFloat(String(agg.primeiraShare).replace('%', '').replace(',', '.'));
+  assert(shareNum > 0 && shareNum <= 100, `Participação fora de faixa: ${agg.primeiraShare}`);
+  await evaluate("document.querySelector('[data-modo=\"movimento\"]').click()");
+  await sleep(400);
+
+  // 13) Visão Novos: sem colunas "antes", ordenada por impressão
+  await evaluate("document.querySelector('[data-view=\"novos\"]').click()");
+  await sleep(600);
+  const novos = JSON.parse(await evaluate(`JSON.stringify({
+    view: document.getElementById('content').getAttribute('data-view-atual'),
+    cabecalhos: Array.prototype.slice.call(document.querySelectorAll('th.sortable')).map(function(t){return t.textContent.replace(/[↕↑↓]/g,'').trim();}),
+    linhas: document.querySelectorAll('#content tbody tr[data-row]').length,
+    impressoes: Array.prototype.slice.call(document.querySelectorAll('#content tbody tr[data-row]')).slice(0,8).map(function(r){
+      var td=r.querySelectorAll('td'); return td.length>2 ? td[2].textContent.replace(/\\D/g,'') : '';
+    }),
+    nota: (document.querySelector('.trunc-note')||{}).textContent||'',
+    refDeclarada: document.getElementById('content').getAttribute('data-janela-ref')||''
+  })`));
+  assert.strictEqual(novos.view, 'novos', 'Estado de visão não virou novos.');
+  assert(novos.cabecalhos.indexOf('Consulta nova') >= 0, `Visão de novos sem coluna própria: ${novos.cabecalhos.join(' / ')}`);
+  assert(novos.cabecalhos.indexOf('Antes') < 0, 'Visão de novos não deveria ter coluna "Antes" | é zero por definição.');
+  assert(novos.linhas > 0, 'Visão de novos veio vazia.');
+  const impN = novos.impressoes.map(Number).filter((n) => !isNaN(n));
+  for (let i = 1; i < impN.length; i += 1) {
+    assert(impN[i] <= impN[i - 1], `Novos não vieram ordenados por impressão: ${impN.join(' > ')}`);
+  }
+  assert(/sem NENHUMA impressão na janela de referência/.test(novos.nota),
+    `Visão de novos não declara a janela de referência: "${novos.nota}"`);
+  assert(/^\d{4}-\d{2}-\d{2}\.\.\d{4}-\d{2}-\d{2}$/.test(novos.refDeclarada), `Janela de referência não exposta: ${novos.refDeclarada}`);
+
+  // 14) Páginas: rótulo tem que distinguir fragmento e host
+  // Regressão real: sem o `#fragmento` no rótulo, 27 URLs distintas viravam a
+  // mesma linha na tabela; sem o host, 6 hosts serviam a linha "/".
+  await evaluate("document.querySelector('[data-view=\"paginas\"]').click()");
+  await sleep(600);
+  const rotulos = JSON.parse(await evaluate(`JSON.stringify(
+    Array.prototype.slice.call(document.querySelectorAll('#content tbody tr[data-row] td:first-child')).map(function(t){return t.textContent.trim();})
+  )`));
+  const repetidos = rotulos.filter((r, i) => rotulos.indexOf(r) !== i);
+  assert.strictEqual(repetidos.length, 0, `Rótulos de página duplicados na tabela: ${repetidos.slice(0, 3).join(' | ')}`);
+
+  // 15) Janela livre de/até: recarrega e declara a janela pedida
+  const de = arg('from', '2026-07-01');
+  const ate = arg('to', '2026-07-31');
+  await evaluate(`(function(){
+    document.getElementById('f-from').value='${de}';
+    document.getElementById('f-to').value='${ate}';
+    document.getElementById('f-apply').click();
+  })()`);
+  let custom = false;
+  for (let i = 0; i < 60; i += 1) {
+    custom = await evaluate(`(function(){
+      var c=document.getElementById('content');
+      return !c.classList.contains('hidden') && c.getAttribute('data-base-atual')==='custom'
+        && c.getAttribute('data-janela')==='${de}..${ate}';
+    })()`);
+    if (custom) break;
+    await sleep(1000);
+  }
+  assert.strictEqual(custom, true, `Janela livre ${de} a ${ate} não renderizou.`);
+  const livre = JSON.parse(await evaluate(`JSON.stringify({
+    cmpCards: document.querySelectorAll('[data-cmp]').length,
+    cmpCustomAtivo: !!document.querySelector('.cmp-card.active[data-cmp="custom"]'),
+    ref: document.getElementById('content').getAttribute('data-janela-ref'),
+    chipAtivo: (document.querySelector('#filters .period-chip.active')||{}).textContent||'',
+    higiene: document.getElementById('content').textContent
+  })`));
+  assert.strictEqual(livre.cmpCards, 6, `Strip devia ganhar o cartão Personalizado, veio ${livre.cmpCards}.`);
+  assert.strictEqual(livre.cmpCustomAtivo, true, 'Cartão Personalizado não ficou ativo.');
+  assert.strictEqual(livre.chipAtivo, 'Personalizado', `Chip ativo inesperado: ${livre.chipAtivo}`);
+  assert(/^\d{4}-\d{2}-\d{2}\.\.\d{4}-\d{2}-\d{2}$/.test(livre.ref), `Referência da janela livre não declarada: ${livre.ref}`);
+  // 31 dias não é múltiplo de 7: a página tem que avisar, não fingir.
+  assert(/não é múltiplo de 7/.test(livre.higiene),
+    'Janela livre de 31 dias não disparou o aviso de composição de dia da semana.');
+
   assert.deepStrictEqual(consoleErrors, [], `erros JS no console: ${consoleErrors.join(' | ')}`);
   ws.close();
-  console.log(`OK | smoke seo performance CDP | ${baseUrl} | base=${baseCmp} janela=${shape.janela} | kpis=${shape.heroKpis} cards=${shape.cards} barras=${shape.barras} linhas=${shape.linhas} higiene=${higiene}`);
+  console.log(`OK | smoke seo performance CDP | ${baseUrl} | base=${baseCmp} janela=${shape.janela} | kpis=${shape.heroKpis} cards=${shape.cards} barras=${shape.barras} linhas=${shape.linhas} visoes=${shape.tabs} novos=${novos.linhas} higiene=${higiene} | livre=${de}..${ate}`);
 }
 
 run().finally(() => {

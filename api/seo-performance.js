@@ -1,6 +1,13 @@
 'use strict';
 /**
- * GET /api/seo-performance?base=dod|wow|mom|qoq|yoy[&end=YYYY-MM-DD][&q=busca][&refresh=1]
+ * GET /api/seo-performance
+ *   ?base=dod|wow|mom|qoq|yoy   janela ancorada no último dia fechado
+ *   &from=YYYY-MM-DD&to=...     janela LIVRE (tem precedência sobre base)
+ *   &cmpFrom=...&cmpTo=...      janela de referência manual (default: a anterior
+ *                               imediata, do mesmo tamanho)
+ *   &end=YYYY-MM-DD             recua a âncora das janelas de base
+ *   &q=busca                    filtra as entidades no conjunto COMPLETO
+ *   &refresh=1                  ignora cache
  *
  * Performance de busca orgânica ao vivo do Google Search Console (propriedade
  * sc-domain:axenya.com). Entrega três coisas que o relatório nativo do GSC não
@@ -38,8 +45,19 @@ const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // GSC fecha dado 1× ao dia
 // bucket semanal órfão de 1 a 6 dias no começo da série, e o bucket seguinte
 // passa a comparar semana cheia contra semana quebrada.
 const DIAS_TIMELINE = 455;
-const CAP_CONSULTAS = 2000;
-const CAP_PAGINAS = 1000;
+
+// O corte de payload atende TRÊS ordenações diferentes, e não uma só. Cortar
+// apenas pelas maiores variações (como era antes) descartava silenciosamente:
+//  - a linha de altíssima impressão que não mexeu nada, que é justamente a que
+//    interessa na visão AGREGADA;
+//  - o termo NOVO sem clique, cujo Δcliques é 0 e por isso caía para o fim da
+//    lista, escondendo exatamente o que a visão de novos existe para mostrar.
+// A seleção é a UNIÃO dos topos das três ordenações, com as contagens declaradas
+// em `movimentos.corte` para a tela poder dizer o que ficou de fora.
+const CAPS = {
+  consultas: { movimento: 1200, agregado: 1200, novos: 800 },
+  paginas: { movimento: 800, agregado: 800, novos: 400 },
+};
 
 // ── helpers -------------------------------------------------------------
 
@@ -96,6 +114,44 @@ function slice(dias, w) {
   return dias.filter(d => d.date >= w.from && d.date <= w.to);
 }
 
+const ORD_AGREGADO = (a, b) => (b.atual.clicks - a.atual.clicks) || (b.atual.impressions - a.atual.impressions);
+const ORD_NOVOS = (a, b) => (b.atual.impressions - a.atual.impressions) || (b.atual.clicks - a.atual.clicks);
+
+/**
+ * União dos topos das três ordenações. `movs` já chega ordenado por maior
+ * movimento absoluto de clique, então essa ordem é preservada e as linhas extras
+ * (alta impressão parada, novos sem clique) entram depois.
+ */
+function selecionaLinhas(movs, cap) {
+  const novosTodos = movs.filter(m => m.status === seo.STATUS.NOVO).sort(ORD_NOVOS);
+  const fatias = [
+    movs.slice(0, cap.movimento),
+    movs.slice().sort(ORD_AGREGADO).slice(0, cap.agregado),
+    novosTodos.slice(0, cap.novos),
+  ];
+  const vistos = new Set();
+  const linhas = [];
+  fatias.forEach(fatia => {
+    fatia.forEach(m => {
+      if (vistos.has(m.chave)) return;
+      vistos.add(m.chave);
+      linhas.push(m);
+    });
+  });
+  return {
+    linhas,
+    novos: novosTodos,
+    corte: {
+      universo: movs.length,
+      enviadas: linhas.length,
+      porMovimento: Math.min(movs.length, cap.movimento),
+      porAgregado: Math.min(movs.length, cap.agregado),
+      novosEnviados: Math.min(novosTodos.length, cap.novos),
+      novosTotal: novosTodos.length,
+    },
+  };
+}
+
 // ── resumo por base -----------------------------------------------------
 
 /**
@@ -103,31 +159,74 @@ function slice(dias, w) {
  * da janela existem de fato na série — janela incompleta (YoY antes do início do
  * histórico) é declarada, não silenciada.
  */
-function resumoTodasAsBases(dias, ultimoFechado) {
+function resumoDe(w, dias, extra) {
+  const a = seo.aggregate(slice(dias, w.atual));
+  const p = seo.aggregate(slice(dias, w.anterior));
+  return {
+    base: w.base, label: w.label, desc: w.desc,
+    janelas: { atual: w.atual, anterior: w.anterior },
+    diasComDado: { atual: a.linhas, anterior: p.linhas },
+    janelaCompleta: a.linhas === w.atual.dias && p.linhas === w.anterior.dias,
+    atual: limpaAgregado(a),
+    anterior: limpaAgregado(p),
+    delta: limpaDelta(seo.deltaOf(a, p)),
+    mesmoDiaSemanaAnterior: null,
+    ...(extra || {}),
+  };
+}
+
+function resumoTodasAsBases(dias, ultimoFechado, wCustom) {
   const out = {};
   seo.basesDisponiveis().forEach(b => {
     const w = seo.windowsFor(b.base, ultimoFechado);
-    const a = seo.aggregate(slice(dias, w.atual));
-    const p = seo.aggregate(slice(dias, w.anterior));
-    const ref = seo.aggregate(slice(dias, w.mesmoDiaSemanaAnterior));
-    out[b.base] = {
-      base: b.base, label: b.label, desc: b.desc,
-      janelas: { atual: w.atual, anterior: w.anterior },
-      diasComDado: { atual: a.linhas, anterior: p.linhas },
-      janelaCompleta: a.linhas === w.atual.dias && p.linhas === w.anterior.dias,
-      atual: limpaAgregado(a),
-      anterior: limpaAgregado(p),
-      delta: limpaDelta(seo.deltaOf(a, p)),
-      mesmoDiaSemanaAnterior: b.base === 'dod' ? limpaAgregado(ref) : null,
-    };
+    out[b.base] = resumoDe({ ...w, base: b.base, label: b.label, desc: b.desc }, dias, {
+      mesmoDiaSemanaAnterior: b.base === 'dod'
+        ? limpaAgregado(seo.aggregate(slice(dias, w.mesmoDiaSemanaAnterior)))
+        : null,
+    });
   });
+  // A janela livre entra no MESMO resumo para o strip de comparação e os KPIs
+  // lerem tudo do mesmo lugar, sem caminho alternativo de cálculo.
+  if (wCustom) {
+    out.custom = resumoDe(wCustom, dias, {
+      multiploDe7: wCustom.multiploDe7,
+      mesmoTamanho: wCustom.mesmoTamanho,
+      referenciaManual: wCustom.referenciaManual,
+    });
+  }
   return out;
 }
 
 // ── higiene -------------------------------------------------------------
 
-function higieneDe({ frescor, coberturaConsultas, coberturaPaginas, resumo, base, oportunidades }) {
+function higieneDe({ frescor, coberturaConsultas, coberturaPaginas, resumo, base, oportunidades, janelas, corteConsultas }) {
   const av = [];
+
+  // Janela livre: o dono escolheu as datas na mão, então os dois vieses possíveis
+  // (composição de dia da semana e tamanho diferente) precisam ser ditos.
+  if (base === 'custom') {
+    if (!janelas.multiploDe7) {
+      av.push({
+        nivel: 'medio', titulo: 'Intervalo escolhido não é múltiplo de 7 dias',
+        detalhe: `A janela tem ${janelas.atual.dias} dias, então as duas pontas não têm a mesma quantidade de sábados e domingos. Nesta propriedade fim de semana rende cerca de 1/4 de um dia útil, então parte da variação é calendário. Os números ABSOLUTOS da visão agregada não são afetados; a coluna de variação é.`,
+      });
+    }
+    if (!janelas.mesmoTamanho) {
+      av.push({
+        nivel: 'alto', titulo: 'Janelas de tamanhos diferentes',
+        detalhe: `A janela atual tem ${janelas.atual.dias} dias e a de referência ${janelas.anterior.dias}. A variação de cliques e impressões está comparando períodos de duração diferente e não deve ser lida como performance.`,
+      });
+    }
+  }
+
+  // "Novo" é sempre relativo à janela de referência: com 1 dia de referência,
+  // quase tudo aparece como novo e a visão perde sentido.
+  if (corteConsultas && corteConsultas.novosTotal > 0 && janelas.anterior.dias < 7) {
+    av.push({
+      nivel: 'medio', titulo: `"Novo" com janela de referência de ${janelas.anterior.dias} dia(s)`,
+      detalhe: `São ${corteConsultas.novosTotal} consultas sem impressão na referência. Com uma referência tão curta isso não significa termo novo no site: uma consulta que simplesmente não apareceu naquele único dia já conta como nova. Para ler novos de verdade, use MoM, QoQ ou uma janela livre de pelo menos 28 dias.`,
+    });
+  }
 
   if (frescor.defasagemDias != null && frescor.defasagemDias > 3) {
     av.push({
@@ -170,10 +269,9 @@ function higieneDe({ frescor, coberturaConsultas, coberturaPaginas, resumo, base
 
 // ── construção da resposta ----------------------------------------------
 
-function build({ base, dias, frescor, qAtual, qAnterior, pAtual, pAnterior, dAtual, dAnterior, cAtual, cAnterior, busca }) {
+function build({ base, w, dias, frescor, qAtual, qAnterior, pAtual, pAnterior, dAtual, dAnterior, cAtual, cAnterior, busca }) {
   const ultimoFechado = frescor.ultimoFechado;
-  const w = seo.windowsFor(base, ultimoFechado);
-  const resumo = resumoTodasAsBases(dias, ultimoFechado);
+  const resumo = resumoTodasAsBases(dias, ultimoFechado, base === 'custom' ? w : null);
 
   const totalAtual = seo.aggregate(slice(dias, w.atual));
 
@@ -200,11 +298,16 @@ function build({ base, dias, frescor, qAtual, qAnterior, pAtual, pAnterior, dAtu
   const alvo = seo.norm(busca || '');
   const filtra = arr => (alvo ? arr.filter(m => seo.norm(m.chave).indexOf(alvo) >= 0) : arr);
 
-  const consultasFiltradas = filtra(movConsultas);
-  const paginasFiltradas = filtra(movPaginas);
+  const selConsultas = selecionaLinhas(filtra(movConsultas), CAPS.consultas);
+  const selPaginas = selecionaLinhas(filtra(movPaginas), CAPS.paginas);
 
-  const coberturaConsultas = seo.coverageOf(totalAtual, seo.aggregate(qAtual));
-  const coberturaPaginas = seo.coverageOf(totalAtual, seo.aggregate(pAtual));
+  const agQAtual = seo.aggregate(qAtual);
+  const agPAtual = seo.aggregate(pAtual);
+  const coberturaConsultas = seo.coverageOf(totalAtual, agQAtual);
+  const coberturaPaginas = seo.coverageOf(totalAtual, agPAtual);
+
+  const enrichConsulta = x => ({ cat: x.categoria, mk: x.marca ? 1 : 0 });
+  const enrichPagina = x => ({ sec: x.secao, rot: x.rotulo });
 
   return {
     site: gsc.siteUrl(),
@@ -228,19 +331,30 @@ function build({ base, dias, frescor, qAtual, qAnterior, pAtual, pAnterior, dAtu
     },
 
     movimentos: {
-      consultas: consultasFiltradas.slice(0, CAP_CONSULTAS)
-        .map(m => compact(m, x => ({ cat: x.categoria, mk: x.marca ? 1 : 0 }))),
-      paginas: paginasFiltradas.slice(0, CAP_PAGINAS)
-        .map(m => compact(m, x => ({ sec: x.secao, rot: x.rotulo }))),
+      consultas: selConsultas.linhas.map(m => compact(m, enrichConsulta)),
+      paginas: selPaginas.linhas.map(m => compact(m, enrichPagina)),
+      // Novos vêm em array próprio, ordenado por impressão, porque o Δcliques de
+      // um termo novo sem clique é 0 e ele afundaria na ordem de movimentação.
+      novos: selConsultas.novos.slice(0, CAPS.consultas.novos).map(m => compact(m, enrichConsulta)),
+      novasPaginas: selPaginas.novos.slice(0, CAPS.paginas.novos).map(m => compact(m, enrichPagina)),
       categorias: categorias.map(limpaRollup),
       secoes: secoes.map(limpaRollup),
       marca: marca.map(limpaRollup),
       oportunidades,
       corte: {
-        consultas: { total: consultasFiltradas.length, enviadas: Math.min(consultasFiltradas.length, CAP_CONSULTAS), universo: movConsultas.length },
-        paginas: { total: paginasFiltradas.length, enviadas: Math.min(paginasFiltradas.length, CAP_PAGINAS), universo: movPaginas.length },
+        consultas: selConsultas.corte,
+        paginas: selPaginas.corte,
         busca: busca || null,
       },
+    },
+
+    // Total da DIMENSÃO na janela atual, para a visão agregada calcular o "% do
+    // total" sobre o universo inteiro e não sobre as linhas que couberam no
+    // payload — senão a coluna de participação mentiria quando há corte.
+    totaisDimensao: {
+      consultas: limpaAgregado(agQAtual),
+      paginas: limpaAgregado(agPAtual),
+      site: limpaAgregado(totalAtual),
     },
 
     cortes: {
@@ -252,7 +366,10 @@ function build({ base, dias, frescor, qAtual, qAnterior, pAtual, pAnterior, dAtu
     },
 
     cobertura: { consultas: coberturaConsultas, paginas: coberturaPaginas },
-    higiene: higieneDe({ frescor, coberturaConsultas, coberturaPaginas, resumo, base, oportunidades }),
+    higiene: higieneDe({
+      frescor, coberturaConsultas, coberturaPaginas, resumo, base, oportunidades,
+      janelas: w, corteConsultas: selConsultas.corte,
+    }),
   };
 }
 
@@ -299,12 +416,17 @@ module.exports = async function handler(req, res) {
   }
 
   const q = req.query || {};
-  const base = seo.BASES[q.base] ? q.base : 'wow';
+  // Janela LIVRE tem precedência sobre a base ancorada: se o dono digitou de/até,
+  // é isso que ele quer ver, não a semana corrente.
+  const temRangeLivre = isValidDate(q.from) && isValidDate(q.to);
+  const base = temRangeLivre ? 'custom' : (seo.BASES[q.base] ? q.base : 'wow');
   const endPedido = isValidDate(q.end) ? q.end : null;
   const busca = typeof q.q === 'string' ? q.q.slice(0, 120) : '';
   const refresh = q.refresh === '1' || q.refresh === 'true';
 
-  const cacheKey = `seo-perf:${base}:${endPedido || 'auto'}:${seo.norm(busca)}`;
+  const cacheKey = temRangeLivre
+    ? `seo-perf:custom:${q.from}:${q.to}:${q.cmpFrom || ''}:${q.cmpTo || ''}:${seo.norm(busca)}`
+    : `seo-perf:${base}:${endPedido || 'auto'}:${seo.norm(busca)}`;
 
   if (!refresh && _mem.key === cacheKey && Date.now() - _mem.at < CACHE_TTL_MS) {
     return res.status(200).json({ ..._mem.data, cached: 'memory' });
@@ -332,9 +454,24 @@ module.exports = async function handler(req, res) {
     const ultimoFechado = endPedido && endPedido < frescor.ultimoFechado ? endPedido : frescor.ultimoFechado;
     const frescorEfetivo = { ...frescor, ultimoFechado, ancoraManual: !!(endPedido && endPedido < frescor.ultimoFechado) };
 
-    const w = seo.windowsFor(base, ultimoFechado);
+    let w;
+    if (temRangeLivre) {
+      // Data futura ou dentro da faixa parcial devolveria janela vazia sem
+      // explicação; o corte no último dia fechado é declarado em `janelas`.
+      const to = q.to > frescor.ultimoFechado ? frescor.ultimoFechado : q.to;
+      const from = q.from > to ? to : q.from;
+      w = seo.customWindows(from, to, isValidDate(q.cmpFrom) ? q.cmpFrom : null, isValidDate(q.cmpTo) ? q.cmpTo : null);
+      w.limitadoAoFechado = q.to > frescor.ultimoFechado;
+      w.pedido = { from: q.from, to: q.to };
+    } else {
+      const wb = seo.windowsFor(base, ultimoFechado);
+      w = { ...wb, label: seo.BASES[base].label, desc: seo.BASES[base].desc };
+    }
+
     const inicioTimeline = seo.shiftDays(ultimoFechado, -(DIAS_TIMELINE - 1));
-    // YoY olha 364 dias para trás: a série tem que cobrir a janela anterior.
+    // YoY olha 364 dias para trás e a janela livre pode ir mais longe ainda: a
+    // série diária tem que cobrir a janela de referência, senão o KPI da
+    // comparação vem zerado sem motivo aparente.
     const inicio = w.anterior.from < inicioTimeline ? w.anterior.from : inicioTimeline;
 
     const [dias, qAtual, qAnterior, pAtual, pAnterior, dAtual, dAnterior, cAtual, cAnterior] = await Promise.all([
@@ -352,7 +489,7 @@ module.exports = async function handler(req, res) {
     const data = {
       success: true,
       generatedAt: new Date().toISOString(),
-      ...build({ base, dias, frescor: frescorEfetivo, qAtual, qAnterior, pAtual, pAnterior, dAtual, dAnterior, cAtual, cAnterior, busca }),
+      ...build({ base, w, dias, frescor: frescorEfetivo, qAtual, qAnterior, pAtual, pAnterior, dAtual, dAnterior, cAtual, cAnterior, busca }),
     };
 
     _mem = { key: cacheKey, at: Date.now(), data };
@@ -368,3 +505,9 @@ module.exports = async function handler(req, res) {
     return res.status(500).json({ success: false, error: e.message });
   }
 };
+
+// Exposto só para scripts/test-seo-performance.js fixar a regra do corte de
+// payload sem chamar a API do Google. Vercel usa o handler (o export default),
+// então pendurar a função aqui não muda o runtime.
+module.exports.selecionaLinhas = selecionaLinhas;
+module.exports.CAPS = CAPS;

@@ -15,10 +15,10 @@ herdada de convenção de mercado.
 |---|---|
 | `lib/gsc.js` | Cliente Search Console. Auth Service Account JWT RS256, `searchAnalytics.query`, `freshness()`, retry e cache de token. |
 | `lib/seo-analytics.js` | Semântica: categorias, marca, seções, janelas de comparação, agregação, deltas e rollups. **Puro, zero rede.** |
-| `api/seo-performance.js` | Endpoint `GET /api/seo-performance`. Junta tudo e devolve um payload por base de comparação. |
+| `api/seo-performance.js` | Endpoint `GET /api/seo-performance`. Junta tudo e devolve um payload por janela (base ancorada ou livre). |
 | `public/seo-performance.html` | Chrome da página (mesmo CSS das subpáginas BDR/Growth) + CSS de tabela ordenável e strip de comparação. |
-| `public/seo-performance.js` | `SeoPerf`: strip de bases, KPIs, linha do tempo SVG, 8 visões, ordenação, filtros, busca, drilldowns, CSV. |
-| `scripts/test-seo-performance.js` | 34 asserções de contrato, zero rede. Roda no `npm run check`. |
+| `public/seo-performance.js` | `SeoPerf`: strip de bases, KPIs, linha do tempo SVG, 10 visões, modo Movimentação/Agregado, janela livre, ordenação, filtros, busca, drilldowns, CSV. |
+| `scripts/test-seo-performance.js` | 47 asserções de contrato, zero rede. Roda no `npm run check`. |
 | `scripts/smoke-seo-performance-browser.js` | Smoke funcional por CDP. `npm run smoke:seo-perf`. |
 
 ## Configuração
@@ -44,7 +44,7 @@ LOCAL_DEV_BYPASS=true node scripts/local-server.js 3007
 
 ---
 
-## As 9 armadilhas medidas (não regredir)
+## As 10 armadilhas medidas (não regredir)
 
 1. **`dataState: 'all'` mostra queda falsa.** Os 2 últimos dias vêm parciais: em
    06/08/2026 o dia corrente aparecia com **1 clique** contra ~130 dos dias
@@ -94,6 +94,17 @@ LOCAL_DEV_BYPASS=true node scripts/local-server.js 3007
    semanas exatas). Com 456 sobrava um bucket semanal de 1 dia no começo e o
    bucket seguinte comparava semana cheia contra semana quebrada.
 
+10. **Rótulo de página precisa carregar fragmento, host e query.** Três colisões
+   reais, medidas em janelas diferentes: 27 rótulos iguais porque o Google indexa
+   "links para seções" como URLs próprias (`...#cronograma-120-dias`); 6 hosts
+   servindo `/` porque a propriedade é `sc-domain:` (inclusive
+   `http://axenya.com/` com 13 cliques, ou seja, a versão http continua
+   indexada); e variantes de query string indexadas (`?utm_campaign=post`,
+   `?__hstc=...` do HubSpot) aparecendo separadas da URL limpa. Sem os três no
+   rótulo, a tabela mostra linhas visualmente idênticas com números diferentes.
+   `sectionOf` continua ignorando fragmento e query, e subdomínio virou a seção
+   própria `Subdomínios` para não inflar a Home.
+
 Bônus: `searchAppearance` volta vazio nesta propriedade — não usar como dimensão.
 O horizonte disponível era 501 dias (desde 24/03/2025); a API corta em ~16 meses.
 
@@ -110,6 +121,69 @@ O horizonte disponível era 501 dias (desde 24/03/2025); a API corta em ~16 mese
   explica a variação do total. Clicar no cabeçalho alterna decrescente, crescente
   e (nas colunas de variação) absoluto.
 - **Separador de texto é sempre `|`.** Travessão só como placeholder de sem dado.
+
+## Modos da tabela | Movimentação e Agregado
+
+O toggle acima da tabela troca o que as colunas contam, sem nova ida à API.
+
+- **Movimentação** (default): Δ de cliques, impressões e posição contra a janela de
+  referência, mais o status (`novo`, `perdido`, `subiu`, `caiu`, `estável`). Ordem
+  default é o maior movimento absoluto de clique.
+- **Agregado**: as colunas de variação saem e entram cliques, impressões, CTR,
+  posição e **participação** de cada linha no total da dimensão. É a visão geral
+  para ler um período no detalhe. Ordem default é cliques.
+
+O denominador da participação é o **total da dimensão na janela**, calculado no
+servidor sobre o universo inteiro (`totaisDimensao`), não sobre as linhas que
+couberam no payload — senão a coluna mentiria sempre que houvesse corte. Para
+consultas esse total é menor que o total do site (anonimização), então a
+participação é "dentro do que a dimensão explica"; o bloco de cobertura diz quanto
+é isso.
+
+## Janela livre | De e Até
+
+Preencher **De** e **Até** e clicar em Aplicar troca a base para `Personalizado`
+(`?from=&to=`). A janela de referência default é o período imediatamente anterior,
+do MESMO tamanho — é o único default que não inventa premissa; `?cmpFrom=&cmpTo=`
+permite escolhê-la à mão.
+
+Dois vieses possíveis, e os dois viram aviso de higiene em vez de silêncio:
+
+| Situação | O que a tela diz |
+|---|---|
+| Intervalo não múltiplo de 7 (ex.: mês de 31 dias) | as duas pontas não têm a mesma quantidade de sábados e domingos, então parte da variação é calendário. Os números **absolutos** do modo Agregado não são afetados, só a variação. |
+| Referência de tamanho diferente | a variação compara períodos de duração diferente e não deve ser lida como performance. |
+
+A data final é sempre limitada ao último dia **fechado**; se o pedido passar dele,
+`janelas.limitadoAoFechado` vem `true` e os campos da tela são reescritos com a
+janela realmente consultada.
+
+## Novos | o que não existia antes
+
+Uma consulta ou página é **nova** quando teve **zero impressão** na janela de
+referência e tem impressão na janela atual. Há duas visões dedicadas (`Novos` e
+`Novas páginas`), sem as colunas "antes" (seriam zero por definição): o que
+interessa é o tamanho da estreia, se já converteu clique e em que posição entrou.
+
+Duas decisões que fazem essa visão funcionar:
+
+1. **Novos vêm em array próprio do servidor** (`movimentos.novos`), ordenado por
+   impressão. Filtrar a tabela de movimentação não serviria: um termo novo sem
+   clique tem `Δcliques = 0` e afundaria na ordenação por variação.
+2. **O corte de payload é a UNIÃO de três ordenações** — topo por variação, topo
+   por volume e todos os novos. Cortar só pelas maiores variações (como era na
+   primeira versão) descartava silenciosamente a linha de altíssima impressão que
+   não mexeu (a que interessa no modo Agregado) e o novo sem clique. As contagens
+   das três fatias saem em `movimentos.corte`.
+
+Cuidado com a referência curta: com DoD (1 dia), uma consulta que simplesmente não
+apareceu naquele dia já conta como nova. A higiene avisa quando a referência tem
+menos de 7 dias. Perdidos são o espelho e ficam a um clique no filtro de Status.
+
+**Exemplo real (julho/2026 contra junho):** 2.374 consultas novas, e as 12 maiores
+são todas do cluster CID/burnout/z73 (`cid z73.0` estreou com 2.438 impressões).
+Só 23 das 800 carregadas já converteram clique — o resto apareceu e não foi
+clicado, o que é a fila de trabalho de título e meta description.
 
 ## Categorias
 
@@ -136,7 +210,7 @@ marca as variantes de digitação que aparecem de fato no relatório: `axenya`,
 
 11 chamadas ao GSC por base (1 série diária de 455 dias, 2 de frescor, query e
 page × 2 janelas, device e country × 2 janelas), em paralelo. Medido: **2,5 a 2,7
-segundos**, payload de 495 KB (WoW) a 544 KB (QoQ). Cache de 6 horas em KV +
+segundos**, payload de 495 KB (WoW) a 638 KB (janela livre de 31 dias). Cache de 6 horas em KV +
 memória do lambda, porque o GSC fecha dado uma vez por dia. Quota do Google é 1.200
 consultas/minuto por propriedade — folga de duas ordens de grandeza.
 
@@ -156,7 +230,7 @@ Marca 57 contra não-marca 100.
 ## Validação
 
 ```bash
-node scripts/test-seo-performance.js                                    # 34 asserções, zero rede
+node scripts/test-seo-performance.js                                    # 47 asserções, zero rede
 npm run check                                                            # inclui o de cima
 npm run smoke:seo-perf -- --base-url=http://localhost:3007 --base=wow    # smoke funcional CDP
 ```
@@ -167,7 +241,11 @@ FATO (e valida a monotonicidade da coluna), busca que filtra e preserva o texto
 digitado, troca de visão que troca as colunas, drill de grupo com as entidades
 dentro, drill de KPI, drawer de memória de cálculo, drill de período, agregação por
 mês com bucket parcial sem variação, destaque de fim de semana e média móvel na
-granularidade de dia, bloco de higiene com linhas, e **console sem erro**.
+granularidade de dia, bloco de higiene com linhas, modo Agregado sem coluna de
+variação e com participação dentro de 0 a 100%, visão Novos sem coluna "antes" e
+ordenada por impressão, janela livre de/até com o aviso de intervalo não múltiplo
+de 7, rótulos de página sem duplicata, e **console sem erro**. Roda verde nas 5
+bases (wow, mom, qoq, dod, yoy).
 
 ## Dívidas conhecidas
 

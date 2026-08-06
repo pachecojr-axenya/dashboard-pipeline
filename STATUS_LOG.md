@@ -1,5 +1,63 @@
 # Dashboard Enhancement Loop — Status Log
 
+### 🔎 SEO | visão agregada, janela livre de datas e a visão de NOVOS (2026-08-06)
+
+> Iteração pedida pelo dono sobre `/growth/seo`: a tabela de movimentação mostrava
+> bem o que mudou, mas faltava (a) uma visão GERAL agregada, (b) filtro de data
+> inicial e final para ler um período no detalhe, e (c) ver o que é NOVO — termo que
+> não existia no mês passado e agora tem impressão ou clique.
+>
+> **1. Modo Movimentação | Agregado.** Toggle acima da tabela, sem nova ida à API.
+> No modo Agregado as colunas de Δ saem e entram cliques, impressões, CTR, posição
+> e a PARTICIPAÇÃO de cada linha. O denominador vem de `totaisDimensao`, calculado
+> no servidor sobre o universo INTEIRO — usar a soma das linhas do payload faria a
+> coluna mentir sempre que houvesse corte.
+>
+> **2. Janela livre `?from=&to=`.** Chip "Personalizado" + campos De/Até. A
+> referência default é o período anterior imediato, do mesmo tamanho (único default
+> que não inventa premissa); `?cmpFrom=&cmpTo=` permite escolher à mão. Os dois
+> vieses possíveis viram aviso de higiene: intervalo não múltiplo de 7 (as pontas
+> não têm a mesma quantidade de sábado/domingo, e nesta propriedade fim de semana
+> rende ~1/4 do dia útil) e referência de tamanho diferente. A data final é
+> limitada ao último dia FECHADO e a tela reescreve os campos com a janela real.
+>
+> **3. Visões Novos e Novas páginas.** Zero impressão na referência e impressão
+> agora. Sem colunas "antes" (seriam zero por definição): o que importa é o tamanho
+> da estreia, se converteu clique e em que posição entrou.
+>
+> **Defeito de payload corrigido no caminho (o mais importante desta iteração).** O
+> corte de 2.000 linhas ordenava só por |Δcliques|, e isso descartava em silêncio
+> justamente as duas coisas que as novas visões precisam: a linha de altíssima
+> impressão que não mexeu (Δ=0, essencial no Agregado) e o termo NOVO sem clique
+> (Δ=0 por definição). Agora a seleção é a UNIÃO de três ordenações — topo por
+> variação, topo por volume e todos os novos — com as contagens declaradas em
+> `movimentos.corte`. Fixado em teste de contrato com `api.selecionaLinhas`.
+>
+> **Três colisões reais de rótulo de página, descobertas ao construir a visão de
+> novas páginas.** O rótulo agora carrega fragmento, host e query string:
+> 1. 27 rótulos idênticos porque o Google indexa "links para seções" como URLs
+>    próprias (`...#cronograma-120-dias`) — 5 linhas visualmente iguais com
+>    números diferentes;
+> 2. 6 hosts servindo `/`, já que a propriedade é `sc-domain:` — inclusive
+>    **`http://axenya.com/` com 13 cliques e 1.132 impressões, ou seja, a versão
+>    http continua indexada** (achado de SEO para o time resolver);
+> 3. variantes de query indexadas (`?utm_campaign=post`, `?__hstc=...` do HubSpot)
+>    aparecendo separadas da URL limpa, que é conteúdo duplicado.
+> Subdomínio virou a seção própria `Subdomínios` para não inflar a Home. A célula
+> trunca com CSS e mostra a URL inteira no hover.
+>
+> **Achado de conteúdo (julho contra junho):** 2.374 consultas novas, e as 12
+> maiores são TODAS do cluster CID/burnout/z73 (`cid z73.0` estreou com 2.438
+> impressões). Só 23 das 800 carregadas já converteram clique — o resto apareceu e
+> não foi clicado, o que é uma fila de trabalho de título e meta description.
+>
+> **Validação:** `npm run check` verde com 47 asserções de contrato (13 novas:
+> janela livre, rótulo de página e o corte de 3 ordenações) e `npm run smoke:seo-perf`
+> verde nas 5 bases (wow, mom, qoq, dod, yoy) com console limpo. O smoke ganhou 4
+> passos: modo Agregado sem coluna de Δ e com participação entre 0 e 100%, visão
+> Novos sem coluna "antes" e ordenada por impressão, janela livre com o aviso de
+> múltiplo de 7, e ausência de rótulo de página duplicado. Foi esse último passo que
+> pegou a colisão de query string, na base QoQ.
 ### 🚀 DEPLOY DE PRODUÇÃO | Motor único de probabilidade, Fases 1-2 (2026-08-06)
 
 > Autorização explícita do dono ("Acho que podemos commitar e deployar primeiro"), como

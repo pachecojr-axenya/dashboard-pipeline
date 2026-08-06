@@ -20,8 +20,13 @@ var SeoPerf = (function () {
   var state = {
     base: 'wow',
     end: '',
+    from: '',
+    to: '',
     gran: 'semana',
     view: 'consultas',
+    // 'movimento' mostra as colunas de variação; 'agregado' mostra o número
+    // absoluto da janela e a participação no total, sem comparação.
+    modo: 'movimento',
     busca: '',
     buscaServidor: '',
     data: null,
@@ -74,6 +79,11 @@ var SeoPerf = (function () {
   function shortDate(iso) {
     var p = String(iso).slice(0, 10).split('-');
     return p[2] + '/' + p[1];
+  }
+  function addDaysIso(iso, n) {
+    var d = new Date(String(iso) + 'T12:00:00Z');
+    d.setUTCDate(d.getUTCDate() + n);
+    return d.toISOString().slice(0, 10);
   }
   var MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
   function monthLabel(ym) {
@@ -129,7 +139,13 @@ var SeoPerf = (function () {
     cortes: ['Dispositivo e país', 'De onde vem o clique.',
       'Mesma lógica de movimentação aplicada às dimensões device e country do Search Console. País vem em código ISO de 3 letras (bra, usa). Serve principalmente para detectar tráfego internacional irrelevante inflando impressão.'],
     busca: ['Busca', 'Filtra por texto na visão atual.',
-      'A busca filtra localmente as linhas já carregadas. Quando a janela tem mais entidades do que o payload carrega (o corte é declarado embaixo da tabela), o botão de buscar no servidor refaz a consulta filtrando no conjunto COMPLETO da janela, para que um termo fora do corte ainda possa ser encontrado.']
+      'A busca filtra localmente as linhas já carregadas. Quando a janela tem mais entidades do que o payload carrega (o corte é declarado embaixo da tabela), o campo de busca no servidor refaz a consulta filtrando no conjunto COMPLETO da janela, para que um termo fora do corte ainda possa ser encontrado.'],
+    agregado: ['Modo Agregado', 'A visão geral do período: número absoluto e participação, sem comparação.',
+      'No modo Movimentação cada linha mostra o Δ contra a janela de referência. No modo Agregado as colunas de variação saem e entram cliques, impressões, CTR, posição e a PARTICIPAÇÃO de cada linha no total da dimensão. O denominador da participação é o total da dimensão na janela calculado sobre o universo INTEIRO no servidor, não sobre as linhas que couberam no payload — senão a coluna mentiria sempre que houvesse corte. Atenção: para consultas, o total da dimensão é menor que o total do site (o Google anonimiza cauda longa), então a participação é dentro do que a dimensão explica, e o bloco de cobertura diz quanto é isso.'],
+    rangeLivre: ['Janela livre | De e Até', 'Escolher as duas datas na mão, em vez de usar uma base ancorada.',
+      'Preencher De e Até e clicar em Aplicar troca a base para Personalizado. A janela de referência default é o período imediatamente anterior, do MESMO tamanho — é o único default que não inventa premissa. Duas ressalvas que a página avisa sozinha: se o intervalo não for múltiplo de 7 dias, as duas pontas não têm a mesma quantidade de sábados e domingos e parte da variação é calendário (os números absolutos do modo Agregado não são afetados, só a variação); e a data final é limitada ao último dia FECHADO do Search Console, porque depois disso o dado é parcial.'],
+    novos: ['Novos', 'O que não existia na janela de referência e passou a existir.',
+      'Uma consulta ou página é NOVA quando teve ZERO impressão na janela de referência e tem impressão na janela atual. As colunas "antes" saem porque seriam zero por definição: o que interessa é o tamanho da estreia (impressões), se já converteu (cliques) e em que posição entrou. Ordem default é impressão decrescente, porque um termo novo sem clique tem Δcliques igual a zero e afundaria numa ordenação por variação — por isso os novos vêm em lista própria do servidor, não filtrados da tabela de movimentação. Cuidado com a referência: se ela for curta (DoD, 1 dia), uma consulta que simplesmente não apareceu naquele dia já conta como nova, e a página avisa isso na higiene. Para ler novos de verdade, use MoM, QoQ ou uma janela livre de pelo menos 28 dias. Perdidos são o espelho disso e ficam a um clique no filtro de Status da visão de consultas.']
   };
 
   function infoBtn(key) {
@@ -188,10 +204,19 @@ var SeoPerf = (function () {
         + '">' + esc(bases[i].label) + '</button>';
     }
     var ancora = (d && d.frescor && d.frescor.ultimoFechado) || '';
+    var custom = state.base === 'custom';
+    chips += '<button type="button" class="period-chip' + (custom ? ' active' : '')
+      + '" data-base="custom" data-hover-title="Personalizado"'
+      + ' data-hover-text="Usa as datas De e Até abaixo. A referência default é o período imediatamente anterior, do mesmo tamanho.">Personalizado</button>';
+
     $('filters').innerHTML =
       '<div class="periodbar"><span class="period-label">Comparar</span>' + chips
-      + '<span class="period-help">janela ancorada no último dia fechado do Search Console</span></div>'
-      + '<div class="filter"><label>Âncora | último dia da janela</label><input type="date" id="f-end" value="' + esc(state.end || ancora) + '" max="' + esc(ancora) + '"></div>'
+      + '<span class="period-help">' + (custom
+        ? 'janela livre | o período de referência é o anterior imediato, do mesmo tamanho'
+        : 'janela ancorada no último dia fechado do Search Console') + '</span></div>'
+      + '<div class="filter"><label>De' + infoBtn('rangeLivre') + '</label><input type="date" id="f-from" value="' + esc(state.from) + '" max="' + esc(ancora) + '"></div>'
+      + '<div class="filter"><label>Até</label><input type="date" id="f-to" value="' + esc(state.to) + '" max="' + esc(ancora) + '"></div>'
+      + '<div class="filter"><label>Âncora das bases fixas</label><input type="date" id="f-end" value="' + esc(state.end || ancora) + '" max="' + esc(ancora) + '"' + (custom ? ' disabled' : '') + '></div>'
       + '<div class="filter"><label>Granularidade da linha do tempo</label><select id="f-gran">'
       + '<option value="dia"' + (state.gran === 'dia' ? ' selected' : '') + '>Dia</option>'
       + '<option value="semana"' + (state.gran === 'semana' ? ' selected' : '') + '>Semana</option>'
@@ -205,11 +230,27 @@ var SeoPerf = (function () {
     var bs = $('filters').querySelectorAll('[data-base]');
     for (i = 0; i < bs.length; i += 1) {
       bs[i].onclick = function () {
-        state.base = this.getAttribute('data-base');
+        var b = this.getAttribute('data-base');
+        if (b === 'custom') {
+          // Sem datas digitadas, "Personalizado" não tem o que pedir: propõe os
+          // últimos 28 dias fechados, que já é uma janela múltipla de 7.
+          if (!state.from || !state.to) {
+            state.to = ancora;
+            state.from = addDaysIso(ancora, -27);
+          }
+        } else {
+          state.from = '';
+          state.to = '';
+        }
+        state.base = b;
         load(false);
       };
     }
     $('f-apply').onclick = function () {
+      var f = $('f-from').value || '', t = $('f-to').value || '';
+      // Preencher De/Até é a forma de pedir janela livre; limpar volta para a base.
+      if (f && t) { state.from = f; state.to = t; state.base = 'custom'; }
+      else { state.from = ''; state.to = ''; if (state.base === 'custom') state.base = 'wow'; }
       state.end = $('f-end').value || '';
       state.gran = $('f-gran').value;
       state.buscaServidor = $('f-q').value || '';
@@ -232,6 +273,7 @@ var SeoPerf = (function () {
   function renderComparacoes() {
     var d = state.data, html = '', i;
     var ordem = ['dod', 'wow', 'mom', 'qoq', 'yoy'];
+    if (d.resumo.custom) ordem.push('custom');
     for (i = 0; i < ordem.length; i += 1) {
       var r = d.resumo[ordem[i]];
       if (!r) continue;
@@ -357,10 +399,21 @@ var SeoPerf = (function () {
     return '<button type="button" data-gran="' + k + '" class="' + (state.gran === k ? 'active' : '') + '">' + esc(label) + '</button>';
   }
 
+  function modoBtn(k, label) {
+    return '<button type="button" data-modo="' + k + '" class="' + (state.modo === k ? 'active' : '') + '"'
+      + ' data-hover-title="' + esc(label) + '" data-hover-text="'
+      + (k === 'agregado'
+        ? 'Troca as colunas de variação por número absoluto da janela e participação no total da dimensão. É a visão geral para ler o período no detalhe.'
+        : 'Mostra o que mudou contra a janela de referência, com Δ de cliques, impressões e posição.')
+      + '">' + esc(label) + '</button>';
+  }
+
   // ── visões -------------------------------------------------------------
   var VIEWS = [
     { key: 'consultas', label: 'Consultas', help: 'movimento' },
     { key: 'paginas', label: 'Páginas', help: 'movimento' },
+    { key: 'novos', label: 'Novos', help: 'novos' },
+    { key: 'novasPaginas', label: 'Novas páginas', help: 'novos' },
     { key: 'categorias', label: 'Categorias', help: 'categoria' },
     { key: 'marca', label: 'Marca vs não-marca', help: 'marca' },
     { key: 'secoes', label: 'Seções', help: 'secao' },
@@ -368,6 +421,22 @@ var SeoPerf = (function () {
     { key: 'dispositivos', label: 'Dispositivo', help: 'cortes' },
     { key: 'paises', label: 'País', help: 'cortes' }
   ];
+
+  /**
+   * Denominador da coluna de participação. Vem do TOTAL da dimensão na janela
+   * (calculado no servidor sobre o universo inteiro), não da soma das linhas que
+   * couberam no payload — senão a participação mentiria sempre que houvesse corte.
+   */
+  function denomOf(view) {
+    var t = state.data.totaisDimensao || {};
+    if (view === 'paginas' || view === 'secoes' || view === 'novasPaginas') return t.paginas || { clicks: 0, impressions: 0 };
+    if (view === 'dispositivos' || view === 'paises') {
+      var rows = rowsOf(view), soma = { clicks: 0, impressions: 0 }, i;
+      for (i = 0; i < rows.length; i += 1) { soma.clicks += rows[i].c || 0; soma.impressions += rows[i].i || 0; }
+      return soma;
+    }
+    return t.consultas || { clicks: 0, impressions: 0 };
+  }
 
   /** Achata rollup (categoria/seção/marca) no MESMO formato das linhas compactas. */
   function flatRollup(r) {
@@ -385,6 +454,8 @@ var SeoPerf = (function () {
     var m = state.data.movimentos, c = state.data.cortes, i, out;
     if (view === 'consultas') return m.consultas;
     if (view === 'paginas') return m.paginas;
+    if (view === 'novos') return m.novos || [];
+    if (view === 'novasPaginas') return m.novasPaginas || [];
     if (view === 'oportunidades') return m.oportunidades;
     if (view === 'dispositivos') return c.dispositivos;
     if (view === 'paises') return c.paises;
@@ -473,25 +544,103 @@ var SeoPerf = (function () {
       { key: 'di', label: 'Δ impr.', tipo: 'delta' },
       { key: 'p', label: 'Posição', tipo: 'pos' },
       { key: 'dp', label: 'Δ posição', tipo: 'deltaPos' }
+    ],
+    // Novos: as colunas "antes" seriam zero por definição, então saem. O que
+    // interessa é o tamanho da estreia (impressão), se converteu (clique) e onde
+    // entrou (posição).
+    novos: [
+      { key: 'k', label: 'Consulta nova', tipo: 'texto', w: '38%' },
+      { key: 'cat', label: 'Categoria', tipo: 'texto' },
+      { key: 'i', label: 'Impressões', tipo: 'num' },
+      { key: 'shareI', label: '% impr.', tipo: 'share' },
+      { key: 'c', label: 'Cliques', tipo: 'num' },
+      { key: 'ctr', label: 'CTR', tipo: 'ctr' },
+      { key: 'p', label: 'Posição de estreia', tipo: 'pos' }
+    ],
+    novasPaginas: [
+      { key: 'rot', label: 'Página nova', tipo: 'texto', w: '44%' },
+      { key: 'sec', label: 'Seção', tipo: 'texto' },
+      { key: 'i', label: 'Impressões', tipo: 'num' },
+      { key: 'shareI', label: '% impr.', tipo: 'share' },
+      { key: 'c', label: 'Cliques', tipo: 'num' },
+      { key: 'ctr', label: 'CTR', tipo: 'ctr' },
+      { key: 'p', label: 'Posição de estreia', tipo: 'pos' }
+    ],
+    // ── modo AGREGADO: absoluto da janela + participação, sem comparação ──
+    aggEntidade: [
+      { key: 'k', label: 'Consulta', tipo: 'texto', w: '34%' },
+      { key: 'cat', label: 'Categoria', tipo: 'texto' },
+      { key: 'c', label: 'Cliques', tipo: 'num' },
+      { key: 'shareC', label: '% dos cliques', tipo: 'share' },
+      { key: 'i', label: 'Impressões', tipo: 'num' },
+      { key: 'shareI', label: '% das impr.', tipo: 'share' },
+      { key: 'ctr', label: 'CTR', tipo: 'ctr' },
+      { key: 'p', label: 'Posição', tipo: 'pos' },
+      { key: 'st', label: 'Status', tipo: 'status' }
+    ],
+    aggPaginas: [
+      { key: 'rot', label: 'Página', tipo: 'texto', w: '40%' },
+      { key: 'sec', label: 'Seção', tipo: 'texto' },
+      { key: 'c', label: 'Cliques', tipo: 'num' },
+      { key: 'shareC', label: '% dos cliques', tipo: 'share' },
+      { key: 'i', label: 'Impressões', tipo: 'num' },
+      { key: 'shareI', label: '% das impr.', tipo: 'share' },
+      { key: 'ctr', label: 'CTR', tipo: 'ctr' },
+      { key: 'p', label: 'Posição', tipo: 'pos' },
+      { key: 'st', label: 'Status', tipo: 'status' }
+    ],
+    aggGrupo: [
+      { key: 'k', label: 'Grupo', tipo: 'texto', w: '28%' },
+      { key: 'itens', label: 'Itens', tipo: 'num' },
+      { key: 'c', label: 'Cliques', tipo: 'num' },
+      { key: 'shareC', label: '% dos cliques', tipo: 'share' },
+      { key: 'i', label: 'Impressões', tipo: 'num' },
+      { key: 'shareI', label: '% das impr.', tipo: 'share' },
+      { key: 'ctr', label: 'CTR', tipo: 'ctr' },
+      { key: 'p', label: 'Posição', tipo: 'pos' }
+    ],
+    aggSimples: [
+      { key: 'k', label: 'Chave', tipo: 'texto', w: '28%' },
+      { key: 'c', label: 'Cliques', tipo: 'num' },
+      { key: 'shareC', label: '% dos cliques', tipo: 'share' },
+      { key: 'i', label: 'Impressões', tipo: 'num' },
+      { key: 'shareI', label: '% das impr.', tipo: 'share' },
+      { key: 'ctr', label: 'CTR', tipo: 'ctr' },
+      { key: 'p', label: 'Posição', tipo: 'pos' }
     ]
   };
 
+  var VIEWS_GRUPO = { categorias: 1, secoes: 1, marca: 1 };
+
   function colsOf(view) {
+    // Novos e Oportunidades já são visões absolutas por natureza; o toggle de
+    // modo não muda as colunas delas.
+    if (view === 'novos') return COLS.novos;
+    if (view === 'novasPaginas') return COLS.novasPaginas;
+    if (view === 'oportunidades') return COLS.oportunidade;
+    if (state.modo === 'agregado') {
+      if (view === 'consultas') return COLS.aggEntidade;
+      if (view === 'paginas') return COLS.aggPaginas;
+      if (VIEWS_GRUPO[view]) return COLS.aggGrupo;
+      return COLS.aggSimples;
+    }
     if (view === 'consultas') return COLS.entidade;
     if (view === 'paginas') return COLS.paginas;
-    if (view === 'oportunidades') return COLS.oportunidade;
-    if (view === 'categorias' || view === 'secoes' || view === 'marca') return COLS.grupo;
+    if (VIEWS_GRUPO[view]) return COLS.grupo;
     return COLS.simples;
   }
 
   function defaultSort(view) {
-    if (view === 'oportunidades') return { key: 'i', dir: 'desc' };
-    if (view === 'categorias' || view === 'secoes' || view === 'marca') return { key: 'c', dir: 'desc' };
+    if (view === 'novos' || view === 'novasPaginas' || view === 'oportunidades') return { key: 'i', dir: 'desc' };
+    if (state.modo === 'agregado') return { key: 'c', dir: 'desc' };
+    if (VIEWS_GRUPO[view]) return { key: 'c', dir: 'desc' };
     return { key: 'dc', dir: 'abs' };
   }
 
   function valorDe(r, col) {
     if (col.tipo === 'ctr') return (r.i > 0 ? r.c / r.i : 0);
+    if (col.key === 'shareC') { var dc = denomOf(state.view); return dc.clicks > 0 ? (r.c || 0) / dc.clicks : 0; }
+    if (col.key === 'shareI') { var di = denomOf(state.view); return di.impressions > 0 ? (r.i || 0) / di.impressions : 0; }
     if (col.key === 'k' && r.rot) return r.rot;
     return r[col.key];
   }
@@ -524,6 +673,13 @@ var SeoPerf = (function () {
       var txt = String(v == null ? '—' : v);
       var extra = '';
       if (col.key === 'k' && r.mk === 1) extra = ' <span class="pill teal">marca</span>';
+      // URL de página pode ter 180 caracteres de query indexada (`?__hstc=...`):
+      // o rótulo inteiro é a identidade da linha, mas na célula ele é truncado
+      // com a URL completa no hover.
+      if (col.key === 'rot') {
+        return '<td><span class="cell-url" data-hover-title="URL completa" data-hover-text="' + esc(r.k || txt) + '">'
+          + esc(txt) + '</span></td>';
+      }
       return '<td>' + esc(txt) + extra + '</td>';
     }
     if (col.tipo === 'num') {
@@ -534,6 +690,11 @@ var SeoPerf = (function () {
       return '<td class="right nowrap">' + esc(num(v)) + bar + '</td>';
     }
     if (col.tipo === 'ctr') return '<td class="right nowrap">' + esc(pct(v, 2)) + '</td>';
+    if (col.tipo === 'share') {
+      // Sem barra aqui: a barra da coluna de cliques já é a leitura visual, e
+      // uma barra de participação usaria uma escala diferente na mesma linha.
+      return '<td class="right nowrap">' + esc(pct(v, (v != null && v < 0.01) ? 2 : 1)) + '</td>';
+    }
     if (col.tipo === 'pos') return '<td class="right nowrap">' + esc(pos(v)) + '</td>';
     if (col.tipo === 'delta') {
       return '<td class="right nowrap"><span class="delta ' + cls(v) + '">' + arrow(v) + esc(sig(v)) + '</span></td>';
@@ -611,9 +772,19 @@ var SeoPerf = (function () {
 
     var corte = state.data.movimentos.corte;
     var aviso = '';
-    if (view === 'consultas' && corte.consultas.enviadas < corte.consultas.total) {
-      aviso = '<div class="trunc-note">Mostrando as ' + num(corte.consultas.enviadas) + ' consultas de maior movimento das '
-        + num(corte.consultas.total) + ' da janela. Para achar um termo fora desse corte, use a busca no servidor no filtro do topo.</div>';
+    if ((view === 'consultas' || view === 'paginas') && corte[view] && corte[view].enviadas < corte[view].universo) {
+      aviso = '<div class="trunc-note">Carregadas ' + num(corte[view].enviadas) + ' de ' + num(corte[view].universo)
+        + ' entidades da janela | são a união do topo por variação, do topo por volume e dos novos, para as três visões terem o que mostrar.'
+        + ' Para achar algo fora desse corte, use a busca no servidor no filtro do topo.</div>';
+    }
+    if ((view === 'novos' || view === 'novasPaginas')) {
+      var cc = view === 'novos' ? corte.consultas : corte.paginas;
+      var comClique = 0;
+      for (i = 0; i < todas.length; i += 1) if (todas[i].c > 0) comClique += 1;
+      aviso += '<div class="trunc-note">' + num(cc.novosTotal) + ' entidades sem NENHUMA impressão na janela de referência ('
+        + esc(state.data.janelas.anterior.from + ' a ' + state.data.janelas.anterior.to) + ')'
+        + (cc.novosEnviados < cc.novosTotal ? ' | ' + num(cc.novosEnviados) + ' carregadas, as de maior impressão' : '')
+        + ' | ' + comClique + ' já converteram clique, o resto só apareceu.</div>';
     }
     if (rows.length > limite) {
       aviso += '<div class="trunc-note">Tabela renderiza ' + limite + ' linhas de ' + num(rows.length)
@@ -628,6 +799,13 @@ var SeoPerf = (function () {
         + state.data.janelas.anterior.from + ' a ' + state.data.janelas.anterior.to)
       + ' | ' + num(rows.length) + ' linhas | clique numa linha para o detalhe</div></div>' + infoBtn(vhelp || 'movimento') + '</div>'
       + '<div class="tabbar">' + tabs + '</div>'
+      + '<div class="granbar" style="margin-bottom:.85rem">'
+      + '<span class="period-label" style="align-self:center">Modo</span>'
+      + modoBtn('movimento', 'Movimentação') + modoBtn('agregado', 'Agregado')
+      + '<span class="period-help" style="align-self:center">' + (state.modo === 'agregado'
+        ? 'números absolutos da janela e participação no total, sem comparação'
+        : 'variação contra a janela de referência') + '</span>'
+      + infoBtn('agregado') + '</div>'
       + '<div class="viewbar">'
       + '<div class="filter"><label>Busca nesta visão' + infoBtn('busca') + '</label><input type="search" id="v-busca" placeholder="filtra as linhas carregadas" value="' + esc(state.busca) + '"></div>'
       + '<div class="filter"><label>Status</label><select id="v-status">' + stOpts + '</select></div>'
@@ -810,7 +988,9 @@ var SeoPerf = (function () {
     $('content').setAttribute('data-base-atual', state.base);
     $('content').setAttribute('data-gran-atual', state.gran);
     $('content').setAttribute('data-view-atual', state.view);
+    $('content').setAttribute('data-modo-atual', state.modo);
     $('content').setAttribute('data-janela', d.janelas.atual.from + '..' + d.janelas.atual.to);
+    $('content').setAttribute('data-janela-ref', d.janelas.anterior.from + '..' + d.janelas.anterior.to);
 
     $('state').classList.add('hidden');
     $('content').classList.remove('hidden');
@@ -835,6 +1015,14 @@ var SeoPerf = (function () {
     els = root.querySelectorAll('[data-gran]');
     for (i = 0; i < els.length; i += 1) {
       els[i].onclick = function () { state.gran = this.getAttribute('data-gran'); renderAll(); };
+    }
+    els = root.querySelectorAll('[data-modo]');
+    for (i = 0; i < els.length; i += 1) {
+      els[i].onclick = function () {
+        state.modo = this.getAttribute('data-modo');
+        state.sort = null; // a ordem default de cada modo é diferente
+        renderAll();
+      };
     }
     els = root.querySelectorAll('[data-bucket]');
     for (i = 0; i < els.length; i += 1) {
@@ -916,10 +1104,15 @@ var SeoPerf = (function () {
   function load(refresh) {
     var mine = ++reqSeq;
     renderFilters();
-    showState('Carregando dados', 'Google Search Console | base ' + state.base.toUpperCase()
+    showState('Carregando dados', 'Google Search Console | '
+      + (state.base === 'custom' && state.from && state.to
+        ? 'janela livre ' + ptDate(state.from) + ' a ' + ptDate(state.to)
+        : 'base ' + state.base.toUpperCase())
       + (state.buscaServidor ? ' | busca "' + state.buscaServidor + '"' : ''));
     var url = '/api/seo-performance?base=' + encodeURIComponent(state.base)
-      + (state.end ? '&end=' + encodeURIComponent(state.end) : '')
+      + (state.base === 'custom' && state.from && state.to
+        ? '&from=' + encodeURIComponent(state.from) + '&to=' + encodeURIComponent(state.to) : '')
+      + (state.end && state.base !== 'custom' ? '&end=' + encodeURIComponent(state.end) : '')
       + (state.buscaServidor ? '&q=' + encodeURIComponent(state.buscaServidor) : '')
       + (refresh ? '&refresh=1' : '');
     fetch(url, { credentials: 'same-origin' })
@@ -934,6 +1127,12 @@ var SeoPerf = (function () {
         if (json.vazio) return showError(json.error || 'O Search Console não devolveu dados para esta propriedade.');
         state.data = json;
         state.base = json.base;
+        // O servidor pode ter recortado a janela no último dia fechado; os campos
+        // de data têm que refletir o que foi de fato consultado, não o que eu pedi.
+        if (json.base === 'custom' && json.janelas && json.janelas.atual) {
+          state.from = json.janelas.atual.from;
+          state.to = json.janelas.atual.to;
+        }
         renderFilters();
         renderAll();
       })
@@ -947,14 +1146,20 @@ var SeoPerf = (function () {
     if (!state.data) return;
     var cols = colsOf(state.view);
     var rows = ordena(aplicaFiltros(rowsOf(state.view)), cols);
+    var den = denomOf(state.view);
     var head = ['chave', 'rotulo', 'categoria', 'secao', 'marca', 'cliques', 'cliques_anterior', 'delta_cliques',
-      'impressoes', 'impressoes_anterior', 'delta_impressoes', 'ctr', 'ctr_anterior', 'posicao', 'posicao_anterior',
-      'delta_posicao', 'status', 'itens'];
+      'pct_dos_cliques', 'impressoes', 'impressoes_anterior', 'delta_impressoes', 'pct_das_impressoes',
+      'ctr', 'ctr_anterior', 'posicao', 'posicao_anterior', 'delta_posicao', 'status', 'itens',
+      'janela_de', 'janela_ate', 'referencia_de', 'referencia_ate'];
+    var jan = state.data.janelas;
     var lines = [head.join(';')], i, j;
     for (i = 0; i < rows.length; i += 1) {
       var r = rows[i];
       var vals = [r.k, r.rot || '', r.cat || '', r.sec || '', r.mk === 1 ? 'sim' : '', r.c, r.c0, r.dc,
-        r.i, r.i0, r.di, (r.i > 0 ? r.c / r.i : 0), (r.i0 > 0 ? r.c0 / r.i0 : 0), r.p, r.p0, r.dp, r.st || '', r.itens == null ? '' : r.itens];
+        (den.clicks > 0 ? (r.c || 0) / den.clicks : 0),
+        r.i, r.i0, r.di, (den.impressions > 0 ? (r.i || 0) / den.impressions : 0),
+        (r.i > 0 ? r.c / r.i : 0), (r.i0 > 0 ? r.c0 / r.i0 : 0), r.p, r.p0, r.dp, r.st || '', r.itens == null ? '' : r.itens,
+        jan.atual.from, jan.atual.to, jan.anterior.from, jan.anterior.to];
       for (j = 0; j < vals.length; j += 1) {
         var v = vals[j] == null ? '' : vals[j];
         if (typeof v === 'number') v = String(v).replace('.', ',');
@@ -965,7 +1170,7 @@ var SeoPerf = (function () {
     var blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
     var a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'seo_' + state.view + '_' + state.base + '_' + state.data.janelas.atual.from + '_a_' + state.data.janelas.atual.to + '.csv';
+    a.download = 'seo_' + state.view + '_' + state.modo + '_' + state.base + '_' + state.data.janelas.atual.from + '_a_' + state.data.janelas.atual.to + '.csv';
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
   }
 

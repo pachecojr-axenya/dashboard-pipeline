@@ -329,5 +329,111 @@ t('fim de semana rende ~1/4 do dia útil nesta propriedade', () => {
   assert.strictEqual(a.isWeekend('2026-08-03'), false); // segunda
 });
 
+console.log('\n== janela livre (de/até escolhidos à mão) ==');
+t('referência default é o período anterior imediato, do mesmo tamanho', () => {
+  const w = a.customWindows('2026-07-01', '2026-07-31');
+  assert.deepStrictEqual(w.atual, { from: '2026-07-01', to: '2026-07-31', dias: 31 });
+  assert.deepStrictEqual(w.anterior, { from: '2026-05-31', to: '2026-06-30', dias: 31 });
+  assert.strictEqual(w.mesmoTamanho, true);
+  assert.strictEqual(w.base, 'custom');
+});
+t('intervalo de 31 dias é sinalizado como NÃO múltiplo de 7', () => {
+  assert.strictEqual(a.customWindows('2026-07-01', '2026-07-31').multiploDe7, false);
+  assert.strictEqual(a.customWindows('2026-07-08', '2026-08-04').multiploDe7, true);
+});
+t('referência manual é respeitada e o tamanho diferente é declarado', () => {
+  const w = a.customWindows('2026-07-01', '2026-07-31', '2026-06-01', '2026-06-30');
+  assert.deepStrictEqual(w.anterior, { from: '2026-06-01', to: '2026-06-30', dias: 30 });
+  assert.strictEqual(w.mesmoTamanho, false);
+  assert.strictEqual(w.referenciaManual, true);
+});
+t('datas invertidas são normalizadas em vez de devolver janela negativa', () => {
+  const w = a.customWindows('2026-07-31', '2026-07-01');
+  assert.deepStrictEqual(w.atual, { from: '2026-07-01', to: '2026-07-31', dias: 31 });
+  assert.ok(w.atual.dias > 0);
+});
+t('janela de 1 dia livre funciona e a referência é o dia anterior', () => {
+  const w = a.customWindows('2026-08-04', '2026-08-04');
+  assert.strictEqual(w.atual.dias, 1);
+  assert.deepStrictEqual(w.anterior, { from: '2026-08-03', to: '2026-08-03', dias: 1 });
+});
+
+console.log('\n== rótulo de página | fragmento e host ==');
+t('fragmento entra no rótulo | 27 URLs colidiam sem ele', () => {
+  // Regressão real de julho/2026: o Google indexa "links para seções" como URLs
+  // próprias e a tabela mostrava 5 linhas idênticas com números diferentes.
+  const base = 'https://www.axenya.com/recursos/blog/reajuste-plano-saude-empresarial-2026-como-negociar';
+  const a1 = a.pageLabel(base + '#cronograma-120-dias');
+  const a2 = a.pageLabel(base + '#argumentos-tecnicos');
+  assert.notStrictEqual(a1, a2);
+  assert.ok(a1.indexOf('#cronograma-120-dias') > 0, a1);
+  assert.strictEqual(a.pageLabel(base), '/recursos/blog/reajuste-plano-saude-empresarial-2026-como-negociar');
+});
+t('host não canônico entra no rótulo | 6 hosts serviam a linha "/"', () => {
+  assert.strictEqual(a.pageLabel('https://www.axenya.com/'), '/');
+  assert.strictEqual(a.pageLabel('http://axenya.com/'), 'http://axenya.com/');
+  assert.strictEqual(a.pageLabel('https://axenya.com/'), 'https://axenya.com/');
+  assert.strictEqual(a.pageLabel('https://drops.axenya.com/'), 'https://drops.axenya.com/');
+  const todos = ['https://www.axenya.com/', 'http://axenya.com/', 'https://axenya.com/',
+    'https://drops.axenya.com/', 'https://scan.axenya.com/', 'https://portal.axenya.com/'].map(a.pageLabel);
+  assert.strictEqual(new Set(todos).size, 6, 'os 6 hosts têm que gerar 6 rótulos distintos');
+});
+t('subdomínio não é seção Home | não pode inflar a Home', () => {
+  assert.strictEqual(a.sectionOf('https://drops.axenya.com/'), 'Subdomínios');
+  assert.strictEqual(a.sectionOf('https://scan.axenya.com/laudo'), 'Subdomínios');
+  assert.strictEqual(a.sectionOf('https://www.axenya.com/'), 'Home');
+  assert.strictEqual(a.sectionOf('http://axenya.com/'), 'Home');
+});
+t('fragmento não muda a seção', () => {
+  assert.strictEqual(a.sectionOf('https://www.axenya.com/recursos/blog/x#sec'), 'Blog');
+});
+
+console.log('\n== corte de payload | uma seleção para três ordenações ==');
+const api = require('../api/seo-performance');
+t('novo sem clique sobrevive ao corte | Δcliques 0 afundaria na ordem de movimentação', () => {
+  // 1 linha de altíssima variação + ruído + 1 NOVO gigante só de impressão.
+  const movs = [
+    { chave: 'mexeu muito', atual: { clicks: 300, impressions: 9000 }, anterior: { clicks: 10, impressions: 500 }, delta: { clicks: 290, impressions: 8500 }, status: a.STATUS.SUBIU },
+  ];
+  for (let i = 0; i < 50; i += 1) {
+    movs.push({ chave: `ruido ${i}`, atual: { clicks: 5, impressions: 50 }, anterior: { clicks: 4, impressions: 48 }, delta: { clicks: 1, impressions: 2 }, status: a.STATUS.SUBIU });
+  }
+  movs.push({ chave: 'estreia gigante', atual: { clicks: 0, impressions: 2438 }, anterior: { clicks: 0, impressions: 0 }, delta: { clicks: 0, impressions: 2438 }, status: a.STATUS.NOVO });
+
+  const sel = api.selecionaLinhas(movs, { movimento: 2, agregado: 2, novos: 5 });
+  const chaves = sel.linhas.map(x => x.chave);
+  assert.ok(chaves.indexOf('estreia gigante') >= 0, 'o novo sem clique tem que entrar pela fatia de novos');
+  assert.ok(chaves.indexOf('mexeu muito') >= 0, 'a maior variação tem que entrar');
+  assert.strictEqual(sel.novos.length, 1);
+  assert.strictEqual(sel.corte.novosTotal, 1);
+  assert.strictEqual(sel.corte.universo, movs.length);
+});
+t('linha de alto volume parado sobrevive ao corte | é a que interessa no agregado', () => {
+  const movs = [];
+  for (let i = 0; i < 40; i += 1) {
+    movs.push({ chave: `varia ${i}`, atual: { clicks: 10, impressions: 100 }, anterior: { clicks: 1, impressions: 10 }, delta: { clicks: 9, impressions: 90 }, status: a.STATUS.SUBIU });
+  }
+  movs.push({ chave: 'grande e parado', atual: { clicks: 654, impressions: 1614 }, anterior: { clicks: 654, impressions: 1614 }, delta: { clicks: 0, impressions: 0 }, status: a.STATUS.ESTAVEL });
+  const sel = api.selecionaLinhas(movs, { movimento: 3, agregado: 3, novos: 3 });
+  const chaves = sel.linhas.map(x => x.chave);
+  assert.ok(chaves.indexOf('grande e parado') >= 0, 'top por volume tem que entrar mesmo com Δ zero');
+});
+t('seleção não duplica chave e declara as contagens', () => {
+  const movs = [
+    { chave: 'a', atual: { clicks: 100, impressions: 1000 }, anterior: { clicks: 1, impressions: 10 }, delta: { clicks: 99, impressions: 990 }, status: a.STATUS.SUBIU },
+    { chave: 'b', atual: { clicks: 50, impressions: 500 }, anterior: { clicks: 0, impressions: 0 }, delta: { clicks: 50, impressions: 500 }, status: a.STATUS.NOVO },
+  ];
+  const sel = api.selecionaLinhas(movs, { movimento: 10, agregado: 10, novos: 10 });
+  assert.strictEqual(sel.linhas.length, 2, 'a mesma chave nas três fatias não pode virar 2 linhas');
+  assert.strictEqual(new Set(sel.linhas.map(x => x.chave)).size, 2);
+  assert.strictEqual(sel.corte.enviadas, 2);
+  assert.strictEqual(sel.corte.novosTotal, 1);
+});
+t('caps de produção cobrem folgadamente o universo real medido', () => {
+  // Universo medido em julho/2026: 5.081 consultas, 2.374 novas, 450 páginas.
+  assert.ok(api.CAPS.consultas.novos >= 800, 'o cap de novos precisa caber a estreia de um cluster inteiro');
+  assert.ok(api.CAPS.paginas.movimento >= 450, 'páginas cabem inteiras no payload nesta propriedade');
+});
+
 console.log(`\n${pass} asserção(ões) de contrato passaram.`);
 if (process.exitCode) console.error('\nHÁ FALHAS — não deployar.');
