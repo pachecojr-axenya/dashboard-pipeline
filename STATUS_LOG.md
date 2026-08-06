@@ -1,5 +1,38 @@
 # Dashboard Enhancement Loop — Status Log
 
+### 🚀 DEPLOY DE PRODUÇÃO | Nome do deal nos modais linka pro HubSpot (2026-08-06)
+
+> Pedido do dono: "preciso que o nome dos deals dentro dos modais sejam clicáveis para entrar
+> no hubspot". `dashboard.html`/`board.html`/`ae.html` já tinham o padrão em todas as tabelas
+> de deal dentro de modal; faltava no modal de DETALHE de um deal (`renderDealModal`) em
+> `forecast.html`/`forecast-stage.html`, e nas 2 tabelas de drill de `forecast-delta.html`.
+>
+> - `forecast.html`/`forecast-stage.html`: título do `renderDealModal` passa a envolver o nome
+>   em `<a href="https://app.hubspot.com/contacts/44715285/deal/{hs_id}">` quando `d.hs_id`
+>   existe — mesmo campo que a tabela do painel já usava, nenhum dado novo buscado.
+> - `forecast-delta.html`: helper novo `_dealNameCell(x)` usa `x.id` (preenchido pelo backend,
+>   `_dealId()` em `lib/forecast-compute.js` — `hs_id` real quando o deal tem, ou chave
+>   sintética `n:nome|modelo` quando não tem correspondência no HubSpot). Só a 1ª forma gera
+>   link; a 2ª cai pro texto puro.
+>
+> Autorização explícita do dono ("Sim") após eu reportar a implementação pronta. `npm run
+> check` (0 fail) e `npm run predeploy` PASS (`main` == `origin/main` `c4ab33a`, 1ª tentativa
+> deu o FAIL esperado antes do push). Commit `c4ab33a`. Deployment
+> `dpl_FuyZrA4ETG9Joh5Qz8EPACGqHh7N` (READY, production), alias `project-bsmfu.vercel.app`.
+>
+> Validação pré-deploy: `_check-inline-js.js` 0 erros nos 3 arquivos; Chrome headless via CDP
+> abrindo o modal de detalhe real em `/forecast` e `/forecast-stage.html` (local) e inspecionando
+> o HTML gerado — confirma `<a href="https://app.hubspot.com/contacts/44715285/deal/...">`
+> envolvendo o nome; 0 exceções JS novas nos 3 arquivos (só os 2 HTTP 500 pré-existentes por
+> falta de credencial Google local). `forecast-delta` não pôde ser testado com dados reais
+> localmente pela mesma limitação — helper validado isoladamente contra os 3 formatos reais de
+> id (hs_id real, id sintético `n:`, id nulo).
+>
+> Pós-deploy confirmado direto no bundle servido: `/forecast` = 200 com link presente;
+> `/forecast-ganho` (rota real de produção pro stage-page, não existe `/forecast-stage` bare —
+> ver `vercel.json`) = 200 com link presente; `/forecast-delta` = 200 com `_dealNameCell`
+> presente (3 ocorrências: definição + 2 usos).
+
 ### 🚀 DEPLOY DE PRODUÇÃO | Menu do Delta: reorganização por natureza + remoções + padronização (2026-08-06)
 
 > Autorização explícita do dono ("Faça o commit e o deploy"). `npm run check` (0 fail) e
