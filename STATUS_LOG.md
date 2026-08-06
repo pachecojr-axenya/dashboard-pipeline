@@ -1,5 +1,75 @@
 # Dashboard Enhancement Loop — Status Log
 
+### 🚀 GROWTH PERFORMANCE | mídia paga ao vivo, CPL e custo por empresa (2026-08-06)
+
+> Nova subpágina `/growth/performance` (rota em `vercel.json` **e** na tabela
+> `REWRITES` de `scripts/local-server.js`), cruzando spend ao vivo de Meta Ads e
+> LinkedIn Ads (granularidade dia × campanha) com os leads gerados no HubSpot.
+> Responde: quanto gastei no dia/semana/mês, por canal e campanha, a que CPL e
+> custo por empresa, e de quem (cargo, senioridade, área, porte, setor). Arquivos:
+> `api/growth-performance.js`, `lib/ads.js`, `lib/growth-attribution.js`,
+> `public/growth-performance.{html,js}`. Doc: `docs/growth-performance.md`.
+>
+> **Decisões de dado medidas antes de codar.** A origem nativa do HubSpot é
+> inútil neste portal: `hs_analytics_source` está em `OFFLINE` em **9.321 de
+> 9.321** contatos criados desde 01/05/2026 (`INTEGRATION` em 8.539), porque todo
+> contato nasce por API; o objeto Lead `0-136` repete (5.760 de 5.842). Canal
+> passa a vir de `utm_source`, gravado pelas rotas do site.
+> `axenya_origem_canonica` ficou fora (contaminada pelo backfill do RH Summit).
+>
+> **CPL usa só lead pago** (`utm_medium`). Em julho o LinkedIn teve 38 leads no
+> canal e 11 pagos: dividir por 38 daria CPL R$ 116,70 contra os R$ 403,16 reais
+> (subestimava 3,5×). A página mostra `CPL pago` e `CPL canal` lado a lado.
+>
+> **Join campanha × `utm_campaign` por sobreposição de tokens foi implementado e
+> DESCARTADO** por dois defeitos reais: spend duplicado (`webinar_reajuste` e
+> `reajuste-plano-saude-webinar` recebiam os mesmos R$ 2.790,59) e match falso
+> (`pesquisa_rh_conarh26_2026_07` colou num anúncio de Webinar com score 0,5, só
+> por tokens de data e "rh"). Ficou o classificador único de iniciativa aplicado
+> nas DUAS pontas, com join por `(canal, iniciativa)`.
+>
+> **Higiene de marcação** virou bloco de primeira classe: em julho apontou
+> R$ 1.142,91 de LinkedIn | Observatório sem nenhum lead atribuído e 27 de 28
+> leads da Pesquisa marcados como orgânicos dentro de anúncio pago. Canal sem
+> spend conectado devolve `null`, nunca `0` (R$ 0,00 por empresa leria como
+> eficiência infinita). Google Ads segue não conectado e é exibido como tal.
+>
+> **Token do LinkedIn expira em 60 dias e agora se renova sozinho** no 401
+> `EXPIRED_ACCESS_TOKEN`, com cache no KV; sem isso o painel quebraria em
+> silêncio a cada 2 meses. Secrets `linkedin_access_token`/`linkedin_refresh_token`
+> rotacionados no Secret Manager (v5/v4). Sete env vars novas em production.
+>
+> **Backfill não precisa de ETL** (as duas APIs servem histórico por range):
+> mai R$ 5.364,66 / 39 pagos / CPL R$ 137,56 | jun R$ 12.490,45 / 60 / R$ 208,17 |
+> jul R$ 9.656,38 / 66 / R$ 146,31 | 01–06 ago R$ 0,00 (nada rodando).
+>
+> **Menu:** entrada em `public/nav.js` e no `NAV_MODEL` de `public/premium.js`,
+> com cache-buster `premium.js?v=12` em todas as 7 páginas que montam menu por
+> ele — inclusive `public/bdr.html`, que tem 3 bytes NUL e é **invisível ao
+> `grep`** (editado em bytes, NULs e tamanho preservados);
+> `scripts/test-bdr-workload-v2-ui.js` teve a versão fixada atualizada.
+>
+> **O smoke funcional achou 2 defeitos reais, ambos corrigidos:** (1) resposta
+> atrasada da carga anterior sobrescrevia a nova — a página abre no mês corrente
+> e o usuário troca de período antes dela voltar, então a resposta antiga chegava
+> depois e repintava o período errado (guarda de sequência `reqSeq` em `load()`);
+> (2) o hook de teste `data-gran` em `#content` roubava o `querySelector` dos
+> botões de granularidade (renomeado para `data-gran-atual`).
+>
+> Deploy `dashboard-axenya-qxoyvcwgo` (Ready, production, 13s, commit `26569ff`).
+> Pós-deploy: 10 rotas HTML 200, `/growth-performance.js` e `premium.js?v=12` 200,
+> `/api/growth-performance` **401 sem sessão** (esperado — e prova que o bundle
+> de produção resolveu `lib/ads.js`, `lib/growth-attribution.js` e `lib/kv.js`,
+> senão seria 500). Testes: 17 asserções de contrato (`npm run check`) e smoke CDP
+> 3/3 determinístico após as correções. **Pendente de confirmação do dono na tela
+> logada:** o pull de spend rodando dentro do runtime do Vercel (os mesmos tokens
+> foram validados ao vivo daqui, mas sessão de produção não pode ser forjada —
+> `vercel env pull` devolve `[SENSITIVE]`). Evidências:
+> npm check `2d05de6e851b82d8064949fabe040fa044c10893e6c8ad1b3576b31870e354b3` |
+> contrato `c0a1fb0603e791ec145f64620a4a632758331afb5f62b97a346a7ae2e423a959` |
+> smoke browser `e7c647a5f9b760b9cd3bb217a97ab1d242211d0a7138c5bc9e6565508acf2db0` |
+> rotas produção `e47d88b80be1486a6aa0a7fe4578d4d69ab3f081e720ff037177161a478dc254`.
+
 ### 🚀 DEPLOY DE PRODUÇÃO | Meta vs Ach: fonte Inter, menos negrito, André por último (2026-08-05)
 
 > Autorização explícita do dono ("Faça o commit e o deploy"). Commit `e0b467a`
