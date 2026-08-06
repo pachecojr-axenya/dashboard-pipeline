@@ -1,5 +1,22 @@
 # Dashboard Enhancement Loop — Status Log
 
+### 🚀 DEPLOY DE PRODUÇÃO | Motor único de probabilidade, Fases 1-2 (2026-08-06)
+
+> Autorização explícita do dono ("Acho que podemos commitar e deployar primeiro"), como
+> checkpoint antes da Fase 3 (que muda número exibido — dual-run ainda pendente). Rebase limpo
+> sobre `origin/main`, que havia avançado 3 commits (Growth Performance + SEO Performance)
+> desde a última sincronização local — conflito só em `STATUS_LOG.md` (ambos os lados
+> adicionaram entradas no topo), resolvido mantendo as duas, entradas de hoje primeiro. Commit
+> `8718413`. `npm run check` (0 fail) e `npm run predeploy` PASS (`main` == `origin/main`
+> `8718413`, projeto canônico `dashboard-axenya`). Deployment `dpl_2JuzZRGCt8FNjoaKWWzD7vdcBpQs`
+> (READY, production), alias `project-bsmfu.vercel.app`. Pós-deploy confirmado: `/`, `/novo`,
+> `/novo-board`, `/novo-ae`, `/forecast`, `/novo-bdr` (+ `/treble`, `/workload`, `/no-show`,
+> `/list-attack`) = 200; `/api/auth/me`, `/api/forecast-table`, `/api/prob-manual` = 401 (auth
+> ativa); `prob-engine.js?v=4` presente no bundle de `/novo-ae` (o bug do script ausente,
+> corrigido nesta leva); `help-drawer.js` publicado contém `novo-regua-tag` (10 ocorrências) e
+> `prob-engine.js` publicado contém `manualFor` — os dois mecanismos desta leva confirmados em
+> produção.
+
 ### Feat | Selo de família de probabilidade nos cards ("?" do topo) — Fase 2 da unificação (2026-08-06)
 
 > Continuação do plano de unificação do motor (Fase 1 = ontem; ver entrada abaixo). Objetivo:
