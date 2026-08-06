@@ -28,7 +28,7 @@ a{color:var(--teal);text-decoration:none}
 .ibtn:hover{color:var(--text);border-color:var(--teal)}
 .novo-card{background:var(--card);border-radius:10px;padding:1.15rem 1.35rem;margin-bottom:1.1rem}
 .controls{display:flex;gap:1.1rem;flex-wrap:wrap;align-items:flex-end}
-.ctl label,.ctl-label{display:block;font-size:.7rem;font-weight:700;letter-spacing:.04em;color:var(--text2);text-transform:uppercase;margin-bottom:.3rem}
+.ctl label,.ctl-label,.hg-label{display:block;font-size:.7rem;font-weight:700;letter-spacing:.04em;color:var(--text2);text-transform:uppercase;margin:0 0 .3rem}
 select{background:var(--card2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:.5rem .7rem;font-family:inherit;font-size:.86rem;min-width:150px}
 input[type=date]{background:var(--card2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:.5rem .7rem;font-family:inherit;font-size:.86rem;min-width:150px;color-scheme:dark}
 html[data-theme="light"] input[type=date]{color-scheme:light}
@@ -138,7 +138,10 @@ html[data-theme="light"] .nav-item:hover{background:rgba(0,0,0,.04)}
 .app-header{position:sticky;top:0;z-index:400;display:flex;flex-direction:column;gap:.55rem;padding:.6rem 1.5rem .75rem;background:var(--card);border-bottom:1px solid var(--border)}
 .ah-top{display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap}
 .ah-left{display:flex;align-items:center;gap:.9rem;flex-wrap:wrap}
-.app-header .controls{gap:.85rem 1rem}
+.app-header .controls{gap:.85rem .3rem;align-items:flex-start} /* .hg já tem padding lateral —
+  evita gap dobrado; flex-start pra grupo com rótulo próprio (Filtrar por) não descasar do
+  grupo sem rótulo de grupo (Comparando) — top alinhado sempre, bottom pode variar (hint text
+  de Foto A/B) sem empurrar os outros grupos pra baixo */
 .app-header .ctl label,.app-header .ctl-label{margin-bottom:.2rem}
 .app-header input[type=date]{min-width:135px;height:36px}
 .app-header h1{font-size:1.05rem;font-weight:600;margin:0}
@@ -147,6 +150,28 @@ html[data-theme="light"] .nav-item:hover{background:rgba(0,0,0,.04)}
 html[data-theme="light"] .hdr-btn:hover{background:rgba(0,0,0,.07)}
 .hdr-actions{display:flex;align-items:center;gap:.6rem}
 .hdr-filters{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap}
+/* Reorganização do menu superior por NATUREZA do controle (2026-08-06, varredura de UX):
+   antes, Executivo/Quarter viviam na topbar enquanto Escopo (mesma família — "quais deals
+   contam") ficava solto numa linha própria abaixo, e o botão de captura (uma AÇÃO rara, não
+   um filtro) tinha o mesmo peso visual dos filtros de leitura — o flex-wrap sem grupos
+   deixava buracos quando um item "sobrava" de linha. Agora: Executivo/Quarter/Escopo moram
+   juntos (.hg-filters); Medida/Horizonte (COMO calcular, não QUAIS deals) ficam juntos
+   (.hg-calc); Foto A/B (o input primário — o que está sendo comparado) abre a fileira
+   (.hg-compare); a captura de foto oficial é uma ação de escrita rara, sem opinião nenhuma
+   sobre o que já está na tela — fica visualmente separada (borda tracejada, cor neutra, sem
+   preenchimento) e empurrada pro canto direito, nunca competindo com os filtros de leitura.
+   Divisórias são border-right dos próprios grupos (não elementos soltos) — não deixam traço
+   pendurado quando um grupo quebra de linha em telas estreitas. */
+.hg{display:flex;flex-direction:column;gap:.35rem;padding:0 1.15rem}
+.hg:first-child{padding-left:0}
+.hg-compare,.hg-filters{border-right:1px solid var(--border)}
+.hg-row{display:flex;align-items:flex-end;gap:.7rem;flex-wrap:wrap}
+.hg-arrow{color:var(--muted);font-size:1rem;padding-bottom:.65rem;flex-shrink:0}
+.hg-action{margin-left:auto;align-items:flex-end}
+.hg-action-btn{display:inline-flex;align-items:center;gap:.45rem;background:transparent;border:1px dashed var(--border);color:var(--text2);border-radius:99px;padding:.5rem 1.1rem;font-family:inherit;font-size:.78rem;font-weight:600;cursor:pointer;transition:border-color .15s,color .15s,background .15s;white-space:nowrap}
+.hg-action-btn:hover{border-color:var(--teal);color:var(--teal);background:rgba(58,184,183,.08)}
+.hg-action-btn:disabled{opacity:.6;cursor:default}
+@media(max-width:900px){.hg{border-right:none!important;padding:0}.hg-action{margin-left:0}}
 body.nav-docked .app-header,body.nav-docked #app-content{margin-left:280px;transition:margin-left .25s cubic-bezier(0.4,0,0.2,1)}
 @media(max-width:820px){body.nav-docked .app-header,body.nav-docked #app-content{margin-left:0}}
 /* Sticky condensado — até 2026-08-06 disparado por posição de scroll (window.scrollY>48);
@@ -212,7 +237,38 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
       </button>
       <div class="panel-switcher" id="panel-switcher"><button class="panel-switch-btn" type="button" onclick="togglePanelMenu(event)" aria-haspopup="true" aria-expanded="false"><h1>Delta</h1><svg class="panel-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button><div class="panel-dd" id="panel-dd" role="menu"></div></div>
-      <div class="hdr-filters">
+    </div>
+    <button type="button" id="hdr-summary" title="Filtros ativos | clique para expandir e editar"></button>
+    <div class="hdr-actions">
+      <button type="button" class="hdr-btn" id="info-btn" title="Memória de cálculo" data-tooltip="Memória de cálculo" aria-expanded="false" aria-controls="info">i</button>
+    </div>
+    <button type="button" class="hdr-btn" id="hdr-collapse-btn" onclick="toggleHeaderCondensed()" title="Reduzir/expandir o menu" data-tooltip="Reduzir/expandir o menu" aria-expanded="true" aria-controls="app-header">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+    </button>
+  </div>
+  <div class="controls">
+    <!-- Grupo 1 | O QUE está sendo comparado — o input primário da página, abre a fileira -->
+    <div class="hg hg-compare">
+      <div class="hg-row">
+        <div class="ctl">
+          <label for="dateA">Foto A (antes)</label>
+          <input type="date" id="dateA" aria-describedby="resA">
+          <div class="reslbl" id="resA" aria-live="polite"></div>
+        </div>
+        <div class="hg-arrow" aria-hidden="true">→</div>
+        <div class="ctl">
+          <label for="dateB">Foto B (depois)</label>
+          <input type="date" id="dateB" aria-describedby="resB">
+          <div class="reslbl" id="resB" aria-live="polite"></div>
+        </div>
+      </div>
+    </div>
+    <!-- Grupo 2 | QUAIS deals contam (Executivo=quem, Quarter=quando). Escopo removido a
+         pedido do dono (2026-08-06) — variável `scope` continua fixa em 'ativos' no JS
+         (mesmo default do botão que existia), só a opção de trocar para "Tudo" saiu da UI. -->
+    <div class="hg hg-filters">
+      <span class="hg-label">Filtrar por</span>
+      <div class="hg-row">
         <div class="fdd-wrapper">
           <button class="fdd-trigger" id="btn-ae" onclick="toggleAeMenu()"><span id="btn-ae-lbl">Executivo</span><span class="fdd-arr"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span></button>
           <div id="ae-menu" class="fdd-panel"></div>
@@ -223,52 +279,23 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
         </div>
       </div>
     </div>
-    <button type="button" id="hdr-summary" title="Filtros ativos | clique para voltar ao topo e editar"></button>
-    <div class="hdr-actions">
-      <span class="pill" title="Validado contra o HubSpot">🟢 validado</span>
-      <button type="button" class="hdr-btn" id="info-btn" title="Memória de cálculo" data-tooltip="Memória de cálculo" aria-expanded="false" aria-controls="info">i</button>
-    </div>
-    <button type="button" class="hdr-btn" id="hdr-collapse-btn" onclick="toggleHeaderCondensed()" title="Reduzir/expandir o menu" data-tooltip="Reduzir/expandir o menu" aria-expanded="true" aria-controls="app-header">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
-    </button>
-  </div>
-  <div class="controls">
-    <div class="ctl">
-      <label for="dateA">Foto A (antes)</label>
-      <input type="date" id="dateA" aria-describedby="resA">
-      <div class="reslbl" id="resA" aria-live="polite"></div>
-    </div>
-    <div class="ctl">
-      <label for="dateB">Foto B (depois)</label>
-      <input type="date" id="dateB" aria-describedby="resB">
-      <div class="reslbl" id="resB" aria-live="polite"></div>
-    </div>
-    <div class="ctl">
-      <span class="ctl-label">Medida</span>
-      <div class="seg-ctrl" id="metric-toggle" role="group" aria-label="Medida">
-        <button class="seg-btn active" data-v="prob" aria-pressed="true">Probabilizada</button>
-        <button class="seg-btn" data-v="real" aria-pressed="false">Real</button>
+    <!-- Grupo 3 | COMO calcular o número. Horizonte removido a pedido do dono (2026-08-06) —
+         variável `horizon` continua fixa em 'arr' no JS (mesmo default do botão que existia).
+         Só resta Medida; sem rótulo de grupo próprio (redundante com um só controle). -->
+    <div class="hg hg-calc">
+      <div class="hg-row">
+        <div class="ctl">
+          <span class="ctl-label">Medida</span>
+          <div class="seg-ctrl" id="metric-toggle" role="group" aria-label="Medida">
+            <button class="seg-btn active" data-v="prob" aria-pressed="true">Probabilizada</button>
+            <button class="seg-btn" data-v="real" aria-pressed="false">Real</button>
+          </div>
+        </div>
       </div>
     </div>
-    <div class="ctl">
-      <span class="ctl-label">Horizonte</span>
-      <div class="seg-ctrl" id="horizon-toggle" role="group" aria-label="Horizonte">
-        <button class="seg-btn active" data-v="arr" aria-pressed="true" title="ARR estimado | Probabilizada pondera pela prob. final da etapa">ARR</button>
-        <button class="seg-btn" data-v="Total" aria-pressed="false" title="Receita da régua no horizonte completo">Pipeline total</button>
-      </div>
-    </div>
-    <div class="ctl">
-      <span class="ctl-label">Escopo</span>
-      <div class="seg-ctrl" id="scope-toggle" role="group" aria-label="Escopo de etapas">
-        <button class="seg-btn active" data-v="ativos" aria-pressed="true" title="Só Cotação, Consultoria e Negociação">Ativos</button>
-        <button class="seg-btn" data-v="tudo" aria-pressed="false" title="Todas as etapas, sem Bid e Standby">Tudo</button>
-      </div>
-    </div>
-    <div class="ctl" id="capture-snapshot-ctl" style="display:none">
-      <span class="ctl-label">Foto oficial</span>
-      <div class="tab-sub">
-        <button type="button" class="tab-sub-btn active" id="capture-snapshot-btn">📸 Capturar agora</button>
-      </div>
+    <!-- Grupo 4 | AÇÃO (grava no BigQuery) — não é filtro de leitura, fica visualmente à parte -->
+    <div class="hg hg-action" id="capture-snapshot-ctl" style="display:none">
+      <button type="button" class="hg-action-btn" id="capture-snapshot-btn">📸 Capturar foto oficial</button>
       <div class="reslbl" id="capture-snapshot-status" aria-live="polite"></div>
     </div>
   </div>
@@ -592,20 +619,14 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
       labels.push('Total B + Fechado'); data.push([0, run + fechadoVal]); colors.push('rgba(58,184,183,.5)'); dataline.push(run + fechadoVal); kinds.push('composto');
     }
 
-    // Eixo Y truncado (pedido do dono, 2026-08-06): "diminuir o intervalo do pipe" — os
-    // totais costumam ficar todos numa faixa estreita e alta, então começar em 0 desperdiça
-    // a maior parte da altura do gráfico e esconde os Δ pequenos. Ajustado no mesmo dia pra
-    // um respiro FIXO de R$1,5M abaixo do ponto mais baixo (o cálculo proporcional de antes
-    // ainda deixava as barras longas demais) — "comece elas a partir de 1,5M abaixo do mais
-    // baixo". Barras tipo 'total'/'fechado'/'composto' começam em 0 nos dados
-    // (data[i]=[0,valor]); com yMin>0 o Chart.js já recorta a base sozinho — fica visualmente
-    // idêntico a uma barra flutuante.
-    var yLo = Infinity, yHi = -Infinity;
-    kinds.forEach(function(k, i){
-      if(k === 'delta'){ yLo = Math.min(yLo, data[i][0]); yHi = Math.max(yHi, data[i][1]); }
-      else { yLo = Math.min(yLo, dataline[i]); yHi = Math.max(yHi, dataline[i]); }
-    });
-    var yMin = yLo - 1500000;
+    // Eixo Y volta a começar em ZERO (2026-08-06, revertendo as duas tentativas de
+    // truncamento do mesmo dia — proporcional e depois fixo em 1,5M). Motivo do dono: os
+    // valores deste gráfico (totais e cumulativos do waterfall) NUNCA são negativos — um piso
+    // abaixo de zero só cria espaço vazio embaixo que nenhuma barra jamais ocupa (ficava mais
+    // óbvio quando os totais da foto eram pequenos, ex. ~R$3-4M: um respiro fixo de R$1,5M
+    // empurrava o eixo pra -1,5M, quase metade do gráfico em branco). `min:0` explícito (em
+    // vez de deixar o Chart.js inferir) pra não depender do auto-scale decidir sozinho.
+    var yMin = 0;
 
     var css = getComputedStyle(document.documentElement);
     var textc = css.getPropertyValue('--text2').trim(), gridc = css.getPropertyValue('--border').trim();
@@ -1006,7 +1027,12 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
   function buildAeFilter(opts){
     var m=document.getElementById('ae-menu'); if(!m) return;
     var h=_cbHead('selectAllAes()','clearAllAes()');
-    (opts||[]).forEach(function(ae){ var ck=aeFilter.size===0?true:aeFilter.has(ae); h+='<label class="custom-cb"><input type="checkbox" value="'+esc(ae)+'" onchange="toggleAe()" '+(ck?'checked':'')+'><span class="cb-box"></span>'+esc(ae)+'</label>'; });
+    // André Pontes saiu do time de executivos (2026-08-06, pedido do dono) — removido da
+    // LISTA do filtro (não dos dados: um deal dele continua contando em "Todos", só não tem
+    // checkbox próprio pra isolar). Lista vem do servidor (j.filters.executivos em
+    // /api/history?action=compare), diferente do /forecast, que usa whitelist local
+    // (FC_AE_FIRST) — por isso o filtro aqui precisa da própria exclusão.
+    (opts||[]).filter(function(ae){ return ae !== 'André Pontes'; }).forEach(function(ae){ var ck=aeFilter.size===0?true:aeFilter.has(ae); h+='<label class="custom-cb"><input type="checkbox" value="'+esc(ae)+'" onchange="toggleAe()" '+(ck?'checked':'')+'><span class="cb-box"></span>'+esc(ae)+'</label>'; });
     m.innerHTML=h; updateAeBtnLabel();
   }
   function buildQuarterFilter(opts){
@@ -1072,9 +1098,9 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
     var b = lastJ ? lastJ.b.resolvedTab : document.getElementById('dateB').value;
     var dTxt = (a||'—')+' × '+(b||'—');
     var mTxt = metric==='prob' ? 'Probabilizada' : 'Real';
-    var hTxt = horizon==='arr' ? 'ARR' : 'Pipeline total';
-    var sTxt = scope==='ativos' ? 'Deals Ativos' : 'Todas as etapas';
-    return [aeTxt, qTxt, dTxt, mTxt, hTxt, sTxt].join(' | ');
+    // horizon/scope saíram do resumo (2026-08-06) junto com os botões — não há mais opção
+    // pra resumir, sempre o mesmo valor fixo ('arr'/'ativos').
+    return [aeTxt, qTxt, dTxt, mTxt].join(' | ');
   }
   function updateHdrSummary(){ var el=document.getElementById('hdr-summary'); if(el) el.textContent = hdrSummaryTxt(); }
   var _hdrEl = document.getElementById('app-header');
@@ -1104,10 +1130,11 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
     });
   }
   wireToggle('metric-toggle', function(v){ metric=v; refresh(); });
-  wireToggle('horizon-toggle', function(v){ horizon=v; refresh(); });
+  // horizon-toggle e scope-toggle removidos da UI (2026-08-06, pedido do dono) — as
+  // variáveis `horizon`/`scope` continuam fixas nos defaults declarados acima ('arr'/
+  // 'ativos'); sem elemento pra conectar, wireToggle('...') quebraria em runtime.
   wireToggle('quarter-toggle', function(v){ quarterMetric=v; if(lastJ) renderQuarterTable(lastJ); });
   wireToggle('q3trend-toggle', function(v){ q3TrendMetric=v; if(q3TrendPoints) drawQ3TrendChart(q3TrendPoints, q3TrendQuarterLabel()); });
-  wireToggle('scope-toggle', function(v){ scope = v; refresh(); });
   document.getElementById('dateA').addEventListener('change', refresh);
   document.getElementById('dateB').addEventListener('change', refresh);
   document.getElementById('capture-snapshot-btn').addEventListener('click', function(){ captureSnapshotNow(false); });

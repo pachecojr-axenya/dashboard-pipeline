@@ -1,5 +1,73 @@
 # Dashboard Enhancement Loop — Status Log
 
+### Feat | Menu do Delta: remoções (Horizonte/Escopo/validado/André) + padronização de rótulos (2026-08-06)
+
+> Sequência de ajustes do dono sobre a reorganização anterior, na mesma sessão:
+>
+> 1. **Removidos da UI**: toggle Horizonte (ARR/Pipeline total), toggle Escopo (Ativos/Tudo),
+>    pill "🟢 validado". As variáveis JS `horizon`/`scope` continuam existindo com os MESMOS
+>    defaults que os botões já tinham ('arr'/'ativos') — só a opção de trocar saiu da tela;
+>    nenhum cálculo mudou. Removidas as 2 chamadas `wireToggle('horizon-toggle', ...)`/
+>    `wireToggle('scope-toggle', ...)` que teriam quebrado em runtime apontando pra elemento
+>    inexistente (`document.getElementById(...).addEventListener` em `null`). `hdrSummaryTxt()`
+>    (resumo do modo condensado) também parou de mencionar as duas, já que não podem mais
+>    mudar.
+> 2. **André Pontes removido da lista de Executivo deste painel especificamente** — diferente
+>    do `/forecast`/`/forecast-stage` (que usam whitelist local `FC_AE_FIRST`, já ajustada
+>    antes), `public/forecast-delta.html` recebe a lista PRONTA do servidor
+>    (`j.filters.executivos`, de `/api/history?action=compare`) — adicionado um `.filter()`
+>    em `buildAeFilter` excluindo "André Pontes" antes de renderizar os checkboxes. Só some da
+>    LISTA (sem checkbox próprio); um deal dele continua contando em "Todos".
+> 3. **Padronização de rótulos/alinhamento**: `.hg-label` (rótulo de grupo, "Filtrar por") e
+>    `.ctl-label`/`label` (rótulo de campo, "Foto A (antes)", "Medida") eram DUAS definições
+>    de CSS ligeiramente diferentes (tamanho, cor, margem) — unificadas numa só regra. Grupo
+>    "Calcular como" perdeu o rótulo de grupo próprio (com Horizonte removido, só resta Medida
+>    — rótulo de grupo + rótulo de campo empilhados pra um controle só era redundante).
+>    Alinhamento entre grupos trocado de `align-items:flex-end` pra `flex-start` — com
+>    `flex-end`, o grupo "Comparando" (sem rótulo de grupo, só rótulo de campo) e "Filtrar por"
+>    (COM rótulo de grupo) alinhavam pelas bases, descasando os topos; com `flex-start`, os
+>    rótulos de todos os grupos começam na mesma altura.
+>
+> Validação: `node scripts/_check-inline-js.js` = 0 erros (2 blocos); `/forecast-delta` = 200
+> local. Verificação real de runtime — Chrome headless via CDP capturando
+> `Runtime.exceptionThrown`/`Console`/`Log`: **0 exceções JS** (só 2 erros HTTP 500 do backend,
+> pré-existentes, sem relação — `GOOGLE_SERVICE_ACCOUNT_JSON não configurado` localmente).
+> Screenshot confirma visualmente: Escopo/Horizonte/validado ausentes, rótulos com mesmo
+> tamanho/cor/peso, topos alinhados entre os três grupos. Lógica de exclusão do André testada
+> isoladamente com uma lista de nomes real. Nada commitado ainda — aguardando aprovação visual.
+
+### Feat | Menu superior do Delta reorganizado por natureza do controle (varredura de UX) (2026-08-06)
+
+> Dono: "esse menu superior... está muito feio... entenda quais são os filtros, quais as
+> naturezas dos filtros e otimize o visual". Categorizei os 8 controles por função antes de
+> tocar em CSS:
+> - **Input primário** (o que está sendo comparado): Foto A, Foto B.
+> - **Filtros** (QUAIS deals contam — mesma família): Executivo (quem), Quarter (quando),
+>   Escopo (qual etapa) — antes Executivo/Quarter viviam na topbar e Escopo sozinho numa
+>   linha própria abaixo, apesar de serem a mesma categoria.
+> - **Modo de cálculo** (COMO calcular, não filtra nada): Medida, Horizonte.
+> - **Ação** (grava no BigQuery, rara, não é filtro de leitura): Capturar foto oficial —
+>   antes tinha o MESMO peso visual dos filtros (pill preenchida) e sobrava sozinha numa linha
+>   com bastante espaço vazio ao lado, sintoma de flex-wrap sem grupos.
+>
+> **Fix em `public/forecast-delta.html`:** Executivo/Quarter migraram da topbar pra dentro do
+> corpo, lado a lado com Escopo (mesma família). Três grupos (`.hg-compare`/`.hg-filters`/
+> `.hg-calc`) com divisória própria (`border-right` no GRUPO, não um elemento solto — não deixa
+> traço pendurado se o grupo quebrar de linha) e rótulo pequeno só onde precisa (Executivo/
+> Quarter já se autoexplicam pelo texto do botão; Escopo/Medida/Horizonte mantêm a legenda
+> própria). Botão de captura reestilizado (`.hg-action-btn`): borda tracejada, sem
+> preenchimento, cor neutra — só destaca com hover — e empurrado pro canto direito
+> (`margin-left:auto`), nunca competindo com os filtros de leitura.
+>
+> Validação: `node scripts/_check-inline-js.js` = 0 erros (2 blocos); `/forecast-delta` = 200
+> local. Verificação VISUAL real (não só ausência de erro) — subi Chrome headless via CDP
+> (script em `scratchpad`, fora do repo) e capturei screenshot da página renderizada com dados
+> reais: grupos claramente separados, sem espaço vazio órfão, botão de captura visualmente
+> secundário. Ajuste de espaçamento (gap dobrado por padding do grupo + gap do flex
+> empilhando) feito depois de ver o primeiro screenshot, não só por leitura de CSS. Aguardando
+> aprovação visual do dono antes de commit/deploy — mudança puramente de UI, sem lógica de
+> cálculo tocada.
+
 ### 🚀 DEPLOY DE PRODUÇÃO | D02 — piso fixo de R$1,5M + degradê nas barras (2026-08-06)
 
 > Autorização explícita do dono ("Já ajuste, commite e deploye"). `npm run check` (0 fail) e
