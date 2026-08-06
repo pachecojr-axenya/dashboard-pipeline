@@ -259,6 +259,7 @@
        ficam recolhidas atrás da setinha, no mesmo padrão do grupo BDR. */
     { href: '/growth', label: 'Growth', health: 'g', acc: true, grp: 'growth', svg: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>' },
     { href: '/growth/mkt-budget', label: 'MKT Budget', health: 'g', sub: true, grp: 'growth', svg: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4z"/></svg>' },
+    { href: '/growth/performance', label: 'Performance', health: 'g', sub: true, grp: 'growth', svg: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><rect x="7" y="12" width="3" height="6"/><rect x="12" y="8" width="3" height="10"/><rect x="17" y="4" width="3" height="14"/></svg>' },
     { href: '/novo-48h', label: 'Last 48h', health: 'g', svg: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>' },
     // CS Dashboard e Cotação ocultos do menu (pedido do dono, 2026-07-16) — rotas
     // /novo-cs e /novo-cotacao continuam vivas; espelho do hidden:true do nav.js.
@@ -280,6 +281,7 @@
     if (current === '/dashboard/bdr/treble' || current === '/novo-bdr-treble' || page === 'bdr-treble') current = '/novo-bdr/treble';
     if (current === '/dashboard/growth' || page === 'growth') current = '/growth';
     if (current === '/dashboard/growth/mkt-budget' || current === '/growth-mkt-budget' || page === 'mkt-budget') current = '/growth/mkt-budget';
+    if (current === '/dashboard/growth/performance' || current === '/growth-performance' || page === 'growth-performance') current = '/growth/performance';
 
     function dot(h) {
       if (!h) return '';

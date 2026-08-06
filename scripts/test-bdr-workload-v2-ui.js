@@ -100,5 +100,8 @@ assert(nav.includes("url:'/novo-bdr/treble',file:'bdr-treble.html',sub:'bdr',hea
 assert(premium.includes("href: '/novo-bdr/workload', label: 'Workload | Intraday', health: 'y'"), 'Workload deve estar amarelo no menu interno');
 assert(premium.includes("href: '/novo-bdr/list-attack', label: 'Ataque à Lista', health: 'r'"), 'Ataque à Lista deve estar vermelho no menu interno');
 assert(premium.includes("href: '/novo-bdr/treble', label: 'Treble', health: 'g'"), 'Treble deve estar verde no menu interno');
-bdrPages.forEach((page, index) => assert(page.includes('/premium.js?v=11'), `página BDR ${index} sem cache-buster canônico do menu`));
+// v=12: entrada Growth | Performance adicionada ao NAV_MODEL do premium.js
+// (2026-08-06). Menu mudou => cache-buster sobe em TODA página que monta o menu
+// por premium.js, senão o browser serve o menu antigo sem a rota nova.
+bdrPages.forEach((page, index) => assert(page.includes('/premium.js?v=12'), `página BDR ${index} sem cache-buster canônico do menu`));
 console.log('PASS bdr-workload-v2 UI static tests');
