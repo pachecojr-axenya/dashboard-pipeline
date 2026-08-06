@@ -594,34 +594,42 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
 
     // Eixo Y truncado (pedido do dono, 2026-08-06): "diminuir o intervalo do pipe" — os
     // totais costumam ficar todos numa faixa estreita e alta, então começar em 0 desperdiça
-    // a maior parte da altura do gráfico e esconde os Δ pequenos. Calcula um piso PROPORCIONAL
-    // ao intervalo real dos dados desta foto (não um valor fixo — um "R$1M de respiro" seria
-    // imperceptível se os totais forem de centenas de milhões, ou grande demais se forem de
-    // poucos milhões), arredondado pra um número limpo na mesma ordem de grandeza. Barras tipo
-    // 'total'/'fechado'/'composto' começam em 0 nos dados (data[i]=[0,valor]); com yMin>0 o
-    // Chart.js já recorta a base sozinho — fica visualmente idêntico a uma barra flutuante.
+    // a maior parte da altura do gráfico e esconde os Δ pequenos. Ajustado no mesmo dia pra
+    // um respiro FIXO de R$1,5M abaixo do ponto mais baixo (o cálculo proporcional de antes
+    // ainda deixava as barras longas demais) — "comece elas a partir de 1,5M abaixo do mais
+    // baixo". Barras tipo 'total'/'fechado'/'composto' começam em 0 nos dados
+    // (data[i]=[0,valor]); com yMin>0 o Chart.js já recorta a base sozinho — fica visualmente
+    // idêntico a uma barra flutuante.
     var yLo = Infinity, yHi = -Infinity;
     kinds.forEach(function(k, i){
       if(k === 'delta'){ yLo = Math.min(yLo, data[i][0]); yHi = Math.max(yHi, data[i][1]); }
       else { yLo = Math.min(yLo, dataline[i]); yHi = Math.max(yHi, dataline[i]); }
     });
-    // Piso do intervalo escala com a MAGNITUDE dos dados (2% de yHi), não só com a diferença
-    // bruta — sem isso, uma foto sem nenhum Δ (yHi===yLo) geraria um "range" de 1 R$ e um
-    // yMin com casas decimais sem sentido pra valores na casa dos milhões.
-    var yRange = Math.max(yHi - yLo, Math.abs(yHi) * 0.02, 1);
-    var yPadRaw = yRange * 0.12; // ~12% de respiro abaixo do ponto mais baixo relevante
-    var yMag = Math.pow(10, Math.floor(Math.log10(yPadRaw)));
-    var yPad = Math.ceil(yPadRaw / yMag) * yMag;
-    var yMin = Math.floor((yLo - yPad) / yMag) * yMag;
+    var yMin = yLo - 1500000;
 
     var css = getComputedStyle(document.documentElement);
     var textc = css.getPropertyValue('--text2').trim(), gridc = css.getPropertyValue('--border').trim();
     var TOOLTIP_PREFIX = { total: 'Total: ', fechado: 'Fechado: ', composto: 'Total B + Fechado: ' };
+    // Degradê na base de cada barra (pedido do dono, mesma leva): sinaliza visualmente que o
+    // eixo é truncado — a cor plena no topo da barra vai esmaecendo até quase transparente na
+    // base do GRÁFICO (não da barra individual), reforçando "só a parte de cima está à mostra".
+    function _wfBarColor(context){
+      var raw = colors[context.dataIndex] || 'rgba(58,184,183,.85)';
+      var m = /rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/.exec(raw);
+      if(!m) return raw;
+      var r=m[1], g=m[2], b=m[3], a = m[4]!=null ? parseFloat(m[4]) : 1;
+      var area = context.chart.chartArea;
+      if(!area) return raw; // 1ª passada de layout, antes da área existir — Chart.js chama de novo depois
+      var grad = context.chart.ctx.createLinearGradient(0, area.top, 0, area.bottom);
+      grad.addColorStop(0, 'rgba('+r+','+g+','+b+','+a+')');
+      grad.addColorStop(1, 'rgba('+r+','+g+','+b+','+Math.max(a*0.08, 0.03).toFixed(3)+')');
+      return grad;
+    }
     document.getElementById('chart-state').style.display = 'none';
     if(chart) chart.destroy();
     chart = new Chart(document.getElementById('wf'), {
       type:'bar',
-      data:{ labels:labels, datasets:[{ data:data, backgroundColor:colors, borderRadius:4, barPercentage:.72 }] },
+      data:{ labels:labels, datasets:[{ data:data, backgroundColor:_wfBarColor, borderRadius:4, barPercentage:.72 }] },
       options:{
         responsive:true, maintainAspectRatio:false,
         // Pedido do dono (2026-08-06): Δ pequeno = barra de poucos pixels, difícil de acertar

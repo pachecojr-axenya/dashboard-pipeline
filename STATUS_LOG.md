@@ -1,5 +1,33 @@
 # Dashboard Enhancement Loop — Status Log
 
+### Feat | D02 — piso fixo de R$1,5M + degradê na base das barras (2026-08-06)
+
+> Pedido do dono: "as barras do D02 ainda estão muito longas... comece elas a partir de 1,5M
+> [abaixo do mais baixo]... use um efeito de degradê na base delas pra mostrar que a gente
+> está olhando só a parte de cima". Duas mudanças em `public/forecast-delta.html`, dentro de
+> `render(j)`:
+>
+> 1. **Piso do eixo Y trocado de proporcional (12% do intervalo) pra fixo**: `yMin = yLo -
+>    1500000` — mais simples e mais agressivo que o cálculo anterior (que ainda deixava as
+>    barras compridas quando o intervalo real dos dados era grande).
+> 2. **Degradê nas barras**: `backgroundColor` do dataset trocou de um array estático de cores
+>    pra uma função (`_wfBarColor`) — Chart.js chama por barra durante o desenho. Parseia a cor
+>    original (`rgba(r,g,b,a)`, já variava por tipo: teal pra totais, verde/vermelho pra Δ
+>    positivo/negativo, variantes semi-transparentes pra Fechado/composto) e monta um
+>    `createLinearGradient` cobrindo TODA a área do gráfico (não cada barra individualmente):
+>    cor plena no topo, esmaecendo pra ~8% da opacidade original na base — sinaliza visualmente
+>    que o eixo não começa em zero. Fallback: se `chart.chartArea` ainda não existe (1ª
+>    passada de layout do Chart.js), devolve a cor original sem gradiente; o Chart.js chama de
+>    novo depois que a área existe.
+>
+> Validação: `node scripts/_check-inline-js.js public/forecast-delta.html` = 0 erros (2
+> blocos); `/forecast-delta` = 200 local; testei o parse de cor + matemática do fade contra
+> as 5 variantes reais de cor usadas no arquivo (todas parsearam certo, alpha final sempre
+> entre 0,03 e 0,07); extraí a função `_wfBarColor` real do arquivo (sem reescrever) e testei
+> com um mock do contexto do Chart.js — confirma `createLinearGradient` chamado com as
+> coordenadas certas da área do gráfico, os dois color-stops corretos, e o fallback gracioso
+> quando `chartArea` ainda não existe.
+
 ### 🚀 DEPLOY DE PRODUÇÃO | Delta: coluna clicável + eixo truncado + toggle do menu (2026-08-06)
 
 > Autorização explícita do dono ("Funcionou. Commite e deploye"), após confirmação local do
