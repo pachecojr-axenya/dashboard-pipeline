@@ -1,5 +1,23 @@
 # Dashboard Enhancement Loop — Status Log
 
+### 🚀 DEPLOY DE PRODUÇÃO | Fase 4 + fix régua Bid + tooltips Forecast (2026-08-06)
+
+> Autorização explícita do dono ("Consegui ver [o bug do N05] em produção. Faça o commit e o
+> deploy"). Rebase limpo sobre `origin/main`, que havia avançado 1 commit (SEO Performance |
+> visão agregada) desde a última sincronização — conflito só em `STATUS_LOG.md`, resolvido
+> mantendo as duas entradas, as de hoje primeiro. Commit `627301b`. `npm run check` (0 fail) e
+> `npm run predeploy` PASS (`main` == `origin/main` `627301b`). Deployment
+> `dpl_EfsJNQwj4dfgrMDUUxoTigkVeiRK` (READY, production), alias `project-bsmfu.vercel.app`.
+> Pós-deploy confirmado: `/`, `/novo`, `/novo-board`, `/novo-ae`, `/forecast`,
+> `/forecast-overall` = 200; `/api/auth/me`, `/api/forecast-table`, `/api/deal-prob-history` =
+> 401 (auth ativa); `_fcProbHistShow` e `isArrPond` presentes no bundle de `/forecast`.
+>
+> **Bug do N05 (modal não abre no clique) permanece NÃO reproduzido** — investigação anterior
+> (ver entrada "Investigação | N05" abaixo) não achou causa raiz local; este deploy sobe a
+> versão atual (que nunca teve esse bug reproduzido) pra produção. Se o dono ainda vir o
+> problema após este deploy, é evidência nova (elimina a hipótese de cache de aba antiga) e
+> pede investigação direta em produção.
+
 ### Feat | Tooltip por célula na coluna ARR Pond. do Forecast (2026-08-06)
 
 > Pedido do dono: a coluna 🟡 ARR Pond. (`arr_pond`) só tinha tooltip GENÉRICO no
