@@ -61,6 +61,13 @@
     st.textContent = [
       '.novo-code-tag{display:none;align-items:center;font-size:.6rem;font-weight:700;letter-spacing:.04em;font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--teal);background:rgba(58,184,183,.14);border:1px solid rgba(58,184,183,.32);border-radius:5px;padding:.05rem .32rem;line-height:1.35;flex-shrink:0}',
       'body.novo-info-on .novo-code-tag{display:inline-flex}',
+      // Selo de família de probabilidade (2026-08-06): "fixa" (régua flat, forecast de caixa)
+      // vs. "funil" (conversão real, pipeline ponderado) — mesmo toggle "?" dos code-tags,
+      // pra não inventar um segundo controle. Ver docs/forecast-revenue-rules.md seção 6.
+      '.novo-regua-tag{display:none;align-items:center;gap:.2rem;font-size:.6rem;font-weight:700;letter-spacing:.02em;border-radius:5px;padding:.05rem .32rem;line-height:1.35;flex-shrink:0;cursor:help}',
+      'body.novo-info-on .novo-regua-tag{display:inline-flex}',
+      '.novo-regua-tag.fixa{color:var(--text2);background:rgba(139,148,158,.14);border:1px solid rgba(139,148,158,.32)}',
+      '.novo-regua-tag.funil{color:#a78bfa;background:rgba(167,139,250,.14);border:1px solid rgba(167,139,250,.32)}',
       '#novo-tip{position:fixed;z-index:9999;background:rgba(23,31,46,.78);backdrop-filter:blur(14px) saturate(1.5);-webkit-backdrop-filter:blur(14px) saturate(1.5);border-radius:6px;padding:.45rem .7rem;width:278px;pointer-events:none;display:none;box-shadow:0 6px 20px rgba(0,0,0,.3)}',
       'html[data-theme="light"] #novo-tip{background:rgba(246,248,250,.82)}',
       '#novo-tip.nt-show{display:block}',
@@ -169,12 +176,19 @@
   document.addEventListener('scroll', function () { if (cfg.variant === 'cro') _hideTip(); }, true);
 
   // ── Botão "i" (equivalente ao antigo `_infoBtn(tooltip, key)`) ──────────────
-  function _infoBtn(tip, helpKey) {
+  // regua (opcional): 'fixa' (régua flat, forecast de caixa) | 'funil' (conversão real do
+  // funil, pipeline ponderado) — ver docs/forecast-revenue-rules.md seção 6. Omitir = sem selo
+  // (a maioria dos cards não pondera por probabilidade, então não se aplica).
+  function _infoBtn(tip, helpKey, regua) {
     var code = (helpKey && cfg.codes[helpKey]) ? cfg.codes[helpKey] : '';
     var tag = code ? '<span class="novo-code-tag">' + code + '</span>' : '';
+    var reguaTitle = regua === 'funil'
+      ? 'Probabilidade pela conversão real do funil (piso na régua fixa quando a amostra da etapa é pequena)'
+      : (regua === 'fixa' ? 'Probabilidade pela régua fixa (premissa validada) — não usa o funil ao vivo, de propósito' : '');
+    var reguaTag = regua ? '<span class="novo-regua-tag ' + (regua === 'funil' ? 'funil' : 'fixa') + '" title="' + _ne(reguaTitle) + '">' + (regua === 'funil' ? '📊 Funil' : '🔒 Fixa') + '</span>' : '';
     var hasHelp = !!(helpKey && cfg.charts && cfg.charts.some(function (x) { return x.key === helpKey; }));
     var dataCode = code || (cfg.variant === 'cro' ? '' : (helpKey || ''));
-    return tag + '<button class="novo-info-btn"' +
+    return tag + reguaTag + '<button class="novo-info-btn"' +
       (tip ? ' data-tip="' + _ne(tip) + '"' : '') +
       (dataCode ? ' data-code="' + dataCode + '"' : '') +
       (hasHelp ? ' onclick="event.stopPropagation();novoHelpChart(\'' + helpKey + '\')"' : '') +

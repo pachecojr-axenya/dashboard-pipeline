@@ -1,5 +1,153 @@
 # Dashboard Enhancement Loop — Status Log
 
+### Feat | Selo de família de probabilidade nos cards ("?" do topo) — Fase 2 da unificação (2026-08-06)
+
+> Continuação do plano de unificação do motor (Fase 1 = ontem; ver entrada abaixo). Objetivo:
+> comunicar na UI, sem abrir modal, qual das duas famílias de probabilidade (seção 6 do
+> `docs/forecast-revenue-rules.md`) cada card usa — hoje só existia a explicação em texto,
+> escondida, e desatualizada (o "?"/`novoOpenRulesModal` ainda descreve a regra ±10% morta;
+> reescrita fica pra Fase 5, depois que P03/B04/Vidas Ponderadas tiverem família definida).
+>
+> **Mecanismo:** reaproveitado o MESMO toggle "?" (`novoToggleInfo`/`body.novo-info-on`) que já
+> liga/desliga os code-tags (C04, N06B, P03...) — não criei controle novo. `public/help-drawer.js`
+> (`_infoBtn`) ganhou 3º parâmetro opcional `regua` ('funil' | 'fixa'); quando presente, emite
+> `<span class="novo-regua-tag ...">📊 Funil</span>` ou `🔒 Fixa`, com `title` explicando a régua
+> no hover. Omitir o parâmetro (~200 outros cards que não ponderam por probabilidade) mantém o
+> comportamento idêntico a antes — testado isoladamente (3 casos: funil/fixa/sem selo).
+>
+> **10 cards marcados**, exatamente os que já têm família definida e estável (excluídos de
+> propósito: P03/B04/Vidas Ponderadas, o outlier — ainda não migrado, ver seção 6):
+> - 🔒 **Fixa** (régua flat, forecast de caixa): N05 (`coverage`), N06B (`piperev12b`) em
+>   `dashboard.html`; A07 (`arr`) em `ae.html`.
+> - 📊 **Funil** (conversão real, pipeline ponderado): C04 (`stageval`), C07 (`winprob`), C08
+>   (`revbkt`) em `dashboard.html`; B07 (`pipe-stage`), B09 (`deal-bench`), B15 (`top-ae`), B16
+>   (`watchlist`) em `board.html`.
+>
+> Os wrappers genéricos de card (`_card` em `dashboard.html`; `c`/`cWide`/`cTbl` em `board.html`;
+> `c`/`cWide` em `ae.html`) ganharam o parâmetro `regua` como último argumento opcional — os
+> outros ~190 cards que os usam não passam esse argumento e continuam sem selo.
+>
+> **Referência cruzada nos 10 modais "i" (completada na mesma Fase 2, mesma data):** cada card
+> ganhou uma frase final apontando pro card irmão da outra família (ex.: N05/N06B → "para a
+> leitura de conversão real do funil, veja C04/C07/C08"; C04/C07/C08 → "para o forecast de
+> caixa (régua fixa), veja N05/N06B"; mesma lógica em B07/B09/B15/B16 apontando pro CRO, já que
+> o Board não tem card de forecast de caixa próprio).
+>
+> **Achado colateral corrigido de passagem:** ao editar esses textos, confirmei a suspeita
+> registrada na conversa — `board.html` (B07 `pipe-stage`, B09 `deal-bench`) ainda descrevia a
+> regra ±10% morta ("C07 por pipeline + ±10% do AE"), igual N05/N06B/A07 tinham antes do fix de
+> ontem; e B15 (`top-ae`)/B16 (`watchlist`) tinham a descrição do campo `probabilidade`
+> subdimensionada ("Peso; fallback prob. da etapa", sem mencionar a regra do mínimo). Os quatro
+> foram corrigidos para a mesma wording "MENOR entre a taxa do funil e a probabilidade do AE"
+> usada em N05/N06B/A07 — texto apenas, nenhum cálculo tocado (B07/B09/B15/B16 já usavam
+> `_calcProbInfo`/motor canônico corretamente; só a explicação estava desatualizada).
+>
+> Validação: `node --check` (help-drawer.js) + `_check-inline-js.js` (dashboard/board/ae) = 0
+> erros; `_smoke-render.js` nas 3 páginas = OK com dados reais (303 deals); teste isolado do
+> `_infoBtn` em VM Node confirma a string exata do selo nos 3 casos (funil/fixa/omitido).
+> **Fase 2 completa.** Próxima: Fase 3 (dual-run de P03/B04/Vidas Ponderadas).
+
+### Fix | Override manual ("P. Ajust.") passa a ser ABSOLUTO em todo o pipeline ponderado (2026-08-06)
+
+> Pedido direto do dono: "esses deals que receberam override manual devem mantê-lo. Os
+> overrides precisam ser absolutos." Auditoria (continuação da Fase 1 acima) encontrou que o
+> grupo outlier já mapeado (P03 "Receita Ponderada", B04 do Board, KPI "Vidas Ponderadas") —
+> que usa probabilidade crua do AE sem a regra do mínimo — também **nunca checava o override
+> manual por deal** (`/api/prob-manual`). Ao investigar a extensão do problema, achei MAIS
+> pontos com o mesmo bug do que os 2 já mapeados: **N21 (Resultados Financeiros)**, o KPI 🟡
+> **"Pipeline Ponderado/ano"** e os drills/modais de **P03 e Vidas Ponderadas** (que recalculam
+> localmente para a estatística do modal — mesmo risco de "drill diverge do card" já visto no
+> N06B). Total: 7 pontos de cálculo, todos em `public/dashboard.html` + `public/shared-charts.js`
+> (P03/B04, compartilhado).
+>
+> **Fix:** `public/prob-engine.js` ganhou `ProbEngine.manualFor` (expõe a função privada
+> `_manualFor` já usada por `calcProbInfo` — sem reimplementar o parse/validação do override em
+> cada consumidor). `public/shared-charts.js` (`sharedWeightedPipelineARR`, P03+B04) e
+> `public/dashboard.html` (novo helper único `_novoProbWeight`, chamado pelos 6 pontos:
+> `_novoP03StatsHtml`, `_novoWVProb`, `buildNovoSegment`, `buildNovoFinancial`/N21, o KPI
+> "Pipeline Ponderado/ano", e a agregação principal de Vidas Ponderadas) agora checam o override
+> ANTES de qualquer prob. do AE ou da etapa — absoluto, sem exceção, para qualquer deal com
+> entrada em `/api/prob-manual`.
+>
+> **Bug lateral corrigido (Fase 1 de ontem):** `public/ae.html` nunca carregava
+> `/prob-engine.js` — a chamada a `ProbEngine.calcProbInfo` adicionada ontem em `_novoFcProbAdj`
+> quebraria em runtime (`ProbEngine is not defined`). Adicionado `<script src="/prob-engine.js?v=4">`
+> (mesma versão do CRO/Board) antes do `forecast-engine.js`. Pego pelo `_smoke-render.js`
+> (roda os scripts inline num DOM stub com dados reais), não pelo `_check-inline-js.js`
+> (só sintaxe) — reforça usar sempre os dois na validação de mudanças de motor.
+>
+> **Achado à parte, NÃO corrigido (é código morto, não bug ativo):** `_aeProbAdj`/
+> `sharedProbFinal` (override local em `ae.html`) e `sharedForecastCalcReceita`/
+> `sharedPipeRevMonthValue`/`sharedProjectionMonths` (`shared-charts.js`) implementam a regra
+> ±10%/30pp ANTIGA, mas nenhuma função da cadeia é chamada por nenhum gráfico renderizado
+> (confirmado por grep — zero call sites fora da própria definição). Sobrou do card N06/N14,
+> removido em 2026-07-16. Não precisa de fix porque não afeta nenhum número exibido; é candidato
+> a limpeza de código morto numa tarefa separada.
+>
+> Validação: `node scripts/_check-inline-js.js` (dashboard/ae/board) + `node --check` (shared-charts.js,
+> prob-engine.js) = 0 erros; `node scripts/_smoke-render.js` nas três páginas = OK, sem exceção,
+> com dados reais (303 deals); teste isolado de `ProbEngine.manualFor`/`calcProbInfo` confirma
+> que o override zera a probabilidade final mesmo com prob. do AE alta (80%) e régua de etapa
+> alta (49,3%) — a wins absoluto, como pedido.
+
+### Fix | Motor único de probabilidade | fim da cópia em N05/N06B/A07 (Fase 1 da unificação) (2026-08-05)
+
+> Contexto (auditoria de confiabilidade das "Regras de probabilização" do CRO, mesma sessão
+> da entrada abaixo): existem duas famílias INTENCIONAIS de probabilidade no dashboard —
+> régua flat + regra do mínimo (grupo de forecast de caixa: `/forecast`, `/forecast-stage`,
+> `/forecast-delta`, N05/N06B, A07) e funil C07 (amostra ≥20) + regra do mínimo (grupo de
+> pipeline ponderado: C04/C07/C08 e equivalentes do Board) — decisão do dono de 2026-07-16,
+> não é bug. O bug real: `dashboard.html` (N05/N06B) e `ae.html` (A07) **não chamavam o motor
+> único** (`ProbEngine.calcProbInfo`, `public/prob-engine.js`) para a régua flat — reimplementavam
+> a mesma conta à mão em `_novoFcProbAdj`, mantida "espelhada" por comentário/disciplina manual
+> em vez de por código. Risco provado nesta sessão: o texto dos modais já tinha divergido do
+> código uma vez (entrada abaixo) exatamente por esse tipo de cópia.
+>
+> **Fix:** `_novoFcProbAdj` em `public/dashboard.html` e `public/ae.html` agora chama
+> `ProbEngine.calcProbInfo(d, { funnelProbPipe: null, defaults: NOVO_FC_STAGE_PROB_DEFAULT,
+> cfg: { manual: false, values: { vendas: {}, bid: {} } } }).final` direto — `funnelProbPipe:
+> null` força a régua flat (mesmo padrão de `_fcProbCtx` em `forecast-stage.html` e de
+> `OverallCore.config(..., funnelProb: null)` em `lib/forecast-compute.js`). `_novoFcStageProbForwd`
+> foi mantida (ainda usada por `_novoFcMqlConv`, cohort de BDR — sem relação com este fix).
+> `_aeProbAdj` (ae.html) não foi tocada — é uma regra ±10% legítima e sem relação, usada em
+> gráficos de conversão, não no forecast de receita.
+>
+> **Achado colateral (mudança de comportamento, não só refactor):** a cópia antiga nunca
+> checava override manual por deal ("P. Ajust.", `/api/prob-manual`) — o motor único checa.
+> Há 2 overrides ativos hoje: deal `62853528445` (DUX Company, forçado a 0% em 2026-07-27) e
+> `52091223109` (Grupo Maringá, forçado a 10% em 2026-07-27). A partir deste fix, N05/N06B/A07
+> passam a respeitar esses 2 overrides — antes, calculavam a probabilidade desses 2 deals pela
+> régua normal, ignorando a decisão do comitê. Nenhum outro deal é afetado (sem override →
+> comportamento idêntico ao anterior).
+>
+> Validação: `node scripts/_check-inline-js.js` = 0 erros nos dois arquivos; smoke local
+> `/novo` e `/novo-ae` = 200. Próximas fases da unificação (dual-run de P03/B04/Vidas Ponderadas
+> antes de migrar para a régua do funil; comunicação na UI da diferença entre as duas famílias;
+> reescrita do "?"/`novoOpenRulesModal`) registradas em conversa, ainda não executadas.
+
+### Fix | Textos de memória de cálculo (N05/N06B/A07): regra do mínimo, não mais ±10% (2026-08-05)
+
+> Auditoria apontou que os textos de ajuda ("i"/drawer) de três cards ainda descreviam a
+> regra de probabilidade ANTIGA, revogada em 2026-08-02: "prob do funil C07 por pipeline +
+> ±10% do AE (se divergir ≥30pp)". O código já tinha sido corrigido nessa data (`_novoFcProbAdj`
+> em `dashboard.html` e homônima em `ae.html`) para a **regra do mínimo** (decisão da reunião
+> de forecast de 31/07, validada com a CFO, `docs/forecast-revenue-rules.md` seção 2): prob.
+> final = a **MENOR entre** a prob. padrão da etapa (régua `forecast_flat`) e a prob. que o
+> AE digitou no deal (`probabilidade_de_fechamento_`); sem prob. do AE, usa a da etapa. Um
+> "P. Ajust." explícito do comitê por deal (2026-07-27) continua valendo por cima — o mínimo
+> é só o cálculo default/automático. Apenas os TEXTOS estavam desatualizados; nenhuma função
+> de cálculo foi tocada. **`public/dashboard.html`**: N05 (Cobertura do Pipeline) — layer da
+> Receita Probabilizada no drawer visual (PT+EN, linha 718), `formula` e campo `dealstage` da
+> ficha de ajuda (linhas 1511-1512); N06B (Forecast Total) — `desc` e campo `dealstage +
+> pipeline` da ficha de ajuda (linhas 1517-1518) e o box "Pipeline de Vendas" da Metodologia
+> dinâmica (linha 3759). **`public/ae.html`**: A07 (Receita do Forecast por AE) — `desc`,
+> `formula` e campo `probabilidade` da ficha de ajuda (linhas 305-308) e o tooltip inline do
+> card no grid principal (linha 765). Validação: `node scripts/_check-inline-js.js` = 0 erros
+> nos dois arquivos; smoke local `/novo` e `/novo-ae` = 200; grep confirma que "C07"+"±10%"/
+> "30pp" não aparecem mais nesses três cards (só restam em comentários de código de OUTRAS
+> funções, como `_aeProbAdj`, que ainda usa ±10% de propósito em gráficos de conversão fora
+> de escopo) e que "MENOR entre"/"regra do mínimo" aparece nos três.
+
 ### 🔎 SEO PERFORMANCE | Search Console ao vivo, linha do tempo e movimentação (2026-08-06)
 
 > Nova subpágina `/growth/seo` (rota em `vercel.json` **e** na tabela `REWRITES` de

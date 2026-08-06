@@ -715,7 +715,7 @@ function _novoCoverageHelpHtml() {
     _covLayer('rgba(63,185,80,.95)', (L?'Real revenue (green line) — hidden by default':'Receita Real (linha verde) — oculta por padrão'),
       (L?'Full monthly potential, unweighted. Off by default — click it in the legend to show it. Won/onboarding via manual billing; open pipeline, BID and top-of-funnel via the revenue ruler.':'Potencial mensal cheio, sem ponderar. Vem desligada — clique na legenda para exibi-la. Ganho/implantação via faturamento manual; pipe aberto, BID e topo de funil pela régua de receita.')) +
     _covLayer('rgba(88,166,255,.95)', (L?'Weighted revenue (blue line)':'Receita Probabilizada (linha azul)'),
-      (L?'Real revenue × stage probability (funnel C07 per pipeline + AE ±10%). BID at a fixed 0.5%; top-of-funnel × MQL conversion.':'Receita real × probabilidade da etapa (funil C07 por pipeline + ±10% do AE). BID a 0,5% fixo; topo de funil × conversão MQL.')) +
+      (L?'Real revenue × stage probability: the LOWER of the stage default rule and the probability the AE typed on the deal (no AE probability, uses the stage default). BID at a fixed 0.5%; top-of-funnel × MQL conversion.':'Receita real × probabilidade da etapa: a MENOR entre a régua padrão da etapa e a probabilidade que o AE digitou no deal (sem prob. do AE, usa a da etapa). BID a 0,5% fixo; topo de funil × conversão MQL.')) +
     _covLayer('rgba(227,179,65,.95)', (L?'Target (dashed)':'Meta (tracejada)'),
       (L?'Monthly target = annual target ÷ 12. In Coverage mode it becomes the 1× reference line.':'Meta mensal = meta anual ÷ 12. No modo Cobertura vira a linha de referência 1×.'));
 
@@ -1240,19 +1240,19 @@ var NOVO_HELP_CHARTS = [
   {
     key: 'stageval',
     title: 'Valor do Pipeline por Etapa (TCV)',
-    desc: 'Soma do TCV por etapa — a mesma base do C08. TCV = régua real (calcTCV) ao longo do período do contrato (12/24/36 meses; sem período → 12), incluindo a corretagem de entrada, com dedup Fee×Corretagem (deal duplicado conta uma vez; o gêmeo excluído entra com zero) | a MESMA conta da coluna TCV dos painéis Forecast: os totais por etapa batem 1:1. Deals sem 1ª fatura/modelo (ex.: a maioria de Diagnóstico) ficam de fora. "Ponderado" multiplica pela probabilidade final de fechamento (C07 por pipeline + ajuste do AE).',
+    desc: 'Soma do TCV por etapa — a mesma base do C08. TCV = régua real (calcTCV) ao longo do período do contrato (12/24/36 meses; sem período → 12), incluindo a corretagem de entrada, com dedup Fee×Corretagem (deal duplicado conta uma vez; o gêmeo excluído entra com zero) | a MESMA conta da coluna TCV dos painéis Forecast: os totais por etapa batem 1:1. Deals sem 1ª fatura/modelo (ex.: a maioria de Diagnóstico) ficam de fora. "Ponderado" multiplica pela probabilidade final de fechamento (C07 por pipeline — a MENOR entre a taxa de conversão real do funil e a probabilidade que o AE digitou no deal; sem funil suficiente, cai na régua fixa). 📊 Este card usa a conversão real do funil, não a régua fixa do forecast de caixa — para essa leitura (estável, não oscila com o funil), veja N05/N06B.',
     fields: [
       ['dealstage', 'Agrupa o TCV por etapa.'],
       ['primeira_fatura + modelo_remuneracao', 'Régua da receita (calcTCV via calcReceitaMes); sem os dois, o deal fica fora.'],
       ['periodo_do_contrato___vg', 'Nº de meses somados no TCV (12/24/36; vazio → 12).'],
       ['dealname', 'Chave da dedup Fee×Corretagem (mesmo cliente com Fee e Corretagem conta uma vez).'],
-      ['dealstage + pipeline', 'No modo "Ponderado", peso = probabilidade final (C07 do pipeline do deal + ajuste do AE), ajustável em ⚙.'],
+      ['dealstage + pipeline', 'No modo "Ponderado", peso = probabilidade final (C07 do pipeline do deal — a MENOR entre a taxa do funil e a prob. do AE), ajustável em ⚙.'],
     ],
   },
   {
     key: 'revbkt',
     title: 'TCV do Pipe por Bucket',
-    desc: 'Dois donuts com a distribuição do TCV (régua real ao longo do período do contrato — 12/24/36 meses; sem período → 12 — incluindo a corretagem de entrada, com dedup Fee×Corretagem: gêmeo excluído = zero | a mesma conta da coluna TCV dos painéis Forecast): um por bucket de Receita, outro por bucket de Vidas (faixas do C03). O toggle escolhe a métrica: Bruto = Σ TCV; Ponderado = Σ TCV × probabilidade de fechamento por pipeline (C07). É a receita que a Axenya tem a receber no pipe, e quanto cada bucket representa. Base: pipeline ativo (Vendas + Bid); só deals com TCV > 0.',
+    desc: 'Dois donuts com a distribuição do TCV (régua real ao longo do período do contrato — 12/24/36 meses; sem período → 12 — incluindo a corretagem de entrada, com dedup Fee×Corretagem: gêmeo excluído = zero | a mesma conta da coluna TCV dos painéis Forecast): um por bucket de Receita, outro por bucket de Vidas (faixas do C03). O toggle escolhe a métrica: Bruto = Σ TCV; Ponderado = Σ TCV × probabilidade final de fechamento por pipeline (C07 — a MENOR entre a taxa de conversão real do funil e a probabilidade que o AE digitou no deal; sem funil suficiente, cai na régua fixa). É a receita que a Axenya tem a receber no pipe, e quanto cada bucket representa. Base: pipeline ativo (Vendas + Bid); só deals com TCV > 0. 📊 Este card usa a conversão real do funil — para o forecast de caixa (régua fixa), veja N05/N06B.',
     note: 'O gráfico usa dois medidores de receita distintos: a FAIXA (bucket, no donut Por Receita) é decidida por <code>_annualRev</code> (arr_estimado, ou primeira_fatura × 12), mas a INCLUSÃO no gráfico e o TAMANHO de cada fatia usam o TCV da régua (calcTCV). Como o TCV exige 1ª fatura + modelo, todo deal considerado tem <code>_annualRev</code> > 0 — a fatia cinza "Sem receita" tende a ficar vazia. (Antes de 2026-07-16, o Diagnóstico usava o proxy vidas × R$/vida × 12 e caía nessa fatia; o proxy foi aposentado para o TCV bater 1:1 com o painel Forecast.)',
     fields: [
       ['primeira_fatura + modelo_remuneracao', 'Régua da receita (calcTCV via calcReceitaMes); sem os dois, o deal fica fora.'],
@@ -1286,7 +1286,7 @@ var NOVO_HELP_CHARTS = [
   {
     key: 'winprob',
     title: 'Probabilidade de Ganho por Etapa',
-    desc: 'Para cada etapa, a chance de fechamento (ganho) de um deal ali, separada por pipeline (Vendas e Bid). Cálculo = ganhos absolutos ÷ deals que entraram na etapa, no funil histórico de cada pipeline. É diferente do C06: o C06 mede o AVANÇO entre etapas (quantos foram para a próxima); o C07 mede o FECHAMENTO (quantos viraram Ganho absoluto). O tamanho da amostra (n) aparece no tooltip: n pequeno = número instável. Fonte: GET /api/funnel-stages.',
+    desc: 'Para cada etapa, a chance de fechamento (ganho) de um deal ali, separada por pipeline (Vendas e Bid). Cálculo = ganhos absolutos ÷ deals que entraram na etapa, no funil histórico de cada pipeline. É diferente do C06: o C06 mede o AVANÇO entre etapas (quantos foram para a próxima); o C07 mede o FECHAMENTO (quantos viraram Ganho absoluto). O tamanho da amostra (n) aparece no tooltip: n pequeno = número instável. Fonte: GET /api/funnel-stages. 📊 É a base do funil de que C04/C08 partem para ponderar por deal (com piso na régua fixa quando a amostra é pequena) — para o forecast de caixa (régua fixa sempre, nunca este funil), veja N05/N06B.',
     fields: [
       ['dealstage (propertiesWithHistory)', 'Quantos deals entraram em cada etapa (Reunião Agendada, Diagnóstico, Cotação, Proposta Enviada, Consultoria, Negociação) e quantos viraram Ganho absoluto. Implantação não é exibida (é o alvo). Sem ajuste do AE; eixo Y até 40%.'],
       ['pipeline', 'Dois datasets separados: Vendas (782758156) e Bid (894130090), nunca combinados.'],
@@ -1507,15 +1507,15 @@ var NOVO_HELP_CHARTS = [
     desc:'Taxa de ganho ajustada por AE: deals ganhos ÷ (ganhos + perdidos) por owner (só sobre fechados). Pipelines Vendas + Bid. Ganho = Ganho + Implantação (toggle); perdido = Perdido; por close_date (janela do filtro, ou all-time). Abertos NÃO entram. Agrupa por dono do deal; ignora deals sem AE. Não usa probabilidade.',
     fields:[['hubspot_owner_id','Dono do deal (AE); deals sem AE ficam de fora.'],['dealstage','Separa ganho (Ganho/Implantação) vs perdido (Perdido).'],['closedate','Janela dos fechados (com filtro) ou all-time.']] },
   { key:'coverage', title:'Cobertura do Pipeline | Forecast vs Meta (N05)',
-    desc:'Mostra, mês a mês, o quanto o forecast de receita cobre a meta — e onde o pipe está descoberto (risco). Consome a MESMA série do Forecast Total (N06B) via ForecastEngine (fonte única de receita): Receita Real e Probabilizada batem mês a mês. Toggle Cobertura (×) ↔ Receita (R$): em Cobertura, cada linha é forecast ÷ meta mensal (1× = no alvo); em Receita, os R$ com a linha de meta. A linha de Receita Real vem oculta por padrão (clique na legenda para exibi-la); a Probabilizada é a leitura padrão. Conjunto = negócio novo (createdate ≥ set/2025) + Ganho/Implantação (sempre) + Bid (desde jan/2025); dedup Fee×Corretagem; BID só Negociação/Proposta a 0,5%; topo de funil = cohorts BDR × conversão MQL. Janela jan/2026 → dez/2027.',
-    formula:'cobertura(mês) = forecast_mensal ÷ (meta_anual ÷ 12); forecast = Ganho/Impl (faturamento manual) + pipe Vendas + BID (0,5%) + topo de funil (cohorts BDR), pela régua calcReceitaMes × probabilidade da etapa (funil C07 por pipeline). Mesma série do N06B.',
-    fields:[['primeira_fatura','Base da receita (régua calcReceitaMes).'],['modelo_remuneracao','Fee por vida vs Corretagem (define a régua).'],['possui_agenciamento','Define o pico pontual de entrada na corretagem.'],['vidas','Diagnóstico (headcount) e faixa PME (<200) × não-PME (≥200) p/ o % de corretagem.'],['data_prevista_para_receita','Mês de início da receita (n=1).'],['dealstage','Probabilidade da etapa (funil C07 por pipeline) + régua por bloco; Ganho/Impl via faturamento manual.'],['createdate','Recorte de negócio novo (≥ 2025-09-01) e início do Diagnóstico (+9/14/18m).']] },
+    desc:'Mostra, mês a mês, o quanto o forecast de receita cobre a meta — e onde o pipe está descoberto (risco). Consome a MESMA série do Forecast Total (N06B) via ForecastEngine (fonte única de receita): Receita Real e Probabilizada batem mês a mês. Toggle Cobertura (×) ↔ Receita (R$): em Cobertura, cada linha é forecast ÷ meta mensal (1× = no alvo); em Receita, os R$ com a linha de meta. A linha de Receita Real vem oculta por padrão (clique na legenda para exibi-la); a Probabilizada é a leitura padrão. Conjunto = negócio novo (createdate ≥ set/2025) + Ganho/Implantação (sempre) + Bid (desde jan/2025); dedup Fee×Corretagem; BID só Negociação/Proposta a 0,5%; topo de funil = cohorts BDR × conversão MQL. Janela jan/2026 → dez/2027. 🔒 Este card usa a régua fixa (premissa validada) de propósito, não o funil ao vivo — para a leitura de conversão real do funil (pipeline ponderado, não é forecast de caixa), veja C04/C07/C08.',
+    formula:'cobertura(mês) = forecast_mensal ÷ (meta_anual ÷ 12); forecast = Ganho/Impl (faturamento manual) + pipe Vendas + BID (0,5%) + topo de funil (cohorts BDR), pela régua calcReceitaMes × probabilidade da etapa (MENOR entre a régua padrão da etapa e a probabilidade digitada pelo AE no deal; sem prob. do AE, usa a da etapa). Mesma série do N06B.',
+    fields:[['primeira_fatura','Base da receita (régua calcReceitaMes).'],['modelo_remuneracao','Fee por vida vs Corretagem (define a régua).'],['possui_agenciamento','Define o pico pontual de entrada na corretagem.'],['vidas','Diagnóstico (headcount) e faixa PME (<200) × não-PME (≥200) p/ o % de corretagem.'],['data_prevista_para_receita','Mês de início da receita (n=1).'],['dealstage','Probabilidade da etapa = a MENOR entre a régua padrão da etapa e a probabilidade digitada pelo AE no deal, + régua por bloco; Ganho/Impl via faturamento manual.'],['createdate','Recorte de negócio novo (≥ 2025-09-01) e início do Diagnóstico (+9/14/18m).']] },
   { key:'piperev12', title:'🟡 Valor do Pipeline | Projeção Mensal (N06)',
     desc:'Receita ou quantidade de deals por mês da data prevista de receita. Considera deals abertos com data prevista: Diagnóstico, Cotação, Proposta Enviada, Consultoria, Negociação e Standby; Reunião Agendada entra se o toggle de Ativos estiver ligado; Implantação entra apenas se Implantação = Ganho estiver desligado.',
     fields:[['data_prevista_para_receita','Mês de alocação do deal.'],['arr_estimado','Receita real mensal = ARR ÷ 12.'],['probabilidade_de_fechamento_ / hs_deal_stage_probability','Receita probabilizada = Receita real mensal × probabilidade final.'],['dealstage','Define se o deal entra como aberto e qual probabilidade padrão é usada.']] },
   { key:'piperev12b', title:'Forecast Total (N06B)',
-    desc:'Forecast total mês a mês, pelo MESMO motor do painel Forecast Overall (fonte única de receita). Duas linhas: Receita Real (verde, bruta) e Receita Probabilizada (azul, × probabilidade de fechamento). Pipelines Vendas + Bid. Blocos: Ganho/Implantação (faturamento manual, valor cheio) + pipeline de Vendas (Diagnóstico fixo 6% + Cotação/Consultoria/Negociação pela régua, prob do funil C07 por pipeline + ±10% do AE) + Bid só em Negociação/Proposta Enviada (data imputada out/2026 e jun/2027, prob fixa 0,5%) + topo de funil (cohorts BDR × conversão MQL). Conjunto: negócio novo (createdate ≥ set/2025) + Ganho/Implantação + Bid (desde jan/2025); dedup Fee×Corretagem. Janela jan/2026 → dez/2027. Detalhamento por bloco na Metodologia abaixo.',
-    fields:[['primeira_fatura + modelo_remuneracao','Régua da receita (calcReceitaMes) do pipeline de Vendas.'],['vidas','Diagnóstico = vidas × R$/vida por porte × 6%; porte também define o início da receita.'],['dealstage + pipeline','Bloco e probabilidade: Diagnóstico 6%; Cotação/Consultoria/Negociação pela prob do funil C07 do pipeline (+ ±10% do AE); Bid só Negociação/Proposta a 0,5%; Ganho/Implantação via faturamento manual.'],['data_prevista_para_receita','Início da receita da régua (n=1).'],['createdate','Recorte de negócio novo (≥ 2025-09-01) e início do Diagnóstico (+9/14/18m por porte).']] },
+    desc:'Forecast total mês a mês, pelo MESMO motor do painel Forecast Overall (fonte única de receita). Duas linhas: Receita Real (verde, bruta) e Receita Probabilizada (azul, × probabilidade de fechamento). Pipelines Vendas + Bid. Blocos: Ganho/Implantação (faturamento manual, valor cheio) + pipeline de Vendas (Diagnóstico fixo 6% + Cotação/Consultoria/Negociação pela régua, prob = a MENOR entre a régua padrão da etapa e a probabilidade digitada pelo AE no deal) + Bid só em Negociação/Proposta Enviada (data imputada out/2026 e jun/2027, prob fixa 0,5%) + topo de funil (cohorts BDR × conversão MQL). Conjunto: negócio novo (createdate ≥ set/2025) + Ganho/Implantação + Bid (desde jan/2025); dedup Fee×Corretagem. Janela jan/2026 → dez/2027. Detalhamento por bloco na Metodologia abaixo. 🔒 Este card usa a régua fixa (premissa validada) de propósito, não o funil ao vivo — para a leitura de conversão real do funil (pipeline ponderado, não é forecast de caixa), veja C04/C07/C08.',
+    fields:[['primeira_fatura + modelo_remuneracao','Régua da receita (calcReceitaMes) do pipeline de Vendas.'],['vidas','Diagnóstico = vidas × R$/vida por porte × 6%; porte também define o início da receita.'],['dealstage + pipeline','Bloco e probabilidade: Diagnóstico 6%; Cotação/Consultoria/Negociação pela MENOR entre a probabilidade padrão da etapa (régua) e a probabilidade digitada pelo AE no deal (sem prob. do AE, usa a da etapa); Bid só Negociação/Proposta a 0,5%; Ganho/Implantação via faturamento manual.'],['data_prevista_para_receita','Início da receita da régua (n=1).'],['createdate','Recorte de negócio novo (≥ 2025-09-01) e início do Diagnóstico (+9/14/18m por porte).']] },
   { key:'segdoughnut', title:'🟡 Receita por Segmento | Donut (N36)',
     desc:'ARR estimado total distribuído por segmento de tamanho (Pequeno/Médio/Grande/Enterprise) baseado em vidas.',
     fields:[['vidas','Define o segmento.'],['arr_estimado','ARR somado por segmento.']] },
@@ -1714,6 +1714,15 @@ var _nr = function(v) { return v != null ? Number(v).toLocaleString('pt-BR',{min
 
 function _calcProbInfo(d) {
   return ProbEngine.calcProbInfo(d, { cfg: _novoStageProbCfg, funnelProbPipe: NOVO_FUNNEL_PROB_PIPE }); // fonte única (prob-engine.js)
+}
+// Prob. de peso para métricas "ponderado" que ainda NÃO passam por _calcProbInfo (P03/Vidas
+// Ponderadas/Segmento/N21/Pipeline Ponderado-ano — usam prob. crua do deal ou da etapa, sem
+// a regra do mínimo). Override manual por deal ("P. Ajust.") é ABSOLUTO (2026-08-05, pedido
+// do dono): vence antes de olhar qualquer outra coisa. Fonte única — não reimplementar este
+// check em cada card (era o que causava a divergência entre eles).
+function _novoProbWeight(d) {
+  var mp = (typeof ProbEngine !== 'undefined' && ProbEngine.manualFor) ? ProbEngine.manualFor(d) : null;
+  return mp != null ? mp : (d.probabilidade != null ? d.probabilidade : (_novoStageProbFor(d.stage, d.pipeline) || 0));
 }
 
 // ── Histórico de Prob AE (mouse-over) ───────────────────────────────────────
@@ -2304,7 +2313,7 @@ function _novoKpiStatsHtml(deals) {
 }
 // P03 (Pipeline Ponderado): ponderado mensal/anual + cenário Implantação=Ganho + nº de abertos.
 function _novoP03StatsHtml() {
-  function prob(d){ return d.probabilidade != null ? d.probabilidade : (_novoStageProbFor(d.stage, d.pipeline) || 0); }
+  function prob(d){ return _novoProbWeight(d); }
   var openDeals = _novoCurrentActivePipeline();
   var implDeals = (_novoDeals || []).filter(function(d){ return d.stage === 'Implantação'; });
   var wYr   = openDeals.reduce(function(s,d){ return s + _annualRev(d)*prob(d); }, 0);
@@ -2363,7 +2372,7 @@ var _novoWVAll        = [];   // todos os deals abertos do drill
 var _novoWVStageList  = [];   // etapas, na ordem dos chips
 var _novoWVStageCount = {};   // contagem por etapa (conjunto total)
 var _novoWVSel        = null;  // Set de etapas selecionadas; null/vazio => todas
-function _novoWVProb(d) { return d.probabilidade != null ? d.probabilidade : (_novoStageProbFor(d.stage, d.pipeline) || 0); }
+function _novoWVProb(d) { return _novoProbWeight(d); }
 function _novoWVStatsHtml(deals) {
   var count  = deals.length;
   var vidas  = deals.reduce(function(s,d){ return s + (d.vidas||0); }, 0);
@@ -2716,9 +2725,9 @@ function _subTabs(id, current, opts) {
     return '<button class="tab-sub-btn'+(current===o.mode?' active':'')+'" data-mode="'+o.mode+'" onclick="'+o.fn+'(\''+o.mode+'\')">'+o.label+'</button>';
   }).join('')+'</div>';
 }
-function _card(title, tip, tabsHtml, canvasId, maxH, helpKey) {
-  return '<div class="novo-card"><div class="novo-card-header"><h3>'+title+'</h3>'+ 
-    _infoBtn(tip, helpKey)+(tabsHtml||'')+'</div>'+ 
+function _card(title, tip, tabsHtml, canvasId, maxH, helpKey, regua) {
+  return '<div class="novo-card"><div class="novo-card-header"><h3>'+title+'</h3>'+
+    _infoBtn(tip, helpKey, regua)+(tabsHtml||'')+'</div>'+
     '<canvas id="'+canvasId+'" style="max-height:'+(maxH||340)+'px"></canvas></div>';
 }
 function _titleWithCount(title, count) {
@@ -2939,7 +2948,7 @@ function _novoRevBucketsCard() {
   var _col = function(lbl, cid){ return '<div style="flex:1;min-width:260px"><div style="text-align:center;font-size:.8rem;font-weight:600;color:var(--text2);margin-bottom:.3rem">'+lbl+'</div><canvas id="'+cid+'" style="max-height:300px"></canvas></div>'; };
   return '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header" style="flex-wrap:wrap;gap:.5rem">' +
     '<h3>' + (L?'Pipe TCV by Bucket':'TCV do Pipe por Bucket') + '<span id="novo-revbkt-count" style="font-size:.68rem;color:var(--text2);font-weight:600;margin-left:.4rem;white-space:nowrap"></span></h3>' +
-    _infoBtn(t('tip_revbkt'), 'revbkt') +
+    _infoBtn(t('tip_revbkt'), 'revbkt', 'funil') +
     _subTabs('novo-revbkt-tabs', _novoRevBktMode, [{mode:'bruto',label:(L?'Gross':'Bruto'),fn:'novoSwitchRevBkt'},{mode:'ponderado',label:(L?'Weighted':'Ponderado'),fn:'novoSwitchRevBkt'}]) +
     '</div>' +
     '<div style="display:flex;flex-wrap:wrap;gap:1rem;align-items:flex-start">' +
@@ -3005,7 +3014,7 @@ function buildNovoSegment() {
   var defs = [['Pequeno (<50)',function(v){return v<50;}],['Médio (50–200)',function(v){return v>=50&&v<200;}],['Grande (200–1000)',function(v){return v>=200&&v<1000;}],['Enterprise (1000+)',function(v){return v>=1000;}]];
   var sums = defs.map(function(){return 0;}), by = defs.map(function(){return [];});
   open.forEach(function(d){ var vidas=d.vidas||0, rev=_annualRev(d);
-    if(isW){ var p=d.probabilidade!=null?d.probabilidade:(_novoStageProbFor(d.stage, d.pipeline)||0); rev=rev*p; }
+    if(isW){ rev=rev*_novoProbWeight(d); }
     for(var i=0;i<defs.length;i++){ if(defs[i][1](vidas)){ sums[i]+=rev; by[i].push(d); break; } } });
   // Buckets de segmento (predicado por deal) para o filtro do modal.
   var segBuckets = defs.map(function(x){ var fn=x[1]; return [x[0], function(d){ return fn(d.vidas||0); }]; });
@@ -3756,7 +3765,7 @@ function _novoForecastBMethodologyHtml() {
       '<b>Diagnóstico</b> ('+nDiag+'): vidas × R$/vida por porte × <b>6%</b>, a partir de <code>createdate</code> + meses por porte '+
       '<span style="color:var(--text2)">(≤200 → R$36/+9m · ≤5.000 → R$24/+14m · acima → R$12/+18m)</span>.<br>'+
       '<b>Cotação | Consultoria | Negociação | etc</b> ('+nVend+'): régua da 1ª fatura (corretagem com/sem agenciamento; fee por vida), início por modelo '+
-      '<span style="color:var(--text2)">(corretagem → vigência+2 · fee → data prevista+2 · senão data prevista)</span>, × probabilidade da etapa (funil por pipeline C07 + ajuste ±10% do AE).')+
+      '<span style="color:var(--text2)">(corretagem → vigência+2 · fee → data prevista+2 · senão data prevista)</span>, × probabilidade da etapa (a MENOR entre a régua padrão da etapa e a probabilidade que o AE digitou no deal; sem prob. do AE, vale a da etapa).')+
     box('var(--purple,#a371f7)','Bloco BID · '+nBid+' deals',
       'Apenas Bid em <b>Negociação / Proposta Enviada</b>, com data de receita <b>imputada</b> (Negociação → out/2026, Proposta → jun/2027) e <b>probabilidade fixa de 0,5%</b> (premissa conservadora). Bid em outras etapas <b>não entra</b> na receita.')+
     box('var(--yellow)','Novos negócios | topo de funil',
@@ -3942,19 +3951,15 @@ var NOVO_FC_STAGE_PROB_DEFAULT = window.SEMANTIC_REF.reguas.forecast_flat.valore
 function _novoFcStageProbForwd(stage, pipeline){
   return NOVO_FC_STAGE_PROB_DEFAULT[stage];
 }
-// probAdj por deal, IDÊNTICO ao calcProbInfo do /forecast: Diagnóstico fixo 6%; demais =
-// prob da etapa (funil/default do /forecast) MENOR entre etapa × AE (2026-08-02, decisão
-// validada com a CFO na reunião de forecast de 31/07 — substitui o antigo ajuste ±10% se
-// |cp-sp|>=30pp); sp nulo → null (deal não entra, igual ao /forecast). Ganho/Impl. NÃO são
-// forçados a 100% (pegam o default 1.0/0.8); o faturamento manual já cobre os ganhos que
-// estão faturando. Espelha ProbEngine._autoProbInfo (public/prob-engine.js).
+// probAdj por deal: chama o motor único (ProbEngine.calcProbInfo) direto, em vez de
+// espelhar a regra à mão (2026-08-05 | fim da cópia, docs/forecast-revenue-rules.md §2).
+// funnelProbPipe:null força a régua FLAT (não o funil C07) — mesmo comportamento de
+// /forecast e /forecast-stage (_fcProbCtx) — Diagnóstico fixo 6%, demais = MENOR entre
+// etapa × AE (regra do mínimo, 2026-08-02). Ganho de brinde: agora também respeita um
+// override manual por deal ("P. Ajust.", /api/prob-manual) se existir — a cópia antiga
+// não checava isso.
 function _novoFcProbAdj(d){
-  if (d.stage==='Diagnóstico') return 0.06;
-  var sp = _novoFcStageProbForwd(d.stage, d.pipeline);
-  if (sp == null) return null;
-  var cp = d.probabilidade;
-  if (cp == null) return sp;
-  return cp < sp ? cp : sp;
+  return ProbEngine.calcProbInfo(d, { funnelProbPipe: null, defaults: NOVO_FC_STAGE_PROB_DEFAULT, cfg: { manual: false, values: { vendas: {}, bid: {} } } }).final;
 }
 // Conversão MQL (Reunião Agendada) que probabiliza os cohorts BDR — igual ao _fcMqlConv.
 function _novoFcMqlConv(){ var p=_novoFcStageProbForwd('Reunião Agendada','Vendas'); return p==null?0:p; }
@@ -4253,7 +4258,7 @@ function buildNovoFinancial() {
   var wonMtd=hasPeriodFilter ? won : won.filter(function(d){return d.close_date&&d.close_date.substring(0,7)===yyyymm;});
   var wonYtd=hasPeriodFilter ? won : won.filter(function(d){return d.close_date&&d.close_date.substring(0,4)===yyyy;});
   var rawPipe=open.reduce(function(s,d){return s+_annualRev(d);},0);
-  var wPipe=open.reduce(function(s,d){var p=d.probabilidade!=null?d.probabilidade:(_novoStageProbFor(d.stage, d.pipeline)||0);return s+_annualRev(d)*p;},0);
+  var wPipe=open.reduce(function(s,d){return s+_annualRev(d)*_novoProbWeight(d);},0);
   var mtdRev=wonMtd.reduce(function(s,d){return s+_annualRev(d)/12;},0);
   var ytdArr=wonYtd.reduce(function(s,d){return s+_annualRev(d);},0);
   var monthlyPot=open.reduce(function(s,d){return s+_annualRev(d)/12;},0);
@@ -4402,8 +4407,7 @@ function _buildPipelineAtivoRow() {
   // Board View, garantindo que os dois painéis mostrem exatamente o mesmo número.
   var activeWeighted = sharedWeightedPipelineARR(activeDeals);
   var activeWeightedVidas = activeDeals.reduce(function(s, d) {
-    var prob = d.probabilidade != null ? d.probabilidade : (_novoStageProbFor(d.stage, d.pipeline) || 0);
-    return s + (d.vidas || 0) * prob;
+    return s + (d.vidas || 0) * _novoProbWeight(d);
   }, 0);
 
   var pipeReunioesDeals = deals.filter(function(d) { return d.stage === 'Reunião Agendada'; });
@@ -4515,8 +4519,7 @@ function _buildKpiRow() {
   var wonAnnual = wonYtdDeals.reduce(function(s, d) { return s + _annualRev(d); }, 0);
 
   var weightedPipe = openDeals.reduce(function(s, d) {
-    var prob = d.probabilidade != null ? d.probabilidade : (_novoStageProbFor(d.stage, d.pipeline) || 0);
-    return s + _annualRev(d) * prob;
+    return s + _annualRev(d) * _novoProbWeight(d);
   }, 0);
 
   var lostDeals = _novoLost();   // perdidos por close_date (janela)
@@ -4898,7 +4901,7 @@ function novoRender() {
       _novoRevBucketsCard() +
       _card(_titleWithCount(t('t_stageval'), _novoActiveChartDeals().filter(function(d){ return _novoDealTcv(d) > 0; }).length), t('tip_stageval'),
         _subTabs('novo-val-tabs', _novoValMode, [{mode:'raw',label:t('lbl_raw'),fn:'novoSwitchValMode'},{mode:'weighted',label:t('lbl_weighted'),fn:'novoSwitchValMode'}]),
-        'chart-novo-stageval', 340, 'stageval') +
+        'chart-novo-stageval', 340, 'stageval', 'funil') +
       _novoFunnelHorizCard() +
       _novoWinProbCard() +
 
@@ -4932,12 +4935,12 @@ function novoRender() {
       _sectionHdr('Receita e Cobertura') +
 
       // N13 | Coverage Ratio (wide custom)
-      '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header"><h3>' + t('t_coverage') + '<span id="novo-cov-count" style="font-size:.68rem;color:var(--text2);font-weight:600;margin-left:.4rem;white-space:nowrap"></span></h3>' + _infoBtn(t('tip_coverage'),'coverage') + '</div><div id="novo-coverage-body" style="padding:.25rem 0"></div></div>' +
+      '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header"><h3>' + t('t_coverage') + '<span id="novo-cov-count" style="font-size:.68rem;color:var(--text2);font-weight:600;margin-left:.4rem;white-space:nowrap"></span></h3>' + _infoBtn(t('tip_coverage'),'coverage','fixa') + '</div><div id="novo-coverage-body" style="padding:.25rem 0"></div></div>' +
 
       // N06 (Valor do Pipeline | Projeção Mensal) removido a pedido — redundante com o Forecast Total (N06B).
 
       // N06B | Forecast Total (Real + Probabilizada), mesmo motor do Forecast Overall
-      '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header" style="flex-wrap:wrap;gap:.5rem"><h3>' + t('t_piperev12b') + ' <span id="novo-piperev12b-count" style="font-size:.68rem;color:var(--text2);font-weight:600;margin-left:.35rem;white-space:nowrap"></span></h3>' + _infoBtn(t('tip_piperev12b'),'piperev12b') +
+      '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header" style="flex-wrap:wrap;gap:.5rem"><h3>' + t('t_piperev12b') + ' <span id="novo-piperev12b-count" style="font-size:.68rem;color:var(--text2);font-weight:600;margin-left:.35rem;white-space:nowrap"></span></h3>' + _infoBtn(t('tip_piperev12b'),'piperev12b','fixa') +
       '</div><canvas id="chart-novo-piperev12b" style="max-height:300px"></canvas></div>' +
 
       // N15/N16 removidos a pedido; N16 foi unido ao N14 via toggle Receita | Deals.
@@ -5244,7 +5247,7 @@ function _novoWinProbPipe(pipe) {
 // Card do C07 com corpo próprio (para exibir spinner enquanto o funil carrega).
 function _novoWinProbCard() {
   var tip = 'Chance de fechamento (ganho) de um deal em cada etapa, por pipeline (Vendas e Bid). = ganhos absolutos ÷ deals que entraram na etapa, no funil histórico de cada pipeline. Etapas: Reunião Agendada, Diagnóstico, Cotação, Proposta Enviada, Consultoria e Negociação (Implantação fica de fora | é o alvo). Diferente do C06 (avanço entre etapas): aqui o numerador é sempre o Ganho absoluto. Sem ajuste do AE (é a prob-base por etapa que alimenta os forecasts). Eixo Y até 40%. n (no tooltip) = tamanho da amostra; n pequeno = número instável.';
-  return '<div class="novo-card"><div class="novo-card-header"><h3>Probabilidade de Ganho por Etapa</h3>' + _infoBtn(tip, 'winprob') + '</div>' +
+  return '<div class="novo-card"><div class="novo-card-header"><h3>Probabilidade de Ganho por Etapa</h3>' + _infoBtn(tip, 'winprob', 'funil') + '</div>' +
     '<div id="novo-winprob-body" style="min-height:300px;position:relative"><canvas id="chart-novo-winprob" style="max-height:320px"></canvas></div></div>';
 }
 function _novoWinProbSpinner() {

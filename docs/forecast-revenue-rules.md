@@ -111,13 +111,20 @@ A coluna "Fatura Atual" (plano vigente do cliente) continua **não** entrando no
 `dealMonthly`), AE Performance (`ae.html`), Board (TCV via `calcTCV`). `api/forecast-table.js`
 não projeta receita (só entrega campos crus + fallback de ARR).
 
-> **Nota (2026-08-02):** a probabilidade que N05/N06B (`dashboard.html`, `_novoFcProbAdj`) e
-> A07 (`ae.html`, `_novoFcProbAdj`) injetam em `dealMonthly` sempre foi um MIRROR local do
-> cálculo de `prob-engine.js`, não uma chamada direta — motivo pelo qual a regra do mínimo
-> (seção 2 acima) precisou ser replicada manualmente nesses dois arquivos além do
-> `prob-engine.js`, para as três séries continuarem batendo mês a mês. Demais consumidores
-> de probabilidade (C04 do CRO/Board, Forecast, Overall, Delta) chamam `ProbEngine.calcProbInfo`
-> diretamente e herdaram a mudança sem edição própria.
+> **Nota (2026-08-02 → corrigido 2026-08-05):** até 2026-08-05, a probabilidade que N05/N06B
+> (`dashboard.html`, `_novoFcProbAdj`) e A07 (`ae.html`, `_novoFcProbAdj`) injetavam em
+> `dealMonthly` era um MIRROR local do cálculo de `prob-engine.js` (reimplementado à mão, não
+> uma chamada direta) — motivo pelo qual a regra do mínimo (seção 2 acima) teve que ser
+> replicada manualmente nesses dois arquivos além do `prob-engine.js` quando ela mudou em
+> 02/08. **Fix (2026-08-05, Fase 1 da unificação de motor — ver seção 6):** os dois
+> `_novoFcProbAdj` agora chamam `ProbEngine.calcProbInfo(d, { funnelProbPipe: null, defaults:
+> NOVO_FC_STAGE_PROB_DEFAULT, cfg: { manual: false, values: { vendas: {}, bid: {} } } }).final`
+> direto — zero cópia. `funnelProbPipe: null` é o que força a régua flat (em vez do funil C07),
+> o mesmo padrão de `_fcProbCtx` em `forecast-stage.html` e de `OverallCore.config(...,
+> funnelProb: null)` em `lib/forecast-compute.js`. Ganho colateral: agora também respeita um
+> override manual por deal ("P. Ajust.", `/api/prob-manual`) — a cópia antiga não checava isso.
+> Demais consumidores de probabilidade (C04 do CRO/Board, Forecast, Overall, Delta) já chamavam
+> `ProbEngine.calcProbInfo` diretamente desde antes e herdaram a mudança sem edição própria.
 
 ## 4. Divergências conhecidas (a corrigir — motores paralelos)
 
@@ -139,3 +146,49 @@ Os KPIs **"Pipeline Ponderado" / "MRR" / "Receita"** do CRO Dashboard e do Board
 `arr_estimado × prob` (peso anualizado do ARR) — **não** passam por `dealMonthly` e **não**
 são o forecast de caixa por etapa (não aplicam delay de Diagnóstico, ×R$24 de Reunião,
 início-por-modelo nem cap 24m). É métrica diferente, por design.
+
+## 6. Duas famílias de probabilidade — por que dois números "ponderado" podem divergir e estar os dois certos
+
+Auditoria de 2026-08-05 (revisão de confiabilidade das "Regras de probabilização" do CRO,
+ícone "?" do topo) mapeou que `ProbEngine.calcProbInfo`/`stageProbFor` (`public/prob-engine.js`)
+é o motor único de probabilidade, mas ele aceita um parâmetro (`ctx.funnelProbPipe`) que muda
+DE PROPÓSITO qual baseline de etapa é usado. Isso cria **duas famílias intencionais**, não um
+bug — mas o dashboard não explicava isso em lugar nenhum (plano de correção da UI em
+andamento, ver STATUS_LOG.md):
+
+- **Família "caixa"** (`funnelProbPipe: null` → força a régua flat `forecast_flat`, decisão do
+  dono de 2026-07-16): `/forecast`, `/forecast-stage` (Overall + etapas), `/forecast-delta` +
+  `lib/forecast-compute.js`, N05/N06B (CRO), A07 (AE). Existe porque o forecast de caixa
+  precisa ser **estável** — não pode oscilar toda semana só porque a taxa de conversão
+  observada do funil mudou (amostra pequena, mês ruim, importação em massa). Responde à
+  pergunta-norte do projeto ("vou bater a meta?").
+- **Família "pipeline ponderado"** (`funnelProbPipe` real, com fallback pra régua flat quando
+  a amostra da etapa é <20): C04, C07, C08 (CRO) e os equivalentes do Board (B07/B09/B15/B16),
+  via `_calcProbInfo`. Existe porque essas métricas são diagnóstico de conversão real do
+  funil, não compromisso de caixa — aqui a oscilação é o ponto.
+- **As duas famílias já aplicam a regra do mínimo** (seção 2) sobre a baseline escolhida — a
+  diferença entre elas é SÓ a origem da probabilidade de etapa (flat vs. funil), nunca o ajuste
+  pela prob. do AE.
+- **Outlier conhecido, ainda não migrado (2026-08-05):** P03 ("Receita Ponderada | Pipeline
+  Ativo", CRO), B04 (Board, `=P03`) e o KPI "Vidas Ponderadas" (CRO) não usam nenhuma das duas
+  famílias — usam a probabilidade crua que o AE digitou (`d.probabilidade`) sem comparação
+  nenhuma, caindo pra régua flat só quando o AE não digitou nada (`sharedWeightedPipelineARR`
+  em `public/shared-charts.js`; `_novoProbWeight` em `dashboard.html` para os demais: Vidas
+  Ponderadas, Receita por Segmento no modo ponderado, N21 e o KPI 🟡 "Pipeline Ponderado/ano").
+  Decisão pendente do dono: migrar os três para a família "pipeline ponderado" (ficam
+  consistentes com C04/C07/C08 do mesmo painel) — precisa de dual-run antes de ir para
+  produção, porque muda o número exibido. Enquanto não migrar, **P03/B04/Vidas Ponderadas não
+  devem ser comparados com N06B** nem usados como prova de que o motor está inconsistente — são
+  uma terceira coisa, à parte, com um bug de origem (nunca teve a regra do mínimo) que este
+  documento agora deixa registrado.
+- **Override manual por deal ("P. Ajust.", `/api/prob-manual`) é ABSOLUTO em TODAS as métricas
+  ponderadas, nas duas famílias E no outlier acima (2026-08-06, pedido explícito do dono).**
+  `ProbEngine.manualFor(deal)` (exposto em `public/prob-engine.js`) é a fonte única do parse do
+  override — qualquer consumidor de probabilidade, mesmo o outlier que ainda não usa
+  `calcProbInfo`, deve checá-lo primeiro e usar o valor sem mais nenhum ajuste por cima. Não
+  reimplementar esse parse em cada card; sempre chamar `ProbEngine.manualFor`.
+- **Não editar `ProbEngine.calcProbInfo`/`stageProbFor` para "resolver" a divergência entre as
+  duas famílias por igualar as baselines** — isso desfaria a decisão do dono de 16/07. A
+  unificação correta é: todo consumidor chama o motor único (nunca reimplementa a régua/ajuste
+  à mão), passando o `ctx` certo para a família que faz sentido pra aquela métrica — e sempre
+  respeitando o override manual absoluto acima.

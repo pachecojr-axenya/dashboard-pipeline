@@ -147,7 +147,11 @@
     stageProbFor: stageProbFor,
     calcProbInfo: calcProbInfo,
     setProbManual: function (m) { _probManual = m || null; },   // injeção (testes/Node)
-    probManual: function () { return _probManual; }
+    probManual: function () { return _probManual; },
+    // Override manual por deal, ISOLADO (sem passar pela régua/regra do mínimo). Exposto para
+    // consumidores que ainda não chamam calcProbInfo (ex.: sharedWeightedPipelineARR) — o
+    // override precisa vencer ali também, sem reimplementar o parse/validação aqui de novo.
+    manualFor: _manualFor
   };
 
   // Fase 4b: carrega a config global (KV) e re-renderiza se a fonte de prob mudou.

@@ -111,9 +111,13 @@ function buildSharedStageVal(canvasId, dataFn, modalTitle) {
 // ── P03 | Receita Ponderada do pipeline ativo ───────────────────────────────────
 // Mesma fórmula do CRO Dashboard: Σ ARR × probabilidade (custom do deal, ou prob.
 // padrão da etapa). Usado pelo card P03 nos dois painéis para garantir paridade.
+// Override manual por deal ("P. Ajust.", 2026-08-05) é ABSOLUTO: vence antes de olhar
+// prob. do deal ou da etapa — via ProbEngine.manualFor, para não reimplementar o parse
+// do override aqui (fonte única, mesmo padrão que calcProbInfo já aplica em todo o resto).
 function sharedWeightedPipelineARR(deals){
   return (deals||[]).reduce(function(s,d){
-    var p = d.probabilidade!=null ? d.probabilidade : (NOVO_STAGE_PROB[d.stage]||0);
+    var mp = (typeof ProbEngine!=='undefined' && ProbEngine.manualFor) ? ProbEngine.manualFor(d) : null;
+    var p = mp!=null ? mp : (d.probabilidade!=null ? d.probabilidade : (NOVO_STAGE_PROB[d.stage]||0));
     return s + _annualRev(d)*p;
   }, 0);
 }
