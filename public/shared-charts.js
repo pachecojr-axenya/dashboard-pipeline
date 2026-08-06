@@ -109,15 +109,16 @@ function buildSharedStageVal(canvasId, dataFn, modalTitle) {
 }
 
 // ── P03 | Receita Ponderada do pipeline ativo ───────────────────────────────────
-// Mesma fórmula do CRO Dashboard: Σ ARR × probabilidade (custom do deal, ou prob.
-// padrão da etapa). Usado pelo card P03 nos dois painéis para garantir paridade.
-// Override manual por deal ("P. Ajust.", 2026-08-05) é ABSOLUTO: vence antes de olhar
-// prob. do deal ou da etapa — via ProbEngine.manualFor, para não reimplementar o parse
-// do override aqui (fonte única, mesmo padrão que calcProbInfo já aplica em todo o resto).
+// Migrado em 2026-08-06 (Fase 4 da unificação, decisão do dono após dual-run) para a família
+// "pipeline ponderado" — mesma régua de C04/C07/C08/B07/B09/B15/B16 via _calcProbInfo (funil
+// real com piso na régua flat p/ amostra <20, Diagnóstico sempre 6%, regra do mínimo etapa×AE,
+// override manual absoluto). Usado pelo card P03 (CRO) e B04 (Board) para garantir paridade.
+// Guard defensivo (typeof _calcProbInfo) porque shared-charts.js também carrega em ae.html,
+// que não define _calcProbInfo nem chama esta função — nunca deveria cair no fallback, mas
+// evita ReferenceError se algum dia isso mudar.
 function sharedWeightedPipelineARR(deals){
   return (deals||[]).reduce(function(s,d){
-    var mp = (typeof ProbEngine!=='undefined' && ProbEngine.manualFor) ? ProbEngine.manualFor(d) : null;
-    var p = mp!=null ? mp : (d.probabilidade!=null ? d.probabilidade : (NOVO_STAGE_PROB[d.stage]||0));
+    var p = (typeof _calcProbInfo==='function') ? (_calcProbInfo(d).final||0) : (d.probabilidade!=null ? d.probabilidade : (NOVO_STAGE_PROB[d.stage]||0));
     return s + _annualRev(d)*p;
   }, 0);
 }

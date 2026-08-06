@@ -1,5 +1,243 @@
 # Dashboard Enhancement Loop — Status Log
 
+### Feat | Tooltip por célula na coluna ARR Pond. do Forecast (2026-08-06)
+
+> Pedido do dono: a coluna 🟡 ARR Pond. (`arr_pond`) só tinha tooltip GENÉRICO no
+> cabeçalho (mesmo texto pra toda linha). Faltava, célula a célula, mostrar os campos
+> reais daquele deal e a conta feita — "da mesma forma que acontece nas células dos
+> meses de receita".
+>
+> **Mecanismo reaproveitado (sem cópia):** as células de mês (Receita Real/Probabilizada)
+> já usam `data-calc="${JSON.stringify(obj)}"` na `<td>` + um listener único de
+> `mouseover` delegado na tabela (`setupColumnHover`, `public/forecast.html:4125` /
+> `public/forecast-stage.html:3815`) que lê `cell.dataset.calc`, monta HTML (`tt-row`/
+> `tt-lbl`/`tt-val`) e escreve em `#calc-tooltip`. `buildRealFormula`/`pushInfoF` (linhas
+> ~4705/4824) são de OUTRO fluxo — geram fórmula do Excel no export, não o hover da tela;
+> não foram tocados. Estendido o MESMO listener com um branch novo `data.isArrPond`,
+> igual em espírito ao branch existente da Receita Probabilizada (`sp`/`cp`/`modStr`).
+>
+> **O que mudou, nos dois arquivos (`public/forecast.html` e `public/forecast-stage.html`):**
+> 1. No loop de renderização da linha (`INFO.forEach`), novo branch `c.k === 'arr_pond'`:
+>    quando `v == null` (célula vazia), `data-tip` curto ("Sem ARR Pond. | sem ARR
+>    Estimado e sem 1ª Fatura" ou "... sem probabilidade final disponível"); quando tem
+>    valor, `data-calc` com `{ isArrPond, dealname, arrEstimado, primeiraFatura,
+>    usedFallback, arrBase, sp, cp, final, modStr, val }` — `sp`/`cp`/`final`/`modStr`
+>    vêm de `d.prob_info` (o MESMO `calcProbInfo`/`ProbEngine.calcProbInfo` que decide o
+>    valor da célula, motor único).
+> 2. Em `setupColumnHover`, branch `else if (data.isArrPond)` monta o tooltip: ARR
+>    Estimado, 1ª Fatura × 12, qual dos dois foi a Base usada, Prob. Etapa, Prob. AE,
+>    "Como decidiu" (o `modStr` do motor, ex. "Menor valor (P. Etapa ≤ Prob. AE)"),
+>    Prob. Final e a linha Fórmula com os valores reais plugados (ex., deal real Cosan |
+>    Raízen, `hs_id 33627376683`: "ARR Estimado (3.060.000) × Prob. Final (49,3%)" → ARR
+>    Pond. 1.508.580, com Prob. Etapa 49,3% e Prob. AE 70,0%, "Menor valor (P. Etapa ≤
+>    Prob. AE)" explicando por que o final ficou em 49,3% e não em 70%).
+> 3. Cabeçalho da coluna (`tip:` em `INFO`, linha ~4354/4050) **não foi tocado** —
+>    continua com a explicação geral da regra, como pedido.
+>
+> Cálculo do VALOR da célula não mudou em nenhum dos dois arquivos — só o que aparece no
+> hover.
+>
+> Validação: `node scripts/_check-inline-js.js public/forecast.html` e `... public/
+> forecast-stage.html` = 0 erros nos dois; `/forecast` e `/forecast-negociacao` (rota real
+> de `forecast-stage.html`, `/forecast-stage` não existe — mapeamento é por etapa:
+> `/forecast-mql`, `/forecast-negociacao`, `/forecast-overall` etc.) = 200 local; grep no
+> HTML servido confirma `isArrPond` presente 2× em cada arquivo (branch de render + branch
+> do tooltip). Simulação em Node com `prob-engine.js` real + deal real de
+> `/api/forecast-table` (Cosan | Raízen) reproduziu o `data-calc`/HTML do tooltip acima
+> byte a byte com a lógica colada nos arquivos; casos de borda testados com deals reais:
+> sem ARR/1ª fatura (mensagem "Sem ARR Pond. | sem ARR Estimado e sem 1ª Fatura") e etapa
+> Diagnóstico (prob. fixa 6%, `modStr` "Diagnóstico: fixa em 6% (sem ajuste do AE)"
+> aparecendo corretamente em "Como decidiu"). Nada commitado.
+
+### Investigação | N05 (Cobertura do Pipeline) — modal do clique NÃO reproduzido (2026-08-06)
+
+> Bug reportado pelo dono: "no N05 (Cobertura do Pipeline | Forecast vs Meta), clicar numa
+> barra/ponto do gráfico pra ver os deals não abre o modal." Investigado no contexto das
+> mudanças recentes desta sessão nas famílias de probabilidade (`_novoProbWeight`,
+> `_calcProbInfo`, Fase 4 da unificação — ver entrada abaixo), sob suspeita de regressão.
+>
+> **Conclusão: não foi possível reproduzir o bug no estado atual do working tree
+> (`public/dashboard.html`, não commitado).** Confirmado por evidência, não suposição:
+> - `_novoOpenCoverageDrill`/`buildNovoCoverage` (N05) usam `_novoForecastSeries()` →
+>   `_novoFcProbAdj(d)` — **não** passam por `_novoProbWeight`/`_calcProbInfo` (a família
+>   alterada nesta sessão). O `git diff HEAD -- public/dashboard.html` mostra a ÚNICA mudança
+>   no arquivo restrita ao corpo de `_novoProbWeight` (linha ~1725) — código do N05 intocado.
+> - `node scripts/_check-inline-js.js public/dashboard.html` → 0 erros.
+> - `node scripts/_smoke-render.js public/dashboard.html` → OK, sem exceção (294 deals reais).
+> - Simulação do `onClick` do chart `novo-coverage-chart` numa VM carregando os scripts de
+>   verdade (inline + `prob-engine.js`/`semantic-ref.js`/`shared-charts.js`/`nav.js` via
+>   `<script src>`, dados reais de `/api/forecast-table`): testado nos 24 meses da janela,
+>   nos dois modos (Cobertura ×/Receita R$) — 0 exceções, `openModal` chamado corretamente em
+>   todos, com título e tabela de deals reais (ex.: "Cobertura | Dez/27 (271 itens)").
+> - Smoke real em Chrome headless (Windows, via CDP) abrindo `http://localhost:3002/novo`:
+>   zero erros/warnings de console durante o carregamento da página inteira; disparo do
+>   `onClick` real do chart e, além disso, um **clique de mouse de verdade** no pixel exato
+>   de um ponto de dado (calculado via `chart.getDatasetMeta(1).data[0]`) — em ambos os casos
+>   o `#modal-overlay` abriu com `classList.contains('open') === true` e conteúdo real.
+>
+> Hipóteses descartadas com evidência: dependência de `_novoProbWeight` (não existe no
+> caminho do N05); erro de sintaxe/exceção em outro card interrompendo o carregamento de
+> scripts subsequentes (nenhum erro de console/exceção capturado no smoke de browser real);
+> canvas com tamanho zero por CSS/layout (o smoke real mediu `canvasW`/`canvasH` > 0 antes do
+> clique). Não foi tocado nenhum código — nada a corrigir foi identificado nesta sessão.
+>
+> **Hipótese não verificável localmente, registrada por transparência:** se o dono viu o bug
+> no domínio de produção (Vercel), o código lá pode ser de um commit anterior às correções já
+> presentes neste working tree (não commitado ainda) ou pode ser um problema de cache do
+> navegador numa aba já aberta antes do deploy mais recente — nenhuma das duas hipóteses foi
+> testada aqui (fora do escopo: não fazer deploy nesta investigação). Se o bug persistir após
+> um novo deploy + hard refresh, próximo passo é reproduzir com o mesmo protocolo de smoke
+> real de browser contra a URL de produção.
+>
+> Scripts de smoke ad hoc usados nesta investigação (VM com scripts reais + Chrome headless
+> real com clique de mouse simulado) ficaram no scratchpad da sessão, não no repo — não
+> fazem parte da suíte de testes do projeto.
+
+### 🚀 Fase 4 da unificação | P03/B04/Vidas Ponderadas migrados pra família "funil" (2026-08-06)
+
+> Decisão do dono após dual-run (medido e reportado em conversa): migrar de uma vez, sem
+> gradualismo. P03 (CRO), B04 (Board) e o grupo que compartilha `_novoProbWeight` em
+> `dashboard.html` (Vidas Ponderadas, Receita por Segmento no modo ponderado, N21, KPI 🟡
+> "Pipeline Ponderado/ano", e os drills de P03/Vidas Ponderadas) deixam de usar a probabilidade
+> crua do AE sem comparação — passam a chamar `_calcProbInfo`/`ProbEngine.calcProbInfo` com
+> funil real, entrando na mesma família "pipeline ponderado" de C04/C07/C08/B07/B09/B15/B16
+> (seção 6 do `docs/forecast-revenue-rules.md`, atualizada).
+>
+> **Fix, 2 funções, mesma linha de raciocínio ("sem cópias") das fases anteriores:**
+> - `public/dashboard.html`: `_novoProbWeight(d)` — de uma fórmula própria pra
+>   `return _calcProbInfo(d).final || 0;` (uma linha, delega tudo pro motor único).
+> - `public/shared-charts.js`: `sharedWeightedPipelineARR(deals)` — mesma ideia, com guard
+>   defensivo (`typeof _calcProbInfo==='function'`) porque o arquivo também carrega em
+>   `ae.html`, que não define essa função nem chama este builder.
+>
+> **Impacto medido no pipeline ativo do dia (267→266 deals ao longo da sessão, dado ao vivo):
+> P03 caiu de R$ 121,7M pra R$ 35,6M (-70,8%)**, decomposto em dois efeitos: Diagnóstico sempre
+> 6% (regra separada, nunca aplicada no P03 antes) = -R$ 35,7M; regra do mínimo etapa×AE nas
+> demais etapas = -R$ 50,4M. Os 2 deals que mais pesam: Grupo Pernambucanas (Consultoria, AE
+> digitou 85% contra 28,5% da etapa, -R$ 27,1M) e Vibra (Reunião Pré-RFP, AE digitou 30% contra
+> 6% fixo, -R$ 20,2M).
+>
+> **Achado sério durante a validação, corrigido antes de fechar:** ao conferir o número real
+> (carregando o código de verdade numa VM, não só reimplementando a fórmula à parte pra
+> comparar), o P03 real bateu R$ 30,5M em vez dos R$ 35,6M esperados. Causa: `semantic/
+> referencia.json` (`reguas_probabilidade.forecast_flat.valores`) **nunca teve entrada para
+> "Reunião Pré-RFP"** (etapa Bid `1349620551`, equivalente de "Reunião Agendada" — mesmo toggle
+> `_novoIsMeetingStage`) — `stageProbFor` caía sem chave, `calcProbInfo.final` virava `null`, e
+> qualquer card ponderado que incluísse deals do Bid nessa etapa contava ZERO pra eles em
+> silêncio (bug pré-existente na régua, só exposto agora porque P03 é o primeiro consumidor a
+> aplicar a régua flat como PISO pra essa etapa especificamente — N05/N06B/A07 nunca processam
+> Bid fora de Negociação/Proposta, e C04/C07/C08 têm menos concentração de valor nessa etapa
+> específica pra ter aparecido nos números que já auditamos).
+>
+> **Fix da régua:** adicionada `"Reunião Pré-RFP": 0.06` em `semantic/referencia.json`
+> (`forecast_flat.valores`), com nota própria (`nota_reuniao_pre_rfp`) explicando a escolha —
+> 0,06 por simetria com "Reunião Agendada" (mesma posição no funil, mesmo toggle), mas
+> **deixado de propósito fora do `calculada_funil.order`** (nunca usa o funil ao vivo pra essa
+> etapa, sempre a régua fixa — mesmo tratamento do Diagnóstico). **Este valor NÃO é uma régua
+> revisada/validada pelo dono como o resto da tabela** — é o preenchimento de um buraco que
+> nunca devia estar vazio; se o dono quiser outro número, troca no JSON e regenera.
+> `public/semantic-ref.js` regenerado (`node scripts/gen-semantic-front.js`) e
+> `docs/dashboard-2.0/catalogo.md` também (`node scripts/semantic-view.js`). Após o fix, o P03
+> real bateu exatamente R$ 35.595.611 — igual ao valor medido no dual-run à parte.
+>
+> Validação: `npm run check` (0 fail, inclui `check-semantic.js` = 0 avisos) + `_check-inline-js.js`
+> + `_smoke-render.js` nas 3 páginas (294 deals reais, sem exceção) + reconferência do valor
+> real de P03 numa VM carregando `semantic-ref.js`/`prob-engine.js`/`shared-charts.js` de
+> verdade (não uma reimplementação à parte) — bateu exato duas vezes, antes e depois do fix da
+> régua. Nada commitado ainda.
+
+### Fix | André Pontes removido do filtro de Executivo do Forecast (2026-08-06)
+
+> Pedido do dono: André não faz mais parte da equipe de executivos. `public/forecast.html` e
+> `public/forecast-stage.html` decidem quem aparece no dropdown "Executivo" por uma whitelist
+> hardcoded de primeiro nome normalizado (`FC_AE_FIRST`, idêntica nos dois arquivos) — os deals
+> continuam existindo com `d.ae = 'André Pontes'` (confirmado no payload real, ele ainda é
+> owner de deals no HubSpot), mas o dropdown só lista quem está na whitelist. Removido
+> `'andre'` de `FC_AE_FIRST` nos dois arquivos: `['agatta','andre','fausto','guilherme',
+> 'juliana','rafael']` → `['agatta','fausto','guilherme','juliana','rafael']`.
+>
+> **Nota à parte, não corrigida (fora do pedido):** `'fausto'` também está na whitelist e,
+> por outro histórico já registrado neste log (painel Meta vs Ach), também não é mais
+> executivo ativo — mas ele não aparece hoje nos owners únicos do payload real (`Ágatta
+> Marinho | Guilherme Gabiatti Bottignon | Rafael Leite Ferreira | Juliana Dalberto Dutra da
+> Silva | André Pontes | ...`, sem "Fausto"), então mantê-lo na whitelist é inofensivo agora
+> (dropdown é filtrado pelos owners REAIS do payload ∩ whitelist — sem deals dele, não aparece
+> de qualquer forma). Deixado como está; avisar o dono antes de tocar.
+>
+> Validação: `node scripts/_check-inline-js.js` = 0 erros nos dois arquivos; `/forecast` e
+> `/forecast-overall` = 200 local; confirmado que "André Pontes" segue presente nos owners
+> únicos do payload (prova de que a whitelist é o que efetivamente controla o dropdown, não a
+> ausência de dados).
+
+### Fix | Hover do histórico de Prob AE sumia no modo comparativo do Forecast (2026-08-06)
+
+> Continuação imediata da entrada abaixo (mesmo dia, mesmo recurso). Pedido do dono: o
+> hover/popup de histórico completo de Prob. AE precisa aparecer **sempre** no modal do
+> `/forecast`, inclusive quando o usuário está na aba de comparação de quarters — não só fora
+> dela, como ficou registrado (por engano, como "intencional") na entrada anterior.
+>
+> **Causa:** em `public/forecast.html`, dentro de `renderDealModal`, a célula "Prob. AE" era
+> montada como `cmpInline(d, 'probabilidade', 'pct', _fcProbAeCell(d, pct(d.probabilidade)))` —
+> ou seja, `_fcProbAeCell` (que embrulha o valor no `<span class="novo-probae-hint">` com o
+> hover) rodava PRIMEIRO, e o resultado inteiro (hover incluído) era passado pro `cmpInline`.
+> Quando `cmpInline` detectava mudança de valor entre as duas fotos comparadas, ele **descartava**
+> esse HTML e devolvia só "antigo → antigo" (`cmp-ov`/`cmp-arw`/`cmp-nv`), sem hover, sem data,
+> sem histórico — o popup completo (todas as entradas do HubSpot, cada uma com data + %,
+> já correto em `_fcProbHistRender`) desaparecia exatamente nesse caso.
+>
+> **Fix (uma linha, só `public/forecast.html`, linha 2773):** inverter a ordem do embrulho —
+> `_fcProbAeCell` passa a ser a função MAIS EXTERNA, envolvendo o resultado FINAL do `cmpInline`:
+> ```
+> cell('Prob. AE', _fcProbAeCell(d, cmpInline(d, 'probabilidade', 'pct', pct(d.probabilidade))));
+> ```
+> Assim, seja qual for o HTML que `cmpInline` devolver (valor normal OU a seta "antigo → novo"),
+> o hover (e o popup com o histórico completo) fica disponível por cima dos dois casos. Nenhuma
+> outra função tocada — `_fcProbAeCell`, `_fcProbHistRender`, `_fcProbHistShow/Move/Hide` e
+> `cmpInline` continuam exatamente como estavam; o problema era só a ordem de composição nessa
+> única chamada.
+>
+> **`public/forecast-stage.html` não precisou de mudança**: `grep -n "cmpInline"
+> public/forecast-stage.html` retorna zero resultados — essa página não tem modo de comparação
+> de quarters, então a célula (`cell('Prob. AE', _fcProbAeCell(d, pct(d.probabilidade)))`) já
+> tinha o hover sempre disponível, sem o problema.
+>
+> Validação: `node scripts/_check-inline-js.js public/forecast.html` = 0 erros; `/forecast` local
+> = 200; grep no HTML servido confirma `_fcProbAeCell` presente 2x (definição + a 1 chamada, já
+> na nova ordem). Nada commitado ainda — mudança só no working tree, pra revisão do dono.
+
+### Feat | Histórico de Prob AE (mouse-over) no modal de negócios do Forecast (2026-08-06)
+
+> Item de backlog pendente desde a decisão nº 6 da reunião de forecast de 31-jul-2026
+> ("Histórico de probabilidade do AE como material de estudo — mouse-over no dash, não para
+> cálculo"): implementado em 2026-08-02 só no **CRO Dashboard** (`_novoDealsRows`, coluna "Prob
+> AE"); `/forecast` e `/forecast-stage` ficaram de fora naquela leva. Pedido do dono para
+> completar agora.
+>
+> **Onde:** o modal de detalhe do negócio (`openDealModal`/`renderDealModal`), célula "Prob.
+> AE" — não a tabela principal (que já tem seu próprio `k:'probabilidade'` sem hover; fora de
+> escopo deste pedido, que foi especificamente sobre o modal).
+>
+> **Zero mudança de backend** — reaproveita o MESMO endpoint isolado já existente,
+> `GET /api/deal-prob-history?id=<dealId>` (histórico de `probabilidade_de_fechamento_` via
+> `propertiesWithHistory`, puramente informativo, nunca lido por cálculo de receita/
+> probabilidade). Testado com deal real (Cosan-Raízen, `33627376683`): retorna 4 entradas de
+> histórico, incluindo uma mudança para `null` (deal sem prob. do AE num período) e uma origem
+> `IMPORT`.
+>
+> **Front:** portado o mesmo mecanismo do CRO (CSS `.novo-probae-hint`/`#novo-probhist-pop` +
+> JS `_fcProbHist*`, cache por deal, popup flutuante que segue o mouse, fetch lazy só no
+> primeiro hover) para `public/forecast.html` e `public/forecast-stage.html`, com nomes de
+> função próprios (`_fc*`, não `_novo*`, para não colidir com nada existente). Novo helper
+> `_fcProbAeCell(d, valHtml)` decide o hover quando `d.hs_id` existe. Em `forecast.html`, a
+> célula passa pelo `cmpInline` (comparação de quarters) ANTES — se a Prob. AE mudou entre as
+> duas fotos comparadas, o hover cede lugar à seta "antigo → novo" (comportamento existente,
+> intencional; hover só aparece fora do modo comparação ou quando o valor não mudou).
+>
+> Validação: `node scripts/_check-inline-js.js` = 0 erros nos dois arquivos; `/forecast` e
+> `/forecast-overall` = 200 local; endpoint testado com deal real; grep confirma
+> `_fcProbAeCell`/`_fcProbHistShow`/`novo-probae-hint` presentes no HTML servido das duas
+> páginas. Nada commitado ainda.
+
 ### 🔎 SEO | visão agregada, janela livre de datas e a visão de NOVOS (2026-08-06)
 
 > Iteração pedida pelo dono sobre `/growth/seo`: a tabela de movimentação mostrava
@@ -58,6 +296,7 @@
 > Novos sem coluna "antes" e ordenada por impressão, janela livre com o aviso de
 > múltiplo de 7, e ausência de rótulo de página duplicado. Foi esse último passo que
 > pegou a colisão de query string, na base QoQ.
+
 ### 🚀 DEPLOY DE PRODUÇÃO | Motor único de probabilidade, Fases 1-2 (2026-08-06)
 
 > Autorização explícita do dono ("Acho que podemos commitar e deployar primeiro"), como

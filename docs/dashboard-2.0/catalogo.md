@@ -48,6 +48,7 @@ Portal HubSpot: `44715285`
 | Etapa | Probabilidade |
 |---|---|
 | Reunião Agendada | 6,0% |
+| Reunião Pré-RFP | 6,0% |
 | Diagnóstico | 6,0% |
 | Cotação | 18,6% |
 | Proposta Enviada | 28,5% |

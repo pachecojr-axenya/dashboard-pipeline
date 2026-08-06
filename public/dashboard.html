@@ -1715,14 +1715,15 @@ var _nr = function(v) { return v != null ? Number(v).toLocaleString('pt-BR',{min
 function _calcProbInfo(d) {
   return ProbEngine.calcProbInfo(d, { cfg: _novoStageProbCfg, funnelProbPipe: NOVO_FUNNEL_PROB_PIPE }); // fonte única (prob-engine.js)
 }
-// Prob. de peso para métricas "ponderado" que ainda NÃO passam por _calcProbInfo (P03/Vidas
-// Ponderadas/Segmento/N21/Pipeline Ponderado-ano — usam prob. crua do deal ou da etapa, sem
-// a regra do mínimo). Override manual por deal ("P. Ajust.") é ABSOLUTO (2026-08-05, pedido
-// do dono): vence antes de olhar qualquer outra coisa. Fonte única — não reimplementar este
-// check em cada card (era o que causava a divergência entre eles).
+// Prob. de peso para métricas "ponderado" (P03/Vidas Ponderadas/Segmento/N21/Pipeline
+// Ponderado-ano). Migrado em 2026-08-06 (Fase 4 da unificação, decisão do dono após dual-run)
+// para a família "pipeline ponderado" — MESMA régua de C04/C07/C08 (_calcProbInfo: funil real
+// com piso na régua flat p/ amostra <20, Diagnóstico sempre 6%, regra do mínimo etapa×AE,
+// override manual absoluto). Antes usava probabilidade crua do deal sem nenhuma comparação —
+// dual-run mediu -70,8% no P03 (R$121,7M → R$35,6M) no pipeline ativo do dia da migração;
+// ver STATUS_LOG.md para o detalhamento por efeito (Diagnóstico fixo vs. regra do mínimo).
 function _novoProbWeight(d) {
-  var mp = (typeof ProbEngine !== 'undefined' && ProbEngine.manualFor) ? ProbEngine.manualFor(d) : null;
-  return mp != null ? mp : (d.probabilidade != null ? d.probabilidade : (_novoStageProbFor(d.stage, d.pipeline) || 0));
+  return _calcProbInfo(d).final || 0;
 }
 
 // ── Histórico de Prob AE (mouse-over) ───────────────────────────────────────

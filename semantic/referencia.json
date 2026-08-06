@@ -228,6 +228,7 @@
       "tipo": "forcada",
       "valores": {
         "Reunião Agendada": 0.06,
+        "Reunião Pré-RFP": 0.06,
         "Diagnóstico": 0.06,
         "Cotação": 0.185790008,
         "Proposta Enviada": 0.285,
@@ -239,6 +240,7 @@
         "Stand by": 0.12
       },
       "nota_stand_by": "'Stand by' (com espaço) é alias da etapa extinta de Vendas — mantido para replay de fotos históricas que ainda carregam deals nela.",
+      "nota_reuniao_pre_rfp": "Adicionada em 2026-08-06 (gap encontrado na Fase 4 da unificação do motor de probabilidade — dual-run zerava deals do Bid nesta etapa). NÃO havia entrada nenhuma pra 'Reunião Pré-RFP' (etapa Bid `1349620551`, equivalente de 'Reunião Agendada' do Vendas — mesmo toggle `_novoIsMeetingStage`/'Ativos incluem Reunião'): stageProbFor caía no DEFAULT sem essa chave, calcProbInfo.final virava null, e qualquer card ponderado (weighted) que incluísse deals nessa etapa contava ZERO pra eles em silêncio. Valor 0,06 escolhido por simetria com 'Reunião Agendada' (mesma posição no funil, mesmo toggle de inclusão) — NÃO é uma régua nova validada em revisão como o resto desta tabela; se o dono quiser um valor diferente, é só trocar aqui e regenerar (`node scripts/gen-semantic-front.js`). Fora do `order` de `calculada_funil` de propósito (fica sempre na régua fixa, nunca no funil ao vivo — mesmo tratamento do Diagnóstico).",
       "usada_em": [
         "public/forecast.html (STAGE_PROB_DEFAULT ← SEMANTIC_REF)",
         "public/forecast-stage.html (STAGE_PROB_DEFAULT ← SEMANTIC_REF)",

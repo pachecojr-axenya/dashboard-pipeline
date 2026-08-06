@@ -1323,6 +1323,19 @@
     @media (max-width: 560px) {
       .deal-modal-list { grid-template-columns: 1fr; }
     }
+    /* Histórico de Prob AE no mouse-over (decisão nº 6, reunião de forecast 31-jul-2026) —
+       mesmo padrão visual do CRO Dashboard (public/dashboard.html), portado aqui. */
+    .novo-probae-hint { border-bottom: 1px dotted var(--text2); cursor: help; }
+    #novo-probhist-pop {
+      position: fixed; z-index: 4000; max-width: 230px; background: var(--card);
+      border: 1px solid var(--border); border-radius: 8px; padding: .55rem .7rem;
+      font-size: .72rem; color: var(--text); box-shadow: 0 6px 24px rgba(0,0,0,.35);
+      display: none; pointer-events: none;
+    }
+    #novo-probhist-pop .ph-title { font-weight: 700; margin-bottom: .3rem; color: var(--text2); font-size: .64rem; text-transform: uppercase; letter-spacing: .04em; }
+    #novo-probhist-pop .ph-row { display: flex; justify-content: space-between; gap: .6rem; padding: .1rem 0; }
+    #novo-probhist-pop .ph-date { color: var(--text2); }
+    #novo-probhist-pop .ph-val { font-weight: 600; }
     /* navegação prev/next no modal */
     .deal-modal-nav { display: flex; align-items: center; gap: .35rem; flex-shrink: 0; }
     .dm-nav-count { font-size: .72rem; color: var(--text2); min-width: 52px; text-align: center; user-select: none; }
@@ -2261,7 +2274,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
     // AEs reconhecidos — exclui BDRs/SDRs do filtro de Executivo
     // Matching por primeiro nome normalizado (sem acento, lowercase) para tolerância a variações do HubSpot
     const _fcAeNorm = s => s.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
-    const FC_AE_FIRST = new Set(['agatta','andre','fausto','guilherme','juliana','rafael']);
+    const FC_AE_FIRST = new Set(['agatta','fausto','guilherme','juliana','rafael']);
 
     // ── STATE ─────────────────────────────────────────────────────────────────
     let allDeals = [];
@@ -2606,6 +2619,64 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
         .catch(() => { const elNow = document.getElementById('dm-owner-hist'); if (elNow) elNow.innerHTML = '<span style="color:var(--text2)">indisponível</span>'; });
     }
 
+    // ── Histórico de Prob AE (mouse-over) ───────────────────────────────────────
+    // Decisão nº 6 (reunião de forecast, 31-jul-2026): "Histórico de probabilidade
+    // do AE como material de estudo (mouse-over no dash): não para cálculo — para
+    // contar a história da conta." Puramente visual/storytelling: busca lazy no
+    // MESMO endpoint isolado do CRO Dashboard (/api/deal-prob-history), nunca lido
+    // por cálculo de receita/probabilidade deste painel.
+    const _fcProbHistCache = {};
+    let _fcProbHistEl = null;
+    function _fcProbHistEnsureEl() {
+      if (_fcProbHistEl) return _fcProbHistEl;
+      const el = document.createElement('div');
+      el.id = 'novo-probhist-pop';
+      document.body.appendChild(el);
+      _fcProbHistEl = el;
+      return el;
+    }
+    function _fcProbHistRender(list) {
+      if (!list || !list.length) return '<div class="ph-title">Histórico | Prob AE</div><div style="color:var(--text2)">Sem histórico de alteração</div>';
+      const rows = list.map(h => {
+        const v = h.value != null ? (h.value * 100).toFixed(1) + '%' : '—';
+        return `<div class="ph-row"><span class="ph-date">${esc(fmtDate(h.date))}</span><span class="ph-val">${v}</span></div>`;
+      }).join('');
+      return '<div class="ph-title">Histórico | Prob AE</div>' + rows;
+    }
+    function _fcProbHistPosition(el, evt) {
+      const x = evt.clientX, y = evt.clientY;
+      el.style.left = Math.max(4, Math.min(x + 12, window.innerWidth - 250)) + 'px';
+      el.style.top = Math.max(4, Math.min(y + 12, window.innerHeight - 140)) + 'px';
+    }
+    function _fcProbHistShow(evt, dealId) {
+      if (!dealId) return;
+      const el = _fcProbHistEnsureEl();
+      _fcProbHistPosition(el, evt);
+      el.style.display = 'block';
+      if (_fcProbHistCache[dealId]) { el.innerHTML = _fcProbHistRender(_fcProbHistCache[dealId]); return; }
+      el.innerHTML = '<div class="ph-title">Histórico | Prob AE</div><div style="color:var(--text2)">Carregando…</div>';
+      fetch('/api/deal-prob-history?id=' + encodeURIComponent(dealId), { credentials: 'same-origin' })
+        .then(r => r.json())
+        .then(j => {
+          const list = (j && j.success) ? j.history : [];
+          _fcProbHistCache[dealId] = list;
+          if (el.style.display !== 'none') el.innerHTML = _fcProbHistRender(list);
+        })
+        .catch(() => { if (el.style.display !== 'none') el.innerHTML = '<div class="ph-title">Histórico | Prob AE</div><div style="color:var(--red)">Falha ao carregar histórico</div>'; });
+    }
+    function _fcProbHistMove(evt) {
+      if (_fcProbHistEl && _fcProbHistEl.style.display !== 'none') _fcProbHistPosition(_fcProbHistEl, evt);
+    }
+    function _fcProbHistHide() {
+      if (_fcProbHistEl) _fcProbHistEl.style.display = 'none';
+    }
+    // Célula "Prob. AE" do modal de detalhe: hoverável (mostra histórico) quando o
+    // deal tem hs_id; senão, mesmo valor plano de sempre.
+    function _fcProbAeCell(d, valHtml) {
+      if (!d.hs_id) return valHtml;
+      return `<span class="novo-probae-hint" onmouseenter="_fcProbHistShow(event,'${esc(d.hs_id)}')" onmousemove="_fcProbHistMove(event)" onmouseleave="_fcProbHistHide()">${valHtml}</span>`;
+    }
+
     // ── Comparação INLINE com a foto (modo comparação) ──────────────────────────
     // Decora o valor de um campo com "valor da foto → agora" DENTRO do próprio dado do
     // modal (não em seção separada). fk = chave no shape do payload (o compRowToDeal usa
@@ -2699,7 +2770,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       body += cell('TCV', brl(d.tcv)) + cell('Período', per(d.periodo_contrato));
       body += cell('Modelo', cmpInline(d, 'modelo_remuneracao', 'text', txt(d.modelo_remuneracao))) + cell('POC', boolv(d.is_poc));
       body += cell('Agenciamento', cmpInline(d, 'possui_agenciamento', 'bool', boolv(d.possui_agenciamento))) + cell('Vitalício', cmpInline(d, 'possui_vitalicio', 'bool', boolv(d.possui_vitalicio)));
-      body += cell('Prob. Etapa', pct(d.prob_etapa)) + cell('Prob. AE', cmpInline(d, 'probabilidade', 'pct', pct(d.probabilidade)));
+      body += cell('Prob. Etapa', pct(d.prob_etapa)) + cell('Prob. AE', _fcProbAeCell(d, cmpInline(d, 'probabilidade', 'pct', pct(d.probabilidade))));
       const _pManual = d.prob_info && d.prob_info.manual;
       body += cell('Prob. Ajustada', pct(d.prob_ajustada) + (_pManual ? ' <span style="color:var(--yellow);font-weight:700" title="' + esc(d.prob_info.modStr) + '">*</span>' : '')) + cell('Quarter', cmpInline(d, 'quarter', 'quarter', (d.quarter && !quarterEmpty(d.quarter)) ? esc(d.quarter) : muted));
       if (_pManual) body += `<div style="grid-column:1/-1;margin:.35rem 0;background:rgba(227,179,65,.1);border:1px solid rgba(227,179,65,.35);border-radius:8px;padding:.5rem .7rem;font-size:.78rem;color:var(--yellow)">✱ Probabilidade manualmente ajustada para <b>${esc(fmtPct(d.prob_ajustada))}</b>${d.prob_info.originalFinal != null ? ' | original (régua + ajuste do AE): ' + esc(fmtPct(d.prob_info.originalFinal)) : ''}</div>`;
@@ -4114,6 +4185,30 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
               tooltip.innerHTML = h;
               tooltip.classList.add('show');
 
+            } else if (data.isArrPond) {
+              // ── ARR Ponderado tooltip (pedido do dono 2026-08-06) ──────────
+              const baseLbl = data.usedFallback ? '1ª Fatura × 12' : 'ARR Estimado';
+              let h = `
+                <div style="font-weight:700; color:var(--teal); margin-bottom:.8rem; padding-bottom:.5rem; font-size:.9rem">${esc(data.dealname)}</div>
+                <div class="tt-row"><span class="tt-lbl">ARR Estimado</span><span class="tt-val">${(data.arrEstimado != null && data.arrEstimado > 0) ? fmtBRL(data.arrEstimado) : '—'}</span></div>
+                <div class="tt-row"><span class="tt-lbl">1ª Fatura × 12</span><span class="tt-val">${data.primeiraFatura > 0 ? fmtBRL(data.primeiraFatura * 12) : '—'}</span></div>
+                <div class="tt-row"><span class="tt-lbl">Base usada</span><span class="tt-val">${esc(baseLbl)}${data.usedFallback ? ' (sem ARR Estimado)' : ''}</span></div>
+                <div class="tt-row sep"><span class="tt-lbl">Prob. Etapa</span><span class="tt-val">${data.sp != null ? fmtPct(data.sp) : '—'}</span></div>
+              `;
+              if (data.cp != null) {
+                h += `<div class="tt-row"><span class="tt-lbl">Prob. AE</span><span class="tt-val">${fmtPct(data.cp)}</span></div>`;
+              }
+              if (data.modStr) {
+                h += `<div class="tt-row"><span class="tt-lbl">Como decidiu</span><span class="tt-val">${esc(data.modStr)}</span></div>`;
+              }
+              h += `
+                <div class="tt-row"><span class="tt-lbl">Prob. Final (P. Ajust.)</span><span class="tt-val">${data.final != null ? fmtPct(data.final) : '—'}</span></div>
+                <div class="tt-row"><span class="tt-lbl">Fórmula</span><span class="tt-val">${esc(baseLbl)} (${fmtBRL(data.arrBase)}) × Prob. Final (${data.final != null ? fmtPct(data.final) : '—'})</span></div>
+                <div class="tt-row total"><span class="tt-lbl">ARR Pond.</span><span class="tt-val">${fmtBRL(data.val)}</span></div>
+              `;
+              tooltip.innerHTML = h;
+              tooltip.classList.add('show');
+
             } else {
               // ── Receita Probabilizada tooltip ─────────────────────────────
               let h = `
@@ -4484,6 +4579,29 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
             const cls = v === true ? 'byes' : 'bno';
             const txt = v === true ? 'Sim' : (v === false ? 'Não' : '—');
             h += `<td class="${sc}" style="text-align:center" data-col="${ci}"><span class="${cls}">${txt}</span></td>`;
+            return;
+          }
+
+          // ARR Pond.: tooltip por CÉLULA (mesmo mecanismo data-calc/setupColumnHover
+          // das colunas de mês), com os campos reais deste deal — pedido do dono
+          // 2026-08-06, memória de cálculo também nesta coluna, não só no cabeçalho.
+          if (c.k === 'arr_pond') {
+            const pi = d.prob_info || {};
+            const usedFallback = !(d.arr_estimado != null && d.arr_estimado > 0);
+            const arrBase = usedFallback ? ((d.primeira_fatura > 0) ? d.primeira_fatura * 12 : 0) : d.arr_estimado;
+            if (v == null) {
+              const reason = arrBase <= 0
+                ? 'Sem ARR Pond. | sem ARR Estimado e sem 1ª Fatura (base do cálculo é zero)'
+                : 'Sem ARR Pond. | sem probabilidade final disponível para este negócio';
+              h += `<td class="${sc}"${align} data-col="${ci}" data-tip="${esc(reason)}">-</td>`;
+              return;
+            }
+            const calcData = {
+              isArrPond: true, dealname: d.dealname, arrEstimado: d.arr_estimado,
+              primeiraFatura: d.primeira_fatura, usedFallback: usedFallback, arrBase: arrBase,
+              sp: pi.sp, cp: pi.cp, final: pi.final, modStr: pi.modStr, val: v
+            };
+            h += `<td class="${sc}"${align} data-col="${ci}" data-calc="${esc(JSON.stringify(calcData))}">${fmtBRL(v)}</td>`;
             return;
           }
 

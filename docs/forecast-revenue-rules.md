@@ -163,24 +163,28 @@ andamento, ver STATUS_LOG.md):
   observada do funil mudou (amostra pequena, mês ruim, importação em massa). Responde à
   pergunta-norte do projeto ("vou bater a meta?").
 - **Família "pipeline ponderado"** (`funnelProbPipe` real, com fallback pra régua flat quando
-  a amostra da etapa é <20): C04, C07, C08 (CRO) e os equivalentes do Board (B07/B09/B15/B16),
-  via `_calcProbInfo`. Existe porque essas métricas são diagnóstico de conversão real do
-  funil, não compromisso de caixa — aqui a oscilação é o ponto.
+  a amostra da etapa é <20): C04, C07, C08 (CRO), os equivalentes do Board (B07/B09/B15/B16), e
+  **desde 2026-08-06** também P03 (CRO), B04 (Board, `=P03`), "Vidas Ponderadas", Receita por
+  Segmento (modo ponderado), N21 e o KPI 🟡 "Pipeline Ponderado/ano" — via `_calcProbInfo`
+  (CRO/Board) ou `_novoProbWeight` (dashboard.html, um wrapper de uma linha em cima do mesmo
+  `_calcProbInfo`, sem cópia). Existe porque essas métricas são diagnóstico de conversão real
+  do funil, não compromisso de caixa — aqui a oscilação é o ponto.
 - **As duas famílias já aplicam a regra do mínimo** (seção 2) sobre a baseline escolhida — a
   diferença entre elas é SÓ a origem da probabilidade de etapa (flat vs. funil), nunca o ajuste
   pela prob. do AE.
-- **Outlier conhecido, ainda não migrado (2026-08-05):** P03 ("Receita Ponderada | Pipeline
-  Ativo", CRO), B04 (Board, `=P03`) e o KPI "Vidas Ponderadas" (CRO) não usam nenhuma das duas
-  famílias — usam a probabilidade crua que o AE digitou (`d.probabilidade`) sem comparação
-  nenhuma, caindo pra régua flat só quando o AE não digitou nada (`sharedWeightedPipelineARR`
-  em `public/shared-charts.js`; `_novoProbWeight` em `dashboard.html` para os demais: Vidas
-  Ponderadas, Receita por Segmento no modo ponderado, N21 e o KPI 🟡 "Pipeline Ponderado/ano").
-  Decisão pendente do dono: migrar os três para a família "pipeline ponderado" (ficam
-  consistentes com C04/C07/C08 do mesmo painel) — precisa de dual-run antes de ir para
-  produção, porque muda o número exibido. Enquanto não migrar, **P03/B04/Vidas Ponderadas não
-  devem ser comparados com N06B** nem usados como prova de que o motor está inconsistente — são
-  uma terceira coisa, à parte, com um bug de origem (nunca teve a regra do mínimo) que este
-  documento agora deixa registrado.
+- **Migração do outlier concluída em 2026-08-06** (decisão do dono, de uma vez, sem
+  gradualismo, após dual-run medido em conversa): P03 caiu de R$121,7M pra R$35,6M no pipeline
+  ativo do dia (-70,8%) — Diagnóstico sempre 6% (regra separada) explica -R$35,7M, a regra do
+  mínimo nas demais etapas explica -R$50,4M. Detalhamento completo (deals que mais pesaram,
+  como o número foi reconferido rodando o código de verdade numa VM) no STATUS_LOG.md. **Não
+  há mais outlier** neste documento — todo consumidor de probabilidade ponderada está numa das
+  duas famílias.
+- **Achado colateral da migração — gap na régua, corrigido:** `semantic/referencia.json`
+  (`forecast_flat.valores`) nunca teve entrada para `"Reunião Pré-RFP"` (etapa Bid, equivalente
+  de "Reunião Agendada") — qualquer card ponderado com deals do Bid nessa etapa contava ZERO em
+  silêncio, bug pré-existente só exposto pela migração do P03. Adicionado `0.06` por simetria
+  (nota própria no JSON, `nota_reuniao_pre_rfp`, explicando que não é uma régua revisada pelo
+  dono como o resto da tabela — é o preenchimento de um buraco que nunca devia estar vazio).
 - **Override manual por deal ("P. Ajust.", `/api/prob-manual`) é ABSOLUTO em TODAS as métricas
   ponderadas, nas duas famílias E no outlier acima (2026-08-06, pedido explícito do dono).**
   `ProbEngine.manualFor(deal)` (exposto em `public/prob-engine.js`) é a fonte única do parse do
