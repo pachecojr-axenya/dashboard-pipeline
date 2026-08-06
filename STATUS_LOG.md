@@ -1,5 +1,13 @@
 # Dashboard Enhancement Loop — Status Log
 
+### 🚀 DEPLOY DE PRODUÇÃO | D02 (Delta) — coluna inteira clicável (2026-08-06)
+
+> Autorização explícita do dono. `npm run check` (0 fail) e `npm run predeploy` PASS (`main` ==
+> `origin/main` `5d9565c`, sem avanço de terceiros desde o último deploy). Deployment
+> `dpl_EhyiEQJhVQFQXipuj4uYw7roWjRh` (READY, production), alias `project-bsmfu.vercel.app`.
+> Pós-deploy confirmado: `/` e `/forecast-delta` = 200; `interaction:{ mode:'index',
+> intersect:false }` presente no bundle servido do card D02.
+
 ### Fix | D02 (Delta) — coluna inteira clicável, não só o pixel da barra (2026-08-06)
 
 > Pedido do dono: "muitas vezes as barrinhas são muito pequenas e o usuário tem dificuldade de
