@@ -1,5 +1,62 @@
 # Dashboard Enhancement Loop — Status Log
 
+### 🔎 SEO PERFORMANCE | Search Console ao vivo, linha do tempo e movimentação (2026-08-06)
+
+> Nova subpágina `/growth/seo` (rota em `vercel.json` **e** na tabela `REWRITES` de
+> `scripts/local-server.js`; menu em `public/nav.js` **e** no `NAV_MODEL` de
+> `public/premium.js`, com bump `premium.js?v=13` e `nav.js?v=6`). Lê o Google
+> Search Console da propriedade `sc-domain:axenya.com` ao vivo, 100% por script,
+> com service account (`GSC_SERVICE_ACCOUNT_JSON`, secret
+> `axenya-opencode-gsc-service-account-json-shared`). Arquivos: `lib/gsc.js`,
+> `lib/seo-analytics.js`, `api/seo-performance.js`,
+> `public/seo-performance.{html,js}`. Doc: `docs/seo-performance.md`.
+>
+> Entrega o que o relatório nativo do GSC não junta: linha do tempo com
+> granularidade dia/semana/mês/trimestre, **DoD, WoW, MoM, QoQ e YoY ao mesmo
+> tempo** no strip de cima, e movimentação por entidade (novo, perdido, subiu,
+> caiu) em 8 visões — consultas, páginas, categorias, marca vs não-marca, seções,
+> oportunidades, dispositivo e país. Ordenação por clique no cabeçalho, filtros de
+> status/categoria/mínimo de impressões, busca local e busca no servidor (para
+> achar termo fora do corte de payload), drilldown em KPI, barra e linha, memória
+> de cálculo em 14 fichas e export CSV da visão aberta.
+>
+> **Decisões medidas antes de codar (as 5 que mudam número):**
+> 1. **Só dia fechado** (`dataState=final`). Com `all`, os 2 últimos dias vêm
+>    parciais: o dia corrente apareceu com **1 clique** contra ~130 dos fechados —
+>    leria como queda de 99%. Defasagem real: 2 dias, declarada na tela.
+> 2. **Janela em múltiplo de 7.** Fim de semana rende ~1/4 do dia útil nesta
+>    propriedade (medido em 89 dias: dom 36 e sáb 32 contra 124-127 de seg a qua).
+>    WoW 7, MoM 28, QoQ 91, YoY 364 dias atrás. O teste de contrato exige
+>    histograma de dia da semana IDÊNTICO nas duas pontas.
+> 3. **Posição e CTR não se somam.** Média simples de posição deu 7,90 contra 8,00
+>    da ponderada por impressão; CTR médio deu 0,77% contra 1,61% recalculado.
+> 4. **Uma série diária alimenta todos os KPIs.** Verificado que somar por data
+>    reproduz o agregado sem dimensão com igualdade de float (8.108 cliques,
+>    676.778 impressões, posição 6.400175537620904 nos dois). KPI e gráfico não
+>    podem divergir por construção.
+> 5. **`date`+`query` não pagina.** Estoura em 25.000 linhas e `startRow:25000`
+>    devolve 0 — daí a arquitetura de diferença entre dois agregados de janela.
+>
+> **Cobertura declarada, não escondida:** a dimensão `query` cobre só 27,5% dos
+> cliques e 20,4% das impressões (o Google anonimiza cauda longa) e a dimensão
+> `page` INFLA impressão para 129,5% (duas URLs na mesma SERP contam cada uma).
+> Os dois viram aviso no bloco de higiene em vez de bug silencioso.
+>
+> **Bucket parcial não exibe variação.** O mês corrente com 4 de 31 dias contra o
+> mês fechado dava −88,5%, que é calendário e não performance. Vai cinza, marcado,
+> com variação em branco. O smoke checa.
+>
+> **Baseline (último dia fechado 04/08):** DoD 129 vs 127 (+1,6%) · WoW 629 vs 674
+> (−6,7%) · MoM 2.543 vs 2.311 (+10,0%) · QoQ 8.274 vs 2.446 (+238,3%) · YoY 2.543
+> vs 375 (+578,1%). Blog domina com 545 dos 629 cliques da semana; marca 57 contra
+> não-marca 100. Custo: 11 chamadas paralelas ao GSC, 2,5 a 2,7 s, cache de 6 h.
+>
+> **Validação:** `npm run check` (inclui `scripts/test-seo-performance.js`, 34
+> asserções de contrato zero-rede) e `npm run smoke:seo-perf` (CDP headless),
+> este último verde nas 4 bases (wow, qoq, dod, mom) com console limpo. O smoke
+> pegou uma premissa errada minha: o primeiro mês da série de 455 dias também é
+> parcial, porque 455 dias atrás não cai em dia 1.
+
 ### 🚀 GROWTH PERFORMANCE | mídia paga ao vivo, CPL e custo por empresa (2026-08-06)
 
 > Nova subpágina `/growth/performance` (rota em `vercel.json` **e** na tabela

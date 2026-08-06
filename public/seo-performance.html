@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Growth | Performance | Axenya</title>
+  <title>Growth | SEO Performance | Axenya</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -166,6 +166,46 @@
     .hidden{display:none!important}
     @media(max-width:1180px){.kpis{grid-template-columns:repeat(3,1fr)}.kpis-hero{grid-template-columns:repeat(2,1fr)!important}.filters{grid-template-columns:repeat(2,1fr)}.cov-grid{grid-template-columns:repeat(3,1fr)}.span-8,.span-6,.span-4,.span-3{grid-column:span 12}}
     @media(max-width:720px){.topbar{padding:1rem}.wrap{padding:1rem}.kpis{grid-template-columns:repeat(2,1fr)}.filters{grid-template-columns:1fr}.cov-grid{grid-template-columns:repeat(2,1fr)}.filter-actions{align-items:stretch}.btn{flex:1}.hdr-actions{gap:6px;padding:5px}.subtitle{display:none}}
+    /* ── SEO: comparações, visões, tabela ordenável ───────────────────── */
+    .cmp-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:.7rem;margin-bottom:1rem}
+    .cmp-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:.8rem .9rem;cursor:pointer;transition:border-color .15s,transform .15s,background .15s;box-shadow:var(--shadow)}
+    .cmp-card:hover{border-color:var(--teal);transform:translateY(-1px)}
+    .cmp-card.active{border-color:var(--teal);border-width:2px;background:linear-gradient(180deg,var(--card),rgba(58,184,183,.08))}
+    .cmp-card .cmp-lbl{font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--text2)}
+    .cmp-card .cmp-val{font-size:1.3rem;font-weight:800;letter-spacing:-.03em;margin:.28rem 0 .1rem}
+    .cmp-card .cmp-sub{font-size:.66rem;color:var(--muted);line-height:1.35}
+    .up{color:var(--green)}.down{color:var(--red)}.flat{color:var(--text2)}
+    .delta{font-size:.72rem;font-weight:800;white-space:nowrap}
+    .tabbar{display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.9rem}
+    .tabbar button{border:1px solid var(--border);background:var(--card2);color:var(--text2);border-radius:99px;padding:.42rem .85rem;font-size:.78rem;font-weight:800;cursor:pointer;transition:border-color .15s,color .15s,background .15s}
+    .tabbar button:hover{border-color:var(--teal);color:var(--teal)}
+    .tabbar button.active{background:rgba(58,184,183,.18);border-color:var(--teal);color:var(--teal)}
+    .tabbar button .cnt{font-weight:700;opacity:.72;margin-left:.3rem}
+    .viewbar{display:grid;grid-template-columns:2fr repeat(3,1fr) auto;gap:.6rem;align-items:end;margin-bottom:.8rem}
+    .viewbar .filter{min-width:0}
+    th.sortable{cursor:pointer;user-select:none}
+    th.sortable:hover{color:var(--text)}
+    th.sortable .arw{opacity:.35;margin-left:.25rem}
+    th.sortable.on{color:var(--text)}
+    th.sortable.on .arw{opacity:1;color:var(--teal)}
+    .cellbar{display:block;height:4px;border-radius:99px;background:var(--teal);opacity:.55;margin-top:.22rem}
+    .seo-svg{width:100%;height:280px;display:block}
+    .seo-svg line.axis{stroke:var(--border);stroke-width:1}
+    .seo-svg text{fill:var(--muted);font-size:10px}
+    .seo-svg rect.bar{cursor:pointer;fill:var(--blue)}
+    .seo-svg rect.bar:hover{opacity:.8}
+    .seo-svg rect.bar.fds{fill:var(--muted);opacity:.55}
+    .seo-svg rect.bar.parcial{fill:var(--muted);opacity:.4}
+    .seo-svg polyline.pos-ln{fill:none;stroke:var(--yellow);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+    .seo-svg polyline.mm-ln{fill:none;stroke:var(--teal);stroke-width:2;stroke-dasharray:5 4;stroke-linecap:round}
+    .seo-svg circle.pos-pt{fill:var(--yellow)}
+    .line-legend i.clicks{background:var(--blue)}.line-legend i.fds{background:var(--muted);opacity:.6}
+    .line-legend i.pos{height:3px;border-radius:99px;background:var(--yellow)}
+    .line-legend i.mm{height:3px;border-radius:99px;background:var(--teal)}
+    .kpis-hero.k4{grid-template-columns:repeat(4,1fr)!important}
+    .trunc-note{font-size:.72rem;color:var(--yellow);margin-top:.5rem}
+    @media(max-width:1180px){.cmp-grid{grid-template-columns:repeat(3,1fr)}.viewbar{grid-template-columns:1fr 1fr}}
+    @media(max-width:720px){.cmp-grid{grid-template-columns:repeat(2,1fr)}.viewbar{grid-template-columns:1fr}}
   </style>
   <link rel="stylesheet" href="/premium.css?v=5">
   <script src="/premium.js?v=13"></script>
@@ -174,7 +214,7 @@
   <nav class="nav-drawer" id="nav-drawer">
     <div class="nav-drawer-header"><span class="nav-drawer-brand">Dashboard Axenya</span><button class="hdr-btn" onclick="closeDrawer()" aria-label="Fechar menu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
     <ul class="nav-menu">
-      <li class="nav-item active" data-href="/growth/performance">Growth | Performance<span class="health-dot g" title="live" aria-label="live"></span></li>
+      <li class="nav-item active" data-href="/growth/seo">Growth | SEO<span class="health-dot g" title="live" aria-label="live"></span></li>
     </ul>
   </nav>
   <div class="nav-backdrop" id="nav-backdrop" onclick="closeDrawer()"></div>
@@ -183,34 +223,34 @@
     <header class="topbar" id="topbar">
       <div style="display:flex;align-items:center;gap:.75rem">
         <button class="hdr-btn" onclick="toggleDrawer()" data-tooltip="Menu" aria-label="Abrir menu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
-        <div><h1>Growth | Performance <span class="health-dot g title-health" title="live" aria-label="live"></span></h1><div class="subtitle">Mídia paga ao vivo | spend por canal e campanha | CPL | custo por empresa</div></div>
+        <div><h1>Growth | SEO Performance <span class="health-dot g title-health" title="live" aria-label="live"></span></h1><div class="subtitle">Search Console ao vivo | linha do tempo | DoD, WoW, MoM, QoQ, YoY | movimentação por consulta, página e categoria</div></div>
       </div>
       <div class="hdr-actions">
-        <button class="hdr-btn" onclick="GrowthPerf.openAllHelp()" data-tooltip="Memória de cálculo" aria-label="Memória de cálculo"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></button>
-        <button class="hdr-btn" onclick="GrowthPerf.exportCsv()" data-tooltip="Exportar CSV dos leads" aria-label="Exportar CSV"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>
-        <button class="hdr-btn" onclick="GrowthPerf.toggleTheme()" data-tooltip="Tema" aria-label="Alternar tema"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg></button>
-        <button class="hdr-btn highlighted" onclick="GrowthPerf.load(true)" data-tooltip="Atualizar" aria-label="Atualizar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></button>
+        <button class="hdr-btn" onclick="SeoPerf.openAllHelp()" data-tooltip="Memória de cálculo" aria-label="Memória de cálculo"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></button>
+        <button class="hdr-btn" onclick="SeoPerf.exportCsv()" data-tooltip="Exportar CSV da visão atual" aria-label="Exportar CSV"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>
+        <button class="hdr-btn" onclick="SeoPerf.toggleTheme()" data-tooltip="Tema" aria-label="Alternar tema"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg></button>
+        <button class="hdr-btn highlighted" onclick="SeoPerf.load(true)" data-tooltip="Atualizar" aria-label="Atualizar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></button>
       </div>
     </header>
 
     <main class="wrap">
-      <section class="note"><b>Memória de cálculo:</b> spend vem AO VIVO das APIs de Meta Ads e LinkedIn Ads (dia × campanha) | lead = contato do HubSpot criado no período, com canal lido de <code>utm_source</code> | <b>CPL usa só lead pago</b> (<code>utm_medium</code> = paid_social, cpc) porque lead orgânico do mesmo canal não é pago pelo spend | campanha de anúncio e <code>utm_campaign</code> são unidas pela iniciativa (webinar tal, pesquisa tal) | Google Ads ainda NÃO está conectado.</section>
+      <section class="note"><b>Memória de cálculo:</b> tudo vem AO VIVO da API do Search Console da propriedade <code>sc-domain:axenya.com</code> | só dia <b>FECHADO</b> entra na conta (<code>dataState=final</code>), porque os 2 últimos dias vêm parciais e leriam como queda | as janelas de comparação são <b>múltiplos de 7 dias</b> (WoW 7, MoM 28, QoQ 91), já que sábado e domingo rendem ~1/4 de um dia útil nesta propriedade | posição agregada é média <b>ponderada por impressão</b> e CTR é recalculado, nunca média de médias | <b>posição menor é melhor</b>, então queda de posição aparece em verde | a tabela de consultas cobre só parte do site: o Google anonimiza cauda longa.</section>
 
       <section class="filters" id="filters"></section>
-      <section id="state" class="state"><div class="spinner"></div><strong>Carregando dados</strong>Buscando /api/growth-performance</section>
+      <section id="state" class="state"><div class="spinner"></div><strong>Carregando dados</strong>Buscando /api/seo-performance</section>
       <section id="content" class="hidden"></section>
     </main>
   </div>
 
-  <div class="help-backdrop" id="help-backdrop" onclick="GrowthPerf.closeHelp()"></div>
+  <div class="help-backdrop" id="help-backdrop" onclick="SeoPerf.closeHelp()"></div>
   <aside class="help-drawer" id="help-drawer" aria-label="Memória de cálculo">
-    <div class="help-hdr"><h3 id="help-title">Memória de cálculo</h3><button class="hdr-btn" onclick="GrowthPerf.closeHelp()" aria-label="Fechar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+    <div class="help-hdr"><h3 id="help-title">Memória de cálculo</h3><button class="hdr-btn" onclick="SeoPerf.closeHelp()" aria-label="Fechar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
     <div class="help-body" id="help-body"></div>
   </aside>
 
-  <div class="modal-overlay" id="modal-overlay" onclick="if(event.target===this)GrowthPerf.closeModal()">
+  <div class="modal-overlay" id="modal-overlay" onclick="if(event.target===this)SeoPerf.closeModal()">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
-      <div class="modal-hdr"><h3 id="modal-title">Detalhe</h3><button class="hdr-btn" onclick="GrowthPerf.closeModal()" aria-label="Fechar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+      <div class="modal-hdr"><h3 id="modal-title">Detalhe</h3><button class="hdr-btn" onclick="SeoPerf.closeModal()" aria-label="Fechar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
       <div class="modal-body" id="modal-body"></div>
     </div>
   </div>
@@ -224,6 +264,6 @@
     window.addEventListener('scroll',function(){var h=document.getElementById('topbar');if(h)h.classList.toggle('scrolled',window.scrollY>8);});
     window.addEventListener('DOMContentLoaded',function(){try{if(localStorage.getItem('novo_nav_open')==='true'&&!window.matchMedia('(max-width:820px)').matches)openDrawer();}catch(e){}});
   </script>
-  <script src="/growth-performance.js?v=1"></script>
+  <script src="/seo-performance.js?v=1"></script>
 </body>
 </html>

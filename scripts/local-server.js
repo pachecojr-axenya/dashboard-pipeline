@@ -69,6 +69,7 @@ const REWRITES = {
   '/growth': '/growth.html',
   '/growth/mkt-budget': '/mkt-budget.html',
   '/growth/performance': '/growth-performance.html',
+  '/growth/seo': '/seo-performance.html',
   '/novo-board': '/board.html',
   '/novo-48h': '/48h.html',
   '/novo-cs': '/cs.html',

@@ -66,6 +66,7 @@
     {label:'Growth',url:'/growth',file:'growth.html',health:'g',acc:'growth',icon:'<polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>'},
     {label:'MKT Budget',url:'/growth/mkt-budget',file:'mkt-budget.html',sub:'growth',health:'g',icon:'<path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4z"/>'},
     {label:'Performance',url:'/growth/performance',file:'growth-performance.html',sub:'growth',health:'g',icon:'<path d="M3 3v18h18"/><rect x="7" y="12" width="3" height="6"/><rect x="12" y="8" width="3" height="10"/><rect x="17" y="4" width="3" height="14"/>'},
+    {label:'SEO',url:'/growth/seo',file:'seo-performance.html',sub:'growth',health:'g',icon:'<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/>'},
     {label:'Last 48h',url:'/novo-48h',file:'48h.html',health:'g',icon:'<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>'},
     // hidden:true = fora do menu/dropdown, rota continua viva (pedido do dono, 2026-07-16).
     {label:'CS Dashboard',url:'/novo-cs',file:'cs.html',health:'r',hidden:true,icon:'<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>'},

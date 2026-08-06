@@ -19,6 +19,7 @@
     { "source": "/growth", "destination": "/growth.html" },
     { "source": "/growth/mkt-budget", "destination": "/mkt-budget.html" },
     { "source": "/growth/performance", "destination": "/growth-performance.html" },
+    { "source": "/growth/seo", "destination": "/seo-performance.html" },
     { "source": "/novo-board", "destination": "/board.html" },
     { "source": "/novo-48h", "destination": "/48h.html" },
     { "source": "/novo-cs", "destination": "/cs.html" },

@@ -103,5 +103,5 @@ assert(premium.includes("href: '/novo-bdr/treble', label: 'Treble', health: 'g'"
 // v=12: entrada Growth | Performance adicionada ao NAV_MODEL do premium.js
 // (2026-08-06). Menu mudou => cache-buster sobe em TODA página que monta o menu
 // por premium.js, senão o browser serve o menu antigo sem a rota nova.
-bdrPages.forEach((page, index) => assert(page.includes('/premium.js?v=12'), `página BDR ${index} sem cache-buster canônico do menu`));
+bdrPages.forEach((page, index) => assert(page.includes('/premium.js?v=13'), `página BDR ${index} sem cache-buster canônico do menu`));
 console.log('PASS bdr-workload-v2 UI static tests');
