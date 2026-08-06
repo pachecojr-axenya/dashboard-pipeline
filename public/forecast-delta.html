@@ -149,12 +149,18 @@ html[data-theme="light"] .hdr-btn:hover{background:rgba(0,0,0,.07)}
 .hdr-filters{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap}
 body.nav-docked .app-header,body.nav-docked #app-content{margin-left:280px;transition:margin-left .25s cubic-bezier(0.4,0,0.2,1)}
 @media(max-width:820px){body.nav-docked .app-header,body.nav-docked #app-content{margin-left:0}}
-/* Sticky condensado (2026-07-24): ao rolar, o header vira uma linha com o RESUMO dos
-   filtros ativos ("Todos os executivos | ... | ARR | Ativos"); clique = volta ao topo. */
+/* Sticky condensado — até 2026-08-06 disparado por posição de scroll (window.scrollY>48);
+   trocado por toggle MANUAL (botão #hdr-collapse-btn) a pedido do dono: o gatilho por scroll
+   é sensível ao zoom da página (scrollY/getBoundingClientRect variam com o zoom entre
+   navegadores), causando o header a recolher/expandir de forma inconsistente. Condensado =
+   uma linha com o RESUMO dos filtros ativos ("Todos os executivos | ... | ARR | Ativos");
+   clique no resumo ou no botão = expande de novo. Preferência persiste em localStorage. */
 #hdr-summary{display:none;flex:1;min-width:0;align-items:center;border:0;background:transparent;color:var(--text2);font-family:var(--font);font-size:.78rem;font-weight:500;text-align:left;cursor:pointer;padding:0 .4rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #hdr-summary:hover{color:var(--text)}
 .app-header.condensed .hdr-filters,.app-header.condensed .controls,.app-header.condensed #fotos-hint,.app-header.condensed .hdr-actions{display:none}
 .app-header.condensed #hdr-summary{display:block}
+#hdr-collapse-btn svg{transition:transform .2s}
+.app-header.condensed #hdr-collapse-btn svg{transform:rotate(180deg)}
 /* segmented control (canônico do dashboard geral) */
 .seg-ctrl{display:inline-flex;align-items:center;background:rgba(255,255,255,.14);border-radius:99px;padding:3px;position:relative}
 .seg-ctrl::before{content:'';position:absolute;top:3px;left:0;width:var(--seg-tw,calc(50% - 3px));height:calc(100% - 6px);background:rgba(255,255,255,.26);border-radius:99px;transform:translateX(var(--seg-tx,3px));transition:transform .22s cubic-bezier(.4,0,.2,1),width .22s cubic-bezier(.4,0,.2,1);will-change:transform,width;pointer-events:none;z-index:0}
@@ -222,6 +228,9 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
       <span class="pill" title="Validado contra o HubSpot">🟢 validado</span>
       <button type="button" class="hdr-btn" id="info-btn" title="Memória de cálculo" data-tooltip="Memória de cálculo" aria-expanded="false" aria-controls="info">i</button>
     </div>
+    <button type="button" class="hdr-btn" id="hdr-collapse-btn" onclick="toggleHeaderCondensed()" title="Reduzir/expandir o menu" data-tooltip="Reduzir/expandir o menu" aria-expanded="true" aria-controls="app-header">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+    </button>
   </div>
   <div class="controls">
     <div class="ctl">
@@ -583,6 +592,28 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
       labels.push('Total B + Fechado'); data.push([0, run + fechadoVal]); colors.push('rgba(58,184,183,.5)'); dataline.push(run + fechadoVal); kinds.push('composto');
     }
 
+    // Eixo Y truncado (pedido do dono, 2026-08-06): "diminuir o intervalo do pipe" — os
+    // totais costumam ficar todos numa faixa estreita e alta, então começar em 0 desperdiça
+    // a maior parte da altura do gráfico e esconde os Δ pequenos. Calcula um piso PROPORCIONAL
+    // ao intervalo real dos dados desta foto (não um valor fixo — um "R$1M de respiro" seria
+    // imperceptível se os totais forem de centenas de milhões, ou grande demais se forem de
+    // poucos milhões), arredondado pra um número limpo na mesma ordem de grandeza. Barras tipo
+    // 'total'/'fechado'/'composto' começam em 0 nos dados (data[i]=[0,valor]); com yMin>0 o
+    // Chart.js já recorta a base sozinho — fica visualmente idêntico a uma barra flutuante.
+    var yLo = Infinity, yHi = -Infinity;
+    kinds.forEach(function(k, i){
+      if(k === 'delta'){ yLo = Math.min(yLo, data[i][0]); yHi = Math.max(yHi, data[i][1]); }
+      else { yLo = Math.min(yLo, dataline[i]); yHi = Math.max(yHi, dataline[i]); }
+    });
+    // Piso do intervalo escala com a MAGNITUDE dos dados (2% de yHi), não só com a diferença
+    // bruta — sem isso, uma foto sem nenhum Δ (yHi===yLo) geraria um "range" de 1 R$ e um
+    // yMin com casas decimais sem sentido pra valores na casa dos milhões.
+    var yRange = Math.max(yHi - yLo, Math.abs(yHi) * 0.02, 1);
+    var yPadRaw = yRange * 0.12; // ~12% de respiro abaixo do ponto mais baixo relevante
+    var yMag = Math.pow(10, Math.floor(Math.log10(yPadRaw)));
+    var yPad = Math.ceil(yPadRaw / yMag) * yMag;
+    var yMin = Math.floor((yLo - yPad) / yMag) * yMag;
+
     var css = getComputedStyle(document.documentElement);
     var textc = css.getPropertyValue('--text2').trim(), gridc = css.getPropertyValue('--border').trim();
     var TOOLTIP_PREFIX = { total: 'Total: ', fechado: 'Fechado: ', composto: 'Total B + Fechado: ' };
@@ -615,7 +646,7 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
         },
         scales:{
           x:{ ticks:{ color:textc, maxRotation:35, minRotation:0, font:{size:10} }, grid:{display:false} },
-          y:{ ticks:{ color:textc, callback:function(v){ return (v/1e6).toFixed(1)+'M'; } }, grid:{color:gridc} }
+          y:{ min:yMin, ticks:{ color:textc, callback:function(v){ return (v/1e6).toFixed(1)+'M'; } }, grid:{color:gridc} }
         }
       }
     });
@@ -1039,9 +1070,21 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
   }
   function updateHdrSummary(){ var el=document.getElementById('hdr-summary'); if(el) el.textContent = hdrSummaryTxt(); }
   var _hdrEl = document.getElementById('app-header');
-  function onHdrScroll(){ _hdrEl.classList.toggle('condensed', (window.scrollY || document.documentElement.scrollTop || 0) > 48); }
-  window.addEventListener('scroll', onHdrScroll, {passive:true});
-  document.getElementById('hdr-summary').addEventListener('click', function(){ window.scrollTo({top:0, behavior:'smooth'}); });
+  // Toggle MANUAL do header condensado (2026-08-06) — ver comentário do CSS (.app-header) pra
+  // o porquê de ter substituído o gatilho por scroll. Preferência persiste por navegador.
+  function _hdrSetCondensed(on){
+    _hdrEl.classList.toggle('condensed', on);
+    var btn = document.getElementById('hdr-collapse-btn');
+    if(btn) btn.setAttribute('aria-expanded', on ? 'false' : 'true');
+    try { localStorage.setItem('delta_hdr_condensed', on ? '1' : '0'); } catch(e){}
+  }
+  // window.* (não só `function`): o script inteiro roda dentro do IIFE que começa em
+  // "(function(){" no topo do arquivo — uma função comum aqui é local ao closure e o
+  // onclick inline do HTML (que roda no escopo GLOBAL) não a encontraria. Mesmo padrão já
+  // usado por toggleAeMenu/selectAllAes/etc. acima, nesta mesma IIFE.
+  window.toggleHeaderCondensed = function(){ _hdrSetCondensed(!_hdrEl.classList.contains('condensed')); };
+  (function(){ var pref; try { pref = localStorage.getItem('delta_hdr_condensed') === '1'; } catch(e){ pref = false; } if(pref) _hdrSetCondensed(true); })();
+  document.getElementById('hdr-summary').addEventListener('click', function(){ _hdrSetCondensed(false); });
   function wireToggle(id, cb){
     document.getElementById(id).addEventListener('click', function(e){
       var btn = e.target.closest('.seg-btn'); if(!btn) return;

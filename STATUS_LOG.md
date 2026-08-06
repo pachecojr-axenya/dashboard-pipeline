@@ -1,5 +1,83 @@
 # Dashboard Enhancement Loop — Status Log
 
+### Fix | Botão do toggle do menu (Delta) não funcionava — função presa no IIFE (2026-08-06)
+
+> Dono reportou local: "vi o toggle mas ele não funciona". Causa: todo o `<script>` principal
+> de `public/forecast-delta.html` roda dentro de `(function(){ ... })();` (IIFE) — funções
+> comuns (`function toggleHeaderCondensed(){...}`) ficam LOCAIS a esse closure; o `onclick`
+> inline do HTML roda no escopo GLOBAL e não as alcança (`ReferenceError` silencioso pro
+> usuário — só aparece no console). O próprio arquivo já tinha o padrão certo pras outras
+> funções chamadas por `onclick` (`window.toggleAeMenu=function(){...}`,
+> `window.selectAllAes=...` etc., todas dentro da MESMA IIFE) — só não segui esse padrão na
+> função nova.
+>
+> **Fix:** `function toggleHeaderCondensed(){...}` → `window.toggleHeaderCondensed =
+> function(){...}`. Verificado desta vez de forma mais rigorosa (a causa do bug anterior do
+> N05 ter sido "não reproduzido" ensinou a não confiar só em leitura de código): carreguei os
+> dois blocos `<script>` reais do arquivo numa VM Node com stub de DOM, confirmei
+> `typeof window.toggleHeaderCondensed === 'function'` (antes do fix isso não existia
+> globalmente), e depois extraí o trecho exato do arquivo (sem reescrever) e testei a chamada
+> real: alterna a classe `condensed`, grava/lê `localStorage`, duas chamadas seguidas voltam
+> ao estado original.
+>
+> Validação: `node scripts/_check-inline-js.js public/forecast-delta.html` = 0 erros (2
+> blocos); `window.toggleHeaderCondensed` confirmada no HTML servido de `/forecast-delta`.
+
+### Fix | Menu superior do Delta: toggle manual em vez de recolher por scroll (2026-08-06)
+
+> Pedido do dono: "o fato dele se tornar sticky dá vários bugs dependendo do zoom da página...
+> prefiro que isso seja um toggle que desça e suba o menu". O header (`.app-header`, `position:
+> sticky`) já tinha um recolhimento pra modo compacto desde 2026-07-24 (`.condensed`, some os
+> filtros e mostra um resumo de uma linha) — mas o GATILHO era `window.scrollY > 48`
+> (`onHdrScroll`, num listener de `scroll`). `scrollY`/posição do sticky variam com o zoom do
+> navegador (arredondamento de px diferente entre navegadores), causando o header
+> recolher/expandir sem previsibilidade — exatamente o bug relatado.
+>
+> **Fix:** removido o listener de `scroll`. Adicionado um botão (`#hdr-collapse-btn`, ícone de
+> chevron que gira 180° conforme o estado) na barra superior, FORA de `.hdr-actions` de
+> propósito — `.hdr-actions` já é uma das coisas que o CSS `.condensed` esconde, então o botão
+> ficaria inacessível pra reabrir se estivesse dentro dela. Clique alterna a classe
+> `.condensed` manualmente (reaproveita 100% do CSS que já existia, só troca o gatilho).
+> Preferência persiste em `localStorage` (`delta_hdr_condensed`) e é reaplicada no carregamento
+> da página. O clique no resumo (`#hdr-summary`, já existia) agora expande de volta em vez de
+> rolar a página pro topo — não precisa mais rolar, o header é sempre visível (sticky) nos dois
+> estados.
+>
+> Validação: `node scripts/_check-inline-js.js public/forecast-delta.html` = 0 erros (2
+> blocos); `/forecast-delta` = 200 local; teste isolado da lógica de toggle (alterna estado,
+> `aria-expanded`, grava e relê `localStorage`, reaplica preferência salva) — todos os passos
+> bateram o esperado.
+
+### Feat | D02 (Delta) — eixo Y truncado, proporcional ao intervalo real dos dados (2026-08-06)
+
+> Pedido do dono: "diminuir o intervalo do pipe... ao invés de começar em 0 milhões, começa 1
+> milhão abaixo do total ou do mais baixo... buscar alguma forma de melhorar visualmente". Os
+> totais do waterfall costumam ficar numa faixa estreita e alta (ex.: R$30-120M) — começar o
+> eixo em 0 desperdiça a maior parte da altura do gráfico nessa faixa vazia e esconde os Δ
+> pequenos, que é exatamente o que o dono queria destacar (mesmo problema de fundo do fix de
+> clique do D02, acima).
+>
+> **Não usei um valor fixo ("1 milhão")** — não escala: 1M de respiro é imperceptível se os
+> totais forem de centenas de milhões, e grande demais se forem de poucos milhões. Calculado
+> em `public/forecast-delta.html`, logo após montar `data`/`kinds`/`dataline` (antes do `new
+> Chart`): pega o ponto mais baixo (`yLo`) e mais alto (`yHi`) relevantes entre TODAS as barras
+> (nas barras `delta`, considera o próprio range flutuante `[from,to]`; nas `total`/`fechado`/
+> `composto`, considera o valor do topo, já que a base em 0 delas deixa de ser visível assim
+> que o eixo é truncado — o Chart.js recorta a barra sozinho, sem precisar reformular os dados
+> como floating bar). Respiro = 12% do intervalo (`yHi-yLo`, com piso de 2% de `yHi` pra não
+> gerar um "range" de poucos centavos quando não há Δ nenhum entre as fotos), arredondado pra
+> baixo num número limpo na mesma ordem de grandeza do respiro — evita um eixo com casas
+> decimais sem sentido. `scales.y.min` recebe o valor calculado; sem `max` explícito (o
+> Chart.js já auto-ajusta o topo).
+>
+> Testado com 6 cenários sintéticos (totais grandes/pequenos, range estreito, todos os Δ zero,
+> zero absoluto) antes de aplicar — o caso "todos os Δ zero" inicialmente gerava um yMin com
+> casas decimais sem sentido (o range caía pra 1 R$); corrigido com o piso de 2% de `yHi`.
+>
+> Validação: `node scripts/_check-inline-js.js public/forecast-delta.html` = 0 erros (2
+> blocos); `/forecast-delta` = 200 local; confirmado por grep no HTML servido que
+> `scales.y.min` recebe `yMin`.
+
 ### 🚀 DEPLOY DE PRODUÇÃO | D02 (Delta) — coluna inteira clicável (2026-08-06)
 
 > Autorização explícita do dono. `npm run check` (0 fail) e `npm run predeploy` PASS (`main` ==
