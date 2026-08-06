@@ -1,5 +1,30 @@
 # Dashboard Enhancement Loop — Status Log
 
+### Fix | D02 (Delta) — coluna inteira clicável, não só o pixel da barra (2026-08-06)
+
+> Pedido do dono: "muitas vezes as barrinhas são muito pequenas e o usuário tem dificuldade de
+> clicar em cima" — quer o nome da etapa (eixo X) e o valor de cada coluna (datalabel acima da
+> barra) clicáveis também, não só a barra.
+>
+> **Diagnóstico:** D02 é um `<canvas>` único (Chart.js), sem elementos HTML separados pro nome
+> da etapa ou pro valor — tudo é desenhado no canvas. Não dá (nem faz sentido) criar elementos
+> DOM clicáveis independentes ali; o problema real é que o Chart.js, por padrão
+> (`interaction.intersect: true`), só registra clique se o mouse estiver EXATAMENTE sobre o
+> retângulo pintado da barra — numa barra de Δ pequeno, isso é uma faixa de poucos pixels de
+> altura, longe de onde o datalabel (valor) e o rótulo do eixo X (nome da etapa) são desenhados.
+>
+> **Fix, 1 linha:** `public/forecast-delta.html`, dentro do `new Chart(...)` do card D02 (`id
+> 'wf'`) — adicionado `interaction:{ mode:'index', intersect:false }` nas `options`. Isso faz o
+> hit-test valer pra QUALQUER clique na faixa vertical inteira da coluna daquela etapa (rótulo
+> do eixo embaixo, valor do datalabel em cima, barra no meio) — não muda a lógica de `onClick`/
+> `onHover` já existente (mantidas intactas, só passam a receber `els` preenchido com mais
+> frequência). Padrão documentado do próprio Chart.js pra esse cenário.
+>
+> Validação: `node scripts/_check-inline-js.js public/forecast-delta.html` = 0 erros (2 blocos);
+> `/forecast-delta` = 200 local; confirmado por leitura de código que a config chega
+> corretamente na chamada `new Chart` (bloco de 14.484 chars, `onClick`/`onHover` presentes) e
+> aparece no HTML servido.
+
 ### 🚀 DEPLOY DE PRODUÇÃO | Fase 4 + fix régua Bid + tooltips Forecast (2026-08-06)
 
 > Autorização explícita do dono ("Consegui ver [o bug do N05] em produção. Faça o commit e o

@@ -593,6 +593,12 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
       data:{ labels:labels, datasets:[{ data:data, backgroundColor:colors, borderRadius:4, barPercentage:.72 }] },
       options:{
         responsive:true, maintainAspectRatio:false,
+        // Pedido do dono (2026-08-06): Δ pequeno = barra de poucos pixels, difícil de acertar
+        // o clique. interaction {mode:'index', intersect:false} faz o hit-test valer pra
+        // QUALQUER clique na faixa vertical inteira da coluna (nome da etapa no eixo X, valor
+        // do datalabel acima da barra, a barra em si) — não só o retângulo pintado da barra.
+        // Sem isso, o default do Chart.js é intersect:true (só o pixel exato da barra).
+        interaction:{ mode:'index', intersect:false },
         onClick:function(evt, els){
           if(!els||!els.length) return; var i=els[0].index;
           if(kinds[i]==='delta'){ var w=j.waterfall[i-1]; if(w) openDrill(w.key, 'Deals | '+w.label, fmtBRL); return; }
