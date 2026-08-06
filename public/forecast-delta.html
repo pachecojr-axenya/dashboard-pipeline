@@ -472,6 +472,14 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
   function measureKey(){ if(horizon === 'arr') return metric === 'prob' ? 'arrPond' : 'arr'; return metric + 'Total'; }
   function fmtBRL(v){ if(v==null||isNaN(v)) return '-'; return 'R$ ' + Math.round(v).toLocaleString('pt-BR'); }
   function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  // x.id vem de _dealId() no backend: hs_id real quando existe, ou chave sintética
+  // "n:nome|m:modelo" quando o deal não tem hs_id — só a 1ª forma é um ID válido do HubSpot.
+  function _dealNameCell(x){
+    var id = x.id, valid = id != null && !/^n:/.test(String(id));
+    return valid
+      ? '<a href="https://app.hubspot.com/contacts/44715285/deal/'+esc(id)+'" target="_blank" rel="noopener" style="color:inherit;text-decoration:none" onmouseover="this.style.textDecoration=\'underline\'" onmouseout="this.style.textDecoration=\'none\'">'+esc(x.dealname)+'</a>'
+      : esc(x.dealname);
+  }
   function fmtBRLc(v){ var s = Math.abs(v) >= 1e6 ? (v/1e6).toFixed(2)+'M' : Math.round(v).toLocaleString('pt-BR'); return (v>=0?'+':'-')+'R$ '+ s.replace('-',''); }
   function fmtNum(v){ return Number(v||0).toLocaleString('pt-BR'); }
   function fmtNumc(v){ v=Math.round(v); return (v>=0?'+':'')+v.toLocaleString('pt-BR'); }
@@ -944,7 +952,7 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
         var cap = rows.slice(0,60);
         var trs = cap.map(function(x){
           var st = (x.stageA||'—')+' → '+(x.stageB||'—');
-          return '<tr><td>'+esc(x.dealname)+'</td><td style="text-align:left">'+esc(st)+'</td><td>'+fmtBRL(x.aCash)+'</td><td><span class="tag '+x.tipo+'">'+movLbl(x.tipo)+'</span></td></tr>';
+          return '<tr><td>'+_dealNameCell(x)+'</td><td style="text-align:left">'+esc(st)+'</td><td>'+fmtBRL(x.aCash)+'</td><td><span class="tag '+x.tipo+'">'+movLbl(x.tipo)+'</span></td></tr>';
         }).join('');
         list.innerHTML = '<table class="drill"><thead><tr><th scope="col" style="text-align:left">Deal</th><th scope="col" style="text-align:left">Etapa A → destino</th><th scope="col">ARR @ A</th><th scope="col" style="text-align:left">Movimentação</th></tr></thead><tbody>'+trs+'</tbody></table>'+
           (rows.length>60 ? '<p style="color:var(--muted);font-size:.72rem;margin-top:.6rem">Mostrando 60 de '+rows.length+' deals.</p>' : '');
@@ -1006,7 +1014,7 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
     var cap=rows.slice(0,120);
     var trs=cap.map(function(x){
       var st=(x.stageA||'—'); if(x.stageA!==x.stageB) st+=' → '+(x.stageB||'—');
-      return '<tr><td>'+esc(x.dealname)+'</td><td style="text-align:left">'+esc(st)+'</td><td>'+vf(x.aCash)+'</td><td>'+vf(x.bCash)+'</td><td class="'+(x.delta>=0?'up':'down')+'">'+vfc(x.delta)+'</td><td><span class="tag '+x.tipo+'">'+movLbl(x.tipo)+'</span></td></tr>';
+      return '<tr><td>'+_dealNameCell(x)+'</td><td style="text-align:left">'+esc(st)+'</td><td>'+vf(x.aCash)+'</td><td>'+vf(x.bCash)+'</td><td class="'+(x.delta>=0?'up':'down')+'">'+vfc(x.delta)+'</td><td><span class="tag '+x.tipo+'">'+movLbl(x.tipo)+'</span></td></tr>';
     }).join('');
     body.innerHTML=head+'<table class="drill"><thead><tr>'+ths+'</tr></thead><tbody>'+trs+'</tbody></table>'+(rows.length>120?'<p style="color:var(--muted);font-size:.72rem;margin-top:.6rem">Mostrando 120 de '+rows.length+' deals (ordene/filtre para focar).</p>':'');
     body.querySelectorAll('th.sortable').forEach(function(th){ var go=function(){sortDrill(th.getAttribute('data-key'));}; th.addEventListener('click',go); th.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();go();}}); });

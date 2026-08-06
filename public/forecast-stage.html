@@ -2936,7 +2936,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       let body = `<div class="deal-modal-head">
         <div style="min-width:0;">
           ${pipeTag}
-          <div class="deal-modal-title">${esc(d.dealname || '—')}</div>
+          <div class="deal-modal-title">${d.hs_id ? `<a href="https://app.hubspot.com/contacts/44715285/deal/${esc(d.hs_id)}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">${esc(d.dealname || '—')}</a>` : esc(d.dealname || '—')}</div>
           <div class="deal-modal-sub">${stageLine}</div>
           <div class="deal-modal-exec">${d.ae ? esc(d.ae) : muted}</div>
         </div>
