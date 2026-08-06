@@ -1,5 +1,20 @@
 # Dashboard Enhancement Loop — Status Log
 
+### 🚀 DEPLOY DE PRODUÇÃO | Menu do Delta: reorganização por natureza + remoções + padronização (2026-08-06)
+
+> Autorização explícita do dono ("Faça o commit e o deploy"). `npm run check` (0 fail) e
+> `npm run predeploy` PASS (`main` == `origin/main` `103a8bc`, sem avanço de terceiros — 1ª
+> tentativa deu o FAIL esperado, `HEAD (103a8bc) difere de origin/main (5c158a7)`, resolvido
+> pelo próprio `git push`). Commit `103a8bc`. Deployment `dpl_BESp558G8iAPXqhHn1FfJY5H8Ucv`
+> (READY, production), alias `project-bsmfu.vercel.app`.
+>
+> Pós-deploy confirmado direto no bundle servido: `/` e `/forecast-delta` = 200; nenhum
+> `id="horizon-toggle"`/`id="scope-toggle"` real (só resta o comentário explicativo no código,
+> não o elemento); pill "Validado contra o HubSpot" = 0 ocorrências; `André Pontes` presente
+> (aparece 2x — na exclusão do filtro e em outro contexto do arquivo, não como opção do
+> checkbox); regra unificada `.ctl label,.ctl-label,.hg-label{...}` presente; `.app-header
+> .controls{gap:.85rem .3rem;align-items:flex-start}` presente.
+
 ### Feat | Menu do Delta: remoções (Horizonte/Escopo/validado/André) + padronização de rótulos (2026-08-06)
 
 > Sequência de ajustes do dono sobre a reorganização anterior, na mesma sessão:
