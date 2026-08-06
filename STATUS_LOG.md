@@ -1,5 +1,14 @@
 # Dashboard Enhancement Loop — Status Log
 
+### 🚀 DEPLOY DE PRODUÇÃO | Delta: coluna clicável + eixo truncado + toggle do menu (2026-08-06)
+
+> Autorização explícita do dono ("Funcionou. Commite e deploye"), após confirmação local do
+> fix do toggle. `npm run check` (0 fail) e `npm run predeploy` PASS (`main` == `origin/main`
+> `f79048f`, sem avanço de terceiros). Deployment `dpl_Dr8D9XqTvvyixwnKTF9Co3fNMZZt` (READY,
+> production), alias `project-bsmfu.vercel.app`. Pós-deploy confirmado: `/` e `/forecast-delta`
+> = 200; `window.toggleHeaderCondensed`, `interaction:{mode:'index', intersect:false}` e
+> `scales.y.min:yMin` (D02) presentes no bundle servido.
+
 ### Fix | Botão do toggle do menu (Delta) não funcionava — função presa no IIFE (2026-08-06)
 
 > Dono reportou local: "vi o toggle mas ele não funciona". Causa: todo o `<script>` principal
