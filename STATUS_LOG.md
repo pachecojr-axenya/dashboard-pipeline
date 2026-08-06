@@ -1,5 +1,14 @@
 # Dashboard Enhancement Loop — Status Log
 
+### 🚀 DEPLOY DE PRODUÇÃO | D02 — piso fixo de R$1,5M + degradê nas barras (2026-08-06)
+
+> Autorização explícita do dono ("Já ajuste, commite e deploye"). `npm run check` (0 fail) e
+> `npm run predeploy` PASS (`main` == `origin/main` `549ba7b`, sem avanço de terceiros).
+> Deployment `dpl_GHTmmg83HsUFfBZvzLgiMD593VnD` (READY, production), alias
+> `project-bsmfu.vercel.app`. Pós-deploy confirmado: `/` e `/forecast-delta` = 200; `yMin = yLo
+> - 1500000`, `backgroundColor:_wfBarColor` e `createLinearGradient` presentes no bundle
+> servido.
+
 ### Feat | D02 — piso fixo de R$1,5M + degradê na base das barras (2026-08-06)
 
 > Pedido do dono: "as barras do D02 ainda estão muito longas... comece elas a partir de 1,5M
