@@ -11,9 +11,13 @@ const { setCORSHeaders, requireAuth, methodCheck } = require('./_helpers');
 
 const CACHE_TTL_MS = 10 * 60 * 1000;
 const DEFAULT_DAYS = 30;
-const MIN_DAYS = 7;
+// MIN_DAYS era 7: pedir "hoje" (days=1) devolvia silenciosamente 7 dias, então o
+// fallback nunca conseguia honrar o período escolhido na tela.
+const MIN_DAYS = 1;
 const MAX_DAYS = 365;
-const MAX_FLOWS = 80;
+// A Treble já passou de 180 polls; o teto antigo de 80 cortava mais da metade dos
+// flows sem avisar. Quando o corte acontecer, meta.flowsTruncated denuncia.
+const MAX_FLOWS = 200;
 const MAX_SESSIONS_PER_FLOW = 100;
 const MAX_SESSION_PAGES_PER_FLOW = 3;
 const MAX_HISTORIES = 1200;
@@ -465,6 +469,7 @@ async function buildPayload(token, days) {
   const until = Math.floor(Date.now() / 1000);
   const since = until - days * 24 * 60 * 60;
   const flowsRaw = await trebleGet(token, '/poll/api/all');
+  const flowsTotal = Array.isArray(flowsRaw) ? flowsRaw.length : 0;
   const flows = (Array.isArray(flowsRaw) ? flowsRaw : []).slice(0, MAX_FLOWS).map(f => ({ id: String(f.id), name: flowLabel(f), settingsPresent: !!f.settings }));
   const sessionsByFlow = {};
   const flowErrors = [];
@@ -563,6 +568,9 @@ async function buildPayload(token, days) {
       until: new Date(until * 1000).toISOString(),
       cacheTtlMinutes: Math.round(CACHE_TTL_MS / 60000),
       flowsScanned: flows.length,
+      flowsTotal,
+      flowsTruncated: flowsTotal > flows.length,
+      maxFlows: MAX_FLOWS,
       sessionsFound: allSessions.length,
       sessionsAnalyzed: limited.length,
       rowsReturned: rows.length,

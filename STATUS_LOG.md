@@ -1,5 +1,50 @@
 # Dashboard Enhancement Loop — Status Log
 
+### 🐞 BDR | Treble V9 | "Hoje" mostrava 30 dias de outra fonte (2026-08-07)
+
+> Reporte do dono: "tem algo errado que tá puxando dados desatualizados, filtros estranhos.
+> Coloquei hoje no filtro e os dados parecem estranhos."
+>
+> **Causa raiz:** `computeDwStale` (em `api/bdr-treble-dw.js`) tratava "período corrente sem
+> linhas" como sinônimo de "dado desatualizado" (`rowsReturned === 0` → `dwStale = true`). O
+> frontend lia essa flag e trocava a fonte por `/api/bdr-treble?days=30`, pintando **30 dias de
+> sessões REST** debaixo do chip "Hoje" — outro contrato de métrica (sessões materializadas em
+> `sessions/history` vs tentativas de deployment na fato). Como a Treble não dispara todo dia,
+> e mesmo em dia normal não há disparo de manhã, o filtro "Hoje" caía nesse ramo quase sempre.
+>
+> **Medição (07/08/2026 14:37 BRT, ClickHouse direto):** `client_analytics.fact_deployment_status`
+> com último evento em **05/08/2026 16:53 BRT** (46h), **0 linhas** em 06/08 e 07/08. A API REST
+> da Treble confirma a seca (última sessão 04/08, varredura nos 180 flows). O warehouse não
+> estava mentindo — a tela é que não sabia dizer "não houve disparo".
+>
+> **Correção:**
+> - Frescor virou propriedade do **warehouse**, não do recorte: query própria
+>   `max(timestamps_eta)` sem `WHERE`, exposta no bloco `warehouse` (`latestEventAt`,
+>   `ageMinutes`, `stale` > 3h, `hardStale` > 24h). `dwStale` foi removido do contrato.
+> - Período vazio agora é resposta honesta: "Nenhuma tentativa de disparo em Hoje | Zero é a
+>   resposta do período — a tela não trocou de fonte nem ampliou o intervalo", com selo de
+>   frescor cravando a data do último evento ingerido.
+> - Fallback REST só entra em falha real do DW (5xx/rede) e passou a respeitar o período:
+>   `days` derivado do range escolhido + recorte `[from, to]` no cliente + aviso de que o
+>   contrato de métrica mudou.
+> - `MIN_DAYS` do REST 7 → 1 (pedir 1 dia devolvia 7 em silêncio).
+> - `MAX_FLOWS` do REST 80 → 200: a Treble tem **180 flows** hoje, a varredura lia 44% deles
+>   sem avisar. `meta.flowsTruncated` denuncia corte futuro.
+> - Filtro órfão do `localStorage` (agente/flow/status que não existe no período carregado)
+>   é podado e anunciado — antes o `<select>` exibia "Todos" enquanto o filtro seguia zerando
+>   a tela sem causa visível. Este é o "filtros estranhos" do reporte.
+> - CSS `.note.warn` não existia: avisos fortes renderizavam iguais aos informativos.
+> - `smoke:treble-dw` aceita `SMOKE_PORT` (3002 estava presa por um `vercel dev` órfão de 03/08).
+>
+> **Validação:** `npm run check` exit 0 (inclui `test-bdr-treble-dw.js` reescrito para o
+> contrato novo, com regressão explícita de "período vazio não troca de fonte"), smoke browser
+> `SMOKE_PORT=3003` OK (`dwMode:true`, `emptyPeriodKeptDw:true`, `freshnessSeal:true`,
+> `statusPctTotal:100`), e conferência visual em `Hoje` (vazio honesto) e `20/07–23/07`
+> (1.653 tentativas | 66,4% entregues | 8,5% responderam). Cache-buster `bdr-treble.js?v=10`.
+>
+> Runbook: `20_Company/Sales/Pipeline_Dashboard/BDR_Treble_Dashboard_Runbook.md` seção V9.
+
+
 ### 🚀 DEPLOY DE PRODUÇÃO | Nome do deal nos modais linka pro HubSpot (2026-08-06)
 
 > Pedido do dono: "preciso que o nome dos deals dentro dos modais sejam clicáveis para entrar

@@ -265,9 +265,11 @@ function formatDatePt(s) {
 }
 
 const STALE_THRESHOLD_MINUTES = 180;
+const STALE_HARD_THRESHOLD_MINUTES = 1440;
 
-// Período (BRT) inclui o dia de hoje? Só nesse caso "sem linhas" ou "linha antiga"
-// significa dado desatualizado; período puramente histórico não fica stale por idade.
+// Período (BRT) inclui o dia de hoje? Usado só para política de cache: recorte que
+// inclui hoje e voltou vazio não vai para o cache, porque a próxima linha pode
+// chegar a qualquer momento.
 function periodIncludesToday(range) {
   const today = dateStr(todayBrtDate());
   return range.from <= today && range.to >= today;
@@ -326,13 +328,32 @@ function freshnessAgeMinutes(latestIso, nowMs) {
   return minutes < 0 ? 0 : minutes;
 }
 
-// Stale só é avaliado dentro de período que inclui hoje: sem linhas, ou última
-// linha com mais de STALE_THRESHOLD_MINUTES. Período histórico puro nunca fica
-// stale só por idade.
-function computeDwStale(range, rowsReturned, ageMinutes) {
-  if (!periodIncludesToday(range)) return false;
-  if (rowsReturned === 0) return true;
-  return ageMinutes !== null && ageMinutes > STALE_THRESHOLD_MINUTES;
+// Frescor é propriedade do WAREHOUSE, não do recorte. Recorte sem linhas é
+// resposta legítima ("ninguém disparou nesse período") e NÃO pode ser lido como
+// dado velho — foi exatamente essa confusão que fazia o filtro "Hoje" trocar de
+// fonte e exibir 30 dias de REST. Aqui a idade vem sempre do último evento
+// existente na fato inteira.
+function computeWarehouseStale(ageMinutes) {
+  if (ageMinutes === null) return true;
+  return ageMinutes > STALE_THRESHOLD_MINUTES;
+}
+
+function computeWarehouseHardStale(ageMinutes) {
+  if (ageMinutes === null) return true;
+  return ageMinutes > STALE_HARD_THRESHOLD_MINUTES;
+}
+
+function buildWarehouseState(latestIso, nowMs) {
+  const ageMinutes = freshnessAgeMinutes(latestIso, nowMs);
+  return {
+    latestEventAt: latestIso || null,
+    latestEventDay: brtDayFromIso(latestIso) || null,
+    ageMinutes,
+    stale: computeWarehouseStale(ageMinutes),
+    hardStale: computeWarehouseHardStale(ageMinutes),
+    staleThresholdMinutes: STALE_THRESHOLD_MINUTES,
+    hardStaleThresholdMinutes: STALE_HARD_THRESHOLD_MINUTES
+  };
 }
 
 function resolveDateRange(query) {
@@ -778,6 +799,17 @@ function buildSql(range) {
   ].join('\n');
 }
 
+// Último evento da fato INTEIRA (sem recorte). É o que responde "o warehouse
+// ainda está sendo alimentado?" independentemente do período que a tela pede.
+function buildFreshnessSql() {
+  return [
+    'SELECT',
+    "  formatDateTime(toTimeZone(max(f.timestamps_eta), 'America/Sao_Paulo'), '%Y-%m-%dT%H:%i:%S-03:00') AS warehouse_latest_at",
+    'FROM client_analytics.fact_deployment_status f',
+    'FORMAT JSON'
+  ].join('\n');
+}
+
 function buildApiMap() {
   return [
     {
@@ -814,6 +846,14 @@ function buildApiMap() {
     },
     {
       step: 5,
+      method: 'POST',
+      endpoint: 'ClickHouse HTTP | max(timestamps_eta) da fato inteira',
+      purpose: 'Medir frescor do warehouse sem depender do recorte selecionado',
+      returns: 'Último evento em BRT',
+      usedFor: 'Selo de frescor e aviso de ingestão parada'
+    },
+    {
+      step: 6,
       method: 'Sanitização',
       endpoint: 'API server-side',
       purpose: 'Mapear status bruto, inferir agente por flow e remover PII',
@@ -825,7 +865,10 @@ function buildApiMap() {
 
 async function buildPayloadFromDW(range) {
   const creds = getClickHouseCredentials();
-  const result = await clickhouseQuery(creds, buildSql(range));
+  const [result, freshnessResult] = await Promise.all([
+    clickhouseQuery(creds, buildSql(range)),
+    clickhouseQuery(creds, buildFreshnessSql())
+  ]);
   const rawRows = result.rows || [];
   const truncated = rawRows.length > ROW_LIMIT;
   const messages = rawRows.slice(0, ROW_LIMIT).map(sanitizeMessage);
@@ -834,7 +877,10 @@ async function buildPayloadFromDW(range) {
   const latestEventAt = latestEventFromMessages(messages);
   const latestEventDay = brtDayFromIso(latestEventAt);
   const ageMinutes = freshnessAgeMinutes(latestEventAt, Date.now());
-  const dwStale = computeDwStale(range, messages.length, ageMinutes);
+  const warehouseLatestAt = (freshnessResult.rows && freshnessResult.rows[0])
+    ? freshnessResult.rows[0].warehouse_latest_at || null
+    : null;
+  const warehouse = buildWarehouseState(warehouseLatestAt, Date.now());
 
   const payload = {
     success: true,
@@ -862,7 +908,8 @@ async function buildPayloadFromDW(range) {
     latestEventAt: latestEventAt || null,
     latestEventDay: latestEventDay || null,
     freshnessAgeMinutes: ageMinutes,
-    dwStale,
+    warehouse,
+    periodEmpty: messages.length === 0,
     rowsReturned: messages.length,
     rowsTruncated: truncated,
     meta: {
@@ -884,7 +931,8 @@ async function buildPayloadFromDW(range) {
         'Leitura continua indisponível em fact_deployment_status',
         'Atribuição direta só quando origin_id faz match com dim_agents.id',
         'Flows de regra de negócio (pesquisa RH / experimento outbound = Samuel Alencar; deal4b = Gabriel Milan) são atribuídos pelo construtor do flow, com precedência sobre a inferência por nome',
-        'Demais responsáveis são inferidos pelo nome do flow; origin_id sem match, como 59580, não vira pessoa'
+        'Demais responsáveis são inferidos pelo nome do flow; origin_id sem match, como 59580, não vira pessoa',
+        'Período sem linhas significa "nenhum disparo nesse período", não dado desatualizado; frescor é medido pelo último evento da fato inteira (bloco warehouse), nunca pelo recorte'
       ]
     },
     apiMap: buildApiMap()
@@ -898,29 +946,26 @@ function cacheKey(range) {
   return 'dw-' + range.preset + '-' + range.from + '-' + range.to;
 }
 
-// Payload saudável ou range histórico: cacheável normalmente. Payload com
-// dwStale===true ou rowsReturned===0 para período que inclui hoje nunca deve
-// ir para o cache (evita servir "sem dados"/desatualizado por até 10 min).
+// Range histórico: cacheável sempre. Recorte que inclui hoje e voltou vazio não
+// vai para o cache — a próxima linha pode chegar a qualquer momento e servir
+// "sem dados" por 10 min esconderia disparo recém-ingerido.
 function shouldCachePayload(payload, range) {
   if (!payload) return false;
   if (!periodIncludesToday(range)) return true;
-  if (payload.dwStale === true) return false;
   if (payload.rowsReturned === 0) return false;
   return true;
 }
 
-// Recalcula freshnessAgeMinutes/dwStale a partir de "agora" (não do momento em
-// que o payload foi gerado/cacheado). O payload pode ter sido escrito no cache
-// com idade de 175min (fresco) e, até 10min depois (CACHE_TTL_MS), a idade real
-// do último evento já ter cruzado o limiar de STALE_THRESHOLD_MINUTES — sem essa
-// recomputação o cache serviria um payload com dwStale=false desatualizado.
+// Recalcula as idades a partir de "agora" (não do momento em que o payload foi
+// gerado/cacheado). Dentro do TTL de 10 min o warehouse pode cruzar o limiar de
+// staleness; sem recomputar, o cache serviria um bloco warehouse otimista.
 // nowMs é injetável só para teste determinístico; em produção usa Date.now().
 function recomputeFreshness(payload, range, nowMs) {
   if (!payload) return payload;
   const now = typeof nowMs === 'number' ? nowMs : Date.now();
   const ageMinutes = freshnessAgeMinutes(payload.latestEventAt, now);
-  const dwStale = computeDwStale(range, payload.rowsReturned, ageMinutes);
-  return Object.assign({}, payload, { freshnessAgeMinutes: ageMinutes, dwStale });
+  const warehouse = buildWarehouseState((payload.warehouse || {}).latestEventAt || null, now);
+  return Object.assign({}, payload, { freshnessAgeMinutes: ageMinutes, warehouse });
 }
 
 function getFromCache(key, range, nowMs) {
@@ -988,6 +1033,7 @@ module.exports = async function handler(req, res) {
 
 module.exports._test = {
   buildSql,
+  buildFreshnessSql,
   clickhouseQuery,
   buildPayloadFromDW,
   resolveDateRange,
@@ -1000,7 +1046,9 @@ module.exports._test = {
   latestEventFromMessages,
   brtDayFromIso,
   freshnessAgeMinutes,
-  computeDwStale,
+  computeWarehouseStale,
+  computeWarehouseHardStale,
+  buildWarehouseState,
   shouldCachePayload,
   recomputeFreshness,
   getFromCache,
@@ -1008,6 +1056,7 @@ module.exports._test = {
   resetCache,
   cacheKey,
   STALE_THRESHOLD_MINUTES,
+  STALE_HARD_THRESHOLD_MINUTES,
   CACHE_TTL_MS,
   ROW_LIMIT
 };

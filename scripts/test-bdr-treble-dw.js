@@ -246,48 +246,60 @@ function testFreshnessCurrentVsHistoricalRange() {
   assert.strictEqual(t.periodIncludesToday(historicalRange), false, 'range puramente histórico não deve ser detectado como corrente');
 }
 
-function testStaleEmptyCurrent() {
-  const todayStr = t.resolveDateRange({ preset: 'today' }).from;
-  const currentRange = { from: todayStr, to: todayStr };
-
+// Frescor é do warehouse inteiro, nunca do recorte: um período sem linhas não
+// pode ser lido como dado velho — era essa confusão que trocava a fonte do
+// filtro "Hoje" por 30 dias de REST.
+function testWarehouseStaleIsIndependentOfPeriod() {
   assert.strictEqual(
-    t.computeDwStale(currentRange, 0, null),
+    t.computeWarehouseStale(t.STALE_THRESHOLD_MINUTES + 1),
     true,
-    'período corrente sem nenhuma linha deve ficar stale'
-  );
-}
-
-function testStaleOver180Minutes() {
-  const todayStr = t.resolveDateRange({ preset: 'today' }).from;
-  const currentRange = { from: todayStr, to: todayStr };
-
-  assert.strictEqual(
-    t.computeDwStale(currentRange, 1, t.STALE_THRESHOLD_MINUTES + 1),
-    true,
-    'período corrente com última linha > 180min deve ficar stale'
+    'warehouse com último evento acima de 180min deve ficar stale'
   );
 
   assert.strictEqual(
-    t.computeDwStale(currentRange, 1, t.STALE_THRESHOLD_MINUTES),
+    t.computeWarehouseStale(t.STALE_THRESHOLD_MINUTES),
     false,
     'exatamente no limiar (180min) ainda não deve ficar stale'
   );
+
+  assert.strictEqual(
+    t.computeWarehouseStale(null),
+    true,
+    'warehouse sem nenhum evento deve ser tratado como stale'
+  );
+
+  assert.strictEqual(
+    t.computeWarehouseHardStale(t.STALE_HARD_THRESHOLD_MINUTES + 1),
+    true,
+    'acima de 24h o warehouse deve escalar para hardStale'
+  );
+
+  assert.strictEqual(
+    t.computeWarehouseHardStale(t.STALE_THRESHOLD_MINUTES + 1),
+    false,
+    'entre 3h e 24h é stale mas ainda não é hardStale'
+  );
 }
 
-function testHistoricalOldNotStale() {
-  const historicalRange = { from: '2020-01-01', to: '2020-01-05' };
+function testWarehouseStateBlockShape() {
+  const now = Date.parse('2026-08-07T17:00:00.000Z');
+  const state = t.buildWarehouseState('2026-08-05T16:53:54-03:00', now);
 
-  assert.strictEqual(
-    t.computeDwStale(historicalRange, 0, null),
-    false,
-    'período histórico sem linhas não fica stale por idade'
-  );
+  assert.strictEqual(state.latestEventDay, '2026-08-05', 'dia do último evento deve sair em BRT');
+  assert.strictEqual(state.stale, true, 'evento de 2 dias atrás deve marcar stale');
+  assert.strictEqual(state.hardStale, true, 'evento de 2 dias atrás deve marcar hardStale');
+  assert.ok(state.ageMinutes > 2000, 'idade em minutos deve refletir a distância real até agora');
 
-  assert.strictEqual(
-    t.computeDwStale(historicalRange, 1, 999999),
-    false,
-    'período histórico com última linha muito antiga não fica stale por idade'
-  );
+  const semEvento = t.buildWarehouseState(null, now);
+  assert.strictEqual(semEvento.latestEventAt, null, 'warehouse sem evento não deve inventar timestamp');
+  assert.strictEqual(semEvento.stale, true, 'warehouse sem evento é stale');
+}
+
+function testFreshnessSqlHasNoPeriodFilter() {
+  const sql = t.buildFreshnessSql();
+  assert.ok(/max\(f\.timestamps_eta\)/.test(sql), 'SQL de frescor deve usar max(timestamps_eta)');
+  assert.ok(!/WHERE/i.test(sql), 'SQL de frescor não pode ter WHERE: o frescor é da fato inteira, não do recorte');
+  assert.ok(!/cellphone|country_code|deployment_id|batch_id|treble_id|origin_id/i.test(sql), 'SQL de frescor não pode tocar coluna sensível');
 }
 
 function testShouldCachePayloadBackend() {
@@ -296,27 +308,27 @@ function testShouldCachePayloadBackend() {
   const historicalRange = { from: '2020-01-01', to: '2020-01-05' };
 
   assert.strictEqual(
-    t.shouldCachePayload({ dwStale: true, rowsReturned: 3 }, currentRange),
+    t.shouldCachePayload({ rowsReturned: 0 }, currentRange),
     false,
-    'payload corrente stale não deve cachear mesmo com linhas'
+    'período corrente vazio não deve cachear: a próxima linha pode chegar a qualquer momento'
   );
 
   assert.strictEqual(
-    t.shouldCachePayload({ dwStale: false, rowsReturned: 0 }, currentRange),
-    false,
-    'payload corrente vazio (rowsReturned 0) não deve cachear mesmo sem flag stale'
-  );
-
-  assert.strictEqual(
-    t.shouldCachePayload({ dwStale: false, rowsReturned: 5 }, currentRange),
+    t.shouldCachePayload({ rowsReturned: 5 }, currentRange),
     true,
-    'payload corrente saudável (não stale, com linhas) deve cachear'
+    'período corrente com linhas deve cachear'
   );
 
   assert.strictEqual(
-    t.shouldCachePayload({ dwStale: true, rowsReturned: 0 }, historicalRange),
+    t.shouldCachePayload({ rowsReturned: 5, warehouse: { stale: true } }, currentRange),
     true,
-    'payload de range histórico deve cachear mesmo marcado stale/vazio (stale só se aplica a período corrente)'
+    'warehouse stale NÃO pode impedir cache: staleness virou aviso, não invalidação de dado real'
+  );
+
+  assert.strictEqual(
+    t.shouldCachePayload({ rowsReturned: 0 }, historicalRange),
+    true,
+    'período histórico vazio deve cachear: o vazio dele é definitivo'
   );
 
   assert.strictEqual(
@@ -332,25 +344,29 @@ function testRecomputeFreshness() {
 
   const writeTime = new Date(todayStr + 'T12:00:00.000Z').getTime();
   const latestEventAt = new Date(writeTime - 175 * 60000).toISOString();
-  const payloadAtWrite = { latestEventAt, rowsReturned: 1, dwStale: false };
+  const payloadAtWrite = {
+    latestEventAt,
+    rowsReturned: 1,
+    warehouse: t.buildWarehouseState(latestEventAt, writeTime)
+  };
 
   const recomputedAtWrite = t.recomputeFreshness(payloadAtWrite, currentRange, writeTime);
   assert.strictEqual(recomputedAtWrite.freshnessAgeMinutes, 175, 'recomputeFreshness deve recalcular a idade exata em minutos no momento da escrita');
-  assert.strictEqual(recomputedAtWrite.dwStale, false, 'payload com 175min (abaixo do limiar) ainda não deve ficar stale no momento da escrita');
+  assert.strictEqual(recomputedAtWrite.warehouse.stale, false, 'warehouse com 175min ainda não deve estar stale no momento da escrita');
 
   const readTimeCrossedThreshold = writeTime + 10 * 60000;
   const recomputedAtRead = t.recomputeFreshness(payloadAtWrite, currentRange, readTimeCrossedThreshold);
   assert.strictEqual(recomputedAtRead.freshnessAgeMinutes, 185, 'recomputeFreshness deve recalcular com o relógio da leitura, não o da escrita');
-  assert.strictEqual(recomputedAtRead.dwStale, true, 'payload que cruzou 180min entre escrita e leitura deve ficar stale na recomputação');
+  assert.strictEqual(recomputedAtRead.warehouse.stale, true, 'warehouse que cruzou 180min entre escrita e leitura deve virar stale na recomputação');
 
   assert.strictEqual(t.recomputeFreshness(null, currentRange, writeTime), null, 'recomputeFreshness de payload nulo deve retornar nulo sem lançar');
 
-  const untouched = Object.assign({}, payloadAtWrite);
+  const untouched = JSON.parse(JSON.stringify(payloadAtWrite));
   t.recomputeFreshness(payloadAtWrite, currentRange, readTimeCrossedThreshold);
-  assert.deepStrictEqual(payloadAtWrite, untouched, 'recomputeFreshness não deve mutar o payload original (retorna novo objeto)');
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(payloadAtWrite)), untouched, 'recomputeFreshness não deve mutar o payload original (retorna novo objeto)');
 }
 
-function testCacheCrossesThresholdAndInvalidatesOnRead() {
+function testCacheServesStaleWarehouseWithFlagRefreshed() {
   const todayStr = t.resolveDateRange({ preset: 'today' }).from;
   const currentRange = { from: todayStr, to: todayStr };
   const key = t.cacheKey(currentRange);
@@ -359,26 +375,32 @@ function testCacheCrossesThresholdAndInvalidatesOnRead() {
 
   const writeTime = new Date(todayStr + 'T12:00:00.000Z').getTime();
   const latestEventAt = new Date(writeTime - 175 * 60000).toISOString();
-  const freshPayload = { success: true, latestEventAt, rowsReturned: 4, dwStale: false, freshnessAgeMinutes: 175 };
+  const freshPayload = {
+    success: true,
+    latestEventAt,
+    rowsReturned: 4,
+    warehouse: t.buildWarehouseState(latestEventAt, writeTime)
+  };
 
   t.setCache(key, freshPayload, writeTime);
 
   const readBeforeThreshold = t.getFromCache(key, currentRange, writeTime + 2 * 60000);
-  assert.ok(readBeforeThreshold, 'leitura dentro do TTL e antes de cruzar 180min deve servir o payload cacheado');
-  assert.strictEqual(readBeforeThreshold.dwStale, false, 'antes de cruzar o limiar o payload servido não deve estar stale');
+  assert.ok(readBeforeThreshold, 'leitura dentro do TTL deve servir o payload cacheado');
+  assert.strictEqual(readBeforeThreshold.warehouse.stale, false, 'antes de cruzar o limiar o warehouse servido não deve estar stale');
 
+  // Contraste com o comportamento antigo: cruzar 180min NÃO joga o payload fora.
+  // O dado do período continua válido; só o selo de frescor muda.
   const readAfterCrossingThreshold = t.getFromCache(key, currentRange, writeTime + 10 * 60000);
-  assert.strictEqual(readAfterCrossingThreshold, null, 'leitura após a idade do evento cruzar 180min (mesmo dentro do TTL de cache) deve invalidar e retornar null');
-
-  const readAgainAfterInvalidation = t.getFromCache(key, currentRange, writeTime + 11 * 60000);
-  assert.strictEqual(readAgainAfterInvalidation, null, 'entrada invalidada não deve ressurgir em leitura subsequente (delete efetivo do cacheByKey)');
+  assert.ok(readAfterCrossingThreshold, 'payload com linhas reais deve continuar sendo servido depois de cruzar 180min');
+  assert.strictEqual(readAfterCrossingThreshold.rowsReturned, 4, 'as linhas do período não podem ser descartadas por staleness do warehouse');
+  assert.strictEqual(readAfterCrossingThreshold.warehouse.stale, true, 'o selo de frescor deve acompanhar o relógio da leitura');
 
   t.resetCache();
 
-  const emptyPayload = { success: true, latestEventAt: null, rowsReturned: 0, dwStale: true, freshnessAgeMinutes: null };
+  const emptyPayload = { success: true, latestEventAt: null, rowsReturned: 0, warehouse: t.buildWarehouseState(null, writeTime) };
   t.setCache(key, emptyPayload, writeTime);
-  const readEmptyStillStale = t.getFromCache(key, currentRange, writeTime + 1000);
-  assert.strictEqual(readEmptyStillStale, null, 'payload vazio/stale escrito diretamente no cache (bypass de shouldCachePayload) deve ser invalidado na leitura');
+  const readEmpty = t.getFromCache(key, currentRange, writeTime + 1000);
+  assert.strictEqual(readEmpty, null, 'período corrente vazio escrito direto no cache deve ser invalidado na leitura');
 
   t.resetCache();
 
@@ -386,32 +408,115 @@ function testCacheCrossesThresholdAndInvalidatesOnRead() {
   assert.strictEqual(ttlExpired, null, 'cache vazio após resetCache deve retornar null');
 }
 
-function testFrontendShouldFallbackDwPayload() {
+// Regressão do defeito relatado: com "Hoje" selecionado e zero linhas, a tela
+// tem de continuar no warehouse mostrando zero, nunca puxar 30 dias de REST.
+function testFrontendKeepsDwWhenPeriodIsEmpty() {
   const T = loadFrontendHelpers();
 
   assert.strictEqual(
-    T.shouldFallbackDwPayload({ dwStale: true, rowsReturned: 5 }),
-    true,
-    'dwStale===true deve acionar fallback mesmo com linhas'
+    typeof T.shouldFallbackDwPayload,
+    'undefined',
+    'gatilho de fallback por payload stale/vazio precisa ter sido removido do frontend'
   );
 
-  assert.strictEqual(
-    T.shouldFallbackDwPayload({ dwStale: false, rowsReturned: 0 }),
-    false,
-    'histórico vazio sem flag stale (dwStale false) não deve acionar fallback só por payload vazio'
-  );
+  const range = T.resolveClientRange({ preset: 'today' });
+  const emptyState = T.composeEmptyState({ success: true, rowsReturned: 0 }, true, range, []);
 
-  assert.strictEqual(
-    T.shouldFallbackDwPayload({ rowsReturned: 0 }),
-    false,
-    'ausência de dwStale (undefined) não deve acionar fallback'
+  assert.ok(
+    emptyState.title.indexOf('Hoje') !== -1,
+    'empty state de período corrente deve nomear o período selecionado, não um genérico "sem dados"'
   );
+  assert.ok(
+    /zero é a resposta do período/i.test(emptyState.text),
+    'empty state deve afirmar que zero é a resposta do período, não sugerir troca de fonte'
+  );
+}
 
-  assert.strictEqual(
-    T.shouldFallbackDwPayload(null),
-    false,
-    'payload nulo não deve acionar fallback'
-  );
+function testFrontendClientRangeMirrorsBackend() {
+  const T = loadFrontendHelpers();
+
+  const today = T.resolveClientRange({ preset: 'today' });
+  assert.strictEqual(today.from, today.to, 'preset today deve ter from === to');
+  assert.strictEqual(today.label, 'Hoje');
+  assert.strictEqual(T.fallbackDaysForRange(today), 1, 'fallback de "Hoje" deve pedir 1 dia, não 30');
+
+  const yesterday = T.resolveClientRange({ preset: 'yesterday' });
+  assert.strictEqual(yesterday.from, yesterday.to, 'preset yesterday deve ter from === to');
+  assert.strictEqual(T.shiftIso(today.from, -1), yesterday.from, 'ontem deve ser hoje menos um dia');
+  assert.strictEqual(T.fallbackDaysForRange(yesterday), 2, 'fallback de "Ontem" precisa de janela de 2 dias e recorte no cliente');
+
+  const sevenDays = T.resolveClientRange({ preset: '7d' });
+  assert.strictEqual(sevenDays.to, today.from, '7d deve terminar hoje');
+  assert.strictEqual(T.fallbackDaysForRange(sevenDays), 7, 'fallback de 7d deve pedir 7 dias');
+
+  const custom = T.resolveClientRange({ preset: 'custom', from: '2026-07-01', to: '2026-07-03' });
+  assert.strictEqual(custom.from, '2026-07-01');
+  assert.strictEqual(custom.to, '2026-07-03');
+}
+
+function testFrontendClipsRestRowsToSelectedRange() {
+  const T = loadFrontendHelpers();
+  const range = { from: '2026-08-03', to: '2026-08-04', label: 'teste' };
+
+  const clipped = T.clipRowsToRange([
+    { createdDay: '2026-08-02' },
+    { createdDay: '2026-08-03' },
+    { createdDay: '2026-08-04' },
+    { createdDay: '2026-08-05' },
+    { createdDay: '' }
+  ], range);
+
+  assert.strictEqual(clipped.length, 2, 'fallback REST tem de ser recortado ao período escolhido, não devolver a janela inteira');
+  assert.strictEqual(clipped[0].createdDay, '2026-08-03');
+  assert.strictEqual(clipped[1].createdDay, '2026-08-04');
+}
+
+// O <select> some com o valor órfão (nenhuma option casa => browser mostra
+// "Todos"), mas o filtro continuava ativo e zerava a tela sem causa visível.
+function testFrontendPrunesGhostFilters() {
+  const T = loadFrontendHelpers();
+  const st = T._state;
+
+  st.filters.agent = 'Fantasma Que Nao Existe';
+  st.filters.flow = 'flow_existente';
+  st.filters.status = '';
+
+  const dropped = T.pruneGhostFilters([
+    { agent: 'Gabriele Almeida', flow: 'flow_existente', statusLabel: 'Entregue' }
+  ]);
+
+  assert.strictEqual(st.filters.agent, '', 'agente inexistente no conjunto carregado deve ser descartado');
+  assert.strictEqual(st.filters.flow, 'flow_existente', 'filtro que ainda existe no conjunto deve ser preservado');
+  assert.strictEqual(dropped.length, 1, 'o descarte precisa ser reportado, não silencioso');
+  assert.ok(/Fantasma/.test(dropped[0]), 'o aviso deve nomear o valor descartado');
+
+  const note = T.buildDroppedFilterNoteHtml(dropped);
+  assert.ok(note.indexOf('Fantasma') !== -1, 'a nota renderizada deve mostrar o filtro descartado ao usuário');
+  assert.strictEqual(T.buildDroppedFilterNoteHtml([]), '', 'sem descarte não deve haver nota');
+
+  st.filters.flow = '';
+}
+
+function testFrontendFreshnessNoteSeparatesEmptyFromStale() {
+  const T = loadFrontendHelpers();
+
+  const hard = T.buildFreshnessNoteHtml({
+    warehouse: { latestEventAt: '2026-08-05T16:53:54-03:00', ageMinutes: 2800, stale: true, hardStale: true }
+  });
+  assert.ok(/05\/08\/2026 16:53/.test(hard), 'aviso duro deve cravar a data e hora do último evento ingerido');
+  assert.ok(/note warn/.test(hard), 'aviso de ingestão parada deve usar o estilo de alerta');
+
+  const soft = T.buildFreshnessNoteHtml({
+    warehouse: { latestEventAt: '2026-08-07T09:00:00-03:00', ageMinutes: 240, stale: true, hardStale: false }
+  });
+  assert.ok(!/note warn/.test(soft), 'entre 3h e 24h o aviso é informativo, não alerta');
+  assert.ok(/07\/08\/2026 09:00/.test(soft), 'aviso informativo também deve mostrar o último evento');
+
+  assert.strictEqual(T.buildFreshnessNoteHtml({}), '', 'payload sem bloco warehouse não deve inventar selo de frescor');
+
+  assert.strictEqual(T.humanAge(45), '45 min');
+  assert.strictEqual(T.humanAge(240), '4h');
+  assert.strictEqual(T.humanAge(2880), '2 dias');
 }
 
 function testFrontendIsNoFallbackStatus() {
@@ -436,22 +541,19 @@ function testFrontendMajoritySourcePicksFlowRule() {
   assert.strictEqual(T.majoritySource(tieBrokenByDirect), 'direct', 'quando direct é a maior contagem, majoritySource deve retornar direct');
 }
 
-function testFrontendFallbackAndStaleNotesNotEmpty() {
+function testFrontendFallbackNoteNamesPeriodAndContract() {
   const T = loadFrontendHelpers();
 
-  const fallbackNote = T.buildFallbackNote({ latestEventAt: '2026-07-20T10:00:00-03:00', freshnessAgeMinutes: 5 });
+  const fallbackNote = T.buildFallbackNote({ label: 'Hoje', from: '2026-08-07', to: '2026-08-07' });
   assert.ok(typeof fallbackNote === 'string' && fallbackNote.trim().length > 0, 'buildFallbackNote não deve retornar string vazia');
-  assert.ok(fallbackNote.includes('Fallback REST'), 'buildFallbackNote deve identificar a fonte de contingência');
+  assert.ok(fallbackNote.indexOf('Hoje') !== -1, 'o aviso de fallback deve nomear o período que está sendo exibido');
+  assert.ok(/sess(õ|o)es materializadas/i.test(fallbackNote), 'o aviso deve dizer que o contrato de métrica muda no REST');
+  assert.ok(!/30 dias/.test(fallbackNote), 'o fallback não pode mais anunciar 30 dias fixos');
 
   const fallbackNoteMinimal = T.buildFallbackNote(null);
-  assert.ok(typeof fallbackNoteMinimal === 'string' && fallbackNoteMinimal.trim().length > 0, 'buildFallbackNote sem dados extras ainda deve retornar aviso não vazio');
+  assert.ok(typeof fallbackNoteMinimal === 'string' && fallbackNoteMinimal.trim().length > 0, 'buildFallbackNote sem range ainda deve retornar aviso não vazio');
 
-  const staleNote = T.buildStaleNote({ latestEventAt: '2026-07-20T10:00:00-03:00', freshnessAgeMinutes: 200 });
-  assert.ok(typeof staleNote === 'string' && staleNote.trim().length > 0, 'buildStaleNote não deve retornar string vazia');
-  assert.ok(staleNote.includes('Data Warehouse'), 'buildStaleNote deve mencionar o Data Warehouse');
-
-  const staleNoteMinimal = T.buildStaleNote(null);
-  assert.ok(typeof staleNoteMinimal === 'string' && staleNoteMinimal.trim().length > 0, 'buildStaleNote sem dados extras ainda deve retornar aviso não vazio');
+  assert.strictEqual(typeof T.buildStaleNote, 'undefined', 'buildStaleNote pertencia ao fallback por staleness e deve ter sido removido');
 }
 
 function testFrontendNormalizeRestRowsPreservesCount() {
@@ -481,39 +583,38 @@ function testFrontendNormalizeRestRowsPreservesCount() {
   assert.strictEqual(noMessagesKey.length, 0, 'ausência de messages não deve quebrar nem inventar linhas');
 }
 
-function testFrontendEmptyStateShowsGlobalNoteWhenDwStaleAndFallbackEmpty() {
+function testFrontendEmptyStateDistinguishesCauses() {
   const T = loadFrontendHelpers();
+  const range = { label: 'Hoje', from: '2026-08-07', to: '2026-08-07' };
 
-  const dwStaleFallbackEmptyRaw = {
+  // Período vazio com warehouse parado: a tela precisa dizer as duas coisas —
+  // zero no período E ingestão velha — sem misturar uma com a outra.
+  const staleWarehouseRaw = {
     success: true,
-    dwStale: true,
     rowsReturned: 0,
-    fallbackNote: 'Aviso: Data Warehouse sem dados novos ou vazio no período e o fallback REST veio vazio ou falhou; exibindo o último payload do Data Warehouse.'
+    warehouse: { latestEventAt: '2026-08-05T16:53:54-03:00', ageMinutes: 2800, stale: true, hardStale: true }
   };
+  const emptyStale = T.composeEmptyState(staleWarehouseRaw, true, range, []);
+  assert.strictEqual(emptyStale.type, 'empty');
+  assert.ok(emptyStale.title.indexOf('Hoje') !== -1, 'título deve nomear o período');
+  assert.ok(/05\/08\/2026/.test(emptyStale.noteHtml), 'o empty state deve carregar o selo de frescor com a data do último evento ingerido');
 
-  const emptyState = T.composeEmptyState(dwStaleFallbackEmptyRaw, true);
+  // Warehouse saudável e período historicamente vazio: nada de alarme.
+  const healthyRaw = {
+    success: true,
+    rowsReturned: 0,
+    warehouse: { latestEventAt: '2026-08-07T13:00:00-03:00', ageMinutes: 30, stale: false, hardStale: false }
+  };
+  const emptyHealthy = T.composeEmptyState(healthyRaw, true, range, []);
+  assert.ok(!/note warn/.test(emptyHealthy.noteHtml), 'warehouse fresco não pode gerar alerta no empty state');
 
-  assert.strictEqual(emptyState.type, 'empty', 'estado vazio com DW stale + fallback vazio deve permanecer type=empty');
-  assert.ok(
-    emptyState.noteHtml && emptyState.noteHtml.length > 0,
-    'quando DW está stale/vazio e o fallback veio vazio ou falhou, o aviso global (noteHtml) deve ser composto junto do empty state, não descartado'
-  );
-  assert.ok(
-    emptyState.noteHtml.indexOf('Aviso: Data Warehouse sem dados novos') !== -1,
-    'noteHtml do empty state deve conter o texto exato do fallbackNote de stale, não um texto genérico'
-  );
-  assert.ok(emptyState.noteHtml.indexOf('note') !== -1, 'noteHtml deve usar a classe .note para renderizar no wrapper visual correto');
-
-  const dwHealthyEmptyRaw = { success: true, dwStale: false, rowsReturned: 0 };
-  const emptyStateNoFallback = T.composeEmptyState(dwHealthyEmptyRaw, true);
-  assert.strictEqual(
-    emptyStateNoFallback.noteHtml,
-    '',
-    'empty state de período historicamente vazio (sem fallbackNote, dwMode true) não deve inventar aviso'
-  );
+  // Vazio causado por filtro de campo tem título e ação diferentes.
+  const emptyByFilter = T.composeEmptyState(healthyRaw, true, range, ['Agente: Gabriele Almeida']);
+  assert.ok(/filtros aplicados/i.test(emptyByFilter.title), 'vazio por filtro deve ter título próprio, distinto de período sem disparo');
+  assert.ok(emptyByFilter.text.indexOf('Gabriele Almeida') !== -1, 'vazio por filtro deve listar os filtros ativos');
 
   const restFallbackModeEmptyRaw = { success: true, source: 'treble_rest_fallback' };
-  const emptyStateRestMode = T.composeEmptyState(restFallbackModeEmptyRaw, false);
+  const emptyStateRestMode = T.composeEmptyState(restFallbackModeEmptyRaw, false, range, []);
   assert.ok(
     emptyStateRestMode.noteHtml.indexOf('Fallback REST') !== -1,
     'empty state em modo REST fallback (dwMode=false) deve mostrar o aviso de fallback REST mesmo sem fallbackNote explícito'
@@ -528,19 +629,23 @@ async function main() {
   testFlowRuleAttribution();
   testPrivacyGuard();
   testFreshnessCurrentVsHistoricalRange();
-  testStaleEmptyCurrent();
-  testStaleOver180Minutes();
-  testHistoricalOldNotStale();
+  testWarehouseStaleIsIndependentOfPeriod();
+  testWarehouseStateBlockShape();
+  testFreshnessSqlHasNoPeriodFilter();
   testShouldCachePayloadBackend();
   testRecomputeFreshness();
-  testCacheCrossesThresholdAndInvalidatesOnRead();
-  testFrontendShouldFallbackDwPayload();
+  testCacheServesStaleWarehouseWithFlagRefreshed();
+  testFrontendKeepsDwWhenPeriodIsEmpty();
+  testFrontendClientRangeMirrorsBackend();
+  testFrontendClipsRestRowsToSelectedRange();
+  testFrontendPrunesGhostFilters();
+  testFrontendFreshnessNoteSeparatesEmptyFromStale();
   testFrontendIsNoFallbackStatus();
   testFrontendMajoritySourcePicksFlowRule();
-  testFrontendFallbackAndStaleNotesNotEmpty();
+  testFrontendFallbackNoteNamesPeriodAndContract();
   testFrontendNormalizeRestRowsPreservesCount();
-  testFrontendEmptyStateShowsGlobalNoteWhenDwStaleAndFallbackEmpty();
-  console.log('[test-bdr-treble-dw] PASS | presets, SQL seguro, agentes, status bruto, regra de flow, agregados, PII, freshness/stale, cache backend (shouldCachePayload, recomputeFreshness, getFromCache/setCache/resetCache cruzando 180min), fallback frontend (shouldFallbackDwPayload, isNoFallbackStatus), helpers de frontend (majoritySource, fallback/stale notes, normalizeRestRows) e composição do empty state com aviso global (composeEmptyState)');
+  testFrontendEmptyStateDistinguishesCauses();
+  console.log('[test-bdr-treble-dw] PASS | presets, SQL seguro, agentes, status bruto, regra de flow, agregados, PII, frescor do warehouse independente do recorte (computeWarehouseStale/buildWarehouseState/buildFreshnessSql), cache backend, período vazio NÃO troca de fonte, range do cliente espelha o backend, recorte do fallback REST, poda de filtros órfãos, selo de frescor e empty state por causa');
 }
 
 main().catch(function (error) {

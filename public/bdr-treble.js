@@ -7,7 +7,9 @@
     totalRows: 0,
     filters: loadFilters(),
     tab: 'overview',
-    dwMode: true
+    dwMode: true,
+    range: null,
+    droppedFilters: []
   };
 
   function $(id) {
@@ -48,6 +50,71 @@
     var m = {};
     parts.forEach(function (x) { m[x.type] = x.value; });
     return m.year + '-' + m.month + '-' + m.day;
+  }
+
+  function shiftIso(iso, deltaDays) {
+    var ms = Date.parse(String(iso) + 'T00:00:00Z');
+    if (isNaN(ms)) return iso;
+    return new Date(ms + deltaDays * 86400000).toISOString().slice(0, 10);
+  }
+
+  function diffDaysInclusive(fromIso, toIso) {
+    var a = Date.parse(String(fromIso) + 'T00:00:00Z');
+    var b = Date.parse(String(toIso) + 'T00:00:00Z');
+    if (isNaN(a) || isNaN(b)) return 1;
+    return Math.round((b - a) / 86400000) + 1;
+  }
+
+  // Espelha resolveDateRange do backend. Existe para o fallback REST conseguir
+  // honrar o período escolhido mesmo quando o DW nem respondeu.
+  function resolveClientRange(f) {
+    var today = todayIso();
+    var preset = (f && f.preset) || 'today';
+    if (preset === 'yesterday') {
+      var y = shiftIso(today, -1);
+      return { preset: preset, from: y, to: y, label: 'Ontem' };
+    }
+    if (preset === '7d' || preset === '30d' || preset === '90d') {
+      var n = parseInt(preset, 10);
+      return { preset: preset, from: shiftIso(today, -(n - 1)), to: today, label: 'Últimos ' + n + ' dias' };
+    }
+    if (preset === 'custom') {
+      var from = f.from || today;
+      var to = f.to || today;
+      return { preset: preset, from: from, to: to, label: day(from) + ' a ' + day(to) };
+    }
+    return { preset: 'today', from: today, to: today, label: 'Hoje' };
+  }
+
+  // O REST só sabe "últimos N dias a partir de agora"; pedimos a janela que
+  // cobre o início do período e recortamos o excedente no cliente.
+  function fallbackDaysForRange(range) {
+    var n = diffDaysInclusive(range.from, todayIso());
+    return Math.max(1, Math.min(365, n));
+  }
+
+  function clipRowsToRange(rows, range) {
+    if (!range) return rows;
+    return rows.filter(function (r) {
+      var d = String(r.createdDay || '').slice(0, 10);
+      return d && d >= range.from && d <= range.to;
+    });
+  }
+
+  function humanAge(minutes) {
+    if (minutes == null) return 'idade desconhecida';
+    if (minutes < 60) return minutes + ' min';
+    var hours = Math.floor(minutes / 60);
+    if (hours < 48) return hours + 'h';
+    return Math.floor(hours / 24) + ' dias';
+  }
+
+  function dateTimeBr(iso) {
+    if (!iso) return '—';
+    var s = String(iso);
+    var d = s.slice(0, 10).split('-').reverse().join('/');
+    var t = s.slice(11, 16);
+    return t ? d + ' ' + t : d;
   }
 
   function statusClass(group) {
@@ -115,15 +182,41 @@
     return out.sort(function (a, b) { return String(a).localeCompare(String(b)); });
   }
 
-  function activeFilterLine(visible, total) {
-    var range = (state.raw || {}).dateRange || {};
-    var parts = ['Período: ' + (range.label || state.filters.preset || 'Hoje')];
+  function activeFieldFilters() {
+    var parts = [];
     if (state.filters.agent) parts.push('Agente: ' + state.filters.agent);
     if (state.filters.flow) parts.push('Flow: ' + state.filters.flow);
     if (state.filters.status) parts.push('Status: ' + state.filters.status);
     if (state.filters.q) parts.push('Busca: ' + state.filters.q);
+    return parts;
+  }
+
+  function activeFilterLine(visible, total) {
+    var range = state.range || {};
+    var parts = ['Período: ' + (range.label || state.filters.preset || 'Hoje')];
+    parts = parts.concat(activeFieldFilters());
     parts.push('mostrando ' + fmt(visible) + ' de ' + fmt(total) + ' tentativas');
     return parts.join(' | ');
+  }
+
+  // Filtro salvo no localStorage sobrevive à troca de período e some do <select>
+  // quando o valor não existe mais (nenhuma option marcada => browser mostra
+  // "Todos"), mas continua cortando as linhas. Resultado: tela vazia sem causa
+  // visível. Aqui o filtro órfão é descartado e o descarte é anunciado.
+  function pruneGhostFilters(rows) {
+    var pairs = [['agent', 'agent'], ['flow', 'flow'], ['status', 'statusLabel']];
+    var dropped = [];
+    pairs.forEach(function (pair) {
+      var want = state.filters[pair[0]];
+      if (!want) return;
+      var exists = rows.some(function (r) { return String(r[pair[1]] || '') === String(want); });
+      if (!exists) {
+        dropped.push(pair[0] + ' = ' + want);
+        state.filters[pair[0]] = '';
+      }
+    });
+    if (dropped.length) saveFilters();
+    return dropped;
   }
 
   function renderFilters() {
@@ -350,35 +443,82 @@
   }
 
   function headline(s) {
-    var label = ((state.raw || {}).dateRange || {}).label || (state.dwMode ? 'Hoje' : 'Fallback REST');
+    var label = (state.range || {}).label || 'Período selecionado';
+    if (!state.dwMode) label += ' | fallback REST';
     return '<section class="hero-headline" aria-live="polite"><b>' + esc(label) + ':</b> ' +
       fmt(s.attempts) + ' tentativas | ' + pct(s.deliveryRate) + ' entregues | ' + pct(s.responseRate) + ' responderam</section>';
+  }
+
+  // Frescor é do WAREHOUSE, não do recorte. Um período sem linhas não vira
+  // "dado velho": as duas informações são mostradas separadas para o leitor não
+  // confundir "ninguém disparou" com "a ingestão parou".
+  function buildFreshnessNoteHtml(raw) {
+    var w = (raw || {}).warehouse;
+    if (!w) return '';
+    if (!w.latestEventAt) {
+      return '<div class="note warn"><b>Warehouse sem eventos:</b> a fato de deployments não tem nenhuma linha. ' +
+        'Checar ingestão da Treble antes de ler qualquer número desta tela.</div>';
+    }
+    var quando = dateTimeBr(w.latestEventAt);
+    var idade = humanAge(w.ageMinutes);
+    if (w.hardStale) {
+      return '<div class="note warn"><b>Ingestão possivelmente parada:</b> o último disparo registrado no warehouse é de ' +
+        esc(quando) + ' (há ' + esc(idade) + '). Períodos mais recentes que isso aparecem vazios porque o dado ainda não chegou, não porque o número é zero.</div>';
+    }
+    if (w.stale) {
+      return '<div class="note"><b>Frescor:</b> último disparo registrado em ' + esc(quando) + ' (há ' + esc(idade) +
+        '). A latência normal de ingestão da Treble vai até 3h.</div>';
+    }
+    return '<div class="note"><b>Frescor:</b> último disparo registrado em ' + esc(quando) + ' (há ' + esc(idade) + ').</div>';
+  }
+
+  function buildDroppedFilterNoteHtml(dropped) {
+    if (!dropped || !dropped.length) return '';
+    return '<div class="note"><b>Filtros descartados:</b> ' + esc(dropped.join(' | ')) +
+      '. Esses valores não existem no período carregado e foram limpos para não zerar a tela em silêncio.</div>';
   }
 
   function buildFallbackNoteHtml(raw, dwMode) {
     raw = raw || {};
     var out = '';
+    out += buildFreshnessNoteHtml(raw);
     if (raw.fallbackNote) {
-      out += '<div class="note"><b>Aviso de fonte de dados:</b> ' + esc(raw.fallbackNote) + '</div>';
+      out += '<div class="note warn"><b>Aviso de fonte de dados:</b> ' + esc(raw.fallbackNote) + '</div>';
     } else if (!dwMode) {
-      out += '<div class="note"><b>Fallback REST | últimos 30 dias:</b> filtros de data exatos não se aplicam nesta fonte legada.</div>';
+      out += '<div class="note warn"><b>Fallback REST:</b> fonte legada de contingência, com contrato de métrica diferente do warehouse.</div>';
     }
     if (raw.rowsTruncated === true) {
       out += '<div class="note warn"><b>Alerta:</b> resultado truncado pelo limite de linhas do servidor (rowsTruncated=true); os totais exibidos podem não representar 100% do período selecionado.</div>';
+    }
+    if (raw.meta && raw.meta.flowsTruncated === true) {
+      out += '<div class="note warn"><b>Alerta:</b> a Treble tem ' + esc(raw.meta.flowsTotal) + ' flows e a varredura leu ' +
+        esc(raw.meta.flowsScanned) + '; os totais estão incompletos.</div>';
     }
     return out;
   }
 
   function renderFallbackNote() {
-    return buildFallbackNoteHtml(state.raw, state.dwMode);
+    return buildDroppedFilterNoteHtml(state.droppedFilters) + buildFallbackNoteHtml(state.raw, state.dwMode);
   }
 
-  function composeEmptyState(raw, dwMode) {
+  // Vazio tem duas causas distintas e a tela precisa dizer QUAL: período sem
+  // disparo (resposta legítima) ou filtro de campo cortando tudo.
+  function composeEmptyState(raw, dwMode, range, activeFieldFilters) {
+    var label = (range && range.label) || 'período selecionado';
+    var noteHtml = buildDroppedFilterNoteHtml((raw || {}).droppedFilters) + buildFallbackNoteHtml(raw, dwMode);
+    if (activeFieldFilters && activeFieldFilters.length) {
+      return {
+        type: 'empty',
+        title: 'Nenhuma tentativa com os filtros aplicados',
+        text: 'Ativos: ' + activeFieldFilters.join(' | ') + '. Use Limpar para voltar ao período inteiro.',
+        noteHtml: noteHtml
+      };
+    }
     return {
       type: 'empty',
-      title: 'Sem dados no filtro',
-      text: 'Ajuste período ou filtros.',
-      noteHtml: buildFallbackNoteHtml(raw, dwMode)
+      title: 'Nenhuma tentativa de disparo em ' + label,
+      text: 'Zero é a resposta do período — a tela não trocou de fonte nem ampliou o intervalo.',
+      noteHtml: noteHtml
     };
   }
 
@@ -599,7 +739,8 @@
     var content = $('content');
     var stateEl = $('state');
     if (!rows.length) {
-      var emptyState = composeEmptyState(state.raw, state.dwMode);
+      var emptyRaw = Object.assign({}, state.raw || {}, { droppedFilters: state.droppedFilters });
+      var emptyState = composeEmptyState(emptyRaw, state.dwMode, state.range, activeFieldFilters());
       setState(emptyState.type, emptyState.title, emptyState.text, emptyState.noteHtml);
       return;
     }
@@ -690,10 +831,6 @@
     return status === 400 || status === 401 || status === 403;
   }
 
-  function shouldFallbackDwPayload(dwJson) {
-    return !!(dwJson && dwJson.dwStale === true);
-  }
-
   function humanRangeError(error) {
     var map = {
       invalid_custom_date: 'Data customizada inválida. Use início e fim no formato AAAA-MM-DD.',
@@ -712,21 +849,14 @@
     saveFilters();
   }
 
-  function buildFallbackNote(fbJson) {
-    var note = 'Fallback REST ativado: Data Warehouse retornou vazio ou desatualizado; exibindo dados normalizados via API REST Treble (fonte: /api/bdr-treble, contingência sem garantia de filtro de data exato).';
-    if (fbJson && fbJson.latestEventAt) note += ' Último evento REST: ' + fbJson.latestEventAt + '.';
-    if (fbJson && fbJson.freshnessAgeMinutes != null) note += ' Idade do dado: ' + fbJson.freshnessAgeMinutes + ' min.';
-    return note;
+  function buildFallbackNote(range) {
+    var label = (range && range.label) || 'período selecionado';
+    return 'O Data Warehouse falhou e a tela caiu na API REST da Treble, recortada em ' + label +
+      '. O contrato muda: aqui a base são sessões materializadas, não tentativas de deployment, ' +
+      'e o dia vem do created_at em UTC — números não são comparáveis com os do warehouse.';
   }
 
-  function buildStaleNote(dwJson) {
-    var note = 'Aviso: Data Warehouse sem dados novos ou vazio no período e o fallback REST veio vazio ou falhou; exibindo o último payload do Data Warehouse.';
-    if (dwJson && dwJson.latestEventAt) note += ' Último evento DW: ' + dwJson.latestEventAt + '.';
-    if (dwJson && dwJson.freshnessAgeMinutes != null) note += ' Idade do dado: ' + dwJson.freshnessAgeMinutes + ' min.';
-    return note;
-  }
-
-  function loadRestFallback(url) {
+  function loadRestFallback(url, range) {
     return fetch(url, { credentials: 'include' }).then(function (response) {
       if (!response.ok) {
         var error = new Error(
@@ -740,17 +870,16 @@
       }
       return response.json();
     }).then(function (json) {
+      var label = (range && range.label) || 'período selecionado';
       json.source = 'treble_rest_fallback';
-      json.dateRange = {
-        preset: 'fallback_30d',
-        label: 'Fallback REST | últimos 30 dias'
-      };
+      json.dateRange = Object.assign({}, range || {}, { label: label });
       json.meta = json.meta || {};
-      json.meta.sourceLabel = 'Fallback REST | últimos 30 dias';
-      json.meta.metricContract = 'Fallback REST normalizado para o shape V2; filtros de data exatos não são garantidos.';
+      json.meta.sourceLabel = 'Fallback REST | ' + label;
+      json.meta.metricContract = 'Fallback REST normalizado para o shape V2: base são sessões materializadas em sessions/history, não tentativas de deployment. Dia derivado de created_at em UTC.';
       json.meta.privacy = 'Payload normalizado sem telefone/email exibidos na UI.';
       json.apiMap = json.apiMap || [];
-      json.messages = normalizeRestRows(json);
+      json.messages = clipRowsToRange(normalizeRestRows(json), range);
+      json.fallbackNote = buildFallbackNote(range);
       return json;
     });
   }
@@ -759,30 +888,20 @@
     load: function (refresh) {
       setState('loading', 'Carregando Treble', 'Buscando dados do Treble Data Warehouse');
       var f = state.filters;
+      var clientRange = resolveClientRange(f);
       var dwUrl = '/api/bdr-treble-dw?preset=' + encodeURIComponent(f.preset || 'today') +
         (f.preset === 'custom' ? '&from=' + encodeURIComponent(f.from || '') + '&to=' + encodeURIComponent(f.to || '') : '') +
         (refresh ? '&refresh=true' : '');
-      var fallbackUrl = '/api/bdr-treble?days=30' + (refresh ? '&refresh=true' : '');
+      var fallbackUrl = '/api/bdr-treble?days=' + fallbackDaysForRange(clientRange) + (refresh ? '&refresh=true' : '');
 
+      // O DW responder 200 é resposta final, inclusive quando o período tem zero
+      // linhas. Trocar de fonte porque "hoje está vazio" era o que fazia o filtro
+      // Hoje exibir 30 dias de REST. Fallback agora só existe para DW quebrado.
       fetch(dwUrl, { credentials: 'include' }).then(function (r) {
         if (r.ok) {
           return r.json().then(function (dwJson) {
             if (!dwJson.success) throw new Error(dwJson.error || dwJson.message || 'Resposta inválida');
-            var dwNeedsFallback = shouldFallbackDwPayload(dwJson);
-            if (!dwNeedsFallback) return dwJson;
-            return loadRestFallback(fallbackUrl).then(function (fbJson) {
-              var fbMessages = (fbJson && fbJson.messages) || [];
-              if (fbMessages.length > 0) {
-                fbJson.fallbackNote = buildFallbackNote(fbJson);
-                return fbJson;
-              }
-              dwJson.fallbackNote = buildStaleNote(dwJson);
-              return dwJson;
-            }).catch(function (fbError) {
-              if (fbError && fbError.noFallback) throw fbError;
-              dwJson.fallbackNote = buildStaleNote(dwJson);
-              return dwJson;
-            });
+            return dwJson;
           });
         }
         if (r.status === 400) {
@@ -805,13 +924,15 @@
         throw new Error('dw_server_error');
       }).catch(function (error) {
         if (error && error.noFallback) throw error;
-        return loadRestFallback(fallbackUrl);
+        return loadRestFallback(fallbackUrl, clientRange);
       }).then(function (json) {
         if (!json.success) throw new Error(json.error || json.message || 'Resposta inválida');
         state.raw = json;
         state.dwMode = json.source === 'treble_data_warehouse';
         state.rows = json.messages || [];
         state.totalRows = state.rows.length;
+        state.range = json.dateRange || clientRange;
+        state.droppedFilters = pruneGhostFilters(state.rows);
         if (state.dwMode) syncDateInputs(json.dateRange);
         render();
       }).catch(function (e) {
@@ -839,7 +960,12 @@
       $('help-body').innerHTML = '<div class="help-block"><b>Fonte</b><p>ClickHouse Treble, fact_deployment_status, via API server-side autenticada.</p></div>' +
         '<div class="help-block"><b>Entrega</b><p>Entregue = timestamp_delivered válido ou status DELIVERED. Resposta válida entra no funil como entregue, mas não muda o status bruto.</p></div>' +
         '<div class="help-block"><b>Atribuição</b><p>Direta por origin_id=dim_agents.id; quando não há match, inferência pelo nome do flow; origin_id nunca é exposto ao browser.</p></div>' +
-        '<div class="help-block"><b>Leitura</b><p>Indisponível nesta fato.</p></div><div class="help-block"><b>Privacidade</b><p>Sem telefone, email, conteúdo, origin_id ou IDs sensíveis.</p></div>';
+        '<div class="help-block"><b>Leitura</b><p>Indisponível nesta fato.</p></div>' +
+        '<div class="help-block"><b>Período vazio ≠ dado velho</b><p>Se o período selecionado não tem linhas, a tela mostra zero e continua no warehouse. ' +
+        'Ela não amplia o intervalo nem troca de fonte. O frescor da ingestão é reportado à parte, pelo último evento da fato inteira.</p></div>' +
+        '<div class="help-block"><b>Fallback REST</b><p>Só entra quando o Data Warehouse falha (erro de servidor ou rede), nunca por período vazio. ' +
+        'Quando entra, respeita o período escolhido e avisa que o contrato de métrica mudou.</p></div>' +
+        '<div class="help-block"><b>Privacidade</b><p>Sem telefone, email, conteúdo, origin_id ou IDs sensíveis.</p></div>';
       $('help-backdrop').classList.add('open');
       $('help-drawer').classList.add('open');
     },
@@ -850,14 +976,22 @@
     _test: {
       shouldFallback: shouldFallback,
       isNoFallbackStatus: isNoFallbackStatus,
-      shouldFallbackDwPayload: shouldFallbackDwPayload,
       humanRangeError: humanRangeError,
       majoritySource: majoritySource,
       buildFallbackNote: buildFallbackNote,
-      buildStaleNote: buildStaleNote,
       normalizeRestRows: normalizeRestRows,
       buildFallbackNoteHtml: buildFallbackNoteHtml,
-      composeEmptyState: composeEmptyState
+      buildFreshnessNoteHtml: buildFreshnessNoteHtml,
+      buildDroppedFilterNoteHtml: buildDroppedFilterNoteHtml,
+      composeEmptyState: composeEmptyState,
+      resolveClientRange: resolveClientRange,
+      fallbackDaysForRange: fallbackDaysForRange,
+      clipRowsToRange: clipRowsToRange,
+      humanAge: humanAge,
+      dateTimeBr: dateTimeBr,
+      shiftIso: shiftIso,
+      pruneGhostFilters: pruneGhostFilters,
+      _state: state
     }
   };
 
