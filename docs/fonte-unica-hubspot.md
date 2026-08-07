@@ -34,9 +34,29 @@ node scripts/compare-warehouse-endpoints.js --adc calls       # só um caso
 | `company-activities` | migrado | `fact_engagement` | pendente do backfill de corpo dos toques |
 | `deal-activities` | migrado | `fact_engagement` | pendente do backfill de corpo dos toques |
 | `bdr-leads` | migrado | `dim_contact` + `fact_crm_change` + `dim_company` | pendente do re-extract de contatos |
+| `funnel-stages` | migrado | `fact_stage_entry` + `dim_deal` + `fact_crm_change` | **16/16 contagens de etapa** exatas nos dois funis; `owner_changes` e `stage_medians` mudam de valor — ver abaixo |
 | `explore-tickets` | **fica na API** | — | ver abaixo |
-| `funnel-stages` | pendente | `fact_stage_entry` | — |
 | `bdr-workload` | pendente | `fact_engagement` + `dim_company`/`dim_contact` + `fact_crm_change` | — |
+
+### Onde o armazém DISCORDA da API por estar certo
+
+`funnel-stages` mantém as contagens de etapa exatas, mas `owner_changes` e
+`stage_medians` mudam. O `propertiesWithHistory` do HubSpot **repete o mesmo
+valor** quando houve re-save, ação em massa ou `MERGE_OBJECTS`, e
+`fact_crm_change` colapsa valor igual consecutivo. No deal 28356544839 a API
+lista `657736716` três vezes seguidas e reporta 6 trocas de dono; o dono mudou de
+mão 4 vezes.
+
+Consequência na mediana de tempo em etapa: uma entrada duplicada depois de o deal
+chegar em Perdido dava à API um "período seguinte", e ela contava tempo
+**concluído** numa etapa que o deal nunca deixou (Perdido n=4 no armazém vs 12 na
+API). O armazém marca `is_open` e não conta.
+
+O N07 foi validado contra o relatório do HubSpot em 02/07/2026, e o relatório
+provavelmente conta o mesmo ruído — então **bater com o relatório e estar
+aritmeticamente certo passaram a ser coisas diferentes**. Qual dos dois vale é
+decisão de produto. Por isso a divergência viaja no payload em
+`divergencias_conhecidas`, e não num comentário no código.
 
 Ficam ao vivo por decisão do handoff: `forecast-table` (probabilidade manual),
 `growth-performance` (atribuição de marketing, fora do escopo), `cs-accounts` e
