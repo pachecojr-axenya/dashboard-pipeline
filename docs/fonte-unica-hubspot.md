@@ -31,8 +31,8 @@ node scripts/compare-warehouse-endpoints.js --adc calls       # só um caso
 | `bdr-workload-calls` | migrado | `fact_engagement` + `disposition_label` + `dim_contact`/`dim_company` | **13/13 BDRs** em 30d, exato em total, conversas, discagens, taxa, desfecho e bucket |
 | `deal-prob-history` | migrado | `fact_crm_change` | **5/5 deals**, série (valor, data) idêntica |
 | `company-deals` | migrado | `dim_deal` + `bridge_association` | **4/4 empresas**, mesmo conjunto de deals |
-| `company-activities` | migrado | `fact_engagement` | pendente do backfill de corpo dos toques |
-| `deal-activities` | migrado | `fact_engagement` | pendente do backfill de corpo dos toques |
+| `company-activities` | migrado | `fact_engagement` | 3/3 empresas com 20 toques e corpo; conjunto **não comparável** porque a API trunca — ver abaixo |
+| `deal-activities` | migrado | `fact_engagement` | 3/3 deals, idem |
 | `bdr-leads` | **default na API** (`?fonte=bq` opta) | `dim_contact` + `fact_crm_change` + `dim_company` | comparado: 0 contatos perdidos e 100% dos campos iguais nos 2.173 em comum — mas **1.699 a mais**, por defeito do armazém (abaixo) |
 | `funnel-stages` | migrado | `fact_stage_entry` + `dim_deal` + `fact_crm_change` | contagens de etapa **maiores e certas** no funil Vendas; `owner_changes` e `stage_medians` também mudam — ver abaixo |
 | `explore-tickets` | **fica na API** | — | ver abaixo |
@@ -74,6 +74,18 @@ doc: número certo sem premissa explícita é indistinguível de número novo se
 explicação, e aí ninguém confia. O inverso também vale e vale mais: quando a fonte
 NOVA é que está errada, não migrar — foi o caso do `bdr-leads`. "Adotar o certo"
 não é "adotar o novo".
+
+No **feed de atividades** (`company-activities` / `deal-activities`), o conjunto
+nem é comparável: a versão da API busca as associações de cada tipo com
+`?limit=50` e só depois ordena e corta em 20. Para objeto com muito toque de um
+tipo, esses 50 não são os mais recentes — então as "últimas 20 atividades" do modal
+antigo **nunca foram as últimas 20**. Medido: a empresa 18490469550 tem **33.207
+e-mails** (mais 21 ligações, 18 notas, 12 reuniões), e a API devolvia notas e
+ligações de abril a agosto e nenhum e-mail do próprio dia. Outros casos: 4.635 e
+2.034 e-mails em empresas, 1.911 / 1.601 / 1.017 em deals. O armazém pega o top 20
+global de verdade. O `compare-warehouse-endpoints.js` detecta a truncagem e reporta
+"conjunto não comparável" em vez de marcar falha — script que grita em tudo é script
+que ninguém lê.
 
 No `funnel-stages`, três coisas mudam:
 

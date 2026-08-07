@@ -173,6 +173,7 @@ async function cmpCalls(dias) {
 async function cmpActivities() {
   console.log('\ncompany-activities / deal-activities — feed de toques');
   const wh = require(path.join(ROOT, 'lib', 'hubspot-warehouse.js'));
+  const whq = require(path.join(ROOT, 'lib', 'hubspot-wh-queries.js'));
   for (const [escopo, coluna, mod, col] of [
     ['empresa', 'company_id', 'company-activities.js', 'company_id'],
     ['deal', 'deal_id', 'deal-activities.js', 'deal_id'],
@@ -185,11 +186,35 @@ async function cmpActivities() {
     `);
     for (const r of rows) {
       const id = String(r.id);
+      // Quantos toques de cada tipo o objeto tem. Acima de 50 num tipo, a versão da
+      // API TRUNCA (busca 50 associações por tipo antes de ordenar e cortar em 20),
+      // e aí o conjunto dela não é o top 20 — comparar os conjuntos como se fossem
+      // equivalentes marcaria falha onde não há, e script que grita em tudo é script
+      // que ninguém lê.
+      const { rows: porTipo } = await wh.query(`
+        SELECT kind, COUNT(*) n
+        FROM ${wh.t('silver', 'fact_engagement')}
+        WHERE ${col} = '${id.replace(/[^0-9]/g, '')}'
+          AND kind IN ('notes','emails','calls','meetings')
+        GROUP BY 1
+      `);
+      const estourou = porTipo.filter((t) => Number(t.n) > 50);
+
       const B = (await call(mod, { method: 'POST', body: { hsId: id } })).body;
       const A = (await call(mod, { method: 'POST', body: { hsId: id, fonte: 'api' } })).body;
       const bs = (B.activities || []).map((x) => x.type + '@' + x.date).sort();
       const as = (A.activities || []).map((x) => x.type + '@' + x.date).sort();
       const comCorpo = (B.activities || []).filter((x) => x.body).length;
+
+      if (estourou.length) {
+        // Não é divergência: é a fonte antiga truncando. O que se pode exigir aqui é
+        // que o armazém devolva 20 e com corpo.
+        const detalhe = estourou.map((t) => `${t.kind}=${t.n}`).join(' ');
+        linha(bs.length === whq.FEED_LIMIT && comCorpo > 0,
+          `${escopo} ${id}`.padEnd(26),
+          `${bs.length} toques · ${comCorpo} com corpo · API TRUNCA (${detalhe} > 50/tipo), conjunto não comparável`);
+        continue;
+      }
       linha(JSON.stringify(bs) === JSON.stringify(as),
         `${escopo} ${id}`.padEnd(26),
         `${bs.length} / ${as.length} toques · ${comCorpo} com corpo no bq`);
