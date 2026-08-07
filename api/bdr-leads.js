@@ -17,16 +17,51 @@
  * concorrência 4 ≈ 6-9s. Cache em memória por instância (TTL 10 min); ?refresh=1
  * força atualização.
  *
- * MIGRADO para a fonte única (F5, 07/08/2026): `silver.dim_contact` +
- * `fact_crm_change` (histórico de hs_lead_status) + `dim_company`. Custo passa de
- * ~62 chamadas à API para 2 consultas.
+ * ============================================================================
+ * NÃO MIGRADO AINDA — o caminho do armazém existe e funciona, mas o DEFAULT
+ * continua na API. `?fonte=bq` opta por ele.
  *
- * A equivalência do histórico foi MEDIDA, não presumida: nos 5 contatos com mais
- * mudanças, valor e timestamp idênticos aos de `propertiesWithHistory`.
+ * Motivo, medido em 07/08/2026: o armazém atribui a BDRs **1.699 contatos que
+ * hoje não têm dono nenhum** no portal — 3.872 contra 2.173 da API, 78% de
+ * inflação. `semStatus` idem (12.711 vs 8.434).
+ *
+ * A causa NÃO é a migração; é o modelo do silver. `dim_contact.owner_id` sai de
+ * `LAST_VALUE(owner_id IGNORE NULLS)` sobre o log de mudanças, e o `IGNORE NULLS`
+ * existe por um motivo bom: o histórico de uma propriedade não dispara em toda
+ * linha de evento, então o último valor conhecido tem de ser carregado adiante.
+ * O efeito colateral é que **esvaziar um campo de propósito fica indistinguível
+ * de "não houve evento para esta propriedade"** — o dono removido sobrevive para
+ * sempre como se fosse o atual. Conferido em 4 contatos: o portal devolve
+ * `hubspot_owner_id` vazio e o armazém devolve um BDR.
+ *
+ * O defeito é largo (vale para `owner_id`, `lead_status`, `lifecyclestage`,
+ * `bdr`, `ativo_inativo`, `kam_responsavel`, `vidas`, `porte`, `segmento`, nos
+ * dois `filled` do 10_silver.sql). A correção é fazer a linha `is_current` ler do
+ * payload atual, e não do log — o log serve aos intervalos, o payload é a verdade
+ * do agora. Mas isso mexe no núcleo que os 68 checks validaram, então tem de ser
+ * feito com a suíte inteira rodando, não no fim de uma sessão.
+ *
+ * Migrar antes disso significaria dar a BDRs o crédito de 1.699 contatos que eles
+ * não têm. Melhor endpoint velho e certo que endpoint novo e inflado.
+ * ============================================================================
+ *
+ * O que JÁ está provado do lado do armazém, para quando o defeito cair:
+ *  · o histórico de `hs_lead_status` de `fact_crm_change` é IDÊNTICO ao de
+ *    `propertiesWithHistory` — valor e timestamp, nos 5 contatos com mais
+ *    mudanças (8/8, 6/6, 6/6, 6/6, 6/6);
+ *  · nos 2.173 contatos que as duas fontes têm em comum, `nome`, `cargo`, `bdr`,
+ *    `status`, `origem` e a data de criação batem em 100%; `empresa` e
+ *    `colaboradores` divergem em 1;
+ *  · 0 contatos existem só na API — não há perda, só excesso.
+ *
+ * `numero_de_colaboradores` é FAIXA DE TEXTO no portal ("Abaixo de 1000"), não
+ * número: 55 contatos têm valor e nenhum é numérico. A versão da API faz
+ * `Number(...)` → NaN → null e por isso PERDE o fallback para o nº de
+ * funcionários da empresa; o armazém devolve NULL no cast e o fallback acontece.
+ * Diferença a favor do armazém, em até 55 contatos.
  *
  * A REGRA DE VIGÊNCIA do time continua aqui, aplicada igual nas duas fontes — é
- * regra de negócio do consumidor, não do armazém. `?fonte=api` mantém a rota
- * antiga viva para comparar.
+ * regra de negócio do consumidor, não do armazém.
  */
 
 const { hubspotPost, hubspotGet } = require('../lib/hubspot');
@@ -198,7 +233,9 @@ function semStatusDoArmazem(porDono, idToBdr) {
 }
 
 async function buildPayload(token, opcoes = {}) {
-  const viaBQ = opcoes.fonte !== 'api' && wh.isConfigured();
+  // Default na API até o defeito de "remoção invisível" do silver cair. Ver o
+  // bloco no topo do arquivo — não inverter sem re-medir os 3.872 vs 2.173.
+  const viaBQ = opcoes.fonte === 'bq' && wh.isConfigured();
 
   const ownerMap = viaBQ ? await whq.ownerMap() : await fetchOwnersRaw(token);
   const idToBdr = resolveTeamIds(ownerMap);
@@ -294,19 +331,19 @@ module.exports = async function handler(req, res) {
 
   // Com a leitura no armazém o PAT deixa de ser pré-requisito.
   let token = null;
-  if (fonte === 'api' || !wh.isConfigured()) {
+  if (fonte !== 'bq' || !wh.isConfigured()) {
     try { token = getHubspotToken(); }
     catch (e) { return res.status(503).json({ success: false, error: e.message }); }
   }
 
   try {
     // Cache separado por fonte: sem isso a comparação leria a resposta da outra.
-    if (!refresh && _cache.data && _cache.fonte === (fonte || 'bq')
+    if (!refresh && _cache.data && _cache.fonte === (fonte === 'bq' ? 'bq' : 'api')
         && Date.now() - _cache.at < CACHE_TTL) {
       return res.status(200).json({ ...(_cache.data), cached: true });
     }
     const data = await buildPayload(token, { fonte });
-    _cache = { at: Date.now(), data, fonte: fonte || 'bq' };
+    _cache = { at: Date.now(), data, fonte: fonte === 'bq' ? 'bq' : 'api' };
     return res.status(200).json(data);
   } catch (e) {
     console.error('[bdr-leads]', e.message);

@@ -33,10 +33,37 @@ node scripts/compare-warehouse-endpoints.js --adc calls       # só um caso
 | `company-deals` | migrado | `dim_deal` + `bridge_association` | **4/4 empresas**, mesmo conjunto de deals |
 | `company-activities` | migrado | `fact_engagement` | pendente do backfill de corpo dos toques |
 | `deal-activities` | migrado | `fact_engagement` | pendente do backfill de corpo dos toques |
-| `bdr-leads` | migrado | `dim_contact` + `fact_crm_change` + `dim_company` | pendente do re-extract de contatos |
+| `bdr-leads` | **default na API** (`?fonte=bq` opta) | `dim_contact` + `fact_crm_change` + `dim_company` | comparado: 0 contatos perdidos e 100% dos campos iguais nos 2.173 em comum — mas **1.699 a mais**, por defeito do armazém (abaixo) |
 | `funnel-stages` | migrado | `fact_stage_entry` + `dim_deal` + `fact_crm_change` | **16/16 contagens de etapa** exatas nos dois funis; `owner_changes` e `stage_medians` mudam de valor — ver abaixo |
 | `explore-tickets` | **fica na API** | — | ver abaixo |
 | `bdr-workload` | pendente | `fact_engagement` + `dim_company`/`dim_contact` + `fact_crm_change` | — |
+
+### O armazém não vê remoção de valor — e por isso `bdr-leads` ficou na API
+
+`LAST_VALUE(... IGNORE NULLS)` nos dois `filled` do `10_silver.sql` carrega o
+último valor conhecido adiante. É necessário (o histórico de uma propriedade não
+dispara em toda linha de evento), mas faz **esvaziar um campo ficar
+indistinguível de "não houve evento"**: o dono removido sobrevive como atual.
+
+| objeto | `is_current` | dono fantasma | dono errado |
+|---|---:|---:|---:|
+| contact | 53.687 | **11.625 (21,7%)** | 0 |
+| company | 19.879 | 59 (0,3%) | 0 |
+| deal | 4.218 | 3 (0,07%) | 0 |
+
+Quando o portal TEM dono, o armazém acerta sempre. O defeito é só "não vê a
+remoção", é latente em toda dimensão, e vale também para `lead_status`,
+`lifecyclestage`, `bdr`, `ativo_inativo`, `kam_responsavel`, `vidas`, `porte` e
+`segmento`.
+
+`bdr-leads` pelo armazém dava a BDRs 1.699 contatos hoje sem dono (3.872 vs 2.173,
++78%). Ficou na API por default. É também por isso que `pull-tickets`,
+`funnel-stages` e `bdr-workload-calls` bateram exato: em ticket e deal quase
+ninguém esvaziou o dono.
+
+Correção: na linha `is_current`, ler do payload em vez do log. Mexe no núcleo que
+os 68 checks validaram — precisa da suíte inteira e de um check novo
+(`current_matches_payload`) que teria pegado isso sozinho.
 
 ### Onde o armazém DISCORDA da API por estar certo
 
