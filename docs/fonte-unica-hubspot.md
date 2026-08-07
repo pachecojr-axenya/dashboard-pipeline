@@ -183,8 +183,15 @@ refresh de uma coisa e recebe outra.
 o observado e o esperado — alerta de log sabe que o job saiu != 0 e não sabe qual
 número está errado, e é o segundo que decide se alguém precisa agir.
 
-**Falta um passo manual:** nenhum token do workspace tem `channels:write`, então o
-canal tem de ser criado à mão. Depois:
+**Destino: DM do salencar** (`U0A20338SQL`), configurado nos dois Jobs em
+`SLACK_ALERT_CHANNEL`. Decisão de 07/08/2026: nenhum token do workspace tem
+`channels:write`, então criar canal exigiria passo manual — e o bot
+(`hubspot-helper-slack-bot-token`) posta em DM sem scope adicional. Testado ao
+vivo: `chat.postMessage` com `channel=U0A20338SQL` devolve `ok=true` e a mensagem
+renderiza com o Block Kit correto.
+
+Contrapartida a assumir: **ninguém mais vê o alerta.** Quando houver um canal de
+dados, é uma linha:
 
 ```bash
 gcloud run jobs update hubspot-platform-close --region southamerica-east1 \
@@ -196,3 +203,14 @@ gcloud run jobs update hubspot-platform-close --region southamerica-east1 \
 Sem a variável o job **loga** que o BLOCK não foi avisado e segue — nunca falha
 por causa do alerta. Perder o aviso é ruim; perder a informação de que a suíte
 falhou é pior.
+
+Smoke do alerta, sem esperar um BLOCK de verdade:
+
+```bash
+cd 15_Workspaces/GCP_Axenya/scripts/hubspot-platform
+SLACK_ALERT_CHANNEL=U0A20338SQL python3 -c "
+from hubspot_platform.alert import notify_blocked
+notify_blocked('smoke', [{'check_name':'parity_vs_hubspot','severity':'BLOCK',
+  'passed':False,'subject':'deals_ganho_90d','observed':14,'expected':15,
+  'detail':'TESTE — ignore.'}], mode='close')"
+```
