@@ -17,6 +17,15 @@
  * NOTA: roster (BDR_TEAM/HS_ALIAS/norm) duplicado de api/bdr-workload.js e
  * api/bdr-leads.js — dívida técnica conhecida; convergir para lib/bdr-roster.js
  * na Fase 2. 13 BDRs estáveis (squad RH Summit).
+ *
+ * MIGRADO para a fonte única (F5, 07/08/2026): `silver.fact_engagement` +
+ * `dim_call_disposition` (via `disposition_label`) + `dim_contact` + `dim_company`.
+ * O rótulo do desfecho é o do PORTAL, não o padrão da doc — quatro desfechos
+ * deste portal estão semanticamente trocados (armadilha A16).
+ *
+ * Custo antes: 1 busca paginada de calls + 3 rodadas de batch (call→contact,
+ * contact, company) + 2 páginas de /crm/v3/owners, por request. Agora: 2 consultas.
+ * `?fonte=api` mantém a rota antiga viva para comparar.
  */
 
 const { hubspotPost, hubspotGet } = require('../lib/hubspot');
@@ -24,6 +33,8 @@ const { setCORSHeaders, requireAuth, getHubspotToken, methodCheck } = require('.
 const kv = require('../lib/kv');
 const env = require('../lib/env');
 const { BDR_TEAM, HS_ALIAS, norm, resolveTeamIds } = require('../lib/bdr-team');
+const whq = require('../lib/hubspot-wh-queries');
+const wh = require('../lib/hubspot-warehouse');
 
 const MIN_CONVERSA = 60000; // 1 min em ms — mesmo corte da página
 
@@ -58,7 +69,12 @@ async function searchAll(token, objectType, filters, properties) {
 }
 async function fetchCallDispositions(token) {
   try {
-    const list = await hubspotGet(token, '/calls/v1/dispositions');
+    // O caminho é `/calling/v1/`, não `/calls/v1/`. Estava errado desde sempre e
+    // o `catch` devolvia `{}` em silêncio — resultado: TODA ligação caía em
+    // "Sem desfecho" e o card de desfechos estava morto em produção sem nunca ter
+    // dado erro. Medido em 07/08/2026: 688 de 688 ligações de um BDR sem desfecho
+    // pela API, contra 634 Ocupado / 50 Conectado / 4 sem desfecho no armazém.
+    const list = await hubspotGet(token, '/calling/v1/dispositions');
     const map = {};
     (Array.isArray(list) ? list : []).forEach(d => { map[d.id] = d.label; });
     return map;
@@ -153,30 +169,49 @@ function summarizeRows(rows, dispMap) {
 }
 
 async function build(token, bdrName, sinceMs, untilMs, options = {}) {
-  const ownerMap = await fetchOwnersRaw(token);
+  const viaBQ = options.fonte !== 'api' && wh.isConfigured();
+
+  // O roster continua sendo a régua: `resolveTeamIds` casa nome do dono com o
+  // time canônico. Só a ORIGEM do mapa de donos muda — e o armazém tem 187 donos
+  // onde /crm/v3/owners entregava 54. Roster em código foi o que fez um BDR com
+  // 909 atividades vivas desaparecer do BI; a régua fica, a fonte melhora.
+  const ownerMap = viaBQ ? await whq.ownerMap() : await fetchOwnersRaw(token);
   const idToBdr = resolveTeamIds(ownerMap);
   const ownerIds = Object.keys(idToBdr).filter(id => idToBdr[id] === bdrName);
   if (!ownerIds.length) throw new Error(`BDR não encontrado no time canônico: ${bdrName}`);
 
-  const dispMap = await fetchCallDispositions(token);
-  const rows = await searchAll(token, 'calls', [
-    { propertyName: 'hubspot_owner_id', operator: 'IN', values: ownerIds },
-    { propertyName: 'hs_timestamp', operator: 'BETWEEN', value: String(sinceMs), highValue: String(untilMs) },
-  ], ['hs_timestamp', 'hs_call_duration', 'hs_call_disposition', 'hs_call_title']);
+  // No armazém o rótulo viaja na própria linha (`_label`), então o dispMap é
+  // montado a partir das linhas — nada de segunda fonte para o mesmo rótulo.
+  let rows, dispMap;
+  if (viaBQ) {
+    rows = await whq.bdrCalls(ownerIds, sinceMs, untilMs);
+    dispMap = {};
+    rows.forEach(r => { const d = r.properties.hs_call_disposition; if (d && r._label) dispMap[d] = r._label; });
+  } else {
+    dispMap = await fetchCallDispositions(token);
+    rows = await searchAll(token, 'calls', [
+      { propertyName: 'hubspot_owner_id', operator: 'IN', values: ownerIds },
+      { propertyName: 'hs_timestamp', operator: 'BETWEEN', value: String(sinceMs), highValue: String(untilMs) },
+    ], ['hs_timestamp', 'hs_call_duration', 'hs_call_disposition', 'hs_call_title']);
+  }
 
   const detail = options.detail === true;
   const page = Math.max(1, Number(options.page || 1));
   const limit = Math.min(50, Math.max(1, Number(options.limit || 50)));
   const pageRows = detail ? rows.slice((page - 1) * limit, page * limit) : [];
   const callIds = pageRows.map(r => r.id);
-  const callToContact = detail ? await fetchCallContacts(token, callIds) : {};
+  // No armazém o "para quem" já está na linha (contact_id/company_id são colunas
+  // da fato). Fora dele são 3 rodadas de batch por página.
+  const callToContact = (detail && !viaBQ) ? await fetchCallContacts(token, callIds) : {};
   const contactIds = [...new Set(Object.values(callToContact))];
   const contactMap = contactIds.length ? await fetchContactsById(token, contactIds) : {};
   const companyIds = [...new Set(Object.values(contactMap).map(c => c && c.companyId).filter(Boolean))];
   const companyMap = companyIds.length ? await fetchCompanyNames(token, companyIds) : {};
 
   const enrichAttempted = detail && callIds.length > 0;
-  const enrichOk = Object.keys(callToContact).length > 0;
+  const enrichOk = viaBQ
+    ? pageRows.some(r => r._contato || r._empresa)
+    : Object.keys(callToContact).length > 0;
 
   const calls = pageRows.map(r => {
     const p = r.properties || {};
@@ -188,8 +223,12 @@ async function build(token, bdrName, sinceMs, untilMs, options = {}) {
       duracao_ms: ms,
       conversa: ms != null && ms >= MIN_CONVERSA,
       desfecho: dispMap[p.hs_call_disposition] || 'Sem desfecho',
-      contato: contact ? contact.nome : null,
-      empresa: contact && contact.companyId ? (companyMap[contact.companyId] || null) : null,
+      // Privacidade preservada: só nome do contato e da empresa. Nunca telefone,
+      // e-mail ou payload bruto.
+      contato: viaBQ ? (r._contato || null) : (contact ? contact.nome : null),
+      empresa: viaBQ
+        ? (r._empresa || null)
+        : (contact && contact.companyId ? (companyMap[contact.companyId] || null) : null),
     };
   });
 
@@ -207,6 +246,7 @@ async function build(token, bdrName, sinceMs, untilMs, options = {}) {
     byBucket: summary.byBucket,
     ...(detail ? { calls, pagination: { page, limit, total: rows.length, totalPages: Math.ceil(rows.length / limit) } } : {}),
     enriched: enrichAttempted ? enrichOk : null, // null = sem ligações; false = tentou e não veio "para quem"
+    fonte: viaBQ ? 'bq' : 'api',
     env: env.name,
   };
 }
@@ -217,11 +257,16 @@ module.exports = async function handler(req, res) {
   const user = requireAuth(req, res);
   if (!user) return;
 
-  let token;
-  try { token = getHubspotToken(); }
-  catch (e) { return res.status(503).json({ success: false, error: e.message }); }
-
   const q = new URL(`http://x${req.url}`).searchParams;
+
+  // Com a leitura no armazém o PAT deixa de ser pré-requisito para responder;
+  // ele só é exigido quando a rota antiga é pedida de propósito.
+  let token = null;
+  const precisaAPI = q.get('fonte') === 'api' || !wh.isConfigured();
+  if (precisaAPI) {
+    try { token = getHubspotToken(); }
+    catch (e) { return res.status(503).json({ success: false, error: e.message }); }
+  }
   const bdr = q.get('bdr');
   const since = q.get('since'), until = q.get('until');
   const reISO = /^\d{4}-\d{2}-\d{2}$/;
@@ -236,7 +281,8 @@ module.exports = async function handler(req, res) {
   const kvKey = env.kvKey(`workload-calls:${bdr}|${since}|${until}`);
   const refresh = q.get('refresh') === '1';
   const { detail, page, limit } = paginationOptions(q);
-  const scopedKvKey = `${kvKey}|detail:${detail ? 1 : 0}|page:${page}|limit:${limit}`;
+  const scopedKvKey = `${kvKey}|detail:${detail ? 1 : 0}|page:${page}|limit:${limit}`
+    + `|fonte:${q.get('fonte') === 'api' ? 'api' : 'bq'}`;
   const CACHE_TTL = 5 * 60 * 1000;
 
   try {
@@ -246,7 +292,7 @@ module.exports = async function handler(req, res) {
         if (hit && Date.now() - hit.at < CACHE_TTL) return res.status(200).json({ ...hit.data, cached: true });
       } catch (e) { /* segue para live */ }
     }
-    const data = await build(token, bdr, sinceMs, untilMs, { detail, page, limit });
+    const data = await build(token, bdr, sinceMs, untilMs, { detail, page, limit, fonte: q.get('fonte') });
     if (kv.isConfigured()) { try { await kv.setJSON(scopedKvKey, { at: Date.now(), data }); } catch (e) { /* best-effort */ } }
     return res.status(200).json(data);
   } catch (e) {

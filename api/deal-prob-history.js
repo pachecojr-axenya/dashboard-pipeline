@@ -15,9 +15,25 @@
  *
  * Isolado em arquivo próprio (não em api/history.js) para não colidir com
  * outra sessão mexendo nesse arquivo em paralelo.
+ *
+ * MIGRADO para a fonte única (F5, 07/08/2026): `silver.fact_crm_change`.
+ * A propriedade NÃO era rastreada — migrar antes de rastreá-la teria devolvido
+ * histórico VAZIO com HTTP 200, e o mouse-over passaria a não mostrar nada sem
+ * ninguém saber por quê. Passou a ser rastreada e o histórico é RETROATIVO
+ * (2.401 mudanças desde 03/2025), porque `propertiesWithHistory` devolve a série
+ * completa desde a criação do deal — rastrear hoje recupera o passado.
+ *
+ * De brinde, o armazém casa cada mudança com o campo em que o AE escreveu O
+ * MOTIVO (`descreva_o_que_gerou_a_mudanca_de_probabilidade`), por proximidade de
+ * data. É exatamente o "contar a história da conta" que este endpoint existe
+ * para fazer, e a versão da API não trazia.
+ *
+ * `?fonte=api` mantém a rota antiga viva para comparação.
  */
 
 const { setCORSHeaders, requireAuth, getHubspotToken } = require('./_helpers');
+const whq = require('../lib/hubspot-wh-queries');
+const wh = require('../lib/hubspot-warehouse');
 
 async function hubGet(token, url) {
   const res = await fetch('https://api.hubapi.com' + url, {
@@ -52,6 +68,17 @@ module.exports = async function handler(req, res) {
   const id = params.get('id');
   if (!id) return res.status(400).json({ success: false, error: 'informe ?id=<dealId>' });
 
+  if (params.get('fonte') !== 'api' && wh.isConfigured()) {
+    try {
+      const history = await whq.dealProbHistory(id);
+      return res.status(200).json({
+        success: true, id, current: history[0] || null, history, fonte: 'bq',
+      });
+    } catch (e) {
+      console.error('[deal-prob-history] armazém falhou, caindo para a API:', e.message);
+    }
+  }
+
   try {
     let token;
     try { token = getHubspotToken(); } catch (e) { return res.status(503).json({ success: false, error: e.message }); }
@@ -66,7 +93,7 @@ module.exports = async function handler(req, res) {
     // Colapsa entradas consecutivas com o mesmo valor normalizado (ruído de
     // re-save sem mudança real de probabilidade).
     const dedup = timeline.filter((e, i) => i === 0 || e.value !== timeline[i - 1].value);
-    return res.status(200).json({ success: true, id, current: dedup[0] || null, history: dedup });
+    return res.status(200).json({ success: true, id, current: dedup[0] || null, history: dedup, fonte: 'api' });
   } catch (e) {
     console.error('[deal-prob-history]', e.message);
     return res.status(500).json({ success: false, error: e.message });

@@ -2,6 +2,24 @@
 /**
  * POST /api/explore-tickets
  * Explora pipelines e propriedades de tickets (debug/admin).
+ *
+ * NÃO MIGRADO — decisão de 07/08/2026, aplicando a ressalva do próprio handoff F5
+ * ("se o endpoint precisar dos outros pipelines, mantém na API"). Este precisa:
+ *
+ *   · `GET /crm/v3/pipelines/tickets` enumera os 19 pipelines de ticket do portal.
+ *     O armazém tem 17 em `bronze.raw_pipeline_stage` — e o escopo modelado é só
+ *     o de Cotação (847948895, 187 tickets de 109.200). Um explorador que mostra
+ *     17 de 19 e diz "pipelines de ticket" é pior que um que bate na API.
+ *   · `GET /crm/v3/properties/tickets` devolve as DEFINIÇÕES de propriedade do
+ *     portal. Definição de propriedade não é modelada em nenhuma camada — o
+ *     armazém guarda valores, não o dicionário.
+ *
+ * Só a terceira parte (10 tickets recentes de Cotação) caberia no armazém, e
+ * migrar um terço de um endpoint de debug não paga o custo de duas fontes.
+ * Revisitar quando o escopo de tickets for ampliado para os 19 pipelines.
+ *
+ * FIXME herdado (B02): este endpoint é inalcançável em produção — ver o 403 de
+ * role abaixo. Nenhum usuário recebe 'admin' no OAuth do Google.
  */
 
 const { hubspotGet, hubspotPost } = require('../lib/hubspot');

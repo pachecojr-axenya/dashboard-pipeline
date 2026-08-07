@@ -16,11 +16,24 @@
  * Custo: ~13 páginas de search + ~49 batches de history (50/batch, ~340ms) com
  * concorrência 4 ≈ 6-9s. Cache em memória por instância (TTL 10 min); ?refresh=1
  * força atualização.
+ *
+ * MIGRADO para a fonte única (F5, 07/08/2026): `silver.dim_contact` +
+ * `fact_crm_change` (histórico de hs_lead_status) + `dim_company`. Custo passa de
+ * ~62 chamadas à API para 2 consultas.
+ *
+ * A equivalência do histórico foi MEDIDA, não presumida: nos 5 contatos com mais
+ * mudanças, valor e timestamp idênticos aos de `propertiesWithHistory`.
+ *
+ * A REGRA DE VIGÊNCIA do time continua aqui, aplicada igual nas duas fontes — é
+ * regra de negócio do consumidor, não do armazém. `?fonte=api` mantém a rota
+ * antiga viva para comparar.
  */
 
 const { hubspotPost, hubspotGet } = require('../lib/hubspot');
 const { setCORSHeaders, requireAuth, getHubspotToken, methodCheck } = require('./_helpers');
 const { BDR_TEAM, HS_ALIAS, norm, resolveTeamIds } = require('../lib/bdr-team');
+const whq = require('../lib/hubspot-wh-queries');
+const wh = require('../lib/hubspot-warehouse');
 
 const CONTACT_PROPS = [
   'firstname', 'lastname', 'email', 'jobtitle',
@@ -37,7 +50,7 @@ const BDR_TEAM_EFFECTIVE_FROM = '2026-08';
 const BDR_TEAM_EXITED = ['Anderson Souza', 'Cintia Rodrigues', 'Thauan Pontes', 'Yokyko Muramoto'];
 
 // Cache em memória por instância serverless (mesmo padrão do fetchOwners).
-let _cache = { at: 0, data: null };
+let _cache = { at: 0, data: null, fonte: null };
 const CACHE_TTL = 10 * 60 * 1000;
 
 async function pool(items, size, fn) {
@@ -172,45 +185,82 @@ async function fetchCompanies(token, ids) {
   return map;
 }
 
-async function buildPayload(token) {
-  const ownerMap = await fetchOwnersRaw(token);
+// Contagem de contatos SEM status a partir do armazém, aplicando a MESMA regra de
+// vigência que o countTeamNoStatus faz com dois filterGroups na API: ativo conta
+// sempre; quem saiu conta só se o contato foi criado antes do corte.
+function semStatusDoArmazem(porDono, idToBdr) {
+  return porDono.reduce((soma, r) => {
+    const bdr = idToBdr[r.owner_id];
+    if (!bdr) return soma;
+    if (!BDR_TEAM_EXITED.includes(bdr)) return soma + r.n;
+    return r.criado_ym && r.criado_ym < BDR_TEAM_EFFECTIVE_FROM ? soma + r.n : soma;
+  }, 0);
+}
+
+async function buildPayload(token, opcoes = {}) {
+  const viaBQ = opcoes.fonte !== 'api' && wh.isConfigured();
+
+  const ownerMap = viaBQ ? await whq.ownerMap() : await fetchOwnersRaw(token);
   const idToBdr = resolveTeamIds(ownerMap);
   const teamIds = Object.keys(idToBdr);
   if (!teamIds.length) throw new Error('Nenhum owner do time de BDRs encontrado no portal');
 
-  const [contactsRaw, semStatus] = await Promise.all([
-    searchTeamContacts(token, teamIds),
-    countTeamNoStatus(token, idToBdr),
-  ]);
-
-  const hist = await fetchStatusHistory(token, contactsRaw.map(c => c.id));
-
-
-  const companyIds = [...new Set(contactsRaw.map(c => c.properties.associatedcompanyid).filter(Boolean))];
-  const companies = await fetchCompanies(token, companyIds);
-
-  const contacts = contactsRaw.map(c => {
-    const p = c.properties;
-    const comp = p.associatedcompanyid ? companies[p.associatedcompanyid] : null;
-    const colabs = p.numero_de_colaboradores != null && p.numero_de_colaboradores !== ''
-      ? Number(p.numero_de_colaboradores)
-      : (comp && comp.employees != null ? comp.employees : null);
-    return {
-      id: c.id,
-      nome: [p.firstname, p.lastname].filter(Boolean).join(' ') || p.email || '(sem nome)',
-      cargo: p.jobtitle || null,
-      bdr: idToBdr[p.hubspot_owner_id] || null,
-      status: p.hs_lead_status || null,
-      criado: p.createdate || null,
-      ultimo_contato: p.notes_last_contacted || null,
-      origem: p.origem || null,
-      origem_canonica: p.axenya_origem_canonica || null,
-      empresa_id: p.associatedcompanyid || null,
-      empresa: comp ? comp.name : null,
-      colaboradores: Number.isFinite(colabs) ? colabs : null,
-      hist: hist[c.id] || [],
-    };
-  });
+  let contacts, semStatus;
+  if (viaBQ) {
+    const r = await whq.bdrLeadContacts(teamIds);
+    semStatus = semStatusDoArmazem(r.semStatusPorDono, idToBdr);
+    contacts = r.contacts.map(c => {
+      const colabs = c.numero_de_colaboradores != null
+        ? c.numero_de_colaboradores
+        : (c.company_employees != null ? c.company_employees : null);
+      return {
+        id: c.id,
+        nome: [c.firstname, c.lastname].filter(Boolean).join(' ') || c.email || '(sem nome)',
+        cargo: c.jobtitle || null,
+        bdr: idToBdr[c.owner_id] || null,
+        status: c.lead_status || null,
+        criado: c.createdate || null,
+        ultimo_contato: c.notes_last_contacted || null,
+        origem: c.origem || null,
+        origem_canonica: c.origem_canonica || null,
+        empresa_id: c.company_id || null,
+        empresa: c.company_name || null,
+        colaboradores: Number.isFinite(colabs) ? colabs : null,
+        hist: c.hist || [],
+      };
+    });
+  } else {
+    const [contactsRaw, sem] = await Promise.all([
+      searchTeamContacts(token, teamIds),
+      countTeamNoStatus(token, idToBdr),
+    ]);
+    semStatus = sem;
+    const hist = await fetchStatusHistory(token, contactsRaw.map(c => c.id));
+    const companyIds = [...new Set(contactsRaw.map(c => c.properties.associatedcompanyid).filter(Boolean))];
+    const companies = await fetchCompanies(token, companyIds);
+    contacts = contactsRaw.map(c => {
+      const p = c.properties;
+      const comp = p.associatedcompanyid ? companies[p.associatedcompanyid] : null;
+      const colabs = p.numero_de_colaboradores != null && p.numero_de_colaboradores !== ''
+        ? Number(p.numero_de_colaboradores)
+        : (comp && comp.employees != null ? comp.employees : null);
+      return {
+        id: c.id,
+        nome: [p.firstname, p.lastname].filter(Boolean).join(' ') || p.email || '(sem nome)',
+        cargo: p.jobtitle || null,
+        bdr: idToBdr[p.hubspot_owner_id] || null,
+        status: p.hs_lead_status || null,
+        criado: p.createdate || null,
+        ultimo_contato: p.notes_last_contacted || null,
+        origem: p.origem || null,
+        origem_canonica: p.axenya_origem_canonica || null,
+        empresa_id: p.associatedcompanyid || null,
+        empresa: comp ? comp.name : null,
+        colaboradores: Number.isFinite(colabs) ? colabs : null,
+        hist: hist[c.id] || [],
+      };
+    });
+  }
 
   // REGRA DE VIGÊNCIA (2026-08-03): contatos de BDRs que saíram do time só entram
   // no payload se criados ANTES do corte (mês de criação < BDR_TEAM_EFFECTIVE_FROM).
@@ -228,6 +278,7 @@ async function buildPayload(token) {
     semStatus,
     total: activeContacts.length,
     contacts: activeContacts,
+    fonte: viaBQ ? 'bq' : 'api',
   };
 }
 
@@ -237,18 +288,25 @@ module.exports = async function handler(req, res) {
   const user = requireAuth(req, res);
   if (!user) return;
 
-  let token;
-  try { token = getHubspotToken(); }
-  catch (e) { return res.status(503).json({ success: false, error: e.message }); }
+  const q = new URL(`http://x${req.url}`).searchParams;
+  const fonte = q.get('fonte');
+  const refresh = q.get('refresh') === '1';
 
-  const refresh = new URL(`http://x${req.url}`).searchParams.get('refresh') === '1';
+  // Com a leitura no armazém o PAT deixa de ser pré-requisito.
+  let token = null;
+  if (fonte === 'api' || !wh.isConfigured()) {
+    try { token = getHubspotToken(); }
+    catch (e) { return res.status(503).json({ success: false, error: e.message }); }
+  }
 
   try {
-    if (!refresh && _cache.data && Date.now() - _cache.at < CACHE_TTL) {
+    // Cache separado por fonte: sem isso a comparação leria a resposta da outra.
+    if (!refresh && _cache.data && _cache.fonte === (fonte || 'bq')
+        && Date.now() - _cache.at < CACHE_TTL) {
       return res.status(200).json({ ...(_cache.data), cached: true });
     }
-    const data = await buildPayload(token);
-    _cache = { at: Date.now(), data };
+    const data = await buildPayload(token, { fonte });
+    _cache = { at: Date.now(), data, fonte: fonte || 'bq' };
     return res.status(200).json(data);
   } catch (e) {
     console.error('[bdr-leads]', e.message);
