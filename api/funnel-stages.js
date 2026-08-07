@@ -155,6 +155,11 @@ module.exports = async function handler(req, res) {
       w.entradas.forEach(e => {
         (historyByDeal[e.deal] = historyByDeal[e.deal] || []).push({
           stage_id: e.stage, entered_date: e.data, entered_ts: e.data + 'T00:00:00Z',
+          // Pipeline DA ENTRADA. O passo 3 bucketiza por ele, e não pelo pipeline
+          // atual do deal: 28% das entradas (2.200 em 1.612 deals) pertencem a um
+          // pipeline diferente do atual, e pela regra antiga eram testadas contra
+          // o mapa de etapas do pipeline errado e caíam fora em silêncio.
+          pipeline_id: e.pipeline,
         });
       });
       Object.keys(historyByDeal).forEach(id => {
@@ -230,7 +235,7 @@ module.exports = async function handler(req, res) {
           const cd = dealCreateDate[d.deal];
           if (!cd || cd < n07Since) return;
           if (until && cd > until) return;
-          if (dealPipeline[d.deal] !== VENDAS_ID) return;
+          if ((d.pipeline || dealPipeline[d.deal]) !== VENDAS_ID) return;
           const nome = VENDAS_STAGE_MAP[d.stage];
           if (!nome) return;
           (porDeal[d.deal] = porDeal[d.deal] || {});
@@ -284,10 +289,12 @@ module.exports = async function handler(req, res) {
     [...BID_FUNNEL,    ...BID_EXTRA   ].forEach(s => { bidSets[s]    = new Set(); bidDates[s] = {}; });
 
     hsIds.forEach(id => {
-      const pipe = dealPipeline[id];
       (historyByDeal[id] || []).forEach(entry => {
         if (entry.entered_date < since) return;
         if (until && entry.entered_date > until) return;
+        // O funil é sempre (pipeline, stage). No armazém o pipeline vem da própria
+        // entrada; no caminho antigo só existe o pipeline atual do deal.
+        const pipe = entry.pipeline_id || dealPipeline[id];
         if (pipe === VENDAS_ID) {
           const name = VENDAS_STAGE_MAP[entry.stage_id];
           if (name && vendasSets[name]) { vendasSets[name].add(id); if (!vendasDates[name][id] || entry.entered_date < vendasDates[name][id]) vendasDates[name][id] = entry.entered_date; }
@@ -318,9 +325,25 @@ module.exports = async function handler(req, res) {
       // quando o filtro apertava.
       total_with_history: viaBQ ? totalComHistoricoBQ : Object.keys(historyByDeal).length,
       fonte: viaBQ ? 'bq' : 'api',
+      // O COMO e as PREMISSAS viajam com o número, não só na doc: número certo sem
+      // premissa explícita é indistinguível de número novo sem explicação, e aí
+      // ninguém confia nele.
+      premissas: viaBQ ? {
+        fonte: 'silver.fact_stage_entry (jornada nativa) + dim_deal + fact_crm_change',
+        contagem_de_etapa: 'deals DISTINTOS que entraram na etapa dentro do recorte; re-entrada conta uma vez, com a primeira data',
+        pipeline_da_etapa: 'o pipeline REGISTRADO NA ENTRADA, não o atual do deal — o funil é sempre (pipeline, stage). Medido: 28% das entradas (2.200 em 1.612 deals) pertencem a um pipeline diferente do atual, e a regra antiga as testava contra o mapa de etapas do pipeline errado e as descartava em silêncio',
+        universo_de_deals: 'deals cujo pipeline ATUAL é Vendas ou Bid, igual à versão antiga. Deal que migrou para um terceiro pipeline fica fora dos dois funis mesmo tendo passado por eles — corrigir isso é outra mudança, ainda não feita',
+        tempo_em_etapa: 'soma dos períodos CONCLUÍDOS por (deal, etapa), em dias fracionários; período em aberto não conta',
+        escopo_do_n07: 'pipeline de Vendas, deals criados a partir de set/2025 (piso fixo), apertável pelo filtro de período mas nunca alargável',
+        nao_replica_hubspot: 'o relatorio do HubSpot conta re-save e MERGE_OBJECTS como periodo; a validacao de 02/07/2026 deixou de ser prova de acerto',
+        reproduzir_o_antigo: '/api/funnel-stages?fonte=api',
+      } : null,
       // Não esconder: o consumidor tem de poder ver que estes dois campos mudaram
       // de definição ao sair da API, e por quê.
       divergencias_conhecidas: viaBQ ? [
+        { campo: 'contagem de etapa (stages[].count)',
+          efeito: 'MAIOR no funil Vendas — RA 615 vs 607, Diag 262 vs 258, Cot 80 vs 78, Cons 49 vs 47, Neg 29 vs 28',
+          motivo: 'o funil e sempre (pipeline, stage). A versao antiga bucketizava toda entrada pelo pipeline ATUAL do deal, entao entrada de um deal hoje em Bid que passou por Vendas era testada contra o mapa de etapas do Bid, nao casava e caia fora em silencio. 28% das entradas (2.200 em 1.612 deals) tem pipeline diferente do atual' },
         { campo: 'owner_changes',
           efeito: 'menor que na API',
           motivo: 'a API repete o mesmo dono em re-save/acao em massa/MERGE_OBJECTS e conta cada repeticao como troca; o armazem colapsa valor igual consecutivo' },

@@ -34,7 +34,7 @@ node scripts/compare-warehouse-endpoints.js --adc calls       # só um caso
 | `company-activities` | migrado | `fact_engagement` | pendente do backfill de corpo dos toques |
 | `deal-activities` | migrado | `fact_engagement` | pendente do backfill de corpo dos toques |
 | `bdr-leads` | **default na API** (`?fonte=bq` opta) | `dim_contact` + `fact_crm_change` + `dim_company` | comparado: 0 contatos perdidos e 100% dos campos iguais nos 2.173 em comum — mas **1.699 a mais**, por defeito do armazém (abaixo) |
-| `funnel-stages` | migrado | `fact_stage_entry` + `dim_deal` + `fact_crm_change` | **16/16 contagens de etapa** exatas nos dois funis; `owner_changes` e `stage_medians` mudam de valor — ver abaixo |
+| `funnel-stages` | migrado | `fact_stage_entry` + `dim_deal` + `fact_crm_change` | contagens de etapa **maiores e certas** no funil Vendas; `owner_changes` e `stage_medians` também mudam — ver abaixo |
 | `explore-tickets` | **fica na API** | — | ver abaixo |
 | `bdr-workload` | pendente | `fact_engagement` + `dim_company`/`dim_contact` + `fact_crm_change` | — |
 
@@ -67,12 +67,29 @@ os 68 checks validaram — precisa da suíte inteira e de um check novo
 
 ### Onde o armazém DISCORDA da API por estar certo
 
-`funnel-stages` mantém as contagens de etapa exatas, mas `owner_changes` e
-`stage_medians` mudam. O `propertiesWithHistory` do HubSpot **repete o mesmo
-valor** quando houve re-save, ação em massa ou `MERGE_OBJECTS`, e
-`fact_crm_change` colapsa valor igual consecutivo. No deal 28356544839 a API
-lista `657736716` três vezes seguidas e reporta 6 trocas de dono; o dono mudou de
-mão 4 vezes.
+**Regra:** quando o número novo divergir do que o time já reconhece, adotar o
+certo — e documentar o como e as premissas junto com ele. Todo endpoint migrado
+carrega `premissas` e `divergencias_conhecidas` no próprio payload, e não só na
+doc: número certo sem premissa explícita é indistinguível de número novo sem
+explicação, e aí ninguém confia. O inverso também vale e vale mais: quando a fonte
+NOVA é que está errada, não migrar — foi o caso do `bdr-leads`. "Adotar o certo"
+não é "adotar o novo".
+
+No `funnel-stages`, três coisas mudam:
+
+**1. Contagem de etapa — maior, e certa.** O funil é sempre `(pipeline, stage)`. A
+versão antiga bucketizava toda entrada pelo pipeline **atual** do deal, então a
+entrada de um deal hoje em Bid que passou por Vendas era testada contra o mapa de
+etapas do Bid, não casava (id de etapa é único por pipeline) e caía fora **em
+silêncio**. Medido: 2.200 de 7.796 entradas (28%), em 1.612 deals, têm pipeline
+diferente do atual. Efeito no funil Vendas: RA 615 vs 607, Diagnóstico 262 vs 258,
+Cotação 80 vs 78, Consultoria 49 vs 47, Negociação 29 vs 28.
+
+**2 e 3. `owner_changes` e `stage_medians`.** O `propertiesWithHistory` do HubSpot
+**repete o mesmo valor** quando houve re-save, ação em massa ou `MERGE_OBJECTS`, e
+`fact_crm_change` colapsa valor igual consecutivo. No deal 28356544839 a API lista
+`657736716` três vezes seguidas e reporta 6 trocas de dono; o dono mudou de mão 4
+vezes.
 
 Consequência na mediana de tempo em etapa: uma entrada duplicada depois de o deal
 chegar em Perdido dava à API um "período seguinte", e ela contava tempo
@@ -80,10 +97,16 @@ chegar em Perdido dava à API um "período seguinte", e ela contava tempo
 API). O armazém marca `is_open` e não conta.
 
 O N07 foi validado contra o relatório do HubSpot em 02/07/2026, e o relatório
-provavelmente conta o mesmo ruído — então **bater com o relatório e estar
-aritmeticamente certo passaram a ser coisas diferentes**. Qual dos dois vale é
-decisão de produto. Por isso a divergência viaja no payload em
-`divergencias_conhecidas`, e não num comentário no código.
+conta o mesmo ruído — então **bater com o relatório e estar aritmeticamente certo
+deixaram de ser a mesma coisa**. Decisão registrada: vale o número certo, e a
+validação de 02/07 **deixou de ser prova de acerto**. Isso está escrito nos três
+lugares em que a tela documenta o N07 (catálogo do card + tooltip PT + tooltip EN
+em `public/dashboard.html`), não só aqui.
+
+Uma premissa que **não** mudou, e é limitação conhecida: o universo continua sendo
+"deals cujo pipeline ATUAL é Vendas ou Bid". Deal que migrou para um terceiro
+pipeline fica fora dos dois funis mesmo tendo passado por eles. Corrigir isso é
+outra mudança, com outro efeito, e não foi feita.
 
 Ficam ao vivo por decisão do handoff: `forecast-table` (probabilidade manual),
 `growth-performance` (atribuição de marketing, fora do escopo), `cs-accounts` e
