@@ -20,6 +20,21 @@
  *
  * Espelho do time/alias de api/bdr-leads.js — consolidar em lib/bdr-team.js quando
  * houver um 3º consumidor (não tocar no bdr-leads em produção por ora).
+ *
+ * MIGRADO para a fonte única (F5, 07/08/2026): `dim_company` + `dim_contact` +
+ * `fact_crm_change` + `fact_engagement`. Custo antes: 3 buscas paginadas + lote de
+ * propertiesWithHistory + 3 rodadas de associação + busca separada do Treble + 2
+ * páginas de /crm/v3/owners, POR REQUEST. Agora: 4 consultas em paralelo.
+ *
+ * Dois ganhos que não são de custo:
+ *  · o Treble deixa de precisar de passo próprio — `owner_attributed` já marca o
+ *    toque cuja atribuição veio do contato (2.436 comunicações), e `owner_id` já é
+ *    o dono efetivo;
+ *  · a transição de `hs_lead_status` vem de `fact_crm_change` com `old_value`, que
+ *    já está colapsado: re-save do mesmo status NÃO vira transição, e na versão
+ *    antiga virava.
+ *
+ * `?fonte=api` mantém a rota antiga viva para comparar.
  */
 
 const { hubspotPost, hubspotGet } = require('../lib/hubspot');
@@ -27,6 +42,8 @@ const { setCORSHeaders, requireAuth, getHubspotToken, methodCheck } = require('.
 const kv = require('../lib/kv');
 const env = require('../lib/env');
 const { BDR_TEAM, HS_ALIAS, norm, resolveTeamIds, findUnresolvedOwners } = require('../lib/bdr-team');
+const whq = require('../lib/hubspot-wh-queries');
+const wh = require('../lib/hubspot-warehouse');
 
 const CONTACT_PROPS = [
   'firstname', 'lastname', 'jobtitle', 'hs_lead_status', 'hubspot_owner_id',
@@ -303,11 +320,162 @@ function sourceOf(p) {
   return d || p.hs_object_source_label || 'Outra';
 }
 
-async function buildPayload(token, sinceMs, untilMs) {
-  const ownerMap = await fetchOwnersRaw(token);
+// Canal MECE do toque, a partir do que o armazém guarda. Mesma régua da versão
+// antiga: nota e tarefa NÃO são canal de contato com o cliente.
+function tipoDoToque(t) {
+  if (t.kind === 'communications') return 'communications';
+  return t.kind;
+}
+
+// ATRIBUIÇÃO POR DONO DO CONTATO — onde ela vale por decisão, e onde é pergunta
+// aberta. O armazém marca `owner_attributed` no toque cujo dono veio do contato
+// associado (o próprio toque não tinha dono).
+//
+// Para WhatsApp/LinkedIn (`communications`) isso é DECISÃO REGISTRADA: disparo via
+// integração chega sem dono, e o disparo é do BDR. É o caso Treble.
+//
+// Para NOTA é outra coisa. Medido em 01–06/08/2026: 425 notas atribuídas contra 429
+// com dono próprio — atribuí-las creditaria ao BDR quase o dobro de notas, e nota
+// sem dono normalmente é registro de automação, não trabalho de alguém. Idem
+// e-mail (197 atribuídos no período).
+//
+// Não é decisão que se toma de dentro de uma migração. O default preserva a
+// semântica de hoje (só `communications` atribuído), TODO toque carrega
+// `owner_atribuido` para quem quiser contar de outro jeito, e `?atribuidos=todos`
+// inclui os demais. Creditar 425 notas a BDRs em silêncio seria mudar a régua de
+// produtividade sem ninguém pedir.
+const ATRIBUICAO_POR_DECISAO = new Set(['communications']);
+
+async function buildPayloadArmazem(idToBdr, teamIds, sinceMs, untilMs, opcoes = {}) {
+  const todosAtribuidos = opcoes.atribuidos === 'todos';
+  const w = await whq.workloadPayload(teamIds, sinceMs, untilMs);
+  const S = wh.str, N = wh.num, TS = wh.timestamp;
+
+  const companiesCreated = w.empresas.map(c => ({
+    id: S(c.company_id),
+    nome: S(c.company_name) || '(sem nome)',
+    bdr: idToBdr[S(c.owner_id)] || null,
+    colaboradores: c.employees == null ? null : Number(c.employees),
+    fonte: sourceOf({ hs_object_source_detail_1: S(c.source_detail),
+                      hs_object_source_label: S(c.source_label) }),
+    criado: TS(c.hs_created_at),
+  }));
+
+  const contactsCreated = w.contatos.map(c => {
+    const colabs = c.numero_de_colaboradores != null
+      ? Number(c.numero_de_colaboradores)
+      : (c.employees == null ? null : Number(c.employees));
+    return {
+      id: S(c.contact_id),
+      nome: [S(c.first_name), S(c.last_name)].filter(Boolean).join(' ') || '(sem nome)',
+      cargo: S(c.job_title),
+      bdr: idToBdr[S(c.owner_id)] || null,
+      empresa_id: S(c.company_id_prop),
+      empresa: S(c.company_name),
+      colaboradores: Number.isFinite(colabs) ? colabs : null,
+      fonte: sourceOf({ hs_object_source_detail_1: S(c.source_detail),
+                        hs_object_source_label: S(c.source_label) }),
+      status: S(c.lead_status),
+      criado: TS(c.hs_created_at),
+    };
+  });
+
+  const transitions = w.transicoes.map(t => ({
+    contato_id: S(t.contact_id),
+    nome: [S(t.first_name), S(t.last_name)].filter(Boolean).join(' ') || '(sem nome)',
+    cargo: S(t.job_title),
+    bdr: idToBdr[S(t.owner_id)] || null,
+    empresa_id: S(t.company_id_prop),
+    de: S(t.old_value),
+    para: S(t.new_value),
+    ts: TS(t.changed_at),
+    empresa: S(t.company_name),
+    colaboradores: t.employees == null ? null : Number(t.employees),
+  })).sort((a, b) => (a.ts < b.ts ? -1 : 1));
+
+  const activities = w.toques.filter(t => {
+    if (!wh.bool(t.owner_attributed)) return true;
+    return todosAtribuidos || ATRIBUICAO_POR_DECISAO.has(String(t.kind));
+  }).map(t => {
+    const a = {
+      owner_atribuido: wh.bool(t.owner_attributed),
+      id: S(t.engagement_id),
+      tipo: tipoDoToque(t),
+      bdr: idToBdr[S(t.owner_id)] || null,
+      ts: TS(t.occurred_at),
+      contact_id: S(t.contact_id),
+      company_id: S(t.company_id),
+    };
+    if (a.tipo === 'calls') {
+      a.duracao_ms = t.duration_ms == null ? null : Number(t.duration_ms);
+      a.desfecho = S(t.disposition_label);
+      // GUID cru: é a chave que o bdr-workload-semantic usa para classificar
+      // "conectada". Trocar por rótulo mudaria a definição entre hoje e o histórico.
+      a.desfechoId = S(t.disposition_id);
+    }
+    if (a.tipo === 'emails') a.direction = S(t.direction);
+    if (a.tipo === 'communications') {
+      a.canal = S(t.channel_type);
+      // Treble = WhatsApp de integração. Sem passo separado: a atribuição pelo
+      // dono do contato já está feita na fato (`owner_attributed`).
+      a.treble = String(t.source_label || '').toUpperCase() === 'INTEGRATION';
+    }
+    return a;
+  }).sort((a, b) => (a.ts < b.ts ? -1 : 1));
+
+  const trebleCount = activities.filter(a => a.treble).length;
+  const atribuidosDescartados = w.toques.filter(t => wh.bool(t.owner_attributed)
+    && !(todosAtribuidos || ATRIBUICAO_POR_DECISAO.has(String(t.kind)))).length;
+  return {
+    companiesCreated, contactsCreated, transitions, activities,
+    diagnostics: {
+      teamIdsCount: teamIds.length,
+      ownersInHubSpot: null,
+      unresolvedOwnersCount: null,
+      rawCounts: {
+        companiesCreated: companiesCreated.length,
+        contactsCreated: contactsCreated.length,
+        contactsTouched: null,
+        activities: activities.length,
+        activitiesWithContactAssociation: activities.filter(a => a.contact_id).length,
+        activitiesWithCompanyAssociation: activities.filter(a => a.company_id).length,
+        activityAssociations: { available: true,
+          nota: 'associacao vem como coluna da fato; nao ha rodada de batch a falhar' },
+        trebleWhatsapp: { fetched: trebleCount, integration: trebleCount,
+          withContact: activities.filter(a => a.treble && a.contact_id).length,
+          attributed: trebleCount, unknown: 0,
+          nota: 'sem passo separado: owner_attributed ja resolve a atribuicao pelo dono do contato' },
+        transitions: transitions.length,
+        // Cap declarado. Silenciar seria dizer "cobrimos tudo" cobrindo menos.
+        toquesAtribuidosDescartados: atribuidosDescartados,
+      },
+      sqlStatusNote: 'Qualificado conta transição de hs_lead_status para OPEN_DEAL no contato. SQL real por deal requer consulta separada ao pipeline de deals.',
+    },
+    premissas: {
+      fonte: 'dim_company + dim_contact + fact_crm_change + fact_engagement',
+      atribuicao: 'hubspot_owner_id do objeto, resolvido pelo roster canonico (resolveTeamIds)',
+      transicao: 'fact_crm_change de hs_lead_status, com old_value ja COLAPSADO — re-save do mesmo status nao conta como transicao, e na versao antiga contava',
+      treble: 'owner_attributed marca o toque atribuido pelo dono do contato; source_label=INTEGRATION separa Treble de WhatsApp manual',
+      desfecho: 'GUID em desfechoId (chave canonica) e rotulo do PORTAL em desfecho',
+      atribuicao: 'toque SEM dono proprio entra atribuido ao dono do contato apenas em communications (decisao registrada do Treble). Para nota e e-mail e PERGUNTA ABERTA e o default os DESCARTA — ver diagnostics.rawCounts.toquesAtribuidosDescartados. `?atribuidos=todos` inclui. Cada toque carrega owner_atribuido',
+      diagnostics_nulos: 'ownersInHubSpot, unresolvedOwnersCount e contactsTouched sao da mecanica da API e nao existem aqui',
+    },
+  };
+}
+
+async function buildPayload(token, sinceMs, untilMs, opcoes = {}) {
+  const viaBQ = opcoes.fonte !== 'api' && wh.isConfigured();
+  const ownerMap = viaBQ ? await whq.ownerMap() : await fetchOwnersRaw(token);
   const idToBdr = resolveTeamIds(ownerMap);
   const teamIds = Object.keys(idToBdr);
   if (!teamIds.length) throw new Error('Nenhum owner do time de BDRs encontrado no portal');
+
+  if (viaBQ) {
+    const p = await buildPayloadArmazem(idToBdr, teamIds, sinceMs, untilMs,
+      { atribuidos: opcoes.atribuidos });
+    return { success: true, generatedAt: new Date().toISOString(), team: BDR_TEAM,
+             fonte: 'bq', ...p };
+  }
 
   const [companiesRaw, contactsCreatedRaw, contactsTouchedRaw] = await Promise.all([
     searchAll(token, 'companies', [
@@ -417,6 +585,7 @@ async function buildPayload(token, sinceMs, untilMs) {
     success: true,
     generatedAt: new Date().toISOString(),
     team: BDR_TEAM,
+    fonte: 'api',
     companiesCreated,
     contactsCreated,
     transitions,
@@ -431,11 +600,15 @@ module.exports = async function handler(req, res) {
   const user = requireAuth(req, res);
   if (!user) return;
 
-  let token;
-  try { token = getHubspotToken(); }
-  catch (e) { return res.status(503).json({ success: false, error: e.message }); }
-
   const q = new URL(`http://x${req.url}`).searchParams;
+  const fonte = q.get('fonte');
+
+  // Com a leitura no armazém o PAT deixa de ser pré-requisito para responder.
+  let token = null;
+  if (fonte === 'api' || !wh.isConfigured()) {
+    try { token = getHubspotToken(); }
+    catch (e) { return res.status(503).json({ success: false, error: e.message }); }
+  }
   const reISO = /^\d{4}-\d{2}-\d{2}$/;
   const since = q.get('since'), until = q.get('until');
   if (!reISO.test(since || '') || !reISO.test(until || '')) {
@@ -446,7 +619,8 @@ module.exports = async function handler(req, res) {
   const untilMs = Date.parse(`${until}T23:59:59.999-03:00`);
   if (!(sinceMs <= untilMs)) return res.status(400).json({ success: false, error: 'since > until' });
 
-  const key = `${since}|${until}`;
+  // A fonte entra na chave: sem isso a comparação leria a resposta da outra.
+  const key = `${since}|${until}|${fonte === 'api' ? 'api' : 'bq'}|${q.get('atribuidos') || ''}`;
   const kvKey = env.kvKey(`workload:${key}`); // namespaced por ambiente (dev/prod não colidem)
   const refresh = q.get('refresh') === '1';
   const todayIso = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString().slice(0, 10);
@@ -476,7 +650,8 @@ module.exports = async function handler(req, res) {
         return res.status(200).json({ ...(l2.data), cached: true, cacheLayer: 'kv', staleAgeMs: Date.now() - l2.at });
       }
     }
-    const data = await buildPayload(token, sinceMs, untilMs);
+    const data = await buildPayload(token, sinceMs, untilMs,
+      { fonte, atribuidos: q.get('atribuidos') });
     const entry = { at: Date.now(), data };
     _cache = { [key]: entry };
     await kvSet(entry); // best-effort

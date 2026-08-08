@@ -91,7 +91,7 @@ async function build() {
     assunto: wh.str(f.subject),
     detalhe: wh.str(f.detail),
   }));
-  const bloqueado = r.blocked === true || String(r.blocked) === 'true';
+  const bloqueado = wh.bool(r.blocked);
 
   // Execução viva do Cloud Run: sem isto o selo diz "atualizado há 40 min"
   // enquanto um refresh já está rodando, e o usuário clica de novo.
