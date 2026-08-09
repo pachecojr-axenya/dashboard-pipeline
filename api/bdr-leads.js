@@ -17,32 +17,32 @@
  * concorrência 4 ≈ 6-9s. Cache em memória por instância (TTL 10 min); ?refresh=1
  * força atualização.
  *
- * ============================================================================
- * NÃO MIGRADO AINDA — o caminho do armazém existe e funciona, mas o DEFAULT
- * continua na API. `?fonte=bq` opta por ele.
+ * MIGRADO para a fonte única (F5, 09/08/2026), depois de o defeito que o travava
+ * cair no silver.
  *
- * Motivo, medido em 07/08/2026: o armazém atribui a BDRs **1.699 contatos que
- * hoje não têm dono nenhum** no portal — 3.872 contra 2.173 da API, 78% de
- * inflação. `semStatus` idem (12.711 vs 8.434).
+ * O bloqueio era do ARMAZÉM, não da migração: `LAST_VALUE(... IGNORE NULLS)` fazia
+ * esvaziar um campo ficar indistinguível de "não houve evento", e o dono removido
+ * sobrevivia como vigente. O endpoint dava a BDRs **1.699 contatos que hoje não
+ * têm dono nenhum** — 3.872 contra 2.173, 78% de inflação. Com a sentinela de
+ * limpeza e o check `current_matches_payload` no lugar:
  *
- * A causa NÃO é a migração; é o modelo do silver. `dim_contact.owner_id` sai de
- * `LAST_VALUE(owner_id IGNORE NULLS)` sobre o log de mudanças, e o `IGNORE NULLS`
- * existe por um motivo bom: o histórico de uma propriedade não dispara em toda
- * linha de evento, então o último valor conhecido tem de ser carregado adiante.
- * O efeito colateral é que **esvaziar um campo de propósito fica indistinguível
- * de "não houve evento para esta propriedade"** — o dono removido sobrevive para
- * sempre como se fosse o atual. Conferido em 4 contatos: o portal devolve
- * `hubspot_owner_id` vazio e o armazém devolve um BDR.
+ *   total     2.127 / 2.127   EXATO   (era 3.872 / 2.173)
+ *   semStatus 8.298 / 8.311   0,16%   (era 12.711 / 8.434)
+ *   0 contatos só na API · 0 só no armazém
+ *   nome, cargo, bdr, status, origem, empresa, colaboradores: 100% iguais em 2.127
  *
- * O defeito é largo (vale para `owner_id`, `lead_status`, `lifecyclestage`,
- * `bdr`, `ativo_inativo`, `kam_responsavel`, `vidas`, `porte`, `segmento`, nos
- * dois `filled` do 10_silver.sql). A correção é fazer a linha `is_current` ler do
- * payload atual, e não do log — o log serve aos intervalos, o payload é a verdade
- * do agora. Mas isso mexe no núcleo que os 68 checks validaram, então tem de ser
- * feito com a suíte inteira rodando, não no fim de uma sessão.
+ * Os 13 do `semStatus` são DEFASAGEM, não defeito: a extração é de hoje 09:30 UTC
+ * e o portal segue sendo editado. É o que o selo de frescor existe para dizer.
  *
- * Migrar antes disso significaria dar a BDRs o crédito de 1.699 contatos que eles
- * não têm. Melhor endpoint velho e certo que endpoint novo e inflado.
+ * `hist` difere em 15 de 2.127, e o armazém está certo nos 15: a API REPETE o mesmo
+ * status em re-save (`NEW@18:49` e `NEW@19:22`) e às vezes no mesmo instante
+ * (`CONNECTED@14:14` duas vezes). `fact_crm_change` colapsa valor igual
+ * consecutivo — e `NEW → NEW` não é transição. Contá-la infla "quantos contatos
+ * mudaram de status hoje".
+ *
+ * Custo: de ~62 chamadas à API por request para 2 consultas.
+ *
+ * `?fonte=api` mantém a rota antiga viva para comparar.
  * ============================================================================
  *
  * O que JÁ está provado do lado do armazém, para quando o defeito cair:
@@ -233,9 +233,7 @@ function semStatusDoArmazem(porDono, idToBdr) {
 }
 
 async function buildPayload(token, opcoes = {}) {
-  // Default na API até o defeito de "remoção invisível" do silver cair. Ver o
-  // bloco no topo do arquivo — não inverter sem re-medir os 3.872 vs 2.173.
-  const viaBQ = opcoes.fonte === 'bq' && wh.isConfigured();
+  const viaBQ = opcoes.fonte !== 'api' && wh.isConfigured();
 
   const ownerMap = viaBQ ? await whq.ownerMap() : await fetchOwnersRaw(token);
   const idToBdr = resolveTeamIds(ownerMap);
@@ -331,19 +329,19 @@ module.exports = async function handler(req, res) {
 
   // Com a leitura no armazém o PAT deixa de ser pré-requisito.
   let token = null;
-  if (fonte !== 'bq' || !wh.isConfigured()) {
+  if (fonte === 'api' || !wh.isConfigured()) {
     try { token = getHubspotToken(); }
     catch (e) { return res.status(503).json({ success: false, error: e.message }); }
   }
 
   try {
     // Cache separado por fonte: sem isso a comparação leria a resposta da outra.
-    if (!refresh && _cache.data && _cache.fonte === (fonte === 'bq' ? 'bq' : 'api')
+    if (!refresh && _cache.data && _cache.fonte === (fonte === 'api' ? 'api' : 'bq')
         && Date.now() - _cache.at < CACHE_TTL) {
       return res.status(200).json({ ...(_cache.data), cached: true });
     }
     const data = await buildPayload(token, { fonte });
-    _cache = { at: Date.now(), data, fonte: fonte === 'bq' ? 'bq' : 'api' };
+    _cache = { at: Date.now(), data, fonte: fonte === 'api' ? 'api' : 'bq' };
     return res.status(200).json(data);
   } catch (e) {
     console.error('[bdr-leads]', e.message);

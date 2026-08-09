@@ -247,6 +247,74 @@ async function cmpCompanyDeals() {
   }
 }
 
+
+async function cmpLeads() {
+  console.log('\nbdr-leads — contatos do time com histórico de hs_lead_status');
+  const B = (await call('bdr-leads.js', { method: 'GET', url: '/api/bdr-leads?refresh=1' })).body;
+  const A = (await call('bdr-leads.js', { method: 'GET', url: '/api/bdr-leads?refresh=1&fonte=api' })).body;
+  if (!B || B.success === false || !A || A.success === false) {
+    linha(false, 'chamada', (B && B.error) || (A && A.error) || 'sem resposta');
+    return;
+  }
+  linha(B.total === A.total, 'total com status', `${B.total} / ${A.total}`);
+  // semStatus tem defasagem legítima: o portal segue sendo editado depois da
+  // extração. Tolerância de 1% — acima disso é defeito, não relógio.
+  const drift = A.semStatus ? Math.abs(B.semStatus - A.semStatus) / A.semStatus : 0;
+  linha(drift <= 0.01, 'semStatus (tol. 1%)',
+    `${B.semStatus} / ${A.semStatus} · ${(drift * 100).toFixed(2)}% de defasagem`);
+
+  const bi = new Map(B.contacts.map((c) => [String(c.id), c]));
+  const ai = new Map(A.contacts.map((c) => [String(c.id), c]));
+  const soApi = [...ai.keys()].filter((x) => !bi.has(x));
+  linha(soApi.length === 0, 'nenhum contato só na API', soApi.slice(0, 5).join(','));
+
+  const campos = ['nome', 'cargo', 'bdr', 'status', 'origem', 'empresa', 'colaboradores'];
+  const dif = {};
+  let histDif = 0;
+  bi.forEach((b, id) => {
+    const a = ai.get(id); if (!a) return;
+    campos.forEach((c) => {
+      const nb = b[c] == null ? null : String(b[c]);
+      const na = a[c] == null ? null : String(a[c]);
+      if (nb !== na) dif[c] = (dif[c] || 0) + 1;
+    });
+    const s = (h) => JSON.stringify((h || []).map((x) => [x[0], String(x[1]).slice(0, 19)]));
+    if (s(b.hist) !== s(a.hist)) histDif++;
+  });
+  campos.forEach((c) => linha(!dif[c], `campo ${c}`, `${dif[c] || 0} / ${bi.size}`));
+  // hist NÃO é exigido igual: a API repete o mesmo status em re-save (NEW@18:49 e
+  // NEW@19:22, ou CONNECTED duas vezes no mesmo instante) e o armazém colapsa.
+  // NEW → NEW não é transição, e contá-la infla "quantos mudaram de status hoje".
+  console.log(`  ·  hist: ${histDif} de ${bi.size} diferem — a API repete status em `
+    + `re-save e o armazém colapsa; divergência ESPERADA e a favor do armazém`);
+}
+
+async function cmpWorkload() {
+  const until = new Date(Date.now() - 86400000 * 3).toISOString().slice(0, 10);
+  const since = new Date(Date.now() - 86400000 * 8).toISOString().slice(0, 10);
+  console.log(`\nbdr-workload — payload nominal, ${since} a ${until}`);
+  const u = (f) => `/api/bdr-workload?since=${since}&until=${until}&refresh=1${f ? '&fonte=api' : ''}`;
+  const B = (await call('bdr-workload.js', { method: 'GET', url: u(false) })).body;
+  const A = (await call('bdr-workload.js', { method: 'GET', url: u(true) })).body;
+  if (!B || B.success === false || !A || A.success === false) {
+    linha(false, 'chamada', (B && B.error) || (A && A.error) || 'sem resposta');
+    return;
+  }
+  for (const k of ['companiesCreated', 'contactsCreated', 'transitions', 'activities']) {
+    const b = B[k] || [], a = A[k] || [];
+    const bi = new Set(b.map((x) => String(x.id || x.contato_id)));
+    const ai = new Set(a.map((x) => String(x.id || x.contato_id)));
+    const soApi = [...ai].filter((x) => !bi.has(x));
+    const soBq = [...bi].filter((x) => !ai.has(x));
+    linha(soApi.length === 0 && soBq.length === 0, k.padEnd(18),
+      `${b.length} / ${a.length} · só API ${soApi.length} · só BQ ${soBq.length}`);
+  }
+  const desc = B.diagnostics && B.diagnostics.rawCounts
+    && B.diagnostics.rawCounts.toquesAtribuidosDescartados;
+  console.log(`  ·  toques atribuídos ao dono do CONTATO descartados por decisão: ${desc}`
+    + ' (nota/e-mail; `?atribuidos=todos` inclui)');
+}
+
 // ================================================================= run =======
 (async () => {
   const casos = {
@@ -255,6 +323,8 @@ async function cmpCompanyDeals() {
     calls: () => cmpCalls(30),
     activities: cmpActivities,
     deals: cmpCompanyDeals,
+    leads: cmpLeads,
+    workload: cmpWorkload,
   };
   const alvo = SO.length ? SO : Object.keys(casos);
   for (const nome of alvo) {

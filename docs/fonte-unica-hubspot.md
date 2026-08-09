@@ -33,37 +33,44 @@ node scripts/compare-warehouse-endpoints.js --adc calls       # só um caso
 | `company-deals` | migrado | `dim_deal` + `bridge_association` | **4/4 empresas**, mesmo conjunto de deals |
 | `company-activities` | migrado | `fact_engagement` | 3/3 empresas com 20 toques e corpo; conjunto **não comparável** porque a API trunca — ver abaixo |
 | `deal-activities` | migrado | `fact_engagement` | 3/3 deals, idem |
-| `bdr-leads` | **default na API** (`?fonte=bq` opta) | `dim_contact` + `fact_crm_change` + `dim_company` | comparado: 0 contatos perdidos e 100% dos campos iguais nos 2.173 em comum — mas **1.699 a mais**, por defeito do armazém (abaixo) |
+| `bdr-leads` | migrado | `dim_contact` + `fact_crm_change` + `dim_company` | **2.127/2.127** exato; 7 campos 100% iguais; `semStatus` 0,16% de defasagem |
 | `funnel-stages` | migrado | `fact_stage_entry` + `dim_deal` + `fact_crm_change` | contagens de etapa **maiores e certas** no funil Vendas; `owner_changes` e `stage_medians` também mudam — ver abaixo |
 | `explore-tickets` | **fica na API** | — | ver abaixo |
-| `bdr-workload` | pendente | `fact_engagement` + `dim_company`/`dim_contact` + `fact_crm_change` | — |
+| `bdr-workload` | migrado | `dim_company` + `dim_contact` + `fact_crm_change` + `fact_engagement` | **19/19 · 92/92 · 1/1 · 3.054/3.054** toques, mesmo mix por tipo |
 
-### O armazém não vê remoção de valor — e por isso `bdr-leads` ficou na API
+### O armazém não via remoção de valor — CORRIGIDO
 
-`LAST_VALUE(... IGNORE NULLS)` nos dois `filled` do `10_silver.sql` carrega o
-último valor conhecido adiante. É necessário (o histórico de uma propriedade não
-dispara em toda linha de evento), mas faz **esvaziar um campo ficar
-indistinguível de "não houve evento"**: o dono removido sobrevive como atual.
+`LAST_VALUE(... IGNORE NULLS)` nos `filled` do `10_silver.sql` carrega o último
+valor conhecido adiante. É necessário (o histórico de uma propriedade não dispara
+em toda linha de evento), mas fazia **esvaziar um campo ficar indistinguível de
+"não houve evento"**: o dono removido sobrevivia como atual.
 
-| objeto | `is_current` | dono fantasma | dono errado |
-|---|---:|---:|---:|
-| contact | 53.687 | **11.625 (21,7%)** | 0 |
-| company | 19.879 | 59 (0,3%) | 0 |
-| deal | 4.218 | 3 (0,07%) | 0 |
+| objeto | `is_current` | dono fantasma (antes) | dono errado | depois |
+|---|---:|---:|---:|---:|
+| contact | 53.687 | **11.625 (21,7%)** | 0 | 0 |
+| company | 19.879 | 59 (0,3%) | 0 | 0 |
+| deal | 4.218 | 3 (0,07%) | 0 | 0 |
 
-Quando o portal TEM dono, o armazém acerta sempre. O defeito é só "não vê a
-remoção", é latente em toda dimensão, e vale também para `lead_status`,
-`lifecyclestage`, `bdr`, `ativo_inativo`, `kam_responsavel`, `vidas`, `porte` e
-`segmento`.
+`dono errado = 0` nos três: quando o portal TEM dono, o armazém sempre acertou. O
+defeito era só "não vê a remoção", e valia para `lead_status`, `lifecyclestage`,
+`bdr`, `ativo_inativo`, `kam_responsavel`, `vidas`, `porte` e `segmento`.
 
-`bdr-leads` pelo armazém dava a BDRs 1.699 contatos hoje sem dono (3.872 vs 2.173,
-+78%). Ficou na API por default. É também por isso que `pull-tickets`,
-`funnel-stages` e `bdr-workload-calls` bateram exato: em ticket e deal quase
-ninguém esvaziou o dono.
+**A remoção chega como `value = NULL`, não como `''`** — a primeira tentativa de
+correção não mudou nada por atacar o `''`. `MAX(IF(property=P, value, NULL))`
+devolve NULL tanto para "sem evento para esta propriedade" quanto para
+"esvaziado", e ali estava a conflação. Correção: sentinela `'!LIMPO!'` quando
+existe linha de histórico sem valor, com literal que ordena abaixo de dígitos e
+letras para o `MAX` preferir valor real num empate. No `fact_owner_assignment` a
+sentinela FICA para o `LEAD` encerrar a posse anterior e é descartada no fim:
+remoção termina uma posse, não inaugura outra.
 
-Correção: na linha `is_current`, ler do payload em vez do log. Mexe no núcleo que
-os 68 checks validaram — precisa da suíte inteira e de um check novo
-(`current_matches_payload`) que teria pegado isso sozinho.
+**Double check: `current_matches_payload`** (suíte 68 → 73). Rodado ANTES da
+correção de propósito — reprovava em 4 dos 5 alvos; depois, 0 em todos. Check que
+passa no estado defeituoso não é prova, é espelho.
+
+O efeito no `bdr-leads` mede o tamanho do defeito: era 3.872 contra 2.173 da API
+(+78%, 1.699 contatos hoje sem dono creditados a BDRs); passou a **2.127/2.127
+exato**.
 
 ### Onde o armazém DISCORDA da API por estar certo
 
@@ -195,6 +202,19 @@ AxFresh.remount();
 
 `onRefreshed` tem de **invalidar o cache local** da tela. Sem isso o selo passa a
 dizer "agora mesmo" em cima dos números velhos — pior que não ter selo.
+
+## O que ainda difere no `bdr-leads`, e por que está certo
+
+`hist` difere em 15 de 2.127 contatos. Nos 15 o armazém está certo: a API REPETE
+o mesmo status em re-save (`NEW@18:49` e `NEW@19:22`) e às vezes no mesmo instante
+(`CONNECTED@14:14` duas vezes). `fact_crm_change` colapsa valor igual consecutivo,
+e `NEW → NEW` não é transição — contá-la infla "quantos contatos mudaram de status
+hoje".
+
+`semStatus` difere 0,16% (8.298 vs 8.311). É **defasagem, não defeito**: a extração
+é das 06:30 e o portal segue sendo editado. É exatamente o que o selo de frescor
+existe para dizer. O `compare-warehouse-endpoints.js` tolera 1% aqui e falha acima
+disso.
 
 ## Infra
 
