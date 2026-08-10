@@ -1,5 +1,24 @@
 # Dashboard Enhancement Loop — Status Log
 
+### 🚀 DEPLOY DE PRODUÇÃO | Delta D02 (saudável × perda real) + Forecast (coluna Cashback) (2026-08-10)
+
+> Autorização explícita do dono ("Sim, faça o deploy"). Antes de commitar, `git fetch`
+> encontrou avanço no upstream (52a3399 → 3b850ef, leva "fonte única" de BDR/warehouse
+> de outro colaborador, 32 arquivos, sem overlap com os meus) — `git stash` + `git
+> merge --ff-only origin/main` + `git stash pop`, sem conflito. `npm run check` PASS
+> depois do merge.
+>
+> Commit `75cf95e` (D02: decomposição saudável × perda real, ver entrada Feat abaixo)
+> + commit `131788d` (Forecast: coluna de Cashback, ver entrada Feat abaixo). `npm run
+> predeploy` PASS (`main` == `origin/main` `131788d`, 1ª tentativa deu o FAIL esperado
+> antes do push). Deployment `dashboard-axenya-6mifew1g4-axenya-f1a041f6.vercel.app`,
+> alias `project-bsmfu.vercel.app`.
+>
+> Pós-deploy confirmado direto no bundle servido: `/forecast` e `/forecast-delta` =
+> 200; `qual_cashback`/`cashback_faturas` presentes no HTML de `/forecast`;
+> `wfHealthOverlay` (plugin do D02) presente no HTML de `/forecast-delta`;
+> `/api/forecast-table` = 401 (exige sessão autenticada, esperado sem bypass local).
+
 ### Feat | Delta D02: decomposição saudável × perda real no waterfall (2026-08-07/10)
 
 > Pedido do dono, com exemplo visual (mockup): "daria para colocar uma divisão nesse
