@@ -79,6 +79,12 @@ const PROPERTIES = [
   // N08 | fórmula calculada no HubSpot: time_between(entrada em Reunião Agendada, entrada em
   // Diagnóstico), em MILISSEGUNDOS. Só existe para deals que JÁ chegaram a Diagnóstico.
   'cumulative_time_negocio_criado_ate_diagnostico_formula',
+  // Cashback (pedido do dono 2026-08-10): 3 propriedades HubSpot independentes —
+  // 'cashback' (booleancheckbox, tem cashback?), 'qual__cashback' (number, fração
+  // 0-1, ex. 0.5 = 50%), 'cashback_em_quais_faturas' (checkbox multi-seleção,
+  // valores possíveis "Primeira fatura"/"Segunda fatura"/"Terceira fatura",
+  // concatenados por ";" quando mais de uma marcada).
+  'cashback', 'qual__cashback', 'cashback_em_quais_faturas',
 ];
 
 const CONTACT_PROPERTIES = [
@@ -470,6 +476,9 @@ module.exports = async function handler(req, res) {
           possui_agenciamento: normalizeBool(p.possui_agenciamento),
           possui_vitalicio: normalizeBool(p.possui_vitalicio),
           is_poc: normalizeBool(p.e_poc),
+          cashback: normalizeBool(p.cashback),
+          qual_cashback: normalizeProb(p.qual__cashback),
+          cashback_faturas: p.cashback_em_quais_faturas || null,
           probabilidade: prob,
           quarter,
           data_prevista_para_receita: dateStr,

@@ -4396,6 +4396,20 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
           tip: 'É POC? (Prova de Conceito) | campo do HubSpot "É POC?" (e_poc). Sim / Não.'
         },
         {
+          k: 'cashback', lbl: 'Cashback', w: 68, bool: true, hideMobile: true,
+          tip: 'Deal tem cashback? | campo do HubSpot "Cashback" (cashback). Sim / Não.'
+        },
+        {
+          k: 'qual_cashback', lbl: '% Cashback', w: 78, align: 'right', hideMobile: true,
+          fmt: fmtPct,
+          tip: 'Percentual de cashback | campo do HubSpot "Qual % Cashback?" (qual__cashback)'
+        },
+        {
+          k: 'cashback_faturas', lbl: 'Fatura(s) c/ Cashback', w: 130, hideMobile: true,
+          fmt: v => v ? String(v).split(';').map(s => s.trim()).join(', ') : '-',
+          tip: 'Em quais faturas o cashback se aplica | campo do HubSpot "Cashback em quais faturas?" (cashback_em_quais_faturas), múltipla escolha'
+        },
+        {
           k: 'possui_agenciamento', lbl: 'Agenc.', w: 60, bool: true, hideMobile: true,
           tip: 'Possui agenciamento? Influencia o cálculo da receita mensal'
         },
