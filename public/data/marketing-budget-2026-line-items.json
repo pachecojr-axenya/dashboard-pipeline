@@ -1,7 +1,7 @@
 {
   "metadata": {
     "title": "Lançamentos linha a linha do Marketing Budget 2026",
-    "version": "line-items-v6",
+    "version": "line-items-v7",
     "currency": "BRL",
     "updatedAt": "2026-08-10",
     "sourceFile": "Marketing_2026 (1).xlsx + Mkt Julho2026.xlsx",
@@ -10,17 +10,19 @@
     "privacy": "Nomes de fornecedores são exibidos; identidades de Pessoas/Freelancers são protegidas. Dados de cartão não são exportados.",
     "notes": [
       "Janeiro a junho: 522 lançamentos realizados da planilha consolidada, com nome do gasto.",
-      "Julho: 84 linhas realizadas e reconciliadas em R$ 54.064,91 | 83 linhas da planilha Mkt Julho2026.xlsx (R$ 52.964,91) mais Google Cloud confirmado (R$ 1.100,00). A planilha detalhada substitui o agregado anterior e já contém Apollo.",
-      "Agosto a dezembro: 55 linhas | 53 projeções de recorrência mais 2 compromissos confirmados de Brindes Lux; são valores esperados ou comprometidos, não gasto realizado.",
-      "Sales Navigator: 9 de 13 BDRs (R$ 3.152,60/mês). Canva e StreamYard cortadas. Depósito apenas em agosto.",
-      "Revisão de ago/2026 | Apollo passa a 99 USD (R$ 504,90/mês), Apify é cobrado em dólar e passa de R$ 29,00 para 29 USD (R$ 147,90/mês) e Clay entra como recorrência de 185 USD (R$ 943,50/mês). Câmbio de 5,10 BRL/USD.",
+      "Julho: 84 linhas realizadas e reconciliadas em R$ 54.064,91 | 83 linhas da planilha Mkt Julho2026.xlsx (R$ 52.964,91) mais Google Cloud confirmado (R$ 1.100,00).",
+      "As duas linhas de R$ 1.500,00 no Itaú em julho são os dois pagamentos aprovados no mês: o freela de ads (venceu 07/07) e a NF do CONARH (venceu 31/07). Nenhum dos dois está faltando, e nenhum entra duas vezes.",
+      "Agosto a dezembro: 53 projeções de recorrência mais 4 compromissos confirmados; são valores esperados ou já assumidos, não gasto realizado.",
+      "Sales Navigator: 9 de 13 BDRs (R$ 3.152,60/mês). Canva e StreamYard cortadas.",
+      "Revisão de ago/2026 | Apollo passa a 99 USD (R$ 504,90/mês), Apify é cobrado em dólar e passa de R$ 29,00 para 29 USD (R$ 147,90/mês) e Clay entra como recorrência de 185 USD (R$ 943,50/mês), de agosto a dezembro. Câmbio de 5,10 BRL/USD. Zapier é cobrado em real.",
       "Google Cloud R$ 600,00/mês e Vercel R$ 350,00/mês a partir de ago/2026.",
-      "Brindes Lux | pedido de R$ 26.380,00 para o CONARH: 60% (R$ 15.828,00) aprovado no Slack em 06/08 e pago em 07/08; 40% (R$ 10.552,00) segue pendente e está alocado em agosto. Consome o envelope estratégico, não a recorrência."
+      "Depósito de agosto corrigido de R$ 450,00 para R$ 595,38: a NFSe da Móbile Box inclui a entrega e a finalização do contrato, e é o último pagamento do storage.",
+      "Compromissos confirmados de agosto: CONARH parcela 2/2 (R$ 15.750,00, vence 22/08), Brindes Lux (R$ 26.380,00, sendo 60% pago em 07/08) e Galeria Pix (R$ 196,00). Consomem o envelope estratégico, não a recorrência."
     ]
   },
   "summary": {
-    "itemCount": 661,
-    "totalAmount": 1034785.01,
+    "itemCount": 663,
+    "totalAmount": 1050876.39,
     "months": [
       "2026-01",
       "2026-02",
@@ -38,7 +40,7 @@
     "categories": [
       {
         "name": "Eventos",
-        "amount": 478497.56
+        "amount": 494247.56
       },
       {
         "name": "Agência/SEO",
@@ -50,7 +52,7 @@
       },
       {
         "name": "Brindes/Material Promocional",
-        "amount": 83834.45
+        "amount": 84030.45
       },
       {
         "name": "SaaS/Ferramentas",
@@ -58,7 +60,7 @@
       },
       {
         "name": "Diversos/Operacional",
-        "amount": 56557.02
+        "amount": 56702.4
       },
       {
         "name": "Associações/Institucional",
@@ -6050,8 +6052,8 @@
       "origin": "Temporário",
       "originalType": "Projeção",
       "meceCategory": "Diversos/Operacional",
-      "amount": 450.0,
-      "expenseName": "Depósito"
+      "amount": 595.38,
+      "expenseName": "Depósito | Móbile Box, último pagamento"
     },
     {
       "sourceRow": 574,
@@ -6115,6 +6117,24 @@
       "meceCategory": "Brindes/Material Promocional",
       "amount": 10552.0,
       "expenseName": "Brindes Lux | 40% do pedido, saldo pendente"
+    },
+    {
+      "sourceRow": 581,
+      "month": "2026-08",
+      "origin": "Compromisso",
+      "originalType": "Compromisso pendente",
+      "meceCategory": "Eventos",
+      "amount": 15750.0,
+      "expenseName": "CONARH | parcela 2/2 do patrocínio"
+    },
+    {
+      "sourceRow": 582,
+      "month": "2026-08",
+      "origin": "Compromisso",
+      "originalType": "Compromisso pendente",
+      "meceCategory": "Brindes/Material Promocional",
+      "amount": 196.0,
+      "expenseName": "Galeria Pix | material promocional"
     }
   ]
 }

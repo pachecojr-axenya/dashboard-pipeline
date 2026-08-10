@@ -559,7 +559,7 @@
         <thead><tr><th>Item</th><th class="num">Valor mensal</th><th>Observação</th></tr></thead>
         <tbody>
           ${data.futureRecurring.baseItems.map(item => `<tr><td>${escapeHTML(item.name)}</td><td class="num">${fmtBRL(item.monthlyAmount)}</td><td>${escapeHTML(usdNote(item.name))}</td></tr>`).join('')}
-          ${data.futureRecurring.temporaryItems.map(item => `<tr><td>${escapeHTML(item.name)}</td><td class="num">${fmtBRL(item.monthlyAmount)}</td><td>Apenas ${item.months.length > 1 ? 'ago-set' : 'agosto'}</td></tr>`).join('')}
+          ${data.futureRecurring.temporaryItems.map(item => `<tr><td>${escapeHTML(item.name)}</td><td class="num">${fmtBRL(item.monthlyAmount)}</td><td>${escapeHTML(item.note || `Apenas ${item.months.length > 1 ? 'ago-set' : 'agosto'}`)}</td></tr>`).join('')}
           ${data.futureRecurring.excludedItems.map(item => `<tr><td><strong>${escapeHTML(item.name)}</strong></td><td class="num">${fmtBRL(item.futureForecastAmount)}</td><td>${escapeHTML(item.reason)}</td></tr>`).join('')}
           <tr><td><strong>Total recorrências ago-dez</strong></td><td class="num"><strong>${fmtBRL(data.futureRecurring.total)}</strong></td><td>Premissa oficial da projeção</td></tr>
         </tbody>`;

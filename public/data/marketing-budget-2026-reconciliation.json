@@ -1,26 +1,29 @@
 {
   "metadata": {
     "title": "Reconciliação do orçamento de Marketing 2026",
-    "version": "annual-reconciliation-v6",
+    "version": "annual-reconciliation-v7",
     "currency": "BRL",
     "updatedAt": "2026-08-10",
-    "sourceFile": "Marketing_2026 (1).xlsx + Mkt Julho2026.xlsx + aprovações no Slack",
+    "sourceFile": "Marketing_2026 (1).xlsx + Mkt Julho2026.xlsx + solicitações de pagamento em #financeiro-solicitações",
     "sourceTab": "Planilha1",
     "sourceExportDate": "2026-07-21",
-    "julySource": "Mkt Julho2026.xlsx: 83 linhas (R$ 52.964,91) + Google Cloud confirmado (R$ 1.100,00)",
-    "sourceOfTruth": "Planilha consolidada para realizado jan-jun; Mkt Julho2026.xlsx mais ajuste confirmado de Google Cloud para julho; premissas oficiais para ago-dez; aprovações de pagamento no Slack para compromissos confirmados de agosto.",
+    "julySource": "Mkt Julho2026.xlsx: 83 linhas (R$ 52.964,91) mais Google Cloud confirmado (R$ 1.100,00). Fechado em R$ 54.064,91 e conferido contra as solicitações de pagamento do mês.",
+    "sourceOfTruth": "Planilha consolidada para realizado jan-jun; Mkt Julho2026.xlsx mais ajuste confirmado de Google Cloud para julho; premissas oficiais para ago-dez; canal #financeiro-solicitações para compromissos confirmados de agosto, onde a reação ✅ significa pago.",
     "notes": [
       "Janeiro a junho são valores realizados pela soma das linhas da planilha consolidada.",
       "Julho foi reconciliado em 84 linhas: R$ 52.964,91 da planilha Mkt Julho2026.xlsx mais R$ 1.100,00 de Google Cloud, total R$ 54.064,91.",
+      "Julho está conferido contra o canal do financeiro: o mês teve dois pagamentos de R$ 1.500,00 aprovados e pagos (freela de ads, venceu 07/07; NF do CONARH, venceu 31/07) e a planilha tem exatamente essas duas linhas no Itaú. A NF do CONARH não está faltando.",
       "Agosto a dezembro são tetos planejados: recorrência comprometida mais envelope estratégico, não gasto realizado.",
-      "Câmbio aplicado às premissas futuras em USD: 5,10 BRL/USD.",
+      "Câmbio aplicado às premissas futuras em USD: 5,10 BRL/USD. Zapier é cobrado em real.",
       "LinkedIn Sales Navigator reduzido de 13 para 9 BDRs a partir de ago/2026: R$ 4.553,76 para R$ 3.152,60/mês.",
-      "Canva e StreamYard zeradas a partir de ago/2026; Depósito pago apenas em agosto.",
+      "Canva e StreamYard zeradas a partir de ago/2026.",
       "Apollo revisado para 99 USD/mês a partir de ago/2026: R$ 1.632,00 para R$ 504,90/mês (era premissa de 320 USD).",
       "Apify é cobrado em dólar: a premissa de R$ 29,00/mês virou 29 USD, R$ 147,90/mês. O realizado de julho (R$ 156,54 no cartão internacional) confirma a ordem de grandeza.",
-      "Clay entra como recorrência de 185 USD/mês, R$ 943,50/mês de ago/2026 em diante. Não havia linha de Clay em jan-jul, então é custo recorrente novo na visão.",
-      "Brindes Lux: pedido de R$ 26.380,00 para o CONARH, com 60% (R$ 15.828,00) pago em 07/08 e 40% (R$ 10.552,00) pendente. Alocado em agosto e consumindo o envelope estratégico, não a recorrência.",
-      "CONARH: parcelas de R$ 15.750 já estão refletidas em junho e julho; custos de execução consomem o envelope estratégico.",
+      "Clay entra como recorrência de 185 USD/mês, R$ 943,50/mês, de agosto a dezembro. Não havia linha de Clay em jan-jul, então é custo recorrente novo na visão.",
+      "Depósito de agosto corrigido de R$ 450,00 para R$ 595,38: a NFSe da Móbile Box inclui a entrega e a finalização do contrato, e é o último pagamento do storage.",
+      "CONARH: a parcela 2/2 de R$ 15.750,00 NÃO foi paga e vence em 22/08. A premissa anterior dizia que as duas parcelas estavam em junho e julho; só junho tem a linha. Corrigido: a parcela 2 entra como compromisso confirmado de agosto.",
+      "Brindes Lux: pedido de R$ 26.380,00 para o CONARH, com 60% (R$ 15.828,00) pago em 07/08 e 40% (R$ 10.552,00) pendente.",
+      "O freela de ads de R$ 1.500,00 aprovado em 07/08 é a parcela de agosto da recorrência temporária, não um gasto adicional.",
       "Google Cloud passa a R$ 600,00/mês e Vercel a R$ 350,00/mês de ago/2026 em diante."
     ]
   },
@@ -76,12 +79,12 @@
   },
   "balanceAtJuly31": 310338.99,
   "futureRecurring": {
-    "total": 68744.0,
+    "total": 68889.38,
     "monthly": [
       {
         "month": "2026-08",
         "label": "ago/2026",
-        "amount": 15008.8
+        "amount": 15154.18
       },
       {
         "month": "2026-09",
@@ -157,11 +160,12 @@
         "monthlyAmount": 1500.0
       },
       {
-        "name": "Depósito",
+        "name": "Depósito | Móbile Box",
         "months": [
           "2026-08"
         ],
-        "monthlyAmount": 450.0
+        "monthlyAmount": 595.38,
+        "note": "Apenas agosto | último pagamento do storage, com entrega e fim de contrato"
       }
     ],
     "excludedItems": [
@@ -201,92 +205,92 @@
     ]
   },
   "strategicEnvelope": {
-    "freeAfterRecurring": 241594.99,
+    "freeAfterRecurring": 241449.61,
     "distribution": [
       {
         "month": "2026-08",
         "label": "ago/2026",
         "percent": 28.000000000000004,
-        "amount": 67646.6
+        "amount": 67605.89
       },
       {
         "month": "2026-09",
         "label": "set/2026",
         "percent": 28.000000000000004,
-        "amount": 67646.6
+        "amount": 67605.89
       },
       {
         "month": "2026-10",
         "label": "out/2026",
         "percent": 24.0,
-        "amount": 57982.8
+        "amount": 57947.91
       },
       {
         "month": "2026-11",
         "label": "nov/2026",
         "percent": 15.0,
-        "amount": 36239.25
+        "amount": 36217.44
       },
       {
         "month": "2026-12",
         "label": "dez/2026",
         "percent": 5.0,
-        "amount": 12079.74
+        "amount": 12072.48
       }
     ],
-    "committedFromEnvelope": 26380.0,
-    "availableAfterCommitments": 215214.99
+    "committedFromEnvelope": 42326.0,
+    "availableAfterCommitments": 199123.61
   },
   "plannedMonthlyCeilings": [
     {
       "month": "2026-08",
       "label": "ago/2026",
-      "recurring": 15008.8,
-      "committed": 26380.0,
-      "strategicEnvelope": 67646.6,
-      "envelopeFree": 41266.6,
-      "ceiling": 82655.4
+      "recurring": 15154.18,
+      "committed": 42326.0,
+      "strategicEnvelope": 67605.89,
+      "envelopeFree": 25279.89,
+      "ceiling": 82760.07
     },
     {
       "month": "2026-09",
       "label": "set/2026",
       "recurring": 14558.8,
       "committed": 0.0,
-      "strategicEnvelope": 67646.6,
-      "envelopeFree": 67646.6,
-      "ceiling": 82205.4
+      "strategicEnvelope": 67605.89,
+      "envelopeFree": 67605.89,
+      "ceiling": 82164.69
     },
     {
       "month": "2026-10",
       "label": "out/2026",
       "recurring": 13058.8,
       "committed": 0.0,
-      "strategicEnvelope": 57982.8,
-      "envelopeFree": 57982.8,
-      "ceiling": 71041.6
+      "strategicEnvelope": 57947.91,
+      "envelopeFree": 57947.91,
+      "ceiling": 71006.71
     },
     {
       "month": "2026-11",
       "label": "nov/2026",
       "recurring": 13058.8,
       "committed": 0.0,
-      "strategicEnvelope": 36239.25,
-      "envelopeFree": 36239.25,
-      "ceiling": 49298.05
+      "strategicEnvelope": 36217.44,
+      "envelopeFree": 36217.44,
+      "ceiling": 49276.24
     },
     {
       "month": "2026-12",
       "label": "dez/2026",
       "recurring": 13058.8,
       "committed": 0.0,
-      "strategicEnvelope": 12079.74,
-      "envelopeFree": 12079.74,
-      "ceiling": 25138.54
+      "strategicEnvelope": 12072.48,
+      "envelopeFree": 12072.48,
+      "ceiling": 25131.28
     }
   ],
   "scenarios": {
-    "minimumCommittedYear": 1008405.01,
-    "committedIncludingConfirmedProjects": 1034785.01,
+    "minimumCommittedYear": 1008550.39,
+    "committedIncludingConfirmedProjects": 1050876.39,
     "fullStrategicEnvelopeUse": 1250000.0
   },
   "historicalMeceJanJun": {
@@ -350,18 +354,27 @@
     ]
   },
   "openQuestions": [
-    "A NF de R$ 1.500,00 do fornecedor MEI para o CONARH, vencida em 31/07, é uma das duas linhas de R$ 1.500,00 no Itaú já contadas em julho? Se for pagamento à parte, julho sobe de R$ 54.064,91 para R$ 55.564,91 e o saldo de 31/07 cai no mesmo valor.",
-    "Clay segue ativa de ago a dez no plano de 185 USD ou o mês de agosto é o último? Manter os cinco meses custa R$ 4.717,50; só agosto custa R$ 943,50.",
+    "A parcela 2/2 do CONARH (R$ 15.750,00) vence em 22/08 e o organizador já cobrou. Quem despacha o pagamento?",
     "Em que mês entra o saldo de 40% (R$ 10.552,00) da Brindes Lux? Hoje está alocado em agosto.",
-    "Quais ativações de CONARH ainda entrarão no envelope estratégico por data de execução?",
+    "Quais outras ativações de CONARH ainda entrarão no envelope estratégico por data de execução?",
     "Qual parte do envelope estratégico deve ficar contingenciada versus liberada para campanhas?"
   ],
   "committedCommitments": {
-    "total": 26380.0,
+    "total": 42326.0,
     "paid": 15828.0,
-    "pending": 10552.0,
+    "pending": 26498.0,
     "consumesStrategicEnvelope": true,
     "items": [
+      {
+        "name": "CONARH | parcela 2/2 do patrocínio",
+        "month": "2026-08",
+        "label": "ago/2026",
+        "amount": 15750.0,
+        "share": "2 de 2",
+        "status": "Pendente | vence 22/08/2026",
+        "meceCategory": "Eventos",
+        "source": "Slack | financeiro confirmou em 05/08 que a 2ª parcela não foi paga, https://axenya.slack.com/archives/C0B0YCEBDFV/p1785956529321219"
+      },
       {
         "name": "Brindes Lux | brindes do CONARH",
         "month": "2026-08",
@@ -381,6 +394,16 @@
         "status": "Pendente | mês pode deslocar conforme a entrega",
         "meceCategory": "Brindes/Material Promocional",
         "source": "Slack | pedido total de R$ 26.380,00 (PEDIDO AXENYA)"
+      },
+      {
+        "name": "Galeria Pix | material promocional",
+        "month": "2026-08",
+        "label": "ago/2026",
+        "amount": 196.0,
+        "share": "Boleto único",
+        "status": "Pendente | venceu 03/08/2026",
+        "meceCategory": "Brindes/Material Promocional",
+        "source": "Slack | solicitação de pagamento em 03/08, https://axenya.slack.com/archives/C0B0YCEBDFV/p1785769169786159"
       }
     ]
   }
