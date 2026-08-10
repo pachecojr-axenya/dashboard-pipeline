@@ -1,23 +1,26 @@
 {
   "metadata": {
     "title": "Reconciliação do orçamento de Marketing 2026",
-    "version": "annual-reconciliation-v5",
+    "version": "annual-reconciliation-v6",
     "currency": "BRL",
-    "updatedAt": "2026-08-04",
-    "sourceFile": "Marketing_2026 (1).xlsx + Mkt Julho2026.xlsx",
+    "updatedAt": "2026-08-10",
+    "sourceFile": "Marketing_2026 (1).xlsx + Mkt Julho2026.xlsx + aprovações no Slack",
     "sourceTab": "Planilha1",
     "sourceExportDate": "2026-07-21",
     "julySource": "Mkt Julho2026.xlsx: 83 linhas (R$ 52.964,91) + Google Cloud confirmado (R$ 1.100,00)",
-    "sourceOfTruth": "Planilha consolidada para realizado jan-jun; Mkt Julho2026.xlsx mais ajuste confirmado de Google Cloud para julho; premissas oficiais para ago-dez.",
+    "sourceOfTruth": "Planilha consolidada para realizado jan-jun; Mkt Julho2026.xlsx mais ajuste confirmado de Google Cloud para julho; premissas oficiais para ago-dez; aprovações de pagamento no Slack para compromissos confirmados de agosto.",
     "notes": [
       "Janeiro a junho são valores realizados pela soma das linhas da planilha consolidada.",
-      "Julho foi reconciliado em 84 linhas: R$ 52.964,91 da planilha Mkt Julho2026.xlsx + R$ 1.100,00 de Google Cloud, total R$ 54.064,91. A planilha detalhada substitui o agregado anterior e já contém as linhas de Apollo.",
+      "Julho foi reconciliado em 84 linhas: R$ 52.964,91 da planilha Mkt Julho2026.xlsx mais R$ 1.100,00 de Google Cloud, total R$ 54.064,91.",
       "Agosto a dezembro são tetos planejados: recorrência comprometida mais envelope estratégico, não gasto realizado.",
       "Câmbio aplicado às premissas futuras em USD: 5,10 BRL/USD.",
-      "LinkedIn Sales Navigator reduzido de 13 para 9 BDRs a partir de ago/2026: R$ 4.553,76 → R$ 3.152,60/mês.",
+      "LinkedIn Sales Navigator reduzido de 13 para 9 BDRs a partir de ago/2026: R$ 4.553,76 para R$ 3.152,60/mês.",
       "Canva e StreamYard zeradas a partir de ago/2026; Depósito pago apenas em agosto.",
-      "Apollo projetado em R$ 1.632,00/mês de ago em diante (320 USD × 5,10).",
-      "CONARH: parcelas de R$ 15.750 já estão refletidas em junho e julho; custos de execução devem consumir o envelope estratégico.",
+      "Apollo revisado para 99 USD/mês a partir de ago/2026: R$ 1.632,00 para R$ 504,90/mês (era premissa de 320 USD).",
+      "Apify é cobrado em dólar: a premissa de R$ 29,00/mês virou 29 USD, R$ 147,90/mês. O realizado de julho (R$ 156,54 no cartão internacional) confirma a ordem de grandeza.",
+      "Clay entra como recorrência de 185 USD/mês, R$ 943,50/mês de ago/2026 em diante. Não havia linha de Clay em jan-jul, então é custo recorrente novo na visão.",
+      "Brindes Lux: pedido de R$ 26.380,00 para o CONARH, com 60% (R$ 15.828,00) pago em 07/08 e 40% (R$ 10.552,00) pendente. Alocado em agosto e consumindo o envelope estratégico, não a recorrência.",
+      "CONARH: parcelas de R$ 15.750 já estão refletidas em junho e julho; custos de execução consomem o envelope estratégico.",
       "Google Cloud passa a R$ 600,00/mês e Vercel a R$ 350,00/mês de ago/2026 em diante."
     ]
   },
@@ -73,35 +76,35 @@
   },
   "balanceAtJuly31": 310338.99,
   "futureRecurring": {
-    "total": 69067.5,
+    "total": 68744.0,
     "monthly": [
       {
         "month": "2026-08",
         "label": "ago/2026",
-        "amount": 15073.5
+        "amount": 15008.8
       },
       {
         "month": "2026-09",
         "label": "set/2026",
-        "amount": 14623.5
+        "amount": 14558.8
       },
       {
         "month": "2026-10",
         "label": "out/2026",
-        "amount": 13123.5
+        "amount": 13058.8
       },
       {
         "month": "2026-11",
         "label": "nov/2026",
-        "amount": 13123.5
+        "amount": 13058.8
       },
       {
         "month": "2026-12",
         "label": "dez/2026",
-        "amount": 13123.5
+        "amount": 13058.8
       }
     ],
-    "baseMonthlyOutDec": 13123.5,
+    "baseMonthlyOutDec": 13058.8,
     "baseItems": [
       {
         "name": "Agência de PR",
@@ -129,11 +132,15 @@
       },
       {
         "name": "Apify",
-        "monthlyAmount": 29.0
+        "monthlyAmount": 147.9
+      },
+      {
+        "name": "Clay",
+        "monthlyAmount": 943.5
       },
       {
         "name": "Apollo",
-        "monthlyAmount": 1632.0
+        "monthlyAmount": 504.9
       },
       {
         "name": "LinkedIn Sales Navigator (9 de 13 BDRs)",
@@ -173,82 +180,113 @@
         "futureForecastAmount": 0.0,
         "reason": "Cortada no momento: sem custo de ago/2026 em diante."
       }
+    ],
+    "fxRate": 5.1,
+    "usdItems": [
+      {
+        "name": "Apollo",
+        "usdAmount": 99.0,
+        "monthlyAmount": 504.9
+      },
+      {
+        "name": "Apify",
+        "usdAmount": 29.0,
+        "monthlyAmount": 147.9
+      },
+      {
+        "name": "Clay",
+        "usdAmount": 185.0,
+        "monthlyAmount": 943.5
+      }
     ]
   },
   "strategicEnvelope": {
-    "freeAfterRecurring": 241271.49,
+    "freeAfterRecurring": 241594.99,
     "distribution": [
       {
         "month": "2026-08",
         "label": "ago/2026",
         "percent": 28.000000000000004,
-        "amount": 67556.02
+        "amount": 67646.6
       },
       {
         "month": "2026-09",
         "label": "set/2026",
         "percent": 28.000000000000004,
-        "amount": 67556.02
+        "amount": 67646.6
       },
       {
         "month": "2026-10",
         "label": "out/2026",
         "percent": 24.0,
-        "amount": 57905.16
+        "amount": 57982.8
       },
       {
         "month": "2026-11",
         "label": "nov/2026",
         "percent": 15.0,
-        "amount": 36190.72
+        "amount": 36239.25
       },
       {
         "month": "2026-12",
         "label": "dez/2026",
         "percent": 5.0,
-        "amount": 12063.57
+        "amount": 12079.74
       }
-    ]
+    ],
+    "committedFromEnvelope": 26380.0,
+    "availableAfterCommitments": 215214.99
   },
   "plannedMonthlyCeilings": [
     {
       "month": "2026-08",
       "label": "ago/2026",
-      "recurring": 15073.5,
-      "strategicEnvelope": 67556.02,
-      "ceiling": 82629.52
+      "recurring": 15008.8,
+      "committed": 26380.0,
+      "strategicEnvelope": 67646.6,
+      "envelopeFree": 41266.6,
+      "ceiling": 82655.4
     },
     {
       "month": "2026-09",
       "label": "set/2026",
-      "recurring": 14623.5,
-      "strategicEnvelope": 67556.02,
-      "ceiling": 82179.52
+      "recurring": 14558.8,
+      "committed": 0.0,
+      "strategicEnvelope": 67646.6,
+      "envelopeFree": 67646.6,
+      "ceiling": 82205.4
     },
     {
       "month": "2026-10",
       "label": "out/2026",
-      "recurring": 13123.5,
-      "strategicEnvelope": 57905.16,
-      "ceiling": 71028.66
+      "recurring": 13058.8,
+      "committed": 0.0,
+      "strategicEnvelope": 57982.8,
+      "envelopeFree": 57982.8,
+      "ceiling": 71041.6
     },
     {
       "month": "2026-11",
       "label": "nov/2026",
-      "recurring": 13123.5,
-      "strategicEnvelope": 36190.72,
-      "ceiling": 49314.22
+      "recurring": 13058.8,
+      "committed": 0.0,
+      "strategicEnvelope": 36239.25,
+      "envelopeFree": 36239.25,
+      "ceiling": 49298.05
     },
     {
       "month": "2026-12",
       "label": "dez/2026",
-      "recurring": 13123.5,
-      "strategicEnvelope": 12063.57,
-      "ceiling": 25187.07
+      "recurring": 13058.8,
+      "committed": 0.0,
+      "strategicEnvelope": 12079.74,
+      "envelopeFree": 12079.74,
+      "ceiling": 25138.54
     }
   ],
   "scenarios": {
-    "minimumCommittedYear": 1008728.51,
+    "minimumCommittedYear": 1008405.01,
+    "committedIncludingConfirmedProjects": 1034785.01,
     "fullStrategicEnvelopeUse": 1250000.0
   },
   "historicalMeceJanJun": {
@@ -312,8 +350,38 @@
     ]
   },
   "openQuestions": [
+    "A NF de R$ 1.500,00 do fornecedor MEI para o CONARH, vencida em 31/07, é uma das duas linhas de R$ 1.500,00 no Itaú já contadas em julho? Se for pagamento à parte, julho sobe de R$ 54.064,91 para R$ 55.564,91 e o saldo de 31/07 cai no mesmo valor.",
+    "Clay segue ativa de ago a dez no plano de 185 USD ou o mês de agosto é o último? Manter os cinco meses custa R$ 4.717,50; só agosto custa R$ 943,50.",
+    "Em que mês entra o saldo de 40% (R$ 10.552,00) da Brindes Lux? Hoje está alocado em agosto.",
     "Quais ativações de CONARH ainda entrarão no envelope estratégico por data de execução?",
-    "Quais jantares ou roundtables pequenos serão priorizados dentro do teto de alocação mensal?",
     "Qual parte do envelope estratégico deve ficar contingenciada versus liberada para campanhas?"
-  ]
+  ],
+  "committedCommitments": {
+    "total": 26380.0,
+    "paid": 15828.0,
+    "pending": 10552.0,
+    "consumesStrategicEnvelope": true,
+    "items": [
+      {
+        "name": "Brindes Lux | brindes do CONARH",
+        "month": "2026-08",
+        "label": "ago/2026",
+        "amount": 15828.0,
+        "share": "60% do pedido",
+        "status": "Pago em 07/08/2026",
+        "meceCategory": "Brindes/Material Promocional",
+        "source": "Slack | aprovação de pagamento em 06/08/2026, comprovante em 07/08"
+      },
+      {
+        "name": "Brindes Lux | saldo do pedido",
+        "month": "2026-08",
+        "label": "ago/2026",
+        "amount": 10552.0,
+        "share": "40% do pedido",
+        "status": "Pendente | mês pode deslocar conforme a entrega",
+        "meceCategory": "Brindes/Material Promocional",
+        "source": "Slack | pedido total de R$ 26.380,00 (PEDIDO AXENYA)"
+      }
+    ]
+  }
 }

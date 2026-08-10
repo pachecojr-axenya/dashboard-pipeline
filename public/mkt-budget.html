@@ -112,7 +112,11 @@
     .stack { height: 14px; display: flex; border-radius: 999px; overflow: hidden; background: var(--card2); }
     .actual { background: var(--blue); }
     .recurring { background: var(--dark); }
+    .committed { background: var(--yellow); }
     .envelope { background: var(--teal); }
+    .pill { display: inline-flex; padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+    .pill.paid { color: var(--teal); background: rgba(58,184,183,.12); }
+    .pill.pending { color: var(--yellow); background: rgba(227,179,65,.14); }
     .legend { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 12px; color: var(--muted); font-size: 12px; }
     .legend span { display: inline-flex; align-items: center; gap: 7px; }
     .swatch { width: 14px; height: 9px; border-radius: 999px; display: inline-block; }
@@ -184,15 +188,25 @@
         <div class="timeline" id="timeline"></div>
         <div class="legend">
           <span><i class="swatch actual" style="background: var(--blue);"></i>Realizado</span>
-          <span><i class="swatch recurring" style="background: var(--dark);"></i>Teto planejado (recorrência + envelope)</span>
+          <span><i class="swatch recurring" style="background: var(--dark);"></i>Recorrência comprometida</span>
+          <span><i class="swatch committed" style="background: var(--yellow);"></i>Compromisso já confirmado</span>
+          <span><i class="swatch envelope" style="background: var(--teal);"></i>Envelope estratégico livre</span>
         </div>
+      </section>
+
+      <section class="card" style="margin-top:16px;">
+        <p class="section-title">Compromissos confirmados</p>
+        <h2>Gastos de ago-dez já assumidos fora da recorrência</h2>
+        <p id="committedIntro"></p>
+        <div class="grid grid-3" id="committedMetrics"></div>
+        <div class="table-wrap"><table id="committedTable"></table></div>
       </section>
 
       <section class="grid grid-2">
         <article class="card">
           <p class="section-title">Recorrências futuras</p>
           <h2>Base aprovada para ago-dez</h2>
-          <p>A premissa oficial soma R$ 69.067,50 de ago-dez. Inclui Google Cloud (R$ 600,00/mês), Vercel (R$ 350,00/mês), Sales Navigator para 9 de 13 BDRs (R$ 3.152,60/mês) e Apollo (R$ 1.632,00/mês); Canva e StreamYard estão zeradas, e Depósito entra somente em agosto.</p>
+          <p id="recurringIntro"></p>
           <div class="table-wrap"><table id="recurringTable"></table></div>
         </article>
         <article class="card">
@@ -232,7 +246,7 @@
           <summary>
             <p class="section-title">Histórico público</p>
             <h2>Lançamentos linha a linha</h2>
-            <p>Abra para filtrar os 654 lançamentos detalhados: 522 realizados de jan-jun, 84 realizados de julho e 48 projeções de ago-dez. Os nomes dos gastos estão disponíveis; identidades em Pessoas/Freelancers continuam protegidas.</p>
+            <p id="lineItemsIntro">Abra para filtrar os lançamentos detalhados. Os nomes dos gastos estão disponíveis; identidades em Pessoas/Freelancers continuam protegidas.</p>
           </summary>
           <div class="controls">
             <select id="lineMonth" aria-label="Filtrar por mês"></select>
@@ -242,7 +256,7 @@
           <div class="table-actions">
             <strong id="lineSummary">Carregando lançamentos...</strong>
             <div class="controls" style="margin-top:0;">
-              <button type="button" id="exportCsv" title="Exporta TODAS as linhas detalhadas em CSV (522 realizados de jan-jun + 84 realizados de julho + 48 projeções de ago-dez)">Exportar CSV</button>
+              <button type="button" id="exportCsv" title="Exporta TODAS as linhas detalhadas em CSV | realizado de jan-jul mais projeções e compromissos de ago-dez">Exportar CSV</button>
               <button type="button" id="prevPage">Anterior</button>
               <span id="pageInfo" class="footer" style="margin-top:0;"></span>
               <button type="button" id="nextPage">Próxima</button>
@@ -348,14 +362,23 @@
       return shares;
     }
 
+    // Base alocável do simulador: envelope livre MENOS o que já está comprometido.
+    function strategyBase(data) {
+      const se = data.strategicEnvelope || {};
+      return typeof se.availableAfterCommitments === 'number'
+        ? se.availableAfterCommitments
+        : (se.freeAfterRecurring || 0);
+    }
+
     function renderStrategy(data) {
-      const envelopeCents = cents(data.strategicEnvelope.freeAfterRecurring);
+      const base = strategyBase(data);
+      const envelopeCents = cents(base);
       const shares = adjustedStrategyShares();
       const activeKeys = Object.keys(shares);
       const allocations = activeKeys.map((key, index) => {
         const allocatedCents = index === activeKeys.length - 1
-          ? envelopeCents - activeKeys.slice(0, -1).reduce((sum, previousKey) => sum + cents(data.strategicEnvelope.freeAfterRecurring * shares[previousKey] / 100), 0)
-          : cents(data.strategicEnvelope.freeAfterRecurring * shares[key] / 100);
+          ? envelopeCents - activeKeys.slice(0, -1).reduce((sum, previousKey) => sum + cents(base * shares[previousKey] / 100), 0)
+          : cents(base * shares[key] / 100);
         return { key, percent: shares[key], amount: fromCents(allocatedCents) };
       });
 
@@ -366,7 +389,7 @@
         return `<div class="lever-card"><strong>${escapeHTML(lever.label)}</strong><p>${escapeHTML(lever.description)}</p><div class="value">${fmtPct(item.percent)}</div><p><strong>${fmtBRL(item.amount)}</strong> no envelope anual</p><p>Média mensal ago-dez: <strong>${fmtBRL(item.amount / 5)}</strong></p></div>`;
       }).join('');
       document.getElementById('strategyMatrix').innerHTML = Object.values(strategyPresets).map(preset => `<tr><th>${escapeHTML(preset.label)}</th><td>${escapeHTML(preset.objective)}</td></tr>`).join('');
-      document.getElementById('strategyTotal').textContent = `Total simulado: 100% | ${fmtBRL(data.strategicEnvelope.freeAfterRecurring)}. Simulação local; não altera o orçamento oficial.`;
+      document.getElementById('strategyTotal').textContent = `Total simulado: 100% | ${fmtBRL(base)}. Base = envelope estratégico de ${fmtBRL(data.strategicEnvelope.freeAfterRecurring)} menos ${fmtBRL(data.strategicEnvelope.committedFromEnvelope || 0)} já comprometidos. Simulação local; não altera o orçamento oficial.`;
       document.querySelectorAll('[data-preset]').forEach(button => button.addEventListener('click', () => { strategyState.preset = button.dataset.preset; renderStrategy(data); }));
       document.querySelectorAll('[data-lever]').forEach(input => input.addEventListener('change', () => {
         const key = input.dataset.lever;
@@ -375,6 +398,29 @@
         strategyState.active[key] = input.checked;
         renderStrategy(data);
       }));
+    }
+
+    function renderCommitted(data, committed) {
+      const items = committed.items || [];
+      const envelope = data.strategicEnvelope.freeAfterRecurring || 0;
+      const share = envelope ? (committed.total / envelope) * 100 : 0;
+      document.getElementById('committedIntro').textContent = items.length
+        ? `São gastos de ago-dez já aprovados que consomem o envelope estratégico, não a recorrência. Hoje somam ${fmtBRL(committed.total)}, ou ${fmtPct(share)} do envelope.`
+        : 'Nenhum compromisso confirmado fora da recorrência.';
+      document.getElementById('committedMetrics').innerHTML = [
+        renderMetric('Total comprometido', fmtBRL(committed.total), 'Fora da recorrência mensal'),
+        renderMetric('Já pago', fmtBRL(committed.paid), 'Comprovante no fio de aprovação'),
+        renderMetric('Saldo pendente', fmtBRL(committed.pending), 'Aprovado, ainda não desembolsado')
+      ].join('');
+      document.getElementById('committedTable').innerHTML = `
+        <thead><tr><th>Compromisso</th><th>Mês</th><th>Parcela</th><th>Status</th><th class="num">Valor</th></tr></thead>
+        <tbody>
+          ${items.map(item => {
+            const paid = /pago/i.test(item.status || '');
+            return `<tr><td>${escapeHTML(item.name)}<div class="footer" style="margin-top:4px;">${escapeHTML(item.source || '')}</div></td><td>${escapeHTML(item.label || item.month)}</td><td>${escapeHTML(item.share || '—')}</td><td><span class="pill ${paid ? 'paid' : 'pending'}">${escapeHTML(item.status || '—')}</span></td><td class="num">${fmtBRL(item.amount)}</td></tr>`;
+          }).join('')}
+          <tr><td colspan="4"><strong>Total comprometido</strong></td><td class="num"><strong>${fmtBRL(committed.total)}</strong></td></tr>
+        </tbody>`;
     }
 
     function renderLineItems() {
@@ -428,6 +474,14 @@
 
     function initLineItems(payload) {
       lineState.items = payload.items || [];
+      const realized = lineState.items.filter(item => item.month < '2026-08');
+      const janJun = realized.filter(item => item.month < '2026-07').length;
+      const july = realized.length - janJun;
+      const future = lineState.items.length - realized.length;
+      document.getElementById('lineItemsIntro').textContent =
+        `Abra para filtrar os ${lineState.items.length} lançamentos detalhados: ${janJun} realizados de jan-jun, `
+        + `${july} realizados de julho e ${future} linhas de ago-dez entre projeções de recorrência e compromissos confirmados. `
+        + `Os nomes dos gastos estão disponíveis; identidades em Pessoas/Freelancers continuam protegidas.`;
       fillLineFilter('lineMonth', [...new Set(lineState.items.map(item => item.month))].sort(), 'Todos os meses');
       fillLineFilter('lineCategory', [...new Set(lineState.items.map(item => item.meceCategory))].sort(), 'Todas as categorias');
       fillLineFilter('lineOrigin', [...new Set(lineState.items.map(item => item.origin))].sort(), 'Todas as origens');
@@ -442,11 +496,13 @@
 
     function render(data) {
       const maxMonth = Math.max(...data.actuals.monthly.map(m => m.amount), ...data.plannedMonthlyCeilings.map(m => m.ceiling));
+      const committed = data.committedCommitments || { total: 0, paid: 0, pending: 0, items: [] };
+      const envelopeFree = strategyBase(data);
       document.getElementById('heroMetrics').innerHTML = [
         renderMetric('Orçamento anual', fmtBRL(data.annualBudget), 'Teto aprovado para Marketing 2026'),
-        renderMetric('Realizado até julho', fmtBRL(data.actuals.throughJuly), 'Jan-jun planilha consolidada + julho fechado'),
+        renderMetric('Realizado até julho', fmtBRL(data.actuals.throughJuly), 'Jan-jun planilha consolidada | julho fechado'),
         renderMetric('Saldo em 31/jul', fmtBRL(data.balanceAtJuly31), 'Disponível antes das recorrências futuras'),
-        renderMetric('Envelope estratégico', fmtBRL(data.strategicEnvelope.freeAfterRecurring), 'Teto de alocação após recorrências')
+        renderMetric('Envelope ainda livre', fmtBRL(envelopeFree), `Após recorrências e ${fmtBRL(committed.total)} já comprometidos`)
       ].join('');
 
       document.getElementById('bridgeTable').innerHTML = `
@@ -455,14 +511,20 @@
         <tr><th>Realizado julho</th><td class="num">-${fmtBRL(data.actuals.july)}</td></tr>
         <tr><th>Saldo anual em 31/jul</th><td class="num"><strong>${fmtBRL(data.balanceAtJuly31)}</strong></td></tr>
         <tr><th>Recorrência comprometida ago-dez</th><td class="num">-${fmtBRL(data.futureRecurring.total)}</td></tr>
-        <tr><th>Saldo livre após recorrências</th><td class="num"><strong>${fmtBRL(data.strategicEnvelope.freeAfterRecurring)}</strong></td></tr>
+        <tr><th>Envelope estratégico</th><td class="num"><strong>${fmtBRL(data.strategicEnvelope.freeAfterRecurring)}</strong></td></tr>
+        <tr><th>Compromissos já confirmados</th><td class="num">-${fmtBRL(committed.total)}</td></tr>
+        <tr><th>Envelope ainda livre para alocar</th><td class="num"><strong>${fmtBRL(envelopeFree)}</strong></td></tr>
       `;
 
       const scenarioMax = data.annualBudget;
-      document.getElementById('scenarioBars').innerHTML = [
-        renderBarRow('Cenário mínimo comprometido no ano', data.scenarios.minimumCommittedYear, scenarioMax, 'Realizado até julho + recorrência comprometida futura.'),
-        renderBarRow('Uso integral do envelope estratégico', data.scenarios.fullStrategicEnvelopeUse, scenarioMax, 'Realizado + recorrências + envelope estratégico = orçamento anual.')
-      ].join('');
+      const scenarioRows = [
+        renderBarRow('Mínimo comprometido no ano', data.scenarios.minimumCommittedYear, scenarioMax, 'Realizado até julho mais recorrência comprometida futura.')
+      ];
+      if (typeof data.scenarios.committedIncludingConfirmedProjects === 'number') {
+        scenarioRows.push(renderBarRow('Comprometido com projetos confirmados', data.scenarios.committedIncludingConfirmedProjects, scenarioMax, 'Mínimo comprometido mais os compromissos de ago-dez já assumidos.'));
+      }
+      scenarioRows.push(renderBarRow('Uso integral do envelope estratégico', data.scenarios.fullStrategicEnvelopeUse, scenarioMax, 'Realizado mais recorrências mais envelope estratégico = orçamento anual.'));
+      document.getElementById('scenarioBars').innerHTML = scenarioRows.join('');
 
       const plannedByMonth = Object.fromEntries(data.plannedMonthlyCeilings.map(item => [item.month, item]));
       document.getElementById('timeline').innerHTML = [
@@ -471,23 +533,48 @@
       ].map(item => {
         const planned = plannedByMonth[item.month];
         const total = item.total;
-        const actualPct = item.kind === 'actual' ? (total / maxMonth) * 100 : 0;
-        const plannedPct = planned ? (planned.ceiling / maxMonth) * 100 : 0;
-        return `<div class="month"><strong>${escapeHTML(item.label)}</strong><span class="badge ${item.kind === 'planned' ? 'plan' : ''}">${item.kind === 'actual' ? 'Realizado' : 'Teto planejado'}</span><div class="stack">${item.kind === 'actual' ? `<span class="actual" style="width:${actualPct}%"></span>` : `<span class="recurring" style="width:${plannedPct}%"></span>`}</div><span class="num">${fmtBRL(total)}</span></div>`;
+        const pct = value => (Math.max(0, value || 0) / maxMonth) * 100;
+        let stack;
+        if (item.kind === 'actual') {
+          stack = `<span class="actual" style="width:${pct(total)}%" title="Realizado"></span>`;
+        } else {
+          const rec = planned.recurring || 0;
+          const com = planned.committed || 0;
+          const free = typeof planned.envelopeFree === 'number' ? planned.envelopeFree : (planned.strategicEnvelope || 0) - com;
+          stack = `<span class="recurring" style="width:${pct(rec)}%" title="Recorrência ${fmtBRL(rec)}"></span>`
+            + (com > 0 ? `<span class="committed" style="width:${pct(com)}%" title="Compromisso confirmado ${fmtBRL(com)}"></span>` : '')
+            + `<span class="envelope" style="width:${pct(free)}%" title="Envelope livre ${fmtBRL(free)}"></span>`;
+        }
+        return `<div class="month"><strong>${escapeHTML(item.label)}</strong><span class="badge ${item.kind === 'planned' ? 'plan' : ''}">${item.kind === 'actual' ? 'Realizado' : 'Teto planejado'}</span><div class="stack">${stack}</div><span class="num">${fmtBRL(total)}</span></div>`;
       }).join('');
 
+      const fx = data.futureRecurring.fxRate || 0;
+      const usdByName = Object.fromEntries((data.futureRecurring.usdItems || []).map(item => [item.name, item.usdAmount]));
+      const usdNote = name => (usdByName[name] ? `Base mensal out-dez | ${usdByName[name]} USD × ${fx.toFixed(2).replace('.', ',')}` : 'Base mensal out-dez');
+      document.getElementById('recurringIntro').textContent =
+        `A premissa oficial soma ${fmtBRL(data.futureRecurring.total)} de ago-dez, ${fmtBRL(data.futureRecurring.baseMonthlyOutDec)} por mês na base fixa. `
+        + `Itens cobrados em dólar são convertidos a ${fx.toFixed(2).replace('.', ',')} BRL/USD. `
+        + `Canva e StreamYard estão zeradas, e Depósito entra somente em agosto.`;
       document.getElementById('recurringTable').innerHTML = `
         <thead><tr><th>Item</th><th class="num">Valor mensal</th><th>Observação</th></tr></thead>
         <tbody>
-          ${data.futureRecurring.baseItems.map(item => `<tr><td>${escapeHTML(item.name)}</td><td class="num">${fmtBRL(item.monthlyAmount)}</td><td>Base mensal out-dez</td></tr>`).join('')}
-          ${data.futureRecurring.temporaryItems.map(item => `<tr><td>${escapeHTML(item.name)}</td><td class="num">${fmtBRL(item.monthlyAmount)}</td><td>Apenas ago-set</td></tr>`).join('')}
+          ${data.futureRecurring.baseItems.map(item => `<tr><td>${escapeHTML(item.name)}</td><td class="num">${fmtBRL(item.monthlyAmount)}</td><td>${escapeHTML(usdNote(item.name))}</td></tr>`).join('')}
+          ${data.futureRecurring.temporaryItems.map(item => `<tr><td>${escapeHTML(item.name)}</td><td class="num">${fmtBRL(item.monthlyAmount)}</td><td>Apenas ${item.months.length > 1 ? 'ago-set' : 'agosto'}</td></tr>`).join('')}
           ${data.futureRecurring.excludedItems.map(item => `<tr><td><strong>${escapeHTML(item.name)}</strong></td><td class="num">${fmtBRL(item.futureForecastAmount)}</td><td>${escapeHTML(item.reason)}</td></tr>`).join('')}
           <tr><td><strong>Total recorrências ago-dez</strong></td><td class="num"><strong>${fmtBRL(data.futureRecurring.total)}</strong></td><td>Premissa oficial da projeção</td></tr>
         </tbody>`;
 
+      const committedByMonth = Object.fromEntries(data.plannedMonthlyCeilings.map(item => [item.month, item.committed || 0]));
       const maxEnvelope = Math.max(...data.strategicEnvelope.distribution.map(item => item.amount));
-      document.getElementById('envelopeBars').innerHTML = data.strategicEnvelope.distribution.map(item => renderBarRow(`${item.label} | ${fmtPct(item.percent)}`, item.amount, maxEnvelope, 'Teto de alocação, não gasto realizado.')).join('');
+      document.getElementById('envelopeBars').innerHTML = data.strategicEnvelope.distribution.map(item => {
+        const com = committedByMonth[item.month] || 0;
+        const detail = com > 0
+          ? `Teto de alocação. ${fmtBRL(com)} já comprometidos, ${fmtBRL(item.amount - com)} livres.`
+          : 'Teto de alocação, não gasto realizado.';
+        return renderBarRow(`${item.label} | ${fmtPct(item.percent)}`, item.amount, maxEnvelope, detail);
+      }).join('');
       renderStrategy(data);
+      renderCommitted(data, committed);
 
       const maxMece = Math.max(...data.historicalMeceJanJun.categories.map(item => item.amount));
       document.getElementById('meceBars').innerHTML = data.historicalMeceJanJun.categories.map(item => renderBarRow(`${item.name} | ${fmtPct(item.percent)}`, item.amount, maxMece)).join('');
@@ -495,7 +582,7 @@
       document.getElementById('assumptions').innerHTML = data.metadata.notes.map(note => `<li>${escapeHTML(note)}</li>`).join('');
       document.getElementById('sourceTable').innerHTML = `
         <tr><th>Fonte da verdade</th><td>${escapeHTML(data.metadata.sourceOfTruth)}</td></tr>
-        <tr><th>Arquivo / aba</th><td>${escapeHTML(data.metadata.sourceFile)} · ${escapeHTML(data.metadata.sourceTab)}</td></tr>
+        <tr><th>Arquivo / aba</th><td>${escapeHTML(data.metadata.sourceFile)} | ${escapeHTML(data.metadata.sourceTab)}</td></tr>
         <tr><th>Exportação</th><td>${escapeHTML(data.metadata.sourceExportDate)}</td></tr>
         <tr><th>Fonte julho</th><td>${escapeHTML(data.metadata.julySource)}</td></tr>
         <tr><th>Versão</th><td>${escapeHTML(data.metadata.version)}</td></tr>
