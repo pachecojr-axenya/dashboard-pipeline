@@ -132,6 +132,7 @@ body.nav-docked #view-novo{margin-left:280px}
 <script src="/premium.js?v=13"></script>
 <script src="/filter-bar.js?v=1"></script>
 <script src="/settings-modal.js?v=1"></script>
+<script src="/freshness.js?v=1"></script>
 </head>
 <body>
 
@@ -1034,7 +1035,7 @@ function novoRender(){
   var c=function(title,tip,id,h,tabs,noEmoji){ return '<div class="novo-card"><div class="novo-card-header"><h3>'+(noEmoji?'':'🟡 ')+title+'</h3>'+_infoBtn(tip,id)+(tabs||'')+'</div><canvas id="chart-bdr-'+id+'" style="max-height:'+(h||340)+'px"></canvas></div>'; };
   var cWide=function(title,tip,id,h,tabs,noEmoji){ return '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header"><h3>'+(noEmoji?'':'🟡 ')+title+'</h3>'+_infoBtn(tip,id)+(tabs||'')+'</div><canvas id="chart-bdr-'+id+'" style="max-height:'+(h||320)+'px"></canvas></div>'; };
 
-  document.getElementById('novo-content').innerHTML=(window.AxFilter?AxFilter.barHtml():'')+
+  document.getElementById('novo-content').innerHTML=(window.AxFilter?AxFilter.barHtml():'')+(window.AxFresh?'<div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin:.25rem 0 .75rem">'+AxFresh.badgeHtml()+'</div>':'')+
     '<div style="font-size:.78rem;color:var(--text2);margin-bottom:.75rem">'+t('updated_at')+' '+ts+' | '+deals.length+' deals totais | '+bdrDeals.length+' com BDR (sdr) | '+bdrOpen.length+' abertos atuais</div>'+ 
     '<div class="kpi-row">'+
       kpi(_kpiWin.filtered?'Deals Originados no Período | BDRs':'Deals Originados no Mês | BDRs',_ni(origMonthDeals.length),'entrada em Reunião Agendada em '+_kpiWin.label+' | só time de BDRs','var(--teal)','kpi-orig-deals','origMonth',tipOrigDeals)+
@@ -1108,6 +1109,7 @@ function _bdrLeadsSectionHtml(){
     cW('Contatos Trabalhados por Dia (por BDR)',tipDaily,'leads-daily',300)+
     cN('Penetração por Empresa (contatos/conta)',tipPen,'leads-penetration',340)+
     '<div class="novo-card" style="grid-column:1/-1"><div class="novo-card-header"><h3>Trabalhados na Semana</h3>'+_infoBtn(tipWeek,'leads-week-table')+'</div><div id="bdr-leads-week-table" style="overflow-x:auto;margin-top:.3rem"></div></div>';
+  if(window.AxFresh) AxFresh.remount();
 }
 function _lCnt(n){ return ' <span style="font-size:.68rem;color:var(--text2);font-weight:600;margin-left:.35rem;white-space:nowrap">'+(n||0).toLocaleString('pt-BR')+' contatos</span>'; }
 
@@ -1493,6 +1495,11 @@ function buildBdrSizeDist(){
   document.body.classList.toggle('novo-info-on',_novoShowInfo);
   var _ib=document.getElementById('btn-info-toggle'); if(_ib)_ib.classList.toggle('highlighted',_novoShowInfo);
   novoLoadData();
+  if(window.AxFresh) AxFresh.init({escopo:'tudo',onRefreshed:function(){
+    _bdrLeads=null; _bdrLeadsErr=null; _bdrLeadsLoading=false;
+    _novoDeals=null; window._novoDealsRaw=null;
+    novoLoadData();
+  }});
 })();
 </script>
 <script src="/nav.js?v=6"></script>

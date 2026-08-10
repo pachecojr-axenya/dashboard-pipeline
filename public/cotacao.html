@@ -97,6 +97,7 @@ table.lb tbody tr:nth-child(even) td{background:var(--even-s)}
 <script src="/filter-bar.js?v=1"></script>
 <script src="/settings-modal.js?v=2"></script>
 <script src="/ax-ui.js?v=1"></script>
+<script src="/freshness.js?v=1"></script>
 </head>
 <body>
 
@@ -258,7 +259,11 @@ function novoRender(){
 
   document.getElementById('novo-content').innerHTML=
     (window.AxFilter?AxFilter.barHtml():'')+
-    '<div style="font-size:.78rem;color:var(--text2);margin-bottom:1rem">Atualizado às '+ts+' | tickets do pipeline de Cotação via POST /api/pull-tickets | recorte: '+_ne(fLbl)+'</div>'+
+    // Selo de frescor: os tickets vêm do armazém (batch das 06:30), não mais da
+    // API ao vivo. Sem o carimbo de idade, "Atualizado às HH:MM" abaixo mente —
+    // ele é a hora do RENDER, não a da extração do dado.
+    (window.AxFresh?'<div class="cot-fresh-bar" style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin:.25rem 0 .75rem">'+AxFresh.badgeHtml()+'</div>':'')+
+    '<div style="font-size:.78rem;color:var(--text2);margin-bottom:1rem">Renderizado às '+ts+' | tickets do pipeline de Cotação via POST /api/pull-tickets | recorte: '+_ne(fLbl)+'</div>'+
     '<div class="kpi-row">'+
       kpi('Tickets | Total',_tv(_ni(tks.length)),_ts2('pipeline de Cotação | todas as etapas | sem filtro de período'),_tc('var(--teal)'),'kpi-tickets',temTk?'total':'',
         'Contagem de TODOS os tickets do pipeline de Cotação (847948895), em qualquer etapa. Campos: hs_pipeline. NÃO usa o filtro de período (é o acervo completo). Clique para a lista.')+
@@ -301,6 +306,9 @@ function novoRender(){
     '</div>';
 
   if(window.AxFilter&&AxFilter.afterRender) AxFilter.afterRender();
+  // novoRender() reescreve #novo-content inteiro, o que destrói o DOM do selo.
+  // remount() repinta a partir do estado já em memória, sem novo request.
+  if(window.AxFresh) AxFresh.remount();
   buildCotAE();
   buildCotVidas();
 }
@@ -374,6 +382,14 @@ function buildCotVidas(){
   document.body.classList.toggle('novo-info-on',_novoShowInfo);
   var _ib=document.getElementById('btn-info-toggle'); if(_ib)_ib.classList.toggle('highlighted',_novoShowInfo);
   novoLoadData();
+  // escopo 'tudo': esta tela lê tickets (dim_ticket), que o escopo 'workload'
+  // não reconcilia. onRefreshed TEM de invalidar o cache local — senão o selo
+  // passa a dizer "agora mesmo" em cima dos números velhos, pior que não ter selo.
+  if(window.AxFresh) AxFresh.init({escopo:'tudo',onRefreshed:function(){
+    window._tkRaw=null; window._tkOwnersRaw={}; window._tkErr=null;
+    window._dealsRaw=null; _deals=null;
+    novoLoadData();
+  }});
 })();
 </script>
 <script src="/nav.js?v=6"></script>

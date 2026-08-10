@@ -247,6 +247,7 @@ table.lb tfoot td{font-weight:600;border-top:2px solid var(--border);position:st
 <script src="/prob-engine.js?v=4"></script>
 <script src="/help-drawer.js?v=1"></script>
 <script src="/ax-ui.js?v=1"></script>
+<script src="/freshness.js?v=1"></script>
 </head>
 <body>
 
@@ -4765,8 +4766,13 @@ function _novoFilterBarHtml() {
                 '<button class="flt-pill" onclick="novoFilterApplyMonths()">' + t('flt_apply') + '</button>' +
               '</div>';
   var reset = '<button class="flt-pill" onclick="novoFilterReset()">' + t('flt_reset') + '</button>';
+  // Selo de frescor: o funil (/api/funnel-stages) e o histórico de probabilidade
+  // (/api/deal-prob-history) leem do armazém — batch das 06:30, não a API ao vivo.
+  // O "Atualizado às HH:MM" do status abaixo é a hora do RENDER; só o selo diz a
+  // idade do DADO. Sem ele, a migração piora a tela em vez de melhorar.
+  var fresh = window.AxFresh ? ('<span class="flt-div"></span>' + AxFresh.badgeHtml()) : '';
   return '<div id="novo-filter-bar" class="flt-bar">' +
-    seg + '<span class="flt-div"></span>' + quarter + range + '<span class="flt-div"></span>' + reset +
+    seg + '<span class="flt-div"></span>' + quarter + range + '<span class="flt-div"></span>' + reset + fresh +
   '</div>';
 }
 
@@ -4777,6 +4783,10 @@ function _refreshFilterBar() {
   bar.outerHTML = _novoFilterBarHtml();
   _initTabSubs();
   var seg = document.getElementById('flt-seg'); if (seg) _moveTabSubThumb(seg, false);
+  // A barra foi reescrita por outerHTML: o DOM do selo morreu junto. remount()
+  // repinta do estado já em memória — trocar de filtro não é motivo para bater
+  // no /api/freshness de novo.
+  if (window.AxFresh) AxFresh.remount();
 }
 
 function _closeAllFilterPops() {
@@ -4960,6 +4970,9 @@ function novoRender() {
 
     '</div>';
 
+  // O render reescreveu #novo-content inteiro (a barra de filtros vai junto),
+  // então o selo precisa ser repintado — sem novo request.
+  if (window.AxFresh) AxFresh.remount();
   buildNovoVidasAE();
   buildNovoStage();
   buildNovoSizeDonut();
@@ -5547,6 +5560,18 @@ document.addEventListener('DOMContentLoaded', function() {
   _novoLoadUserKey();
   _novoLoadGlobalMeta();
   novoLoadData();
+  // escopo 'tudo': o funil lê fact_stage_entry e o histórico de probabilidade lê
+  // fact_crm_change — nenhum dos dois é coberto pelo escopo 'workload'.
+  // onRefreshed TEM de invalidar o cache local: _novoFunnelData e
+  // _novoProbHistCache sobrevivem ao novoRender(), e sem zerá-los o selo diria
+  // "agora mesmo" sobre números velhos — pior que não ter selo.
+  if (window.AxFresh) AxFresh.init({ escopo: 'tudo', onRefreshed: function() {
+    _novoFunnelData = null;
+    _novoFunnelStagesData = {};
+    _novoProbHistCache = {};
+    _novoDeals = null;
+    novoLoadData();
+  } });
 
   // Sticky header glass effect on scroll
   var _hdr = document.querySelector('.novo-hdr');
