@@ -5,6 +5,14 @@ lado do dashboard. O ETL e a modelagem vivem em
 `15_Workspaces/GCP_Axenya/scripts/hubspot-platform/`; o handoff da fase está em
 `20_Company/Sales/Pipeline_Dashboard/2026-08-07_Handoff_F5_Operacao_Fonte_Unica.md`.
 
+> **Vai construir tela/visual a partir do armazém? Leia primeiro o contrato de
+> consumo:** `80_System/Engineering/AI_ENG_REFERENCE__HubSpot_Warehouse_Consumo_2026-08.md`
+>
+> Ele diz qual mart usar para cada métrica, quais colunas existem em que grão, e as
+> **seis regras invioláveis de leitura** — cada uma correspondendo a um defeito que já
+> aconteceu. As três que mais quebram tela nova: percentil não soma, não some pipelines
+> diferentes, e toda tela de tempo mostra a censura ao lado da mediana.
+
 ## O princípio da migração
 
 **Leitura analítica migra; escrita, ação e tempo real ficam ao vivo.**
