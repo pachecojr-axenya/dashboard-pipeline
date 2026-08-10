@@ -300,19 +300,53 @@ async function cmpWorkload() {
     linha(false, 'chamada', (B && B.error) || (A && A.error) || 'sem resposta');
     return;
   }
+  // A régua de ATRIBUIÇÃO por dono do contato não existe do lado da API: ela vive
+  // no `owner_attributed` da fato. Desde 10/08/2026 o e-mail sem dono ENTRA
+  // (decisão: "nota não é ação, e-mail é"), então o armazém legitimamente tem
+  // toques que a API nunca vai devolver.
+  //
+  // Comparar os dois brutos passaria a acusar divergência PARA SEMPRE — e check
+  // que falha por design vira ruído, que é o mesmo mal do check que passa por
+  // acidente. A comparação certa é: o excedente do armazém tem de ser EXATAMENTE
+  // o que ele declarou ter atribuído. Se for um a mais, é defeito de verdade.
+  const atrib = (B.diagnostics && B.diagnostics.rawCounts
+    && B.diagnostics.rawCounts.atribuicaoPorDonoDoContato) || null;
+  const esperadoSoBq = { activities: atrib ? atrib.entraram : 0 };
+
   for (const k of ['companiesCreated', 'contactsCreated', 'transitions', 'activities']) {
     const b = B[k] || [], a = A[k] || [];
     const bi = new Set(b.map((x) => String(x.id || x.contato_id)));
     const ai = new Set(a.map((x) => String(x.id || x.contato_id)));
     const soApi = [...ai].filter((x) => !bi.has(x));
     const soBq = [...bi].filter((x) => !ai.has(x));
-    linha(soApi.length === 0 && soBq.length === 0, k.padEnd(18),
-      `${b.length} / ${a.length} · só API ${soApi.length} · só BQ ${soBq.length}`);
+    const tolerado = esperadoSoBq[k] || 0;
+    const ok = soApi.length === 0 && soBq.length === tolerado;
+    linha(ok, k.padEnd(18),
+      `${b.length} / ${a.length} · só API ${soApi.length} · só BQ ${soBq.length}`
+      + (tolerado ? ` (${tolerado} declarados como atribuídos ao dono do contato)` : ''));
   }
-  const desc = B.diagnostics && B.diagnostics.rawCounts
-    && B.diagnostics.rawCounts.toquesAtribuidosDescartados;
-  console.log(`  ·  toques atribuídos ao dono do CONTATO descartados por decisão: ${desc}`
-    + ' (nota/e-mail; `?atribuidos=todos` inclui)');
+
+  // `contactsCreated` e `transitions` divergindo em 1–2 registros NÃO ganham
+  // tolerância de propósito. Silenciar aqui seria confortável e errado: as duas
+  // causas já vistas são reais e valem uma olhada humana toda vez.
+  //   · objeto DELETADO no portal — o armazém guarda, a API devolve 404. O
+  //     armazém nunca aprende sobre deleção (mesma família do IGNORE NULLS).
+  //   · dono trocado DEPOIS da extração das 06:30 — o contato entra ou sai do
+  //     roster de BDR entre a foto e agora. É defasagem, e é literalmente o que
+  //     o selo de frescor existe para dizer.
+  // Diagnóstico: bata o id no portal. Se der 404 é o primeiro caso; se o
+  // `lastmodifieddate` for posterior à extração, é o segundo.
+  console.log('  ·  divergência de 1–2 em contactsCreated/transitions: conferir se o id'
+    + ' foi DELETADO (404 no portal) ou trocou de dono depois da extração');
+
+  if (atrib) {
+    console.log(`  ·  atribuição por dono do contato: ${atrib.total} toques sem dono próprio`
+      + ` → ${atrib.entraram} entraram ${JSON.stringify(atrib.entraramPorTipo)}`
+      + ` · ${atrib.descartados} descartados ${JSON.stringify(atrib.descartadosPorTipo)}`);
+    linha(atrib.entraram + atrib.descartados === atrib.total,
+      'partição da atribuição fecha',
+      `${atrib.entraram} + ${atrib.descartados} == ${atrib.total}`);
+  }
 }
 
 // ================================================================= run =======
