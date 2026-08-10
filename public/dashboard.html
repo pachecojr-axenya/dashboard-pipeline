@@ -4153,9 +4153,32 @@ function buildNovoTimeInStage() {
   // Contagem do título segue a fonte ativa: no histórico, o n por etapa está no tooltip
   // (somar etapas supercontaria — o mesmo deal passa por várias); no fallback, nº de deals.
   var _tisEl = document.getElementById('novo-tis-count');
-  if (_tisEl) _tisEl.textContent = _usingFunnel
-    ? (NOVO_LANG==='en' ? 'funnel history | n per stage in the tooltip' : 'histórico do funil | n por etapa no tooltip')
-    : allDeals.length.toLocaleString('pt-BR') + (NOVO_LANG==='en' ? ' deals (fallback)' : ' deals (fallback)');
+  if (_tisEl) {
+    var _tisTxt = _usingFunnel
+      ? (NOVO_LANG==='en' ? 'funnel history | n per stage in the tooltip' : 'histórico do funil | n por etapa no tooltip')
+      : allDeals.length.toLocaleString('pt-BR') + (NOVO_LANG==='en' ? ' deals (fallback)' : ' deals (fallback)');
+    // A PREMISSA VIVE ONDE O NÚMERO É LIDO, não só em `divergencias_conhecidas`
+    // no payload. Este número mudou em relação ao relatório do HubSpot de 02/07
+    // e mudou porque está CERTO: a API contava re-save/ação em massa/
+    // MERGE_OBJECTS como um período novo, então um deal que chegou em Perdido e
+    // foi re-salvo ganhava um "período seguinte" numa etapa que nunca deixou
+    // (Perdido n=12 contra n=4 reais). Quem abrir o card e comparar com o
+    // relatório antigo precisa ver isto aqui, não descobrir depois.
+    var _tisPrem = '';
+    if (_usingFunnel) {
+      var _dv = (_novoFunnelData && _novoFunnelData.divergencias_conhecidas) || [];
+      var _sm = _dv.filter(function(x){ return x && x.campo === 'stage_medians'; })[0];
+      if (_sm) {
+        _tisPrem = '<br><span style="font-weight:400;color:var(--text2)">'
+          + (NOVO_LANG==='en'
+              ? 'Median counts only completed periods with a real transition. Differs from the pre-Aug/2026 HubSpot report, which counted re-save and MERGE_OBJECTS as a new period. '
+              : 'A mediana conta só período concluído com transição de verdade. Diverge do relatório do HubSpot anterior a ago/2026, que contava re-save e MERGE_OBJECTS como período novo. ')
+          + _ne(String(_sm.motivo || '')) + '</span>';
+      }
+    }
+    if (_tisPrem) _tisEl.innerHTML = _ne(_tisTxt) + _tisPrem;
+    else _tisEl.textContent = _tisTxt;
+  }
   _novoMkChart('chart-novo-timeinstage', { type:'bar', plugins:[ChartDataLabels],
     data:{ labels:stages, datasets:[{ data:meds, backgroundColor:colors, borderRadius:4 }] },
     options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, layout:{padding:{right:55}}, plugins:{ legend:{display:false},

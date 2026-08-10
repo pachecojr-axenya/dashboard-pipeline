@@ -334,17 +334,28 @@ function tipoDoToque(t) {
 // Para WhatsApp/LinkedIn (`communications`) isso é DECISÃO REGISTRADA: disparo via
 // integração chega sem dono, e o disparo é do BDR. É o caso Treble.
 //
-// Para NOTA é outra coisa. Medido em 01–06/08/2026: 425 notas atribuídas contra 429
-// com dono próprio — atribuí-las creditaria ao BDR quase o dobro de notas, e nota
-// sem dono normalmente é registro de automação, não trabalho de alguém. Idem
-// e-mail (197 atribuídos no período).
+// Para E-MAIL e NOTA a pergunta ficou aberta durante a migração e foi FECHADA
+// pelo dono da área em 10/08/2026, com o critério explícito:
 //
-// Não é decisão que se toma de dentro de uma migração. O default preserva a
-// semântica de hoje (só `communications` atribuído), TODO toque carrega
-// `owner_atribuido` para quem quiser contar de outro jeito, e `?atribuidos=todos`
-// inclui os demais. Creditar 425 notas a BDRs em silêncio seria mudar a régua de
-// produtividade sem ninguém pedir.
-const ATRIBUICAO_POR_DECISAO = new Set(['communications']);
+//     "Nota não é ação. E-mail é."
+//
+// E-mail sem dono é envio que aconteceu: alguém mandou, e o destinatário recebeu.
+// Nota sem dono é quase sempre registro de automação escrevendo no CRM — não é
+// trabalho de uma pessoa, e creditá-la infla a régua de produtividade. Medido em
+// 01–06/08/2026: 425 notas atribuídas contra 429 com dono próprio (atribuir
+// quase dobraria a contagem de nota do time) e 197 e-mails atribuídos.
+//
+// A régua MUDOU em relação à versão anterior deste arquivo, que descartava e-mail
+// junto com nota. Quem comparar um número de workload de antes com um de depois
+// vai ver e-mail subir, e o motivo é este — está declarado em `premissas` e a
+// separação sai medida em `diagnostics.rawCounts.atribuicaoPorDonoDoContato`.
+const ATRIBUICAO_POR_DECISAO = new Set(['communications', 'emails']);
+
+// Contrapartida da decisão: NOTA nunca é atribuída no default. Fica nomeado em
+// vez de ser "o que sobrou do Set acima" — a régua tem de ser legível dos dois
+// lados, senão daqui a seis meses alguém adiciona 'notes' sem saber que existiu
+// uma decisão.
+const ATRIBUICAO_RECUSADA_POR_DECISAO = new Set(['notes']);
 
 async function buildPayloadArmazem(idToBdr, teamIds, sinceMs, untilMs, opcoes = {}) {
   const todosAtribuidos = opcoes.atribuidos === 'todos';
@@ -424,8 +435,25 @@ async function buildPayloadArmazem(idToBdr, teamIds, sinceMs, untilMs, opcoes = 
   }).sort((a, b) => (a.ts < b.ts ? -1 : 1));
 
   const trebleCount = activities.filter(a => a.treble).length;
-  const atribuidosDescartados = w.toques.filter(t => wh.bool(t.owner_attributed)
-    && !(todosAtribuidos || ATRIBUICAO_POR_DECISAO.has(String(t.kind)))).length;
+
+  // PARTIÇÃO MECE dos toques sem dono próprio. Um toque atribuído cai em
+  // exatamente um balde, e a soma dos baldes é o total — a asserção abaixo é o
+  // que impede a régua de mudar sem ninguém ver. Só declarar o descarte (como
+  // era antes) conta metade da história: não dava para saber o que ENTROU.
+  const atribuidos = w.toques.filter(t => wh.bool(t.owner_attributed));
+  const porTipo = (lista) => lista.reduce((acc, t) => {
+    const k = String(t.kind); acc[k] = (acc[k] || 0) + 1; return acc;
+  }, {});
+  const entraram = atribuidos.filter(t => todosAtribuidos || ATRIBUICAO_POR_DECISAO.has(String(t.kind)));
+  const descartados = atribuidos.filter(t => !(todosAtribuidos || ATRIBUICAO_POR_DECISAO.has(String(t.kind))));
+  const atribuidosDescartados = descartados.length;
+  if (entraram.length + descartados.length !== atribuidos.length) {
+    // Impossível por construção — e é exatamente por isso que vale afirmar:
+    // se um dia alguém trocar o filtro por um que não particiona, quebra aqui
+    // em vez de publicar um total que não fecha.
+    throw new Error(`particao de atribuicao nao fecha: ${entraram.length}+${descartados.length}`
+      + ` != ${atribuidos.length}`);
+  }
   return {
     companiesCreated, contactsCreated, transitions, activities,
     diagnostics: {
@@ -448,16 +476,33 @@ async function buildPayloadArmazem(idToBdr, teamIds, sinceMs, untilMs, opcoes = 
         transitions: transitions.length,
         // Cap declarado. Silenciar seria dizer "cobrimos tudo" cobrindo menos.
         toquesAtribuidosDescartados: atribuidosDescartados,
+        // Os dois lados da régua, medidos. `total` = `entraram` + `descartados`,
+        // sempre — a asserção acima garante.
+        atribuicaoPorDonoDoContato: {
+          regra: 'e-mail e communications ENTRAM; nota NAO (decisao de 10/08/2026: nota nao e acao, e-mail e)',
+          total: atribuidos.length,
+          entraram: entraram.length,
+          descartados: descartados.length,
+          entraramPorTipo: porTipo(entraram),
+          descartadosPorTipo: porTipo(descartados),
+          comoIncluirTudo: '?atribuidos=todos',
+        },
       },
       sqlStatusNote: 'Qualificado conta transição de hs_lead_status para OPEN_DEAL no contato. SQL real por deal requer consulta separada ao pipeline de deals.',
     },
     premissas: {
       fonte: 'dim_company + dim_contact + fact_crm_change + fact_engagement',
-      atribuicao: 'hubspot_owner_id do objeto, resolvido pelo roster canonico (resolveTeamIds)',
+      // Esta chave se chamava `atribuicao` e havia OUTRA `atribuicao` mais
+      // abaixo no mesmo literal: em JS a segunda vence e esta aqui nunca chegava
+      // ao payload. Premissa que nao e lida nao e premissa. Nomes separados
+      // agora, porque sao dois fatos diferentes — de onde vem o dono quando ele
+      // EXISTE, e o que se faz quando ele NAO existe.
+      atribuicao_dono_proprio: 'hubspot_owner_id do objeto, resolvido pelo roster canonico (resolveTeamIds)',
       transicao: 'fact_crm_change de hs_lead_status, com old_value ja COLAPSADO — re-save do mesmo status nao conta como transicao, e na versao antiga contava',
       treble: 'owner_attributed marca o toque atribuido pelo dono do contato; source_label=INTEGRATION separa Treble de WhatsApp manual',
       desfecho: 'GUID em desfechoId (chave canonica) e rotulo do PORTAL em desfecho',
-      atribuicao: 'toque SEM dono proprio entra atribuido ao dono do contato apenas em communications (decisao registrada do Treble). Para nota e e-mail e PERGUNTA ABERTA e o default os DESCARTA — ver diagnostics.rawCounts.toquesAtribuidosDescartados. `?atribuidos=todos` inclui. Cada toque carrega owner_atribuido',
+      atribuicao_sem_dono: 'toque SEM dono proprio vai para o dono do contato em communications (decisao do Treble) e em E-MAIL (decisao de 10/08/2026: "nota nao e acao, e-mail e"). NOTA e descartada por decisao — nota sem dono e quase sempre automacao escrevendo no CRM, e credita-la infla a regua de produtividade. A particao sai medida em diagnostics.rawCounts.atribuicaoPorDonoDoContato (entraram + descartados = total). `?atribuidos=todos` inclui tudo. Cada toque carrega owner_atribuido',
+      atribuicao_mudanca: 'ATE 09/08/2026 o e-mail era DESCARTADO junto com a nota. Comparacao de workload que cruze essa data vai ver e-mail subir por mudanca de regua, nao por mudanca de esforco',
       diagnostics_nulos: 'ownersInHubSpot, unresolvedOwnersCount e contactsTouched sao da mecanica da API e nao existem aqui',
     },
   };
