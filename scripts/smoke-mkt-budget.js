@@ -128,11 +128,15 @@ try {
   const usd = Object.fromEntries((fr.usdItems || []).map(u => [u.name, u.usdAmount]));
   check('tabela anota conversão em USD', has('recurringTable', `${usd.Clay} USD`), `${usd.Clay} USD`);
 
-  // 4. Compromissos confirmados
-  check('compromisso pago aparece', has('committedTable', brl(cc.paid)), brl(cc.paid));
-  check('compromisso pendente aparece', has('committedTable', brl(cc.pending)), brl(cc.pending));
-  check('compromisso nomeia Brindes Lux', has('committedTable', 'Brindes Lux'));
-  check('métricas de compromisso somam o total', has('committedMetrics', brl(cc.total)), brl(cc.total));
+  // 4. Compromissos confirmados | cada linha na tabela, os agregados nas métricas
+  cc.items.forEach(item => {
+    check(`compromisso "${item.name}" na tabela`, has('committedTable', item.name) && has('committedTable', brl(item.amount)), brl(item.amount));
+    check(`compromisso "${item.name}" com status`, has('committedTable', item.status));
+  });
+  check('tabela fecha no total comprometido', has('committedTable', brl(cc.total)), brl(cc.total));
+  ['total', 'paid', 'pending'].forEach(k =>
+    check(`métrica de compromisso ${k}`, has('committedMetrics', brl(cc[k])), brl(cc[k])));
+  check('total = pago + pendente', Math.round(cc.total * 100) === Math.round((cc.paid + cc.pending) * 100), `${cc.paid} + ${cc.pending}`);
 
   // 5. Timeline: 12 meses, agosto com faixa de comprometido
   const monthRows = (nodes.timeline.innerHTML.match(/class="month"/g) || []).length;
