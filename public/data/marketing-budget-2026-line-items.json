@@ -1,24 +1,26 @@
 {
   "metadata": {
     "title": "Lançamentos linha a linha do Marketing Budget 2026",
-    "version": "line-items-v5",
+    "version": "line-items-v6",
     "currency": "BRL",
-    "updatedAt": "2026-08-04",
+    "updatedAt": "2026-08-10",
     "sourceFile": "Marketing_2026 (1).xlsx + Mkt Julho2026.xlsx",
     "sourceTab": "Planilha1",
-    "sourceRows": "Jan-jun: planilha consolidada. Julho: linhas 3-85 de Mkt Julho2026.xlsx + ajuste confirmado de Google Cloud. Ago-dez: premissas projetadas.",
+    "sourceRows": "Jan-jun: planilha consolidada. Julho: linhas 3-85 de Mkt Julho2026.xlsx mais ajuste confirmado de Google Cloud. Ago-dez: premissas projetadas mais compromissos confirmados no Slack.",
     "privacy": "Nomes de fornecedores são exibidos; identidades de Pessoas/Freelancers são protegidas. Dados de cartão não são exportados.",
     "notes": [
       "Janeiro a junho: 522 lançamentos realizados da planilha consolidada, com nome do gasto.",
-      "Julho: 84 linhas realizadas e reconciliadas em R$ 54.064,91 — 83 linhas da planilha Mkt Julho2026.xlsx (R$ 52.964,91) + Google Cloud confirmado (R$ 1.100,00). A planilha detalhada substitui o agregado anterior e já contém Apollo.",
-      "Agosto a dezembro: 48 linhas projetadas a partir das premissas de recorrência; são valores esperados, não gasto realizado.",
-      "Sales Navigator: 9 de 13 BDRs (R$ 3.152,60/mês). Canva e StreamYard cortadas. Depósito apenas em agosto. Apollo R$ 1.632,00/mês (320 USD × 5,10).",
-      "Google Cloud R$ 600,00/mês e Vercel R$ 350,00/mês a partir de ago/2026."
+      "Julho: 84 linhas realizadas e reconciliadas em R$ 54.064,91 | 83 linhas da planilha Mkt Julho2026.xlsx (R$ 52.964,91) mais Google Cloud confirmado (R$ 1.100,00). A planilha detalhada substitui o agregado anterior e já contém Apollo.",
+      "Agosto a dezembro: 55 linhas | 53 projeções de recorrência mais 2 compromissos confirmados de Brindes Lux; são valores esperados ou comprometidos, não gasto realizado.",
+      "Sales Navigator: 9 de 13 BDRs (R$ 3.152,60/mês). Canva e StreamYard cortadas. Depósito apenas em agosto.",
+      "Revisão de ago/2026 | Apollo passa a 99 USD (R$ 504,90/mês), Apify é cobrado em dólar e passa de R$ 29,00 para 29 USD (R$ 147,90/mês) e Clay entra como recorrência de 185 USD (R$ 943,50/mês). Câmbio de 5,10 BRL/USD.",
+      "Google Cloud R$ 600,00/mês e Vercel R$ 350,00/mês a partir de ago/2026.",
+      "Brindes Lux | pedido de R$ 26.380,00 para o CONARH: 60% (R$ 15.828,00) aprovado no Slack em 06/08 e pago em 07/08; 40% (R$ 10.552,00) segue pendente e está alocado em agosto. Consome o envelope estratégico, não a recorrência."
     ]
   },
   "summary": {
-    "itemCount": 654,
-    "totalAmount": 1008728.51,
+    "itemCount": 661,
+    "totalAmount": 1034785.01,
     "months": [
       "2026-01",
       "2026-02",
@@ -47,12 +49,12 @@
         "amount": 91728.9
       },
       {
-        "name": "SaaS/Ferramentas",
-        "amount": 72582.61
+        "name": "Brindes/Material Promocional",
+        "amount": 83834.45
       },
       {
-        "name": "Brindes/Material Promocional",
-        "amount": 57454.45
+        "name": "SaaS/Ferramentas",
+        "amount": 72259.11
       },
       {
         "name": "Diversos/Operacional",
@@ -178,7 +180,7 @@
       "originalType": "Sem tipo",
       "meceCategory": "Pessoas/Freelancers",
       "amount": 3520.0,
-      "expenseName": "Pessoa/Freelancer — identidade protegida"
+      "expenseName": "Pessoa/Freelancer | identidade protegida"
     },
     {
       "sourceRow": 15,
@@ -250,7 +252,7 @@
       "originalType": "Sem tipo",
       "meceCategory": "Pessoas/Freelancers",
       "amount": 1070.0,
-      "expenseName": "Pessoa/Freelancer — identidade protegida"
+      "expenseName": "Pessoa/Freelancer | identidade protegida"
     },
     {
       "sourceRow": 23,
@@ -313,7 +315,7 @@
       "originalType": "Sem tipo",
       "meceCategory": "Pessoas/Freelancers",
       "amount": 1070.0,
-      "expenseName": "Pessoa/Freelancer — identidade protegida"
+      "expenseName": "Pessoa/Freelancer | identidade protegida"
     },
     {
       "sourceRow": 30,
@@ -367,7 +369,7 @@
       "originalType": "Sem tipo",
       "meceCategory": "Pessoas/Freelancers",
       "amount": 619.0,
-      "expenseName": "Pessoa/Freelancer — identidade protegida"
+      "expenseName": "Pessoa/Freelancer | identidade protegida"
     },
     {
       "sourceRow": 36,
@@ -2734,7 +2736,7 @@
       "originalType": "Sem tipo",
       "meceCategory": "Pessoas/Freelancers",
       "amount": 5700.0,
-      "expenseName": "Pessoa/Freelancer — identidade protegida"
+      "expenseName": "Pessoa/Freelancer | identidade protegida"
     },
     {
       "sourceRow": 299,
@@ -2752,7 +2754,7 @@
       "originalType": "Sem tipo",
       "meceCategory": "Pessoas/Freelancers",
       "amount": 2000.0,
-      "expenseName": "Pessoa/Freelancer — identidade protegida"
+      "expenseName": "Pessoa/Freelancer | identidade protegida"
     },
     {
       "sourceRow": 301,
@@ -2815,7 +2817,7 @@
       "originalType": "Sem tipo",
       "meceCategory": "Pessoas/Freelancers",
       "amount": 1100.0,
-      "expenseName": "Pessoa/Freelancer — identidade protegida"
+      "expenseName": "Pessoa/Freelancer | identidade protegida"
     },
     {
       "sourceRow": 308,
@@ -5143,7 +5145,7 @@
       "sourceRow": "JUL-39",
       "month": "2026-07",
       "origin": "Conta Simples",
-      "expenseName": "Pessoa/Freelancer — identidade protegida",
+      "expenseName": "Pessoa/Freelancer | identidade protegida",
       "originalType": "Sem tipo",
       "meceCategory": "Pessoas/Freelancers",
       "amount": 130.0,
@@ -5293,7 +5295,7 @@
       "sourceRow": "JUL-54",
       "month": "2026-07",
       "origin": "Clara",
-      "expenseName": "IOF — compra internacional",
+      "expenseName": "IOF | compra internacional",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
       "amount": 5.57,
@@ -5323,7 +5325,7 @@
       "sourceRow": "JUL-57",
       "month": "2026-07",
       "origin": "Clara",
-      "expenseName": "IOF — compra internacional",
+      "expenseName": "IOF | compra internacional",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
       "amount": 14.77,
@@ -5343,7 +5345,7 @@
       "sourceRow": "JUL-59",
       "month": "2026-07",
       "origin": "Clara",
-      "expenseName": "IOF — compra internacional",
+      "expenseName": "IOF | compra internacional",
       "originalType": "Sem tipo",
       "meceCategory": "Diversos/Operacional",
       "amount": 5.48,
@@ -5523,7 +5525,7 @@
       "sourceRow": "JUL-77",
       "month": "2026-07",
       "origin": "Itaú",
-      "expenseName": "Pessoa/Freelancer — identidade protegida",
+      "expenseName": "Pessoa/Freelancer | identidade protegida",
       "originalType": "Sem tipo",
       "meceCategory": "Pessoas/Freelancers",
       "amount": 1500.0,
@@ -5563,7 +5565,7 @@
       "sourceRow": "JUL-81",
       "month": "2026-07",
       "origin": "Itaú",
-      "expenseName": "Camp1 — Agência de PR",
+      "expenseName": "Camp1 | Agência de PR",
       "originalType": "Agência",
       "meceCategory": "Agência/SEO",
       "amount": 6500.0,
@@ -5573,7 +5575,7 @@
       "sourceRow": "JUL-82",
       "month": "2026-07",
       "origin": "Itaú",
-      "expenseName": "Pessoa/Freelancer — identidade protegida",
+      "expenseName": "Pessoa/Freelancer | identidade protegida",
       "originalType": "Sem tipo",
       "meceCategory": "Pessoas/Freelancers",
       "amount": 40.0,
@@ -5583,7 +5585,7 @@
       "sourceRow": "JUL-83",
       "month": "2026-07",
       "origin": "Itaú",
-      "expenseName": "Pessoa/Freelancer — identidade protegida",
+      "expenseName": "Pessoa/Freelancer | identidade protegida",
       "originalType": "Sem tipo",
       "meceCategory": "Pessoas/Freelancers",
       "amount": 45.0,
@@ -5593,7 +5595,7 @@
       "sourceRow": "JUL-84",
       "month": "2026-07",
       "origin": "Itaú",
-      "expenseName": "Pessoa/Freelancer — identidade protegida",
+      "expenseName": "Pessoa/Freelancer | identidade protegida",
       "originalType": "Sem tipo",
       "meceCategory": "Pessoas/Freelancers",
       "amount": 1500.0,
@@ -5895,7 +5897,7 @@
       "origin": "Recorrência",
       "originalType": "Projeção",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 29.0,
+      "amount": 147.9,
       "expenseName": "Apify"
     },
     {
@@ -5904,7 +5906,7 @@
       "origin": "Recorrência",
       "originalType": "Projeção",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 29.0,
+      "amount": 147.9,
       "expenseName": "Apify"
     },
     {
@@ -5913,7 +5915,7 @@
       "origin": "Recorrência",
       "originalType": "Projeção",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 29.0,
+      "amount": 147.9,
       "expenseName": "Apify"
     },
     {
@@ -5922,7 +5924,7 @@
       "origin": "Recorrência",
       "originalType": "Projeção",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 29.0,
+      "amount": 147.9,
       "expenseName": "Apify"
     },
     {
@@ -5931,7 +5933,7 @@
       "origin": "Recorrência",
       "originalType": "Projeção",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 29.0,
+      "amount": 147.9,
       "expenseName": "Apify"
     },
     {
@@ -5940,7 +5942,7 @@
       "origin": "Recorrência",
       "originalType": "Projeção",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 1632.0,
+      "amount": 504.9,
       "expenseName": "Apollo"
     },
     {
@@ -5949,7 +5951,7 @@
       "origin": "Recorrência",
       "originalType": "Projeção",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 1632.0,
+      "amount": 504.9,
       "expenseName": "Apollo"
     },
     {
@@ -5958,7 +5960,7 @@
       "origin": "Recorrência",
       "originalType": "Projeção",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 1632.0,
+      "amount": 504.9,
       "expenseName": "Apollo"
     },
     {
@@ -5967,7 +5969,7 @@
       "origin": "Recorrência",
       "originalType": "Projeção",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 1632.0,
+      "amount": 504.9,
       "expenseName": "Apollo"
     },
     {
@@ -5976,7 +5978,7 @@
       "origin": "Recorrência",
       "originalType": "Projeção",
       "meceCategory": "SaaS/Ferramentas",
-      "amount": 1632.0,
+      "amount": 504.9,
       "expenseName": "Apollo"
     },
     {
@@ -6050,6 +6052,69 @@
       "meceCategory": "Diversos/Operacional",
       "amount": 450.0,
       "expenseName": "Depósito"
+    },
+    {
+      "sourceRow": 574,
+      "month": "2026-08",
+      "origin": "Recorrência",
+      "originalType": "Projeção",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 943.5,
+      "expenseName": "Clay"
+    },
+    {
+      "sourceRow": 575,
+      "month": "2026-09",
+      "origin": "Recorrência",
+      "originalType": "Projeção",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 943.5,
+      "expenseName": "Clay"
+    },
+    {
+      "sourceRow": 576,
+      "month": "2026-10",
+      "origin": "Recorrência",
+      "originalType": "Projeção",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 943.5,
+      "expenseName": "Clay"
+    },
+    {
+      "sourceRow": 577,
+      "month": "2026-11",
+      "origin": "Recorrência",
+      "originalType": "Projeção",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 943.5,
+      "expenseName": "Clay"
+    },
+    {
+      "sourceRow": 578,
+      "month": "2026-12",
+      "origin": "Recorrência",
+      "originalType": "Projeção",
+      "meceCategory": "SaaS/Ferramentas",
+      "amount": 943.5,
+      "expenseName": "Clay"
+    },
+    {
+      "sourceRow": 579,
+      "month": "2026-08",
+      "origin": "Compromisso",
+      "originalType": "Compromisso pago",
+      "meceCategory": "Brindes/Material Promocional",
+      "amount": 15828.0,
+      "expenseName": "Brindes Lux | 60% do pedido, pago em 07/08"
+    },
+    {
+      "sourceRow": 580,
+      "month": "2026-08",
+      "origin": "Compromisso",
+      "originalType": "Compromisso pendente",
+      "meceCategory": "Brindes/Material Promocional",
+      "amount": 10552.0,
+      "expenseName": "Brindes Lux | 40% do pedido, saldo pendente"
     }
   ]
 }
