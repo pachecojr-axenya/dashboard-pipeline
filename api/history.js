@@ -266,6 +266,16 @@ module.exports = async function handler(req, res) {
         w.b.arr = rb.arr; w.b.arrPond = rb.arrPond;
         w.delta.arr = rb.arr - ra.arr; w.delta.arrPond = rb.arrPond - ra.arrPond;
       });
+      // Decomposição saudável × perda real por barra do waterfall (pedido do dono
+      // 2026-08-07, ver FC.healthByRow): saudavel[m] + perdaReal[m] == delta[m] por
+      // construção — o front-end (D02) usa isso pra colorir cada barra em 2
+      // segmentos, sem duplicar a lógica de classificação do drill.
+      const health = FC.healthByRow(cA, cB, rawBStageById);
+      const _blankHealth = () => ({ real12: 0, prob12: 0, realTotal: 0, probTotal: 0, arr: 0, arrPond: 0 });
+      waterfall.forEach(w => {
+        const h = health[w.key] || { saudavel: _blankHealth(), perdaReal: _blankHealth() };
+        w.saudavel = h.saudavel; w.perdaReal = h.perdaReal;
+      });
       // Totais em ARR = os próprios KPIs (mesmo conjunto escopado; barras Total @ A/B).
       const totalsA = Object.assign({}, snapA.totals, { arr: snapA.kpis.arrTotal, arrPond: snapA.kpis.arrPond });
       const totalsB = Object.assign({}, snapB.totals, { arr: snapB.kpis.arrTotal, arrPond: snapB.kpis.arrPond });

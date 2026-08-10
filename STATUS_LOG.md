@@ -1,5 +1,89 @@
 # Dashboard Enhancement Loop — Status Log
 
+### Feat | Delta D02: decomposição saudável × perda real no waterfall (2026-08-07/10)
+
+> Pedido do dono, com exemplo visual (mockup): "daria para colocar uma divisão nesse
+> waterfall decompondo o que foram percas e o que foi movimentação? ex: desses 490k,
+> mais ou menos 30k foi avançado de etapa, poderia ter uma corzinha diferente." Duas
+> decisões dele antes de implementar: aplicar em TODAS as barras (não só nas de
+> queda) e Ganho/Implantação entra junto de "saudável" (fechar negócio é o melhor
+> resultado possível, não uma perda).
+>
+> **Backend** (`lib/forecast-compute.js` + `api/history.js`): nova função
+> `healthByRow` decompõe o Δ de cada linha do waterfall em `saudavel` (avançou de
+> etapa, foi p/ Ganho/Implantação, deal novo entrando, ou permaneceu e ganhou valor)
+> e `perdaReal` (Perdido/regrediu/saiu do pipe sem avançar, ou permaneceu e perdeu
+> valor) — mesma classificação que o drill da barra já usa (`_classifySaiu`), só que
+> agregada por linha e por TODAS as medidas de uma vez (sem round-trip por linha).
+> `saudavel[m] + perdaReal[m] == delta[m]` por construção (as duas somas particionam
+> o mesmo conjunto de deals).
+>
+> **Frontend** (D02): testei 3 técnicas de renderização antes de achar a certa —
+> (1) gradiente com 2 color-stops próximos simulando corte duro: funciona mas com
+> gotchas reais de `chartArea` indefinida na 1ª passada; (2) 3 datasets floating-bar
+> empilhados (`stacked:true`): quebrado — Chart.js NÃO trata `[min,max]` como range
+> absoluto quando múltiplos datasets compartilham stack, acumula como magnitude
+> (bug conhecido, ver chartjs/Chart.js#10774/#11730); (3) **escolhida**: plugin
+> `afterDatasetsDraw` que pinta 2 `fillRect` sólidos direto na geometria real da
+> barra (`getProps(['x','width'], true)`), usando a escala Y do próprio gráfico pra
+> achar o pixel do ponto de corte — sem gradiente, sem dataset extra, técnica
+> canônica confirmada via pesquisa dedicada nas issues do Chart.js.
+>
+> **Caso degenerado tratado**: quando o "saudável" de uma barra sozinho excede o Δ
+> líquido (ex.: etapa cresce 200k no total, mas foram +250k de entrada saudável
+> compensados por -50k de perda real no período — caso LEGÍTIMO, não erro de cálculo)
+> uma única barra não tem como desenhar um segmento maior que ela mesma — o ponto de
+> corte visual é clampado pra nunca sair de `[run, run+Δ]`, mas o TOOLTIP sempre
+> mostra os valores verdadeiros (não clampados) ao passar o mouse, então a perda
+> nunca fica escondida de fato, só o desenho é uma aproximação nesse caso raro.
+>
+> Validação: testes unitários novos em `scripts/test-delta-invariant.js` (fixture
+> sintética com 5 deals cobrindo os 5 casos de classificação — avançou, perdido,
+> permaneceu-ganhou, permaneceu-perdeu, novo) provam o invariante
+> `saudavel+perdaReal==delta` em todas as linhas/medidas + 6 casos pontuais; mais um
+> check de integração (dados reais, roda no CI) comparando os 2 caminhos de cálculo
+> (`dealContributions` × `computeSnapshot`). Verificação visual real: injetei um
+> payload sintético reproduzindo o exemplo exato do dono (-490k = -30k saudável +
+> -460k perda) via Chrome headless (CDP), screenshot confirma as 2 cores certas nas
+> posições certas; hover confirma tooltip com os valores certos, inclusive no caso
+> degenerado (Negociação: barra 100% verde, tooltip mostra "+R$250.000 saudável /
+> -R$50.000 perda real"). `npm run check` + `npm test` (invariante) 0 fail, 0 erros
+> JS novos.
+
+### Feat | Forecast: coluna de Cashback (3 propriedades do HubSpot) (2026-08-10)
+
+> Pedido do dono: "No painel de Forecast eu preciso adicionar uma coluna de cashback.
+> Eu tenho três propriedades de cashback: se tem cashback, qual é a porcentagem, e
+> em quais faturas?" — ele passou os nomes internos exatos: `cashback`,
+> `qual__cashback`, `cashback_em_quais_faturas`.
+>
+> Antes de mapear, consultei a API do HubSpot direto (metadados + amostra de deals
+> reais) pra descobrir o formato de cada campo em vez de adivinhar:
+> - `cashback`: `booleancheckbox` (`"true"`/`"false"`/vazio).
+> - `qual__cashback`: `number`, fração 0–1 (ex. `"0.5"` = 50%, `"1"` = 100%) — pode
+>   vir `null` mesmo com `cashback="true"` (preenchimento não é imediato).
+> - `cashback_em_quais_faturas`: `checkbox` multi-seleção (Primeira/Segunda/Terceira
+>   fatura), valores concatenados por `;` quando mais de uma marcada.
+>
+> `api/forecast-table.js`: as 3 propriedades entraram na allowlist `PROPERTIES`
+> (sem isso o HubSpot nunca devolve o campo, mesmo existindo no portal) e no mapeamento
+> do deal — `cashback`/`qual_cashback` reaproveitam os helpers `normalizeBool`/
+> `normalizeProb` já usados por `possui_agenciamento`/`probabilidade` (mesmo padrão,
+> zero código novo de parsing); `cashback_faturas` fica com a string bruta.
+> `public/forecast.html`: 3 colunas novas no array `INFO` (`cashback` bool,
+> `qual_cashback` com `fmt: fmtPct`, `cashback_faturas` com `fmt` que troca `;` por
+> ", ") — mesmo padrão de `is_poc`/`possui_agenciamento`; tabela, header, ordenação,
+> export XLSX e o modal de detalhe (via `currentInfoFull`) herdam automaticamente,
+> sem tocar em mais nada.
+>
+> Validação: servidor local precisou reiniciar (endpoint é `require()`ado uma vez
+> pelo `local-server.js` — cache de módulo, não pega edição a quente). Confirmei via
+> `/api/forecast-table` que os 6 deals reais com cashback ativo no HubSpot hoje
+> (PharmaInova, Cappta, Sipolatti, Baramaia, ECS Informática, The Link Brasil) vêm
+> com os 3 valores certos; screenshot real (Chrome headless via CDP) mostra "Sim /
+> 100,0% / Primeira fatura" pra quem tem e "— / - / -" pra quem não tem, mesmo
+> padrão visual das colunas booleanas existentes. `npm run check` 0 fail, 0 erros JS.
+
 ### 🐞 BDR | Treble V9 | "Hoje" mostrava 30 dias de outra fonte (2026-08-07)
 
 > Reporte do dono: "tem algo errado que tá puxando dados desatualizados, filtros estranhos.

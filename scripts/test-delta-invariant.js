@@ -148,6 +148,68 @@ const drillImpl = FC.drillRow(cImplA, cImplB, 'neg', 'arr', rawBImpl);
 const kikkomanRow = drillImpl.deals.find(d => d.id === '20');
 check('drillRow classifica Kikkoman (foi p/ Implantação) como tipo "ganho"', kikkomanRow && kikkomanRow.tipo === 'ganho');
 
+// ── Parte 1e | Decomposição saudável × perda real (D02, healthByRow, 2026-08-07) ──
+// Pedido do dono: no waterfall, quebrar a Δ de cada barra em "quanto foi avanço de
+// etapa/fechamento saudável" vs "quanto foi perda real (Perdido)".
+console.log('\n== UNIT Decomposição saudável × perda real (healthByRow) ==');
+// Cada deal usa uma linha (rowKey) exclusiva sempre que a asserção (b) precisa
+// isolar sua própria contribuição sem outro deal "sujando" o mesmo agregado —
+// Avan e Novo compartilham a linha de destino ('cot') de propósito, só pra provar
+// que a agregação soma corretamente quando HÁ mais de um deal na mesma linha
+// (ver invariante geral em (a), que cobre isso de qualquer forma).
+const dealsHealthA = [
+  { hs_id: '30', dealname: 'Avan', stage: 'Diagnóstico', pipeline: 'Vendas', vidas: 100, createdate: '2025-10-01', modelo_remuneracao: 'Fee por vida', primeira_fatura: 20000, data_prevista_para_receita: '2026-06-01', probabilidade: 0.3 },
+  { hs_id: '31', dealname: 'Fica', stage: 'Consultoria', pipeline: 'Vendas', vidas: 100, createdate: '2025-10-01', modelo_remuneracao: 'Fee por vida', primeira_fatura: 25000, data_prevista_para_receita: '2026-06-01', probabilidade: 0.3 },
+  { hs_id: '32', dealname: 'Cai', stage: 'Negociação', pipeline: 'Vendas', vidas: 50, createdate: '2025-10-01', modelo_remuneracao: 'Fee por vida', primeira_fatura: 30000, data_prevista_para_receita: '2026-07-01', probabilidade: 0.5 },
+  { hs_id: '33', dealname: 'Encolhe', stage: 'Negociação', pipeline: 'Vendas', vidas: 80, createdate: '2025-10-01', modelo_remuneracao: 'Fee por vida', primeira_fatura: 35000, data_prevista_para_receita: '2026-07-01', probabilidade: 0.5 },
+];
+const dealsHealthB = [
+  { hs_id: '30', dealname: 'Avan', stage: 'Cotação', pipeline: 'Vendas', vidas: 100, createdate: '2025-10-01', modelo_remuneracao: 'Fee por vida', primeira_fatura: 20000, data_prevista_para_receita: '2026-06-01', probabilidade: 0.5 },
+  { hs_id: '31', dealname: 'Fica', stage: 'Consultoria', pipeline: 'Vendas', vidas: 100, createdate: '2025-10-01', modelo_remuneracao: 'Fee por vida', primeira_fatura: 25000, data_prevista_para_receita: '2026-06-01', probabilidade: 0.6 },
+  { hs_id: '32', dealname: 'Cai', stage: 'Perdido', pipeline: 'Vendas', vidas: 50, createdate: '2025-10-01' },
+  { hs_id: '33', dealname: 'Encolhe', stage: 'Negociação', pipeline: 'Vendas', vidas: 80, createdate: '2025-10-01', modelo_remuneracao: 'Fee por vida', primeira_fatura: 35000, data_prevista_para_receita: '2026-07-01', probabilidade: 0.2 },
+  { hs_id: '34', dealname: 'Novo', stage: 'Cotação', pipeline: 'Vendas', vidas: 60, createdate: '2026-02-01', modelo_remuneracao: 'Fee por vida', primeira_fatura: 15000, data_prevista_para_receita: '2026-08-01', probabilidade: 0.3 },
+];
+const cHealthA = FC.dealContributions(dealsHealthA, '2026-05-15', {});
+const cHealthB = FC.dealContributions(dealsHealthB, '2026-06-15', {});
+const rawBHealth = {}; dealsHealthB.forEach(d => { rawBHealth[d.hs_id] = d.stage; });
+const health = FC.healthByRow(cHealthA, cHealthB, rawBHealth);
+const HMEASURES = ['real12', 'prob12', 'realTotal', 'probTotal', 'arr', 'arrPond'];
+
+// (a) invariante geral: saudavel[m] + perdaReal[m] == Δ(rowKey,m), pra TODA linha e medida
+const sumByRow = (contrib) => { const out = {}; contrib.forEach(x => { if (!x.rowKey) return; const t = out[x.rowKey] || (out[x.rowKey] = {}); HMEASURES.forEach(m => { t[m] = (t[m] || 0) + (x[m] || 0); }); }); return out; };
+const rowA = sumByRow(cHealthA), rowB = sumByRow(cHealthB);
+const healthRowKeys = {}; Object.keys(rowA).forEach(k => healthRowKeys[k] = 1); Object.keys(rowB).forEach(k => healthRowKeys[k] = 1); Object.keys(health).forEach(k => healthRowKeys[k] = 1);
+let allRowsOk = true;
+Object.keys(healthRowKeys).forEach(key => {
+  const h = health[key] || { saudavel: {}, perdaReal: {} };
+  const a = rowA[key] || {}, b = rowB[key] || {};
+  HMEASURES.forEach(m => {
+    const expected = (b[m] || 0) - (a[m] || 0);
+    const got = (h.saudavel[m] || 0) + (h.perdaReal[m] || 0);
+    if (!near(got, expected)) allRowsOk = false;
+  });
+});
+check('saudavel[m] + perdaReal[m] == Δ(rowKey,m) em TODAS as linhas/medidas', allRowsOk);
+
+// (b) casos pontuais de classificação (prob12, valor real e não-trivial). rowKeys
+// exclusivos (neg, cons) permitem checar os 2 baldes; rowKeys compartilhados
+// (diag tem Avan saindo + Encolhe ficando; cot tem Avan entrando + Novo entrando)
+// só checam o balde de interesse — o outro balde tem OUTRO deal, não fica em 0
+// (a invariante geral em (a) já garante que a soma continua correta).
+const rkAvanA = cHealthA.find(x => x.dealname === 'Avan').rowKey;   // linha de Diagnóstico (saída = avançou)
+const rkAvanB = cHealthB.find(x => x.dealname === 'Avan').rowKey;   // linha de Cotação (entrada = novo, do ponto de vista da linha)
+check('Avan (Diagnóstico→Cotação): saída de Diagnóstico cai em saudável', health[rkAvanA].saudavel.prob12 < -0.01);
+check('Avan: entrada em Cotação cai em saudável', health[rkAvanB].saudavel.prob12 > 0.01);
+const rkCai = cHealthA.find(x => x.dealname === 'Cai').rowKey;   // linha de Negociação, exclusiva (saída = Perdido)
+check('Cai (Negociação→Perdido): cai em perda real, não em saudável', health[rkCai].perdaReal.prob12 < -0.01 && Math.abs(health[rkCai].saudavel.prob12) < 0.01);
+const rkEncolhe = cHealthA.find(x => x.dealname === 'Encolhe').rowKey;   // linha de Negociação, compartilhada com Cai (permaneceu, probabilidade caiu)
+check('Encolhe (permaneceu, probabilidade caiu): entra em perda real', health[rkEncolhe].perdaReal.prob12 < -0.01);
+const rkFica = cHealthA.find(x => x.dealname === 'Fica').rowKey;   // linha de Consultoria, exclusiva (permaneceu, probabilidade subiu)
+check('Fica (permaneceu, probabilidade subiu): entra em saudável, sem perda real', health[rkFica].saudavel.prob12 > 0.01 && Math.abs(health[rkFica].perdaReal.prob12) < 0.01);
+const rkNovo = cHealthB.find(x => x.dealname === 'Novo').rowKey;   // linha de Cotação (deal novo)
+check('Novo (entrou na etapa): entra em saudável', health[rkNovo].saudavel.prob12 > 0.01);
+
 // ── Parte 2 | INTEGRAÇÃO (server local) ──────────────────────────────────────
 // Porta: arg1 ou env PORT (default 3004). Ex.: node scripts/test-delta-invariant.js 3002
 const PORT = parseInt(process.argv[2], 10) || parseInt(process.env.PORT, 10) || 3004;
@@ -165,6 +227,16 @@ async function integ() {
   for (const [a, b] of pairs) {
     const { j } = await getJSON('/api/history?action=compare&a=' + a + '&b=' + b);
     check('invariante ok | ' + a + ' -> ' + b, !!(j.success && j.invariant && j.invariant.ok));
+    // healthByRow (dealContributions) × w.delta (computeSnapshot) são 2 caminhos de
+    // cálculo distintos que DEVEM concordar (ver nota em lib/forecast-compute.js
+    // #healthByRow) — só a integração com dados reais valida isso de fato.
+    if (j.success && j.waterfall) {
+      const healthOk = j.waterfall.every(w => {
+        if (!w.saudavel || !w.perdaReal) return false;
+        return HMEASURES.every(m => near((w.saudavel[m] || 0) + (w.perdaReal[m] || 0), w.delta[m] || 0));
+      });
+      check('saudavel+perdaReal == delta em TODA barra/medida | ' + a + ' -> ' + b, healthOk);
+    }
   }
   // guard-rails
   const g1 = await getJSON('/api/history?action=compare&a=2026-07-10&b=2026-06-12');

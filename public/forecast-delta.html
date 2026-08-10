@@ -333,6 +333,11 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
       </div>
     </div>
     <div class="chart-wrap"><canvas id="wf"></canvas><div class="state ax-empty" id="chart-state" aria-live="polite">Selecione duas fotos…</div></div>
+    <div class="wf-legend" style="display:flex;gap:1.1rem;align-items:center;font-size:.72rem;color:var(--text2);margin:.5rem 0 0;flex-wrap:wrap">
+      <span style="display:inline-flex;align-items:center;gap:.35rem"><span style="width:10px;height:10px;border-radius:2px;background:rgba(63,185,80,.85);display:inline-block"></span>Avançou/Ganho (saudável)</span>
+      <span style="display:inline-flex;align-items:center;gap:.35rem"><span style="width:10px;height:10px;border-radius:2px;background:rgba(248,81,73,.85);display:inline-block"></span>Perda real (churn)</span>
+      <span style="display:inline-flex;align-items:center;gap:.35rem"><span style="width:10px;height:10px;border-radius:2px;background:rgba(58,184,183,.85);display:inline-block"></span>Total / Fechado</span>
+    </div>
     <div class="clickhint">Clique numa barra de etapa (ou em Fechado) para ver os deals que causaram o movimento.</div>
     <div class="caveat" id="caveat"></div>
   </div>
@@ -603,18 +608,45 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
     var totA = j.totals.a[m], totB = j.totals.b[m];
     // barras do waterfall
     var labels = ['Total @ A'], data = [[0, totA]], colors = ['rgba(58,184,183,.85)'], dataline = [totA], kinds = ['total'];
+    // Decomposição saudável × perda real (pedido do dono 2026-08-07): pra cada
+    // barra de Δ, guarda o ponto de corte (midArr) onde a cor muda dentro da MESMA
+    // barra — runArr/toArr são os extremos [de,pra] já usados pra desenhar o range
+    // da barra (data[]); midArr = runArr + heal(clampado). "saudável" (avançou de
+    // etapa, foi p/ Ganho/Implantação, deal novo, ou permaneceu e ganhou valor) em
+    // verde | "perda real" (Perdido/regrediu/permaneceu e perdeu valor) em
+    // vermelho — mesma classificação do drill (FC.healthByRow no back-end). Pintado
+    // via plugin wfHealthOverlay (afterDatasetsDraw) direto na geometria real da
+    // barra — testamos 2 alternativas antes (gradiente com corte duro; 3 datasets
+    // floating-bar empilhados) e as duas se mostraram frágeis/quebradas no Chart.js
+    // (stacked:true com dados [min,max] em múltiplos datasets NÃO trata os pares
+    // como ranges absolutos — acumula como magnitude, bug conhecido do Chart.js,
+    // ver #10774/#11730 — descartado; plugin de desenho é a técnica correta).
+    var runArr = [null], toArr = [null], midArr = [null], healArr = [null], lossArr = [null];
     var run = totA, sumDelta = 0;
     j.waterfall.forEach(function(w){
       var d = w.delta[m]; sumDelta += d;
-      var from = run, to = run + d;
+      var heal = (w.saudavel && w.saudavel[m] != null) ? w.saudavel[m] : d;
+      var loss = d - heal;   // valores VERDADEIROS (podem ter sinal oposto ao delta — ver nota abaixo), usados no tooltip
+      // ponto de corte visual (mid) CLAMPADO em [run, run+d]: quando o saudável de um
+      // deal isolado é maior em módulo que o Δ líquido da barra (ex.: etapa cresceu
+      // 200k no total, mas foram +250k de entrada saudável compensados por -50k de
+      // perda real dentro do mesmo período) — caso LEGÍTIMO, não um erro de cálculo —
+      // a barra (1 retângulo, altura = Δ líquido) não tem como desenhar um segmento
+      // maior que ela mesma. Preferimos truncar o VISUAL (mostra predominantemente a
+      // cor que "venceu") a desenhar fora dos limites da barra; o tooltip continua
+      // mostrando os valores verdadeiros (heal/loss acima, não clampados).
+      var lo = Math.min(0, d), hi = Math.max(0, d);
+      var healClamp = Math.max(lo, Math.min(hi, heal));
+      var from = run, mid = run + healClamp, to = run + d;
       labels.push(w.label);
       data.push([Math.min(from,to), Math.max(from,to)]);
       colors.push(d >= 0 ? 'rgba(63,185,80,.85)' : 'rgba(248,81,73,.85)');
-      dataline.push(d);
+      dataline.push(d); runArr.push(from); toArr.push(to); midArr.push(mid); healArr.push(heal); lossArr.push(loss);
       kinds.push('delta');
       run = to;
     });
-    labels.push('Total @ B'); data.push([0, run]); colors.push('rgba(58,184,183,.85)'); dataline.push(run); kinds.push('total');
+    labels.push('Total @ B'); data.push([0, run]); colors.push('rgba(58,184,183,.85)'); dataline.push(run);
+    runArr.push(null); toArr.push(null); midArr.push(null); healArr.push(null); lossArr.push(null); kinds.push('total');
     // Fechado (pedido do dono, reunião 2026-07-31; ajuste 2026-08-02: Implantação
     // conta como Ganho): hoje um deal que vira Ganho (ou Implantação) entre A e B
     // "derruba" o Total B como se fosse perda de valor — na verdade é vitória,
@@ -623,8 +655,10 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
     // Σ Δ do waterfall nem da barra Total @ B (ver caveat do card e ficha i do D02).
     var fechadoVal = (j.fechado && j.fechado[m]) || 0;
     if(j.fechado){
-      labels.push('Fechado (Ganho/Implantação no período)'); data.push([0, fechadoVal]); colors.push('rgba(63,185,80,.5)'); dataline.push(fechadoVal); kinds.push('fechado');
-      labels.push('Total B + Fechado'); data.push([0, run + fechadoVal]); colors.push('rgba(58,184,183,.5)'); dataline.push(run + fechadoVal); kinds.push('composto');
+      labels.push('Fechado (Ganho/Implantação no período)'); data.push([0, fechadoVal]); colors.push('rgba(63,185,80,.5)'); dataline.push(fechadoVal);
+      runArr.push(null); toArr.push(null); midArr.push(null); healArr.push(null); lossArr.push(null); kinds.push('fechado');
+      labels.push('Total B + Fechado'); data.push([0, run + fechadoVal]); colors.push('rgba(58,184,183,.5)'); dataline.push(run + fechadoVal);
+      runArr.push(null); toArr.push(null); midArr.push(null); healArr.push(null); lossArr.push(null); kinds.push('composto');
     }
 
     // Eixo Y volta a começar em ZERO (2026-08-06, revertendo as duas tentativas de
@@ -642,6 +676,7 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
     // Degradê na base de cada barra (pedido do dono, mesma leva): sinaliza visualmente que o
     // eixo é truncado — a cor plena no topo da barra vai esmaecendo até quase transparente na
     // base do GRÁFICO (não da barra individual), reforçando "só a parte de cima está à mostra".
+    // Nas barras de Δ isso fica só na base (sob o overlay de 2 cores, ver plugin abaixo).
     function _wfBarColor(context){
       var raw = colors[context.dataIndex] || 'rgba(58,184,183,.85)';
       var m = /rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/.exec(raw);
@@ -654,11 +689,36 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
       grad.addColorStop(1, 'rgba('+r+','+g+','+b+','+Math.max(a*0.08, 0.03).toFixed(3)+')');
       return grad;
     }
+    // Plugin de desenho (não gradiente, não dataset empilhado — ver nota acima):
+    // pinta 2 retângulos sólidos (verde=saudável, vermelho=perda real) direto na
+    // geometria real de cada barra de Δ, usando a MESMA escala Y do gráfico pra
+    // achar o pixel do ponto de corte (midArr). getProps(...,true) = posição final
+    // (pós-animação), não o quadro intermediário da transição.
+    var wfHealthOverlay = {
+      id: 'wfHealthOverlay',
+      afterDatasetsDraw: function(chart){
+        var meta = chart.getDatasetMeta(0), yScale = chart.scales.y, ctx = chart.ctx;
+        for(var i=0;i<kinds.length;i++){
+          if(kinds[i] !== 'delta' || midArr[i] == null) continue;
+          var el = meta.data[i]; if(!el) continue;
+          var props = el.getProps(['x','width'], true);
+          var left = props.x - props.width/2, w = props.width;
+          var pxRun = yScale.getPixelForValue(runArr[i]), pxMid = yScale.getPixelForValue(midArr[i]), pxTo = yScale.getPixelForValue(toArr[i]);
+          var g0 = Math.min(pxRun,pxMid), g1 = Math.max(pxRun,pxMid);
+          var r0 = Math.min(pxMid,pxTo), r1 = Math.max(pxMid,pxTo);
+          ctx.save();
+          if(g1 > g0){ ctx.fillStyle = 'rgba(63,185,80,.85)'; ctx.fillRect(left, g0, w, g1-g0); }
+          if(r1 > r0){ ctx.fillStyle = 'rgba(248,81,73,.85)'; ctx.fillRect(left, r0, w, r1-r0); }
+          ctx.restore();
+        }
+      }
+    };
     document.getElementById('chart-state').style.display = 'none';
     if(chart) chart.destroy();
     chart = new Chart(document.getElementById('wf'), {
       type:'bar',
       data:{ labels:labels, datasets:[{ data:data, backgroundColor:_wfBarColor, borderRadius:4, barPercentage:.72 }] },
+      plugins:[wfHealthOverlay],
       options:{
         responsive:true, maintainAspectRatio:false,
         // Pedido do dono (2026-08-06): Δ pequeno = barra de poucos pixels, difícil de acertar
@@ -675,7 +735,20 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
         onHover:function(evt, els){ var t=evt&&evt.native&&evt.native.target; if(!t) return; var i=els&&els.length?els[0].index:-1; t.style.cursor=(i>=0&&(kinds[i]==='delta'||kinds[i]==='fechado'))?'pointer':''; },
         plugins:{
           legend:{display:false},
-          tooltip:{ callbacks:{ label:function(ctx){ var i=ctx.dataIndex; var k=kinds[i]; return (k==='delta'?'Δ ':(TOOLTIP_PREFIX[k]||'')) + fmtBRL(dataline[i]); } } },
+          tooltip:{
+            callbacks:{
+              label:function(ctx){ var i=ctx.dataIndex; var k=kinds[i]; return (k==='delta'?'Δ ':(TOOLTIP_PREFIX[k]||'')) + fmtBRL(dataline[i]); },
+              // linhas extras só nas barras de Δ, só quando o segmento tem magnitude
+              // (>R$0,50) — evita "Perda real: R$ 0" quando a barra é 100% saudável (e vice-versa).
+              afterLabel:function(ctx){
+                var i=ctx.dataIndex; if(kinds[i]!=='delta') return;
+                var lines = [];
+                if(Math.abs(healArr[i]||0) > 0.5) lines.push('Avançou/Ganho (saudável): '+fmtBRLc(healArr[i]));
+                if(Math.abs(lossArr[i]||0) > 0.5) lines.push('Perda real (churn): '+fmtBRLc(lossArr[i]));
+                return lines;
+              }
+            }
+          },
           datalabels:{
             anchor:'end', align:'end', color:textc, font:{size:10,weight:'700'},
             formatter:function(v,ctx){ var i=ctx.dataIndex; return kinds[i]==='delta' ? fmtBRLc(dataline[i]) : fmtBRL(dataline[i]); }
@@ -1161,6 +1234,7 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
       '<p class="hk"><b>Origem da config |</b> a pill do card indica: sem pill = sidecar capturado ao vivo; "reconstruída (backfill)" = régua da época via git + overrides por data; "⚠ não snapshotada" = avaliada com a config atual (fallback). O drill das barras usa a MESMA avaliação — o Σ fecha com a barra.</p>'+
       '<p class="hk"><b>Medidas |</b> Horizonte <b>ARR</b>: Probabilizada = <code>arr_estimado</code> × prob. final da etapa | Real = ARR estimado bruto. Horizonte <b>Pipeline total</b>: receita da régua no horizonte completo (motor canônico <code>forecast-compute</code> → <code>forecast-engine</code>, Regra primária nº 3), ancorada na data de cada foto.</p>'+
       '<p class="hk"><b>Fórmula |</b> a barra da etapa é Σ(B) − Σ(A). Invariante verificado: Σ Δ das etapas = Δ do total (selo nos KPIs).</p>'+
+      '<p class="hk"><b>Decomposição saudável × perda real (2026-08-07) |</b> cada barra de Δ é colorida em 2 segmentos — verde = "saudável" (deal avançou de etapa, foi p/ Ganho/Implantação, entrou novo na etapa, ou permaneceu e GANHOU valor) | vermelho = "perda real" (foi p/ Perdido/regrediu/saiu do pipe sem avançar, ou permaneceu e PERDEU valor). Mesma classificação do drill da barra (clique pra ver os deals de cada tipo). Os 2 segmentos somam exatamente o Δ total da barra.</p>'+
       '<p class="hk"><b>Escopo |</b> segue o filtro Ativos/Tudo do header (sem Bid e Stand by).</p>'+
       '<p class="hk"><b>Fechado (2026-08-02) |</b> hoje um deal que vira Ganho entre A e B "derruba" o Total @ B como se fosse perda de valor — na verdade é vitória: o valor só migrou de pipe aberto ponderado para fechado/contratado. <b>Implantação conta como Ganho</b> nesta barra (decisão do dono, 2026-08-02). A barra <b>Fechado</b> soma ARR/ARR Ponderado (na foto A) dos deals que foram para Ganho ou Implantação no período (clique para ver a lista); a barra <b>Total B + Fechado</b> comunica o quadro completo (o que já foi executado + o que ainda está por vir). São barras INFORMATIVAS/aditivas — não entram no Σ Δ nem no invariante das etapas.</p>' },
     D03: { title: 'KPIs comparativos | A → B', sem: ['arr_estimado_fallback','arr_ponderado_forecast'], html:
