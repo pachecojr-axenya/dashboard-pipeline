@@ -250,7 +250,7 @@
       "hubspot": "e_poc",
       "unidade": "booleano",
       "dono": "revops",
-      "notas": "Até 2026-08-02 zerava Real e Probabilizada em todos os painéis (regra receita_mensal_deal); revertido — POC flui pela régua normal, probabilidade baixa vem do ajuste manual do AE/comitê (decisão da reunião de forecast de 31/07).",
+      "notas": "Até 2026-08-02 zerava Real e Probabilizada em todos os painéis (regra receita_mensal_deal); revertido — POC flui pela régua normal, probabilidade baixa vem do ajuste manual do AE/comitê (decisão da reunião de forecast de 31/07). Exceção pontual desde 2026-08-11: POC sem arr_estimado nem 1ª Fatura não passa pelo fallback vidas×VPV (nem no ARR — regra arr_estimado_fallback — nem no forecast de caixa de Cotação/Consultoria/Negociação — regra receita_mensal_deal); com arr_estimado ou 1ª Fatura preenchidos, segue a régua normal sem diferença.",
       "label_portal": "É POC?"
     },
     "probabilidade_ae": {

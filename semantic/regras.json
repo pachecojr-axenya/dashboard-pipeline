@@ -61,12 +61,13 @@
       "tipo": "hibrido", "grain": "deal × mês calendário",
       "usa_dados": ["is_poc", "faturamento_manual", "vidas", "colaboradores", "createdate", "modelo_remuneracao", "vigencia", "data_prevista_para_receita", "primeira_fatura", "possui_agenciamento", "vencimento_primeira_fatura"],
       "usa_referencia": ["valor_por_vida", "etapas"],
-      "precedencia": "1º Faturamento manual existe → substitui INTEGRALMENTE a régua (probAdj=1). 2º Senão → régua por etapa abaixo. (Até 2026-08-02, É POC? era o 1º passo e zerava a série; revertido por decisão da reunião de forecast de 31/07 — POC flui pela régua normal, sem guard especial.)",
-      "formula": "Por etapa: Diagnóstico → (vidas||colaboradores) × VPV(faixa); início = createdate + delay (vidas<=200: 9m | <=4999: 14m | senão 18m), com piso na referenceDate. Reunião Agendada → (vidas||colaboradores) × R$24; início = createdate + 15m, sem piso. Cotação/Consultoria/Negociação → início por modelo (corretagem: vigência futura+2m senão prevista+2m | fee: prevista+2m | sem modelo: prevista) e valor = receita_regua_mensal(n), cap 24 meses. Demais etapas → início na data prevista, receita_regua_mensal(n), cap 24 meses. Probabilizada = valor × probAdj (regra prob_final_deal ou régua da página).",
+      "precedencia": "1º Faturamento manual existe → substitui INTEGRALMENTE a régua (probAdj=1). 2º Senão → régua por etapa abaixo. (Até 2026-08-02, É POC? era o 1º passo e zerava a série inteira; revertido por decisão da reunião de forecast de 31/07 — POC flui pela régua normal, sem guard especial. Exceção pontual reintroduzida em 2026-08-11, ver 'faltantes'.)",
+      "formula": "Por etapa: Diagnóstico → (vidas||colaboradores) × VPV(faixa); início = createdate + delay (vidas<=200: 9m | <=4999: 14m | senão 18m), com piso na referenceDate. Reunião Agendada → (vidas||colaboradores) × R$24; início = createdate + 15m, sem piso. Cotação/Consultoria/Negociação → início por modelo (corretagem: vigência futura+2m senão prevista+2m | fee: prevista+2m | sem modelo: prevista) e valor = receita_regua_mensal(n), cap 24 meses; SEM base de 1ª Fatura (régua vazia) → fallback (vidas||colaboradores) × VPV(faixa), mesmo delay/piso do Diagnóstico, probabilizado pela prob da PRÓPRIA etapa (2026-07-20) — EXCETO deal POC, que fica sem receita nesse fallback (2026-08-11, ver 'faltantes'). Demais etapas → início na data prevista, receita_regua_mensal(n), cap 24 meses. Probabilizada = valor × probAdj (regra prob_final_deal ou régua da página).",
       "ponto_no_tempo": "referenceDate injetável via ForecastEngine.config() (Delta 1A); sem ela, ancora em hoje",
-      "fonte_codigo": ["public/forecast-engine.js:44 (dealMonthly)", "public/forecast-engine.js:32 (_refNow)"],
+      "faltantes": "Deal POC (É POC? = Sim) em Cotação/Consultoria/Negociação SEM base de 1ª Fatura fica sem receita projetada nesse trecho, em vez de estimar só a partir de vidas (decisão 2026-08-11 — achado real: deal com 4.500 vidas e nenhum dado de faturamento projetava R$ 1,3M de ARR só por `vidas`). POC com 1ª Fatura preenchida continua gerando receita normal pela régua. Diagnóstico e Reunião Agendada não têm essa exceção — lá vidas×VPV/vidas×R$24 é a própria régua da etapa, não um fallback por falta de dado.",
+      "fonte_codigo": ["public/forecast-engine.js (dealMonthly)", "public/forecast-engine.js (_refNow)"],
       "owner": "revops", "status": "em_revisao", "vigente_desde": "2026-07-14",
-      "notas": "É a Regra primária nº 3 do STATUS_LOG em forma de catálogo: toda receita de qualquer painel vem desta série (Real e Probabilizada)."
+      "notas": "É a Regra primária nº 3 do STATUS_LOG em forma de catálogo: toda receita de qualquer painel vem desta série (Real e Probabilizada). Detalhe da exceção POC de 2026-08-11 em docs/forecast-revenue-rules.md §2."
     },
 
     "cohorts_bdr": {
@@ -173,11 +174,14 @@
     "arr_estimado_fallback": {
       "label": { "pt": "ARR com fallback", "en": "ARR with fallback" },
       "tipo": "calculado", "grain": "deal",
-      "usa_dados": ["arr_estimado", "primeira_fatura"],
-      "formula": "arr_estimado se > 0; senão primeira_fatura × 12; senão null.",
-      "fonte_codigo": ["api/forecast-table.js:426"],
+      "usa_dados": ["arr_estimado", "primeira_fatura", "vidas", "colaboradores", "dealstage", "is_poc"],
+      "usa_referencia": ["valor_por_vida"],
+      "ajuda": { "pt": "O ARR de cada deal (coluna 'ARR Est.' do /forecast e KPIs de ARR) tem 3 origens possíveis, nessa ordem — passe o mouse sobre a célula ARR Est. de um deal para ver qual delas gerou o número dele.", "en": "Each deal's ARR (the 'ARR Est.' column in /forecast and the ARR KPIs) has 3 possible sources, in this order — hover the ARR Est. cell of a deal to see which one produced its number." },
+      "formula": "1) arr_estimado do HubSpot, se > 0 — dado real, sem cálculo. 2) senão, 1ª Fatura × 12 — dado real (a fatura), conta local. 3) senão, nas etapas Diagnóstico/Cotação/Consultoria/Negociação, (vidas||colaboradores) × VPV(faixa) × 12 — estimativa 100% local, SEM nenhum dado real de faturamento por trás. EXCETO deal POC (É POC? = Sim): não passa pelo passo 3, fica sem ARR (ver 'faltantes'). Sem nenhum dos três → null (sem ARR).",
+      "faltantes": "Deal POC sem arr_estimado e sem 1ª Fatura fica com ARR vazio (decisão 2026-08-11 — achado real: deal 'BRF/Marfrig POC', 4.500 vidas, nenhum dado de faturamento, projetava R$ 1.296.000 de ARR só a partir de vidas). POC com arr_estimado ou 1ª Fatura preenchidos continua com ARR normal, sem mudança.",
+      "fonte_codigo": ["api/forecast-table.js (arr)", "lib/forecast-compute.js (mapFotoDeal.arr_estimado)"],
       "owner": "revops", "status": "em_revisao", "vigente_desde": "2026-07-14",
-      "notas": "⚠ Para Corretagem o fallback pf×12 superestima (pf é o prêmio, não a receita Axenya). Herdado do 1.0; avaliar na validação."
+      "notas": "⚠ Para Corretagem o fallback pf×12 superestima (pf é o prêmio, não a receita Axenya). Herdado do 1.0; avaliar na validação. Exceção POC (2026-08-11) e distinção HubSpot × calculado localmente detalhadas em docs/forecast-revenue-rules.md §2b."
     },
 
     "probabilidade_deal_fallback": {

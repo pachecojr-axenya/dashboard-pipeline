@@ -125,7 +125,7 @@ Corte PME: 200 vidas. Fuso canônico: America/Sao_Paulo.
 | `periodo_contrato` | Período do contrato | fonte | deal | `periodo_do_contrato___vg` | enum | revops | MIGRADO em 2026-07-15 (decisão do dono): fonte primária = periodo_do_contrato___vg ('Período do Contrato'); fallback = campo legado 'Contrato atual é de 12, 24 ou 36 meses?'. Motivo do fallback: preenchimento no pente-fino era 4 deals (novo) × 43 (legado) — migração seca perderia dado; quando o novo campo for adotado no CRM, o fallback aposenta. Valores: '12 Meses'/'24 Meses'/'36 meses'/'Não Possui'. Sem período → 12 (anualiza), regra contrato_meses. |
 | `possui_agenciamento` | Possui Agenciamento | fonte | deal | `possui_agenciamento` | booleano | revops | Só adiciona o pico pontual de entrada; não muda a cauda recorrente. |
 | `possui_vitalicio` | Possui Vitalício | fonte | deal | `possui_vitalicio` | booleano | revops |  |
-| `is_poc` | É POC? | fonte | deal | `e_poc` | booleano | revops | Até 2026-08-02 zerava Real e Probabilizada em todos os painéis (regra receita_mensal_deal); revertido — POC flui pela régua normal, probabilidade baixa vem do ajuste manual do AE/comitê (decisão da reunião de forecast de 31/07). |
+| `is_poc` | É POC? | fonte | deal | `e_poc` | booleano | revops | Até 2026-08-02 zerava Real e Probabilizada em todos os painéis (regra receita_mensal_deal); revertido — POC flui pela régua normal, probabilidade baixa vem do ajuste manual do AE/comitê (decisão da reunião de forecast de 31/07). Exceção pontual desde 2026-08-11: POC sem arr_estimado nem 1ª Fatura não passa pelo fallback vidas×VPV (nem no ARR — regra arr_estimado_fallback — nem no forecast de caixa de Cotação/Consultoria/Negociação — regra receita_mensal_deal); com arr_estimado ou 1ª Fatura preenchidos, segue a régua normal sem diferença. |
 | `probabilidade_ae` | Probabilidade (AE) | fonte | deal | `probabilidade_de_fechamento_` | fracao_0_1 | vendas | Digitada pelo AE no HubSpot (dado de fonte para o dash, manual para o AE). Normalizada: >1 divide por 100. |
 | `probabilidade_etapa_hs` | Probabilidade da etapa (HubSpot) | fonte | deal | `hs_deal_stage_probability` | fracao_0_1 | revops |  |
 | `quarter_fechamento` | Quarter de fechamento | fonte | deal | `qual_quarter_de_fechamento` | enum | vendas | Opções do radio no portal: Q1..Q4 (SEM ano) e Q1 2027..Q4 2027. Convenção (decisão do dono 2026-07-15): Qx sem ano = 2026. Fallback: derivado de data_prevista_para_receita quando vazio/inválido (regra quarter_fallback). |
@@ -204,11 +204,12 @@ Corte PME: 200 vidas. Fuso canônico: America/Sao_Paulo.
 - **Tipo:** hibrido · **Grain:** deal × mês calendário · **Status:** em_revisao · **Vigente desde:** 2026-07-14 · **Dono:** revops
 - **Usa dados:** `is_poc`, `faturamento_manual`, `vidas`, `colaboradores`, `createdate`, `modelo_remuneracao`, `vigencia`, `data_prevista_para_receita`, `primeira_fatura`, `possui_agenciamento`, `vencimento_primeira_fatura`
 - **Usa referência:** `valor_por_vida`, `etapas`
-- **Precedência:** 1º Faturamento manual existe → substitui INTEGRALMENTE a régua (probAdj=1). 2º Senão → régua por etapa abaixo. (Até 2026-08-02, É POC? era o 1º passo e zerava a série; revertido por decisão da reunião de forecast de 31/07 — POC flui pela régua normal, sem guard especial.)
-- **Fórmula:** Por etapa: Diagnóstico → (vidas\|\|colaboradores) × VPV(faixa); início = createdate + delay (vidas<=200: 9m \| <=4999: 14m \| senão 18m), com piso na referenceDate. Reunião Agendada → (vidas\|\|colaboradores) × R$24; início = createdate + 15m, sem piso. Cotação/Consultoria/Negociação → início por modelo (corretagem: vigência futura+2m senão prevista+2m \| fee: prevista+2m \| sem modelo: prevista) e valor = receita_regua_mensal(n), cap 24 meses. Demais etapas → início na data prevista, receita_regua_mensal(n), cap 24 meses. Probabilizada = valor × probAdj (regra prob_final_deal ou régua da página).
+- **Precedência:** 1º Faturamento manual existe → substitui INTEGRALMENTE a régua (probAdj=1). 2º Senão → régua por etapa abaixo. (Até 2026-08-02, É POC? era o 1º passo e zerava a série inteira; revertido por decisão da reunião de forecast de 31/07 — POC flui pela régua normal, sem guard especial. Exceção pontual reintroduzida em 2026-08-11, ver 'faltantes'.)
+- **Fórmula:** Por etapa: Diagnóstico → (vidas\|\|colaboradores) × VPV(faixa); início = createdate + delay (vidas<=200: 9m \| <=4999: 14m \| senão 18m), com piso na referenceDate. Reunião Agendada → (vidas\|\|colaboradores) × R$24; início = createdate + 15m, sem piso. Cotação/Consultoria/Negociação → início por modelo (corretagem: vigência futura+2m senão prevista+2m \| fee: prevista+2m \| sem modelo: prevista) e valor = receita_regua_mensal(n), cap 24 meses; SEM base de 1ª Fatura (régua vazia) → fallback (vidas\|\|colaboradores) × VPV(faixa), mesmo delay/piso do Diagnóstico, probabilizado pela prob da PRÓPRIA etapa (2026-07-20) — EXCETO deal POC, que fica sem receita nesse fallback (2026-08-11, ver 'faltantes'). Demais etapas → início na data prevista, receita_regua_mensal(n), cap 24 meses. Probabilizada = valor × probAdj (regra prob_final_deal ou régua da página).
+- **Faltantes:** Deal POC (É POC? = Sim) em Cotação/Consultoria/Negociação SEM base de 1ª Fatura fica sem receita projetada nesse trecho, em vez de estimar só a partir de vidas (decisão 2026-08-11 — achado real: deal com 4.500 vidas e nenhum dado de faturamento projetava R$ 1,3M de ARR só por `vidas`). POC com 1ª Fatura preenchida continua gerando receita normal pela régua. Diagnóstico e Reunião Agendada não têm essa exceção — lá vidas×VPV/vidas×R$24 é a própria régua da etapa, não um fallback por falta de dado.
 - **Ponto no tempo:** referenceDate injetável via ForecastEngine.config() (Delta 1A); sem ela, ancora em hoje
-- **Código (1.0):** public/forecast-engine.js:44 (dealMonthly) · public/forecast-engine.js:32 (_refNow)
-- **Notas:** É a Regra primária nº 3 do STATUS_LOG em forma de catálogo: toda receita de qualquer painel vem desta série (Real e Probabilizada).
+- **Código (1.0):** public/forecast-engine.js (dealMonthly) · public/forecast-engine.js (_refNow)
+- **Notas:** É a Regra primária nº 3 do STATUS_LOG em forma de catálogo: toda receita de qualquer painel vem desta série (Real e Probabilizada). Detalhe da exceção POC de 2026-08-11 em docs/forecast-revenue-rules.md §2.
 
 ### `cohorts_bdr` | Originação BDR (projeção de topo de funil)
 
@@ -300,11 +301,15 @@ Corte PME: 200 vidas. Fuso canônico: America/Sao_Paulo.
 
 ### `arr_estimado_fallback` | ARR com fallback
 
+> O ARR de cada deal (coluna 'ARR Est.' do /forecast e KPIs de ARR) tem 3 origens possíveis, nessa ordem — passe o mouse sobre a célula ARR Est. de um deal para ver qual delas gerou o número dele.
+
 - **Tipo:** calculado · **Grain:** deal · **Status:** em_revisao · **Vigente desde:** 2026-07-14 · **Dono:** revops
-- **Usa dados:** `arr_estimado`, `primeira_fatura`
-- **Fórmula:** arr_estimado se > 0; senão primeira_fatura × 12; senão null.
-- **Código (1.0):** api/forecast-table.js:426
-- **Notas:** ⚠ Para Corretagem o fallback pf×12 superestima (pf é o prêmio, não a receita Axenya). Herdado do 1.0; avaliar na validação.
+- **Usa dados:** `arr_estimado`, `primeira_fatura`, `vidas`, `colaboradores`, `dealstage`, `is_poc`
+- **Usa referência:** `valor_por_vida`
+- **Fórmula:** 1) arr_estimado do HubSpot, se > 0 — dado real, sem cálculo. 2) senão, 1ª Fatura × 12 — dado real (a fatura), conta local. 3) senão, nas etapas Diagnóstico/Cotação/Consultoria/Negociação, (vidas\|\|colaboradores) × VPV(faixa) × 12 — estimativa 100% local, SEM nenhum dado real de faturamento por trás. EXCETO deal POC (É POC? = Sim): não passa pelo passo 3, fica sem ARR (ver 'faltantes'). Sem nenhum dos três → null (sem ARR).
+- **Faltantes:** Deal POC sem arr_estimado e sem 1ª Fatura fica com ARR vazio (decisão 2026-08-11 — achado real: deal 'BRF/Marfrig POC', 4.500 vidas, nenhum dado de faturamento, projetava R$ 1.296.000 de ARR só a partir de vidas). POC com arr_estimado ou 1ª Fatura preenchidos continua com ARR normal, sem mudança.
+- **Código (1.0):** api/forecast-table.js (arr) · lib/forecast-compute.js (mapFotoDeal.arr_estimado)
+- **Notas:** ⚠ Para Corretagem o fallback pf×12 superestima (pf é o prêmio, não a receita Axenya). Herdado do 1.0; avaliar na validação. Exceção POC (2026-08-11) e distinção HubSpot × calculado localmente detalhadas em docs/forecast-revenue-rules.md §2b.
 
 ### `probabilidade_deal_fallback` | Probabilidade do deal com fallback
 

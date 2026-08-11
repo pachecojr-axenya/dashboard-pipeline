@@ -428,29 +428,37 @@ module.exports = async function handler(req, res) {
 
         const isPoc = normalizeBool(p.e_poc);
 
-        const arr = (() => {
-          // Cascata de ARR (docs/forecast-revenue-rules.md §2b): 1) arr_estimado do
-          // HubSpot; 2) 1ª Fatura × 12; 3) fallback vidas×VPV nas etapas Diagnóstico/
-          // Cotação/Consultoria/Negociação. POC flui pela mesma cascata NOS PASSOS 1 e 2
-          // (se o AE preencher arr_estimado ou 1ª fatura, valem normalmente).
+        // Cascata de ARR (docs/forecast-revenue-rules.md §2b), com a ORIGEM do valor
+        // marcada em `source` — o payload só tinha o número final mesclado, então o
+        // front-end não conseguia dizer com certeza se veio do HubSpot ou foi estimado
+        // (pedido do dono 2026-08-11, tooltip "puxado do HubSpot vs. calculado local").
+        //   'hubspot' → arr_estimado do HubSpot (> 0), sem cálculo nenhum.
+        //   'fatura'  → 1ª Fatura × 12 (dado real do deal, só a conta é local).
+        //   'vpv'     → estimativa local, SEM dado real de faturamento: (vidas||
+        //               colaboradores) × VPV × 12, nas etapas Diagnóstico/Cotação/
+        //               Consultoria/Negociação.
+        //   null      → sem ARR (inclui POC sem arr_estimado/1ª Fatura, 2026-08-11).
+        const arrResult = (() => {
           const a = parseFloat(p.arr_estimado);
-          if (!isNaN(a) && a > 0) return a;
+          if (!isNaN(a) && a > 0) return { value: a, source: 'hubspot' };
           const pf = parseFloat(p.primeira_fatura);
-          if (!isNaN(pf) && pf > 0) return pf * 12;
+          if (!isNaN(pf) && pf > 0) return { value: pf * 12, source: 'fatura' };
           // POC sem ARR Estimado nem 1ª Fatura fica sem ARR (decisão 2026-08-11): não
           // estimar via vidas×VPV quando não há nenhum dado real de faturamento no deal.
           // Restringe, só para esta coluna, a reversão de 2026-08-02 do guard "POC → sem
           // ARR" (que passou a valer para toda a cascata) ao caso em que a cascata não
           // acharia nada real de qualquer forma — deal POC com dado real continua entrando.
-          if (isPoc) return null;
+          if (isPoc) return { value: null, source: null };
           // Fallback VPV (2026-07-20): sem ARR Estimado nem 1ª Fatura, nas etapas
           // valoradas por VPV, estima o ARR anual = (vidas||colaboradores) × VPV × 12.
           if (['Diagnóstico', 'Cotação', 'Consultoria', 'Negociação'].indexOf(stageName) !== -1) {
             const vidas = parseInt(p.vidas) || parseInt(p.quantidade_de_colaboradores) || 0;
-            if (vidas > 0) { const vpv = vidas <= 200 ? 36 : vidas <= 4999 ? 24 : 12; return vidas * vpv * 12; }
+            if (vidas > 0) { const vpv = vidas <= 200 ? 36 : vidas <= 4999 ? 24 : 12; return { value: vidas * vpv * 12, source: 'vpv' }; }
           }
-          return null;
+          return { value: null, source: null };
         })();
+        const arr = arrResult.value;
+        const arrSource = arrResult.source;
 
         const dateStr = p.data_prevista_para_receita
           ? p.data_prevista_para_receita.substring(0, 10) : null;
@@ -478,6 +486,7 @@ module.exports = async function handler(req, res) {
             ? parseFloat(p.valor_da_fatura_do_plano_de_saude_atual) : null,
           primeira_fatura: p.primeira_fatura ? parseFloat(p.primeira_fatura) : null,
           arr_estimado: arr,
+          arr_source: arrSource,
           modelo_remuneracao: p.modelo_de_remuneracao || null,
           periodo_contrato: p.periodo_do_contrato___vg || p.contrato_atual_e_de_12__24_ou_36_meses_ || null,
           possui_agenciamento: normalizeBool(p.possui_agenciamento),

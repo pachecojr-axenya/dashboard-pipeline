@@ -1226,7 +1226,7 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
   var HELP = {
     D01: { title: 'Fotografia do forecast', sem: ['arr_estimado_fallback','arr_ponderado_forecast'], html:
       '<p class="hk"><b>O que mostra |</b> os KPIs da Foto B (a mais recente ou a selecionada), sem comparação.</p>'+
-      '<p class="hk"><b>Campos e fórmulas |</b> Deals abertos = contagem de deals no escopo da foto. Vidas = soma de <code>vidas</code>. ARR Total = soma de <code>arr_estimado</code> (fallback: 1ª fatura × 12; depois vidas × VPV × 12 nas etapas valoradas). ARR Ponderado = ARR × probabilidade final da etapa (pipeline Bid: 0,5%).</p>'+
+      '<p class="hk"><b>Campos e fórmulas |</b> Deals abertos = contagem de deals no escopo da foto. Vidas = soma de <code>vidas</code>. ARR Total = soma de <code>arr_estimado</code> (fallback: 1ª fatura × 12; depois vidas × VPV × 12 nas etapas valoradas — EXCETO deal POC, que fica sem ARR nesse último passo, 2026-08-11; detalhe na seção "ARR com fallback" abaixo). ARR Ponderado = ARR × probabilidade final da etapa (pipeline Bid: 0,5%).</p>'+
       '<p class="hk"><b>Data usada |</b> a data escolhida em "Foto B" resolve para a foto em ou antes dela.</p>' },
     D02: { title: 'Waterfall do forecast por etapa', sem: ['comparacao_fotos_delta','arr_ponderado_forecast'], html:
       '<p class="hk"><b>O que mostra |</b> a variação (Δ) da medida selecionada no header entre a Foto A e a Foto B, etapa a etapa, partindo de Total @ A até Total @ B.</p>'+

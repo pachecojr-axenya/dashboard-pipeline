@@ -2307,6 +2307,23 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
     }
     function fmtNum(v) { return v == null ? '-' : Number(v).toLocaleString('pt-BR'); }
     function fmtPct(v) { return v == null ? '-' : (v * 100).toFixed(1).replace('.', ',') + '%'; }
+    // Rótulo curto + explicação da origem do ARR (campo arr_source do payload) — pedido
+    // do dono 2026-08-11: distinguir no tooltip quando o ARR foi puxado direto do HubSpot
+    // (arr_estimado real) de quando foi calculado localmente (1ª Fatura × 12 ou vidas×VPV).
+    function arrSourceLbl(source) {
+      if (source === 'hubspot') return 'ARR Estimado (HubSpot)';
+      if (source === 'fatura') return '1ª Fatura × 12';
+      if (source === 'vpv') return 'Estimativa por Vidas (vidas × VPV × 12)';
+      return null;
+    }
+    function arrSourceTip(d) {
+      if (d.arr_source === 'hubspot') return `Puxado do HubSpot | campo "ARR Estimado" = ${fmtBRL(d.arr_estimado)}.`;
+      if (d.arr_source === 'fatura') return `Calculado localmente | sem ARR Estimado no HubSpot, usa 1ª Fatura × 12 = ${fmtBRL(d.primeira_fatura)} × 12.`;
+      if (d.arr_source === 'vpv') return `Estimado localmente | SEM dado real de faturamento (sem ARR Estimado, sem 1ª Fatura) — projeta (vidas || colaboradores) × VPV × 12 a partir só de ${fmtNum(d.vidas || d.colaboradores || 0)} vidas.`;
+      return d.is_poc
+        ? 'Sem ARR | deal POC sem ARR Estimado e sem 1ª Fatura no HubSpot — não estima por vidas (decisão 2026-08-11, ver docs/forecast-revenue-rules.md §2b).'
+        : 'Sem ARR | sem ARR Estimado, 1ª Fatura, nem vidas suficientes para estimar.';
+    }
     function fmtDate(v) {
       if (!v) return '-';
       const [y, m, d] = String(v).substring(0, 10).split('-');
@@ -4152,7 +4169,14 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
               const vidas = data.vidas || 0;
               const n = data.n;
               let formulaStr = '—';
-              if (data.mod === 'Fee por vida') {
+              if (data.fb) {
+                // Fallback vidas×VPV (Cot/Cons/Neg sem base de 1ª Fatura) — não passa pela
+                // régua do modelo de remuneração, calcula direto de `vidas`. Nunca aparece
+                // em deal POC (2026-08-11): esse fallback fica sem receita para POC.
+                formulaStr = vidas > 0 && data.rec != null
+                  ? `Estimativa por Vidas (sem base de 1ª Fatura) · vidas × R$${Math.round(data.rec / vidas)}/vida`
+                  : 'Estimativa por Vidas (sem base de 1ª Fatura)';
+              } else if (data.mod === 'Fee por vida') {
                 formulaStr = 'Fee por vida (valor fixo)';
               } else if (data.mod === 'Corretagem') {
                 if (data.ag === true) {
@@ -4186,13 +4210,17 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
               tooltip.classList.add('show');
 
             } else if (data.isArrPond) {
-              // ── ARR Ponderado tooltip (pedido do dono 2026-08-06) ──────────
-              const baseLbl = data.usedFallback ? '1ª Fatura × 12' : 'ARR Estimado';
+              // ── ARR Ponderado tooltip (pedido do dono 2026-08-06; origem real via
+              // arr_source desde 2026-08-11 — antes rotulava vidas×VPV como "ARR Estimado"
+              // por não ter como distinguir dado real de estimativa) ──────────
+              const baseLbl = arrSourceLbl(data.arrSource) || (data.isPoc ? 'Sem ARR (POC sem dado real)' : 'Sem ARR');
+              const isEstimate = data.arrSource === 'vpv';
               let h = `
                 <div style="font-weight:700; color:var(--teal); margin-bottom:.8rem; padding-bottom:.5rem; font-size:.9rem">${esc(data.dealname)}</div>
-                <div class="tt-row"><span class="tt-lbl">ARR Estimado</span><span class="tt-val">${(data.arrEstimado != null && data.arrEstimado > 0) ? fmtBRL(data.arrEstimado) : '—'}</span></div>
+                <div class="tt-row"><span class="tt-lbl">ARR Estimado (HubSpot)</span><span class="tt-val">${(data.arrSource === 'hubspot') ? fmtBRL(data.arrEstimado) : '—'}</span></div>
                 <div class="tt-row"><span class="tt-lbl">1ª Fatura × 12</span><span class="tt-val">${data.primeiraFatura > 0 ? fmtBRL(data.primeiraFatura * 12) : '—'}</span></div>
-                <div class="tt-row"><span class="tt-lbl">Base usada</span><span class="tt-val">${esc(baseLbl)}${data.usedFallback ? ' (sem ARR Estimado)' : ''}</span></div>
+                ${isEstimate ? `<div class="tt-row"><span class="tt-lbl">Vidas × VPV × 12</span><span class="tt-val">${fmtBRL(data.arrBase)} (${fmtNum(data.vidas || data.colaboradores || 0)} vidas)</span></div>` : ''}
+                <div class="tt-row"><span class="tt-lbl">Base usada</span><span class="tt-val">${esc(baseLbl)}${isEstimate ? ' — estimativa local, sem dado real de faturamento' : ''}</span></div>
                 <div class="tt-row sep"><span class="tt-lbl">Prob. Etapa</span><span class="tt-val">${data.sp != null ? fmtPct(data.sp) : '—'}</span></div>
               `;
               if (data.cp != null) {
@@ -4368,7 +4396,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
         },
         {
           k: 'arr_estimado', lbl: 'ARR Est. (R$)', w: 110, align: 'right', fmt: fmtBRL,
-          tip: 'Receita Anual Recorrente estimada (R$). Se não informado, calculado como 1ª Fatura × 12'
+          tip: 'Receita Anual Recorrente. Cascata: 1) ARR Estimado do HubSpot; 2) sem ARR → 1ª Fatura × 12; 3) sem os dois, nas etapas Diagnóstico/Cotação/Consultoria/Negociação → estimativa por vidas (vidas × VPV × 12) — EXCETO deal POC, que fica sem ARR nesse passo 3 (decisão 2026-08-11, ver docs/forecast-revenue-rules.md §2b). Passe o mouse sobre a célula para ver qual passo gerou o valor deste deal.'
         },
         {
           k: 'arr_pae', lbl: 'ARR × %AE (R$)', w: 120, align: 'right', fmt: fmtBRL, hideMobile: true,
@@ -4376,7 +4404,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
         },
         {
           k: 'arr_pond', lbl: '🟡 ARR Pond. (R$)', w: 128, align: 'right', fmt: fmtBRL, hideMobile: true,
-          tip: 'ARR Ponderado = ARR Estimado (sem ARR → 1ª Fatura × 12) × P. Ajust. — a MESMA leitura de ARR ponderado dos outros painéis (Top 5 AEs/Watchlist do Board, Receita Ponderada P03/B04), lado a lado para auditar se os números batem. Informativa: NÃO altera a receita probabilizada. Diferença residual vs CRO/Board vem da fonte da probabilidade (aqui: régua flat + ajuste do AE; lá: C07 ao vivo por pipeline quando há amostra).'
+          tip: 'ARR Ponderado = ARR Est. (mesma cascata da coluna ARR Est., com a mesma exceção para POC) × P. Ajust. — a MESMA leitura de ARR ponderado dos outros painéis (Top 5 AEs/Watchlist do Board, Receita Ponderada P03/B04), lado a lado para auditar se os números batem. Informativa: NÃO altera a receita probabilizada. Diferença residual vs CRO/Board vem da fonte da probabilidade (aqui: régua flat + ajuste do AE; lá: C07 ao vivo por pipeline quando há amostra).'
         },
         {
           k: 'periodo_contrato', lbl: 'Período', w: 78, align: 'center', hideMobile: true,
@@ -4596,23 +4624,33 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
             return;
           }
 
+          // ARR Est.: tooltip por CÉLULA mostrando a ORIGEM do número — pedido do dono
+          // 2026-08-11, "puxado do HubSpot vs. calculado localmente" (arr_source do payload,
+          // fonte única da cascata em api/forecast-table.js / lib/forecast-compute.js).
+          if (c.k === 'arr_estimado') {
+            h += `<td class="${sc}"${align} data-col="${ci}" data-tip="${esc(arrSourceTip(d))}">${v != null ? fmtBRL(v) : '—'}</td>`;
+            return;
+          }
+
           // ARR Pond.: tooltip por CÉLULA (mesmo mecanismo data-calc/setupColumnHover
           // das colunas de mês), com os campos reais deste deal — pedido do dono
           // 2026-08-06, memória de cálculo também nesta coluna, não só no cabeçalho.
           if (c.k === 'arr_pond') {
             const pi = d.prob_info || {};
-            const usedFallback = !(d.arr_estimado != null && d.arr_estimado > 0);
-            const arrBase = usedFallback ? ((d.primeira_fatura > 0) ? d.primeira_fatura * 12 : 0) : d.arr_estimado;
+            const usedFallback = d.arr_source !== 'hubspot';
+            const arrBase = d.arr_estimado || 0;
             if (v == null) {
               const reason = arrBase <= 0
-                ? 'Sem ARR Pond. | sem ARR Estimado e sem 1ª Fatura (base do cálculo é zero)'
+                ? 'Sem ARR Pond. | sem ARR Estimado, 1ª Fatura nem vidas suficientes (base do cálculo é zero)'
                 : 'Sem ARR Pond. | sem probabilidade final disponível para este negócio';
               h += `<td class="${sc}"${align} data-col="${ci}" data-tip="${esc(reason)}">-</td>`;
               return;
             }
             const calcData = {
               isArrPond: true, dealname: d.dealname, arrEstimado: d.arr_estimado,
-              primeiraFatura: d.primeira_fatura, usedFallback: usedFallback, arrBase: arrBase,
+              primeiraFatura: d.primeira_fatura, arrSource: d.arr_source, isPoc: d.is_poc,
+              vidas: d.vidas, colaboradores: d.colaboradores,
+              usedFallback: usedFallback, arrBase: arrBase,
               sp: pi.sp, cp: pi.cp, final: pi.final, modStr: pi.modStr, val: v
             };
             h += `<td class="${sc}"${align} data-col="${ci}" data-calc="${esc(JSON.stringify(calcData))}">${fmtBRL(v)}</td>`;
