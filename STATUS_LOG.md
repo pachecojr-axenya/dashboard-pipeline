@@ -1,5 +1,49 @@
 # Dashboard Enhancement Loop — Status Log
 
+### Feat | /novo-bdr: conversão entre etapas, corte só de BDRs e saída da Cadência de Leads (2026-08-11)
+
+> Pedido do dono, três partes na mesma leva: **taxas de conversão entre etapas e do
+> processo** (por BDR e por categoria), **tirar os executivos do corte por BDR** e
+> **remover os gráficos a partir da Cadência de Leads**.
+>
+> **1. Conversão (novo).** Dois cards na seção Funil de Leads: *Conversão do funil*
+> (seis taxas — os quatro passos, o processo ponta a ponta e o descarte — mais o funil
+> em barras, cada etapa clicável) e *Conversão por dimensão* (tabs BDR / Colaboradores
+> / Tier / Vidas / Origem, ordenável, com drill). A régua é de **coorte acumulada**:
+> leads criados na janela, seguidos até hoje; "chegou a Conectado+" = visitou a etapa.
+> `coorteAgregada` ganhou `COUNTIF(max_rank>=2)`; a conversão sai em `coorte.conversao`
+> nas duas populações.
+>
+> **DEFEITO ACHADO E CORRIGIDO NA PRÓPRIA MEDIÇÃO:** o passo "Qualificado → Deal" deu
+> **110% (11 deals para 10 qualificados)** em ago/26 — `com_deal` **não é subconjunto**
+> de `qualificados`, existe lead que vira negócio sem passar pela etapa. O passo passou
+> a usar a interseção (`qual_com_deal`), e o avulso não sumiu: virou `deal_sem_qualificar`,
+> declarado na tela. Na janela completa são 2 leads.
+>
+> **2. Só BDRs (default ligado).** O corte por pessoa listava TODO dono de lead —
+> Aurilia Rodrigues (519 leads, SuperAdmin), closers (Rafael Leite Ferreira, Juliana,
+> Guilherme, Fausto), Placement, BDRs arquivados e 2.218 leads **sem dono nenhum**.
+> Classificação em três degraus (roster canônico → BDR ativo do portal fora do roster,
+> caso da Raina Cândido → o resto, com o papel nomeado); `owner_role` sozinho não basta,
+> porque o portal marca como BDR quem está TAMBÉM no time de closer. A marca viaja em
+> **todas** as dimensões, então ligar o filtro não deixa o corte por porte contando lead
+> de executivo. Nada some: o rodapé declara os três baldes (não-BDR / arquivado / sem
+> dono) e o botão desliga.
+>
+> **3. Cadência de Leads REMOVIDA** (7 cards R16–R22, ~230 linhas de `bdr.html` + o
+> consumo de `/api/bdr-leads`). Era a seção que lia `hs_lead_status` no CONTATO e via
+> ~10% do funil — substituída pelo Funil de Leads no objeto certo (auditoria de 11/08).
+> O endpoint continua no ar; só a tela parou de consumi-lo.
+>
+> **Validação:** `scripts/test-bdr-lead-funnel.js` ganhou 21 asserções novas (partição
+> BDR + fora do time == total; nenhum passo acima de 100%; etapas encaixam; mesmo total
+> nas 5 dimensões) — TODOS OS CASOS PASSARAM contra o BigQuery. `_check-inline-js.js` em
+> `bdr.html` limpo; Chromium headless sem erro de console; `/novo-bdr` = 200 com as
+> seções Originação, Handoff, Fluxo, Qualidade e Funil de Leads (sem Cadência).
+> ⚠ `npm run check` para em `test-bdr-treble-dw` por causa do **V10 do Treble não
+> commitado de outra sessão** (`assert.ok(!sql.includes('cellphone'))`); com aquele
+> arquivo em stash o teste PASSA — não é desta leva.
+
 ### 🚀 DEPLOY DE PRODUÇÃO | Drawers do forecast: origem do ARR (HubSpot × calculado) (2026-08-11)
 
 > Autorização explícita do dono ("Sim, faça o deploy e commit"). `git fetch` encontrou

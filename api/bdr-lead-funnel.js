@@ -99,7 +99,6 @@
 const { setCORSHeaders, requireAuth, getHubspotToken, methodCheck } = require('./_helpers');
 const { hubspotPost } = require('../lib/hubspot');
 const { BDR_TEAM, resolveTeamIds } = require('../lib/bdr-team');
-const whq = require('../lib/hubspot-wh-queries');
 const wh = require('../lib/hubspot-warehouse');
 
 // ── Pipelines de lead ────────────────────────────────────────────────────────────
@@ -675,7 +674,7 @@ const DIM_SQL = {
  * consultas com a mesma intenção escrita duas vezes é como os totais da tabela param
  * de bater com a soma dos drills.
  */
-function coorteCTE(pipes) {
+function coorteCTE(pipes, bdrIds) {
   const canonPairs = Object.keys(STAGE_CANON)
     .map(sid => `STRUCT('${sid}' AS sid, '${STAGE_CANON[sid]}' AS c)`)
     .join(',');
@@ -795,7 +794,15 @@ function coorteCTE(pipes) {
              toques_manuais = 0 AND toques_automacao = 0
                AND toques_manuais_antes = 0 AND toques_automacao_antes = 0 AS nunca_tocado,
              max_rank >= 1 AS atingiu_tentativa_etapa,
-             max_rank >= 2 AS atingiu_conectado_etapa
+             max_rank >= 2 AS atingiu_conectado_etapa,
+             -- QUEM É BDR VIAJA COM A LINHA, em TODAS as dimensões — não só no corte
+             -- por pessoa. Sem isto, ligar "só BDRs" filtraria a tabela de gente e
+             -- deixaria o corte por porte/origem contando lead de executivo: os dois
+             -- números na mesma tela, com a mesma cara, medindo universos diferentes.
+             -- A lista vem interpolada, não por @param, porque o cliente BQ deste
+             -- projeto recusa ARRAY em parâmetro (lib/bigquery.js:250). sqlList() só
+             -- deixa passar [A-Za-z0-9_-], e os ids vêm de dim_owner, não do request.
+             owner_id IN (${sqlList(bdrIds || [])}${(bdrIds || []).length ? '' : "''"}) AS owner_bdr
       FROM flat f
     )`;
 }
@@ -813,63 +820,176 @@ function coorteCTE(pipes) {
  * o drill, não para a conta. A conta é a agregação, e ela cobre 100% da coorte
  * independente do cap.
  */
-async function coorteAgregada(pipes, since, until) {
+async function coorteAgregada(pipes, since, until, bdrIds) {
   const dims = [
     ['bdr', 'owner_id'], ['porte', 'dim_porte'], ['tier', 'dim_tier'],
     ['vidas', 'dim_vidas'], ['origem', 'dim_origem'],
   ];
+  // `owner_bdr` entra no GROUP BY de TODA dimensão: é o que permite ao front somar
+  // "só BDRs" em qualquer corte sem uma segunda ida ao banco, e é 2x linhas, não 2x
+  // varredura — a CTE é a mesma.
   const blocos = dims.map(([nome, col]) => `
-    SELECT '${nome}' AS dimensao, CAST(${col} AS STRING) AS valor,
+    SELECT '${nome}' AS dimensao, CAST(${col} AS STRING) AS valor, owner_bdr,
            COUNT(*) AS criados,
            COUNTIF(atividade_real) AS com_atividade,
            COUNTIF(atingiu_tentativa_etapa) AS por_etapa,
+           COUNTIF(atingiu_conectado_etapa) AS conectados,
            COUNTIF(atingiu_tentativa_etapa AND atividade_real) AS ambos,
            COUNTIF(so_automacao) AS so_automacao,
            COUNTIF(toque_herdado) AS toque_herdado,
            COUNTIF(nunca_tocado) AS nunca_tocados,
            COUNTIF(qualificado) AS qualificados,
            COUNTIF(deal_id IS NOT NULL) AS com_deal,
+           -- O DEAL NÃO É SUBCONJUNTO DO QUALIFICADO, e isso apareceu como taxa de
+           -- 110% na primeira medição (ago/26: 11 deals para 10 qualificados). Há
+           -- lead que ganha deal sem NUNCA ter passado por Qualificado no histórico
+           -- de etapa. O passo do funil precisa do cruzamento, senão a conversão
+           -- estoura 100% e a tela vira piada; e o caso avulso não some — vira
+           -- deal_sem_qualificar, que é achado de processo, não erro de conta.
+           COUNTIF(qualificado AND deal_id IS NOT NULL) AS qual_com_deal,
+           COUNTIF(NOT qualificado AND deal_id IS NOT NULL) AS deal_sem_qualificar,
            COUNTIF(desqualificado) AS desqualificados
-    FROM dim GROUP BY 1, 2`).join('\n    UNION ALL');
+    FROM dim GROUP BY 1, 2, 3`).join('\n    UNION ALL');
 
   const P = [
     { name: 'since', type: 'DATE', value: since },
     { name: 'until', type: 'DATE', value: until },
   ];
-  const { rows } = await wh.query(coorteCTE(pipes) + blocos, P);
+  const { rows } = await wh.query(coorteCTE(pipes, bdrIds) + blocos, P);
   const por = {};
   rows.forEach(r => {
     const d = wh.str(r.dimensao);
     (por[d] = por[d] || []).push({
       valor: wh.str(r.valor) || '(sem valor)',
+      bdr: wh.bool(r.owner_bdr),
       criados: wh.num(r.criados),
       com_atividade: wh.num(r.com_atividade),
       por_etapa: wh.num(r.por_etapa),
+      conectados: wh.num(r.conectados),
       ambos: wh.num(r.ambos),
       so_automacao: wh.num(r.so_automacao),
       toque_herdado: wh.num(r.toque_herdado),
       nunca_tocados: wh.num(r.nunca_tocados),
       qualificados: wh.num(r.qualificados),
       com_deal: wh.num(r.com_deal),
+      qual_com_deal: wh.num(r.qual_com_deal),
+      deal_sem_qualificar: wh.num(r.deal_sem_qualificar),
       desqualificados: wh.num(r.desqualificados),
     });
   });
   return por;
 }
 
+/**
+ * QUEM É BDR E QUEM É EXECUTIVO — a classificação, em um lugar só.
+ *
+ * O corte por pessoa desta tela listava TODO dono de lead, e dono de lead não é
+ * sinônimo de BDR: em ago/26 apareciam Aurilia Rodrigues (613 leads, SuperAdmin),
+ * Beatriz Honorato, Rafael Leite Ferreira, André Pontes e mais uma dúzia de closers e
+ * ex-BDRs arquivados, misturados com o time. Numa tabela chamada "BDR", isso não é
+ * informação a mais: é gente que não é BDR ocupando o rank de BDR.
+ *
+ * A régua tem três degraus, do mais forte para o mais fraco:
+ *   1. ROSTER canônico (`lib/bdr-team.js`) — 13 nomes, a mesma fonte que o resto de
+ *      /novo-bdr já usa. Quem está aqui é BDR, ponto.
+ *   2. BDR ATIVO DO PORTAL fora do roster — `owner_role='BDR'`, não arquivado e SEM
+ *      time de closer. É o caso da Raina Cândido (137 leads em jun–ago/26): BDR de
+ *      verdade que ninguém cadastrou no roster. Excluí-la apagaria trabalho real.
+ *   3. O RESTO é não-BDR, com o motivo nomeado — executivo, closer que também está no
+ *      time de BDR do portal (Rafael, Juliana, Guilherme, Fausto), Placement, ou BDR
+ *      arquivado. Não some da tela: fica atrás do filtro, e o filtro diz quantos são.
+ *
+ * `owner_role` sozinho não resolve o degrau 3: o portal marca como BDR quem está no
+ * time "BDR (Prospecção / Pré-vendas)" mesmo estando TAMBÉM em "Executivos de Vendas
+ * (Closer)" — quatro pessoas hoje. Time de closer vence.
+ */
+const TIME_CLOSER = /executivos de vendas/i;
+async function ownersInfo() {
+  const { rows } = await wh.query(`
+    SELECT owner_id, full_name, email, teams, owner_role, archived
+    FROM ${wh.t('silver', 'dim_owner')}
+    WHERE is_current
+  `);
+  const info = {};
+  rows.forEach(r => {
+    const id = wh.str(r.owner_id);
+    if (!id) return;
+    info[id] = {
+      nome: wh.str(r.full_name) || wh.str(r.email) || id,
+      teams: wh.str(r.teams) || '',
+      role: wh.str(r.owner_role) || '',
+      archived: wh.bool(r.archived),
+    };
+  });
+  return info;
+}
+
+/** Classifica UM owner_id. `roster` = está no BDR_TEAM canônico. */
+function classificaOwner(info, roster) {
+  if (roster) return { bdr: true, papel: 'BDR do roster' };
+  if (!info) return { bdr: false, papel: 'dono desconhecido' };
+  const closer = TIME_CLOSER.test(info.teams);
+  if (info.role === 'BDR' && !info.archived && !closer) return { bdr: true, papel: 'BDR do portal, fora do roster' };
+  if (info.role === 'BDR' && info.archived) return { bdr: false, papel: 'BDR arquivado' };
+  if (closer) return { bdr: false, papel: 'Executivo de vendas (closer)' };
+  return { bdr: false, papel: info.role ? `${info.role} (não é BDR)` : 'sem papel no portal' };
+}
+
+/**
+ * AS TAXAS DE CONVERSÃO, calculadas em um lugar só, a partir da agregação.
+ *
+ * Cada passo declara NUMERADOR e DENOMINADOR além do percentual. Taxa sem os dois
+ * absolutos é irrefutável do jeito errado: 50% de 4 e 50% de 400 pedem decisões
+ * diferentes, e quem lê só o percentual não tem como saber em qual dos dois está.
+ *
+ * A régua é de COORTE e ela é acumulada: "chegou a Conectado" quer dizer que o lead
+ * VISITOU a etapa em algum momento, não que ele esteja lá agora. Por isso os passos
+ * encaixam (todo Conectado+ é Tentativa+) e a conversão do processo é o produto dos
+ * passos, não uma sexta conta independente.
+ */
+function conversao(linhas) {
+  const s = f => linhas.reduce((a, r) => a + (r[f] || 0), 0);
+  const criados = s('criados'), tentativa = s('por_etapa'), conectado = s('conectados');
+  const qualificado = s('qualificados'), deal = s('com_deal'), desq = s('desqualificados');
+  const qualComDeal = s('qual_com_deal'), dealSemQual = s('deal_sem_qualificar');
+  const passo = (rot, de, num, den) => ({
+    passo: rot, de, n: num, base: den,
+    pct: den ? +(num / den * 100).toFixed(1) : null,
+    perda: den - num,
+  });
+  return {
+    criados,
+    etapas: { tentativa, conectado, qualificado, deal, desqualificados: desq },
+    // Deal que nunca passou por Qualificado. Não entra no passo (estouraria 100%) e
+    // não é escondido: é lead que virou negócio sem a etapa registrada.
+    deal_sem_qualificar: dealSemQual,
+    passos: [
+      passo('Novo → Tentativa+', 'criados', tentativa, criados),
+      passo('Tentativa+ → Conectado+', 'tentativa', conectado, tentativa),
+      passo('Conectado+ → Qualificado', 'conectado', qualificado, conectado),
+      passo('Qualificado → Deal', 'qualificado', qualComDeal, qualificado),
+    ],
+    processo: {
+      criado_para_qualificado: passo('Criado → Qualificado', 'criados', qualificado, criados),
+      criado_para_deal: passo('Criado → Deal', 'criados', deal, criados),
+      descarte: passo('Criado → Desqualificado', 'criados', desq, criados),
+    },
+  };
+}
+
 /** Detalhe por lead, para o DRILL. Capado, com a truncagem declarada. */
 const COORTE_TETO = 1500;
 const DESQ_TETO = 1500;
-async function coorteDetalhe(pipes, since, until) {
+async function coorteDetalhe(pipes, since, until, bdrIds) {
   const P = [
     { name: 'since', type: 'DATE', value: since },
     { name: 'until', type: 'DATE', value: until },
   ];
-  const { rows } = await wh.query(coorteCTE(pipes) + `
+  const { rows } = await wh.query(coorteCTE(pipes, bdrIds) + `
     SELECT lead_id, lead_name, owner_id, pipeline_id, stage_id, criado,
            motivo_desqualificacao, deal_id, company_id, company_name,
            colaboradores, vidas, tier_colaboradores,
-           dim_porte, dim_tier, dim_vidas, dim_origem,
+           dim_porte, dim_tier, dim_vidas, dim_origem, owner_bdr,
            atividade_real, so_automacao, toque_herdado, nunca_tocado,
            atingiu_tentativa_etapa, atingiu_conectado_etapa,
            qualificado, desqualificado, toques_manuais, toques_automacao,
@@ -909,6 +1029,7 @@ async function coorteDetalhe(pipes, since, until) {
       linkedin_enviados: wh.num(r.linkedin_enviados),
       whatsapp_manual: wh.num(r.whatsapp_manual),
       reunioes: wh.num(r.reunioes),
+      owner_bdr: wh.bool(r.owner_bdr),
       deal_id: wh.str(r.deal_id),
       empresa_id: wh.str(r.company_id),
       empresa: wh.str(r.company_name),
@@ -1052,19 +1173,28 @@ module.exports = async (req, res) => {
       return res.status(200).json({ ..._cache[cacheKey].data, cache: true });
     }
 
-    // A atividade vem PRIMEIRO porque a régua é única e a coorte depende dela.
-    const [snap, wf, mac, ativ, agg, det, trab, owners] = await Promise.all([
+    // O QUEM VEM ANTES DO QUANTO: a lista de owner_ids de BDR entra nas consultas de
+    // coorte como parâmetro, então ela não pode ser resolvida depois. A consulta é a
+    // dim_owner inteira (dezenas de linhas) — serializar isto custa milissegundos.
+    const info = await ownersInfo();
+    const owners = {};
+    Object.keys(info).forEach(id => { owners[id] = info[id].nome; });
+
+    const idToBdr = resolveTeamIds(owners);
+    // Papel por owner_id, e a lista de ids que a tabela "BDR" aceita como BDR.
+    const papelDe = {};
+    Object.keys(info).forEach(id => { papelDe[id] = classificaOwner(info[id], !!idToBdr[id]); });
+    const bdrIds = Object.keys(papelDe).filter(id => papelDe[id].bdr);
+
+    const [snap, wf, mac, ativ, agg, det, trab] = await Promise.all([
       snapshot(pipes),
       waterfall(pipes, since, until),
       macro(pipes, since, until),
-      atividade(pipes, since, until),
-      coorteAgregada(pipes, since, until),   // GROUP BY no BigQuery
-      coorteDetalhe(pipes, since, until),    // detalhe capado, para o drill
+      atividade(pipes, since, until),        // a régua é única, e a coorte depende dela
+      coorteAgregada(pipes, since, until, bdrIds),   // GROUP BY no BigQuery
+      coorteDetalhe(pipes, since, until, bdrIds),    // detalhe capado, para o drill
       trabalhoNaJanela(pipes, since, until), // o que a PESSOA fez, fora da coorte
-      whq.ownerMap(),
     ]);
-
-    const idToBdr = resolveTeamIds(owners);
 
     // Nome do dono e do autor. Autor: `updated_by_user_id` casa com
     // `dim_owner.owner_id` em 17/17 hoje — coincidência medida, não contrato, e por
@@ -1109,16 +1239,25 @@ module.exports = async (req, res) => {
 
     // A dimensão BDR vem do BQ por owner_id; colapsar em nome canônico é aqui, porque
     // é o JS que conhece o roster (dois owner_ids podem ser o mesmo BDR por alias).
-    const ZERO_COORTE = () => ({ criados: 0, com_atividade: 0, por_etapa: 0, ambos: 0,
-      so_automacao: 0, toque_herdado: 0, nunca_tocados: 0, qualificados: 0, com_deal: 0,
-      desqualificados: 0 });
+    const ZERO_COORTE = () => ({ criados: 0, com_atividade: 0, por_etapa: 0, conectados: 0,
+      ambos: 0, so_automacao: 0, toque_herdado: 0, nunca_tocados: 0, qualificados: 0,
+      com_deal: 0, qual_com_deal: 0, deal_sem_qualificar: 0, desqualificados: 0 });
     const CAMPOS_COORTE = Object.keys(ZERO_COORTE());
 
     const porDimensao = { ...agg };
     if (agg.bdr) {
       const m = {};
       const linha = k => (m[k] = m[k] || { valor: k, ...ZERO_COORTE(), trab_leads: 0, trab_toques: 0 });
+      // O papel viaja por NOME canônico, porque é por nome que as linhas colapsam.
+      // Um nome só tem um papel: se qualquer owner_id dele é BDR, o nome é BDR.
+      const papelPorNome = {};
+      const marcaPapel = id => {
+        const nomeCanon = bdrDe(id), p = papelDe[id] || classificaOwner(info[id], !!idToBdr[id]);
+        const atual = papelPorNome[nomeCanon];
+        if (!atual || (p.bdr && !atual.bdr)) papelPorNome[nomeCanon] = p;
+      };
       agg.bdr.forEach(r => {
+        marcaPapel(r.valor);
         const a = linha(bdrDe(r.valor));
         CAMPOS_COORTE.forEach(f => { a[f] += r[f] || 0; });
       });
@@ -1131,6 +1270,7 @@ module.exports = async (req, res) => {
       // dois. Declarado em `divergencias_conhecidas.trabalho_multi_owner_id` — o id
       // legado não tem linhas no BQ, então hoje o efeito medido é zero.
       Object.keys(trab.porOwner).forEach(id => {
+        marcaPapel(id);
         const a = linha(bdrDe(id));
         a.trab_leads  += trab.porOwner[id].leads;
         a.trab_toques += trab.porOwner[id].toques;
@@ -1140,10 +1280,16 @@ module.exports = async (req, res) => {
       // nada" e é indistinguível de "não foi medido"; linha em zero é uma afirmação.
       BDR_TEAM.forEach(n => linha(n));
 
-      // `roster` separa quem é BDR de quem só apareceu como dono de lead (hoje o
-      // Placement com 7 criados, e BDR fora do BDR_TEAM como Raina Cândido). Sem a
-      // marca, a tabela "BDR" credita a gente que não é do time.
-      porDimensao.bdr = Object.values(m).map(r => ({ ...r, roster: BDR_TEAM.indexOf(r.valor) >= 0 }));
+      // Duas marcas, e elas respondem coisas diferentes: `roster` diz se a pessoa está
+      // no BDR_TEAM canônico; `bdr` diz se ela é BDR de verdade — o que inclui o BDR
+      // ativo do portal fora do roster e EXCLUI closer, Placement, admin e ex-BDR
+      // arquivado. É `bdr` que o filtro "só BDRs" usa; sem ela a tabela chamada "BDR"
+      // rankeava executivo junto com o time.
+      porDimensao.bdr = Object.values(m).map(r => {
+        const roster = BDR_TEAM.indexOf(r.valor) >= 0;
+        const p = papelPorNome[r.valor] || (roster ? { bdr: true, papel: 'BDR do roster' } : { bdr: false, papel: 'dono desconhecido' });
+        return { ...r, roster, bdr: roster || p.bdr, papel: p.papel };
+      });
     }
 
     // Os totais saem da AGREGAÇÃO, nunca da lista capada — é isso que faz a tabela
@@ -1218,6 +1364,17 @@ module.exports = async (req, res) => {
         },
         qualificados: tot.qualificados || 0,
         com_deal: tot.com_deal || 0,
+        // AS TAXAS DE CONVERSÃO, nas duas populações, sem a tela ter de escolher uma
+        // calada. `bdr` é o funil do time; `todos` inclui executivo, Placement e ex-BDR
+        // arquivado que também são donos de lead. A diferença entre os dois é o tamanho
+        // do que o filtro tira — e ela fica no payload para poder ser conferida.
+        conversao: {
+          regua: 'COORTE acumulada: leads CRIADOS na janela, seguidos até hoje. "Chegou a Conectado" = visitou a etapa em algum momento, não "está lá agora" — por isso os passos encaixam e a conversão do processo é o produto deles.',
+          bdr: conversao((porDimensao.bdr || []).filter(r => r.bdr)),
+          todos: conversao(porDimensao.bdr || []),
+          fora_do_time: (porDimensao.bdr || []).filter(r => !r.bdr && (r.criados || r.trab_toques))
+            .map(r => ({ dono: r.valor, papel: r.papel, criados: r.criados, toques_na_janela: r.trab_toques })),
+        },
       },
       // O QUE O TIME FEZ NA JANELA, independente da coorte. Vive fora de `coorte` de
       // propósito: misturar as duas no mesmo objeto é como alguém soma um com o outro.
@@ -1249,6 +1406,8 @@ module.exports = async (req, res) => {
         dono_no_instante: 'Atribuição pelo dono NO INSTANTE do movimento (fact_owner_assignment), não pelo dono atual — em 184/184 casos rastreáveis a troca de dono veio DEPOIS do toque, então "dono atual" reescreve o passado.',
         toque_apos_criacao: 'CORREÇÃO de 11/08/2026: o toque só conta se for POSTERIOR à criação do lead. A régua liga toque→lead pelo CONTATO (fact_engagement não tem lead_id) e o contato tem vida anterior ao lead — sem o limite, "falou com" contava trabalho de outro ciclo, às vezes de outra pessoa. Efeito na coorte de ago/26 (258 leads): 210 → 191, ou seja 19 leads (9%) cuja única prova de contato era um toque anterior à existência do lead, o mais antigo de 18/07/2024. Por pessoa o efeito muda a leitura: Raina Cândido saía com 2 de 11 e o número real é 0; Allan Valença 31 → 25; Gabriele Almeida 5 → 4. Nos leads movimentados na janela o corte é 535 → 510. O toque anterior NÃO é jogado fora: vira o bucket toque_herdado e o campo toques_manuais_antes no drill.',
         trabalho_na_janela: 'A tabela tem DUAS réguas lado a lado e elas respondem perguntas diferentes. "Criaram/Falaram com" é COORTE — dos leads criados na janela, em quantos se falou — e é atribuída ao DONO do lead. "Trabalhou na janela" é o que a pessoa fez no período em leads de qualquer safra, atribuída a QUEM TOCOU (fact_engagement.owner_id). A segunda existe porque a primeira, no corte por pessoa, fazia a tela mentir por omissão: em ago/26 Gabriele Almeida aparecia com "criou 5, falou com 5" tendo tocado 41 leads com 64 toques, e Cíntia Rodrigues (35 leads/66 toques), Anderson Souza (12/27), Thauan Pontes (6/10) e Yokyko Muramoto (6/9) NÃO TINHAM LINHA na tabela, porque criaram zero e o GROUP BY não emite linha para zero. Atribuir por quem tocou não é detalhe: dos 1.585 toques de ago/26, 378 (24%) foram feitos por alguém diferente do dono atual do lead. Coorte é a régua certa para atributo de LEAD (porte, tier, vidas, origem); para PESSOA ela precisa da coluna de trabalho ao lado.',
+        so_bdr_no_corte_de_gente: `A tabela chamada "BDR" listava TODO dono de lead, e dono de lead não é sinônimo de BDR: apareciam SuperAdmin (Aurilia Rodrigues, 613 leads), closers (Rafael Leite Ferreira, André Pontes, Beatriz Honorato), Placement e ex-BDR arquivado, rankeados junto com o time. O filtro "só BDRs" (ligado por padrão) usa três degraus: (1) roster canônico de lib/bdr-team.js; (2) BDR ATIVO do portal fora do roster — owner_role='BDR', não arquivado e SEM time de closer, hoje o caso da Raina Cândido com 137 leads, que excluir apagaria trabalho real; (3) o resto é não-BDR, com o papel NOMEADO (closer, Placement, BDR arquivado). owner_role sozinho não basta: o portal marca como BDR quem está no time "BDR (Prospecção / Pré-vendas)" mesmo estando TAMBÉM em "Executivos de Vendas (Closer)" — 4 pessoas hoje, e time de closer vence. Ninguém some: desligar o filtro devolve todo mundo, e a lista do que foi tirado está em coorte.conversao.fora_do_time.`,
+        conversao_por_coorte: `As taxas de conversão são de COORTE (leads criados na janela, seguidos até hoje) e ACUMULADAS: "chegou a Conectado+" significa que o lead visitou a etapa, não que esteja nela agora. Consequências que mudam leitura: (a) os passos encaixam por construção — todo Conectado+ é Tentativa+ — e a conversão do processo é o PRODUTO dos passos, não uma conta independente; (b) a coorte recente ainda está viva, então o fim da janela sempre converte menos que o começo, e comparar mês fechado com mês corrente subestima o corrente; (c) a régua NÃO é "movimentações no período" — essa infla ~4x porque conta o mesmo lead a cada toque. Denominador e numerador viajam em absoluto ao lado de cada taxa: 50% de 4 e 50% de 400 pedem decisões diferentes.`,
         roster_sempre_visivel: `Todos os ${BDR_TEAM.length} BDRs do roster canônico ganham linha, mesmo zerada, e a coluna roster marca quem é do time. Linha ausente é indistinguível de "não foi medido" e lê como "não fez nada"; linha em zero é uma afirmação verificável. Dono de lead fora do roster (hoje Placement com 7 criados, e BDR do portal fora do BDR_TEAM como Raina Cândido) aparece com roster=false em vez de ser creditado como BDR.`,
         motivo_desqualificacao: 'Existe no objeto Leads (17 valores). Preenchimento desigual: principal 99,2%, Backup 34,4%, DIAGNÓSTICO SITE 0,0% (1.056 desqualificados sem nenhum motivo). "(sem motivo)" no drill do Diagnóstico Site é o dado, não falha da tela.',
         tier_do_bronze: 'tier_colaboradores e numero_de_vidas são lidos de bronze.raw_contact porque NÃO estão projetados em dim_contact (10.946 e 10.591 no portal, 0 alcançáveis pelo silver). MEDIDA TEMPORÁRIA: a correção é a projeção no 10_silver.sql (F0).',

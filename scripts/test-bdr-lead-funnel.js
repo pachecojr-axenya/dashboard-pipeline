@@ -404,6 +404,54 @@ async function call(query) {
   ok(!!(T.premissas || {}).janela_universal, 'a janela universal esta declarada em premissas');
   ok(!!(T.premissas || {}).agregacao_no_banco, 'a agregacao no banco esta declarada em premissas');
 
+  // ── 6b. CONVERSÃO ENTRE ETAPAS e o corte "só BDRs" ────────────────────────────
+  // As duas coisas que este bloco impede de voltar:
+  //  · TAXA ACIMA DE 100%. Aconteceu de verdade na primeira medição: 11 leads com
+  //    deal para 10 qualificados em ago/26, porque `com_deal` NÃO é subconjunto de
+  //    `qualificados` — há lead que vira negócio sem passar pela etapa. O passo usa
+  //    a interseção, e o avulso viaja como `deal_sem_qualificar` em vez de sumir.
+  //  · FILTRO QUE ESCONDE. "Só BDRs" recorta o corte de gente; se o que ele tira não
+  //    fechasse com a diferença entre as duas populações, seria dado sumindo em
+  //    silêncio — e filtro que some com dado é indistinguível de bug.
+  console.log('\n== conversão entre etapas + corte de BDR ==');
+  const CV = (T.coorte || {}).conversao || {};
+  ok(!!CV.bdr && !!CV.todos, 'a conversão vem nas DUAS populações (só BDRs e todos)');
+  ok(CV.todos.criados === T.coorte.criados, 'a população "todos" é a coorte inteira', CV.todos.criados + ' vs ' + T.coorte.criados);
+  ok(CV.bdr.criados <= CV.todos.criados, 'o recorte de BDR nunca é maior que o total', CV.bdr.criados + ' <= ' + CV.todos.criados);
+  const foraCriados = (CV.fora_do_time || []).reduce((a, r) => a + r.criados, 0);
+  ok(CV.bdr.criados + foraCriados === CV.todos.criados,
+    'BDR + fora do time == total: o filtro RECORTA, nao esconde', CV.bdr.criados + ' + ' + foraCriados + ' = ' + CV.todos.criados);
+  ok((CV.fora_do_time || []).every(r => r.papel && r.papel.length > 2),
+    'todo dono excluido tem o PAPEL nomeado (executivo, arquivado, sem dono...)');
+  ['bdr', 'todos'].forEach(pop => {
+    const C = CV[pop];
+    ok(C.passos.every(p => p.pct === null || (p.pct >= 0 && p.pct <= 100)),
+      'nenhum passo de conversao passa de 100% em "' + pop + '"', C.passos.map(p => p.pct).join(' / '));
+    // A régua é acumulada, então as etapas ENCAIXAM. Se um dia deixarem de encaixar,
+    // o funil parou de ser funil e a tela precisa gritar em vez de desenhar.
+    ok(C.etapas.tentativa <= C.criados && C.etapas.conectado <= C.etapas.tentativa &&
+       C.etapas.qualificado <= C.etapas.conectado,
+      'as etapas ENCAIXAM (regua acumulada) em "' + pop + '"',
+      [C.criados, C.etapas.tentativa, C.etapas.conectado, C.etapas.qualificado].join(' >= '));
+    ok(C.passos.every(p => p.n + p.perda === p.base), 'passa + perde == base, em todo passo de "' + pop + '"');
+  });
+  ok(CV.bdr.etapas.deal >= CV.bdr.passos[3].n,
+    'deal total >= deal QUALIFICADO (a diferenca e o lead que virou negocio sem a etapa)',
+    CV.bdr.etapas.deal + ' >= ' + CV.bdr.passos[3].n);
+  ok(!!(T.premissas || {}).so_bdr_no_corte_de_gente, 'o corte "só BDRs" esta declarado em premissas');
+  ok(!!(T.premissas || {}).conversao_por_coorte, 'a regua de conversao por coorte esta declarada em premissas');
+  // A marca de BDR viaja em TODA dimensão: sem isso, ligar o filtro recortaria a
+  // tabela de gente e deixaria o corte por porte/origem contando lead de executivo.
+  dimsEsperadas.forEach(d => {
+    ok((T.coorte.por_dimensao[d] || []).every(r => typeof r.bdr === 'boolean'),
+      'a dimensao "' + d + '" carrega a marca de BDR por linha');
+  });
+  const somaBdr = dimsEsperadas.map(d =>
+    (T.coorte.por_dimensao[d] || []).filter(r => r.bdr).reduce((a, r) => a + r.criados, 0));
+  ok(somaBdr.every(v => v === somaBdr[0]),
+    'o recorte de BDR da o MESMO total nas 5 dimensoes', somaBdr.join(' / '));
+  ok(somaBdr[0] === CV.bdr.criados, 'o recorte por dimensao bate com a conversao de BDR', somaBdr[0] + ' vs ' + CV.bdr.criados);
+
   // ── 7. Mês corrente não explode (a janela que a tela abre por padrão) ─────────
   console.log('\n== mês corrente (default da tela) ==');
   const cur = await call({ funil: 'todos', refresh: '1' });
