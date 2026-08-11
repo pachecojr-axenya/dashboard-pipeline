@@ -1007,6 +1007,23 @@ function novoLoadData(){
   });
 }
 
+// O funil de Leads (bdr-lead-funnel.js) e um modulo separado, e novoRender() NAO tem
+// try/catch: uma excecao ali derruba a PAGINA INTEIRA, nao so a secao nova. Testar
+// window.AxLeadFunnel protege contra o modulo FALTAR, nao contra ele LANCAR -- e sao
+// falhas diferentes. Aqui a falha degrada para 'a secao nova sumiu', com o motivo no
+// console e um aviso na tela, e tudo que existia antes continua de pe.
+function _lfSafeHtml(){
+  if(!window.AxLeadFunnel) return '';
+  try { return AxLeadFunnel.sectionHtml(); }
+  catch(e){ console.error('[lead-funnel] sectionHtml falhou:', e);
+    return '<div class="novo-card" style="grid-column:1/-1;padding:1rem;color:var(--red);font-size:.78rem">'+
+      'A secao Funil de Leads nao renderizou ('+String(e&&e.message||e)+'). O resto do painel esta intacto.</div>'; }
+}
+function _lfSafeRender(){
+  if(!window.AxLeadFunnel) return;
+  try { AxLeadFunnel.render(); }
+  catch(e){ console.error('[lead-funnel] render falhou:', e); }
+}
 function novoRender(){
   var deals=_rawDeals();
   var open=_novoOpen();
@@ -1058,7 +1075,7 @@ function novoRender(){
       cWide(t('bdr_avg_vidas')+_cntSpan(created.length),t('bdr_avg_vidas_tip'),'avg-vidas',280,null,true)+
       c(t('bdr_colabs')+_cntSpan(deals.length),t('bdr_colabs_tip'),'colabs',300,null,true)+
       c(t('bdr_size_dist')+_cntSpan(createdTeam),t('bdr_size_dist_tip'),'size-dist',300,_subTabs('bdr-size-tabs',_bdrSizeMode,[{mode:'colaboradores',label:'Colaboradores',fn:'bdrSwitchSize'},{mode:'vidas',label:'Vidas',fn:'bdrSwitchSize'}]),true)+
-      (window.AxLeadFunnel?AxLeadFunnel.sectionHtml():'')+
+      _lfSafeHtml()+
       _bdrLeadsSectionHtml()+
     '</div>';
 
@@ -1072,7 +1089,7 @@ function novoRender(){
   buildBdrAvgVidas();
   buildBdrColabs();
   buildBdrSizeDist();
-  if(window.AxLeadFunnel) AxLeadFunnel.render();
+  _lfSafeRender();
   if(_bdrLeads){
     buildLeadsFunnel();
     buildLeadsContactRate();
