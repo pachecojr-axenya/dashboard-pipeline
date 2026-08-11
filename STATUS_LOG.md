@@ -1,5 +1,42 @@
 # Dashboard Enhancement Loop — Status Log
 
+### Fix | ARR/caixa: POC sem dado real de faturamento não estima mais via vidas×VPV (2026-08-11)
+
+> Achado do dono: o deal "BRF / MARFRIG - POC" (HubSpot `60844049805`, pipeline Vendas,
+> etapa Negociação) mostrava ARR de **R$ 1.296.000** com `arr_estimado`, `1ª Fatura` e
+> `premio_mensal` todos vazios no HubSpot — só `vidas = 4.500` preenchido. Causa:
+> cascata de ARR (`docs/forecast-revenue-rules.md` §2b) caindo no passo 3 (fallback
+> `vidas × VPV × 12`, aqui `4.500 × 24 × 12`), que desde 2026-08-02 também valia para
+> POC (reversão do guard antigo, decisão da reunião de forecast de 31/07 — "POC não
+> pode valer zero no forecast").
+>
+> **Decisão do dono (2026-08-11):** restringir essa reversão — POC **sem nenhum dado
+> real de faturamento** (sem `arr_estimado`, sem `1ª Fatura`) mantém ARR **zero/vazio**
+> em vez de estimar só a partir de `vidas`. POC com `arr_estimado` ou `1ª Fatura`
+> preenchidos continua com ARR normal (passos 1/2 da cascata, sem mudança nenhuma) —
+> validado nos dados reais: "ISA ENERGIA BRASIL" e "Amil - POC" (POC com 1ª Fatura
+> preenchida) mantiveram ARR calculado normalmente depois do fix.
+>
+> **Escopo:** só o fallback `vidas × VPV` (passo 3 da cascata de ARR e o trecho
+> equivalente de Cotação/Consultoria/Negociação no forecast de caixa mensal). Diagnóstico
+> e Reunião Agendada **não** mudaram — lá `vidas × VPV`/`vidas × R$24` é a própria régua
+> da etapa (não um fallback por falta de dado), então POC segue igual a qualquer deal,
+> como antes.
+>
+> **Código:** `api/forecast-table.js` (`arr`, coluna ARR), `lib/forecast-compute.js`
+> (`mapFotoDeal.arr_estimado`, espelho para `/forecast-delta`), `public/forecast-engine.js`
+> (`dealMonthly`, bloco Cotação/Consultoria/Negociação — afeta `/forecast`,
+> `/forecast-stage`, N05/N06B do CRO, AE, Board, que consomem o mesmo motor). Detalhe
+> completo da régua em `docs/forecast-revenue-rules.md` §2 e §2b.
+>
+> **Validação:** servidor local reiniciado (mudança em `api/`/`lib/`); `/api/forecast-table`
+> confirmado ao vivo — BRF/Marfrig (POC, sem 1ª fatura) → `arr_estimado: null`; Serasa
+> Experian e "Agência de governo" (mesmos POC sem dado real) → idem; ISA ENERGIA BRASIL e
+> Amil - POC (POC **com** 1ª fatura) → ARR calculado normal, sem regressão; deals não-POC
+> (EPTV, Grupo Malwee, Stocche Forbes, etc.) → fallback `vidas × VPV` inalterado. `npm run
+> check` PASS (inclui os testes de invariante do Delta). Rotas-chave (`/novo`, `/forecast`,
+> `/novo-board`, `/novo-ae`) = 200.
+
 ### 🚀 DEPLOY DE PRODUÇÃO | Delta D02 (saudável × perda real) + Forecast (coluna Cashback) (2026-08-10)
 
 > Autorização explícita do dono ("Sim, faça o deploy"). Antes de commitar, `git fetch`

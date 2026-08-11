@@ -19,7 +19,8 @@
  *  - Cotação/Consultoria/Negociação → início por modelo (corretagem: vigência+2 ou
  *    prevista+2; fee: prevista+2; sem modelo: prevista) e régua via calcReceita.
  *    Fallback (2026-07-20): sem base de 1ª Fatura (régua vazia) → vidas×VPV com o
- *    delay/piso do Diagnóstico, probabilizado pela prob da própria etapa.
+ *    delay/piso do Diagnóstico, probabilizado pela prob da própria etapa — EXCETO POC
+ *    (2026-08-11): POC sem 1ª Fatura fica sem receita (NIL) em vez de estimar via vidas.
  *  - Demais etapas → data prevista de receita + régua via calcReceita (cap 24m).
  */
 (function (root) {
@@ -49,10 +50,12 @@
     var FM = root.FaturamentoManual;
     var NIL = MONTHS.map(function () { return null; });
 
-    // POC volta a gerar receita no forecast (2026-08-02): reverte o guard de 2026-07-13.
-    // Decisão da reunião de forecast de 31/07 — "POC não pode valer zero no forecast": o
-    // deal flui pela MESMA régua por etapa de qualquer outro deal, com probabilidade baixa
-    // vinda do ajuste manual do AE/comitê (não uma fórmula nova). Ver docs/forecast-revenue-rules.md.
+    // POC gera receita no forecast pela MESMA régua por etapa de qualquer outro deal
+    // (2026-08-02, reunião de forecast de 31/07: "POC não pode valer zero no forecast"),
+    // com probabilidade baixa vinda do ajuste manual do AE/comitê — EXCETO no fallback
+    // vidas×VPV de Cotação/Consultoria/Negociação (2026-08-11): aí, POC sem 1ª Fatura
+    // fica sem receita em vez de estimar só a partir de `vidas` (ver bloco abaixo).
+    // Ver docs/forecast-revenue-rules.md §2.
 
     // Faturamento manual: substitui integralmente o forecast pelos valores digitados.
     var _man = FM.manualMonths(d, todayStr());
@@ -106,6 +109,13 @@
         return { val: rec * probAdj, rec: rec, probAdj: probAdj, n: n };
       });
       if (reguaCN.some(function (x) { return x != null; })) return reguaCN;
+      // POC sem base de 1ª Fatura fica sem receita projetada (decisão 2026-08-11): não
+      // estima via vidas×VPV quando não há nenhum dado real de faturamento no deal.
+      // Restringe, só a este fallback, a reversão de 2026-08-02 do guard "POC → zero"
+      // (que passou a valer pra régua inteira) ao caso em que a régua da 1ª Fatura já
+      // não achou nada de qualquer forma — deal POC com 1ª Fatura preenchida continua
+      // gerando receita normalmente (reguaCN acima).
+      if (d.is_poc) return NIL;
       // Sem base de 1ª Fatura → fallback vidas×VPV (delay/piso do Diagnóstico).
       var vidasCN = d.vidas || d.colaboradores || 0;
       if (!vidasCN) return NIL;

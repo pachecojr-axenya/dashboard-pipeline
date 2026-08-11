@@ -426,16 +426,23 @@ module.exports = async function handler(req, res) {
           return normalizeProb(p.hs_deal_stage_probability);
         })();
 
+        const isPoc = normalizeBool(p.e_poc);
+
         const arr = (() => {
-          // POC volta a estimar ARR (2026-08-02): reverte o guard de 2026-07-28. Decisão da
-          // reunião de forecast de 31/07 — "POC não pode valer zero no forecast" (se a
-          // probabilidade real fosse zero, a conta deveria morrer; conservadorismo de caixa é
-          // problema do CFO, o forecast reflete crença). POC flui pela mesma cascata de ARR
-          // de qualquer outro deal (probabilidade baixa já é ajustada manualmente por deal).
+          // Cascata de ARR (docs/forecast-revenue-rules.md §2b): 1) arr_estimado do
+          // HubSpot; 2) 1ª Fatura × 12; 3) fallback vidas×VPV nas etapas Diagnóstico/
+          // Cotação/Consultoria/Negociação. POC flui pela mesma cascata NOS PASSOS 1 e 2
+          // (se o AE preencher arr_estimado ou 1ª fatura, valem normalmente).
           const a = parseFloat(p.arr_estimado);
           if (!isNaN(a) && a > 0) return a;
           const pf = parseFloat(p.primeira_fatura);
           if (!isNaN(pf) && pf > 0) return pf * 12;
+          // POC sem ARR Estimado nem 1ª Fatura fica sem ARR (decisão 2026-08-11): não
+          // estimar via vidas×VPV quando não há nenhum dado real de faturamento no deal.
+          // Restringe, só para esta coluna, a reversão de 2026-08-02 do guard "POC → sem
+          // ARR" (que passou a valer para toda a cascata) ao caso em que a cascata não
+          // acharia nada real de qualquer forma — deal POC com dado real continua entrando.
+          if (isPoc) return null;
           // Fallback VPV (2026-07-20): sem ARR Estimado nem 1ª Fatura, nas etapas
           // valoradas por VPV, estima o ARR anual = (vidas||colaboradores) × VPV × 12.
           if (['Diagnóstico', 'Cotação', 'Consultoria', 'Negociação'].indexOf(stageName) !== -1) {
@@ -475,7 +482,7 @@ module.exports = async function handler(req, res) {
           periodo_contrato: p.periodo_do_contrato___vg || p.contrato_atual_e_de_12__24_ou_36_meses_ || null,
           possui_agenciamento: normalizeBool(p.possui_agenciamento),
           possui_vitalicio: normalizeBool(p.possui_vitalicio),
-          is_poc: normalizeBool(p.e_poc),
+          is_poc: isPoc,
           cashback: normalizeBool(p.cashback),
           qual_cashback: normalizeProb(p.qual__cashback),
           cashback_faturas: p.cashback_em_quais_faturas || null,

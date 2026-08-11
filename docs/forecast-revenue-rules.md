@@ -56,6 +56,16 @@ Por etapa (`valor` = receita real do mês; `início` = 1º mês com receita):
     Diagnóstico). Objetivo: deal aberto de Cot/Cons/Neg **não fica invisível** no
     forecast só porque a 1ª Fatura não foi preenchida. **Não** se aplica a outras
     etapas.
+    - **Exceção POC (2026-08-11):** se o deal é POC (`É POC? = Sim`) **e** a régua não
+      produziu receita (sem 1ª Fatura), **não** cai no fallback `vidas × VPV` — fica
+      sem receita projetada nesse trecho (`NIL`), em vez de estimar só a partir de
+      `vidas`. Motivo: caso real (BRF/Marfrig POC, 4.500 vidas, nenhum dado de
+      faturamento) gerava R$ 1,3M de projeção inteiramente derivada de `vidas`, sem
+      nenhum número real por trás. Restringe a decisão de 31/07 (abaixo) só a este
+      cenário — POC com 1ª Fatura preenchida continua gerando receita normalmente pela
+      régua (`calcReceitaMes`), sem guard. Diagnóstico e Reunião Agendada **não** têm
+      essa exceção: para esses dois, `vidas × VPV`/`vidas × R$24` é a própria régua da
+      etapa (não um fallback por falta de dado), então POC segue igual a qualquer deal.
 
 ## 2b. ARR estimado — fallback por VPV (coluna "ARR Est." e KPIs de ARR)
 
@@ -69,16 +79,29 @@ O **ARR de cada deal** (coluna "ARR Est." do `/forecast` e KPIs ARR Total/Ponder
    `(vidas || colaboradores) × VPV × 12` (VPV por faixa 36/24/12); senão
 4. `—` (sem ARR).
 
-**POC entra na mesma cascata, sem guard especial (2026-08-02):** o guard "POC → sem ARR"
-introduzido em 2026-07-28 foi **revertido** por decisão da reunião de forecast de 31/07 —
-"POC não pode valer zero no forecast: se a probabilidade real fosse zero, a conta deveria
-morrer (se não acreditamos que vai dar receita, liberamos o tempo do Rafa); POC entra com
-valor e probabilidade baixa, o conservadorismo de caixa é problema do CFO, o forecast
-reflete crença." Um deal POC de Cot/Cons/Neg sem 1ª Fatura volta a cair no fallback VPV
-como qualquer outro deal (ex.: um POC de 4.500 vidas em Cotação → `4.500 × 24 × 12`). A
+**POC entra na cascata normal nos passos 1 e 2 (arr_estimado / 1ª Fatura × 12), sem guard
+especial (2026-08-02):** o guard "POC → sem ARR" introduzido em 2026-07-28 foi
+**revertido** por decisão da reunião de forecast de 31/07 — "POC não pode valer zero no
+forecast: se a probabilidade real fosse zero, a conta deveria morrer (se não acreditamos
+que vai dar receita, liberamos o tempo do Rafa); POC entra com valor e probabilidade
+baixa, o conservadorismo de caixa é problema do CFO, o forecast reflete crença." A
 probabilidade baixa de um POC não vem de uma fórmula nova — é o valor que o AE/comitê já
 ajusta manualmente por deal em `Probabilidade (campo)` / HubSpot, igual a qualquer deal.
 A coluna "Fatura Atual" (plano vigente do cliente) continua **não** entrando no ARR.
+
+**Exceção no passo 3 — fallback VPV (2026-08-11):** achado real (deal "BRF/Marfrig - POC",
+4.500 vidas, `arr_estimado`/`primeira_fatura`/`premio_mensal` todos vazios) mostrou que a
+reversão de 2026-08-02 fazia um POC **sem nenhum dado real de faturamento** projetar
+`4.500 × 24 × 12 = R$ 1.296.000` de ARR só a partir de `vidas` — número 100% estimado,
+sem nada por trás. Decisão (2026-08-11): quando o deal é POC **e** chega ao passo 3 (ou
+seja, `arr_estimado` e `1ª Fatura` ambos vazios/zero), o ARR fica **vazio (`—`)** em vez
+de estimar via `vidas × VPV`. Um POC com `arr_estimado` ou `1ª Fatura` preenchidos
+continua com ARR normal (passos 1/2, sem mudança). Mesmo guard aplicado ao fallback
+equivalente do forecast de caixa mensal (`dealMonthly` em `forecast-engine.js`, seção 2
+acima) — só no trecho de Cotação/Consultoria/Negociação que já é um fallback por falta de
+1ª Fatura; Diagnóstico e Reunião Agendada não mudam (não são fallback, são a própria régua
+da etapa). Código: `api/forecast-table.js` (`arr`), `lib/forecast-compute.js`
+(`mapFotoDeal.arr_estimado`), `public/forecast-engine.js` (`dealMonthly`, bloco Cot/Cons/Neg).
 
 > Nota (resolvida em 2026-08-02): o **forecast de caixa mensal** (`dealMonthly` em
 > `forecast-engine.js`) também zerava Real e Probabilizada para POC desde 2026-07-13 — regra
