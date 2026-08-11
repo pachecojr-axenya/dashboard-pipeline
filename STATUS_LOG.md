@@ -1,5 +1,21 @@
 # Dashboard Enhancement Loop — Status Log
 
+### 🚀 DEPLOY DE PRODUÇÃO | /novo-bdr: linha do tempo + filtro por campo (2026-08-11)
+
+> Autorização explícita do dono ("Refine e deploy"). `git fetch`: o Treble V10 da sessão
+> paralela já tinha entrado (`c643876`) e a árvore estava na mesma base — `stash` +
+> `merge --ff-only` (já up to date) + `stash pop`, sem conflito.
+>
+> Commit `b65beb0`, push OK. `npm run check` PASS **54/0**. `npm run predeploy` PASS
+> (`origin/main b65beb0`, projeto canônico). Deployment
+> `dashboard-axenya-lz4kfcm2k-axenya-f1a041f6.vercel.app`.
+>
+> Pós-deploy em `axenya-pipeline-dashboard.vercel.app`: `/novo-bdr`, `/novo-bdr/treble`,
+> `/novo-bdr/workload`, `/novo`, `/forecast`, `/growth` = 200. No bundle servido:
+> `bdr-lead-funnel.js?v=3` (cache invalidado), com "Linha do tempo da conversão",
+> "Filtrar por campo", "Tentativa+ → Qualificado", `drillBucket` e `bucket_parcial`
+> presentes; zero ocorrência de "Cadência de Leads".
+
 ### Feat | /novo-bdr: linha do tempo da conversão, etapa→Qualificado e filtro por campo (2026-08-11)
 
 > Refino pedido pelo dono sobre a leva anterior: faltava **série temporal**, faltava
