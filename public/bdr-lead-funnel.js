@@ -35,7 +35,10 @@
   var sort = {
     wf:    { col: 'saldo_fim', dir: -1 },
     mov:   { col: 'n',         dir: -1 },
-    regua: { col: 'n',         dir: -1 },
+    // No corte por BDR o rank nasce por TRABALHO NA JANELA, não por "criados":
+    // ordenar por criados joga para o fim quem trabalhou carteira antiga, que é
+    // exatamente quem a coluna de trabalho existe para tornar visível.
+    regua: { col: 'trab_toques', dir: -1 },
     leads: { col: 'n_movimentos', dir: -1 }
   };
 
@@ -125,7 +128,13 @@
   }
 
   function switchFunil(f) { funil = f; if (typeof _setActive === 'function') _setActive('lf-funil-tabs', f); D = null; LOADED = null; paint(); }
-  function switchDim(m) { reguaDim = m; if (typeof _setActive === 'function') _setActive('lf-dim-tabs', m); tabelaRegua(); }
+  function switchDim(m) {
+    reguaDim = m;
+    // A ordem padrão acompanha a dimensão: trabalho em pessoa, criados em atributo.
+    sort.regua = { col: m === 'bdr' ? 'trab_toques' : 'n', dir: -1 };
+    if (typeof _setActive === 'function') _setActive('lf-dim-tabs', m);
+    tabelaRegua();
+  }
   function switchWf(v) { wfView = v; if (typeof _setActive === 'function') _setActive('lf-wf-tabs', v); waterfallTabela(); }
 
   // ── HTML da seção ──────────────────────────────────────────────────────────────
@@ -201,7 +210,10 @@
       card('Criados e movimentados por dia',
         'Barras = leads criados no dia (entrada no funil). Linhas = movimentações que chegaram em cada etapa naquele dia. É a taxa por dia: quantos leads novos, quantos passaram para tentativa, conectado, qualificado ou desqualificado.', 'pordia', 320, null, true) +
       painel('Taxa de contato | AS DUAS RÉGUAS, lado a lado',
-        'A tela NÃO escolhe entre as duas réguas. ETAPA = o lead chegou a Tentativa+ no histórico de etapa. ATIVIDADE REAL = houve ligação conectada, e-mail enviado ou LinkedIn enviado (nota não conta: nota não é ação). Medido em jul/26: 89,4% contra 46,7%, com 1.009 leads movidos para Tentativa sem UM toque no CRM — a premissa "teve que passar, senão não tem como" não se sustenta no dado. Toda coluna com ⇅ ordena; clique numa linha para os leads.',
+        'A tela NÃO escolhe entre as duas réguas. ETAPA = o lead chegou a Tentativa+ no histórico de etapa. ATIVIDADE REAL = houve ligação conectada, e-mail enviado, LinkedIn, WhatsApp manual ou reunião realizada (nota não conta: nota não é ação). Medido em jul/26: 89,4% contra 46,7%, com 1.009 leads movidos para Tentativa sem UM toque no CRM — a premissa "teve que passar, senão não tem como" não se sustenta no dado. ' +
+        'O TOQUE SÓ CONTA APÓS A CRIAÇÃO DO LEAD (correção de 11/08/2026): a régua liga toque→lead pelo contato, e o contato tem vida anterior ao lead — sem o limite, "falou com" contava trabalho de outro ciclo, às vezes de outra pessoa. Em ago/26 isso valia 19 leads (210 → 191), o mais antigo com toque de 18/07/2024. O toque anterior não é descartado: vira a coluna "Toque só antes do lead". ' +
+        'NO CORTE POR BDR HÁ DUAS RÉGUAS DE PESSOA e elas respondem coisas diferentes. "Criaram/Falaram com" é COORTE (leads criados na janela) atribuída ao DONO do lead — certa para atributo de lead, enganosa para pessoa, porque quem trabalha carteira antiga aparece com denominador minúsculo. "Trabalhou na janela" é o que a pessoa fez no período em lead de qualquer safra, atribuída a QUEM TOCOU: dos 1.585 toques de ago/26, 378 (24%) foram feitos por alguém diferente do dono atual do lead. Todo BDR do roster tem linha mesmo zerada, porque linha ausente lê como "não fez nada" e é indistinguível de "não foi medido". ' +
+        'Toda coluna com ⇅ ordena; clique numa linha para os leads.',
         'regua', tabsDim) +
       card('Desqualificações por dia',
         'Entradas em Desqualificado por dia, empilhadas por MOTIVO (o objeto Leads tem o campo — o contato nunca teve). Preenchimento: Lead pipeline 99,2%, Diagnóstico Site 0,0% (1.056 sem motivo). Clique num dia para o drill.', 'disq', 300, null, true) +
@@ -535,22 +547,34 @@
     var agg = (D.coorte.por_dimensao || {})[reguaDim] || [];
     if (!agg.length) { el.innerHTML = '<p style="color:var(--text2);padding:1rem 0">Nenhum lead criado no período.</p>'; return; }
 
+    // A COLUNA DE TRABALHO SÓ EXISTE NO CORTE POR PESSOA. Coorte é a régua certa para
+    // atributo de LEAD (porte, tier, vidas, origem — o atributo nasce com o lead); para
+    // PESSOA ela mede a safra e não o mês, e sozinha faz a tela mentir por omissão.
+    var ehBdr = reguaDim === 'bdr';
     var todas = agg.map(function (r) {
       return {
         k: r.valor, n: r.criados, ativ: r.com_atividade, etapa: r.por_etapa, ambos: r.ambos,
-        auto: r.so_automacao, nunca: r.nunca_tocados, qual: r.qualificados,
-        deal: r.com_deal, dq: r.desqualificados,
+        auto: r.so_automacao, herd: r.toque_herdado || 0, nunca: r.nunca_tocados,
+        qual: r.qualificados, deal: r.com_deal, dq: r.desqualificados,
+        trab_leads: r.trab_leads || 0, trab_toques: r.trab_toques || 0,
+        roster: r.roster !== false,
         lacuna: r.por_etapa - r.ambos,
         tx_etapa: r.criados ? r.por_etapa / r.criados : 0,
         tx_ativ: r.criados ? r.com_atividade / r.criados : 0
       };
     });
+    // Coluna que não existe nesta dimensão não pode reger a ordem: cair em `undefined`
+    // ordenaria tudo por -Infinity e o rank viraria ordem de chegada do BigQuery.
+    if (!ehBdr && /^trab_/.test(sort.regua.col)) sort.regua = { col: 'n', dir: -1 };
     var ord = ordena(todas, 'regua', function (r, c) { return c === 'k' ? r.k : r[c]; }).slice(0, 25);
 
     var t = todas.reduce(function (a, r) {
-      ['n', 'etapa', 'ativ', 'ambos', 'qual', 'deal', 'dq', 'auto', 'nunca'].forEach(function (f) { a[f] += r[f]; });
+      ['n', 'etapa', 'ativ', 'ambos', 'qual', 'deal', 'dq', 'auto', 'herd', 'nunca'].forEach(function (f) { a[f] += r[f]; });
       return a;
-    }, { n: 0, etapa: 0, ativ: 0, ambos: 0, qual: 0, deal: 0, dq: 0, auto: 0, nunca: 0 });
+    }, { n: 0, etapa: 0, ativ: 0, ambos: 0, qual: 0, deal: 0, dq: 0, auto: 0, herd: 0, nunca: 0 });
+    // Total do time vem do payload (DISTINCT no banco), NÃO da soma das linhas: lead
+    // tocado por dois BDRs conta em cada linha e uma vez só no time.
+    var tj = (D.trabalho_na_janela || { leads_tocados: 0, toques: 0 });
 
     var barra = function (a, b, cor) {
       var p = b ? Math.round(a / b * 100) : 0;
@@ -563,45 +587,95 @@
 
     var html = '<div style="font-size:.74rem;color:var(--text2);margin:.1rem 0 .6rem;line-height:1.6">' +
       '<strong style="color:var(--text)">Criaram ' + ni(t.n) + ' e falaram com ' + ni(t.ativ) + '</strong> (' + pct(t.ativ, t.n) + ') — ' +
-      'atividade real distinta por lead: ligação conectada, e-mail, LinkedIn, WhatsApp manual ou reunião realizada.<br>' +
+      'atividade real distinta por lead, <strong>posterior à criação do lead</strong>: ligação conectada, e-mail, LinkedIn, WhatsApp manual ou reunião realizada.<br>' +
       'Pela régua de <strong>etapa</strong> seriam ' + ni(t.etapa) + ' (' + pct(t.etapa, t.n) + '), e a diferença é o alerta: ' +
       '<strong style="color:var(--red)">' + ni(t.etapa - t.ambos) + ' movidos de etapa sem nenhum toque registrado</strong>. ' +
       'Além disso, <strong>' + ni(t.nunca) + ' nunca foram tocados</strong> por ninguém' +
-      (t.auto ? ' e <strong>' + ni(t.auto) + '</strong> só por automação (não conta como esforço do BDR)' : '') + '.' +
+      (t.auto ? ' e <strong>' + ni(t.auto) + '</strong> só por automação (não conta como esforço do BDR)' : '') +
+      (t.herd ? ' e <strong>' + ni(t.herd) + '</strong> têm toque apenas <strong>anterior ao lead</strong> (herdado do contato, de outro ciclo)' : '') + '.' +
+      // A dimensão Origem está contaminada na fonte (axenya_origem_canonica devolve
+      // booleano em 64% dos leads). O aviso vive AQUI, no corte, porque quem só abre
+      // "Origem" nunca leria a premissa — e "true" como categoria parece análise.
+      (reguaDim === 'origem'
+        ? '<br><span style="color:var(--red)">⚠ Este corte está contaminado na FONTE:</span> ' +
+          '<code>axenya_origem_canonica</code> devolve <strong>booleano</strong> em 64% dos leads (9.836 "true" + 1.040 "false"). ' +
+          '<strong>"true" não é uma origem</strong> — é erro de mapeamento de propriedade, e o conserto é no silver, não nesta tela. ' +
+          'Enquanto isso, leia só as fatias com nome de verdade.'
+        : '') +
+      (ehBdr
+        ? '<br><span style="color:var(--text)">Esta coluna é <strong>coorte</strong>, e coorte não é o mês da pessoa.</span> ' +
+          'No mesmo período o time tocou <strong>' + ni(tj.leads_tocados) + ' leads</strong> de qualquer safra, com <strong>' +
+          ni(tj.toques) + ' toques</strong> — é a coluna <em>Trabalhou na janela</em>, atribuída a <strong>quem tocou</strong>, ' +
+          'não ao dono do lead. Ler só "criou/falou" subestima quem trabalha carteira antiga.'
+        : '') +
       '</div>';
 
-    html += '<table class="lb" style="font-size:.78rem;width:100%"><thead><tr>' +
-      th('regua', 'k', rotDim, 'left') +
+    // As duas colunas de TRABALHO ficam encostadas no nome, antes da coorte: é a
+    // primeira coisa que se lê num corte por pessoa, e a coorte vem como contexto.
+    var thTrab = ehBdr
+      ? th('regua', 'trab_leads', 'Trabalhou<br><span style="font-weight:400;font-size:.66rem;color:var(--text2)">leads na janela</span>') +
+        th('regua', 'trab_toques', 'Toques<br><span style="font-weight:400;font-size:.66rem;color:var(--text2)">na janela</span>')
+      : '';
+
+    // `width:100%` sozinho fazia as 14 colunas do corte por BDR se comprimirem até o
+    // cabeçalho CLIPAR ("Toque pré-lead" virava "Toque pré"), em vez de o contêiner
+    // rolar. O contêiner já tem overflow-x:auto; o que faltava era o min-width para a
+    // tabela poder ser mais larga que o cartão. Coluna cortada é coluna que não existe.
+    html += '<table class="lb" style="font-size:.78rem;width:100%;min-width:' + (ehBdr ? 1180 : 940) + 'px"><thead><tr>' +
+      th('regua', 'k', rotDim, 'left') + thTrab +
       th('regua', 'n', 'Criaram<br><span style="font-weight:400;font-size:.66rem;color:var(--text2)">X leads</span>') +
       th('regua', 'ativ', 'Falaram com<br><span style="font-weight:400;font-size:.66rem;color:var(--text2)">Y distintos</span>') +
       th('regua', 'tx_ativ', 'Tx contato<br><span style="font-weight:400;font-size:.66rem;color:var(--text2)">por ATIVIDADE</span>') +
       th('regua', 'tx_etapa', 'Tx contato<br><span style="font-weight:400;font-size:.66rem;color:var(--text2)">por ETAPA</span>') +
       th('regua', 'lacuna', 'Etapa sem<br>toque') +
-      th('regua', 'auto', 'Só<br>automação') + th('regua', 'nunca', 'Nunca<br>tocados') +
+      th('regua', 'auto', 'Só<br>automação') +
+      th('regua', 'herd', 'Toque<br><span style="font-weight:400;font-size:.66rem;color:var(--text2)">pré-lead</span>') +
+      th('regua', 'nunca', 'Nunca<br>tocados') +
       th('regua', 'qual', 'Qualificados') + th('regua', 'deal', 'Com deal') + th('regua', 'dq', 'Desqualif.') +
       '</tr></thead><tbody>';
     ord.forEach(function (r) {
-      html += '<tr style="cursor:pointer" onclick="AxLeadFunnel.drillDim(' + JSON.stringify(r.k).replace(/"/g, '&quot;') + ')">' +
-        '<td style="text-align:left;white-space:nowrap;max-width:210px;overflow:hidden;text-overflow:ellipsis;font-weight:600">' + esc(r.k) + '</td>' +
+      // Linha inteira em zero é AFIRMAÇÃO ("medimos e não houve"), não lacuna — e ela
+      // precisa aparecer, senão o BDR que não criou nada desaparece da tabela.
+      var vazia = ehBdr && !r.n && !r.trab_toques;
+      // Marca de estado NUNCA só por cor: quem não é do roster leva a palavra.
+      var selo = ehBdr && !r.roster
+        ? ' <span style="font-weight:400;font-size:.64rem;color:var(--text2)" title="Dono de lead fora do roster canônico de BDR">(fora do roster)</span>'
+        : '';
+      html += '<tr style="cursor:pointer' + (vazia ? ';opacity:.62' : '') + '" onclick="AxLeadFunnel.drillDim(' + JSON.stringify(r.k).replace(/"/g, '&quot;') + ')">' +
+        '<td style="text-align:left;white-space:nowrap;max-width:230px;overflow:hidden;text-overflow:ellipsis;font-weight:600">' + esc(r.k) + selo + '</td>' +
+        (ehBdr
+          ? '<td style="font-weight:600;color:' + (r.trab_leads ? C_BOM_T : 'var(--text2)') + '">' + ni(r.trab_leads) + '</td>' +
+            '<td style="font-weight:600;color:' + (r.trab_toques ? C_BOM_T : 'var(--text2)') + '">' + ni(r.trab_toques) + '</td>'
+          : '') +
         '<td style="font-weight:600">' + ni(r.n) + '</td>' +
-        '<td style="font-weight:600;color:' + C_BOM_T + '">' + ni(r.ativ) + '</td>' +
+        '<td style="font-weight:600;color:' + (r.ativ ? C_BOM_T : 'var(--text2)') + '">' + ni(r.ativ) + '</td>' +
         barra(r.ativ, r.n, COR.conectado) + barra(r.etapa, r.n, COR.tentativa) +
         '<td style="color:' + (r.lacuna ? 'var(--red)' : 'var(--text2)') + '">' + ni(r.lacuna) + '</td>' +
         '<td style="color:var(--text2)">' + ni(r.auto) + '</td>' +
+        '<td style="color:var(--text2)">' + ni(r.herd) + '</td>' +
         '<td style="color:' + (r.nunca ? 'var(--red)' : 'var(--text2)') + '">' + ni(r.nunca) + '</td>' +
         '<td>' + ni(r.qual) + '</td><td>' + ni(r.deal) + '</td><td>' + ni(r.dq) + '</td></tr>';
     });
     html += '</tbody><tfoot><tr><td style="text-align:left;font-weight:700">Total</td>' +
+      // O total de trabalho é DISTINCT no banco, não a soma das linhas: lead tocado por
+      // dois BDRs conta em cada linha e uma vez só no time. Somar aqui inflaria.
+      (ehBdr ? '<td style="font-weight:700">' + ni(tj.leads_tocados) + '</td><td style="font-weight:700">' + ni(tj.toques) + '</td>' : '') +
       '<td style="font-weight:700">' + ni(t.n) + '</td><td style="font-weight:700">' + ni(t.ativ) + '</td>' +
       '<td style="font-weight:700;text-align:right">' + pct(t.ativ, t.n) + '</td>' +
       '<td style="font-weight:700;text-align:right">' + pct(t.etapa, t.n) + '</td>' +
       '<td style="font-weight:700">' + ni(t.etapa - t.ambos) + '</td>' +
-      '<td style="font-weight:700">' + ni(t.auto) + '</td><td style="font-weight:700">' + ni(t.nunca) + '</td>' +
+      '<td style="font-weight:700">' + ni(t.auto) + '</td><td style="font-weight:700">' + ni(t.herd) + '</td>' +
+      '<td style="font-weight:700">' + ni(t.nunca) + '</td>' +
       '<td style="font-weight:700">' + ni(t.qual) + '</td><td style="font-weight:700">' + ni(t.deal) + '</td>' +
       '<td style="font-weight:700">' + ni(t.dq) + '</td></tr></tfoot></table>' +
       '<p style="font-size:.71rem;color:var(--text2);margin:.45rem 0 0">' +
       (todas.length > 25 ? 'Mostrando 25 de ' + ni(todas.length) + ' valores de ' + rotDim + ' — o Total soma TODOS. ' : '') +
       'Os números desta tabela são agregados no BigQuery e cobrem <strong>100% da coorte</strong>. ' +
+      (ehBdr
+        ? 'Linha zerada é <strong>afirmação</strong>: o BDR está no roster, foi medido, e não criou nem tocou lead do recorte na janela — não é dado faltando. ' +
+          'O total de <em>Trabalhou/Toques</em> é DISTINCT do time (' + ni(tj.leads_tocados) + '/' + ni(tj.toques) + ') e por isso ' +
+          'pode ser menor que a soma das linhas: lead tocado por dois BDRs conta em cada um. '
+        : '') +
       (D.coorte.leads_truncado ? 'O <em>drill</em> mostra os ' + ni(D.coorte.leads.length) + ' leads mais recentes (a lista é capada; a conta não).' : '') +
       '</p>';
     el.innerHTML = html;
@@ -748,6 +822,16 @@
     var etapa = l.atingiu_tentativa_etapa ? '✅ etapa' : '— etapa';
     if (c.length) return etapa + ' / <span style="color:' + C_BOM_T + '">✅ ' + c.join(' · ') + '</span>';
     if (l.so_automacao) return etapa + ' / <span style="color:var(--text2)">🤖 só automação (' + (l.toques_automacao || 0) + ')</span>';
+    // Afirmar ausência exige declarar o universo: aqui o universo INCLUI o histórico do
+    // contato anterior ao lead, e dizer "nenhum toque" quando havia toque de outro ciclo
+    // é o que gera desconfiança justa. O toque herdado é nomeado, e não creditado.
+    if (l.toques_manuais_antes || l.toques_automacao_antes) {
+      var a = [];
+      if (l.toques_manuais_antes) a.push(l.toques_manuais_antes + ' manual(is)');
+      if (l.toques_automacao_antes) a.push('🤖 ' + l.toques_automacao_antes);
+      return etapa + ' / <span style="color:var(--text2)">↩ ' + a.join(' · ') +
+        ' no contato ANTES deste lead — herdado, não conta como esforço no lead</span>';
+    }
     return etapa + ' / <span style="color:var(--red)">✖ nenhum toque</span>';
   }
 

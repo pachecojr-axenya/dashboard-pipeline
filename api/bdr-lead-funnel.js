@@ -206,6 +206,29 @@ const ATIV_MANUAL = `(
 const ATIV_AUTOMACAO = `(f.is_outbound_message AND f.source_label = 'INTEGRATION')`;
 
 /**
+ * O TOQUE TEM DE SER POSTERIOR À CRIAÇÃO DO LEAD — correção de 11/08/2026.
+ *
+ * A régua liga toque→lead pelo CONTATO (`fact_engagement` não tem `lead_id`), e o
+ * contato tem vida própria: ele pode ter sido trabalhado meses ou ANOS antes de
+ * alguém criar este lead. Sem limite temporal, "falou com" contava esse histórico
+ * como se fosse trabalho no lead da coorte.
+ *
+ * Escala medida na coorte de ago/26 (258 leads, 01–11/08): "falou com" cai de **210
+ * para 191** — **19 leads (9%)** cuja ÚNICA prova de contato é um toque anterior à
+ * própria existência do lead, um deles de **18/07/2024**. Por BDR o efeito é
+ * desigual e muda leitura de pessoa: **Raina Cândido aparecia com 2 de 11 e o número
+ * real é 0** (os dois toques são pré-criação); Allan Valença cai 31→25; Gabriele
+ * Almeida 5→4. Nos leads movimentados na janela o mesmo corte é 535→510 (25 leads),
+ * e ali ele também limpa o `contradiz_motivo` — desqualificar como "não houve
+ * tentativa de contato" deixa de ser contradição quando o toque é de outro ciclo.
+ *
+ * O toque anterior NÃO é descartado em silêncio: vira o bucket `toque_herdado`, que
+ * é informação real ("o contato já tinha sido trabalhado antes deste lead", muitas
+ * vezes por outra pessoa) — só não é esforço no lead que se está medindo.
+ */
+const APOS_CRIACAO = `f.occurred_at >= b2.criado_em`;
+
+/**
  * Atividade por lead, para os leads que a janela toca (criados OU movimentados).
  * Uma consulta, uma régua — servindo tanto a coorte quanto o drill de desqualificação.
  */
@@ -220,23 +243,33 @@ async function atividade(pipes, since, until) {
       WHERE ch.object_type = 'lead' AND ch.property = 'hs_pipeline_stage'
         AND DATE(ch.changed_at, 'America/Sao_Paulo') BETWEEN DATE(@since) AND DATE(@until)
     ),
+    -- A criação do lead entra aqui porque a régua de toque é limitada a ela (ver
+    -- APOS_CRIACAO): o contato tem vida anterior ao lead e ela não é esforço no lead.
+    alvo_c AS (
+      SELECT a.lead_id, l.hs_created_at AS criado_em
+      FROM alvo a
+      JOIN ${wh.t('silver', 'dim_lead')} l ON l.lead_id = a.lead_id AND l.is_current
+    ),
     l2c AS (
       SELECT b.from_id AS lead_id, ANY_VALUE(b.to_id) AS contact_id, COUNT(DISTINCT b.to_id) AS n_contatos
       FROM ${wh.t('silver', 'bridge_association')} b
-      JOIN alvo a ON a.lead_id = b.from_id
+      JOIN alvo_c a ON a.lead_id = b.from_id
       WHERE b.from_object = 'lead' AND b.to_object = 'contact' AND b.is_active
       GROUP BY 1
     )
     SELECT c.lead_id, c.n_contatos,
-           COUNTIF(f.is_connected) AS ligacoes_conectadas,
-           COUNTIF(f.kind = 'emails' AND f.is_outbound_message) AS emails_enviados,
-           COUNTIF(f.channel_type = 'LINKEDIN_MESSAGE' AND f.is_outbound_message) AS linkedin_enviados,
-           COUNTIF(f.channel_type = 'WHATS_APP' AND f.is_outbound_message AND IFNULL(f.source_label,'') != 'INTEGRATION') AS whatsapp_manual,
-           COUNTIF(f.is_meeting_held) AS reunioes,
-           COUNTIF(${ATIV_MANUAL}) AS toques_manuais,
-           COUNTIF(${ATIV_AUTOMACAO}) AS toques_automacao,
-           FORMAT_TIMESTAMP('%F', MIN(IF(${ATIV_MANUAL}, f.occurred_at, NULL)), 'America/Sao_Paulo') AS primeiro_toque
+           COUNTIF(${APOS_CRIACAO} AND f.is_connected) AS ligacoes_conectadas,
+           COUNTIF(${APOS_CRIACAO} AND f.kind = 'emails' AND f.is_outbound_message) AS emails_enviados,
+           COUNTIF(${APOS_CRIACAO} AND f.channel_type = 'LINKEDIN_MESSAGE' AND f.is_outbound_message) AS linkedin_enviados,
+           COUNTIF(${APOS_CRIACAO} AND f.channel_type = 'WHATS_APP' AND f.is_outbound_message AND IFNULL(f.source_label,'') != 'INTEGRATION') AS whatsapp_manual,
+           COUNTIF(${APOS_CRIACAO} AND f.is_meeting_held) AS reunioes,
+           COUNTIF(${APOS_CRIACAO} AND ${ATIV_MANUAL}) AS toques_manuais,
+           COUNTIF(${APOS_CRIACAO} AND ${ATIV_AUTOMACAO}) AS toques_automacao,
+           -- Herdado do contato: existe, é informação, e NÃO conta como toque no lead.
+           COUNTIF(NOT ${APOS_CRIACAO} AND ${ATIV_MANUAL}) AS toques_manuais_antes,
+           FORMAT_TIMESTAMP('%F', MIN(IF(${APOS_CRIACAO} AND ${ATIV_MANUAL}, f.occurred_at, NULL)), 'America/Sao_Paulo') AS primeiro_toque
     FROM l2c c
+    JOIN alvo_c b2 ON b2.lead_id = c.lead_id
     LEFT JOIN ${wh.t('silver', 'fact_engagement')} f ON f.contact_id = c.contact_id
     GROUP BY 1, 2
   `, [
@@ -255,6 +288,7 @@ async function atividade(pipes, since, until) {
       reunioes: wh.num(r.reunioes),
       toques_manuais: wh.num(r.toques_manuais),
       toques_automacao: wh.num(r.toques_automacao),
+      toques_manuais_antes: wh.num(r.toques_manuais_antes),
       primeiro_toque: wh.str(r.primeiro_toque),
     };
   });
@@ -651,7 +685,10 @@ function coorteCTE(pipes) {
       SELECT l.lead_id, l.lead_name, l.owner_id, l.pipeline_id, l.stage_id,
              l.motivo_desqualificacao,
              IFNULL(NULLIF(l.origem_canonica,''), l.origem_fonte) AS origem,
-             DATE(l.hs_created_at, 'America/Sao_Paulo') AS criado
+             DATE(l.hs_created_at, 'America/Sao_Paulo') AS criado,
+             -- timestamp, não data: a régua de toque é limitada à criação do lead
+             -- (APOS_CRIACAO), e no dia da criação a hora decide.
+             l.hs_created_at AS criado_em
       FROM ${wh.t('silver', 'dim_lead')} l
       WHERE l.is_current AND l.pipeline_id IN (${sqlList(pipes)})
         AND DATE(l.hs_created_at, 'America/Sao_Paulo') BETWEEN DATE(@since) AND DATE(@until)
@@ -689,16 +726,22 @@ function coorteCTE(pipes) {
     -- sem declarar o que foi procurado foi o defeito de 11/08 (caso Rui Medeiros), e
     -- devolver só o total reintroduz ele pela porta de trás — o front cairia em
     -- "nenhum toque" por ausência de campo, não por ausência de toque.
+    -- Toque só conta APÓS a criação do lead. O contato tem vida anterior ao lead e ela
+    -- não é esforço neste lead — ver APOS_CRIACAO. O que ficou de fora não desaparece:
+    -- vira toques_manuais_antes e o bucket toque_herdado.
     ativ AS (
       SELECT c.lead_id,
-             COUNTIF(f.is_connected) AS ligacoes_conectadas,
-             COUNTIF(f.kind = 'emails' AND f.is_outbound_message) AS emails_enviados,
-             COUNTIF(f.channel_type = 'LINKEDIN_MESSAGE' AND f.is_outbound_message) AS linkedin_enviados,
-             COUNTIF(f.channel_type = 'WHATS_APP' AND f.is_outbound_message AND IFNULL(f.source_label,'') != 'INTEGRATION') AS whatsapp_manual,
-             COUNTIF(f.is_meeting_held) AS reunioes,
-             COUNTIF(${ATIV_MANUAL})    AS toques_manuais,
-             COUNTIF(${ATIV_AUTOMACAO}) AS toques_automacao
+             COUNTIF(${APOS_CRIACAO} AND f.is_connected) AS ligacoes_conectadas,
+             COUNTIF(${APOS_CRIACAO} AND f.kind = 'emails' AND f.is_outbound_message) AS emails_enviados,
+             COUNTIF(${APOS_CRIACAO} AND f.channel_type = 'LINKEDIN_MESSAGE' AND f.is_outbound_message) AS linkedin_enviados,
+             COUNTIF(${APOS_CRIACAO} AND f.channel_type = 'WHATS_APP' AND f.is_outbound_message AND IFNULL(f.source_label,'') != 'INTEGRATION') AS whatsapp_manual,
+             COUNTIF(${APOS_CRIACAO} AND f.is_meeting_held) AS reunioes,
+             COUNTIF(${APOS_CRIACAO} AND ${ATIV_MANUAL})    AS toques_manuais,
+             COUNTIF(${APOS_CRIACAO} AND ${ATIV_AUTOMACAO}) AS toques_automacao,
+             COUNTIF(NOT ${APOS_CRIACAO} AND ${ATIV_MANUAL})    AS toques_manuais_antes,
+             COUNTIF(NOT ${APOS_CRIACAO} AND ${ATIV_AUTOMACAO}) AS toques_automacao_antes
       FROM l2c c
+      JOIN base b2 ON b2.lead_id = c.lead_id
       LEFT JOIN ${wh.t('silver', 'fact_engagement')} f ON f.contact_id = c.contact_id
       GROUP BY 1
     ),
@@ -719,6 +762,8 @@ function coorteCTE(pipes) {
               OR (SELECT c.c FROM canon c WHERE c.sid = b.stage_id) = 'desqualificado') AS desqualificado,
              IFNULL(a.toques_manuais, 0)      AS toques_manuais,
              IFNULL(a.toques_automacao, 0)    AS toques_automacao,
+             IFNULL(a.toques_manuais_antes, 0)   AS toques_manuais_antes,
+             IFNULL(a.toques_automacao_antes, 0) AS toques_automacao_antes,
              IFNULL(a.ligacoes_conectadas, 0) AS ligacoes_conectadas,
              IFNULL(a.emails_enviados, 0)     AS emails_enviados,
              IFNULL(a.linkedin_enviados, 0)   AS linkedin_enviados,
@@ -740,8 +785,15 @@ function coorteCTE(pipes) {
              ${DIM_SQL.tier}   AS dim_tier,
              ${DIM_SQL.vidas}  AS dim_vidas,
              ${DIM_SQL.origem} AS dim_origem,
+             -- PARTIÇÃO MECE de 4 buckets, em ORDEM DE PRIORIDADE — a soma dos quatro
+             -- é criados, e isso está afirmado em teste. O que sabemos DEPOIS da
+             -- criação manda; o herdado só entra quando não há nada depois.
              toques_manuais > 0 AS atividade_real,
              toques_manuais = 0 AND toques_automacao > 0 AS so_automacao,
+             toques_manuais = 0 AND toques_automacao = 0
+               AND (toques_manuais_antes > 0 OR toques_automacao_antes > 0) AS toque_herdado,
+             toques_manuais = 0 AND toques_automacao = 0
+               AND toques_manuais_antes = 0 AND toques_automacao_antes = 0 AS nunca_tocado,
              max_rank >= 1 AS atingiu_tentativa_etapa,
              max_rank >= 2 AS atingiu_conectado_etapa
       FROM flat f
@@ -773,7 +825,8 @@ async function coorteAgregada(pipes, since, until) {
            COUNTIF(atingiu_tentativa_etapa) AS por_etapa,
            COUNTIF(atingiu_tentativa_etapa AND atividade_real) AS ambos,
            COUNTIF(so_automacao) AS so_automacao,
-           COUNTIF(NOT atividade_real AND NOT so_automacao) AS nunca_tocados,
+           COUNTIF(toque_herdado) AS toque_herdado,
+           COUNTIF(nunca_tocado) AS nunca_tocados,
            COUNTIF(qualificado) AS qualificados,
            COUNTIF(deal_id IS NOT NULL) AS com_deal,
            COUNTIF(desqualificado) AS desqualificados
@@ -794,6 +847,7 @@ async function coorteAgregada(pipes, since, until) {
       por_etapa: wh.num(r.por_etapa),
       ambos: wh.num(r.ambos),
       so_automacao: wh.num(r.so_automacao),
+      toque_herdado: wh.num(r.toque_herdado),
       nunca_tocados: wh.num(r.nunca_tocados),
       qualificados: wh.num(r.qualificados),
       com_deal: wh.num(r.com_deal),
@@ -816,8 +870,10 @@ async function coorteDetalhe(pipes, since, until) {
            motivo_desqualificacao, deal_id, company_id, company_name,
            colaboradores, vidas, tier_colaboradores,
            dim_porte, dim_tier, dim_vidas, dim_origem,
-           atividade_real, so_automacao, atingiu_tentativa_etapa, atingiu_conectado_etapa,
+           atividade_real, so_automacao, toque_herdado, nunca_tocado,
+           atingiu_tentativa_etapa, atingiu_conectado_etapa,
            qualificado, desqualificado, toques_manuais, toques_automacao,
+           toques_manuais_antes, toques_automacao_antes,
            ligacoes_conectadas, emails_enviados, linkedin_enviados, whatsapp_manual, reunioes
     FROM dim
     ORDER BY criado DESC
@@ -838,8 +894,15 @@ async function coorteDetalhe(pipes, since, until) {
       desqualificado: wh.bool(r.desqualificado),
       atividade_real: wh.bool(r.atividade_real),
       so_automacao: wh.bool(r.so_automacao),
+      toque_herdado: wh.bool(r.toque_herdado),
+      nunca_tocado: wh.bool(r.nunca_tocado),
       toques_manuais: wh.num(r.toques_manuais),
       toques_automacao: wh.num(r.toques_automacao),
+      // Toque no CONTATO anterior ao lead. Os DOIS viajam: se só o manual viajasse, o
+      // lead cujo único histórico é automação pré-lead cairia em "✖ nenhum toque" no
+      // drill — afirmação de ausência falsa, por ausência de CAMPO e não de toque.
+      toques_manuais_antes: wh.num(r.toques_manuais_antes),
+      toques_automacao_antes: wh.num(r.toques_automacao_antes),
       // Por canal — o drill nomeia o canal em vez de afirmar ausência sem universo.
       ligacoes_conectadas: wh.num(r.ligacoes_conectadas),
       emails_enviados: wh.num(r.emails_enviados),
@@ -859,6 +922,77 @@ async function coorteDetalhe(pipes, since, until) {
       dim_vidas: wh.str(r.dim_vidas), dim_origem: wh.str(r.dim_origem),
     })),
   };
+}
+
+/**
+ * TRABALHO NA JANELA — o que a pessoa fez no período, fora da coorte.
+ *
+ * Existe porque a coorte responde outra pergunta e o corte por BDR fazia a tela
+ * mentir por omissão. A coorte é "dos leads CRIADOS na janela, em quantos se falou" —
+ * régua certa para atributo de lead (porte, tier, vidas, origem), porque o atributo
+ * nasce com o lead. Para PESSOA ela é enganosa: BDR que trabalha carteira antiga
+ * aparece com denominador minúsculo, e BDR que não criou nada **desaparece da tabela**.
+ *
+ * Auditoria de caso do dono (11/08, ago/26): Gabriele Almeida aparecia com "criou 5,
+ * falou com 5" — e no mesmo período tocou **41 leads com 64 toques**. Pior, o
+ * `GROUP BY` da coorte simplesmente não emitia linha para quem criou zero: **Cíntia
+ * Rodrigues (35 leads / 66 toques), Anderson Souza (12/27), Thauan Pontes (6/10) e
+ * Yokyko Muramoto (6/9) estavam ausentes da tabela** com trabalho medido no armazém.
+ * Ausência lida como "não fez nada" é o mesmo defeito do "✖ sem toque" do Rui
+ * Medeiros, na dimensão de gente.
+ *
+ * ATRIBUIÇÃO POR QUEM TOCOU (`fact_engagement.owner_id`), não pelo dono do lead — a
+ * coluna responde "o que ESTA pessoa fez". A diferença é material e não teórica: dos
+ * 1.585 toques de ago/26 no recorte, **378 (24%) foram feitos por alguém diferente do
+ * dono atual do lead**. Creditar pelo dono daria a uma BDR o toque que outra fez.
+ * A coluna `criados` continua sendo por dono do lead — são réguas diferentes de
+ * propósito, e ambas estão declaradas em `premissas.trabalho_na_janela`.
+ */
+async function trabalhoNaJanela(pipes, since, until) {
+  const { rows } = await wh.query(`
+    WITH l AS (
+      SELECT lead_id FROM ${wh.t('silver', 'dim_lead')}
+      WHERE is_current AND pipeline_id IN (${sqlList(pipes)})
+    ),
+    l2c AS (
+      SELECT b.from_id AS lead_id, ANY_VALUE(b.to_id) AS contact_id
+      FROM ${wh.t('silver', 'bridge_association')} b JOIN l ON l.lead_id = b.from_id
+      WHERE b.from_object='lead' AND b.to_object='contact' AND b.is_active GROUP BY 1
+    ),
+    -- engagement_id viaja porque UM CONTATO PODE TER VÁRIOS LEADS: o join
+    -- toque→contato→lead multiplica o mesmo toque por quantos leads o contato tem.
+    -- Sem o DISTINCT, Gabriele Almeida aparecia com 173 toques tendo feito 168 —
+    -- inflação de 3% que cresce com o reuso de contato, e infla justamente quem
+    -- trabalha a mesma base mais de uma vez.
+    tq AS (
+      SELECT DISTINCT f.owner_id, c.lead_id, f.engagement_id
+      FROM l2c c
+      JOIN ${wh.t('silver', 'fact_engagement')} f ON f.contact_id = c.contact_id
+      WHERE DATE(f.occurred_at, 'America/Sao_Paulo') BETWEEN DATE(@since) AND DATE(@until)
+        AND ${ATIV_MANUAL}
+    )
+    SELECT 'owner' AS escopo, owner_id,
+           COUNT(DISTINCT lead_id) AS leads, COUNT(DISTINCT engagement_id) AS toques
+    FROM tq GROUP BY 1, 2
+    UNION ALL
+    -- O total do time NÃO é a soma das linhas: lead tocado por dois BDRs entraria duas
+    -- vezes. Sai daqui, com DISTINCT sobre o time inteiro.
+    SELECT 'time' AS escopo, NULL,
+           COUNT(DISTINCT lead_id), COUNT(DISTINCT engagement_id) FROM tq
+  `, [
+    { name: 'since', type: 'DATE', value: since },
+    { name: 'until', type: 'DATE', value: until },
+  ]);
+  const porOwner = {};
+  let semDono = { leads: 0, toques: 0 };
+  let time = { leads: 0, toques: 0 };
+  rows.forEach(r => {
+    const v = { leads: wh.num(r.leads), toques: wh.num(r.toques) };
+    if (wh.str(r.escopo) === 'time') { time = v; return; }
+    const id = wh.str(r.owner_id);
+    if (!id) semDono = v; else porOwner[id] = v;
+  });
+  return { porOwner, semDono, time };
 }
 
 /** Contraprova ao vivo: Search API por etapa (barata, `total` sem paginar). */
@@ -919,13 +1053,14 @@ module.exports = async (req, res) => {
     }
 
     // A atividade vem PRIMEIRO porque a régua é única e a coorte depende dela.
-    const [snap, wf, mac, ativ, agg, det, owners] = await Promise.all([
+    const [snap, wf, mac, ativ, agg, det, trab, owners] = await Promise.all([
       snapshot(pipes),
       waterfall(pipes, since, until),
       macro(pipes, since, until),
       atividade(pipes, since, until),
       coorteAgregada(pipes, since, until),   // GROUP BY no BigQuery
       coorteDetalhe(pipes, since, until),    // detalhe capado, para o drill
+      trabalhoNaJanela(pipes, since, until), // o que a PESSOA fez, fora da coorte
       whq.ownerMap(),
     ]);
 
@@ -974,22 +1109,50 @@ module.exports = async (req, res) => {
 
     // A dimensão BDR vem do BQ por owner_id; colapsar em nome canônico é aqui, porque
     // é o JS que conhece o roster (dois owner_ids podem ser o mesmo BDR por alias).
+    const ZERO_COORTE = () => ({ criados: 0, com_atividade: 0, por_etapa: 0, ambos: 0,
+      so_automacao: 0, toque_herdado: 0, nunca_tocados: 0, qualificados: 0, com_deal: 0,
+      desqualificados: 0 });
+    const CAMPOS_COORTE = Object.keys(ZERO_COORTE());
+
     const porDimensao = { ...agg };
     if (agg.bdr) {
       const m = {};
+      const linha = k => (m[k] = m[k] || { valor: k, ...ZERO_COORTE(), trab_leads: 0, trab_toques: 0 });
       agg.bdr.forEach(r => {
-        const k = bdrDe(r.valor);
-        const a = m[k] = m[k] || { valor: k, criados: 0, com_atividade: 0, por_etapa: 0, ambos: 0,
-          so_automacao: 0, nunca_tocados: 0, qualificados: 0, com_deal: 0, desqualificados: 0 };
-        Object.keys(a).forEach(f => { if (f !== 'valor') a[f] += r[f]; });
+        const a = linha(bdrDe(r.valor));
+        CAMPOS_COORTE.forEach(f => { a[f] += r[f] || 0; });
       });
-      porDimensao.bdr = Object.values(m);
+
+      // TRABALHO NA JANELA colado na mesma linha. É o que impede a tabela de dizer
+      // "criou 5, falou com 5" para quem tocou 41 leads no mesmo período.
+      //
+      // Colapsar por nome soma `leads` de owner_ids distintos: BDR com 2 ids (Cíntia,
+      // 86900152 legado + 87213208 ativo) pode contar duas vezes um lead tocado pelos
+      // dois. Declarado em `divergencias_conhecidas.trabalho_multi_owner_id` — o id
+      // legado não tem linhas no BQ, então hoje o efeito medido é zero.
+      Object.keys(trab.porOwner).forEach(id => {
+        const a = linha(bdrDe(id));
+        a.trab_leads  += trab.porOwner[id].leads;
+        a.trab_toques += trab.porOwner[id].toques;
+      });
+
+      // O ROSTER INTEIRO GANHA LINHA, mesmo zerado. Linha ausente lê como "não fez
+      // nada" e é indistinguível de "não foi medido"; linha em zero é uma afirmação.
+      BDR_TEAM.forEach(n => linha(n));
+
+      // `roster` separa quem é BDR de quem só apareceu como dono de lead (hoje o
+      // Placement com 7 criados, e BDR fora do BDR_TEAM como Raina Cândido). Sem a
+      // marca, a tabela "BDR" credita a gente que não é do time.
+      porDimensao.bdr = Object.values(m).map(r => ({ ...r, roster: BDR_TEAM.indexOf(r.valor) >= 0 }));
     }
 
     // Os totais saem da AGREGAÇÃO, nunca da lista capada — é isso que faz a tabela
-    // continuar certa quando o detalhe é truncado.
+    // continuar certa quando o detalhe é truncado. Só campos NUMÉRICOS entram: somar
+    // `roster` daria contagem de gente disfarçada de métrica.
     const tot = (porDimensao.bdr || []).reduce((a, r) => {
-      Object.keys(r).forEach(f => { if (f !== 'valor') a[f] = (a[f] || 0) + r[f]; });
+      Object.keys(r).forEach(f => {
+        if (typeof r[f] === 'number') a[f] = (a[f] || 0) + r[f];
+      });
       return a;
     }, {});
     const n = tot.criados || 0;
@@ -1050,10 +1213,23 @@ module.exports = async (req, res) => {
           etapa_sem_atividade: (tot.por_etapa || 0) - (tot.ambos || 0),
           atividade_sem_etapa: (tot.com_atividade || 0) - (tot.ambos || 0),
           so_automacao: tot.so_automacao || 0,
+          toque_herdado: tot.toque_herdado || 0,
           nunca_tocados: tot.nunca_tocados || 0,
         },
         qualificados: tot.qualificados || 0,
         com_deal: tot.com_deal || 0,
+      },
+      // O QUE O TIME FEZ NA JANELA, independente da coorte. Vive fora de `coorte` de
+      // propósito: misturar as duas no mesmo objeto é como alguém soma um com o outro.
+      trabalho_na_janela: {
+        camada: 'silver', tabela: 'fact_engagement + bridge_association + dim_lead',
+        atribuicao: 'quem TOCOU (fact_engagement.owner_id), não o dono do lead',
+        // DISTINCT sobre o time, não soma das linhas: lead tocado por dois BDRs conta
+        // uma vez aqui e uma vez em cada linha, e as duas coisas estão certas.
+        leads_tocados: trab.time.leads,
+        toques: trab.time.toques,
+        soma_das_linhas: { leads: tot.trab_leads || 0, toques: tot.trab_toques || 0 },
+        sem_dono_no_toque: trab.semDono,
       },
       desqualificacoes: desq.slice(0, DESQ_TETO),
       desqualificacoes_total: desq.length,
@@ -1071,6 +1247,9 @@ module.exports = async (req, res) => {
         duas_reguas_de_contato: 'A tela mostra as DUAS e não escolhe. Régua de ETAPA = chegou a Tentativa+. Régua de ATIVIDADE REAL = ligação conectada OU e-mail enviado OU LinkedIn enviado (nota não conta). Medido em jul/26: 89,4% contra 46,7%, com 1.009 leads movidos para Tentativa sem UM toque no CRM. A premissa "teve que passar, senão não tem como" não se sustenta.',
         automacao_nao_e_esforco: 'Automação não é esforço do BDR: movimentação com source_type AUTOMATION_PLATFORM/INTEGRATION aparece como "Automação"/"Integração" no autor, nunca creditada a um BDR. Escala medida: 24% de TODAS as movimentações de etapa não têm autor humano (1.812 de 7.568 desde 01/07) — mas isso NÃO se distribui igual: em jul/26 as desqualificações foram 1.499 por CRM_UI e 1 por integração, ou seja a automação move lead ADIANTE (inscrição em sequência), quase nunca desqualifica. Ler os 24% como "um quarto das desqualificações é robô" seria errado.',
         dono_no_instante: 'Atribuição pelo dono NO INSTANTE do movimento (fact_owner_assignment), não pelo dono atual — em 184/184 casos rastreáveis a troca de dono veio DEPOIS do toque, então "dono atual" reescreve o passado.',
+        toque_apos_criacao: 'CORREÇÃO de 11/08/2026: o toque só conta se for POSTERIOR à criação do lead. A régua liga toque→lead pelo CONTATO (fact_engagement não tem lead_id) e o contato tem vida anterior ao lead — sem o limite, "falou com" contava trabalho de outro ciclo, às vezes de outra pessoa. Efeito na coorte de ago/26 (258 leads): 210 → 191, ou seja 19 leads (9%) cuja única prova de contato era um toque anterior à existência do lead, o mais antigo de 18/07/2024. Por pessoa o efeito muda a leitura: Raina Cândido saía com 2 de 11 e o número real é 0; Allan Valença 31 → 25; Gabriele Almeida 5 → 4. Nos leads movimentados na janela o corte é 535 → 510. O toque anterior NÃO é jogado fora: vira o bucket toque_herdado e o campo toques_manuais_antes no drill.',
+        trabalho_na_janela: 'A tabela tem DUAS réguas lado a lado e elas respondem perguntas diferentes. "Criaram/Falaram com" é COORTE — dos leads criados na janela, em quantos se falou — e é atribuída ao DONO do lead. "Trabalhou na janela" é o que a pessoa fez no período em leads de qualquer safra, atribuída a QUEM TOCOU (fact_engagement.owner_id). A segunda existe porque a primeira, no corte por pessoa, fazia a tela mentir por omissão: em ago/26 Gabriele Almeida aparecia com "criou 5, falou com 5" tendo tocado 41 leads com 64 toques, e Cíntia Rodrigues (35 leads/66 toques), Anderson Souza (12/27), Thauan Pontes (6/10) e Yokyko Muramoto (6/9) NÃO TINHAM LINHA na tabela, porque criaram zero e o GROUP BY não emite linha para zero. Atribuir por quem tocou não é detalhe: dos 1.585 toques de ago/26, 378 (24%) foram feitos por alguém diferente do dono atual do lead. Coorte é a régua certa para atributo de LEAD (porte, tier, vidas, origem); para PESSOA ela precisa da coluna de trabalho ao lado.',
+        roster_sempre_visivel: `Todos os ${BDR_TEAM.length} BDRs do roster canônico ganham linha, mesmo zerada, e a coluna roster marca quem é do time. Linha ausente é indistinguível de "não foi medido" e lê como "não fez nada"; linha em zero é uma afirmação verificável. Dono de lead fora do roster (hoje Placement com 7 criados, e BDR do portal fora do BDR_TEAM como Raina Cândido) aparece com roster=false em vez de ser creditado como BDR.`,
         motivo_desqualificacao: 'Existe no objeto Leads (17 valores). Preenchimento desigual: principal 99,2%, Backup 34,4%, DIAGNÓSTICO SITE 0,0% (1.056 desqualificados sem nenhum motivo). "(sem motivo)" no drill do Diagnóstico Site é o dado, não falha da tela.',
         tier_do_bronze: 'tier_colaboradores e numero_de_vidas são lidos de bronze.raw_contact porque NÃO estão projetados em dim_contact (10.946 e 10.591 no portal, 0 alcançáveis pelo silver). MEDIDA TEMPORÁRIA: a correção é a projeção no 10_silver.sql (F0).',
         tier_vidas_nao_existe: 'Não existe propriedade tier_vidas em nenhum objeto do portal. Qualquer faixa de vidas é DERIVAÇÃO, e as faixas não foram decididas.',
@@ -1082,8 +1261,11 @@ module.exports = async (req, res) => {
       },
       divergencias_conhecidas: {
         preenchimento_dimensoes: 'vidas na empresa 6,9%, porte 11,4%, segmento 0,06%, employees 65,1%. Cortes por vidas/porte são majoritariamente "(sem valor)" e a tela mostra essa categoria em vez de esconder.',
+        origem_contaminada: 'ACHADO EM 11/08/2026, NÃO CORRIGIDO AQUI: a dimensão "Origem" tem 10.876 de 16.887 leads (64%) com valor BOOLEANO — "true" 9.836 e "false" 1.040 — vindos de axenya_origem_canonica no objeto Leads. Não são categorias de origem; são lixo de mapeamento de propriedade no portal/ETL. O corte por Origem é, hoje, majoritariamente ILEGÍVEL, e "true" NÃO deve ser lido como uma origem. Consertar exige mexer na projeção do silver (fora do escopo desta tela) ou trocar a fonte por hs_object_source_detail_1 + detalhes_fonte. Declarado em vez de escondido: esconder faria o corte parecer análise.',
         lead_multi_contato: `Leads com mais de 1 contato ativo nesta janela: ${ativ.multiContato}. A régua de atividade usa ANY_VALUE do contato; com 1:1 (18.209 de 18.210) o efeito é nulo, mas não é zero por contrato.`,
         autor_join: 'updated_by_user_id casa com dim_owner.owner_id em 17/17 usuários medidos. É coincidência medida, não contrato do HubSpot — o id cru viaja no payload para auditoria.',
+        trabalho_multi_owner_id: 'Em "Trabalhou na janela" os leads distintos são contados por owner_id e depois somados por nome canônico. BDR com dois owner_ids (Cíntia: 86900152 legado + 87213208 ativo) contaria duas vezes um lead tocado pelos dois ids. O id legado não tem linhas no BQ, então o efeito medido hoje é ZERO — mas não é zero por contrato.',
+        trabalho_dono_diferente: `Em ago/26, ${trab.semDono.toques || 0} toques na janela vieram de engajamento sem owner_id (${trab.semDono.leads || 0} leads) e não são atribuíveis a ninguém. Eles entram no total do time e em nenhuma linha de pessoa — por isso a soma das linhas pode ficar abaixo do total.`,
         etapa_derivada_vs_dim: 'A etapa derivada de fact_stage_entry discorda de dim_lead em 2 de 18.296 leads (0,01%). Afeta o saldo do macro nessa ordem de grandeza e e parte do residuo declarado.',
         etapas_nao_mapeadas: `Movimentos com etapa fora do mapa canônico: ${wf.naoMapeadas}. Etapa nova no portal aparece como "(etapa não mapeada)" em vez de cair fora em silêncio.`,
       },
