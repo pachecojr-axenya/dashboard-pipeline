@@ -149,6 +149,60 @@ async function run() {
   await clickTab('Arquitetura API');
   const apiOk = await evaluate('document.body.textContent.includes("Contrato de métricas") && document.body.textContent.includes("Qualidade da atribuição")');
 
+  // V10 | as abas do macro ao granular. HTTP 200 e aba clicável não provam nada
+  // aqui: cada uma tem de exibir o número que só existe se a coluna nova chegou.
+  await clickTab('Origem');
+  const originOk = await evaluate(`(function(){
+    var txt = document.body.textContent;
+    return txt.includes('Origem do disparo') && (txt.includes('Inbox Sales.ai') || txt.includes('API de deployment')) &&
+      txt.includes('Natureza');
+  })()`);
+
+  await clickTab('Tentativas por lead');
+  const attemptsOk = await evaluate(`(function(){
+    var txt = document.body.textContent;
+    return txt.includes('Leads distintos') && txt.includes('1ª tentativa') && txt.includes('Intervalo mediano') &&
+      txt.includes('Leads com mais tentativas');
+  })()`);
+  // O pseudônimo tem de ser hash curto, nunca telefone. 11 ou 13 dígitos seguidos
+  // na coluna de lead seria justamente o vazamento que a projeção proíbe.
+  const leadPseudonymOk = await evaluate(`(function(){
+    var codes = Array.prototype.slice.call(document.querySelectorAll('table tbody tr td code'));
+    if (!codes.length) return true;
+    return codes.every(function(c){ return /^[0-9a-f]{12}$/.test(c.textContent.trim()); });
+  })()`);
+
+  await clickTab('Latência');
+  const latencyOk = await evaluate(`(function(){
+    var txt = document.body.textContent;
+    return txt.includes('Latência por etapa') && txt.includes('Envio até entrega') && txt.includes('p90');
+  })()`);
+
+  await clickTab('HSM');
+  const hsmOk = await evaluate(`(function(){
+    var txt = document.body.textContent;
+    return txt.includes('Cobertura do template') && txt.includes('hsm_id');
+  })()`);
+
+  await clickTab('Leitura');
+  const readOk = await evaluate(`(function(){
+    var txt = document.body.textContent;
+    return txt.includes('read receipt') || txt.includes('Nenhuma mensagem de conversa');
+  })()`);
+
+  await clickTab('Reconciliação');
+  const parityOk = await evaluate(`(function(){
+    var txt = document.body.textContent;
+    return txt.includes('Pré-agregado') && txt.includes('Régua de dia') &&
+      txt.includes('Desfechos que a fato de status não expressa');
+  })()`);
+
+  await clickTab('Erros');
+  const errorsOk = await evaluate(`(function(){
+    var txt = document.body.textContent;
+    return txt.includes('Não entregues') && (txt.includes('concentração no pior flow') || txt.includes('Nenhuma tentativa'));
+  })()`);
+
   const jsError = await evaluate('window.__trebleSmokeError || null');
   assert.strictEqual(jsError, null);
 
@@ -163,6 +217,14 @@ async function run() {
     agentsOk: ${agentsOk},
     timelineOk: ${timelineOk},
     apiOk: ${apiOk},
+    originOk: ${originOk},
+    attemptsOk: ${attemptsOk},
+    leadPseudonymOk: ${leadPseudonymOk},
+    latencyOk: ${latencyOk},
+    hsmOk: ${hsmOk},
+    readOk: ${readOk},
+    parityOk: ${parityOk},
+    errorsOk: ${errorsOk},
     stateHidden: document.querySelector('#state').classList.contains('hidden'),
     contentVisible: !document.querySelector('#content').classList.contains('hidden')
   })`));
@@ -176,11 +238,19 @@ async function run() {
   assert.strictEqual(result.agentsOk, true);
   assert.strictEqual(result.timelineOk, true);
   assert.strictEqual(result.apiOk, true);
+  assert.strictEqual(result.originOk, true, 'aba Origem deve separar inbox Sales.ai de disparo por API');
+  assert.strictEqual(result.attemptsOk, true, 'aba Tentativas por lead deve mostrar leads distintos e intervalo');
+  assert.strictEqual(result.leadPseudonymOk, true, 'lead na tela tem de ser hash de 12 hex, nunca telefone');
+  assert.strictEqual(result.latencyOk, true, 'aba Latência deve mostrar p50/p90 por etapa');
+  assert.strictEqual(result.hsmOk, true, 'aba HSM deve declarar a cobertura e o motivo dela ser parcial');
+  assert.strictEqual(result.readOk, true, 'aba Leitura deve renderizar taxa ou dizer que não há base');
+  assert.strictEqual(result.parityOk, true, 'aba Reconciliação deve mostrar régua de dia e desfechos do pré-agregado');
+  assert.strictEqual(result.errorsOk, true, 'aba Erros deve mostrar concentração por flow');
   assert.strictEqual(result.stateHidden, true);
   assert.strictEqual(result.contentVisible, true);
 
   ws.close();
-  console.log(`OK | smoke browser Treble DW V2 | ${JSON.stringify(result)}`);
+  console.log(`OK | smoke browser Treble DW V10 | ${JSON.stringify(result)}`);
 }
 
 run().finally(() => {

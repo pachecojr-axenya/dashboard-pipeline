@@ -133,25 +133,27 @@
 
   function loadFilters() {
     try {
-      var old = JSON.parse(localStorage.getItem('bdr_treble_filters_v3') || '{}');
-      var saved = JSON.parse(localStorage.getItem('bdr_treble_filters_v4') || '{}');
+      var old = JSON.parse(localStorage.getItem('bdr_treble_filters_v4') || '{}');
+      var saved = JSON.parse(localStorage.getItem('bdr_treble_filters_v5') || '{}');
       return {
         preset: saved.preset || old.preset || 'today',
         from: saved.from || todayIso(),
         to: saved.to || todayIso(),
-        agent: saved.agent || old.bdr || '',
+        agent: saved.agent || old.agent || '',
         flow: saved.flow || old.flow || '',
-        status: saved.status || '',
+        status: saved.status || old.status || '',
+        origin: saved.origin || '',
+        hsm: saved.hsm || '',
         q: saved.q || old.q || ''
       };
     } catch (e) {
-      return { preset: 'today', from: todayIso(), to: todayIso(), agent: '', flow: '', status: '', q: '' };
+      return { preset: 'today', from: todayIso(), to: todayIso(), agent: '', flow: '', status: '', origin: '', hsm: '', q: '' };
     }
   }
 
   function saveFilters() {
     try {
-      localStorage.setItem('bdr_treble_filters_v4', JSON.stringify(state.filters));
+      localStorage.setItem('bdr_treble_filters_v5', JSON.stringify(state.filters));
     } catch (e) {}
   }
 
@@ -187,6 +189,8 @@
     if (state.filters.agent) parts.push('Agente: ' + state.filters.agent);
     if (state.filters.flow) parts.push('Flow: ' + state.filters.flow);
     if (state.filters.status) parts.push('Status: ' + state.filters.status);
+    if (state.filters.origin) parts.push('Origem: ' + state.filters.origin);
+    if (state.filters.hsm) parts.push('Template: ' + state.filters.hsm);
     if (state.filters.q) parts.push('Busca: ' + state.filters.q);
     return parts;
   }
@@ -204,7 +208,7 @@
   // "Todos"), mas continua cortando as linhas. Resultado: tela vazia sem causa
   // visível. Aqui o filtro órfão é descartado e o descarte é anunciado.
   function pruneGhostFilters(rows) {
-    var pairs = [['agent', 'agent'], ['flow', 'flow'], ['status', 'statusLabel']];
+    var pairs = [['agent', 'agent'], ['flow', 'flow'], ['status', 'statusLabel'], ['origin', 'originLabel'], ['hsm', 'hsm']];
     var dropped = [];
     pairs.forEach(function (pair) {
       var want = state.filters[pair[0]];
@@ -260,8 +264,12 @@
       opts(unique(state.rows, 'flow'), state.filters.flow, 'Todos') + '</select></div>';
     h += '<div class="filter"><label for="f-status">Status</label><select id="f-status">' +
       opts(unique(state.rows, 'statusLabel'), state.filters.status, 'Todos') + '</select></div>';
+    h += '<div class="filter"><label for="f-origin">Origem</label><select id="f-origin">' +
+      opts(unique(state.rows, 'originLabel'), state.filters.origin, 'Todas') + '</select></div>';
+    h += '<div class="filter"><label for="f-hsm">Template</label><select id="f-hsm">' +
+      opts(unique(state.rows, 'hsm'), state.filters.hsm, 'Todos') + '</select></div>';
     h += '<div class="filter"><label for="f-q">Busca</label>' +
-      '<input id="f-q" value="' + esc(state.filters.q) + '" placeholder="flow, agente, status"></div>';
+      '<input id="f-q" value="' + esc(state.filters.q) + '" placeholder="flow, agente, status, template"></div>';
     h += '<div class="filter" style="display:flex;align-items:end;gap:.5rem">' +
       '<button class="btn" id="f-clear">Limpar</button><button class="btn primary" id="f-refresh">Refresh</button></div>';
 
@@ -297,6 +305,8 @@
     bind('f-agent', 'agent');
     bind('f-flow', 'flow');
     bind('f-status', 'status');
+    bind('f-origin', 'origin');
+    bind('f-hsm', 'hsm');
 
     $('f-q').oninput = function () {
       state.filters.q = this.value;
@@ -307,6 +317,8 @@
       state.filters.agent = '';
       state.filters.flow = '';
       state.filters.status = '';
+      state.filters.origin = '';
+      state.filters.hsm = '';
       state.filters.q = '';
       saveFilters();
       render();
@@ -320,7 +332,10 @@
       if (state.filters.agent && m.agent !== state.filters.agent) return false;
       if (state.filters.flow && m.flow !== state.filters.flow) return false;
       if (state.filters.status && m.statusLabel !== state.filters.status) return false;
-      if (q && [m.flow, m.agent, m.status, m.statusLabel, m.audience, m.action].join(' ').toLowerCase().indexOf(q) < 0) return false;
+      if (state.filters.origin && m.originLabel !== state.filters.origin) return false;
+      if (state.filters.hsm && m.hsm !== state.filters.hsm) return false;
+      if (q && [m.flow, m.agent, m.status, m.statusLabel, m.audience, m.action, m.hsm, m.originLabel]
+        .join(' ').toLowerCase().indexOf(q) < 0) return false;
       return true;
     });
   }
@@ -435,6 +450,199 @@
     }).sort(function (a, b) { return b.attempts - a.attempts; });
   }
 
+  // Duração legível. Segundo cru em tabela de latência é ilegível a partir de
+  // uns poucos minutos, e a leitura que interessa (p50 de 10s vs p90 de 35s)
+  // morre no meio de cinco dígitos.
+  function dur(sec) {
+    if (sec == null) return 'Não medido';
+    var n = Number(sec);
+    if (!isFinite(n) || n < 0) return 'Não medido';
+    if (n < 60) return n.toLocaleString('pt-BR', { maximumFractionDigits: 0 }) + 's';
+    if (n < 3600) return Math.round(n / 60) + ' min';
+    if (n < 86400) return Math.round(n / 3600) + 'h';
+    return Math.round(n / 86400) + ' dias';
+  }
+
+  function durHours(h) {
+    if (h == null) return 'Não medido';
+    var n = Number(h);
+    if (!isFinite(n) || n < 0) return 'Não medido';
+    if (n < 24) return n.toLocaleString('pt-BR', { maximumFractionDigits: 0 }) + 'h';
+    return Math.round(n / 24) + ' dias';
+  }
+
+  function plural(n, singular, pluralForm) {
+    return fmt(n) + ' ' + (Math.abs(Number(n)) === 1 ? singular : pluralForm);
+  }
+
+  function ratesOf(o) {
+    o.deliveryRate = o.attempts ? o.delivered / o.attempts : null;
+    o.responseRate = o.attempts ? o.replied / o.attempts : null;
+    return o;
+  }
+
+  function bucketOf(map, key, seed) {
+    map[key] = map[key] || Object.assign({ attempts: 0, delivered: 0, notDelivered: 0, replied: 0 }, seed || {});
+    return map[key];
+  }
+
+  function tally(t, r) {
+    t.attempts += 1;
+    if (r.delivered) t.delivered += 1;
+    else t.notDelivered += 1;
+    if (r.replied) t.replied += 1;
+  }
+
+  function groupOrigin(rows) {
+    var m = {};
+    rows.forEach(function (r) {
+      var t = bucketOf(m, r.origin || 'DESCONHECIDA', {
+        origin: r.origin || 'DESCONHECIDA',
+        label: r.originLabel || r.origin || 'Origem desconhecida',
+        description: r.originDescription || '',
+        manual: !!r.originManual,
+        flows: {},
+        leads: {}
+      });
+      tally(t, r);
+      t.flows[r.flow] = true;
+      if (r.leadKey) t.leads[r.leadKey] = true;
+    });
+    return Object.keys(m).map(function (k) {
+      var o = m[k];
+      o.flowsCount = Object.keys(o.flows).length;
+      o.leadsCount = Object.keys(o.leads).length;
+      delete o.flows;
+      delete o.leads;
+      return ratesOf(o);
+    }).sort(function (a, b) { return b.attempts - a.attempts; });
+  }
+
+  var ATTEMPT_ORDER = ['1', '2', '3', '4+'];
+
+  function groupAttempt(rows) {
+    var m = {};
+    rows.forEach(function (r) {
+      var key = r.attemptBucket || '1';
+      var t = bucketOf(m, key, { bucket: key, label: r.attemptBucketLabel || key, gaps: [] });
+      tally(t, r);
+      if (r.gapPrevHours != null) t.gaps.push(r.gapPrevHours);
+    });
+    return ATTEMPT_ORDER.filter(function (k) { return m[k]; }).map(function (k) {
+      var o = m[k];
+      o.gaps.sort(function (a, b) { return a - b; });
+      o.gapMedian = o.gaps.length ? o.gaps[Math.max(0, Math.ceil(0.5 * o.gaps.length) - 1)] : null;
+      delete o.gaps;
+      return ratesOf(o);
+    });
+  }
+
+  function leadStats(rows) {
+    var byLead = {};
+    rows.forEach(function (r) {
+      var k = r.leadKey || 'sem-chave';
+      byLead[k] = byLead[k] || { leadKey: k, attemptsInPeriod: 0, attemptsAllTime: r.leadAttemptsTotal || 1, delivered: 0, replied: 0, flows: {}, outlier: !!r.leadOutlier };
+      var l = byLead[k];
+      l.attemptsInPeriod += 1;
+      l.attemptsAllTime = Math.max(l.attemptsAllTime, r.leadAttemptsTotal || 1);
+      if (r.delivered) l.delivered += 1;
+      if (r.replied) l.replied += 1;
+      l.flows[r.flow] = true;
+    });
+    var leads = Object.keys(byLead).map(function (k) {
+      var l = byLead[k];
+      l.flowsCount = Object.keys(l.flows).length;
+      delete l.flows;
+      return l;
+    });
+    var re = leads.filter(function (l) { return l.attemptsInPeriod > 1; });
+    var out = leads.filter(function (l) { return l.outlier; });
+    return {
+      uniqueLeads: leads.length,
+      attempts: rows.length,
+      attemptsPerLead: leads.length ? rows.length / leads.length : null,
+      reattempted: re.length,
+      reattemptedPct: leads.length ? re.length / leads.length : null,
+      outlierLeads: out.length,
+      outlierAttempts: out.reduce(function (s, l) { return s + l.attemptsInPeriod; }, 0),
+      top: leads.sort(function (a, b) {
+        return b.attemptsInPeriod - a.attemptsInPeriod || b.attemptsAllTime - a.attemptsAllTime;
+      }).slice(0, 15)
+    };
+  }
+
+  function quantile(values, p) {
+    var s = values.filter(function (v) { return v != null; }).sort(function (a, b) { return a - b; });
+    if (!s.length) return null;
+    return s[Math.min(s.length - 1, Math.max(0, Math.ceil(p * s.length) - 1))];
+  }
+
+  function latencyStats(rows) {
+    function block(field) {
+      var vals = rows.map(function (r) { return r[field]; }).filter(function (v) { return v != null; });
+      return { n: vals.length, p50: quantile(vals, 0.5), p90: quantile(vals, 0.9), max: vals.length ? Math.max.apply(null, vals) : null };
+    }
+    return {
+      delivery: block('deliveryLagSec'),
+      response: block('responseLagSec'),
+      gap: block('gapPrevHours')
+    };
+  }
+
+  function groupHsm(rows) {
+    var m = {};
+    var matched = 0;
+    rows.forEach(function (r) {
+      if (!r.hsmMatched) return;
+      matched += 1;
+      var t = bucketOf(m, r.hsm, { hsm: r.hsm, hsmStatus: r.hsmStatus, hsmCategory: r.hsmCategory, hsmType: r.hsmType, flows: {} });
+      tally(t, r);
+      t.flows[r.flow] = true;
+    });
+    var list = Object.keys(m).map(function (k) {
+      var o = m[k];
+      o.flowsCount = Object.keys(o.flows).length;
+      delete o.flows;
+      return ratesOf(o);
+    }).sort(function (a, b) { return b.attempts - a.attempts; });
+    return { matched: matched, total: rows.length, rows: list };
+  }
+
+  function groupErrors(rows) {
+    var fails = rows.filter(function (r) { return r.statusGroup !== 'delivered'; });
+    var m = {};
+    fails.forEach(function (r) {
+      m[r.status] = m[r.status] || {
+        status: r.status,
+        statusLabel: r.statusLabel,
+        statusGroup: r.statusGroup,
+        action: r.action,
+        count: 0,
+        withTimestamp: 0,
+        flows: {},
+        hsmStatuses: {}
+      };
+      var e = m[r.status];
+      e.count += 1;
+      if (r.failedAt) e.withTimestamp += 1;
+      e.flows[r.flow] = (e.flows[r.flow] || 0) + 1;
+      if (r.hsmStatus) e.hsmStatuses[r.hsmStatus] = (e.hsmStatuses[r.hsmStatus] || 0) + 1;
+    });
+    var list = Object.keys(m).map(function (k) {
+      var e = m[k];
+      var flows = Object.keys(e.flows).map(function (f) { return { flow: f, count: e.flows[f] }; })
+        .sort(function (a, b) { return b.count - a.count; });
+      e.topFlows = flows.slice(0, 5);
+      e.flowsCount = flows.length;
+      e.concentration = flows.length ? flows[0].count / e.count : null;
+      e.hsmStatusList = Object.keys(e.hsmStatuses).map(function (s) { return s + ' (' + e.hsmStatuses[s] + ')'; });
+      delete e.flows;
+      delete e.hsmStatuses;
+      return e;
+    }).sort(function (a, b) { return b.count - a.count; });
+    return { total: fails.length, base: rows.length, withTimestamp: fails.filter(function (r) { return !!r.failedAt; }).length, rows: list };
+  }
+
   function kpi(label, value, sub, kind, extraClass) {
     return '<div class="kpi ' + (kind || '') + ' ' + (extraClass || '') + '">' +
       '<div class="label">' + esc(label) + '</div>' +
@@ -532,7 +740,8 @@
       { label: 'Respondidas', value: s.replied, cls: 'warn', loss: responseLoss, lossBase: s.delivered }
     ];
     return '<div class="card span-12"><div class="card-title"><div><h2>Funil de entrega e resposta</h2>' +
-      '<div class="desc">Deltas absolutos e percentuais entre etapas. Leitura não entra porque a fonte não mede.</div></div></div>' +
+      '<div class="desc">Deltas absolutos e percentuais entre etapas. Leitura fica fora deste funil porque a fato de deployment não a mede | ' +
+      'ela existe em outra fato e tem aba própria, com cobertura menor.</div></div></div>' +
       steps.map(function (x, idx) {
         var delta = idx === 0 ? 'Base do período' : ('Perda: ' + fmt(x.loss) + ' | ' + pct(x.lossBase ? x.loss / x.lossBase : null));
         return '<div class="funnel-row"><div class="funnel-name"><b>' + esc(x.label) + '</b><span>' + esc(delta) + '</span></div>' +
@@ -665,10 +874,37 @@
     } else {
       whoTried = leader.agent + ' liderou com ' + fmt(leader.attempts) + ' tentativas.';
     }
+    var origins = groupOrigin(rows);
+    var manualAttempts = rows.filter(function (r) { return r.originManual; }).length;
+    var lead = leadStats(rows);
+    var lat = latencyStats(rows);
+    var parity = (state.raw || {}).parity;
+    var originText = state.dwMode && origins.length
+      ? origins[0].label + ' respondeu por ' + pct(rows.length ? origins[0].attempts / rows.length : null) +
+        ' das tentativas | ' + pct(rows.length ? manualAttempts / rows.length : null) + ' saiu de operação manual.'
+      : 'Origem não disponível nesta fonte.';
+    var leadText = state.dwMode
+      ? fmt(lead.uniqueLeads) + ' pessoas distintas' +
+        (lead.attemptsPerLead ? ' | ' + lead.attemptsPerLead.toLocaleString('pt-BR', { maximumFractionDigits: 2 }) + ' tentativas por lead' : '') +
+        (lead.outlierLeads ? ' | ' + fmt(lead.outlierAttempts) + ' tentativas vêm de número com cara de teste' : '')
+      : 'Grão de lead não disponível nesta fonte.';
+    var latText = state.dwMode && lat.delivery.n
+      ? 'Entrega em ' + dur(lat.delivery.p50) + ' na mediana' +
+        (lat.response.n ? ' | resposta ' + dur(lat.response.p50) + ' depois de entregue' : '')
+      : 'Latência não disponível nesta fonte.';
+    var parityText = parity && parity.available
+      ? (parity.verdict === 'ok'
+        ? 'Pré-agregado da Treble concorda com a fato.'
+        : 'Pré-agregado DISCORDA da fato em ' + parity.worstMetric + '.')
+      : 'Sem segundo caminho nesta carga.';
     var story = '<div class="story-grid context-grid"><div class="story-card"><b>Quem tentou</b><span>' +
       esc(whoTried) + '</span></div>' +
+      '<div class="story-card"><b>De onde saiu</b><span>' + esc(originText) + '</span></div>' +
+      '<div class="story-card"><b>Quantas pessoas</b><span>' + esc(leadText) + '</span></div>' +
       '<div class="story-card"><b>Por que quebrou</b><span>' + (gargalo ? esc(gargalo.statusLabel) + ' concentrou ' + fmt(gargalo.count) + ' casos.' : 'Sem quebras.') + '</span></div>' +
-      '<div class="story-card"><b>Ação</b><span>' + (gargalo ? esc(gargalo.action) : 'Replicar flows com resposta.') + '</span></div></div>';
+      '<div class="story-card"><b>Quanto demorou</b><span>' + esc(latText) + '</span></div>' +
+      '<div class="story-card"><b>Ação</b><span>' + (gargalo ? esc(gargalo.action) : 'Replicar flows com resposta.') + '</span></div>' +
+      '<div class="story-card"><b>Prova independente</b><span>' + esc(parityText) + '</span></div></div>';
     var kpis = '<div class="kpis hierarchy-kpis">' +
       kpi('Tentativas', fmt(s.attempts), 'Hero do período', 'teal', 'hero-kpi') +
       kpi('Entregues', fmt(s.delivered), pct(s.deliveryRate) + ' das tentativas', 'good', 'secondary-kpi') +
@@ -683,11 +919,6 @@
     return '<div class="grid">' + statusComposition(rows) + '</div>';
   }
 
-  function renderFailures(rows) {
-    var fail = rows.filter(function (r) { return r.statusGroup !== 'delivered'; });
-    return '<div class="grid">' + statusComposition(fail) + renderTable(fail, true) + '</div>';
-  }
-
   function renderAudience(rows) {
     var flows = unique(rows, 'flow').map(function (f) {
       var n = rows.filter(function (r) { return r.flow === f; }).length;
@@ -698,19 +929,253 @@
       '<div class="table-wrap"><table><thead><tr><th>Flow</th><th>Tentativas</th></tr></thead><tbody>' + flows + '</tbody></table></div></div>';
   }
 
+  function dwOnlyNote(what) {
+    return '<div class="card span-12"><div class="card-title"><div><h2>' + esc(what) + '</h2>' +
+      '<div class="desc">Disponível somente no warehouse.</div></div></div>' +
+      '<div class="note warn"><b>Indisponível no fallback REST:</b> esta leitura vem de colunas que só existem no ClickHouse ' +
+      '(origem, timestamp de falha, latência, tentativa por lead, template). O fallback trabalha com sessões materializadas e não as tem.</div></div>';
+  }
+
+  // Corte mais macro que a tela não tinha: 70% das tentativas saem do inbox da
+  // Sales.ai, uma por vez, e ficavam somadas com blast por API e carga de CSV
+  // como se fossem a mesma operação.
+  function renderOrigin(rows) {
+    if (!state.dwMode) return '<div class="grid">' + dwOnlyNote('Origem do disparo') + '</div>';
+    var by = groupOrigin(rows);
+    var total = rows.length;
+    var manual = rows.filter(function (r) { return r.originManual; }).length;
+    var bars = by.map(function (o) {
+      return '<div class="stack-seg ' + (o.manual ? 'teal' : 'warn') + '" style="width:' +
+        Math.max(1, (total ? o.attempts / total : 0) * 100) + '%" title="' +
+        esc(o.label + ' | ' + fmt(o.attempts) + ' | ' + pct(total ? o.attempts / total : null)) + '"></div>';
+    }).join('');
+    var trs = by.map(function (o) {
+      return '<tr class="clickable-row" data-drill-field="origin" data-drill-value="' + esc(o.origin) + '">' +
+        '<td><b>' + esc(o.label) + '</b><div class="muted">' + esc(o.origin) + ' | ' + esc(o.description) + '</div></td>' +
+        '<td>' + fmt(o.attempts) + '</td><td>' + pct(total ? o.attempts / total : null) + '</td>' +
+        '<td>' + fmt(o.leadsCount) + '</td><td>' + fmt(o.delivered) + '</td><td>' + pct(o.deliveryRate) + '</td>' +
+        '<td>' + fmt(o.replied) + '</td><td>' + pct(o.responseRate) + '</td><td>' + fmt(o.flowsCount) + '</td>' +
+        '<td>' + (o.manual ? 'Alguém digitou' : 'Automação') + '</td></tr>';
+    }).join('');
+    return '<div class="grid"><div class="card span-12"><div class="card-title"><div><h2>Origem do disparo</h2>' +
+      '<div class="desc">Quem originou cada tentativa | ' + pct(total ? manual / total : null) +
+      ' saiu de operação manual (inbox Sales.ai ou envio simples), o resto é automação nossa.</div></div></div>' +
+      '<div class="stack100">' + bars + '</div>' +
+      '<div class="table-wrap"><table><thead><tr><th>Origem</th><th>Tentativas</th><th>%</th><th>Leads</th>' +
+      '<th>Entregues</th><th>Tx entrega</th><th>Respondidas</th><th>Tx resposta</th><th>Flows</th><th>Natureza</th></tr></thead><tbody>' +
+      trs + '</tbody></table></div></div></div>';
+  }
+
+  // Grão de tentativa POR LEAD. `attemptSeq` é a posição na história da pessoa,
+  // não no recorte, senão a 6ª tentativa de julho apareceria como 1ª em agosto.
+  function renderAttempts(rows) {
+    if (!state.dwMode) return '<div class="grid">' + dwOnlyNote('Tentativas por lead') + '</div>';
+    var st = leadStats(rows);
+    var by = groupAttempt(rows);
+    var kpis = '<div class="kpis hierarchy-kpis">' +
+      kpi('Tentativas', fmt(rows.length), 'Linhas do período', 'teal', 'hero-kpi') +
+      kpi('Leads distintos', fmt(st.uniqueLeads), (st.attemptsPerLead ? st.attemptsPerLead.toLocaleString('pt-BR', { maximumFractionDigits: 2 }) : '—') + ' tentativas por lead', 'good', 'secondary-kpi') +
+      kpi('Levaram mais de uma', fmt(st.reattempted), pct(st.reattemptedPct) + ' dos leads', 'warn', 'secondary-kpi') +
+      kpi('Números suspeitos de teste', fmt(st.outlierLeads), fmt(st.outlierAttempts) + ' tentativas no período', st.outlierLeads ? 'bad' : 'good', 'secondary-kpi') +
+      '</div>';
+    var trs = by.map(function (a) {
+      return '<tr class="clickable-row" data-drill-field="attemptBucket" data-drill-value="' + esc(a.bucket) + '">' +
+        '<td><b>' + esc(a.label) + '</b></td><td>' + fmt(a.attempts) + '</td><td>' + fmt(a.delivered) + '</td>' +
+        '<td>' + pct(a.deliveryRate) + '</td><td>' + fmt(a.replied) + '</td><td>' + pct(a.responseRate) + '</td>' +
+        '<td>' + durHours(a.gapMedian) + '</td></tr>';
+    }).join('');
+    var leadTrs = st.top.map(function (l) {
+      return '<tr class="clickable-row" data-drill-field="leadKey" data-drill-value="' + esc(l.leadKey) + '">' +
+        '<td class="nowrap"><code>' + esc(l.leadKey) + '</code>' + (l.outlier ? '<div class="muted">suspeito de teste</div>' : '') + '</td>' +
+        '<td>' + fmt(l.attemptsInPeriod) + '</td><td>' + fmt(l.attemptsAllTime) + '</td><td>' + fmt(l.delivered) + '</td>' +
+        '<td>' + fmt(l.replied) + '</td><td>' + fmt(l.flowsCount) + '</td></tr>';
+    }).join('');
+    return kpis + '<div class="grid"><div class="card span-12"><div class="card-title"><div><h2>Entrega e resposta por número da tentativa</h2>' +
+      '<div class="desc">Posição da tentativa na história do lead, não no recorte | intervalo é a mediana desde a tentativa anterior.</div></div></div>' +
+      '<div class="table-wrap"><table><thead><tr><th>Tentativa</th><th>Total</th><th>Entregues</th><th>Tx entrega</th>' +
+      '<th>Respondidas</th><th>Tx resposta</th><th>Intervalo mediano</th></tr></thead><tbody>' + trs + '</tbody></table></div></div>' +
+      '<div class="card span-12"><div class="card-title"><div><h2>Leads com mais tentativas</h2>' +
+      '<div class="desc">Chave pseudônima do telefone (hash salgado, sem número) | "na história" conta fora do recorte também. ' +
+      'Acima de 12 tentativas o número deixa de ser cadência e passa a inflar o denominador.</div></div></div>' +
+      '<div class="table-wrap"><table><thead><tr><th>Lead</th><th>No período</th><th>Na história</th><th>Entregues</th>' +
+      '<th>Respondidas</th><th>Flows</th></tr></thead><tbody>' + leadTrs + '</tbody></table></div></div></div>';
+  }
+
+  function renderLatency(rows) {
+    if (!state.dwMode) return '<div class="grid">' + dwOnlyNote('Latência de cada etapa') + '</div>';
+    var l = latencyStats(rows);
+    var kpis = '<div class="kpis hierarchy-kpis">' +
+      kpi('Envio até entrega | p50', dur(l.delivery.p50), fmt(l.delivery.n) + ' entregas medidas', 'good', 'hero-kpi') +
+      kpi('Envio até entrega | p90', dur(l.delivery.p90), 'cauda de entrega', 'warn', 'secondary-kpi') +
+      kpi('Entrega até resposta | p50', dur(l.response.p50), fmt(l.response.n) + ' respostas medidas', 'good', 'secondary-kpi') +
+      kpi('Entrega até resposta | p90', dur(l.response.p90), 'cauda de resposta', 'warn', 'secondary-kpi') +
+      '</div>';
+    var linhas = [
+      { nome: 'Envio até entrega', b: l.delivery, f: dur },
+      { nome: 'Entrega até resposta', b: l.response, f: dur },
+      { nome: 'Intervalo desde a tentativa anterior', b: l.gap, f: durHours }
+    ].map(function (x) {
+      return '<tr><td><b>' + esc(x.nome) + '</b></td><td>' + fmt(x.b.n) + '</td><td>' + x.f(x.b.p50) + '</td><td>' +
+        x.f(x.b.p90) + '</td><td>' + x.f(x.b.max) + '</td></tr>';
+    }).join('');
+    return kpis + '<div class="grid"><div class="card span-12"><div class="card-title"><div><h2>Latência por etapa</h2>' +
+      '<div class="desc">Mediana e cauda, não média | quem não teve entrega ou resposta fica FORA do denominador em vez de entrar como zero.</div></div></div>' +
+      '<div class="table-wrap"><table><thead><tr><th>Etapa</th><th>Medidas</th><th>p50</th><th>p90</th><th>Máximo</th></tr></thead><tbody>' +
+      linhas + '</tbody></table></div>' +
+      '<div class="note"><b>Por que o máximo é absurdo em alguns recortes:</b> a Treble grava confirmação atrasada de operadora, ' +
+      'então o máximo é evento real, não erro de conta. Ler p50 e p90; o máximo serve só para achar o caso extremo.</div></div></div>';
+  }
+
+  function renderHsm(rows) {
+    if (!state.dwMode) return '<div class="grid">' + dwOnlyNote('HSM | template') + '</div>';
+    var g = groupHsm(rows);
+    var cov = g.total ? g.matched / g.total : null;
+    var trs = g.rows.map(function (h) {
+      return '<tr class="clickable-row" data-drill-field="hsm" data-drill-value="' + esc(h.hsm) + '">' +
+        '<td><b>' + esc(h.hsm) + '</b><div class="muted">' + esc([h.hsmCategory, h.hsmType].filter(Boolean).join(' | ')) + '</div></td>' +
+        '<td><span class="pill ' + (h.hsmStatus === 'APPROVED' ? 'good' : 'bad') + '">' + esc(h.hsmStatus || 'sem status') + '</span></td>' +
+        '<td>' + fmt(h.attempts) + '</td><td>' + fmt(h.delivered) + '</td><td>' + pct(h.deliveryRate) + '</td>' +
+        '<td>' + fmt(h.replied) + '</td><td>' + pct(h.responseRate) + '</td><td>' + fmt(h.flowsCount) + '</td></tr>';
+    }).join('');
+    var covNote = '<div class="note' + (cov != null && cov < 0.5 ? ' warn' : '') + '"><b>Cobertura do template: ' +
+      pct(cov) + '</b> (' + fmt(g.matched) + ' de ' + fmt(g.total) + ' tentativas). ' +
+      'A fato de deployment não tem hsm_id: o template só é nomeado quando o flow foi batizado igual ao HSM. ' +
+      'As tentativas sem template não são envio sem HSM, são envio cujo template esta fonte não sabe nomear.</div>';
+    return '<div class="grid"><div class="card span-12"><div class="card-title"><div><h2>HSM | template</h2>' +
+      '<div class="desc">Grão mais granular que a Treble entrega hoje | status vem de dim_hsm, então HSM reprovado ou desativado aparece com o nome.</div></div></div>' +
+      covNote +
+      (g.rows.length
+        ? '<div class="table-wrap"><table><thead><tr><th>Template</th><th>Status</th><th>Tentativas</th><th>Entregues</th>' +
+          '<th>Tx entrega</th><th>Respondidas</th><th>Tx resposta</th><th>Flows</th></tr></thead><tbody>' + trs + '</tbody></table></div>'
+        : '<div class="note">Nenhuma tentativa do recorte casou com template de dim_hsm.</div>') +
+      '</div></div>';
+  }
+
+  function renderRead() {
+    var r = (state.raw || {}).read;
+    if (!state.dwMode || !r) return '<div class="grid">' + dwOnlyNote('Leitura') + '</div>';
+    if (!r.available) {
+      return '<div class="grid"><div class="card span-12"><div class="card-title"><div><h2>Leitura</h2></div></div>' +
+        '<div class="note">Nenhuma mensagem de conversa no período: sem base para taxa de leitura.</div></div></div>';
+    }
+    var out = r.rows.filter(function (x) { return x.sender !== 'USER'; });
+    var inbound = r.rows.filter(function (x) { return x.sender === 'USER'; });
+    var inboundTotal = inbound.reduce(function (s, x) { return s + x.total; }, 0);
+    var trs = out.map(function (x) {
+      return '<tr><td><b>' + esc(x.category) + '</b><div class="muted">' + esc(x.sender === 'AI' ? 'automação' : 'agente') + '</div></td>' +
+        '<td>' + fmt(x.total) + '</td><td>' + fmt(x.entregues) + '</td><td>' + fmt(x.lidas) + '</td><td>' + pctNum(x.readRate) + '</td></tr>';
+    }).join('');
+    return '<div class="grid"><div class="card span-12"><div class="card-title"><div><h2>Leitura | read receipt</h2>' +
+      '<div class="desc">A tela dizia "leitura indisponível" | é verdade na fato de deployment, não no armazém: read_at existe em fact_agent_messages.</div></div></div>' +
+      '<div class="kpis"><div class="kpi good"><div class="label">HSM lidos</div><div class="value">' + pctNum(r.hsm.readRate) +
+      '</div><div class="sub">' + fmt(r.hsm.lidas) + ' de ' + fmt(r.hsm.entregues) + ' entregues</div></div>' +
+      '<div class="kpi teal"><div class="label">Mensagens recebidas</div><div class="value">' + fmt(inboundTotal) +
+      '</div><div class="sub">inbound não tem read receipt nosso</div></div></div>' +
+      '<div class="table-wrap"><table><thead><tr><th>Tipo</th><th>Enviadas</th><th>Entregues</th><th>Lidas</th><th>Tx leitura</th></tr></thead><tbody>' +
+      trs + '</tbody></table></div>' +
+      '<div class="note warn"><b>Cobertura parcial, e por isso não é KPI de topo:</b> ' + esc(r.caveat) + '</div>' +
+      '<div class="note"><b>Este bloco ignora os filtros de agente, flow e status:</b> ele vem de outra fato, agregado no servidor, ' +
+      'e só respeita o período. Comparar o volume dele com o funil acima é comparar bases diferentes.</div></div></div>';
+  }
+
+  function renderParity() {
+    var p = (state.raw || {}).parity;
+    if (!state.dwMode || !p) return '<div class="grid">' + dwOnlyNote('Reconciliação') + '</div>';
+    if (!p.available) {
+      return '<div class="grid"><div class="card span-12"><div class="card-title"><div><h2>Reconciliação</h2></div></div>' +
+        '<div class="note warn"><b>Sem segundo caminho nesta carga:</b> ' + esc(p.reason || 'pré-agregado não respondeu') + '. ' +
+        esc(p.note || '') + '</div></div></div>';
+    }
+    var trs = p.pairs.map(function (x) {
+      return '<tr><td><b>' + esc(x.metric) + '</b></td><td>' + fmt(x.daily) + '</td><td>' + fmt(x.fact) + '</td>' +
+        '<td>' + (x.diff > 0 ? '+' : '') + fmt(x.diff) + '</td>' +
+        '<td><span class="pill ' + (x.verdict === 'ok' ? 'good' : 'bad') + '">' + (x.verdict === 'ok' ? 'bate' : 'divergente') + '</span></td></tr>';
+    }).join('');
+    var o = p.outcomes;
+    var desfechos = [
+      ['Em processamento', o.inProcess, 'status SUCCESS na fato | a Treble chama de in_process'],
+      ['Transferidos para agente', o.toAgents, 'lead que caiu na fila de atendimento'],
+      ['Opt-out', o.optout, 'pediu para sair | risco de reputação no WhatsApp'],
+      ['Revogados', o.revoked, 'disparo cancelado antes de entregar'],
+      ['Barrados por rate limit', o.rateLimit, 'teto de envio da Meta'],
+      ['Telefone inválido', o.invalidPhone, 'número não existe ou não é WhatsApp']
+    ].map(function (x) {
+      return '<tr><td><b>' + esc(x[0]) + '</b><div class="muted">' + esc(x[2]) + '</div></td><td>' + fmt(x[1]) + '</td></tr>';
+    }).join('');
+    var verdictNote = p.verdict === 'ok'
+      ? '<div class="note"><b>Os números desta tela têm prova independente:</b> o pré-agregado da própria Treble concorda com a fato ' +
+        'dentro da tolerância (' + fmt(p.toleranceAbs) + ' linhas ou ' + pctNum(p.tolerancePct) + ').</div>'
+      : '<div class="note warn"><b>Discordância real entre a fato e o pré-agregado da Treble</b> em ' + esc(p.worstMetric) +
+        '. Não é arredondamento: alguma das duas leituras está incompleta e o número da tela não deve ser publicado antes de checar.</div>';
+    return '<div class="grid"><div class="card span-12"><div class="card-title"><div><h2>Reconciliação com o pré-agregado da Treble</h2>' +
+      '<div class="desc">Segundo caminho independente | fact_deployment_daily contra fact_deployment_status.</div></div></div>' +
+      verdictNote +
+      '<div class="table-wrap"><table><thead><tr><th>Métrica</th><th>Pré-agregado</th><th>Fato</th><th>Diferença</th><th>Veredito</th></tr></thead><tbody>' +
+      trs + '</tbody></table></div>' +
+      '<div class="note"><b>Régua de dia:</b> ' + esc(p.rulerNote) + ' No recorte atual, BRT ' + fmt(p.brtAttempts) +
+      ' e UTC ' + fmt(p.utcAttempts) + ' (diferença de ' + plural(p.timezoneDelta, 'linha', 'linhas') + ' por fuso).</div></div>' +
+      '<div class="card span-12"><div class="card-title"><div><h2>Desfechos que a fato de status não expressa</h2>' +
+      '<div class="desc">' + esc(p.outcomesNote) + '</div></div></div>' +
+      '<div class="table-wrap"><table><thead><tr><th>Desfecho</th><th>Total</th></tr></thead><tbody>' + desfechos +
+      '</tbody></table></div></div></div>';
+  }
+
+  // Erro deixa de ser total agregado: passa a ter ONDE (concentração por flow) e
+  // QUANDO (timestamp da falha). É o que separa variável mal configurada, que se
+  // conserta hoje, de reputação de template, que é outro diagnóstico.
+  function renderErrors(rows) {
+    if (!state.dwMode) return '<div class="grid">' + statusComposition(rows.filter(function (r) { return r.statusGroup !== 'delivered'; })) + '</div>';
+    var g = groupErrors(rows);
+    var cards = g.rows.map(function (e) {
+      var flows = e.topFlows.map(function (f) {
+        return '<tr><td>' + esc(f.flow) + '</td><td>' + fmt(f.count) + '</td><td>' + pct(e.count ? f.count / e.count : null) + '</td></tr>';
+      }).join('');
+      return '<div class="card span-6"><div class="card-title"><div><h2>' + esc(e.statusLabel) + ' | ' + fmt(e.count) + '</h2>' +
+        '<div class="desc">' + esc(e.status) + ' | ' + pct(g.total ? e.count / g.total : null) + ' das não entregues | ' +
+        'concentração no pior flow: ' + pct(e.concentration) + ' | ' + plural(e.flowsCount, 'flow afetado', 'flows afetados') + '</div></div></div>' +
+        '<div class="note' + (e.statusGroup === 'not_delivered' ? ' warn' : '') + '"><b>Ação:</b> ' + esc(e.action) + '</div>' +
+        (e.hsmStatusList.length ? '<div class="note"><b>Status do template envolvido:</b> ' + esc(e.hsmStatusList.join(' | ')) + '</div>' : '') +
+        '<div class="table-wrap"><table><thead><tr><th>Flow</th><th>Casos</th><th>% do erro</th></tr></thead><tbody>' + flows +
+        '</tbody></table></div>' +
+        '<div class="muted">Instante da falha registrado em ' + fmt(e.withTimestamp) + ' de ' + fmt(e.count) + ' casos.</div></div>';
+    }).join('');
+    var head = '<div class="card span-12"><div class="card-title"><div><h2>Não entregues</h2>' +
+      '<div class="desc">' + fmt(g.total) + ' de ' + fmt(g.base) + ' tentativas (' + pct(g.base ? g.total / g.base : null) +
+      ') | timestamp de falha disponível em ' + fmt(g.withTimestamp) + '.</div></div></div>' +
+      '<div class="note">Cada erro tem diagnóstico diferente: parâmetro ausente e HSM desativado são configuração nossa, ' +
+      'e concentram em poucos flows. Meta não entregou é reputação ou política de template. ' +
+      'A coluna de concentração é o que separa os dois.</div></div>';
+    return '<div class="grid">' + head + cards + '</div>' +
+      '<div class="grid">' + renderTable(rows.filter(function (r) { return r.statusGroup !== 'delivered'; }), true) + '</div>';
+  }
+
   function renderTable(rows, compact) {
     var limit = compact ? 80 : 300;
     var truncationNote = rows.length > limit
       ? '<div class="note"><b>Detalhe parcial:</b> mostrando ' + fmt(limit) + ' de ' + fmt(rows.length) + ' tentativas. Aplique filtros para reduzir o recorte.</div>'
       : '';
-    return '<div class="card span-12"><div class="card-title"><div><h2>Detalhe DW sem PII</h2>' +
-      '<div class="desc">Uma linha por tentativa real; sem telefone, email, conteúdo ou IDs sensíveis.</div></div></div>' +
+    return '<div class="card span-12"><div class="card-title"><div><h2>Detalhe por tentativa</h2>' +
+      '<div class="desc">Uma linha por tentativa real, com origem, número da tentativa no lead, template, latência e instante da falha. ' +
+      'Sem telefone, email, conteúdo ou IDs sensíveis | o lead é um pseudônimo.</div></div></div>' +
       truncationNote +
-      '<div class="table-wrap"><table><thead><tr><th>Data</th><th>Agente</th><th>Flow</th><th>Status</th><th>Ação</th></tr></thead><tbody>' +
+      '<div class="table-wrap"><table><thead><tr><th>Data e hora</th><th>Origem</th><th>Lead</th><th>Tentativa</th><th>Agente</th>' +
+      '<th>Flow</th><th>Template</th><th>Status</th><th>Entregue em</th><th>Falhou em</th></tr></thead><tbody>' +
       rows.slice(0, limit).map(function (m) {
-        return '<tr><td class="nowrap">' + esc(day(m.createdDay)) + '</td><td>' + esc(m.agent) + '<div class="muted">' + esc(sourceBadge(m.agentSource)) + '</div></td>' +
-          '<td>' + esc(m.flow) + '</td><td><span class="pill ' + statusClass(m.statusGroup) + '" title="' + esc(m.action) + '">' + esc(m.statusLabel) +
-          '</span><div class="muted">' + esc(m.status) + '</div></td><td>' + esc(m.action || '—') + '</td></tr>';
+        var tentativa = m.attemptSeq
+          ? m.attemptSeq + 'ª de ' + fmt(m.leadAttemptsTotal || m.attemptSeq)
+          : '—';
+        return '<tr><td class="nowrap">' + esc(m.createdAt ? dateTimeBr(m.createdAt) : day(m.createdDay)) + '</td>' +
+          '<td>' + esc(m.originLabel || '—') + '</td>' +
+          '<td class="nowrap">' + (m.leadKey ? '<code>' + esc(m.leadKey) + '</code>' : '—') +
+          (m.leadOutlier ? '<div class="muted">suspeito de teste</div>' : '') + '</td>' +
+          '<td class="nowrap">' + esc(tentativa) + (m.gapPrevHours != null ? '<div class="muted">' + esc(durHours(m.gapPrevHours)) + ' depois</div>' : '') + '</td>' +
+          '<td>' + esc(m.agent) + '<div class="muted">' + esc(sourceBadge(m.agentSource)) + '</div></td>' +
+          '<td>' + esc(m.flow) + '</td>' +
+          '<td>' + (m.hsm ? esc(m.hsm) + '<div class="muted">' + esc(m.hsmStatus) + '</div>' : '<span class="muted">sem template nomeado</span>') + '</td>' +
+          '<td><span class="pill ' + statusClass(m.statusGroup) + '" title="' + esc(m.action) + '">' + esc(m.statusLabel) +
+          '</span><div class="muted">' + esc(m.status) + '</div></td>' +
+          '<td class="nowrap">' + esc(m.deliveryLagSec != null ? dur(m.deliveryLagSec) : '—') + '</td>' +
+          '<td class="nowrap">' + esc(m.failedAt ? dateTimeBr(m.failedAt) : '—') + '</td></tr>';
       }).join('') + '</tbody></table></div></div>';
   }
 
@@ -748,18 +1213,39 @@
     var s = summarize(rows);
     var flags = '<div class="active-filters-line" aria-live="polite">' + esc(activeFilterLine(rows.length, state.totalRows || state.rows.length)) + '</div>';
     var globalNote = renderFallbackNote();
-    var tabs = '<div class="tabs"><button class="tab ' + (state.tab === 'overview' ? 'active' : '') + '" onclick="BdrTreble.tab(\'overview\')">Resumo</button>' +
-      '<button class="tab ' + (state.tab === 'agents' ? 'active' : '') + '" onclick="BdrTreble.tab(\'agents\')">Quem enviou</button>' +
-      '<button class="tab ' + (state.tab === 'status' ? 'active' : '') + '" onclick="BdrTreble.tab(\'status\')">Status</button>' +
-      '<button class="tab ' + (state.tab === 'failures' ? 'active' : '') + '" onclick="BdrTreble.tab(\'failures\')">Falhas</button>' +
-      '<button class="tab ' + (state.tab === 'timeline' ? 'active' : '') + '" onclick="BdrTreble.tab(\'timeline\')">Linha do tempo</button>' +
-      '<button class="tab ' + (state.tab === 'audience' ? 'active' : '') + '" onclick="BdrTreble.tab(\'audience\')">Público</button>' +
-      '<button class="tab ' + (state.tab === 'detail' ? 'active' : '') + '" onclick="BdrTreble.tab(\'detail\')">Detalhe</button>' +
-      '<button class="tab ' + (state.tab === 'api' ? 'active' : '') + '" onclick="BdrTreble.tab(\'api\')">Arquitetura API</button></div>';
+    // Ordem das abas = macro para granular: origem do disparo, quem enviou,
+    // status, erro com concentração, tentativa por lead, latência, template,
+    // leitura, reconciliação, e só então a linha a linha.
+    var tabDefs = [
+      ['overview', 'Resumo'],
+      ['origin', 'Origem'],
+      ['agents', 'Quem enviou'],
+      ['status', 'Status'],
+      ['failures', 'Erros'],
+      ['attempts', 'Tentativas por lead'],
+      ['latency', 'Latência'],
+      ['hsm', 'HSM'],
+      ['read', 'Leitura'],
+      ['parity', 'Reconciliação'],
+      ['timeline', 'Linha do tempo'],
+      ['audience', 'Público'],
+      ['detail', 'Detalhe'],
+      ['api', 'Arquitetura API']
+    ];
+    var tabs = '<div class="tabs">' + tabDefs.map(function (t) {
+      return '<button class="tab ' + (state.tab === t[0] ? 'active' : '') + '" onclick="BdrTreble.tab(\'' + t[0] + '\')">' +
+        esc(t[1]) + '</button>';
+    }).join('') + '</div>';
     var body;
-    if (state.tab === 'agents') body = '<div class="grid">' + agentRanking(rows) + '</div>';
+    if (state.tab === 'origin') body = renderOrigin(rows);
+    else if (state.tab === 'agents') body = '<div class="grid">' + agentRanking(rows) + '</div>';
     else if (state.tab === 'status') body = renderStatus(rows);
-    else if (state.tab === 'failures') body = renderFailures(rows);
+    else if (state.tab === 'failures') body = renderErrors(rows);
+    else if (state.tab === 'attempts') body = renderAttempts(rows);
+    else if (state.tab === 'latency') body = renderLatency(rows);
+    else if (state.tab === 'hsm') body = renderHsm(rows);
+    else if (state.tab === 'read') body = renderRead();
+    else if (state.tab === 'parity') body = renderParity();
     else if (state.tab === 'timeline') body = '<div class="grid">' + timeline(rows) + '</div>';
     else if (state.tab === 'audience') body = '<div class="grid">' + renderAudience(rows) + '</div>';
     else if (state.tab === 'detail') body = '<div class="grid">' + renderTable(rows, false) + '</div>';
@@ -810,6 +1296,29 @@
         replied: replied,
         read: false,
         readAvailable: false,
+        // O fallback não tem NENHUMA das colunas granulares do warehouse. Elas
+        // vêm vazias de propósito, para a tela dizer "não medido" em vez de
+        // exibir zero, que leria como "aconteceu e deu zero".
+        origin: '',
+        originLabel: '',
+        originDescription: '',
+        originManual: false,
+        leadKey: '',
+        attemptSeq: 0,
+        leadAttemptsTotal: 0,
+        attemptBucket: '',
+        attemptBucketLabel: '',
+        firstAttempt: false,
+        leadOutlier: false,
+        gapPrevHours: null,
+        deliveryLagSec: null,
+        responseLagSec: null,
+        failedAt: '',
+        hsm: '',
+        hsmMatched: false,
+        hsmStatus: '',
+        hsmCategory: '',
+        hsmType: '',
         status: rawStatus,
         statusLabel: delivered ? 'Entregue' : 'Não confirmado no REST',
         statusGroup: delivered ? 'delivered' : 'unknown',
@@ -957,10 +1466,26 @@
       $('modal-overlay').classList.remove('open');
     },
     openHelp: function () {
-      $('help-body').innerHTML = '<div class="help-block"><b>Fonte</b><p>ClickHouse Treble, fact_deployment_status, via API server-side autenticada.</p></div>' +
+      $('help-body').innerHTML = '<div class="help-block"><b>Fonte</b><p>ClickHouse Treble, via API server-side autenticada. ' +
+        'fact_deployment_status (uma linha por tentativa) para o funil; fact_deployment_daily para reconciliar e para os desfechos que a fato de status não tem; ' +
+        'fact_agent_messages para leitura; dim_hsm para nomear o template; dim_agents para atribuição direta.</p></div>' +
         '<div class="help-block"><b>Entrega</b><p>Entregue = timestamp_delivered válido ou status DELIVERED. Resposta válida entra no funil como entregue, mas não muda o status bruto.</p></div>' +
+        '<div class="help-block"><b>Origem</b><p>HELPDESK_INTEGRATION = HSM disparado de dentro do inbox da Sales.ai, um lead por vez. ' +
+        'API = disparo nosso por comando. CSV = lote por planilha. SIMPLE = envio simples pela UI da Treble. ' +
+        'Somar os quatro sem separar mistura operação manual com automação.</p></div>' +
+        '<div class="help-block"><b>Tentativa por lead</b><p>attemptSeq é a posição da tentativa na história do lead, contada na fato INTEIRA, não dentro do período. ' +
+        'O lead aparece como pseudônimo: hash salgado do telefone, 12 caracteres. É pseudonimização, não anonimização — o telefone nunca sai do servidor, ' +
+        'mas o espaço de números é pequeno e o sal vive no código.</p></div>' +
+        '<div class="help-block"><b>Latência</b><p>Mediana e p90, nunca média. Tentativa sem entrega ou sem resposta fica FORA do denominador em vez de entrar como zero. ' +
+        'Máximo alto é confirmação atrasada de operadora, evento real.</p></div>' +
+        '<div class="help-block"><b>HSM</b><p>A fato de deployment não tem hsm_id: o template é nomeado por join de NOME com dim_hsm, ' +
+        'e só casa quando o flow foi batizado igual ao HSM. A cobertura vai declarada na aba. Tentativa sem template não é envio sem HSM.</p></div>' +
+        '<div class="help-block"><b>Reconciliação</b><p>fact_deployment_daily é o pré-agregado da própria Treble e serve de segundo caminho. ' +
+        'A coluna day dele é UTC e esta tela conta em BRT, então a comparação roda em UTC nas duas pontas de propósito: ' +
+        'comparar régua diferente produziria divergência permanente por fuso. A diferença de fuso aparece explícita no bloco.</p></div>' +
         '<div class="help-block"><b>Atribuição</b><p>Direta por origin_id=dim_agents.id; quando não há match, inferência pelo nome do flow; origin_id nunca é exposto ao browser.</p></div>' +
-        '<div class="help-block"><b>Leitura</b><p>Indisponível nesta fato.</p></div>' +
+        '<div class="help-block"><b>Leitura</b><p>Não existe em fact_deployment_status. Existe em fact_agent_messages (read_at) e tem aba própria, ' +
+        'só em agregado e com cobertura parcial: apenas conversa que passou por agente. O denominador dela não é o do funil, então não vira KPI de topo.</p></div>' +
         '<div class="help-block"><b>Período vazio ≠ dado velho</b><p>Se o período selecionado não tem linhas, a tela mostra zero e continua no warehouse. ' +
         'Ela não amplia o intervalo nem troca de fonte. O frescor da ingestão é reportado à parte, pelo último evento da fato inteira.</p></div>' +
         '<div class="help-block"><b>Fallback REST</b><p>Só entra quando o Data Warehouse falha (erro de servidor ou rede), nunca por período vazio. ' +
@@ -974,6 +1499,15 @@
       $('help-drawer').classList.remove('open');
     },
     _test: {
+      dur: dur,
+      durHours: durHours,
+      quantile: quantile,
+      groupOrigin: groupOrigin,
+      groupAttempt: groupAttempt,
+      leadStats: leadStats,
+      latencyStats: latencyStats,
+      groupHsm: groupHsm,
+      groupErrors: groupErrors,
       shouldFallback: shouldFallback,
       isNoFallbackStatus: isNoFallbackStatus,
       humanRangeError: humanRangeError,

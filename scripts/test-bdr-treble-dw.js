@@ -83,6 +83,18 @@ async function testTransportSecurity() {
   assert.strictEqual(captured.options.body, 'SELECT 1 FORMAT JSON');
 }
 
+// A projeção do SELECT externo é o que chega ao browser. A CTE PODE ler telefone
+// (é o que permite hash de lead e janela por pessoa); o que não pode é o telefone
+// virar coluna de saída. A regra antiga ("a SQL não menciona cellphone") era mais
+// frouxa e mais burra ao mesmo tempo: proibia ler para pseudonimizar e não olhava
+// onde o dado sai.
+function outerProjection(sql) {
+  const start = sql.indexOf('\nSELECT\n');
+  const end = sql.indexOf('\nFROM base f');
+  assert.ok(start > 0 && end > start, 'SQL precisa ter SELECT externo sobre a CTE base');
+  return sql.slice(start, end);
+}
+
 function testSqlContract() {
   const sql = t.buildSql({ from: '2026-07-01', to: '2026-07-20' });
   assert.ok(sql.includes('LEFT ANY JOIN client_analytics.dim_agents a ON f.origin_id = a.id'));
@@ -92,8 +104,227 @@ function testSqlContract() {
   assert.ok(!sql.includes('toString(f.origin_id) = toString(a.id)'));
   assert.ok(sql.includes("toDate('2026-07-01')"));
   assert.ok(sql.includes("toDate('2026-07-20')"));
-  assert.ok(!sql.includes('cellphone'));
   assert.ok(!sql.includes('deployment_id'));
+
+  const projection = outerProjection(sql);
+  ['cellphone', 'country_code', 'deployment_id', 'batch_id', 'treble_id', 'origin_id'].forEach(function (col) {
+    assert.ok(
+      projection.indexOf(col) === -1,
+      'coluna sensível ' + col + ' não pode aparecer na projeção que vai ao browser'
+    );
+  });
+  assert.ok(sql.includes('cityHash64'), 'lead precisa sair pseudonimizado, não cru');
+  assert.ok(projection.includes('AS lead_key'));
+  assert.ok(projection.includes('AS attempt_seq'));
+  assert.ok(projection.includes('AS delivery_lag_sec'));
+  assert.ok(projection.includes('AS failed_at'));
+  assert.ok(projection.includes('AS origin'));
+  assert.ok(projection.includes('AS hsm_name'));
+
+  // A numeração da tentativa é da HISTÓRIA do lead: a CTE não pode ter recorte de
+  // data, senão a 6ª tentativa de julho volta a ser "1ª" em agosto.
+  const cte = sql.slice(sql.indexOf('WITH base AS ('), sql.indexOf('\nSELECT\n'));
+  assert.ok(cte.includes('row_number() OVER (PARTITION BY concat(country_code, cellphone)'));
+  assert.ok(!/toDate\('2026-07-01'\)/.test(cte), 'a CTE base não pode filtrar período');
+}
+
+// fact_deployment_daily.day é UTC e a tela conta em BRT (medido 11/08/2026: 23/07
+// dá 618 em UTC e 611 em BRT). A reconciliação tem de contar UTC nas DUAS pontas,
+// senão ela reprova para sempre por fuso — que é o mesmo mal do check que passa
+// por acidente, ao contrário.
+function testParityUsesSameRulerOnBothSides() {
+  const sql = t.buildDailyParitySql({ from: '2026-07-23', to: '2026-07-23' });
+  assert.ok(sql.includes('fact_deployment_daily'));
+  assert.ok(sql.includes('AS fact_sent_utc'));
+  assert.ok(
+    sql.includes("toDate(f.timestamps_eta) >= toDate('2026-07-23')"),
+    'a ponta da fato precisa contar em UTC, sem toTimeZone'
+  );
+  assert.ok(
+    !/toTimeZone\(f\.timestamps_eta/.test(sql),
+    'converter só um lado para BRT criaria divergência permanente por fuso'
+  );
+  ['to_agents', 'in_process', 'optout', 'revoked', 'failure_rate_limit'].forEach(function (col) {
+    assert.ok(sql.includes(col), 'desfecho ' + col + ' só existe no pré-agregado e precisa vir');
+  });
+
+  const block = t.buildParityBlock({
+    daily_sent: 618, daily_delivered: 325, daily_responded: 70,
+    fact_sent_utc: 618, fact_delivered_utc: 325, fact_responded_utc: 70,
+    daily_in_process: 5, daily_to_agents: 9, daily_optout: 0, daily_revoked: 0,
+    daily_rate_limit: 0, daily_invalid_phone: 1, daily_failure: 200
+  }, 611);
+  assert.strictEqual(block.verdict, 'ok');
+  assert.strictEqual(block.utcAttempts, 618);
+  assert.strictEqual(block.brtAttempts, 611);
+  assert.strictEqual(block.timezoneDelta, 7, 'a diferença de fuso precisa ser exibida, não escondida');
+  assert.strictEqual(block.outcomes.toAgents, 9);
+
+  // Divergência real precisa reprovar, senão o bloco é espelho.
+  const divergente = t.buildParityBlock({
+    daily_sent: 618, daily_delivered: 325, daily_responded: 70,
+    fact_sent_utc: 900, fact_delivered_utc: 325, fact_responded_utc: 70
+  }, 900);
+  assert.strictEqual(divergente.verdict, 'divergente');
+  assert.strictEqual(divergente.worstMetric, 'Tentativas');
+
+  // Pré-agregado ausente não pode virar "bate".
+  const semDaily = t.buildParityBlock(null, 10);
+  assert.strictEqual(semDaily.available, false);
+}
+
+function testAttemptGrainAndLeadPseudonym() {
+  function row(over) {
+    return Object.assign({
+      flow: 'flow_x', poll_id: '1', created_at: '2026-07-20T10:00:00-03:00', created_day: '2026-07-20',
+      status: 'DELIVERED', delivered_real: 1, replied_real: 0, origin: 'HELPDESK_INTEGRATION',
+      lead_key: 'aaaaaaaaaaaa', attempt_seq: 1, lead_attempts_total: 1,
+      gap_prev_hours: -1, delivery_lag_sec: 12, response_lag_sec: -1, failed_at: '',
+      hsm_name: '', hsm_status: '', hsm_category: '', hsm_type: ''
+    }, over || {});
+  }
+
+  const m1 = t.sanitizeMessage(row());
+  assert.strictEqual(m1.attemptBucket, '1');
+  assert.strictEqual(m1.firstAttempt, true);
+  assert.strictEqual(m1.gapPrevHours, null, '-1 é não medido e não pode virar zero');
+  assert.strictEqual(m1.responseLagSec, null);
+  assert.strictEqual(m1.deliveryLagSec, 12);
+  assert.strictEqual(m1.originLabel, 'Inbox Sales.ai');
+  assert.strictEqual(m1.originManual, true);
+  assert.strictEqual(m1.hsmMatched, false);
+
+  const m5 = t.sanitizeMessage(row({ attempt_seq: 5, lead_attempts_total: 14, gap_prev_hours: 48 }));
+  assert.strictEqual(m5.attemptBucket, '4+');
+  assert.strictEqual(m5.firstAttempt, false);
+  assert.strictEqual(m5.leadOutlier, true, '14 tentativas no mesmo número é número de teste, não cadência');
+  assert.strictEqual(m5.gapPrevHours, 48);
+
+  const messages = [
+    t.sanitizeMessage(row({ lead_key: 'l1', attempt_seq: 1, lead_attempts_total: 2 })),
+    t.sanitizeMessage(row({ lead_key: 'l1', attempt_seq: 2, lead_attempts_total: 2, status: 'MISSING_PARAMETER', delivered_real: 0, failed_at: '2026-07-20T11:00:00-03:00' })),
+    t.sanitizeMessage(row({ lead_key: 'l2', attempt_seq: 1, lead_attempts_total: 1 })),
+    t.sanitizeMessage(row({ lead_key: 'l3', attempt_seq: 3, lead_attempts_total: 20 }))
+  ];
+
+  const leads = t.aggregateLeads(messages);
+  assert.strictEqual(leads.uniqueLeads, 3, '4 tentativas em 3 pessoas');
+  assert.strictEqual(leads.reattemptedInPeriod, 1);
+  assert.strictEqual(leads.outlierLeads, 1);
+
+  const buckets = t.aggregateAttempts(messages);
+  assert.strictEqual(buckets.length, 4, 'as 4 faixas sempre aparecem, mesmo zeradas');
+  assert.strictEqual(buckets[0].attempts, 2);
+  assert.strictEqual(buckets[1].attempts, 1);
+  assert.strictEqual(buckets[2].attempts, 1);
+  assert.strictEqual(buckets[3].attempts, 0);
+
+  const origin = t.aggregateOrigin(messages);
+  assert.strictEqual(origin[0].origin, 'HELPDESK_INTEGRATION');
+  assert.strictEqual(origin[0].attempts, 4);
+
+  // Latência: quem não teve entrega/resposta fica FORA do denominador.
+  const lat = t.aggregateLatency(messages);
+  assert.strictEqual(lat.deliverySec.n, 4);
+  assert.strictEqual(lat.responseSec.n, 0);
+  assert.strictEqual(lat.responseSec.p50, null);
+
+  // Erro tem ONDE e QUANDO.
+  const errors = t.aggregateErrors(messages);
+  assert.strictEqual(errors.totalNotDelivered, 1);
+  assert.strictEqual(errors.withFailureTimestamp, 1);
+  assert.strictEqual(errors.rows[0].topFlows[0].flow, 'flow_x');
+}
+
+function testHsmCoverageIsDeclaredNotAssumed() {
+  function row(over) {
+    return Object.assign({
+      flow: 'f', poll_id: '1', created_at: '2026-07-20T10:00:00-03:00', created_day: '2026-07-20',
+      status: 'DELIVERED', delivered_real: 1, replied_real: 0, origin: 'API',
+      lead_key: 'k', attempt_seq: 1, lead_attempts_total: 1, gap_prev_hours: -1,
+      delivery_lag_sec: 5, response_lag_sec: -1, failed_at: '',
+      hsm_name: '', hsm_status: '', hsm_category: '', hsm_type: ''
+    }, over || {});
+  }
+  const messages = [
+    t.sanitizeMessage(row({ hsm_name: 'samuel_x', hsm_status: 'APPROVED' })),
+    t.sanitizeMessage(row()),
+    t.sanitizeMessage(row())
+  ];
+  const hsm = t.aggregateHsm(messages);
+  assert.strictEqual(hsm.coverage.matched, 1);
+  assert.strictEqual(hsm.coverage.total, 3);
+  assert.strictEqual(hsm.coverage.matchedPct, 33.3);
+  assert.ok(hsm.coverage.caveat.indexOf('hsm_id') !== -1, 'a cobertura precisa dizer POR QUE é parcial');
+  assert.strictEqual(hsm.rows.length, 1, 'tentativa sem template não vira template em branco');
+}
+
+// A tela antiga afirmava "leitura indisponível". É verdade na fato de deployment
+// e falso no armazém. O bloco novo mede leitura sem prometer cobertura que não
+// tem: inbound (USER) não tem read receipt nosso e não pode entrar na taxa.
+function testReadBlockKeepsItsOwnDenominator() {
+  const sql = t.buildReadSql({ from: '2026-07-01', to: '2026-07-31' });
+  assert.ok(sql.includes('fact_agent_messages'));
+  assert.ok(!/\bcontent\b/.test(sql), 'conteúdo da mensagem existe nessa fato e não pode sair do servidor');
+
+  const block = t.buildReadBlock([
+    { sender: 'AI', category: 'hsm', total: 285, entregues: 285, lidas: 216 },
+    { sender: 'AGENT', category: 'hsm', total: 50, entregues: 39, lidas: 22 },
+    { sender: 'USER', category: 'text', total: 792, entregues: 0, lidas: 0 }
+  ]);
+  assert.strictEqual(block.available, true);
+  assert.strictEqual(block.hsm.total, 335);
+  assert.strictEqual(block.hsm.entregues, 324);
+  assert.strictEqual(block.hsm.lidas, 238);
+  assert.strictEqual(block.hsm.readRate, 73.5);
+  assert.ok(block.caveat.indexOf('NÃO é o total de tentativas') !== -1);
+
+  const vazio = t.buildReadBlock([]);
+  assert.strictEqual(vazio.available, false);
+}
+
+function testFrontendGranularHelpers() {
+  const T = loadFrontendHelpers();
+  assert.strictEqual(T.dur(10), '10s');
+  assert.strictEqual(T.dur(315), '5 min');
+  assert.strictEqual(T.dur(null), 'Não medido');
+  assert.strictEqual(T.dur(-1), 'Não medido', 'sentinela negativa não pode virar 0s');
+  assert.strictEqual(T.durHours(48), '2 dias');
+  assert.strictEqual(T.quantile([10, 20, 30, 40], 0.5), 20);
+  assert.strictEqual(T.quantile([], 0.5), null);
+
+  const rows = [
+    { origin: 'API', originLabel: 'API de deployment', originManual: false, delivered: true, replied: false, flow: 'a', leadKey: 'l1', attemptBucket: '1', attemptBucketLabel: '1ª tentativa', leadAttemptsTotal: 1, statusGroup: 'delivered', deliveryLagSec: 10, responseLagSec: null, gapPrevHours: null, hsmMatched: false, status: 'DELIVERED' },
+    { origin: 'HELPDESK_INTEGRATION', originLabel: 'Inbox Sales.ai', originManual: true, delivered: false, replied: false, flow: 'b', leadKey: 'l2', attemptBucket: '2', attemptBucketLabel: '2ª tentativa', leadAttemptsTotal: 2, statusGroup: 'not_delivered', deliveryLagSec: null, responseLagSec: null, gapPrevHours: 48, hsmMatched: true, hsm: 'tpl', hsmStatus: 'APPROVED', statusLabel: 'Parâmetro ausente', status: 'MISSING_PARAMETER', action: 'corrigir', failedAt: '2026-07-20T11:00:00-03:00' }
+  ];
+  const byOrigin = T.groupOrigin(rows);
+  assert.strictEqual(byOrigin.length, 2);
+  assert.strictEqual(byOrigin[0].leadsCount, 1);
+  const lead = T.leadStats(rows);
+  assert.strictEqual(lead.uniqueLeads, 2);
+  const lat = T.latencyStats(rows);
+  assert.strictEqual(lat.delivery.n, 1, 'null de latência não entra no denominador do cliente também');
+  const hsm = T.groupHsm(rows);
+  assert.strictEqual(hsm.matched, 1);
+  assert.strictEqual(hsm.total, 2);
+  const err = T.groupErrors(rows);
+  assert.strictEqual(err.total, 1);
+  assert.strictEqual(err.withTimestamp, 1);
+  assert.strictEqual(err.rows[0].concentration, 1);
+}
+
+// O fallback REST não tem nenhuma coluna granular do warehouse. Elas têm de vir
+// vazias/null, nunca 0: zero leria como "aconteceu e deu zero".
+function testFallbackRowsDeclareMissingGranularity() {
+  const T = loadFrontendHelpers();
+  const rows = T.normalizeRestRows({ messages: [{ flow: 'x', delivered: true, createdAt: '2026-07-20T10:00:00Z' }] });
+  assert.strictEqual(rows.length, 1);
+  assert.strictEqual(rows[0].origin, '');
+  assert.strictEqual(rows[0].leadKey, '');
+  assert.strictEqual(rows[0].deliveryLagSec, null);
+  assert.strictEqual(rows[0].gapPrevHours, null);
+  assert.strictEqual(rows[0].hsmMatched, false);
+  assert.strictEqual(rows[0].failedAt, '');
 }
 
 function testStatusAgentAndAggregates() {
@@ -625,6 +856,12 @@ async function main() {
   testDateRanges();
   await testTransportSecurity();
   testSqlContract();
+  testParityUsesSameRulerOnBothSides();
+  testAttemptGrainAndLeadPseudonym();
+  testHsmCoverageIsDeclaredNotAssumed();
+  testReadBlockKeepsItsOwnDenominator();
+  testFrontendGranularHelpers();
+  testFallbackRowsDeclareMissingGranularity();
   testStatusAgentAndAggregates();
   testFlowRuleAttribution();
   testPrivacyGuard();
@@ -645,7 +882,7 @@ async function main() {
   testFrontendFallbackNoteNamesPeriodAndContract();
   testFrontendNormalizeRestRowsPreservesCount();
   testFrontendEmptyStateDistinguishesCauses();
-  console.log('[test-bdr-treble-dw] PASS | presets, SQL seguro, agentes, status bruto, regra de flow, agregados, PII, frescor do warehouse independente do recorte (computeWarehouseStale/buildWarehouseState/buildFreshnessSql), cache backend, período vazio NÃO troca de fonte, range do cliente espelha o backend, recorte do fallback REST, poda de filtros órfãos, selo de frescor e empty state por causa');
+  console.log('[test-bdr-treble-dw] PASS | presets, SQL seguro (projeção sem PII com telefone lido só para pseudonimizar), agentes, status bruto, regra de flow, agregados, PII, frescor do warehouse independente do recorte (computeWarehouseStale/buildWarehouseState/buildFreshnessSql), cache backend, período vazio NÃO troca de fonte, range do cliente espelha o backend, recorte do fallback REST, poda de filtros órfãos, selo de frescor e empty state por causa, V10: paridade na mesma régua UTC com delta de fuso exposto, grão de tentativa por lead com pseudônimo e faixa 4+, sentinela -1 que NÃO vira zero, cobertura de HSM declarada, leitura com denominador próprio e helpers granulares do front');
 }
 
 main().catch(function (error) {
