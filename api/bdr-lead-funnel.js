@@ -159,6 +159,108 @@ function canon(stageId) {
   return STAGE_CANON[String(stageId || '')] || '(nao_mapeada)';
 }
 
+/**
+ * A RÉGUA DE ATIVIDADE REAL, em UM lugar só.
+ *
+ * Duplicar esta condição em duas consultas é como a régua drifta: um lado ganha um
+ * canal, o outro não, e os dois números passam a discordar sem ninguém saber por quê.
+ *
+ * CORRIGIDA em 11/08/2026 depois de auditoria de caso apontada pelo dono. O lead
+ * "Rui Medeiros 2026-08" (Boston Scientific, BDR Felipe Andrade) aparecia como
+ * "✖ sem toque" tendo **WhatsApp manual enviado em 07/08**. A régua anterior cobria
+ * ligação conectada, e-mail enviado e LinkedIn — e **omitia WhatsApp**, que é o canal
+ * mais usado do time depois do e-mail (7.297 mensagens manuais em 90 dias).
+ *
+ * Efeito medido na coorte de jul/26 (2.302 leads): atividade real vai de **1.076
+ * (46,7%) para 1.601 (69,5%)** — **525 leads** que a tela chamava de "sem toque"
+ * tinham WhatsApp digitado à mão. O gap "movido de etapa sem toque" cai de 1.009 para
+ * ~490. O número publicado antes desta correção estava inflado, e isso está declarado
+ * em `premissas.regua_atividade_corrigida`.
+ *
+ * O QUE CONTA (alguém digitou ou falou):
+ *   · ligação CONECTADA — discagem sem conexão não é contato (decisão do dono: "conectada")
+ *   · e-mail ENVIADO
+ *   · LinkedIn enviado
+ *   · WhatsApp enviado MANUALMENTE (fora de `source_label = 'INTEGRATION'`)
+ *   · reunião REALIZADA
+ *
+ * O QUE NÃO CONTA, e por quê:
+ *   · TAREFA — é intenção, não ação. O caso do Rui tinha duas tarefas de sequência
+ *     ("Contato WhatsApp", "Ligação"); contá-las creditaria a fila, não o contato.
+ *   · NOTA — decisão de 10/08: "nota não é ação, e-mail é".
+ *   · E-MAIL DE ENTRADA, inclusive auto-reply. O caso do Rui tinha um
+ *     "Automatic reply:" — ele PROVA que houve envio, mas o envio não está na fato
+ *     para este contato, e transformar resposta automática em toque do BDR inverte
+ *     quem agiu.
+ *   · WHATSAPP DE INTEGRAÇÃO (Treble) — vai em bucket próprio. Mesma decisão de
+ *     10/08: automação não é esforço do BDR. Fica VISÍVEL como `so_automacao`, porque
+ *     "o lead foi tocado por robô e por mais ninguém" é informação, não ruído.
+ */
+const ATIV_MANUAL = `(
+     f.is_connected
+  OR (f.kind = 'emails' AND f.is_outbound_message)
+  OR (f.channel_type = 'LINKEDIN_MESSAGE' AND f.is_outbound_message)
+  OR (f.channel_type = 'WHATS_APP' AND f.is_outbound_message AND IFNULL(f.source_label,'') != 'INTEGRATION')
+  OR f.is_meeting_held
+)`;
+const ATIV_AUTOMACAO = `(f.is_outbound_message AND f.source_label = 'INTEGRATION')`;
+
+/**
+ * Atividade por lead, para os leads que a janela toca (criados OU movimentados).
+ * Uma consulta, uma régua — servindo tanto a coorte quanto o drill de desqualificação.
+ */
+async function atividade(pipes, since, until) {
+  const { rows } = await wh.query(`
+    WITH alvo AS (
+      SELECT lead_id FROM ${wh.t('silver', 'dim_lead')}
+      WHERE is_current AND pipeline_id IN (${sqlList(pipes)})
+        AND DATE(hs_created_at, 'America/Sao_Paulo') BETWEEN DATE(@since) AND DATE(@until)
+      UNION DISTINCT
+      SELECT DISTINCT ch.object_id FROM ${wh.t('silver', 'fact_crm_change')} ch
+      WHERE ch.object_type = 'lead' AND ch.property = 'hs_pipeline_stage'
+        AND DATE(ch.changed_at, 'America/Sao_Paulo') BETWEEN DATE(@since) AND DATE(@until)
+    ),
+    l2c AS (
+      SELECT b.from_id AS lead_id, ANY_VALUE(b.to_id) AS contact_id, COUNT(DISTINCT b.to_id) AS n_contatos
+      FROM ${wh.t('silver', 'bridge_association')} b
+      JOIN alvo a ON a.lead_id = b.from_id
+      WHERE b.from_object = 'lead' AND b.to_object = 'contact' AND b.is_active
+      GROUP BY 1
+    )
+    SELECT c.lead_id, c.n_contatos,
+           COUNTIF(f.is_connected) AS ligacoes_conectadas,
+           COUNTIF(f.kind = 'emails' AND f.is_outbound_message) AS emails_enviados,
+           COUNTIF(f.channel_type = 'LINKEDIN_MESSAGE' AND f.is_outbound_message) AS linkedin_enviados,
+           COUNTIF(f.channel_type = 'WHATS_APP' AND f.is_outbound_message AND IFNULL(f.source_label,'') != 'INTEGRATION') AS whatsapp_manual,
+           COUNTIF(f.is_meeting_held) AS reunioes,
+           COUNTIF(${ATIV_MANUAL}) AS toques_manuais,
+           COUNTIF(${ATIV_AUTOMACAO}) AS toques_automacao,
+           FORMAT_TIMESTAMP('%F', MIN(IF(${ATIV_MANUAL}, f.occurred_at, NULL)), 'America/Sao_Paulo') AS primeiro_toque
+    FROM l2c c
+    LEFT JOIN ${wh.t('silver', 'fact_engagement')} f ON f.contact_id = c.contact_id
+    GROUP BY 1, 2
+  `, [
+    { name: 'since', type: 'DATE', value: since },
+    { name: 'until', type: 'DATE', value: until },
+  ]);
+  const mapa = {};
+  let multiContato = 0;
+  rows.forEach(r => {
+    if (wh.num(r.n_contatos) > 1) multiContato++;
+    mapa[wh.str(r.lead_id)] = {
+      ligacoes_conectadas: wh.num(r.ligacoes_conectadas),
+      emails_enviados: wh.num(r.emails_enviados),
+      linkedin_enviados: wh.num(r.linkedin_enviados),
+      whatsapp_manual: wh.num(r.whatsapp_manual),
+      reunioes: wh.num(r.reunioes),
+      toques_manuais: wh.num(r.toques_manuais),
+      toques_automacao: wh.num(r.toques_automacao),
+      primeiro_toque: wh.str(r.primeiro_toque),
+    };
+  });
+  return { mapa, multiContato };
+}
+
 let _cache = {};
 const CACHE_TTL = 5 * 60 * 1000;
 
@@ -473,7 +575,7 @@ const PIPE_OF_STAGE = {
  * (18.209 leads com exatamente 1 contato, 1 com 2 — a exceção está reportada em
  * `diagnostics`).
  */
-async function coorte(pipes, since, until) {
+async function coorte(pipes, since, until, ativMapa) {
   const { rows } = await wh.query(`
     WITH base AS (
       SELECT l.lead_id, l.lead_name, l.owner_id, l.pipeline_id, l.stage_id,
@@ -507,21 +609,8 @@ async function coorte(pipes, since, until) {
       WHERE se.object_type = 'lead'
       GROUP BY 1
     ),
-    -- RÉGUA B: ATIVIDADE REAL. Ligação conectada, e-mail enviado ou LinkedIn enviado.
-    -- Nota NÃO conta (decisão de 10/08: "nota não é ação, e-mail é").
-    ativ AS (
-      SELECT c.lead_id,
-             COUNTIF(e.is_connected) AS ligacoes_conectadas,
-             COUNTIF(e.kind = 'emails' AND e.is_outbound_message) AS emails_enviados,
-             COUNTIF(e.channel_type = 'LINKEDIN_MESSAGE') AS linkedin_enviados,
-             MIN(e.occurred_at) AS primeiro_toque
-      FROM l2c c
-      JOIN ${wh.t('silver', 'fact_engagement')} e ON e.contact_id = c.contact_id
-      WHERE e.is_connected
-         OR (e.kind = 'emails' AND e.is_outbound_message)
-         OR e.channel_type = 'LINKEDIN_MESSAGE'
-      GROUP BY 1
-    ),
+    -- A régua de atividade NÃO vive aqui: ela é única, em ATIV_MANUAL, e chega pela
+    -- função atividade(). Duplicá-la é como os dois lados passam a discordar.
     -- Tier vem do BRONZE: não está projetado em dim_contact (F0 conserta).
     tier AS (
       SELECT object_id AS contact_id,
@@ -532,9 +621,6 @@ async function coorte(pipes, since, until) {
     SELECT b.*, l2c.n_contatos, l2d.deal_id,
            cp.company_id, cp.company_name, cp.employees, cp.porte, cp.vidas AS vidas_empresa,
            e.visitadas,
-           IFNULL(a.ligacoes_conectadas, 0) AS ligacoes_conectadas,
-           IFNULL(a.emails_enviados, 0)     AS emails_enviados,
-           IFNULL(a.linkedin_enviados, 0)   AS linkedin_enviados,
            tr.tier_colaboradores, tr.vidas_contato,
            d.stage_label AS deal_stage, d.pipeline_id AS deal_pipeline
     FROM base b
@@ -543,7 +629,6 @@ async function coorte(pipes, since, until) {
     LEFT JOIN l2d   ON l2d.lead_id = b.lead_id
     LEFT JOIN ${wh.t('silver', 'dim_company')} cp ON cp.company_id = l2co.company_id AND cp.is_current
     LEFT JOIN etapas e ON e.lead_id = b.lead_id
-    LEFT JOIN ativ   a ON a.lead_id = b.lead_id
     LEFT JOIN tier  tr ON tr.contact_id = l2c.contact_id
     LEFT JOIN ${wh.t('silver', 'dim_deal')} d ON d.deal_id = l2d.deal_id AND d.is_current
   `, [
@@ -551,14 +636,10 @@ async function coorte(pipes, since, until) {
     { name: 'until', type: 'DATE', value: until },
   ]);
 
-  let multiContato = 0;
   const leads = rows.map(r => {
     const visitadas = (r.visitadas || []).map(canon);
     const maxRank = visitadas.reduce((m, c) => (RANK[c] != null && RANK[c] > m ? RANK[c] : m), 0);
-    const lig = wh.num(r.ligacoes_conectadas);
-    const eml = wh.num(r.emails_enviados);
-    const li  = wh.num(r.linkedin_enviados);
-    if (wh.num(r.n_contatos) > 1) multiContato++;
+    const A = ativMapa[wh.str(r.lead_id)] || {};
     return {
       lead_id: wh.str(r.lead_id),
       lead: wh.str(r.lead_name),
@@ -571,9 +652,18 @@ async function coorte(pipes, since, until) {
       atingiu_conectado_etapa: maxRank >= RANK.conectado,
       qualificado: visitadas.includes('qualificado'),
       desqualificado: visitadas.includes('desqualificado') || canon(r.stage_id) === 'desqualificado',
-      // RÉGUA B — atividade real
-      atividade_real: lig + eml + li > 0,
-      ligacoes_conectadas: lig, emails_enviados: eml, linkedin_enviados: li,
+      // RÉGUA B — atividade real (ATIV_MANUAL: ligação conectada, e-mail, LinkedIn,
+      // WhatsApp MANUAL, reunião realizada). Automação em bucket próprio e visível.
+      atividade_real: (A.toques_manuais || 0) > 0,
+      so_automacao: (A.toques_manuais || 0) === 0 && (A.toques_automacao || 0) > 0,
+      ligacoes_conectadas: A.ligacoes_conectadas || 0,
+      emails_enviados: A.emails_enviados || 0,
+      linkedin_enviados: A.linkedin_enviados || 0,
+      whatsapp_manual: A.whatsapp_manual || 0,
+      reunioes: A.reunioes || 0,
+      toques_manuais: A.toques_manuais || 0,
+      toques_automacao: A.toques_automacao || 0,
+      primeiro_toque: A.primeiro_toque || null,
       // conversão
       deal_id: wh.str(r.deal_id),
       deal_stage: wh.str(r.deal_stage),
@@ -589,7 +679,7 @@ async function coorte(pipes, since, until) {
       origem: wh.str(r.origem_canonica) || wh.str(r.origem_fonte) || '(sem origem)',
     };
   });
-  return { leads, multiContato };
+  return { leads };
 }
 
 /** Contraprova ao vivo: Search API por etapa (barata, `total` sem paginar). */
@@ -630,13 +720,15 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const [snap, wf, co, mac, owners] = await Promise.all([
+    // A atividade vem PRIMEIRO porque a régua é única e a coorte depende dela.
+    const [snap, wf, mac, ativ, owners] = await Promise.all([
       snapshot(pipes),
       waterfall(pipes, since, until),
-      coorte(pipes, since, until),
       macro(pipes, since, until),
+      atividade(pipes, since, until),
       whq.ownerMap(),
     ]);
+    const co = await coorte(pipes, since, until, ativ.mapa);
 
     const idToBdr = resolveTeamIds(owners);
 
@@ -645,14 +737,38 @@ module.exports = async (req, res) => {
     // isso o id cru também viaja no payload.
     const nome = id => (id && owners[id]) || null;
 
-    const desq = wf.desq.map(d => ({
-      ...d,
-      bdr: idToBdr[d.owner_id] || nome(d.owner_id) || '(sem dono)',
-      autor: d.source_type === 'AUTOMATION_PLATFORM' ? 'Automação'
-           : d.source_type === 'INTEGRATION' ? 'Integração'
-           : (idToBdr[d.autor_user_id] || nome(d.autor_user_id) || '(autor desconhecido)'),
-      automacao: d.source_type === 'AUTOMATION_PLATFORM' || d.source_type === 'INTEGRATION',
-    }));
+    // A RAZÃO da desqualificação, além do motivo declarado. O portal tem UM campo de
+    // motivo (`motivos_de_desqualificacao`, 17 valores) e nenhum campo de razão livre
+    // — então "razão" aqui é o contexto que permite AUDITAR o motivo: de que etapa
+    // saiu, quem fez, e se houve toque antes de desqualificar.
+    //
+    // O cruzamento que isso destrava: lead desqualificado como "Não houve tentativa de
+    // contato" que TINHA toque, e lead desqualificado por qualquer outro motivo que não
+    // tinha nenhum. Os dois são erro de processo, e nenhum aparece olhando só o motivo.
+    const desq = wf.desq.map(d => {
+      const A = ativ.mapa[d.lead_id] || {};
+      const tm = A.toques_manuais || 0, ta = A.toques_automacao || 0;
+      const motivo = d.motivo || '(sem motivo)';
+      const semTentativa = /n[aã]o houve tentativa/i.test(motivo);
+      return {
+        ...d,
+        motivo,
+        bdr: idToBdr[d.owner_id] || nome(d.owner_id) || '(sem dono)',
+        autor: d.source_type === 'AUTOMATION_PLATFORM' ? 'Automação'
+             : d.source_type === 'INTEGRATION' ? 'Integração'
+             : (idToBdr[d.autor_user_id] || nome(d.autor_user_id) || '(autor desconhecido)'),
+        automacao: d.source_type === 'AUTOMATION_PLATFORM' || d.source_type === 'INTEGRATION',
+        // razão auditável
+        etapa_de_origem: d.de,
+        toques_manuais: tm,
+        toques_automacao: ta,
+        teve_toque: tm > 0,
+        primeiro_toque: A.primeiro_toque || null,
+        // as duas contradições, marcadas para virarem filtro na tela
+        contradiz_motivo: semTentativa && tm > 0,
+        desqualificado_sem_toque: !semTentativa && tm === 0,
+      };
+    });
 
     const leads = co.leads.map(l => ({ ...l, bdr: idToBdr[l.owner_id] || nome(l.owner_id) || '(sem dono)' }));
 
@@ -696,11 +812,17 @@ module.exports = async (req, res) => {
         camada: 'silver', tabela: 'dim_lead + fact_stage_entry + fact_engagement + bronze.raw_contact',
         leads,
         criados: n,
+        // "Criaram X e falaram com quantos Y?" — o Y viaja como NÚMERO ABSOLUTO, não
+        // só como taxa. Taxa sem o absoluto esconde a escala: 50% de 4 e 50% de 400
+        // pedem decisões diferentes.
         taxa_contato: {
-          por_etapa:      { n: porEtapa,      pct: n ? +(porEtapa / n * 100).toFixed(1) : null },
-          por_atividade:  { n: porAtividade,  pct: n ? +(porAtividade / n * 100).toFixed(1) : null },
+          criados: n,
+          por_etapa:     { n: porEtapa,     pct: n ? +(porEtapa / n * 100).toFixed(1) : null },
+          por_atividade: { n: porAtividade, pct: n ? +(porAtividade / n * 100).toFixed(1) : null },
           etapa_sem_atividade: leads.filter(l => l.atingiu_tentativa_etapa && !l.atividade_real).length,
           atividade_sem_etapa: leads.filter(l => !l.atingiu_tentativa_etapa && l.atividade_real).length,
+          so_automacao: leads.filter(l => l.so_automacao).length,
+          nunca_tocados: leads.filter(l => !l.atividade_real && !l.so_automacao).length,
         },
         qualificados: leads.filter(l => l.qualificado).length,
         com_deal: leads.filter(l => l.deal_id).length,
@@ -714,6 +836,8 @@ module.exports = async (req, res) => {
         pipeline_do_evento: 'Etapa contada no pipeline REGISTRADO NO EVENTO (derivado do stage_id, único por pipeline), nunca no pipeline atual do lead. 1.456 leads trocaram de pipeline; pelo atual, o New/Tentativa reais deles desapareceriam do funil principal.',
         backup_excluido: `Pipeline Backup (${PIPE_BACKUP}) fora do recorte por decisão do dono; parou de receber lead em 09/04/2026. Movimentos descartados nesta janela: ${wf.descartadasBackup}.`,
         stage_canon: 'Etapa canônica por mapa EXPLÍCITO de stage_id. stage_order NÃO é comparável entre pipelines (principal 0–4, Diagnóstico Site 1–5).',
+        regua_atividade_corrigida: 'CORREÇÃO de 11/08/2026: a régua de atividade real OMITIA WhatsApp, que é o canal mais usado do time depois do e-mail (7.297 mensagens manuais em 90d). Achado por auditoria de caso do dono — o lead "Rui Medeiros 2026-08" aparecia como sem toque tendo WhatsApp manual em 07/08. Efeito na coorte de jul/26: atividade real vai de 1.076 (46,7%) para 1.601 (69,5%), +525 leads; o gap "movido sem toque" cai de 1.009 para ~490. O número publicado ANTES desta correção estava inflado. A régua agora conta: ligação CONECTADA, e-mail enviado, LinkedIn enviado, WhatsApp enviado MANUALMENTE e reunião REALIZADA. NÃO conta: tarefa (intenção, não ação), nota, e-mail de ENTRADA inclusive auto-reply, ligação discada sem conexão, e WhatsApp de integração (Treble) — este último em bucket próprio e visível como so_automacao.',
+        razao_da_desqualificacao: 'O portal tem UM campo de motivo (motivos_de_desqualificacao, 17 valores) e NENHUM campo de razão livre. A "razão" na tela é o contexto que audita o motivo: de que etapa o lead saiu, quem fez o movimento, e se houve toque antes. Isso destrava dois cruzamentos que o motivo sozinho esconde: lead desqualificado como "Não houve tentativa de contato" que TINHA toque (contradiz_motivo), e lead desqualificado por outro motivo sem nenhum toque (desqualificado_sem_toque).',
         duas_reguas_de_contato: 'A tela mostra as DUAS e não escolhe. Régua de ETAPA = chegou a Tentativa+. Régua de ATIVIDADE REAL = ligação conectada OU e-mail enviado OU LinkedIn enviado (nota não conta). Medido em jul/26: 89,4% contra 46,7%, com 1.009 leads movidos para Tentativa sem UM toque no CRM. A premissa "teve que passar, senão não tem como" não se sustenta.',
         automacao_nao_e_esforco: 'Automação não é esforço do BDR: movimentação com source_type AUTOMATION_PLATFORM/INTEGRATION aparece como "Automação"/"Integração" no autor, nunca creditada a um BDR. Escala medida: 24% de TODAS as movimentações de etapa não têm autor humano (1.812 de 7.568 desde 01/07) — mas isso NÃO se distribui igual: em jul/26 as desqualificações foram 1.499 por CRM_UI e 1 por integração, ou seja a automação move lead ADIANTE (inscrição em sequência), quase nunca desqualifica. Ler os 24% como "um quarto das desqualificações é robô" seria errado.',
         dono_no_instante: 'Atribuição pelo dono NO INSTANTE do movimento (fact_owner_assignment), não pelo dono atual — em 184/184 casos rastreáveis a troca de dono veio DEPOIS do toque, então "dono atual" reescreve o passado.',
@@ -726,12 +850,19 @@ module.exports = async (req, res) => {
       },
       divergencias_conhecidas: {
         preenchimento_dimensoes: 'vidas na empresa 6,9%, porte 11,4%, segmento 0,06%, employees 65,1%. Cortes por vidas/porte são majoritariamente "(sem valor)" e a tela mostra essa categoria em vez de esconder.',
-        lead_multi_contato: `Leads com mais de 1 contato ativo nesta janela: ${co.multiContato}. A régua de atividade usa ANY_VALUE do contato; com 1:1 (18.209 de 18.210) o efeito é nulo, mas não é zero por contrato.`,
+        lead_multi_contato: `Leads com mais de 1 contato ativo nesta janela: ${ativ.multiContato}. A régua de atividade usa ANY_VALUE do contato; com 1:1 (18.209 de 18.210) o efeito é nulo, mas não é zero por contrato.`,
         autor_join: 'updated_by_user_id casa com dim_owner.owner_id em 17/17 usuários medidos. É coincidência medida, não contrato do HubSpot — o id cru viaja no payload para auditoria.',
         etapa_derivada_vs_dim: 'A etapa derivada de fact_stage_entry discorda de dim_lead em 2 de 18.296 leads (0,01%). Afeta o saldo do macro nessa ordem de grandeza e e parte do residuo declarado.',
         etapas_nao_mapeadas: `Movimentos com etapa fora do mapa canônico: ${wf.naoMapeadas}. Etapa nova no portal aparece como "(etapa não mapeada)" em vez de cair fora em silêncio.`,
       },
-      diagnostics: { camadas: { snapshot: 'silver', waterfall: 'silver', coorte: 'silver+bronze' } },
+      diagnostics: {
+        camadas: { snapshot: 'silver', waterfall: 'silver', coorte: 'silver+bronze', atividade: 'silver' },
+        contradicoes_desqualificacao: {
+          nota: 'Contagens que auditam o motivo declarado contra a atividade registrada.',
+          motivo_diz_sem_tentativa_mas_teve_toque: desq.filter(d => d.contradiz_motivo).length,
+          outro_motivo_e_nenhum_toque: desq.filter(d => d.desqualificado_sem_toque).length,
+        },
+      },
       extraido_em: new Date().toISOString(),
     };
 

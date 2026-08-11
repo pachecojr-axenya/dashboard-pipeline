@@ -104,8 +104,11 @@ async function call(query) {
 
   const co = J.coorte || {};
   ok(co.criados === 2302, 'leads criados == 2.302 (medido à mão no BQ)', co.criados);
-  ok(co.taxa_contato && co.taxa_contato.por_atividade.n === 1076,
-    'régua de ATIVIDADE == 1.076', co.taxa_contato && co.taxa_contato.por_atividade.n);
+  // 1.601, NÃO 1.076: a régua antiga omitia WhatsApp. Ver o bloco 2b.
+  ok(co.taxa_contato && co.taxa_contato.por_atividade.n === 1601,
+    'régua de ATIVIDADE == 1.601 (com WhatsApp manual; era 1.076 sem)', co.taxa_contato && co.taxa_contato.por_atividade.n);
+  ok(co.taxa_contato && co.taxa_contato.criados === 2302,
+    '"criaram X" viaja como absoluto no payload', co.taxa_contato && co.taxa_contato.criados);
   ok(co.taxa_contato && co.taxa_contato.por_etapa.n === 2057,
     'régua de ETAPA == 2.057', co.taxa_contato && co.taxa_contato.por_etapa.n);
   ok(co.com_deal === 172, 'leads com deal == 172', co.com_deal);
@@ -115,10 +118,52 @@ async function call(query) {
   const t = co.taxa_contato || {};
   ok(t.por_etapa.n > t.por_atividade.n,
     'ETAPA > ATIVIDADE (se empatar um dia, é notícia)', t.por_etapa.pct + '% vs ' + t.por_atividade.pct + '%');
-  ok(t.etapa_sem_atividade >= 900,
-    'leads movidos de etapa SEM toque registrado >= 900', t.etapa_sem_atividade);
+  ok(t.etapa_sem_atividade === 504,
+    'movidos de etapa SEM toque == 504 (era 1.009 na régua sem WhatsApp)', t.etapa_sem_atividade);
   ok(t.por_etapa.n - t.por_atividade.n === t.etapa_sem_atividade - t.atividade_sem_etapa,
     'partição fecha: (etapa − atividade) == (etapa_sem_ativ − ativ_sem_etapa)');
+
+  // ── 2b. A RÉGUA DE ATIVIDADE, travada canal por canal ─────────────────────────
+  // Este bloco existe porque a régua JÁ ESTAVA ERRADA UMA VEZ: omitia WhatsApp, o
+  // canal mais usado do time depois do e-mail, e a tela afirmava "sem toque" para 525
+  // leads que tinham WhatsApp digitado à mão. Achado por auditoria de caso do dono, não
+  // por teste — e é justamente isso que este bloco impede de repetir.
+  console.log('\n== regua de atividade, canal por canal ==');
+  ok(t.so_automacao >= 0 && t.nunca_tocados >= 0,
+    'automação e nunca-tocados sao buckets SEPARADOS e visiveis',
+    'so automacao ' + t.so_automacao + ' | nunca tocados ' + t.nunca_tocados);
+  ok(t.por_atividade.n + t.so_automacao + t.nunca_tocados === t.criados,
+    'particao MECE: falou com + so automacao + nunca tocado == criados',
+    t.por_atividade.n + ' + ' + t.so_automacao + ' + ' + t.nunca_tocados + ' = ' + t.criados);
+  const comWpp = (co.leads || []).filter(l => l.whatsapp_manual > 0);
+  ok(comWpp.length > 0, 'ha leads cuja UNICA prova de contato pode ser WhatsApp', comWpp.length);
+  ok(comWpp.every(l => l.atividade_real),
+    'TODO lead com WhatsApp manual conta como atividade real (a regressao do caso Rui Medeiros)');
+  const soWpp = comWpp.filter(l => !l.ligacoes_conectadas && !l.emails_enviados && !l.linkedin_enviados && !l.reunioes);
+  ok(soWpp.length > 0 && soWpp.every(l => l.atividade_real),
+    'lead com WhatsApp e NADA MAIS tambem conta — sem isso o bug volta em silencio', soWpp.length);
+  ok((co.leads || []).every(l => l.atividade_real === (l.toques_manuais > 0)),
+    'atividade_real e exatamente "houve toque manual", sem terceira via');
+  ok((co.leads || []).every(l => !(l.atividade_real && l.so_automacao)),
+    'so_automacao e atividade_real sao mutuamente exclusivos');
+
+  // ── 2c. A RAZÃO da desqualificação, e as duas contradições ────────────────────
+  console.log('\n== razao auditavel da desqualificacao ==');
+  const dqs = J.desqualificacoes || [];
+  ok(dqs.every(d => d.etapa_de_origem && typeof d.teve_toque === 'boolean'),
+    'toda desqualificacao carrega etapa de origem e se houve toque');
+  const contra = dqs.filter(d => d.contradiz_motivo);
+  const semToque = dqs.filter(d => d.desqualificado_sem_toque);
+  ok(contra.every(d => /n[aã]o houve tentativa/i.test(d.motivo) && d.teve_toque),
+    'contradiz_motivo == motivo diz "sem tentativa" E houve toque', contra.length);
+  ok(semToque.every(d => !d.teve_toque && !/n[aã]o houve tentativa/i.test(d.motivo)),
+    'desqualificado_sem_toque == outro motivo E nenhum toque', semToque.length);
+  ok(J.diagnostics.contradicoes_desqualificacao.motivo_diz_sem_tentativa_mas_teve_toque === contra.length,
+    'o diagnostico bate com a lista (contagem nao inventada)');
+  ok(!!(J.premissas || {}).regua_atividade_corrigida,
+    'a CORRECAO da regua esta declarada em premissas, nao so no commit');
+  ok(!!(J.premissas || {}).razao_da_desqualificacao,
+    'a ausencia de campo de razao livre no portal esta declarada');
 
   // ── 3. Conservação do waterfall ───────────────────────────────────────────────
   console.log('\n== conservação do waterfall ==');

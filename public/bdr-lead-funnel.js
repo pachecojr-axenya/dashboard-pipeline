@@ -45,6 +45,7 @@
     qualificado: 'rgba(63,185,80,.85)',
     desqualificado: 'rgba(248,81,73,.75)'
   };
+  var C_BOM_T = 'rgba(63,185,80,1)';
   var C_TOTAL = 'rgba(58,184,183,.85)', C_BOM = 'rgba(63,185,80,.85)',
       C_RUIM = 'rgba(248,81,73,.8)', C_NEUTRO = 'rgba(140,140,150,.65)';
 
@@ -172,6 +173,9 @@
       card('Waterfall macro | o funil aberto que abre, recebe, perde e fecha',
         'Aberto@início + entrou no funil + reativados − qualificados − desqualificados = Aberto@fim. ABERTO = Novo + Tentativa + Conectado; qualificado e desqualificado são SAÍDAS do funil de prospecção (um vira deal, o outro morre), e contá-los no saldo faria o funil só crescer. A barra "Resíduo" é o que a aritmética não explica — ela aparece em vez de ser diluída nas outras, porque waterfall que não fecha no saldo é ficção. O saldo de abertura usa a etapa do lead em T0 derivada de fact_stage_entry (dim_lead só sabe o agora); método validado em 18.294 de 18.296 leads. Clique numa barra para os leads.',
         'macro', 340, null, true) +
+      card('Waterfall por etapa | entradas contra saídas',
+        'O mesmo período do macro, aberto por etapa: barras para CIMA são entradas, para BAIXO são saídas, e o rótulo é o líquido com sinal. O losango marca o saldo no fim. Barras opostas de tamanho parecido significam etapa que girou muito e andou pouco — é o que a tabela de saldo não mostra de relance. Clique numa etapa para os leads que entraram ou saíram dela.',
+        'poretapa', 340, null, true) +
       painel('Waterfall detalhado',
         'Duas leituras do mesmo período. POR STATUS: como cada etapa ganhou e perdeu — saldo no início, entradas, saídas, saldo no fim, e o resíduo por etapa. POR MOVIMENTAÇÃO: cada seta de→para, com a natureza marcada por símbolo e palavra (nunca só por cor). Toda coluna com ⇅ ordena. Clique numa linha para os leads, com criado, trilha e status atual.',
         'waterfall', tabsWf) +
@@ -198,6 +202,7 @@
     if (!D) { if (!LOADING) load(); return; }
     selo();
     macroChart();
+    porEtapaChart();
     waterfallTabela();
     snapshot();
     porDia();
@@ -284,6 +289,62 @@
         '. ABERTO = Novo + Tentativa + Conectado.';
       cv.parentNode.appendChild(p);
     }
+  }
+
+  // ── Waterfall POR ETAPA, em barras (o macro conta a história; este mostra o giro) ──
+  // Entradas para cima, saídas para baixo. Duas barras grandes e opostas na mesma etapa
+  // são giro alto com avanço baixo — informação que a coluna de saldo esconde, porque
+  // saldo é a diferença e a diferença não sabe o tamanho do fluxo.
+  function porEtapaChart() {
+    if (!D || !D.waterfall || typeof _novoMkChart !== 'function') return;
+    var th_ = _novoTheme();
+    var lista = (D.waterfall.por_status || []).filter(function (s) {
+      return s.saldo_inicio || s.saldo_fim || s.entradas || s.saidas;
+    });
+    if (!lista.length) return;
+    var ordem = CAN.filter(function (c) { return lista.some(function (s) { return s.etapa === c; }); });
+    var por = {}; lista.forEach(function (s) { por[s.etapa] = s; });
+    var ent = ordem.map(function (c) { return por[c].entradas; });
+    var sai = ordem.map(function (c) { return -por[c].saidas; });
+    var fim = ordem.map(function (c) { return por[c].saldo_fim; });
+    var liq = ordem.map(function (c) { return por[c].liquido; });
+
+    _novoMkChart('lf-poretapa', {
+      type: 'bar', plugins: [ChartDataLabels],
+      data: {
+        labels: ordem.map(pt),
+        datasets: [
+          { label: 'Entradas', data: ent, backgroundColor: C_BOM, borderRadius: 3, stack: 'f',
+            datalabels: { anchor: 'end', align: 'top', color: th_.cText2, font: { family: NOVO_FONT, size: 9 }, formatter: function (v) { return v ? '+' + ni(v) : ''; } } },
+          { label: 'Saídas', data: sai, backgroundColor: C_RUIM, borderRadius: 3, stack: 'f',
+            datalabels: { anchor: 'end', align: 'bottom', color: th_.cText2, font: { family: NOVO_FONT, size: 9 }, formatter: function (v) { return v ? '−' + ni(Math.abs(v)) : ''; } } },
+          { label: 'Saldo no fim', type: 'line', data: fim, borderColor: C_TOTAL, backgroundColor: C_TOTAL,
+            showLine: false, pointStyle: 'rectRot', pointRadius: 7, yAxisID: 'y1',
+            datalabels: { align: 'right', offset: 8, color: th_.cText, font: { family: NOVO_FONT, size: 10, weight: 'bold' }, formatter: function (v) { return ni(v); } } }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false, layout: { padding: { top: 22, bottom: 14, right: 46 } },
+        plugins: {
+          legend: { display: true, labels: { color: th_.cText2, font: { family: NOVO_FONT, size: 10 }, padding: 8, usePointStyle: true } },
+          tooltip: {
+            callbacks: {
+              afterBody: function (items) {
+                var i = items[0].dataIndex, s = por[ordem[i]];
+                return ['', 'Líquido: ' + sgn(liq[i]) + (liq[i] > 0 ? ' (↑ ganhou)' : liq[i] < 0 ? ' (↓ perdeu)' : ' (→ estável)'),
+                  'Saldo: ' + ni(s.saldo_inicio) + ' → ' + ni(s.saldo_fim) + (s.residuo ? '  | resíduo ' + sgn(s.residuo) : '')];
+              }
+            }
+          }
+        },
+        scales: {
+          x: { grid: { display: false }, ticks: { color: th_.cText2, font: { family: NOVO_FONT, size: 10 } }, stacked: true },
+          y: { grid: { color: th_.cGrid }, ticks: { color: th_.cText2, font: { family: NOVO_FONT }, precision: 0, callback: function (v) { return ni(Math.abs(v)); } }, stacked: true },
+          y1: { display: false, position: 'right', beginAtZero: true }
+        },
+        onClick: function (e, el) { if (!el.length) return; drillStatus(ordem[el[0].index]); }
+      }
+    });
   }
 
   // ── Waterfall detalhado: POR STATUS ou POR MOVIMENTAÇÃO ────────────────────────
@@ -460,10 +521,12 @@
     var rows = {};
     leads.forEach(function (l) {
       var k = dimOf(l);
-      var r = rows[k] = rows[k] || { k: k, n: 0, etapa: 0, ativ: 0, ambos: 0, qual: 0, deal: 0, dq: 0, list: [] };
+      var r = rows[k] = rows[k] || { k: k, n: 0, etapa: 0, ativ: 0, ambos: 0, qual: 0, deal: 0, dq: 0, auto: 0, nunca: 0, list: [] };
       r.n++; r.list.push(l);
       if (l.atingiu_tentativa_etapa) r.etapa++;
       if (l.atividade_real) r.ativ++;
+      if (l.so_automacao) r.auto++;
+      if (!l.atividade_real && !l.so_automacao) r.nunca++;
       if (l.atingiu_tentativa_etapa && l.atividade_real) r.ambos++;
       if (l.qualificado) r.qual++;
       if (l.deal_id) r.deal++;
@@ -480,8 +543,9 @@
     window._lfReguaRows = rows;
 
     var t = todas.reduce(function (a, r) {
-      a.n += r.n; a.etapa += r.etapa; a.ativ += r.ativ; a.ambos += r.ambos; a.qual += r.qual; a.deal += r.deal; a.dq += r.dq; return a;
-    }, { n: 0, etapa: 0, ativ: 0, ambos: 0, qual: 0, deal: 0, dq: 0 });
+      a.n += r.n; a.etapa += r.etapa; a.ativ += r.ativ; a.ambos += r.ambos; a.qual += r.qual;
+      a.deal += r.deal; a.dq += r.dq; a.auto += r.auto; a.nunca += r.nunca; return a;
+    }, { n: 0, etapa: 0, ativ: 0, ambos: 0, qual: 0, deal: 0, dq: 0, auto: 0, nunca: 0 });
 
     var barra = function (a, b, cor) {
       var p = b ? Math.round(a / b * 100) : 0;
@@ -492,32 +556,43 @@
     };
     var rotDim = { bdr: 'BDR', porte: 'Colaboradores', tier: 'Tier colabs', vidas: 'Vidas', origem: 'Origem' }[reguaDim];
 
-    var html = '<div style="font-size:.72rem;color:var(--text2);margin:.1rem 0 .5rem">' +
-      '<strong style="color:var(--text)">Gap das réguas:</strong> ' +
-      ni(t.etapa) + ' passaram de etapa (' + pct(t.etapa, t.n) + ') contra ' +
-      ni(t.ativ) + ' com atividade real (' + pct(t.ativ, t.n) + '). ' +
-      '<strong style="color:var(--red)">' + ni(t.etapa - t.ambos) + ' leads foram movidos de etapa sem nenhum toque registrado.</strong>' +
+    var html = '<div style="font-size:.74rem;color:var(--text2);margin:.1rem 0 .6rem;line-height:1.6">' +
+      '<strong style="color:var(--text)">Criaram ' + ni(t.n) + ' e falaram com ' + ni(t.ativ) + '</strong> (' + pct(t.ativ, t.n) + ') — ' +
+      'atividade real distinta por lead: ligação conectada, e-mail, LinkedIn, WhatsApp manual ou reunião realizada.<br>' +
+      'Pela régua de <strong>etapa</strong> seriam ' + ni(t.etapa) + ' (' + pct(t.etapa, t.n) + '), e a diferença é o alerta: ' +
+      '<strong style="color:var(--red)">' + ni(t.etapa - t.ambos) + ' movidos de etapa sem nenhum toque registrado</strong>. ' +
+      'Além disso, <strong>' + ni(t.nunca) + ' nunca foram tocados</strong> por ninguém' +
+      (t.auto ? ' e <strong>' + ni(t.auto) + '</strong> só por automação (não conta como esforço do BDR)' : '') + '.' +
       '</div>';
 
     html += '<table class="lb" style="font-size:.78rem;width:100%"><thead><tr>' +
-      th('regua', 'k', rotDim, 'left') + th('regua', 'n', 'Criados') +
-      th('regua', 'tx_etapa', 'Tx contato<br><span style="font-weight:400;font-size:.66rem;color:var(--text2)">por ETAPA</span>') +
+      th('regua', 'k', rotDim, 'left') +
+      th('regua', 'n', 'Criaram<br><span style="font-weight:400;font-size:.66rem;color:var(--text2)">X leads</span>') +
+      th('regua', 'ativ', 'Falaram com<br><span style="font-weight:400;font-size:.66rem;color:var(--text2)">Y distintos</span>') +
       th('regua', 'tx_ativ', 'Tx contato<br><span style="font-weight:400;font-size:.66rem;color:var(--text2)">por ATIVIDADE</span>') +
-      th('regua', 'lacuna', 'Etapa sem<br>toque') + th('regua', 'qual', 'Qualificados') +
-      th('regua', 'deal', 'Com deal') + th('regua', 'dq', 'Desqualif.') +
+      th('regua', 'tx_etapa', 'Tx contato<br><span style="font-weight:400;font-size:.66rem;color:var(--text2)">por ETAPA</span>') +
+      th('regua', 'lacuna', 'Etapa sem<br>toque') +
+      th('regua', 'auto', 'Só<br>automação') + th('regua', 'nunca', 'Nunca<br>tocados') +
+      th('regua', 'qual', 'Qualificados') + th('regua', 'deal', 'Com deal') + th('regua', 'dq', 'Desqualif.') +
       '</tr></thead><tbody>';
     ord.forEach(function (r) {
       html += '<tr style="cursor:pointer" onclick="AxLeadFunnel.drillDim(' + JSON.stringify(r.k).replace(/"/g, '&quot;') + ')">' +
         '<td style="text-align:left;white-space:nowrap;max-width:210px;overflow:hidden;text-overflow:ellipsis;font-weight:600">' + esc(r.k) + '</td>' +
-        '<td>' + ni(r.n) + '</td>' + barra(r.etapa, r.n, COR.tentativa) + barra(r.ativ, r.n, COR.conectado) +
+        '<td style="font-weight:600">' + ni(r.n) + '</td>' +
+        '<td style="font-weight:600;color:' + C_BOM_T + '">' + ni(r.ativ) + '</td>' +
+        barra(r.ativ, r.n, COR.conectado) + barra(r.etapa, r.n, COR.tentativa) +
         '<td style="color:' + (r.lacuna ? 'var(--red)' : 'var(--text2)') + '">' + ni(r.lacuna) + '</td>' +
+        '<td style="color:var(--text2)">' + ni(r.auto) + '</td>' +
+        '<td style="color:' + (r.nunca ? 'var(--red)' : 'var(--text2)') + '">' + ni(r.nunca) + '</td>' +
         '<td>' + ni(r.qual) + '</td><td>' + ni(r.deal) + '</td><td>' + ni(r.dq) + '</td></tr>';
     });
     html += '</tbody><tfoot><tr><td style="text-align:left;font-weight:700">Total</td>' +
       '<td style="font-weight:700">' + ni(t.n) + '</td>' +
-      '<td style="font-weight:700;text-align:right">' + pct(t.etapa, t.n) + '</td>' +
+      '<td style="font-weight:700">' + ni(t.ativ) + '</td>' +
       '<td style="font-weight:700;text-align:right">' + pct(t.ativ, t.n) + '</td>' +
+      '<td style="font-weight:700;text-align:right">' + pct(t.etapa, t.n) + '</td>' +
       '<td style="font-weight:700">' + ni(t.etapa - t.ambos) + '</td>' +
+      '<td style="font-weight:700">' + ni(t.auto) + '</td><td style="font-weight:700">' + ni(t.nunca) + '</td>' +
       '<td style="font-weight:700">' + ni(t.qual) + '</td><td style="font-weight:700">' + ni(t.deal) + '</td>' +
       '<td style="font-weight:700">' + ni(t.dq) + '</td></tr></tfoot></table>' +
       (todas.length > 25 ? '<p style="font-size:.71rem;color:var(--text2);margin:.4rem 0 0">Mostrando 25 de ' + ni(todas.length) + ' valores de ' + rotDim + ' | o Total soma TODOS, não só os 25 exibidos.</p>' : '');
@@ -629,9 +704,10 @@
         '<td style="white-space:nowrap;font-weight:600">' +
           '<span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:' + (COR[st] || C_NEUTRO) + ';margin-right:.35rem"></span>' + esc(pt(st)) + '</td>' +
         (modo === 'disq'
-          ? '<td style="text-align:left;max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(l.motivo || '(sem motivo)') + '</td>' +
+          ? '<td style="text-align:left;max-width:190px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(l.motivo || '(sem motivo)') + '</td>' +
+            '<td style="text-align:left;font-size:.68rem;min-width:200px">' + razaoHtml(l) + '</td>' +
             '<td style="text-align:left;white-space:nowrap">' + esc(l.autor || '—') + '</td>'
-          : '<td style="font-size:.7rem;white-space:nowrap">' + (l.atingiu_tentativa_etapa ? '✅ etapa' : '— etapa') + ' / ' + (l.atividade_real ? '✅ toque' : '✖ sem toque') + '</td>') +
+          : '<td style="font-size:.68rem;white-space:nowrap">' + reguasHtml(l) + '</td>') +
         '<td>' + ni(l.colaboradores) + '</td>' +
         '<td style="white-space:nowrap">' + esc(l.tier_colaboradores || '—') + '</td>' +
         '<td>' + ni(l.vidas) + '</td>' +
@@ -643,12 +719,43 @@
       th('leads', 'criado', 'Criado') +
       '<th style="text-align:left">Trilha na janela (avançou)</th>' +
       th('leads', 'status_atual', 'Status atual', 'left') +
-      (modo === 'disq' ? '<th style="text-align:left">Motivo</th><th style="text-align:left">Quem</th>'
-                       : '<th>Réguas</th>') +
+      (modo === 'disq' ? '<th style="text-align:left">Motivo</th><th style="text-align:left">Razão (contexto auditável)</th><th style="text-align:left">Quem</th>'
+                       : '<th style="text-align:left">Canais de toque</th>') +
       th('leads', 'colaboradores', 'Colabs') + '<th>Tier</th>' + th('leads', 'vidas', 'Vidas') +
       '<th style="text-align:left">Origem</th>';
     return '<table class="lb" style="font-size:.74rem"><thead><tr>' + head + '</tr></thead><tbody>' + rows + '</tbody></table>' +
       (cap ? '<p style="font-size:.72rem;color:var(--text2);margin:.4rem 0 0">Mostrando 300 de ' + ni(ord.length) + ' — ordene por outra coluna para ver outro recorte.</p>' : '');
+  }
+
+  // Diz QUAL canal tocou, não só "houve toque". "✖ sem toque" sem dizer o que foi
+  // procurado foi exatamente o que gerou a desconfiança justa do dono no caso Rui
+  // Medeiros: a tela afirmava ausência sem declarar o universo que ela olhava.
+  function reguasHtml(l) {
+    var c = [];
+    if (l.ligacoes_conectadas) c.push('☎ ' + l.ligacoes_conectadas);
+    if (l.emails_enviados) c.push('✉ ' + l.emails_enviados);
+    if (l.linkedin_enviados) c.push('in ' + l.linkedin_enviados);
+    if (l.whatsapp_manual) c.push('wa ' + l.whatsapp_manual);
+    if (l.reunioes) c.push('◷ ' + l.reunioes);
+    var etapa = l.atingiu_tentativa_etapa ? '✅ etapa' : '— etapa';
+    if (c.length) return etapa + ' / <span style="color:' + C_BOM_T + '">✅ ' + c.join(' · ') + '</span>';
+    if (l.so_automacao) return etapa + ' / <span style="color:var(--text2)">🤖 só automação (' + (l.toques_automacao || 0) + ')</span>';
+    return etapa + ' / <span style="color:var(--red)">✖ nenhum toque</span>';
+  }
+
+  // A "razão" que o portal não tem em campo próprio: de que etapa saiu, se houve toque
+  // antes, e a marca das duas CONTRADIÇÕES. É o que permite auditar o motivo declarado
+  // em vez de acreditar nele.
+  function razaoHtml(d) {
+    var p = [];
+    if (d.etapa_de_origem) p.push('saiu de <strong>' + esc(pt(d.etapa_de_origem)) + '</strong>');
+    if (d.teve_toque) p.push('<span style="color:' + C_BOM_T + '">✅ ' + (d.toques_manuais || 0) + ' toque(s)</span>' +
+      (d.primeiro_toque ? ' desde ' + fmtBR(d.primeiro_toque) : ''));
+    else if (d.toques_automacao) p.push('<span style="color:var(--text2)">🤖 só automação</span>');
+    else p.push('<span style="color:var(--red)">✖ nenhum toque</span>');
+    if (d.contradiz_motivo) p.push('<strong style="color:var(--red)">⚠ motivo diz "sem tentativa" mas houve toque</strong>');
+    if (d.desqualificado_sem_toque) p.push('<strong style="color:var(--red)">⚠ desqualificado sem nunca tocar</strong>');
+    return p.join(' · ');
   }
 
   function abre(titulo, list, modo, nota) {
@@ -735,7 +842,15 @@
       return m ? Object.assign({}, d, { passos: m.passos, status_atual: m.status_atual, criado: m.criado }) : d;
     });
     var titulo = 'Desqualificações' + (f.dia ? ' em ' + fmtBRfull(f.dia) : '') + (f.motivo ? ' | ' + f.motivo : '') + (f.autor ? ' | ' + f.autor : '');
-    abre(titulo, list, 'disq', 'Autor é quem <strong>fez o movimento</strong> (updated_by_user_id), não o dono atual do lead. BDR é o dono <strong>no instante</strong> da desqualificação.');
+    var contra = list.filter(function (d) { return d.contradiz_motivo; }).length;
+    var semToque = list.filter(function (d) { return d.desqualificado_sem_toque; }).length;
+    abre(titulo, list, 'disq',
+      'Autor é quem <strong>fez o movimento</strong> (updated_by_user_id), não o dono atual do lead. BDR é o dono <strong>no instante</strong> da desqualificação. ' +
+      'O portal tem <strong>um</strong> campo de motivo e nenhum de razão livre — a coluna Razão é o contexto que audita o motivo.' +
+      ((contra || semToque) ? '<br><strong style="color:var(--red)">⚠ ' +
+        (contra ? contra + ' com motivo "sem tentativa de contato" que TIVERAM toque' : '') +
+        (contra && semToque ? ' · ' : '') +
+        (semToque ? semToque + ' desqualificados sem nunca terem sido tocados' : '') + '</strong>' : ''));
   }
   function drillDisqCel(motivo, autor) { drillDisq({ motivo: motivo, autor: autor }); }
 
