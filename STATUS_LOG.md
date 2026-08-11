@@ -1,5 +1,51 @@
 # Dashboard Enhancement Loop — Status Log
 
+### 🚀 DEPLOY DE PRODUÇÃO | Drawers do forecast: origem do ARR (HubSpot × calculado) (2026-08-11)
+
+> Autorização explícita do dono ("Sim, faça o deploy e commit"). `git fetch` encontrou
+> avanço no upstream (308746b → e2402ad, 2 commits de BDR lead-funnel, sem overlap com os
+> arquivos deste fix) — `git stash` + `git merge --ff-only origin/main` + `git stash pop`,
+> sem conflito. `npm run check` PASS depois do merge; `_check-inline-js.js` em
+> `forecast-stage.html` e `check-semantic` também PASS (não cobertos pelo `npm run check`).
+>
+> Commit `5511a64` (ver entrada Feat abaixo). `npm run predeploy` PASS (`main` ==
+> `origin/main` `5511a64`, projeto canônico confirmado). Deployment
+> `dashboard-axenya-jt3ueujqz-axenya-f1a041f6.vercel.app`, alias `project-bsmfu.vercel.app`.
+>
+> Pós-deploy confirmado: `/novo`, `/forecast`, `/forecast-overall`, `/forecast-delta`,
+> `/novo-bdr` + subpáginas = 200; `/api/auth/me`, `/api/forecast-table` = 401 (auth ativa).
+
+### Feat | Drawers do forecast: tooltip mostra se o ARR veio do HubSpot ou foi calculado (2026-08-11)
+
+> Pedido do dono, seguindo o fix anterior (POC sem dado real não estima ARR/caixa via
+> vidas): os drawers/tooltips do forecast precisavam declarar essa regra e, além disso,
+> distinguir por deal quando o ARR foi puxado direto do HubSpot de quando foi calculado
+> localmente (1ª Fatura × 12 ou estimativa por vidas × VPV) — o payload só tinha o número
+> final mesclado, sem essa distinção.
+>
+> **Novo campo `arr_source`** (`api/forecast-table.js`, `lib/forecast-compute.js`):
+> `'hubspot'` | `'fatura'` | `'vpv'` | `null`, ao lado de `arr_estimado`.
+>
+> **Tooltips corrigidos** (`forecast.html`, `forecast-stage.html`): célula da coluna
+> **ARR Est.** agora mostra a origem real; o tooltip de **ARR Ponderado** e o de
+> **Receita Real** (fallback vidas×VPV) foram corrigidos — antes rotulavam a estimativa
+> por vidas como se fosse "ARR Estimado" real, por não terem como diferenciar sem
+> `arr_source`. Header tips descrevem a cascata completa + a exceção do POC.
+>
+> **Catálogo semântico** (`semantic/regras.json`, `semantic/dados.json`): regras
+> `arr_estimado_fallback`, `receita_mensal_deal` e o dado `is_poc` atualizados com a
+> cascata de ARR completa e a exceção do POC — alimenta o drawer "?" gerado do
+> `/forecast`. `semantic-ref.js` e `docs/dashboard-2.0/catalogo.md` regenerados pelos
+> scripts oficiais (`gen-semantic-front.js`, `semantic-view.js`).
+>
+> `forecast-delta.html` (D01): nota atualizada com a mesma exceção.
+>
+> **Validação:** servidor local reiniciado; `/api/forecast-table` confirmado ao vivo —
+> BRF/Marfrig (POC sem dado) → `arr_source: null`; ISA Energia (POC **com** ARR real no
+> HubSpot) → `arr_source: "hubspot"`, sem regressão; EPTV (não-POC) → `arr_source: "vpv"`,
+> comportamento normal. `npm run check` = 54 PASS/0 FAIL; `check-semantic` = OK, 0 avisos;
+> `_check-inline-js.js` limpo nos 3 painéis.
+
 ### 🚀 DEPLOY DE PRODUÇÃO | Fix ARR/caixa POC sem dado real (2026-08-11)
 
 > Autorização explícita do dono ("Commit e push e deploy"). `git fetch` encontrou avanço
