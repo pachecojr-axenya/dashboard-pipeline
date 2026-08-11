@@ -1,5 +1,73 @@
 # Dashboard Enhancement Loop — Status Log
 
+### 🚀 DEPLOY DE PRODUÇÃO | Treble V10: cada envio, tentativa, entrega e erro (2026-08-11)
+
+> Autorização explícita do dono ("deploy do que falta do macro ao mais granular").
+> Commit `cc70ce9`, push OK, `npm run check` **exit 0** (54/0 no smoke do MKT Budget,
+> suíte Treble PASS), `npm run predeploy` PASS (`origin/main cc70ce9`, projeto
+> canônico). Deployment `dashboard-axenya-1cr70xi4e-axenya-f1a041f6.vercel.app`.
+>
+> **O deploy carrega também o `8c73894` da sessão paralela** (funil de leads), porque
+> ele já estava commitado E pushado em `origin/main` antes deste deploy — o que, pela
+> régua do `docs/github-source-of-truth.md`, é justamente a condição para ir a
+> produção. Nada de working tree suja entrou: `git status` limpo no preflight.
+>
+> Pós-deploy em `axenya-pipeline-dashboard.vercel.app`: `/novo-bdr/treble` = 200,
+> `/api/bdr-treble-dw` = 401 (auth ativa, função no ar), e o `bdr-treble.js` servido
+> contém as abas novas (`Tentativas por lead`, `Reconciliação`) e o `leadKey`.
+> Envs `TREBLE_WAREHOUSE_*` já existiam: V10 não pediu variável nova.
+
+### Feat | Treble V10: do macro ao granular, com prova do próprio armazém (2026-08-11)
+
+> Diagnóstico que originou a leva: o painel lia **7 das 15 colunas** de
+> `fact_deployment_status` e **nenhuma** das outras 4 fatos que a Treble entrega
+> (`fact_deployment_daily`, `fact_agent_messages`, `dim_hsm`, e as janelas por lead da
+> própria fato). O que entrou, na ordem macro → granular:
+>
+> 1. **Origem** (`origin`): separa HSM disparado do inbox Sales.ai (**3.296 de 4.738 =
+>    70%**) do blast por API (1.163), CSV (264) e envio simples (15). A tela somava os
+>    quatro como se fossem a mesma operação.
+> 2. **Tentativa por lead**: `attemptSeq` numera a tentativa na **história da pessoa**,
+>    não no recorte (numerar dentro do período diria "1ª tentativa" para quem já levou
+>    cinco em julho). Vieram com ela: intervalo desde a anterior, leads distintos
+>    (**3.468 para 4.738 tentativas**) e o outlier — **um número com 120 tentativas em
+>    67 flows** que inflava todo denominador em silêncio. O lead aparece como pseudônimo
+>    (hash salgado, 12 hex): pseudonimização declarada, não anonimização.
+> 3. **Tempo**: `timestamp_failure` entrou (existe em **100%** das falhas e nunca era
+>    selecionado) e entrega/resposta deixaram de ser flag 0/1. Medido: p50 de entrega
+>    **10s**, p90 **35s**; resposta p50 **5 min** depois de entregue.
+> 4. **HSM**: template nomeado por join `dim_hsm.name = poll_name`, com a cobertura
+>    (**11,7%**) na cara, porque a fato **não tem `hsm_id`**. "HSM desativado" agora diz
+>    qual template (38 casos, 100% em `thauan financeiro diagnóstico`).
+> 5. **Erro** com onde e quando: `MISSING_PARAMETER` concentra **40,2%** num flow só —
+>    é configuração nossa, conserto de hoje — enquanto `META_CHOSE_NOT_DELIVER` espalha
+>    em 47 flows, que é reputação/política de template. A coluna de concentração é o que
+>    separa os dois diagnósticos.
+> 6. **Leitura**: `read_at` existe em `fact_agent_messages` (**238 de 324** HSM
+>    entregues lidos). A tela afirmava "leitura indisponível" — verdade na fato de
+>    deployment, **falso no armazém**. Entra com denominador próprio e fora do funil,
+>    porque cobre só conversa que passou por agente.
+> 7. **Desfechos que a fato de status não expressa**, do pré-agregado: `to_agents`,
+>    `in_process`, `optout`, `revoked`, `failure_rate_limit`. Medido: `SUCCESS` **==**
+>    `in_process`, então o rótulo honesto é "em processamento", não "processado sem
+>    confirmação".
+> 8. **Reconciliação** contra `fact_deployment_daily`, segundo caminho independente.
+>
+> **`fact_deployment_daily.day` é UTC e esta tela conta em BRT** (medido: 23/07 dá 618
+> em UTC e 611 em BRT). A paridade conta **UTC nas duas pontas** de propósito e exibe o
+> delta de fuso: comparar régua diferente reprovaria para sempre por fuso, que é o mesmo
+> mal do check que passa por acidente, ao contrário. Julho/2026 fecha exato:
+> 2.958 = 2.958 tentativas, 1.853 = 1.853 entregues, 246 = 246 respondidas.
+>
+> **A asserção de PII ficou mais afiada, não mais frouxa.** A antiga era
+> `!sql.includes('cellphone')` — proibia até ler o telefone para pseudonimizar e não
+> olhava onde o dado sai. A nova recorta a **projeção do SELECT externo** (o que chega
+> ao browser) e proíbe PII ali; a CTE pode ler o telefone para hash e janela.
+> **Provado por mutação, não por PASS:** telefone na projeção, sentinela `-1` virando
+> zero e paridade com régua torta **reprovam** os testes novos; restaurado, a suíte
+> volta a passar. Smoke browser V10 verifica as 8 abas por conteúdo e valida que o lead
+> na tela é hash de 12 hex, nunca telefone.
+
 ### 🚀 DEPLOY DE PRODUÇÃO | /novo-bdr: conversão entre etapas + corte só de BDRs (2026-08-11)
 
 > Autorização explícita do dono (escolha "Commit + push + deploy"). `git fetch`:
