@@ -133,6 +133,7 @@ body.nav-docked #view-novo{margin-left:280px}
 <script src="/filter-bar.js?v=1"></script>
 <script src="/settings-modal.js?v=1"></script>
 <script src="/freshness.js?v=1"></script>
+<script src="/bdr-lead-funnel.js?v=1"></script>
 </head>
 <body>
 
@@ -1057,6 +1058,7 @@ function novoRender(){
       cWide(t('bdr_avg_vidas')+_cntSpan(created.length),t('bdr_avg_vidas_tip'),'avg-vidas',280,null,true)+
       c(t('bdr_colabs')+_cntSpan(deals.length),t('bdr_colabs_tip'),'colabs',300,null,true)+
       c(t('bdr_size_dist')+_cntSpan(createdTeam),t('bdr_size_dist_tip'),'size-dist',300,_subTabs('bdr-size-tabs',_bdrSizeMode,[{mode:'colaboradores',label:'Colaboradores',fn:'bdrSwitchSize'},{mode:'vidas',label:'Vidas',fn:'bdrSwitchSize'}]),true)+
+      (window.AxLeadFunnel?AxLeadFunnel.sectionHtml():'')+
       _bdrLeadsSectionHtml()+
     '</div>';
 
@@ -1070,6 +1072,7 @@ function novoRender(){
   buildBdrAvgVidas();
   buildBdrColabs();
   buildBdrSizeDist();
+  if(window.AxLeadFunnel) AxLeadFunnel.render();
   if(_bdrLeads){
     buildLeadsFunnel();
     buildLeadsContactRate();
