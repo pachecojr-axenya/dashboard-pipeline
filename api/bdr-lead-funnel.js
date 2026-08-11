@@ -820,16 +820,61 @@ function coorteCTE(pipes, bdrIds) {
  * o drill, não para a conta. A conta é a agregação, e ela cobre 100% da coorte
  * independente do cap.
  */
-async function coorteAgregada(pipes, since, until, bdrIds) {
+/**
+ * A SÉRIE TEMPORAL SAI DA MESMA VARREDURA, e é por isso que ela cabe.
+ *
+ * A coorte é cara: a CTE junta lead → contato → engajamento → empresa → bronze. Rodar
+ * uma SEGUNDA consulta só para a linha do tempo dobraria o custo e o tempo de resposta
+ * para desenhar o mesmo dado com outro GROUP BY. Aqui o bucket entra como coluna: as
+ * linhas do agregado saem com `bucket='total'`, as da série com o período de verdade,
+ * tudo num UNION ALL sobre a MESMA CTE.
+ *
+ * GRANULARIDADE ADAPTATIVA: mês em janela longa, semana ISO em janela curta. Semana em
+ * 936 dias daria 134 pontos ilegíveis; mês em 11 dias daria UM ponto, que não é série.
+ * O corte é declarado no payload, porque mudar de régua sem avisar é como duas telas
+ * "iguais" passam a discordar.
+ */
+const GRAN_LIMITE_DIAS = 120;
+function bucketSql(gran) {
+  return gran === 'semana'
+    ? `FORMAT_DATE('%G-W%V', criado)`   // semana ISO: ano-semana, sem virada quebrada
+    : `FORMAT_DATE('%Y-%m', criado)`;
+}
+
+async function coorteAgregada(pipes, since, until, bdrIds, gran) {
   const dims = [
     ['bdr', 'owner_id'], ['porte', 'dim_porte'], ['tier', 'dim_tier'],
     ['vidas', 'dim_vidas'], ['origem', 'dim_origem'],
   ];
+  // A SÉRIE CARREGA MENOS COLUNAS QUE O AGREGADO, de propósito: ela multiplica cada
+  // corte pelo número de períodos, e os campos de régua de toque (atividade, herdado,
+  // automação) não são desenhados no eixo do tempo. Na janela completa isso é ~800
+  // linhas — mandar 13 campos onde 7 bastam engordaria a resposta perto do teto da
+  // Vercel para nada.
+  //
+  // A ORDEM DAS COLUNAS É O CONTRATO: UNION ALL no BigQuery casa por POSIÇÃO, não por
+  // nome. Um campo fora de lugar aqui não dá erro — dá número errado com rótulo certo,
+  // que é o defeito mais caro que existe. Por isso as ausentes entram como
+  // CAST(NULL AS INT64) na MESMA posição do bloco agregado.
+  const METRICAS_SERIE = `
+           COUNT(*) AS criados,
+           CAST(NULL AS INT64) AS com_atividade,
+           COUNTIF(atingiu_tentativa_etapa) AS por_etapa,
+           COUNTIF(atingiu_conectado_etapa) AS conectados,
+           CAST(NULL AS INT64) AS ambos,
+           CAST(NULL AS INT64) AS so_automacao,
+           CAST(NULL AS INT64) AS toque_herdado,
+           CAST(NULL AS INT64) AS nunca_tocados,
+           COUNTIF(qualificado) AS qualificados,
+           COUNTIF(deal_id IS NOT NULL) AS com_deal,
+           COUNTIF(qualificado AND deal_id IS NOT NULL) AS qual_com_deal,
+           CAST(NULL AS INT64) AS deal_sem_qualificar,
+           COUNTIF(desqualificado) AS desqualificados`;
   // `owner_bdr` entra no GROUP BY de TODA dimensão: é o que permite ao front somar
   // "só BDRs" em qualquer corte sem uma segunda ida ao banco, e é 2x linhas, não 2x
   // varredura — a CTE é a mesma.
   const blocos = dims.map(([nome, col]) => `
-    SELECT '${nome}' AS dimensao, CAST(${col} AS STRING) AS valor, owner_bdr,
+    SELECT '${nome}' AS dimensao, CAST(${col} AS STRING) AS valor, owner_bdr, 'total' AS bucket,
            COUNT(*) AS criados,
            COUNTIF(atividade_real) AS com_atividade,
            COUNTIF(atingiu_tentativa_etapa) AS por_etapa,
@@ -851,33 +896,48 @@ async function coorteAgregada(pipes, since, until, bdrIds) {
            COUNTIF(desqualificado) AS desqualificados
     FROM dim GROUP BY 1, 2, 3`).join('\n    UNION ALL');
 
+  // Os mesmos cortes, agora por período de CRIAÇÃO do lead — a coorte é seguida até
+  // hoje, então o eixo do tempo é quando o lead nasceu, não quando ele converteu.
+  const blocosSerie = dims.map(([nome, col]) => `
+    SELECT '${nome}' AS dimensao, CAST(${col} AS STRING) AS valor, owner_bdr, ${bucketSql(gran)} AS bucket,
+    ${METRICAS_SERIE}
+    FROM dim GROUP BY 1, 2, 3, 4`).join('\n    UNION ALL');
+
   const P = [
     { name: 'since', type: 'DATE', value: since },
     { name: 'until', type: 'DATE', value: until },
   ];
-  const { rows } = await wh.query(coorteCTE(pipes, bdrIds) + blocos, P);
-  const por = {};
+  const { rows } = await wh.query(coorteCTE(pipes, bdrIds) + blocos + '\n    UNION ALL' + blocosSerie, P);
+  const por = {}, serie = {};
   rows.forEach(r => {
     const d = wh.str(r.dimensao);
-    (por[d] = por[d] || []).push({
+    const bucket = wh.str(r.bucket);
+    const base = {
       valor: wh.str(r.valor) || '(sem valor)',
       bdr: wh.bool(r.owner_bdr),
       criados: wh.num(r.criados),
-      com_atividade: wh.num(r.com_atividade),
       por_etapa: wh.num(r.por_etapa),
       conectados: wh.num(r.conectados),
-      ambos: wh.num(r.ambos),
-      so_automacao: wh.num(r.so_automacao),
-      toque_herdado: wh.num(r.toque_herdado),
-      nunca_tocados: wh.num(r.nunca_tocados),
       qualificados: wh.num(r.qualificados),
       com_deal: wh.num(r.com_deal),
       qual_com_deal: wh.num(r.qual_com_deal),
-      deal_sem_qualificar: wh.num(r.deal_sem_qualificar),
       desqualificados: wh.num(r.desqualificados),
-    });
+    };
+    if (bucket === 'total') {
+      (por[d] = por[d] || []).push({
+        ...base,
+        com_atividade: wh.num(r.com_atividade),
+        ambos: wh.num(r.ambos),
+        so_automacao: wh.num(r.so_automacao),
+        toque_herdado: wh.num(r.toque_herdado),
+        nunca_tocados: wh.num(r.nunca_tocados),
+        deal_sem_qualificar: wh.num(r.deal_sem_qualificar),
+      });
+    } else {
+      (serie[d] = serie[d] || []).push({ ...base, bucket });
+    }
   });
-  return por;
+  return { por, serie };
 }
 
 /**
@@ -1186,15 +1246,20 @@ module.exports = async (req, res) => {
     Object.keys(info).forEach(id => { papelDe[id] = classificaOwner(info[id], !!idToBdr[id]); });
     const bdrIds = Object.keys(papelDe).filter(id => papelDe[id].bdr);
 
-    const [snap, wf, mac, ativ, agg, det, trab] = await Promise.all([
+    // Semana em janela longa daria 134 pontos ilegíveis; mês em janela de 11 dias daria
+    // UM ponto, que não é série. O corte viaja no payload em vez de ficar implícito.
+    const gran = dias <= GRAN_LIMITE_DIAS ? 'semana' : 'mes';
+
+    const [snap, wf, mac, ativ, aggTudo, det, trab] = await Promise.all([
       snapshot(pipes),
       waterfall(pipes, since, until),
       macro(pipes, since, until),
       atividade(pipes, since, until),        // a régua é única, e a coorte depende dela
-      coorteAgregada(pipes, since, until, bdrIds),   // GROUP BY no BigQuery
+      coorteAgregada(pipes, since, until, bdrIds, gran), // GROUP BY + série, uma varredura
       coorteDetalhe(pipes, since, until, bdrIds),    // detalhe capado, para o drill
       trabalhoNaJanela(pipes, since, until), // o que a PESSOA fez, fora da coorte
     ]);
+    const agg = aggTudo.por;
 
     // Nome do dono e do autor. Autor: `updated_by_user_id` casa com
     // `dim_owner.owner_id` em 17/17 hoje — coincidência medida, não contrato, e por
@@ -1290,6 +1355,28 @@ module.exports = async (req, res) => {
         const p = papelPorNome[r.valor] || (roster ? { bdr: true, papel: 'BDR do roster' } : { bdr: false, papel: 'dono desconhecido' });
         return { ...r, roster, bdr: roster || p.bdr, papel: p.papel };
       });
+
+      // A SÉRIE PASSA PELO MESMO COLAPSO. Se o eixo do tempo continuasse por owner_id
+      // enquanto a tabela mostra nome canônico, filtrar "Cíntia Rodrigues" no gráfico
+      // não acharia nada — o filtro casa por rótulo, e os dois rótulos têm de ser o
+      // MESMO. Aqui o colapso é por (nome, bucket).
+      if (aggTudo.serie.bdr) {
+        const ZERO_SERIE = { criados: 0, por_etapa: 0, conectados: 0, qualificados: 0,
+          com_deal: 0, qual_com_deal: 0, desqualificados: 0 };
+        const CAMPOS_SERIE = Object.keys(ZERO_SERIE);
+        const s = {};
+        aggTudo.serie.bdr.forEach(r => {
+          const nomeCanon = bdrDe(r.valor), k = nomeCanon + '|' + r.bucket;
+          const a = s[k] = s[k] || { valor: nomeCanon, bucket: r.bucket, ...ZERO_SERIE };
+          CAMPOS_SERIE.forEach(f => { a[f] += r[f] || 0; });
+        });
+        const papelDeNome = {};
+        (porDimensao.bdr || []).forEach(r => { papelDeNome[r.valor] = r; });
+        aggTudo.serie.bdr = Object.values(s).map(r => {
+          const ref = papelDeNome[r.valor] || {};
+          return { ...r, roster: !!ref.roster, bdr: ref.bdr !== false, papel: ref.papel || null };
+        });
+      }
     }
 
     // Os totais saem da AGREGAÇÃO, nunca da lista capada — é isso que faz a tabela
@@ -1368,6 +1455,21 @@ module.exports = async (req, res) => {
         // calada. `bdr` é o funil do time; `todos` inclui executivo, Placement e ex-BDR
         // arquivado que também são donos de lead. A diferença entre os dois é o tamanho
         // do que o filtro tira — e ela fica no payload para poder ser conferida.
+        // A LINHA DO TEMPO da mesma coorte, pelo período de CRIAÇÃO do lead. Vem por
+        // dimensão × valor, para o filtro de campo funcionar no gráfico sem uma segunda
+        // ida ao banco. O último bucket é declarado PARCIAL: a coorte recente ainda
+        // está viva e sempre converte menos — ler a queda do fim como piora é o erro
+        // clássico de gráfico de coorte.
+        serie: {
+          granularidade: gran,
+          regra_granularidade: `semana ISO em janela de até ${GRAN_LIMITE_DIAS} dias, mês acima disso (janela atual: ${dias} dias)`,
+          bucket_parcial: (() => {
+            const bs = new Set();
+            Object.keys(aggTudo.serie).forEach(d => aggTudo.serie[d].forEach(r => bs.add(r.bucket)));
+            return Array.from(bs).sort().pop() || null;
+          })(),
+          por_dimensao: aggTudo.serie,
+        },
         conversao: {
           regua: 'COORTE acumulada: leads CRIADOS na janela, seguidos até hoje. "Chegou a Conectado" = visitou a etapa em algum momento, não "está lá agora" — por isso os passos encaixam e a conversão do processo é o produto deles.',
           bdr: conversao((porDimensao.bdr || []).filter(r => r.bdr)),
@@ -1407,6 +1509,8 @@ module.exports = async (req, res) => {
         toque_apos_criacao: 'CORREÇÃO de 11/08/2026: o toque só conta se for POSTERIOR à criação do lead. A régua liga toque→lead pelo CONTATO (fact_engagement não tem lead_id) e o contato tem vida anterior ao lead — sem o limite, "falou com" contava trabalho de outro ciclo, às vezes de outra pessoa. Efeito na coorte de ago/26 (258 leads): 210 → 191, ou seja 19 leads (9%) cuja única prova de contato era um toque anterior à existência do lead, o mais antigo de 18/07/2024. Por pessoa o efeito muda a leitura: Raina Cândido saía com 2 de 11 e o número real é 0; Allan Valença 31 → 25; Gabriele Almeida 5 → 4. Nos leads movimentados na janela o corte é 535 → 510. O toque anterior NÃO é jogado fora: vira o bucket toque_herdado e o campo toques_manuais_antes no drill.',
         trabalho_na_janela: 'A tabela tem DUAS réguas lado a lado e elas respondem perguntas diferentes. "Criaram/Falaram com" é COORTE — dos leads criados na janela, em quantos se falou — e é atribuída ao DONO do lead. "Trabalhou na janela" é o que a pessoa fez no período em leads de qualquer safra, atribuída a QUEM TOCOU (fact_engagement.owner_id). A segunda existe porque a primeira, no corte por pessoa, fazia a tela mentir por omissão: em ago/26 Gabriele Almeida aparecia com "criou 5, falou com 5" tendo tocado 41 leads com 64 toques, e Cíntia Rodrigues (35 leads/66 toques), Anderson Souza (12/27), Thauan Pontes (6/10) e Yokyko Muramoto (6/9) NÃO TINHAM LINHA na tabela, porque criaram zero e o GROUP BY não emite linha para zero. Atribuir por quem tocou não é detalhe: dos 1.585 toques de ago/26, 378 (24%) foram feitos por alguém diferente do dono atual do lead. Coorte é a régua certa para atributo de LEAD (porte, tier, vidas, origem); para PESSOA ela precisa da coluna de trabalho ao lado.',
         so_bdr_no_corte_de_gente: `A tabela chamada "BDR" listava TODO dono de lead, e dono de lead não é sinônimo de BDR: apareciam SuperAdmin (Aurilia Rodrigues, 613 leads), closers (Rafael Leite Ferreira, André Pontes, Beatriz Honorato), Placement e ex-BDR arquivado, rankeados junto com o time. O filtro "só BDRs" (ligado por padrão) usa três degraus: (1) roster canônico de lib/bdr-team.js; (2) BDR ATIVO do portal fora do roster — owner_role='BDR', não arquivado e SEM time de closer, hoje o caso da Raina Cândido com 137 leads, que excluir apagaria trabalho real; (3) o resto é não-BDR, com o papel NOMEADO (closer, Placement, BDR arquivado). owner_role sozinho não basta: o portal marca como BDR quem está no time "BDR (Prospecção / Pré-vendas)" mesmo estando TAMBÉM em "Executivos de Vendas (Closer)" — 4 pessoas hoje, e time de closer vence. Ninguém some: desligar o filtro devolve todo mundo, e a lista do que foi tirado está em coorte.conversao.fora_do_time.`,
+        serie_por_coorte_de_criacao: `A linha do tempo indexa a coorte pelo período de CRIAÇÃO do lead, não pelo período em que a conversão aconteceu — é a mesma régua dos cards, com o eixo aberto. Duas consequências que MUDAM A LEITURA: (1) o ÚLTIMO bucket é sempre PARCIAL (declarado em serie.bucket_parcial e tracejado na tela): a coorte recente ainda está viva e ainda vai converter, então a queda no fim do gráfico é maturidade, não piora — ler como piora é o erro clássico de gráfico de coorte; (2) a taxa de um mês antigo é FINAL e não muda mais, então comparar mês fechado com mês fechado é legítimo, mas comparar qualquer um deles com o mês corrente não é. Granularidade adaptativa: semana ISO em janela de até ${GRAN_LIMITE_DIAS} dias, mês acima — semana em 936 dias daria 134 pontos ilegíveis e mês em 11 dias daria um ponto só, que não é série.`,
+        filtro_de_campo_e_de_um_campo_so: 'O filtro por campo (BDR, colaboradores, tier, vidas, origem) recorta os cards, o funil e a linha do tempo somando a fatia daquela dimensão. Ele aceita UM campo por vez: o cruzamento entre dois campos (BDR X **e** porte 500+) NÃO existe nesta agregação, porque o GROUP BY sai por dimensão isolada — cruzar exigiria uma consulta por par e o custo não se paga. Quando o filtro está ativo numa dimensão e a tabela mostra outra, a tela AVISA em vez de fingir que a tabela seguiu o filtro.',
         conversao_por_coorte: `As taxas de conversão são de COORTE (leads criados na janela, seguidos até hoje) e ACUMULADAS: "chegou a Conectado+" significa que o lead visitou a etapa, não que esteja nela agora. Consequências que mudam leitura: (a) os passos encaixam por construção — todo Conectado+ é Tentativa+ — e a conversão do processo é o PRODUTO dos passos, não uma conta independente; (b) a coorte recente ainda está viva, então o fim da janela sempre converte menos que o começo, e comparar mês fechado com mês corrente subestima o corrente; (c) a régua NÃO é "movimentações no período" — essa infla ~4x porque conta o mesmo lead a cada toque. Denominador e numerador viajam em absoluto ao lado de cada taxa: 50% de 4 e 50% de 400 pedem decisões diferentes.`,
         roster_sempre_visivel: `Todos os ${BDR_TEAM.length} BDRs do roster canônico ganham linha, mesmo zerada, e a coluna roster marca quem é do time. Linha ausente é indistinguível de "não foi medido" e lê como "não fez nada"; linha em zero é uma afirmação verificável. Dono de lead fora do roster (hoje Placement com 7 criados, e BDR do portal fora do BDR_TEAM como Raina Cândido) aparece com roster=false em vez de ser creditado como BDR.`,
         motivo_desqualificacao: 'Existe no objeto Leads (17 valores). Preenchimento desigual: principal 99,2%, Backup 34,4%, DIAGNÓSTICO SITE 0,0% (1.056 desqualificados sem nenhum motivo). "(sem motivo)" no drill do Diagnóstico Site é o dado, não falha da tela.',

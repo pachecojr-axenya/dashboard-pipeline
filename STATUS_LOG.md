@@ -1,5 +1,61 @@
 # Dashboard Enhancement Loop — Status Log
 
+### Feat | /novo-bdr: linha do tempo da conversão, etapa→Qualificado e filtro por campo (2026-08-11)
+
+> Refino pedido pelo dono sobre a leva anterior: faltava **série temporal**, faltava
+> **cada etapa comparada a Qualificado** e tudo isso precisava ser **filtrável pelos
+> campos**.
+>
+> **1. Linha do tempo (card novo).** Coorte por **período de criação** do lead: barras
+> = criados (eixo esquerdo), linhas = taxas (eixo direito). Três leituras em tabs — *Até
+> Qualificado* (Criado→Qual, Tentativa+→Qual, Conectado+→Qual), *Passo a passo* (cada
+> degrau sobre o anterior) e *Volume* (absolutos, porque taxa sem volume esconde a
+> escala). Granularidade **adaptativa**: semana ISO até 120 dias de janela, mês acima —
+> semana em 936 dias daria 134 pontos ilegíveis, mês em 11 dias daria um ponto só.
+>
+> **O último ponto é declarado PARCIAL**: sai tracejado, com `*` no rótulo do eixo e
+> aviso no tooltip e no rodapé. Coorte recente ainda está viva e converte menos; ler a
+> queda do fim como piora é o erro clássico de gráfico de coorte, e ele estaria à
+> disposição de qualquer um que abrisse a tela.
+>
+> **2. Cada etapa até Qualificado.** Os tiles viraram dois grupos rotulados: *Passo a
+> passo* (etapa sobre a anterior) e *Cada etapa até Qualificado* (Criado→Qual,
+> Tentativa+→Qual, Conectado+→Qual, mais o descarte) — a segunda pergunta é "quanto vale
+> ter tentado / ter conectado", que o passo adjacente não responde. A tabela por dimensão
+> ganhou a coluna **Tentativa+ → Qualif.**
+>
+> **3. Filtro por campo.** Dois selects (campo + valor, com o volume no rótulo) que
+> recortam **cards, funil e linha do tempo** — e o drill herda o recorte, senão o modal
+> não bateria com o card. É **um campo por vez**: o cruzamento entre dois campos não
+> existe nesta agregação (o GROUP BY sai por dimensão isolada), e quando a tabela mostra
+> outra dimensão a tela **avisa** em vez de fingir que seguiu o filtro.
+>
+> **Custo:** a série sai da **mesma varredura** do agregado — `bucket` entrou como coluna
+> e as linhas do total viajam com `bucket='total'`, num UNION ALL sobre a mesma CTE.
+> Rodar uma segunda consulta dobraria o custo do bloco mais caro do endpoint para
+> desenhar o mesmo dado com outro GROUP BY. A série carrega 7 colunas onde o agregado
+> carrega 13 (as de régua de toque não vão ao eixo do tempo): payload da janela completa
+> ficou em **3,12 MB**, contra teto de 4 MB no teste.
+>
+> **Armadilha registrada no código:** `UNION ALL` no BigQuery casa por **posição**, não
+> por nome — as métricas ausentes da série entram como `CAST(NULL AS INT64)` na mesma
+> posição do bloco agregado. Fora de ordem não daria erro: daria número errado com
+> rótulo certo.
+>
+> **Detalhe de drill:** numa janela longa a lista por lead cobre só os 1.500 mais
+> recentes, então o drill de um mês antigo abre vazio. Isso agora tem frase própria —
+> "a agregação conta 897 e esta lista está vazia; não é ausência de lead" — em vez de uma
+> tabela vazia que lê como "não há leads".
+>
+> **Validação:** `scripts/test-bdr-lead-funnel.js` ganhou mais 21 asserções (a série
+> fecha com a coorte nas 5 dimensões; etapas encaixam em CADA período; bucket parcial é
+> o último; rótulos da série casam com os da tabela pelo mesmo colapso de nome; janela
+> curta usa semana ISO). A régua de semana ISO do JS foi conferida contra o
+> `FORMAT_DATE('%G-W%V')` do BigQuery lead a lead nos períodos cobertos pelo detalhe:
+> W30/W31/W32/W33 batem exatamente. `npm run check` **54 PASS / 0 FAIL**; Chromium
+> headless sem erro de console, com tabs, filtro, aviso de dimensão divergente e os dois
+> drills exercitados.
+
 ### 🚀 DEPLOY DE PRODUÇÃO | Treble V10: cada envio, tentativa, entrega e erro (2026-08-11)
 
 > Autorização explícita do dono ("deploy do que falta do macro ao mais granular").

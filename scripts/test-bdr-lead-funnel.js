@@ -452,11 +452,48 @@ async function call(query) {
     'o recorte de BDR da o MESMO total nas 5 dimensoes', somaBdr.join(' / '));
   ok(somaBdr[0] === CV.bdr.criados, 'o recorte por dimensao bate com a conversao de BDR', somaBdr[0] + ' vs ' + CV.bdr.criados);
 
+  // ── 6c. LINHA DO TEMPO da conversão ───────────────────────────────────────────
+  // A série é a MESMA coorte com o eixo aberto. Se ela não fechar com o agregado, o
+  // gráfico e o card ao lado dele passam a contar histórias diferentes do mesmo mês —
+  // e o gráfico ganha, porque parece mais concreto.
+  console.log('\n== linha do tempo (serie por coorte de criacao) ==');
+  const SE = (T.coorte || {}).serie || {};
+  ok(!!SE.por_dimensao, 'a serie vem no payload');
+  ok(SE.granularidade === 'mes', 'janela longa usa MES (semana daria 134 pontos ilegiveis)', SE.granularidade);
+  dimsEsperadas.forEach(d => {
+    const s = (SE.por_dimensao[d] || []).reduce((a, r) => a + r.criados, 0);
+    ok(s === T.coorte.criados, 'a serie da dimensao "' + d + '" fecha com a coorte', s + ' vs ' + T.coorte.criados);
+  });
+  const bucketsS = Array.from(new Set((SE.por_dimensao.bdr || []).map(r => r.bucket))).sort();
+  ok(bucketsS.length > 1, 'a serie tem mais de um periodo (senao nao e serie)', bucketsS.length + ' buckets');
+  ok(bucketsS.every(b => /^\d{4}-(\d{2}|W\d{2})$/.test(b)), 'todo bucket tem formato de periodo', bucketsS.slice(0, 3).join(','));
+  ok(SE.bucket_parcial === bucketsS[bucketsS.length - 1],
+    'o bucket PARCIAL declarado e o ultimo (coorte viva, converte menos)', SE.bucket_parcial);
+  // A série tem as mesmas etapas encaixadas — por período, e não só no total.
+  ok((SE.por_dimensao.bdr || []).every(r => r.por_etapa <= r.criados && r.conectados <= r.por_etapa && r.qualificados <= r.conectados),
+    'as etapas encaixam em CADA periodo da serie, nao so no total');
+  ok((SE.por_dimensao.bdr || []).every(r => typeof r.bdr === 'boolean' && r.valor),
+    'toda linha da serie carrega valor e marca de BDR (o filtro de campo depende disso)');
+  // O colapso por nome canônico tem de valer nos DOIS lados: se a série viesse por
+  // owner_id e a tabela por nome, filtrar "Cíntia Rodrigues" no gráfico não acharia
+  // nada — e a tela ficaria vazia sem dizer por quê.
+  const nomesTab = new Set((T.coorte.por_dimensao.bdr || []).map(r => r.valor));
+  ok((SE.por_dimensao.bdr || []).every(r => nomesTab.has(r.valor)),
+    'os rotulos da serie casam com os da tabela (mesmo colapso por nome canonico)');
+  ok(!!(T.premissas || {}).serie_por_coorte_de_criacao, 'a regua da serie esta declarada em premissas');
+  ok(!!(T.premissas || {}).filtro_de_campo_e_de_um_campo_so, 'o limite do filtro de campo esta declarado em premissas');
+
   // ── 7. Mês corrente não explode (a janela que a tela abre por padrão) ─────────
   console.log('\n== mês corrente (default da tela) ==');
   const cur = await call({ funil: 'todos', refresh: '1' });
   ok(cur.code === 200 && cur.body.success, 'mês corrente responde 200', cur.code);
   ok(cur.body.coorte.criados >= 0 && Object.keys(cur.body.waterfall.setas).length >= 0, 'payload íntegro no mês parcial');
+  // Granularidade ADAPTATIVA: mês numa janela de 11 dias daria UM ponto, que não é
+  // série. A regra vira semana ISO abaixo de 120 dias, e isso é contrato, não estética.
+  ok((cur.body.coorte.serie || {}).granularidade === 'semana',
+    'janela curta usa SEMANA ISO (mes daria um ponto so)', (cur.body.coorte.serie || {}).granularidade);
+  ok(((cur.body.coorte.serie || {}).por_dimensao.bdr || []).every(r => /^\d{4}-W\d{2}$/.test(r.bucket)),
+    'os buckets da janela curta sao semanas ISO');
 
   // ── 8. Contraprova ao vivo (opcional) ─────────────────────────────────────────
   if (PORTAL) {
