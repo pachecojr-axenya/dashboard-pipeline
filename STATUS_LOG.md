@@ -1,5 +1,28 @@
 # Dashboard Enhancement Loop — Status Log
 
+### 🚀 DEPLOY DE PRODUÇÃO | /novo-bdr: conversão entre etapas + corte só de BDRs (2026-08-11)
+
+> Autorização explícita do dono (escolha "Commit + push + deploy"). `git fetch`:
+> `main` == `origin/main` `335347a`, sem divergência. Commit `8c73894` (ver entrada
+> abaixo), push OK. `npm run check` PASS **54/0** antes do commit.
+>
+> **O V10 do Treble de outra sessão estava no working tree e NÃO entrou no deploy:**
+> os 4 arquivos (`api/bdr-treble-dw.js`, `public/bdr-treble.js`, os 2 scripts) foram
+> para `git stash` — com cópia de segurança fora do repo antes — o preflight rodou com
+> a árvore limpa, e o `stash pop` devolveu tudo idêntico ao backup (`diff` conferido
+> arquivo a arquivo). Deployar com working tree suja teria publicado trabalho não
+> commitado de outra pessoa, que é exatamente o que `docs/github-source-of-truth.md`
+> existe para impedir.
+>
+> `npm run predeploy` PASS (`origin/main 8c73894`, projeto canônico). Deployment
+> `dashboard-axenya-9k16dl82m-axenya-f1a041f6.vercel.app`.
+>
+> Pós-deploy confirmado em `axenya-pipeline-dashboard.vercel.app`: `/novo-bdr`,
+> `/novo-bdr/treble`, `/novo-bdr/workload`, `/novo`, `/forecast` = 200;
+> `/api/bdr-lead-funnel` = 401 (auth ativa). No HTML servido: `bdr-lead-funnel.js?v=2`
+> (cache invalidado), zero ocorrência de "Cadência de Leads" e de
+> `chart-bdr-leads-funnel` — a seção saiu de fato, não só do código local.
+
 ### Feat | /novo-bdr: conversão entre etapas, corte só de BDRs e saída da Cadência de Leads (2026-08-11)
 
 > Pedido do dono, três partes na mesma leva: **taxas de conversão entre etapas e do
