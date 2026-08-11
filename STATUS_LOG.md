@@ -1,5 +1,20 @@
 # Dashboard Enhancement Loop — Status Log
 
+### 🚀 DEPLOY DE PRODUÇÃO | Fix ARR/caixa POC sem dado real (2026-08-11)
+
+> Autorização explícita do dono ("Commit e push e deploy"). `git fetch` encontrou avanço
+> no upstream (14353c1 → d1af8bf, 5 commits de BDR lead-funnel + mkt-budget, sem overlap
+> com os arquivos deste fix) — `git stash` + `git merge --ff-only origin/main` + `git
+> stash pop`, sem conflito. `npm run check` PASS depois do merge.
+>
+> Commit `362a354` (fix do ARR/caixa POC, ver entrada abaixo). `npm run predeploy` PASS
+> (`main` == `origin/main` `362a354`, projeto canônico confirmado). Deployment
+> `dashboard-axenya-148lez5lx-axenya-f1a041f6.vercel.app`, alias `project-bsmfu.vercel.app`.
+>
+> Pós-deploy confirmado: `/novo`, `/forecast`, `/novo-bdr`, `/novo-bdr/treble`,
+> `/novo-bdr/workload`, `/novo-bdr/no-show`, `/novo-bdr/list-attack` = 200;
+> `/api/auth/me`, `/api/forecast-table` = 401 (auth ativa, sem bypass em produção).
+
 ### Fix | ARR/caixa: POC sem dado real de faturamento não estima mais via vidas×VPV (2026-08-11)
 
 > Achado do dono: o deal "BRF / MARFRIG - POC" (HubSpot `60844049805`, pipeline Vendas,
