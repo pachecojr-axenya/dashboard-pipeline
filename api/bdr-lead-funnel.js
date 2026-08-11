@@ -142,6 +142,9 @@ const STAGE_CANON = {
 // Ordem do funil. `desqualificado` é TERMINAL e fica fora do rank de progressão —
 // desqualificar não é avançar.
 const FUNNEL_ORDER = ['novo', 'tentativa', 'conectado', 'qualificado'];
+// Ordem COMPLETA, com o terminal. FUNNEL_ORDER e o rank de progressao (desqualificar
+// nao e avancar); CAN_ALL e a ordem de EXIBICAO, onde o terminal precisa aparecer.
+const CAN_ALL = ['novo', 'tentativa', 'conectado', 'qualificado', 'desqualificado'];
 const CANON_PT = {
   novo: 'Novo',
   tentativa: 'Tentativa de contato',
@@ -205,6 +208,13 @@ async function waterfall(pipes, since, until) {
       WHERE ch.object_type = 'lead' AND ch.property = 'hs_pipeline_stage'
         AND DATE(ch.changed_at, 'America/Sao_Paulo') BETWEEN DATE(@since) AND DATE(@until)
     ),
+    -- ordem do movimento DENTRO da janela, por lead. É o que permite o drill mostrar
+    -- a trilha ("criado → avançou para X → está em Y") em vez de só o total.
+    ord AS (
+      SELECT lead_id, changed_at,
+             ROW_NUMBER() OVER (PARTITION BY lead_id ORDER BY changed_at) AS passo
+      FROM mov
+    ),
     -- Dono NO INSTANTE do movimento. fact_owner_assignment cobre lead (17.073
     -- posses); o dono ATUAL de dim_lead é régua retroativa e não serve.
     com_dono AS (
@@ -217,10 +227,15 @@ async function waterfall(pipes, since, until) {
     )
     SELECT d.lead_id, d.old_value, d.new_value,
            FORMAT_TIMESTAMP('%F', d.changed_at, 'America/Sao_Paulo') AS dia,
+           FORMAT_TIMESTAMP('%H:%M', d.changed_at, 'America/Sao_Paulo') AS hora,
+           o.passo,
            d.source_type, d.updated_by_user_id, d.owner_no_instante,
            l.motivo_desqualificacao, l.origem_canonica, l.origem_fonte, l.lead_name,
+           l.stage_id AS stage_atual,
+           FORMAT_TIMESTAMP('%F', l.hs_created_at, 'America/Sao_Paulo') AS criado,
            cp.company_id, cp.company_name, cp.employees, cp.porte, cp.vidas AS vidas_empresa
     FROM com_dono d
+    JOIN ord o ON o.lead_id = d.lead_id AND o.changed_at = d.changed_at
     LEFT JOIN ${wh.t('silver', 'dim_lead')} l ON l.lead_id = d.lead_id AND l.is_current
     LEFT JOIN (
       SELECT from_id AS lead_id, ANY_VALUE(to_id) AS company_id
@@ -238,6 +253,13 @@ async function waterfall(pipes, since, until) {
   const setas = {};
   const porDia = {};
   const desq = [];
+  // Por STATUS: entradas e saídas de cada etapa canônica na janela. É o corte que
+  // faltava — a tabela de setas responde "que movimento aconteceu", não "como cada
+  // etapa ganhou e perdeu".
+  const porStatus = {};
+  const st = c => (porStatus[c] = porStatus[c] || { entradas: 0, saidas: 0 });
+  // Trilha por lead: o que o drill precisa para ser auditável.
+  const trilha = {};
   let descartadasBackup = 0;
   let naoMapeadas = 0;
 
@@ -256,6 +278,30 @@ async function waterfall(pipes, since, until) {
     const dia = wh.str(r.dia);
     porDia[dia] = porDia[dia] || {};
     porDia[dia][para] = (porDia[dia][para] || 0) + 1;
+
+    // entrada sempre; saída só quando havia etapa anterior (criação não é saída de nada)
+    st(para).entradas++;
+    if (de !== '(criacao)') st(de).saidas++;
+
+    const lid = wh.str(r.lead_id);
+    if (!trilha[lid]) {
+      trilha[lid] = {
+        lead_id: lid,
+        lead: wh.str(r.lead_name),
+        criado: wh.str(r.criado),
+        status_atual: canon(r.stage_atual),
+        owner_id: wh.str(r.owner_no_instante),
+        empresa_id: wh.str(r.company_id),
+        empresa: wh.str(r.company_name),
+        colaboradores: r.employees == null ? null : Number(r.employees),
+        porte: wh.str(r.porte),
+        vidas: r.vidas_empresa == null ? null : Number(r.vidas_empresa),
+        origem: wh.str(r.origem_canonica) || wh.str(r.origem_fonte) || '(sem origem)',
+        motivo: wh.str(r.motivo_desqualificacao),
+        passos: [],
+      };
+    }
+    trilha[lid].passos.push({ de: de, para: para, dia: dia, hora: wh.str(r.hora), passo: wh.num(r.passo) });
 
     if (para === 'desqualificado') {
       desq.push({
@@ -277,7 +323,130 @@ async function waterfall(pipes, since, until) {
     }
   });
 
-  return { setas, porDia, desq, descartadasBackup, naoMapeadas, movimentos: rows.length };
+  // Teto declarado, nunca silencioso: truncagem calada faz "cobri tudo" parecer verdade.
+  const TETO = 5000;
+  const todos = Object.values(trilha).sort((a, b) => (b.passos.length - a.passos.length));
+  const movimentados = todos.slice(0, TETO).map(l => ({
+    ...l,
+    passos: l.passos.sort((a, b) => a.passo - b.passo),
+    n_movimentos: l.passos.length,
+  }));
+
+  return {
+    setas, porDia, desq, porStatus, movimentados,
+    movimentados_total: todos.length,
+    movimentados_truncado: Math.max(0, todos.length - TETO),
+    descartadasBackup, naoMapeadas, movimentos: rows.length,
+  };
+}
+
+/**
+ * Waterfall MACRO: o funil como saldo que abre, recebe, perde e fecha.
+ *
+ * A ARITMÉTICA TEM DE FECHAR, e é isso que separa um waterfall de um gráfico de
+ * barras bonito:
+ *
+ *   aberto@início + criados + reativados − qualificados − desqualificados
+ *     = aberto@fim  (± resíduo)
+ *
+ * Medido em ago/2026 (01→11): 4.477 + 324 + 6 − 44 − 469 = 4.294 contra 4.297 de
+ * fecho — resíduo **+3 em ~4.300 (0,07%)**. O resíduo é EXPOSTO como barra própria,
+ * não distribuído nas outras nem escondido: ele é a troca de pipeline entrando no
+ * recorte, mais os 2 leads em que a etapa derivada discorda de `dim_lead`. Waterfall
+ * cujas setas não fecham no saldo é ficção — e ficção que ninguém confere porque
+ * parece plausível.
+ *
+ * ETAPA NUM INSTANTE, e por que não é `dim_lead`: `dim_lead` só sabe o AGORA. O
+ * saldo de abertura precisa da etapa em T0, que sai de `fact_stage_entry` pegando a
+ * última entrada com `entered_at <= T0` por lead. Método validado contra o snapshot:
+ * reproduz `dim_lead` em **18.294 de 18.296** leads (0 sem entrada de etapa, 2
+ * divergentes), e os 2 estão declarados em `divergencias_conhecidas`.
+ *
+ * ABERTO = novo + tentativa + conectado. Qualificado e desqualificado são saídas do
+ * funil de prospecção: qualificado vira deal, desqualificado morre. Contá-los no
+ * saldo aberto faria o funil só crescer, o que é a mesma cegueira de medir estoque
+ * como se fosse fluxo.
+ */
+async function macro(pipes, since, until) {
+  const canonPairs = Object.keys(STAGE_CANON)
+    .map(sid => `STRUCT('${sid}' AS sid, '${STAGE_CANON[sid]}' AS c, '${PIPE_OF_STAGE[sid]}' AS p)`)
+    .join(',');
+  const { rows } = await wh.query(`
+    DECLARE T0 TIMESTAMP DEFAULT TIMESTAMP(DATETIME(DATE_SUB(DATE(@since), INTERVAL 1 DAY), TIME '23:59:59'), 'America/Sao_Paulo');
+    DECLARE T1 TIMESTAMP DEFAULT TIMESTAMP(DATETIME(DATE(@until), TIME '23:59:59'), 'America/Sao_Paulo');
+    WITH canon AS (SELECT * FROM UNNEST([${canonPairs}])),
+    em AS (
+      SELECT 'T0' AS q, lead_id, stage_id FROM (
+        SELECT se.object_id AS lead_id, se.stage_id,
+               ROW_NUMBER() OVER (PARTITION BY se.object_id ORDER BY se.entered_at DESC) rn
+        FROM ${wh.t('silver', 'fact_stage_entry')} se
+        WHERE se.object_type = 'lead' AND se.entered_at <= T0) WHERE rn = 1
+      UNION ALL
+      SELECT 'T1', lead_id, stage_id FROM (
+        SELECT se.object_id AS lead_id, se.stage_id,
+               ROW_NUMBER() OVER (PARTITION BY se.object_id ORDER BY se.entered_at DESC) rn
+        FROM ${wh.t('silver', 'fact_stage_entry')} se
+        WHERE se.object_type = 'lead' AND se.entered_at <= T1) WHERE rn = 1
+    ),
+    saldo AS (
+      SELECT e.q, c.c AS etapa, COUNT(*) AS n
+      FROM em e JOIN canon c ON c.sid = e.stage_id
+      WHERE c.p IN (${sqlList(pipes)})
+      GROUP BY 1, 2
+    ),
+    movc AS (
+      SELECT IFNULL(co.c, '(criacao)') AS de, cn.c AS para
+      FROM ${wh.t('silver', 'fact_crm_change')} ch
+      JOIN canon cn ON cn.sid = ch.new_value
+      LEFT JOIN canon co ON co.sid = ch.old_value
+      WHERE ch.object_type = 'lead' AND ch.property = 'hs_pipeline_stage'
+        AND ch.changed_at > T0 AND ch.changed_at <= T1
+        AND cn.p IN (${sqlList(pipes)})
+    )
+    SELECT
+      (SELECT IFNULL(SUM(n),0) FROM saldo WHERE q='T0' AND etapa IN ('novo','tentativa','conectado')) AS aberto_inicio,
+      (SELECT IFNULL(SUM(n),0) FROM saldo WHERE q='T1' AND etapa IN ('novo','tentativa','conectado')) AS aberto_fim,
+      -- ENTRADA NO POOL = movimento de criação que aterrissa em etapa ABERTA.
+      -- NÃO é a contagem de dim_lead: lead criado sem movimento de etapa registrado
+      -- entra no dim_lead e NÃO entra no saldo (que sai de fact_stage_entry), e essa
+      -- conflação é resíduo puro. As duas contagens viajam separadas de propósito —
+      -- "criados por dia" é dim_lead; "entrou no funil" é fluxo.
+      (SELECT COUNT(*) FROM movc WHERE de = '(criacao)' AND para IN ('novo','tentativa','conectado')) AS entrada_no_funil,
+      (SELECT COUNT(*) FROM ${wh.t('silver', 'dim_lead')}
+        WHERE is_current AND pipeline_id IN (${sqlList(pipes)})
+          AND hs_created_at > T0 AND hs_created_at <= T1) AS criados,
+      (SELECT COUNT(*) FROM movc WHERE de IN ('qualificado','desqualificado') AND para IN ('novo','tentativa','conectado')) AS reativados,
+      -- SAÍDA DO POOL: só conta quem SAIU DE ETAPA ABERTA. Contar "para=qualificado"
+      -- vindo de qualquer etapa incluía desqualificado→qualificado, que é reativação
+      -- e não saída do pool aberto — era a causa medida do resíduo de +5.
+      (SELECT COUNT(*) FROM movc WHERE para='qualificado'    AND de IN ('novo','tentativa','conectado')) AS qualificados,
+      (SELECT COUNT(*) FROM movc WHERE para='desqualificado' AND de IN ('novo','tentativa','conectado')) AS desqualificados,
+      ARRAY(SELECT AS STRUCT q, etapa, n FROM saldo) AS saldos
+  `, [
+    { name: 'since', type: 'DATE', value: since },
+    { name: 'until', type: 'DATE', value: until },
+  ]);
+  const r = rows[0] || {};
+  const ai = wh.num(r.aberto_inicio), af = wh.num(r.aberto_fim);
+  const cr = wh.num(r.criados), re = wh.num(r.reativados);
+  const en = wh.num(r.entrada_no_funil);
+  const qu = wh.num(r.qualificados), dq = wh.num(r.desqualificados);
+  const saldoInicio = {}, saldoFim = {};
+  (r.saldos || []).forEach(s => {
+    (wh.str(s.q) === 'T0' ? saldoInicio : saldoFim)[wh.str(s.etapa)] = wh.num(s.n);
+  });
+  return {
+    aberto_inicio: ai, entrada_no_funil: en, criados: cr, reativados: re,
+    qualificados: qu, desqualificados: dq, aberto_fim: af,
+    // resíduo = o que a aritmética não explica. Exposto como barra própria, nunca
+    // diluído nas outras: troca de pipeline entrando no recorte, mais os 2 leads em
+    // que a etapa derivada discorda de dim_lead.
+    residuo: af - (ai + en + re - qu - dq),
+    // Lead criado na janela que NÃO gerou movimento de etapa. É a diferença entre as
+    // duas contagens, e ela existe: ficaria escondida se o waterfall usasse dim_lead.
+    criados_sem_movimento: cr - en,
+    saldo_inicio: saldoInicio, saldo_fim: saldoFim,
+  };
 }
 
 // stage_id -> pipeline_id. Derivado de STAGE_CANON + a lista por pipeline, para o
@@ -461,10 +630,11 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const [snap, wf, co, owners] = await Promise.all([
+    const [snap, wf, co, mac, owners] = await Promise.all([
       snapshot(pipes),
       waterfall(pipes, since, until),
       coorte(pipes, since, until),
+      macro(pipes, since, until),
       whq.ownerMap(),
     ]);
 
@@ -495,9 +665,32 @@ module.exports = async (req, res) => {
       success: true,
       janela: { since, until, funil: funilKey, pipelines: pipes },
       snapshot: { camada: 'silver', tabela: 'dim_lead', por_etapa: snap.porEtapa, etapas_nao_mapeadas: snap.naoMapeadas },
+      // Waterfall MACRO: o saldo que abre, recebe, perde e fecha. A soma FECHA, e o
+      // que não fecha vira a barra `residuo` em vez de sumir nas outras.
+      macro: {
+        camada: 'silver', tabela: 'fact_stage_entry + fact_crm_change + dim_lead',
+        ...mac,
+        fecha: mac.residuo === 0,
+        conferencia: `${mac.aberto_inicio} + ${mac.entrada_no_funil} + ${mac.reativados} − ${mac.qualificados} − ${mac.desqualificados} = ${mac.aberto_inicio + mac.entrada_no_funil + mac.reativados - mac.qualificados - mac.desqualificados} (fecho medido: ${mac.aberto_fim}, resíduo ${mac.residuo >= 0 ? '+' : ''}${mac.residuo})`,
+      },
       waterfall: {
         camada: 'silver', tabela: 'fact_crm_change + fact_owner_assignment',
         setas: wf.setas, por_dia: wf.porDia, movimentos: wf.movimentos,
+        // Por STATUS: como cada etapa ganhou e perdeu na janela, com o saldo dos
+        // dois instantes. saldo_inicio + entradas − saidas == saldo_fim por etapa.
+        por_status: CAN_ALL.map(c => {
+          const s = wf.porStatus[c] || { entradas: 0, saidas: 0 };
+          const si = mac.saldo_inicio[c] || 0, sf = mac.saldo_fim[c] || 0;
+          return {
+            etapa: c, rotulo: CANON_PT[c],
+            saldo_inicio: si, entradas: s.entradas, saidas: s.saidas, saldo_fim: sf,
+            liquido: s.entradas - s.saidas,
+            residuo: sf - (si + s.entradas - s.saidas),
+          };
+        }),
+        leads: wf.movimentados,
+        leads_total: wf.movimentados_total,
+        leads_truncado: wf.movimentados_truncado,
       },
       coorte: {
         camada: 'silver', tabela: 'dim_lead + fact_stage_entry + fact_engagement + bronze.raw_contact',
@@ -527,12 +720,15 @@ module.exports = async (req, res) => {
         motivo_desqualificacao: 'Existe no objeto Leads (17 valores). Preenchimento desigual: principal 99,2%, Backup 34,4%, DIAGNÓSTICO SITE 0,0% (1.056 desqualificados sem nenhum motivo). "(sem motivo)" no drill do Diagnóstico Site é o dado, não falha da tela.',
         tier_do_bronze: 'tier_colaboradores e numero_de_vidas são lidos de bronze.raw_contact porque NÃO estão projetados em dim_contact (10.946 e 10.591 no portal, 0 alcançáveis pelo silver). MEDIDA TEMPORÁRIA: a correção é a projeção no 10_silver.sql (F0).',
         tier_vidas_nao_existe: 'Não existe propriedade tier_vidas em nenhum objeto do portal. Qualquer faixa de vidas é DERIVAÇÃO, e as faixas não foram decididas.',
+        waterfall_macro: 'O macro fecha por aritmetica: aberto@inicio + criados + reativados - qualificados - desqualificados = aberto@fim. ABERTO = novo+tentativa+conectado; qualificado e desqualificado sao SAIDAS do funil de prospeccao (qualificado vira deal, desqualificado morre) e contá-los no saldo aberto faria o funil so crescer. O que a aritmetica nao explica vira a barra `residuo`, exposta, nunca diluida nas outras.',
+        etapa_num_instante: 'O saldo de abertura usa a etapa do lead em T0, derivada da ultima entrada de fact_stage_entry com entered_at <= T0 — dim_lead so sabe o AGORA. Metodo validado contra o snapshot: reproduz dim_lead em 18.294 de 18.296 leads.',
         defasagem: 'O armazém extrai às 06:30. O close das 20:30 NÃO extrai, então movimentações do dia corrente podem faltar — medido em 11/08: ~96 desqualificações de uma manhã ausentes. Use o botão Atualizar para o dado de agora.',
       },
       divergencias_conhecidas: {
         preenchimento_dimensoes: 'vidas na empresa 6,9%, porte 11,4%, segmento 0,06%, employees 65,1%. Cortes por vidas/porte são majoritariamente "(sem valor)" e a tela mostra essa categoria em vez de esconder.',
         lead_multi_contato: `Leads com mais de 1 contato ativo nesta janela: ${co.multiContato}. A régua de atividade usa ANY_VALUE do contato; com 1:1 (18.209 de 18.210) o efeito é nulo, mas não é zero por contrato.`,
         autor_join: 'updated_by_user_id casa com dim_owner.owner_id em 17/17 usuários medidos. É coincidência medida, não contrato do HubSpot — o id cru viaja no payload para auditoria.',
+        etapa_derivada_vs_dim: 'A etapa derivada de fact_stage_entry discorda de dim_lead em 2 de 18.296 leads (0,01%). Afeta o saldo do macro nessa ordem de grandeza e e parte do residuo declarado.',
         etapas_nao_mapeadas: `Movimentos com etapa fora do mapa canônico: ${wf.naoMapeadas}. Etapa nova no portal aparece como "(etapa não mapeada)" em vez de cair fora em silêncio.`,
       },
       diagnostics: { camadas: { snapshot: 'silver', waterfall: 'silver', coorte: 'silver+bronze' } },

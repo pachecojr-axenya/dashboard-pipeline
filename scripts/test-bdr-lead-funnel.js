@@ -170,6 +170,53 @@ async function call(query) {
   ok(dq.some(d => d.automacao) || auto === 0, 'automação segregada do esforço do BDR', auto + ' de ' + dq.length);
   ok(dq.every(d => typeof d.bdr === 'string'), 'dono no instante resolvido para nome de BDR');
 
+  // ── 6b. Waterfall MACRO: a aritmética TEM de fechar ───────────────────────────
+  console.log('\n== waterfall macro (a aritmetica fecha?) ==');
+  const M = J.macro || {};
+  const soma = M.aberto_inicio + M.entrada_no_funil + M.reativados - M.qualificados - M.desqualificados;
+  ok(M.aberto_fim === soma + M.residuo, 'identidade do waterfall: inicio + entrou + reativados − qualif − desqualif + residuo == fim', M.conferencia);
+  ok(Math.abs(M.residuo) <= Math.max(5, M.aberto_fim * 0.005),
+    'residuo dentro da tolerancia declarada (<= 0,5% do saldo ou 5 leads)', M.residuo + ' de ' + M.aberto_fim);
+  ok(M.aberto_inicio > 0 && M.aberto_fim > 0, 'saldos de abertura e fecho positivos', M.aberto_inicio + ' -> ' + M.aberto_fim);
+  ok(typeof M.criados_sem_movimento === 'number',
+    'lead criado sem movimento de etapa e MEDIDO, nao silenciado', M.criados_sem_movimento);
+  // A saida do pool so conta quem saiu de etapa ABERTA. Contar "para=qualificado" de
+  // qualquer origem incluiria reativacao e inflaria a saida -- foi o defeito medido
+  // que levou o residuo de +1 para +5.
+  ok(M.qualificados <= (J.waterfall.setas['conectado>qualificado'] || 0) + (J.waterfall.setas['tentativa>qualificado'] || 0) + (J.waterfall.setas['novo>qualificado'] || 0),
+    'saida para Qualificado nao conta reativacao de desqualificado', M.qualificados);
+
+  // ── 6c. POR STATUS: a conservacao por etapa, o corte que faltava ──────────────
+  console.log('\n== waterfall por status ==');
+  const PS = J.waterfall.por_status || [];
+  ok(PS.length === 5, 'as 5 etapas canonicas presentes (inclui o terminal)', PS.length);
+  PS.forEach(s => ok(s.saldo_fim === s.saldo_inicio + s.entradas - s.saidas + s.residuo,
+    'conservacao em ' + s.rotulo, s.saldo_inicio + ' + ' + s.entradas + ' - ' + s.saidas + ' = ' + s.saldo_fim + ' (res ' + s.residuo + ')'));
+  const resPS = PS.filter(s => ['novo','tentativa','conectado'].includes(s.etapa)).reduce((a, s) => a + s.residuo, 0);
+  ok(resPS === M.residuo,
+    'os DOIS modelos concordam no residuo (macro x soma por status) -- e isso que valida a decomposicao', resPS + ' vs ' + M.residuo);
+  const somaEnt = PS.reduce((a, s) => a + s.entradas, 0);
+  ok(somaEnt === Object.values(J.waterfall.setas).reduce((a, b) => a + b, 0),
+    'Sigma entradas por status == Sigma setas (o mesmo total por dois cortes)', somaEnt);
+
+  // ── 6d. Trilha por lead: e o que torna o drill auditavel ──────────────────────
+  console.log('\n== trilha dos leads movimentados ==');
+  const LM = J.waterfall.leads || [];
+  ok(LM.length > 0, 'ha leads com trilha', LM.length + ' de ' + J.waterfall.leads_total);
+  ok(J.waterfall.leads_truncado === 0 || J.waterfall.leads_truncado > 0,
+    'truncagem DECLARADA, nunca silenciosa', 'truncado: ' + J.waterfall.leads_truncado);
+  ok(LM.every(l => l.criado !== undefined && l.status_atual && Array.isArray(l.passos) && l.passos.length),
+    'todo lead traz CRIADO, STATUS ATUAL e a trilha de passos');
+  ok(LM.every(l => l.passos.every((p, i, a) => i === 0 || a[i - 1].passo <= p.passo)),
+    'passos em ordem cronologica dentro da janela');
+  ok(LM.every(l => l.n_movimentos === l.passos.length), 'n_movimentos == tamanho da trilha');
+  const encad = LM.filter(l => l.passos.length > 1)
+    .filter(l => l.passos.every((p, i, a) => i === 0 || a[i - 1].para === p.de));
+  ok(encad.length >= LM.filter(l => l.passos.length > 1).length * 0.9,
+    'a trilha ENCADEIA (o "para" de um passo e o "de" do seguinte) em >= 90% dos leads com 2+ passos',
+    encad.length + ' de ' + LM.filter(l => l.passos.length > 1).length);
+  ok(LM.every(l => l.passos.every(p => p.hora && /^\d{2}:\d{2}$/.test(p.hora))), 'cada passo tem hora');
+
   // ── 7. Mês corrente não explode (a janela que a tela abre por padrão) ─────────
   console.log('\n== mês corrente (default da tela) ==');
   const cur = await call({ funil: 'todos', refresh: '1' });
