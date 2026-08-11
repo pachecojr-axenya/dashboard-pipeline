@@ -426,7 +426,15 @@ async function waterfall(pipes, since, until) {
   });
 
   // Teto declarado, nunca silencioso: truncagem calada faz "cobri tudo" parecer verdade.
-  const TETO = 5000;
+  //
+  // 1.500 e nao 5.000 porque o payload da janela "Tudo" (936 dias) media 5,99 MB, acima
+  // do teto de resposta da Vercel (~4,5 MB) — a tela simplesmente nao respondia. Medido
+  // por bloco: waterfall.leads 2,40 MB, coorte.leads 1,90, desqualificacoes 1,66, e a
+  // AGREGACAO 0,01. Ou seja o peso e todo lista de drill, e o drill exibe 300 linhas de
+  // cada vez. A CONTA vem da agregacao no BigQuery e cobre 100% da coorte com qualquer
+  // teto — e por isso que cortar aqui nao mente, e nao cortar mentia por omissao (a
+  // resposta nem chegava).
+  const TETO = 1500;
   const todos = Object.values(trilha).sort((a, b) => (b.passos.length - a.passos.length));
   const movimentados = todos.slice(0, TETO).map(l => ({
     ...l,
@@ -504,6 +512,28 @@ async function macro(pipes, since, until) {
       WHERE ch.object_type = 'lead' AND ch.property = 'hs_pipeline_stage'
         AND ch.changed_at > T0 AND ch.changed_at <= T1
         AND cn.p IN (${sqlList(pipes)})
+    ),
+    -- SAIDA DO RECORTE: lead que estava em etapa ABERTA de um pipeline do recorte e
+    -- foi para um pipeline FORA dele (na pratica, despejado no Backup).
+    --
+    -- Sem esta barra o waterfall NAO FECHA em janela longa, e nao fecha por erro de
+    -- contabilidade, nao de dado: a entrada dele foi contada (a criacao caiu num
+    -- pipeline do recorte) e a saida nao, porque movc so guarda movimento cujo DESTINO
+    -- esta no recorte. Medido na janela completa (936 dias): o residuo era -1.285 em
+    -- 4.297 (30%), e cai para a ordem de dezenas com esta barra. Em janela curta o
+    -- efeito e ~0, e foi por isso que passou despercebido -- bug que so aparece na
+    -- escala e bug que espera a escala para aparecer.
+    -- (Sem backticks aqui de proposito: este comentario vive dentro de um template
+    --  literal de JS, e um backtick solto fecha a string.)
+    saiu_recorte AS (
+      SELECT COUNT(*) AS n
+      FROM ${wh.t('silver', 'fact_crm_change')} ch
+      JOIN canon co ON co.sid = ch.old_value
+      LEFT JOIN canon cn ON cn.sid = ch.new_value
+      WHERE ch.object_type = 'lead' AND ch.property = 'hs_pipeline_stage'
+        AND ch.changed_at > T0 AND ch.changed_at <= T1
+        AND co.p IN (${sqlList(pipes)}) AND co.c IN ('novo','tentativa','conectado')
+        AND (cn.p IS NULL OR cn.p NOT IN (${sqlList(pipes)}))
     )
     SELECT
       (SELECT IFNULL(SUM(n),0) FROM saldo WHERE q='T0' AND etapa IN ('novo','tentativa','conectado')) AS aberto_inicio,
@@ -523,6 +553,7 @@ async function macro(pipes, since, until) {
       -- e não saída do pool aberto — era a causa medida do resíduo de +5.
       (SELECT COUNT(*) FROM movc WHERE para='qualificado'    AND de IN ('novo','tentativa','conectado')) AS qualificados,
       (SELECT COUNT(*) FROM movc WHERE para='desqualificado' AND de IN ('novo','tentativa','conectado')) AS desqualificados,
+      (SELECT n FROM saiu_recorte) AS saiu_do_recorte,
       ARRAY(SELECT AS STRUCT q, etapa, n FROM saldo) AS saldos
   `, [
     { name: 'since', type: 'DATE', value: since },
@@ -533,17 +564,18 @@ async function macro(pipes, since, until) {
   const cr = wh.num(r.criados), re = wh.num(r.reativados);
   const en = wh.num(r.entrada_no_funil);
   const qu = wh.num(r.qualificados), dq = wh.num(r.desqualificados);
+  const sr = wh.num(r.saiu_do_recorte);
   const saldoInicio = {}, saldoFim = {};
   (r.saldos || []).forEach(s => {
     (wh.str(s.q) === 'T0' ? saldoInicio : saldoFim)[wh.str(s.etapa)] = wh.num(s.n);
   });
   return {
     aberto_inicio: ai, entrada_no_funil: en, criados: cr, reativados: re,
-    qualificados: qu, desqualificados: dq, aberto_fim: af,
+    qualificados: qu, desqualificados: dq, saiu_do_recorte: sr, aberto_fim: af,
     // resíduo = o que a aritmética não explica. Exposto como barra própria, nunca
     // diluído nas outras: troca de pipeline entrando no recorte, mais os 2 leads em
     // que a etapa derivada discorda de dim_lead.
-    residuo: af - (ai + en + re - qu - dq),
+    residuo: af - (ai + en + re - qu - dq - sr),
     // Lead criado na janela que NÃO gerou movimento de etapa. É a diferença entre as
     // duas contagens, e ela existe: ficaria escondida se o waterfall usasse dim_lead.
     criados_sem_movimento: cr - en,
@@ -575,111 +607,258 @@ const PIPE_OF_STAGE = {
  * (18.209 leads com exatamente 1 contato, 1 com 2 — a exceção está reportada em
  * `diagnostics`).
  */
-async function coorte(pipes, since, until, ativMapa) {
-  const { rows } = await wh.query(`
-    WITH base AS (
+/**
+ * FAIXAS DE DIMENSÃO, definidas em UM lugar: aqui, em SQL.
+ *
+ * Elas precisam nascer no SQL porque a agregação da tabela de taxa é um GROUP BY no
+ * BigQuery (ver `coorteAgregada`) — e se o rótulo da faixa fosse recalculado no
+ * JavaScript para o drill, as duas definições passariam a derivar. O drill LÊ o
+ * rótulo que veio do SQL; ele nunca refaz a conta.
+ *
+ * "(não preenchido)" é FAIXA, não ausência de faixa: esconder o vazio é o que faz um
+ * corte de 6,9% de cobertura parecer análise.
+ */
+const DIM_SQL = {
+  porte: `CASE WHEN colaboradores IS NULL THEN '(não preenchido)'
+               WHEN colaboradores < 50 THEN '< 50'
+               WHEN colaboradores < 200 THEN '50–200'
+               WHEN colaboradores < 500 THEN '200–500'
+               ELSE '500+' END`,
+  tier: `IFNULL(NULLIF(tier_colaboradores, ''), '(não preenchido)')`,
+  vidas: `CASE WHEN vidas IS NULL THEN '(não preenchido)'
+               WHEN vidas < 50 THEN '< 50 vidas'
+               WHEN vidas < 200 THEN '50–200'
+               WHEN vidas < 500 THEN '200–500'
+               ELSE '500+' END`,
+  origem: `IFNULL(NULLIF(origem, ''), '(sem origem)')`,
+};
+
+/**
+ * Coorte de leads criados na janela: o CTE comum da agregação e do detalhe.
+ *
+ * Devolve SQL, não dados. Existe para a agregação (GROUP BY no BigQuery) e o detalhe
+ * (lista para o drill) saírem da MESMA definição de coorte, régua e faixa. Duas
+ * consultas com a mesma intenção escrita duas vezes é como os totais da tabela param
+ * de bater com a soma dos drills.
+ */
+function coorteCTE(pipes) {
+  const canonPairs = Object.keys(STAGE_CANON)
+    .map(sid => `STRUCT('${sid}' AS sid, '${STAGE_CANON[sid]}' AS c)`)
+    .join(',');
+  return `
+    WITH canon AS (SELECT * FROM UNNEST([${canonPairs}])),
+    base AS (
       SELECT l.lead_id, l.lead_name, l.owner_id, l.pipeline_id, l.stage_id,
-             l.motivo_desqualificacao, l.origem_canonica, l.origem_fonte,
+             l.motivo_desqualificacao,
+             IFNULL(NULLIF(l.origem_canonica,''), l.origem_fonte) AS origem,
              DATE(l.hs_created_at, 'America/Sao_Paulo') AS criado
       FROM ${wh.t('silver', 'dim_lead')} l
       WHERE l.is_current AND l.pipeline_id IN (${sqlList(pipes)})
         AND DATE(l.hs_created_at, 'America/Sao_Paulo') BETWEEN DATE(@since) AND DATE(@until)
     ),
-    -- lead -> contato (1:1) e lead -> empresa
     l2c AS (
-      SELECT from_id AS lead_id, ANY_VALUE(to_id) AS contact_id, COUNT(DISTINCT to_id) AS n_contatos
-      FROM ${wh.t('silver', 'bridge_association')}
-      WHERE from_object = 'lead' AND to_object = 'contact' AND is_active GROUP BY 1
+      SELECT b.from_id AS lead_id, ANY_VALUE(b.to_id) AS contact_id
+      FROM ${wh.t('silver', 'bridge_association')} b JOIN base ON base.lead_id = b.from_id
+      WHERE b.from_object='lead' AND b.to_object='contact' AND b.is_active GROUP BY 1
     ),
     l2co AS (
-      SELECT from_id AS lead_id, ANY_VALUE(to_id) AS company_id
-      FROM ${wh.t('silver', 'bridge_association')}
-      WHERE from_object = 'lead' AND to_object = 'company' AND is_active GROUP BY 1
+      SELECT b.from_id AS lead_id, ANY_VALUE(b.to_id) AS company_id
+      FROM ${wh.t('silver', 'bridge_association')} b JOIN base ON base.lead_id = b.from_id
+      WHERE b.from_object='lead' AND b.to_object='company' AND b.is_active GROUP BY 1
     ),
     l2d AS (
-      SELECT from_id AS lead_id, ANY_VALUE(to_id) AS deal_id, MIN(first_seen_at) AS assoc_em
-      FROM ${wh.t('silver', 'bridge_association')}
-      WHERE from_object = 'lead' AND to_object = 'deal' GROUP BY 1
+      SELECT b.from_id AS lead_id, ANY_VALUE(b.to_id) AS deal_id
+      FROM ${wh.t('silver', 'bridge_association')} b JOIN base ON base.lead_id = b.from_id
+      WHERE b.from_object='lead' AND b.to_object='deal' GROUP BY 1
     ),
-    -- RÉGUA A: passagem de ETAPA. Maior etapa canônica já visitada.
-    etapas AS (
+    -- Maior etapa canônica já visitada. Desqualificado é TERMINAL e fica fora do rank:
+    -- desqualificar não é avançar.
+    rank_etapa AS (
       SELECT se.object_id AS lead_id,
-             ARRAY_AGG(DISTINCT se.stage_id IGNORE NULLS) AS visitadas
+             MAX(CASE c.c WHEN 'novo' THEN 0 WHEN 'tentativa' THEN 1
+                          WHEN 'conectado' THEN 2 WHEN 'qualificado' THEN 3 ELSE -1 END) AS max_rank,
+             LOGICAL_OR(c.c = 'qualificado')    AS foi_qualificado,
+             LOGICAL_OR(c.c = 'desqualificado') AS foi_desqualificado
       FROM ${wh.t('silver', 'fact_stage_entry')} se
+      JOIN base ON base.lead_id = se.object_id
+      LEFT JOIN canon c ON c.sid = se.stage_id
       WHERE se.object_type = 'lead'
       GROUP BY 1
     ),
-    -- A régua de atividade NÃO vive aqui: ela é única, em ATIV_MANUAL, e chega pela
-    -- função atividade(). Duplicá-la é como os dois lados passam a discordar.
-    -- Tier vem do BRONZE: não está projetado em dim_contact (F0 conserta).
+    -- Por CANAL, não só o total. O drill precisa dizer QUAL canal tocou: "sem toque"
+    -- sem declarar o que foi procurado foi o defeito de 11/08 (caso Rui Medeiros), e
+    -- devolver só o total reintroduz ele pela porta de trás — o front cairia em
+    -- "nenhum toque" por ausência de campo, não por ausência de toque.
+    ativ AS (
+      SELECT c.lead_id,
+             COUNTIF(f.is_connected) AS ligacoes_conectadas,
+             COUNTIF(f.kind = 'emails' AND f.is_outbound_message) AS emails_enviados,
+             COUNTIF(f.channel_type = 'LINKEDIN_MESSAGE' AND f.is_outbound_message) AS linkedin_enviados,
+             COUNTIF(f.channel_type = 'WHATS_APP' AND f.is_outbound_message AND IFNULL(f.source_label,'') != 'INTEGRATION') AS whatsapp_manual,
+             COUNTIF(f.is_meeting_held) AS reunioes,
+             COUNTIF(${ATIV_MANUAL})    AS toques_manuais,
+             COUNTIF(${ATIV_AUTOMACAO}) AS toques_automacao
+      FROM l2c c
+      LEFT JOIN ${wh.t('silver', 'fact_engagement')} f ON f.contact_id = c.contact_id
+      GROUP BY 1
+    ),
     tier AS (
-      SELECT object_id AS contact_id,
-             JSON_VALUE(payload, '$.tier_colaboradores') AS tier_colaboradores,
-             SAFE_CAST(JSON_VALUE(payload, '$.numero_de_vidas') AS FLOAT64) AS vidas_contato
-      FROM ${wh.t('bronze', 'raw_contact')}
-    )
-    SELECT b.*, l2c.n_contatos, l2d.deal_id,
-           cp.company_id, cp.company_name, cp.employees, cp.porte, cp.vidas AS vidas_empresa,
-           e.visitadas,
-           tr.tier_colaboradores, tr.vidas_contato,
-           d.stage_label AS deal_stage, d.pipeline_id AS deal_pipeline
-    FROM base b
-    LEFT JOIN l2c   ON l2c.lead_id = b.lead_id
-    LEFT JOIN l2co  ON l2co.lead_id = b.lead_id
-    LEFT JOIN l2d   ON l2d.lead_id = b.lead_id
-    LEFT JOIN ${wh.t('silver', 'dim_company')} cp ON cp.company_id = l2co.company_id AND cp.is_current
-    LEFT JOIN etapas e ON e.lead_id = b.lead_id
-    LEFT JOIN tier  tr ON tr.contact_id = l2c.contact_id
-    LEFT JOIN ${wh.t('silver', 'dim_deal')} d ON d.deal_id = l2d.deal_id AND d.is_current
-  `, [
+      SELECT c.lead_id,
+             JSON_VALUE(r.payload, '$.tier_colaboradores') AS tier_colaboradores,
+             SAFE_CAST(JSON_VALUE(r.payload, '$.numero_de_vidas') AS FLOAT64) AS vidas_contato
+      FROM l2c c JOIN ${wh.t('bronze', 'raw_contact')} r ON r.object_id = c.contact_id
+    ),
+    flat AS (
+      SELECT b.*, l2d.deal_id, cp.company_id, cp.company_name,
+             cp.employees AS colaboradores, cp.porte AS porte_declarado,
+             COALESCE(tr.vidas_contato, cp.vidas) AS vidas,
+             tr.tier_colaboradores,
+             IFNULL(re.max_rank, 0) AS max_rank,
+             IFNULL(re.foi_qualificado, false) AS qualificado,
+             (IFNULL(re.foi_desqualificado, false)
+              OR (SELECT c.c FROM canon c WHERE c.sid = b.stage_id) = 'desqualificado') AS desqualificado,
+             IFNULL(a.toques_manuais, 0)      AS toques_manuais,
+             IFNULL(a.toques_automacao, 0)    AS toques_automacao,
+             IFNULL(a.ligacoes_conectadas, 0) AS ligacoes_conectadas,
+             IFNULL(a.emails_enviados, 0)     AS emails_enviados,
+             IFNULL(a.linkedin_enviados, 0)   AS linkedin_enviados,
+             IFNULL(a.whatsapp_manual, 0)     AS whatsapp_manual,
+             IFNULL(a.reunioes, 0)            AS reunioes
+      FROM base b
+      LEFT JOIN l2c   ON l2c.lead_id  = b.lead_id
+      LEFT JOIN l2co  ON l2co.lead_id = b.lead_id
+      LEFT JOIN l2d   ON l2d.lead_id  = b.lead_id
+      LEFT JOIN ${wh.t('silver', 'dim_company')} cp ON cp.company_id = l2co.company_id AND cp.is_current
+      LEFT JOIN rank_etapa re ON re.lead_id = b.lead_id
+      LEFT JOIN ativ a  ON a.lead_id  = b.lead_id
+      LEFT JOIN tier tr ON tr.lead_id = b.lead_id
+    ),
+    -- As faixas nascem AQUI e viajam como rótulo, para o drill não recalcular.
+    dim AS (
+      SELECT f.*,
+             ${DIM_SQL.porte}  AS dim_porte,
+             ${DIM_SQL.tier}   AS dim_tier,
+             ${DIM_SQL.vidas}  AS dim_vidas,
+             ${DIM_SQL.origem} AS dim_origem,
+             toques_manuais > 0 AS atividade_real,
+             toques_manuais = 0 AND toques_automacao > 0 AS so_automacao,
+             max_rank >= 1 AS atingiu_tentativa_etapa,
+             max_rank >= 2 AS atingiu_conectado_etapa
+      FROM flat f
+    )`;
+}
+
+/**
+ * A TABELA DE TAXA, agregada no BIGQUERY.
+ *
+ * Antes a tela recebia TODOS os leads da coorte e agregava no browser. Funcionava em
+ * 11 dias (258 leads, 0,65 MB) e **estourava em 936 dias: 15.558 leads, 15,79 MB** —
+ * acima do teto de resposta da Vercel, ou seja a janela "Tudo" simplesmente não
+ * respondia. Agregação é trabalho de banco: o GROUP BY desce para o BigQuery e a tela
+ * recebe ~100 linhas em vez de 15 mil.
+ *
+ * O detalhe por lead continua vindo, mas CAPADO e com a truncagem declarada — é para
+ * o drill, não para a conta. A conta é a agregação, e ela cobre 100% da coorte
+ * independente do cap.
+ */
+async function coorteAgregada(pipes, since, until) {
+  const dims = [
+    ['bdr', 'owner_id'], ['porte', 'dim_porte'], ['tier', 'dim_tier'],
+    ['vidas', 'dim_vidas'], ['origem', 'dim_origem'],
+  ];
+  const blocos = dims.map(([nome, col]) => `
+    SELECT '${nome}' AS dimensao, CAST(${col} AS STRING) AS valor,
+           COUNT(*) AS criados,
+           COUNTIF(atividade_real) AS com_atividade,
+           COUNTIF(atingiu_tentativa_etapa) AS por_etapa,
+           COUNTIF(atingiu_tentativa_etapa AND atividade_real) AS ambos,
+           COUNTIF(so_automacao) AS so_automacao,
+           COUNTIF(NOT atividade_real AND NOT so_automacao) AS nunca_tocados,
+           COUNTIF(qualificado) AS qualificados,
+           COUNTIF(deal_id IS NOT NULL) AS com_deal,
+           COUNTIF(desqualificado) AS desqualificados
+    FROM dim GROUP BY 1, 2`).join('\n    UNION ALL');
+
+  const P = [
     { name: 'since', type: 'DATE', value: since },
     { name: 'until', type: 'DATE', value: until },
-  ]);
+  ];
+  const { rows } = await wh.query(coorteCTE(pipes) + blocos, P);
+  const por = {};
+  rows.forEach(r => {
+    const d = wh.str(r.dimensao);
+    (por[d] = por[d] || []).push({
+      valor: wh.str(r.valor) || '(sem valor)',
+      criados: wh.num(r.criados),
+      com_atividade: wh.num(r.com_atividade),
+      por_etapa: wh.num(r.por_etapa),
+      ambos: wh.num(r.ambos),
+      so_automacao: wh.num(r.so_automacao),
+      nunca_tocados: wh.num(r.nunca_tocados),
+      qualificados: wh.num(r.qualificados),
+      com_deal: wh.num(r.com_deal),
+      desqualificados: wh.num(r.desqualificados),
+    });
+  });
+  return por;
+}
 
-  const leads = rows.map(r => {
-    const visitadas = (r.visitadas || []).map(canon);
-    const maxRank = visitadas.reduce((m, c) => (RANK[c] != null && RANK[c] > m ? RANK[c] : m), 0);
-    const A = ativMapa[wh.str(r.lead_id)] || {};
-    return {
+/** Detalhe por lead, para o DRILL. Capado, com a truncagem declarada. */
+const COORTE_TETO = 1500;
+const DESQ_TETO = 1500;
+async function coorteDetalhe(pipes, since, until) {
+  const P = [
+    { name: 'since', type: 'DATE', value: since },
+    { name: 'until', type: 'DATE', value: until },
+  ];
+  const { rows } = await wh.query(coorteCTE(pipes) + `
+    SELECT lead_id, lead_name, owner_id, pipeline_id, stage_id, criado,
+           motivo_desqualificacao, deal_id, company_id, company_name,
+           colaboradores, vidas, tier_colaboradores,
+           dim_porte, dim_tier, dim_vidas, dim_origem,
+           atividade_real, so_automacao, atingiu_tentativa_etapa, atingiu_conectado_etapa,
+           qualificado, desqualificado, toques_manuais, toques_automacao,
+           ligacoes_conectadas, emails_enviados, linkedin_enviados, whatsapp_manual, reunioes
+    FROM dim
+    ORDER BY criado DESC
+    LIMIT ${COORTE_TETO + 1}`, P);
+  const truncado = rows.length > COORTE_TETO;
+  return {
+    truncado,
+    leads: rows.slice(0, COORTE_TETO).map(r => ({
       lead_id: wh.str(r.lead_id),
       lead: wh.str(r.lead_name),
       criado: wh.str(r.criado),
       pipeline: wh.str(r.pipeline_id),
       etapa: canon(r.stage_id),
       owner_id: wh.str(r.owner_id),
-      // RÉGUA A — passou de etapa
-      atingiu_tentativa_etapa: maxRank >= RANK.tentativa,
-      atingiu_conectado_etapa: maxRank >= RANK.conectado,
-      qualificado: visitadas.includes('qualificado'),
-      desqualificado: visitadas.includes('desqualificado') || canon(r.stage_id) === 'desqualificado',
-      // RÉGUA B — atividade real (ATIV_MANUAL: ligação conectada, e-mail, LinkedIn,
-      // WhatsApp MANUAL, reunião realizada). Automação em bucket próprio e visível.
-      atividade_real: (A.toques_manuais || 0) > 0,
-      so_automacao: (A.toques_manuais || 0) === 0 && (A.toques_automacao || 0) > 0,
-      ligacoes_conectadas: A.ligacoes_conectadas || 0,
-      emails_enviados: A.emails_enviados || 0,
-      linkedin_enviados: A.linkedin_enviados || 0,
-      whatsapp_manual: A.whatsapp_manual || 0,
-      reunioes: A.reunioes || 0,
-      toques_manuais: A.toques_manuais || 0,
-      toques_automacao: A.toques_automacao || 0,
-      primeiro_toque: A.primeiro_toque || null,
-      // conversão
+      atingiu_tentativa_etapa: wh.bool(r.atingiu_tentativa_etapa),
+      atingiu_conectado_etapa: wh.bool(r.atingiu_conectado_etapa),
+      qualificado: wh.bool(r.qualificado),
+      desqualificado: wh.bool(r.desqualificado),
+      atividade_real: wh.bool(r.atividade_real),
+      so_automacao: wh.bool(r.so_automacao),
+      toques_manuais: wh.num(r.toques_manuais),
+      toques_automacao: wh.num(r.toques_automacao),
+      // Por canal — o drill nomeia o canal em vez de afirmar ausência sem universo.
+      ligacoes_conectadas: wh.num(r.ligacoes_conectadas),
+      emails_enviados: wh.num(r.emails_enviados),
+      linkedin_enviados: wh.num(r.linkedin_enviados),
+      whatsapp_manual: wh.num(r.whatsapp_manual),
+      reunioes: wh.num(r.reunioes),
       deal_id: wh.str(r.deal_id),
-      deal_stage: wh.str(r.deal_stage),
-      // dimensões
       empresa_id: wh.str(r.company_id),
       empresa: wh.str(r.company_name),
-      colaboradores: r.employees == null ? null : Number(r.employees),
-      porte: wh.str(r.porte),
-      vidas: r.vidas_contato != null ? Number(r.vidas_contato)
-           : (r.vidas_empresa != null ? Number(r.vidas_empresa) : null),
+      colaboradores: r.colaboradores == null ? null : Number(r.colaboradores),
+      vidas: r.vidas == null ? null : Number(r.vidas),
       tier_colaboradores: wh.str(r.tier_colaboradores),
       motivo: wh.str(r.motivo_desqualificacao),
-      origem: wh.str(r.origem_canonica) || wh.str(r.origem_fonte) || '(sem origem)',
-    };
-  });
-  return { leads };
+      origem: wh.str(r.dim_origem),
+      // As faixas vêm do SQL. O front LÊ, não recalcula.
+      dim_porte: wh.str(r.dim_porte), dim_tier: wh.str(r.dim_tier),
+      dim_vidas: wh.str(r.dim_vidas), dim_origem: wh.str(r.dim_origem),
+    })),
+  };
 }
 
 /** Contraprova ao vivo: Search API por etapa (barata, `total` sem paginar). */
@@ -711,24 +890,44 @@ module.exports = async (req, res) => {
 
   const hoje = new Date(Date.now() - 3 * 3600 * 1000).toISOString().slice(0, 10); // America/Sao_Paulo
   const until = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.until)) ? String(req.query.until) : hoje;
-  const since = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.since))
-    ? String(req.query.since) : until.slice(0, 8) + '01';
 
-  const cacheKey = `${funilKey}|${since}|${until}`;
-  if (_cache[cacheKey] && Date.now() - _cache[cacheKey].at < CACHE_TTL && req.query.refresh !== '1') {
-    return res.status(200).json({ ..._cache[cacheKey].data, cache: true });
-  }
-
+  // JANELA UNIVERSAL. `tudo=1` é o filtro "Tudo" da barra, que devolve start/end nulos.
+  // Antes o default caía no mês corrente, então "Tudo" mostrava só agosto — a tela
+  // ficava presa no mês sem dizer que estava. O piso do "tudo" sai do PRÓPRIO DADO
+  // (`MIN(hs_created_at)` dos pipelines do recorte), não de uma data chumbada: data
+  // chumbada envelhece em silêncio e passa a cortar histórico sem ninguém notar.
+  let since, cacheKey, dias;
   try {
+    // resolvido aqui dentro para falha de BQ virar 500 com mensagem, nao rejeicao solta
+    if (/^\d{4}-\d{2}-\d{2}$/.test(String(req.query.since))) {
+      since = String(req.query.since);
+    } else if (String(req.query.tudo) === '1') {
+      const { rows: piso } = await wh.query(`
+        SELECT FORMAT_DATE('%F', MIN(DATE(hs_created_at, 'America/Sao_Paulo'))) AS de
+        FROM ${wh.t('silver', 'dim_lead')}
+        WHERE is_current AND pipeline_id IN (${sqlList(pipes)}) AND hs_created_at IS NOT NULL
+      `);
+      since = (piso[0] && wh.str(piso[0].de)) || '2024-01-01';
+    } else {
+      since = until.slice(0, 8) + '01';
+    }
+
+    cacheKey = `${funilKey}|${since}|${until}`;
+    dias = Math.round((Date.parse(until) - Date.parse(since)) / 86400000) + 1;
+    if (_cache[cacheKey] && Date.now() - _cache[cacheKey].at < CACHE_TTL && req.query.refresh !== '1') {
+      return res.status(200).json({ ..._cache[cacheKey].data, cache: true });
+    }
+
     // A atividade vem PRIMEIRO porque a régua é única e a coorte depende dela.
-    const [snap, wf, mac, ativ, owners] = await Promise.all([
+    const [snap, wf, mac, ativ, agg, det, owners] = await Promise.all([
       snapshot(pipes),
       waterfall(pipes, since, until),
       macro(pipes, since, until),
       atividade(pipes, since, until),
+      coorteAgregada(pipes, since, until),   // GROUP BY no BigQuery
+      coorteDetalhe(pipes, since, until),    // detalhe capado, para o drill
       whq.ownerMap(),
     ]);
-    const co = await coorte(pipes, since, until, ativ.mapa);
 
     const idToBdr = resolveTeamIds(owners);
 
@@ -770,16 +969,40 @@ module.exports = async (req, res) => {
       };
     });
 
-    const leads = co.leads.map(l => ({ ...l, bdr: idToBdr[l.owner_id] || nome(l.owner_id) || '(sem dono)' }));
+    const bdrDe = id => idToBdr[id] || nome(id) || '(sem dono)';
+    const leads = det.leads.map(l => ({ ...l, bdr: bdrDe(l.owner_id), dim_bdr: bdrDe(l.owner_id) }));
 
-    // As duas réguas, agregadas — o gap é publicado, não escondido.
-    const n = leads.length;
-    const porEtapa = leads.filter(l => l.atingiu_tentativa_etapa).length;
-    const porAtividade = leads.filter(l => l.atividade_real).length;
+    // A dimensão BDR vem do BQ por owner_id; colapsar em nome canônico é aqui, porque
+    // é o JS que conhece o roster (dois owner_ids podem ser o mesmo BDR por alias).
+    const porDimensao = { ...agg };
+    if (agg.bdr) {
+      const m = {};
+      agg.bdr.forEach(r => {
+        const k = bdrDe(r.valor);
+        const a = m[k] = m[k] || { valor: k, criados: 0, com_atividade: 0, por_etapa: 0, ambos: 0,
+          so_automacao: 0, nunca_tocados: 0, qualificados: 0, com_deal: 0, desqualificados: 0 };
+        Object.keys(a).forEach(f => { if (f !== 'valor') a[f] += r[f]; });
+      });
+      porDimensao.bdr = Object.values(m);
+    }
+
+    // Os totais saem da AGREGAÇÃO, nunca da lista capada — é isso que faz a tabela
+    // continuar certa quando o detalhe é truncado.
+    const tot = (porDimensao.bdr || []).reduce((a, r) => {
+      Object.keys(r).forEach(f => { if (f !== 'valor') a[f] = (a[f] || 0) + r[f]; });
+      return a;
+    }, {});
+    const n = tot.criados || 0;
+    const porEtapa = tot.por_etapa || 0;
+    const porAtividade = tot.com_atividade || 0;
 
     const payload = {
       success: true,
-      janela: { since, until, funil: funilKey, pipelines: pipes },
+      janela: {
+        since, until, dias, funil: funilKey, pipelines: pipes,
+        origem: /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.since)) ? 'filtro'
+              : String(req.query.tudo) === '1' ? 'tudo (piso vindo do dado)' : 'mês corrente (default)',
+      },
       snapshot: { camada: 'silver', tabela: 'dim_lead', por_etapa: snap.porEtapa, etapas_nao_mapeadas: snap.naoMapeadas },
       // Waterfall MACRO: o saldo que abre, recebe, perde e fecha. A soma FECHA, e o
       // que não fecha vira a barra `residuo` em vez de sumir nas outras.
@@ -787,7 +1010,7 @@ module.exports = async (req, res) => {
         camada: 'silver', tabela: 'fact_stage_entry + fact_crm_change + dim_lead',
         ...mac,
         fecha: mac.residuo === 0,
-        conferencia: `${mac.aberto_inicio} + ${mac.entrada_no_funil} + ${mac.reativados} − ${mac.qualificados} − ${mac.desqualificados} = ${mac.aberto_inicio + mac.entrada_no_funil + mac.reativados - mac.qualificados - mac.desqualificados} (fecho medido: ${mac.aberto_fim}, resíduo ${mac.residuo >= 0 ? '+' : ''}${mac.residuo})`,
+        conferencia: `${mac.aberto_inicio} + ${mac.entrada_no_funil} + ${mac.reativados} − ${mac.qualificados} − ${mac.desqualificados} − ${mac.saiu_do_recorte} = ${mac.aberto_inicio + mac.entrada_no_funil + mac.reativados - mac.qualificados - mac.desqualificados - mac.saiu_do_recorte} (fecho medido: ${mac.aberto_fim}, resíduo ${mac.residuo >= 0 ? '+' : ''}${mac.residuo})`,
       },
       waterfall: {
         camada: 'silver', tabela: 'fact_crm_change + fact_owner_assignment',
@@ -810,7 +1033,12 @@ module.exports = async (req, res) => {
       },
       coorte: {
         camada: 'silver', tabela: 'dim_lead + fact_stage_entry + fact_engagement + bronze.raw_contact',
+        agregacao: 'GROUP BY no BigQuery (a tabela de taxa nao depende do cap do detalhe)',
         leads,
+        leads_truncado: det.truncado,
+        // Agregação COMPLETA da coorte, feita no BigQuery. Cobre 100% dos leads
+        // independente do cap do detalhe acima.
+        por_dimensao: porDimensao,
         criados: n,
         // "Criaram X e falaram com quantos Y?" — o Y viaja como NÚMERO ABSOLUTO, não
         // só como taxa. Taxa sem o absoluto esconde a escala: 50% de 4 e 50% de 400
@@ -819,15 +1047,17 @@ module.exports = async (req, res) => {
           criados: n,
           por_etapa:     { n: porEtapa,     pct: n ? +(porEtapa / n * 100).toFixed(1) : null },
           por_atividade: { n: porAtividade, pct: n ? +(porAtividade / n * 100).toFixed(1) : null },
-          etapa_sem_atividade: leads.filter(l => l.atingiu_tentativa_etapa && !l.atividade_real).length,
-          atividade_sem_etapa: leads.filter(l => !l.atingiu_tentativa_etapa && l.atividade_real).length,
-          so_automacao: leads.filter(l => l.so_automacao).length,
-          nunca_tocados: leads.filter(l => !l.atividade_real && !l.so_automacao).length,
+          etapa_sem_atividade: (tot.por_etapa || 0) - (tot.ambos || 0),
+          atividade_sem_etapa: (tot.com_atividade || 0) - (tot.ambos || 0),
+          so_automacao: tot.so_automacao || 0,
+          nunca_tocados: tot.nunca_tocados || 0,
         },
-        qualificados: leads.filter(l => l.qualificado).length,
-        com_deal: leads.filter(l => l.deal_id).length,
+        qualificados: tot.qualificados || 0,
+        com_deal: tot.com_deal || 0,
       },
-      desqualificacoes: desq,
+      desqualificacoes: desq.slice(0, DESQ_TETO),
+      desqualificacoes_total: desq.length,
+      desqualificacoes_truncado: Math.max(0, desq.length - DESQ_TETO),
       ordem_funil: FUNNEL_ORDER,
       rotulos: CANON_PT,
       premissas: {
@@ -846,6 +1076,8 @@ module.exports = async (req, res) => {
         tier_vidas_nao_existe: 'Não existe propriedade tier_vidas em nenhum objeto do portal. Qualquer faixa de vidas é DERIVAÇÃO, e as faixas não foram decididas.',
         waterfall_macro: 'O macro fecha por aritmetica: aberto@inicio + criados + reativados - qualificados - desqualificados = aberto@fim. ABERTO = novo+tentativa+conectado; qualificado e desqualificado sao SAIDAS do funil de prospeccao (qualificado vira deal, desqualificado morre) e contá-los no saldo aberto faria o funil so crescer. O que a aritmetica nao explica vira a barra `residuo`, exposta, nunca diluida nas outras.',
         etapa_num_instante: 'O saldo de abertura usa a etapa do lead em T0, derivada da ultima entrada de fact_stage_entry com entered_at <= T0 — dim_lead so sabe o AGORA. Metodo validado contra o snapshot: reproduz dim_lead em 18.294 de 18.296 leads.',
+        janela_universal: 'O filtro de periodo vale para TODA a secao, e "Tudo" usa como piso a data do PRIMEIRO lead do recorte (MIN(hs_created_at)), nao uma data chumbada -- data chumbada envelhece em silencio e passa a cortar historico. `janela.origem` no payload diz de onde a janela veio: filtro, tudo, ou default do mes corrente.',
+        agregacao_no_banco: 'A tabela de taxa e agregada por GROUP BY no BigQuery, nao no browser. A lista por lead vem CAPADA (3.000) e serve ao drill, nao a conta: os totais saem da agregacao e cobrem 100% da coorte mesmo com o detalhe truncado. Antes a tela recebia todos os leads e agregava no JS -- 15.558 leads e 15,79 MB na janela de 936 dias, acima do teto de resposta da Vercel, ou seja "Tudo" nao respondia.',
         defasagem: 'O armazém extrai às 06:30. O close das 20:30 NÃO extrai, então movimentações do dia corrente podem faltar — medido em 11/08: ~96 desqualificações de uma manhã ausentes. Use o botão Atualizar para o dado de agora.',
       },
       divergencias_conhecidas: {

@@ -135,13 +135,20 @@ async function call(query) {
   ok(t.por_atividade.n + t.so_automacao + t.nunca_tocados === t.criados,
     'particao MECE: falou com + so automacao + nunca tocado == criados',
     t.por_atividade.n + ' + ' + t.so_automacao + ' + ' + t.nunca_tocados + ' = ' + t.criados);
+  // co.leads e a lista CAPADA do drill; a asserçao vale sobre ela porque o que se prova
+  // aqui e a REGUA (todo WhatsApp conta), nao o total (esse vem da agregacao).
   const comWpp = (co.leads || []).filter(l => l.whatsapp_manual > 0);
-  ok(comWpp.length > 0, 'ha leads cuja UNICA prova de contato pode ser WhatsApp', comWpp.length);
+  ok(comWpp.length > 0, 'ha leads cuja UNICA prova de contato pode ser WhatsApp (na amostra do drill)', comWpp.length + ' de ' + (co.leads || []).length);
   ok(comWpp.every(l => l.atividade_real),
     'TODO lead com WhatsApp manual conta como atividade real (a regressao do caso Rui Medeiros)');
   const soWpp = comWpp.filter(l => !l.ligacoes_conectadas && !l.emails_enviados && !l.linkedin_enviados && !l.reunioes);
   ok(soWpp.length > 0 && soWpp.every(l => l.atividade_real),
     'lead com WhatsApp e NADA MAIS tambem conta — sem isso o bug volta em silencio', soWpp.length);
+  // Regressao do que quase aconteceu ao mover a agregacao para o BQ: o detalhe perdeu as
+  // contagens POR CANAL e o front passaria a dizer "nenhum toque" por ausencia de CAMPO.
+  ok((co.leads || []).filter(l => l.atividade_real).every(l =>
+      (l.ligacoes_conectadas + l.emails_enviados + l.linkedin_enviados + l.whatsapp_manual + l.reunioes) > 0),
+    'lead com atividade real SEMPRE tem canal nomeado no payload (senao a tela diz "sem toque" por campo faltando)');
   ok((co.leads || []).every(l => l.atividade_real === (l.toques_manuais > 0)),
     'atividade_real e exatamente "houve toque manual", sem terceira via');
   ok((co.leads || []).every(l => !(l.atividade_real && l.so_automacao)),
@@ -218,8 +225,9 @@ async function call(query) {
   // ── 6b. Waterfall MACRO: a aritmética TEM de fechar ───────────────────────────
   console.log('\n== waterfall macro (a aritmetica fecha?) ==');
   const M = J.macro || {};
-  const soma = M.aberto_inicio + M.entrada_no_funil + M.reativados - M.qualificados - M.desqualificados;
-  ok(M.aberto_fim === soma + M.residuo, 'identidade do waterfall: inicio + entrou + reativados − qualif − desqualif + residuo == fim', M.conferencia);
+  const soma = M.aberto_inicio + M.entrada_no_funil + M.reativados - M.qualificados - M.desqualificados - M.saiu_do_recorte;
+  ok(M.aberto_fim === soma + M.residuo, 'identidade do waterfall (inclui a saida do recorte)', M.conferencia);
+  ok(typeof M.saiu_do_recorte === 'number', 'a saida por troca de pipeline tem barra propria', M.saiu_do_recorte);
   ok(Math.abs(M.residuo) <= Math.max(5, M.aberto_fim * 0.005),
     'residuo dentro da tolerancia declarada (<= 0,5% do saldo ou 5 leads)', M.residuo + ' de ' + M.aberto_fim);
   ok(M.aberto_inicio > 0 && M.aberto_fim > 0, 'saldos de abertura e fecho positivos', M.aberto_inicio + ' -> ' + M.aberto_fim);
@@ -261,6 +269,43 @@ async function call(query) {
     'a trilha ENCADEIA (o "para" de um passo e o "de" do seguinte) em >= 90% dos leads com 2+ passos',
     encad.length + ' de ' + LM.filter(l => l.passos.length > 1).length);
   ok(LM.every(l => l.passos.every(p => p.hora && /^\d{2}:\d{2}$/.test(p.hora))), 'cada passo tem hora');
+
+  // ── 6e. JANELA UNIVERSAL e o teto de payload ──────────────────────────────────
+  // A tela ficava "presa em agosto": o filtro "Tudo" devolve start/end nulos e o default
+  // caia no mes corrente. E quando a janela longa passou a funcionar, ela nao respondia
+  // por tamanho -- 15,79 MB, acima do teto da Vercel. Os dois casos ficam travados aqui.
+  console.log('\n== janela universal (o defeito "preso em agosto") ==');
+  const tudo = await call({ funil: 'todos', tudo: '1', refresh: '1' });
+  ok(tudo.code === 200 && tudo.body.success, 'janela "Tudo" responde 200', tudo.code);
+  const T = tudo.body;
+  ok(T.janela.dias > 700, 'a janela "Tudo" cobre o historico, nao o mes corrente',
+    T.janela.since + ' -> ' + T.janela.until + ' (' + T.janela.dias + ' dias)');
+  ok(/tudo/.test(T.janela.origem), 'a origem da janela e DECLARADA no payload', T.janela.origem);
+  ok(T.janela.since < '2025-01-01', 'o piso vem do DADO (primeiro lead), nao de data chumbada', T.janela.since);
+  const mb = Buffer.byteLength(JSON.stringify(T)) / 1048576;
+  ok(mb < 4, 'payload da janela completa abaixo do teto de resposta da Vercel', mb.toFixed(2) + ' MB');
+  ok(T.coorte.criados > 10000, 'a agregacao cobre a coorte inteira, nao a lista capada',
+    T.coorte.criados + ' criados contra ' + T.coorte.leads.length + ' no detalhe');
+  ok(T.coorte.leads_truncado === true, 'a truncagem do detalhe e DECLARADA na janela longa');
+  ok(T.coorte.taxa_contato.por_atividade.n + T.coorte.taxa_contato.so_automacao + T.coorte.taxa_contato.nunca_tocados === T.coorte.criados,
+    'MECE vale na janela completa tambem',
+    T.coorte.taxa_contato.por_atividade.n + '+' + T.coorte.taxa_contato.so_automacao + '+' + T.coorte.taxa_contato.nunca_tocados + '=' + T.coorte.criados);
+  ok(Math.abs(T.macro.residuo) <= Math.max(5, T.macro.aberto_fim * 0.005),
+    'o waterfall FECHA na janela de 936 dias (era -1.285 antes da barra de saida do recorte)',
+    T.macro.residuo + ' de ' + T.macro.aberto_fim);
+  ok(T.macro.saiu_do_recorte > 0, 'a saida por troca de pipeline aparece na janela longa', T.macro.saiu_do_recorte);
+  // as faixas nascem no SQL: o detalhe carrega o rotulo, o front nao recalcula
+  ok((T.coorte.leads || []).every(l => l.dim_porte && l.dim_tier && l.dim_vidas && l.dim_origem),
+    'toda linha do detalhe carrega o rotulo de faixa vindo do SQL (o front nao recalcula)');
+  const dimsEsperadas = ['bdr', 'porte', 'tier', 'vidas', 'origem'];
+  ok(dimsEsperadas.every(d => Array.isArray((T.coorte.por_dimensao || {})[d])),
+    'as 5 dimensoes vem agregadas do BigQuery', Object.keys(T.coorte.por_dimensao || {}).join(','));
+  dimsEsperadas.forEach(d => {
+    const soma = (T.coorte.por_dimensao[d] || []).reduce((a, r) => a + r.criados, 0);
+    ok(soma === T.coorte.criados, 'a dimensao "' + d + '" e uma PARTICAO da coorte', soma + ' vs ' + T.coorte.criados);
+  });
+  ok(!!(T.premissas || {}).janela_universal, 'a janela universal esta declarada em premissas');
+  ok(!!(T.premissas || {}).agregacao_no_banco, 'a agregacao no banco esta declarada em premissas');
 
   // ── 7. Mês corrente não explode (a janela que a tela abre por padrão) ─────────
   console.log('\n== mês corrente (default da tela) ==');

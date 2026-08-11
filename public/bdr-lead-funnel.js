@@ -25,6 +25,9 @@
   'use strict';
 
   var D = null, ERR = null, LOADING = false, REQ = 0;
+  // Janela com que D foi carregado. Sem isto o paint() re-renderizava o dado velho e o
+  // filtro parecia não fazer nada — era o defeito relatado como "preso em agosto".
+  var LOADED = null;
   var funil = 'todos';          // todos | principal | diagnostico
   var reguaDim = 'bdr';         // bdr | porte | tier | vidas | origem
   var wfView = 'status';        // status | mov  — "ver pelo status" é o default pedido
@@ -85,12 +88,26 @@
   }
 
   // ── carga ──────────────────────────────────────────────────────────────────────
-  function load(force) {
+  // A JANELA É UNIVERSAL: sai do filtro global da página, e "Tudo" (start/end nulos)
+  // vira `tudo=1` para o servidor usar como piso a data do primeiro lead — antes o
+  // default caía no mês corrente e a seção ficava PRESA EM AGOSTO sem dizer que estava.
+  function janelaAtual() {
     var st = (typeof _filterState === 'function') ? _filterState() : {};
     var hoje = new Date(Date.now() - 3 * 3600 * 1000).toISOString().slice(0, 10);
+    if (!st.start && !st.end) return { tudo: true, until: hoje, label: st.label || 'Tudo' };
     var until = st.end || hoje;
-    var since = st.start || (until.slice(0, 8) + '01');
-    var url = '/api/bdr-lead-funnel?funil=' + funil + '&since=' + since + '&until=' + until + (force ? '&refresh=1' : '');
+    return { tudo: false, since: st.start || (until.slice(0, 8) + '01'), until: until, label: st.label || null };
+  }
+  function chaveJanela() {
+    var j = janelaAtual();
+    return funil + '|' + (j.tudo ? 'tudo' : j.since) + '|' + j.until;
+  }
+
+  function load(force) {
+    var j = janelaAtual();
+    var qs = j.tudo ? 'tudo=1&until=' + j.until : 'since=' + j.since + '&until=' + j.until;
+    var url = '/api/bdr-lead-funnel?funil=' + funil + '&' + qs + (force ? '&refresh=1' : '');
+    var chave = chaveJanela();
     var myReq = ++REQ;
     LOADING = true; ERR = null;
     fetch(url, { credentials: 'include' })
@@ -99,15 +116,15 @@
         if (myReq !== REQ) return;
         LOADING = false;
         if (!d || !d.success) throw new Error((d && d.error) || 'resposta inválida');
-        D = d; paint();
+        D = d; LOADED = chave; paint();
       })
       .catch(function (e) {
         if (myReq !== REQ) return;
-        LOADING = false; ERR = String(e && e.message || e); paint();
+        LOADING = false; ERR = String(e && e.message || e); LOADED = chave; paint();
       });
   }
 
-  function switchFunil(f) { funil = f; if (typeof _setActive === 'function') _setActive('lf-funil-tabs', f); D = null; paint(); load(true); }
+  function switchFunil(f) { funil = f; if (typeof _setActive === 'function') _setActive('lf-funil-tabs', f); D = null; LOADED = null; paint(); }
   function switchDim(m) { reguaDim = m; if (typeof _setActive === 'function') _setActive('lf-dim-tabs', m); tabelaRegua(); }
   function switchWf(v) { wfView = v; if (typeof _setActive === 'function') _setActive('lf-wf-tabs', v); waterfallTabela(); }
 
@@ -199,7 +216,9 @@
     if (!host) return;
     host.innerHTML = sectionHtml();
     if (typeof _initTabSubs === 'function') try { _initTabSubs(); } catch (e) {}
-    if (!D) { if (!LOADING) load(); return; }
+    // A JANELA MUDOU? recarrega. Antes o paint() só carregava quando D estava vazio,
+    // então trocar o filtro re-renderizava o MESMO dado e a tela ficava presa.
+    if (!D || LOADED !== chaveJanela()) { if (!LOADING) load(); return; }
     selo();
     macroChart();
     porEtapaChart();
@@ -213,9 +232,10 @@
 
   function selo() {
     var el = document.getElementById('lf-selo'); if (!el || !D) return;
-    var cam = (D.diagnostics && D.diagnostics.camadas) || {};
-    el.innerHTML = 'camada: <strong>' + (cam.coorte || 'silver') + '</strong> · ' +
-      ni(D.coorte ? D.coorte.criados : 0) + ' leads criados · ' +
+    var j = D.janela || {};
+    el.innerHTML = '<strong style="color:var(--text)">' + fmtBRfull(j.since) + ' → ' + fmtBRfull(j.until) + '</strong>' +
+      ' <span style="opacity:.7">(' + ni(j.dias) + ' dias · ' + esc(j.origem || '') + ')</span> · ' +
+      ni(D.coorte ? D.coorte.criados : 0) + ' criados · ' +
       ni(D.waterfall ? D.waterfall.movimentos : 0) + ' movimentações';
   }
 
@@ -231,6 +251,7 @@
       ['＋ Reativados', m.reativados, C_BOM, 'delta'],
       ['− Qualificados', -m.qualificados, C_TOTAL, 'delta'],
       ['− Desqualificados', -m.desqualificados, C_RUIM, 'delta'],
+      ['− Saiu do recorte', -(m.saiu_do_recorte || 0), C_NEUTRO, 'delta'],
       ['± Resíduo', m.residuo, C_NEUTRO, 'delta'],
       ['Aberto @ fim', m.aberto_fim, C_TOTAL, 'total']
     ].filter(function (p) { return p[3] === 'total' || p[1] !== 0; });
@@ -499,52 +520,36 @@
     });
   }
 
-  // "(não preenchido)" é CATEGORIA VISÍVEL: esconder o vazio é o que faz um corte de
-  // 6,9% de cobertura parecer análise.
+  // A FAIXA VEM DO SQL. O front LÊ o rótulo, nunca recalcula — a agregação da tabela é
+  // um GROUP BY no BigQuery, e recalcular a faixa aqui faria as duas definições
+  // derivarem: a tabela diria "50–200" para um conjunto e o drill para outro.
   function dimOf(l) {
-    if (reguaDim === 'bdr') return l.bdr || '(sem dono)';
-    if (reguaDim === 'origem') return l.origem || '(sem origem)';
-    if (reguaDim === 'tier') return l.tier_colaboradores || '(não preenchido)';
-    if (reguaDim === 'vidas') {
-      if (l.vidas == null) return '(não preenchido)';
-      return l.vidas < 50 ? '< 50 vidas' : l.vidas < 200 ? '50–200' : l.vidas < 500 ? '200–500' : '500+';
-    }
-    if (l.colaboradores == null) return '(não preenchido)';
-    return l.colaboradores < 50 ? '< 50' : l.colaboradores < 200 ? '50–200' : l.colaboradores < 500 ? '200–500' : '500+';
+    return l['dim_' + reguaDim] || (reguaDim === 'bdr' ? (l.bdr || '(sem dono)') : '(sem valor)');
   }
 
   function tabelaRegua() {
     var el = document.getElementById('lf-regua'); if (!el || !D) return;
-    var leads = D.coorte.leads || [];
-    if (!leads.length) { el.innerHTML = '<p style="color:var(--text2);padding:1rem 0">Nenhum lead criado no período.</p>'; return; }
+    // A TABELA LÊ A AGREGAÇÃO DO BIGQUERY, não a lista de leads. A lista vem capada em
+    // 3.000 para o drill; somar ela daria total errado em janela longa — e daria errado
+    // de um jeito plausível, que é o pior tipo.
+    var agg = (D.coorte.por_dimensao || {})[reguaDim] || [];
+    if (!agg.length) { el.innerHTML = '<p style="color:var(--text2);padding:1rem 0">Nenhum lead criado no período.</p>'; return; }
 
-    var rows = {};
-    leads.forEach(function (l) {
-      var k = dimOf(l);
-      var r = rows[k] = rows[k] || { k: k, n: 0, etapa: 0, ativ: 0, ambos: 0, qual: 0, deal: 0, dq: 0, auto: 0, nunca: 0, list: [] };
-      r.n++; r.list.push(l);
-      if (l.atingiu_tentativa_etapa) r.etapa++;
-      if (l.atividade_real) r.ativ++;
-      if (l.so_automacao) r.auto++;
-      if (!l.atividade_real && !l.so_automacao) r.nunca++;
-      if (l.atingiu_tentativa_etapa && l.atividade_real) r.ambos++;
-      if (l.qualificado) r.qual++;
-      if (l.deal_id) r.deal++;
-      if (l.desqualificado) r.dq++;
-    });
-    var todas = Object.keys(rows).map(function (k) {
-      var r = rows[k];
-      r.lacuna = r.etapa - r.ambos;
-      r.tx_etapa = r.n ? r.etapa / r.n : 0;
-      r.tx_ativ = r.n ? r.ativ / r.n : 0;
-      return r;
+    var todas = agg.map(function (r) {
+      return {
+        k: r.valor, n: r.criados, ativ: r.com_atividade, etapa: r.por_etapa, ambos: r.ambos,
+        auto: r.so_automacao, nunca: r.nunca_tocados, qual: r.qualificados,
+        deal: r.com_deal, dq: r.desqualificados,
+        lacuna: r.por_etapa - r.ambos,
+        tx_etapa: r.criados ? r.por_etapa / r.criados : 0,
+        tx_ativ: r.criados ? r.com_atividade / r.criados : 0
+      };
     });
     var ord = ordena(todas, 'regua', function (r, c) { return c === 'k' ? r.k : r[c]; }).slice(0, 25);
-    window._lfReguaRows = rows;
 
     var t = todas.reduce(function (a, r) {
-      a.n += r.n; a.etapa += r.etapa; a.ativ += r.ativ; a.ambos += r.ambos; a.qual += r.qual;
-      a.deal += r.deal; a.dq += r.dq; a.auto += r.auto; a.nunca += r.nunca; return a;
+      ['n', 'etapa', 'ativ', 'ambos', 'qual', 'deal', 'dq', 'auto', 'nunca'].forEach(function (f) { a[f] += r[f]; });
+      return a;
     }, { n: 0, etapa: 0, ativ: 0, ambos: 0, qual: 0, deal: 0, dq: 0, auto: 0, nunca: 0 });
 
     var barra = function (a, b, cor) {
@@ -587,15 +592,18 @@
         '<td>' + ni(r.qual) + '</td><td>' + ni(r.deal) + '</td><td>' + ni(r.dq) + '</td></tr>';
     });
     html += '</tbody><tfoot><tr><td style="text-align:left;font-weight:700">Total</td>' +
-      '<td style="font-weight:700">' + ni(t.n) + '</td>' +
-      '<td style="font-weight:700">' + ni(t.ativ) + '</td>' +
+      '<td style="font-weight:700">' + ni(t.n) + '</td><td style="font-weight:700">' + ni(t.ativ) + '</td>' +
       '<td style="font-weight:700;text-align:right">' + pct(t.ativ, t.n) + '</td>' +
       '<td style="font-weight:700;text-align:right">' + pct(t.etapa, t.n) + '</td>' +
       '<td style="font-weight:700">' + ni(t.etapa - t.ambos) + '</td>' +
       '<td style="font-weight:700">' + ni(t.auto) + '</td><td style="font-weight:700">' + ni(t.nunca) + '</td>' +
       '<td style="font-weight:700">' + ni(t.qual) + '</td><td style="font-weight:700">' + ni(t.deal) + '</td>' +
       '<td style="font-weight:700">' + ni(t.dq) + '</td></tr></tfoot></table>' +
-      (todas.length > 25 ? '<p style="font-size:.71rem;color:var(--text2);margin:.4rem 0 0">Mostrando 25 de ' + ni(todas.length) + ' valores de ' + rotDim + ' | o Total soma TODOS, não só os 25 exibidos.</p>' : '');
+      '<p style="font-size:.71rem;color:var(--text2);margin:.45rem 0 0">' +
+      (todas.length > 25 ? 'Mostrando 25 de ' + ni(todas.length) + ' valores de ' + rotDim + ' — o Total soma TODOS. ' : '') +
+      'Os números desta tabela são agregados no BigQuery e cobrem <strong>100% da coorte</strong>. ' +
+      (D.coorte.leads_truncado ? 'O <em>drill</em> mostra os ' + ni(D.coorte.leads.length) + ' leads mais recentes (a lista é capada; a conta não).' : '') +
+      '</p>';
     el.innerHTML = html;
   }
 
@@ -774,6 +782,13 @@
     else if (/Reativados/.test(rotulo)) { f = function (l) { return l.passos.some(function (p) { return (p.de === 'qualificado' || p.de === 'desqualificado') && ABERTAS[p.para]; }); }; nota = 'Leads que <strong>voltaram</strong> de qualificado ou desqualificado para uma etapa aberta.'; }
     else if (/Qualificados/.test(rotulo)) { f = function (l) { return l.passos.some(function (p) { return p.para === 'qualificado' && ABERTAS[p.de]; }); }; nota = 'Leads que <strong>saíram do funil por cima</strong>: de etapa aberta para Qualificado.'; }
     else if (/Desqualificados/.test(rotulo)) { f = function (l) { return l.passos.some(function (p) { return p.para === 'desqualificado' && ABERTAS[p.de]; }); }; nota = 'Leads que <strong>saíram do funil por baixo</strong>: de etapa aberta para Desqualificado.'; }
+    else if (/Saiu do recorte/.test(rotulo)) {
+      return openModal('− Saiu do recorte (troca de pipeline)',
+        '<p style="font-size:.8rem;line-height:1.7"><strong>' + ni(m.saiu_do_recorte) + ' leads</strong> estavam em etapa aberta de um funil do recorte e foram movidos para um pipeline <strong>fora</strong> dele — na prática, despejados no Backup.</p>' +
+        '<p style="font-size:.78rem;color:var(--text2);line-height:1.7">Esta barra existe porque sem ela o waterfall <strong>não fechava em janela longa</strong>, e não por erro de dado: a entrada desses leads era contada (a criação caiu num funil do recorte) e a saída não, porque só movimento com destino DENTRO do recorte era considerado. ' +
+        'Medido na janela completa de 936 dias: o resíduo era <strong>−1.285 em 4.297 (30%)</strong> e caiu para <strong>+1 (0,02%)</strong>. ' +
+        'Em janela curta o efeito é zero — foi por isso que passou despercebido. Bug que só aparece na escala é bug que espera a escala.</p>');
+    }
     else if (/Resíduo/.test(rotulo)) {
       return openModal('± Resíduo do waterfall',
         '<p style="font-size:.8rem;line-height:1.7">O resíduo é <strong>' + sgn(m.residuo) + ' lead</strong> — ' +
@@ -820,16 +835,18 @@
   }
 
   function drillDim(k) {
-    var rows = window._lfReguaRows || {};
-    if (!rows[k]) return;
-    // Enriquece com a trilha de quem também se movimentou na janela.
     var byId = {}; movimentados().forEach(function (l) { byId[l.lead_id] = l; });
-    var list = rows[k].list.map(function (l) {
+    var list = (D.coorte.leads || []).filter(function (l) { return dimOf(l) === k; }).map(function (l) {
       var m = byId[l.lead_id];
       return m ? Object.assign({}, l, { passos: m.passos, status_atual: m.status_atual, n_movimentos: m.n_movimentos }) : l;
     });
+    var agg = ((D.coorte.por_dimensao || {})[reguaDim] || []).filter(function (r) { return r.valor === k; })[0];
     abre('Funil de Leads | ' + k, list, null,
-      'Coorte: leads <strong>criados</strong> na janela nesta fatia. A trilha aparece para quem também se movimentou na janela.');
+      'Coorte: leads <strong>criados</strong> na janela nesta fatia. A trilha aparece para quem também se movimentou na janela.' +
+      (agg && agg.criados !== list.length
+        ? '<br><strong>' + ni(agg.criados) + '</strong> na agregação contra <strong>' + ni(list.length) +
+          '</strong> nesta lista: a lista por lead é capada em 1.500 (mais recentes) e a agregação cobre tudo.'
+        : ''));
   }
 
   function drillDisq(f) {
