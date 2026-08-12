@@ -11,6 +11,9 @@ nesta ordem:
 4. `docs/github-source-of-truth.md` | regra prática de GitHub como fonte da verdade antes de deploy.
 5. `docs/dashboard-2.0/README.md` | quando o trabalho tocar o projeto Dashboard 2.0
    (migração por fases): charter, ADRs e plano de migração.
+6. `docs/design-system.md` | **obrigatório antes de criar qualquer gráfico, card,
+   toggle, drawer, banner ou painel novo** — tokens/componentes vigentes, o que é
+   dívida catalogada, e o gate automático (`npm run check`) que trava reuso incorreto.
 
 Este arquivo é só um **ponteiro**, de propósito: não guarda regra nem contexto para
 não existir conteúdo duplicado que possa desatualizar. As regras vivem nos arquivos
@@ -19,3 +22,5 @@ acima. Em especial, a **fonte única de receita** é a **Regra primária nº 3**
 conforme `docs/github-source-of-truth.md`. Spec de build do Pipeline Coverage:
 `docs/coverage-pipeline-v1-spec.md`. Regras de **receita do Forecast por etapa**
 (motor único, aplicável a todos os painéis): `docs/forecast-revenue-rules.md`.
+Regras de **UI/design compartilhado** (nunca duplicar CSS/JS entre painéis):
+`docs/design-system.md`.

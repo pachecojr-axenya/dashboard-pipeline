@@ -1,13 +1,61 @@
-# Proposta de Design System Unificado | Dashboard Axenya
+# Design System | Dashboard Axenya
 
-> Documento de **levantamento/proposta**. Nenhum arquivo `public/*.html` foi
-> editado para produzir este relatório — é leitura + análise. Toda implementação
-> sugerida aqui é para o dono decidir e sequenciar depois, seguindo a filosofia
-> de *strangler fig* já adotada no projeto (ADR-001, `docs/dashboard-2.0/decisoes-adr.md`):
+> **Leia este documento antes de criar qualquer gráfico, card, toggle, drawer,
+> banner ou painel novo.** Ele é a fonte única do que já existe, do que ainda é
+> dívida catalogada, e do que está proibido reintroduzir. Segue a filosofia
+> *strangler fig* já adotada no projeto (ADR-001, `docs/dashboard-2.0/decisoes-adr.md`):
 > nunca reescrever tudo de uma vez, sempre extrair/promover gradualmente, com
 > gate de paridade visual antes de cada passo.
+>
+> **Regra de uso: nunca copie CSS/JS de outro painel para criar um componente novo.**
+> Se o que você precisa já existe (`.novo-card`, `.kpi-card`, `.tab-sub`,
+> `AxUI.banner`/`AxUI.emptyState`, o drawer "i" de `help-drawer.js`), reuse via
+> `<link>`/`<script>`. Se não existe, siga a seção 3.4 (extrair para módulo
+> compartilhado) em vez de inventar uma cópia local — é exatamente essa
+> duplicação que gerou a fragmentação catalogada na seção 2.
+>
+> Este documento tem 3 camadas, cada uma com uma regra de atualização diferente:
+> - **Seção 1 (referência viva)** — o que `premium.css`/`premium.js` realmente
+>   renderizam hoje. Atualize sempre que um token/componente mudar.
+> - **Seção 2 (auditoria de fragmentação)** — congelada no momento do achado
+>   (12/06 a 08/2026). Não "corrija" um achado aqui quando ele for resolvido;
+>   em vez disso, adicione um adendo no topo (mesmo padrão do
+>   `AUDITORIA_GRAFICOS.md`) e atualize o status na seção 4.
+> - **Seções 3-4 (backlog de migração por tier)** — atualize o status de cada
+>   item conforme é implementado; ver "Status por tier" abaixo.
+>
+> **Gate automático:** `npm run check` roda `scripts/_check-design-tokens.js`
+> contra os 7 painéis já migrados (dashboard/board/ae/cs/cotação/48h/forecast-delta).
+> Ele trava o build se um painel perder um módulo compartilhado obrigatório, se
+> reintroduzir `class="card"`/`class="kpi"` (nomenclatura pré-`premium.css`), ou
+> se um dos 4 arquivos já confirmados limpos (`cs.html`, `cotacao.html`,
+> `48h.html`, `forecast-delta.html`) reviver um bloco `:root` local. **O que
+> este gate NÃO faz:** não bane cor hardcoded em CSS puro (dívida extensa,
+> catalogada abaixo, ainda não é seguro travar o build por isso — ver "Status
+> por tier") nem verifica nada dentro de `<script>` (cores de dataset do
+> Chart.js já são remapeadas em runtime pelo `MAP_DARK`/`MAP_LIGHT` do
+> `premium.js`, então não são bug). Essas duas classes de achado saem como
+> **aviso** no `npm run check`, não como erro.
 
 Padrão-ouro escolhido pelo dono: **`public/dashboard.html`** (CRO Dashboard).
+
+## Status por tier (atualizado 2026-08-12)
+
+| Tier | Item | Status |
+|---|---|---|
+| 1.1 | Religar `forecast-delta.html` ao `premium.css`/`premium.js` | ✅ feito (2026-08-02) |
+| 1.2 | Apagar `:root`/`.novo-card`/`.tab-sub` mortos | ✅ `cs.html`, `cotacao.html`, `48h.html`, `forecast.html`, `forecast-stage.html`, `forecast-panel.html` — ⚠ **pendente em `dashboard.html`, `board.html`, `ae.html`** (confirmado ainda presente nesta data; gate reporta como aviso, não erro) |
+| 1.3 | Hardcodes de cor fora do remap do Chart.js | 🟡 parcial — itens originais (`.filter-pill` etc. do forecast, `.error-msg`, glow do `48h.html`) corrigidos; **achado novo desta data**: `.novo-code-tag`/`.hdr-btn.highlighted` usam teal legado (`rgba(58,184,183,*)`) em CSS puro, repetido em praticamente todos os 7 painéis governados (14-21 ocorrências por arquivo) — não catalogado na auditoria original, agora reportado pelo gate como aviso |
+| 1.4 | `_syncSegThumb()` no `forecast-stage.html` | ✅ feito |
+| 1.5 | CSS órfão do `cotacao.html` | ✅ feito (2026-07-29, conforme `STATUS_LOG.md`) |
+| 2.6 | Módulo `help-drawer.js` | ✅ feito, adotado em dashboard/board/ae |
+| 2.7 | `settings-modal.js` em cs/cotação | ✅ feito |
+| 2.8 | Componente `AxUI` (vazio/erro/aviso) | ✅ feito, adotado em dashboard/board/ae/48h/cs/cotação/forecast-delta |
+| 2.9 | `health-dot` → vars oficiais | ✅ feito |
+| 3.10 | `nav.js` × `NAV_MODEL` do `premium.js` | ⛔ não iniciado — precisa decisão + coordenação com o Samuel |
+| 3.11 | Migrar 4 subpáginas BDR | ⛔ não iniciado — território do Samuel, só propor |
+| 3.12 | Migrar `forecast.html`/`forecast-stage.html` para módulos compartilhados | ⛔ não iniciado |
+| 3.13 | Investigar `revenue-engine.js` v1×v2 | ⛔ não iniciado |
 
 ---
 

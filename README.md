@@ -241,6 +241,13 @@ Propriedades custom relevantes: `vidas`, `premio_mensal`, `sdr` (BDR), `arr_esti
 - **i18n:** todo texto de interface passa por `t('chave')`, com paridade total entre os dicionários
   `pt` e `en`. Nomes de etapa do CRM (Cotação, Negociação…) ficam em PT nos dois idiomas (nomes próprios).
 - **Menu lateral / dropdown de painéis:** fonte única em `public/nav.js` (array `PANELS`); para alterar um item, edite só esse arquivo.
+- **Componente visual novo (card, toggle, drawer, banner, estado vazio/erro):** ler
+  **[docs/design-system.md](docs/design-system.md)** primeiro e reusar o módulo
+  compartilhado existente (`premium.css`/`premium.js`, `help-drawer.js`, `ax-ui.js`,
+  `settings-modal.js`, `filter-bar.js`, `shared-charts.js`) — nunca copiar CSS/JS de
+  outro painel. `npm run check` roda um gate (`scripts/_check-design-tokens.js`) que
+  trava se um painel já migrado perder um módulo obrigatório ou reintroduzir
+  nomenclatura pré-`premium.css`.
 - **STATUS_LOG.md:** registrar uma linha por mudança, a cada iteração.
 
 ---
@@ -252,6 +259,7 @@ Propriedades custom relevantes: `vidas`, `premio_mensal`, `sdr` (BDR), `arr_esti
 | **README.md** (este) | Contexto, objetivo e o que define sucesso. Comece por aqui. |
 | **[STATUS_LOG.md](STATUS_LOG.md)** | Estado técnico vivo: diretrizes, arquitetura detalhada, histórico de iterações. Atualizado a cada mudança. |
 | **[AUDITORIA_GRAFICOS.md](AUDITORIA_GRAFICOS.md)** | Análise crítica de cada gráfico (o que promete × o que mostra) e a semântica dos emojis de veredito. |
+| **[docs/design-system.md](docs/design-system.md)** | **Leitura obrigatória antes de criar qualquer componente visual novo.** Tokens/componentes vigentes (`premium.css`/`premium.js`), dívida de fragmentação catalogada por painel, backlog de migração por tier e o gate automático (`npm run check`) que trava reuso incorreto de módulo compartilhado. |
 | **[DEPLOY_GUIDE.md](DEPLOY_GUIDE.md)** | Regras de deploy, Vercel e Google OAuth. |
 
 ---
