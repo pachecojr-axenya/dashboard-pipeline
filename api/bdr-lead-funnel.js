@@ -952,6 +952,17 @@ const DIM_SQL = {
   canal: CANAL_SQL,
   canal_macro: CANAL_MACRO_SQL,
   origem: `IFNULL(NULLIF(origem, ''), '(sem origem)')`,
+  // LISTA ABM (12/08/2026). Pertencimento da EMPRESA à distribuição de carteira da
+  // planilha ABM Distribution, materializado em `dim_company.in_lista_abm_distribution`
+  // (4.208 empresas). Responde "o que vem da lista e o que vem de fora".
+  //
+  // TRÊS buckets, não dois. "(sem empresa)" existe porque o lead pode não ter empresa
+  // associada, e jogá-lo em "Fora da lista" afirmaria que a conta dele foi conferida
+  // contra a lista — não foi, não há conta. Afirmar ausência exige declarar o universo
+  // consultado, e aqui o universo é "leads cuja empresa está no CRM".
+  lista_abm: `CASE WHEN company_id IS NULL THEN '(sem empresa)'
+                   WHEN in_lista_abm      THEN 'Na lista ABM'
+                   ELSE 'Fora da lista' END`,
 };
 
 /**
@@ -1054,6 +1065,12 @@ function coorteCTE(pipes, bdrIds, recorte) {
     ),
     flat AS (
       SELECT b.*, l2d.deal_id, cp.company_id, cp.company_name,
+             -- Pertencimento a lista ABM vem da EMPRESA. O IFNULL para FALSE e necessario
+             -- porque a coluna e NULL na empresa sem valor em lista, e NULL propagado no
+             -- CASE da dimensao cairia no ELSE e devolveria "Fora da lista" para quem
+             -- sequer tem empresa -- a conflacao que o bucket "(sem empresa)" evita.
+             -- (Sem crase neste comentario: ele vive dentro de um template literal de JS.)
+             IFNULL(cp.in_lista_abm_distribution, FALSE) AS in_lista_abm,
              cp.employees AS colaboradores, cp.porte AS porte_declarado,
              COALESCE(tr.vidas_contato, cp.vidas) AS vidas,
              -- Vidas do armazém (88% de cobertura) e o bucket canônico dele.
@@ -1103,6 +1120,7 @@ function coorteCTE(pipes, bdrIds, recorte) {
              ${DIM_SQL.canal}  AS dim_canal,
              ${DIM_SQL.canal_macro} AS dim_canal_macro,
              ${DIM_SQL.origem} AS dim_origem,
+             ${DIM_SQL.lista_abm} AS dim_lista_abm,
              -- OS TRES NIVEIS DE CONTATO, empilhados. atividade_real e a regua antiga
              -- (chegou alguma coisa do outro lado); com_tentativa inclui a discagem que
              -- nao conectou, que e esforco e nao era contado.
@@ -1154,6 +1172,7 @@ function coorteCTE(pipes, bdrIds, recorte) {
 const RECORTE_COL = {
   porte: 'dim_porte', tier: 'dim_tier', vidas: 'dim_vidas',
   canal: 'dim_canal', canal_macro: 'dim_canal_macro', origem: 'dim_origem',
+  lista_abm: 'dim_lista_abm',
 };
 
 /**
@@ -1234,6 +1253,7 @@ function recorteRotulo(rec) {
 const FAIXA_DE_COL = {
   dim_porte: 'porte', dim_tier: 'tier', dim_vidas: 'vidas',
   dim_canal: 'canal', dim_canal_macro: 'canal_macro', dim_origem: 'origem',
+  dim_lista_abm: 'lista_abm',
 };
 /** Só as dimensões de ATRIBUTO — BDR entra por dono, não por lista de leads. */
 function dimsAtributo(rec) {
@@ -1254,6 +1274,14 @@ function recorteFluxoCTE(pipes, rec) {
       SELECT l.lead_id, l.pipeline_id,
              IFNULL(NULLIF(l.origem_canonica,''), l.origem_fonte) AS origem,
              cp.employees AS colaboradores,
+             -- MESMAS duas colunas do flat, com os MESMOS nomes: DIM_SQL.lista_abm e
+             -- interpolado nos dois lugares, entao divergir aqui faria o filtro recortar
+             -- a coorte por uma regua e o fluxo por outra, com a mesma etiqueta na tela.
+             -- Usa cp.company_id e nao bo.company_id: empresa associada que nao esta na
+             -- dimensao vigente nao e empresa conferivel.
+             -- (Sem crase neste comentario: ele vive dentro de um template literal de JS.)
+             cp.company_id AS company_id,
+             IFNULL(cp.in_lista_abm_distribution, FALSE) AS in_lista_abm,
              lc.company_lives_bucket AS lives_bucket,
              ct.origem_canonica  AS contato_origem,
              ct.source_detail    AS contato_source_detail,
@@ -1386,7 +1414,12 @@ function bucketSql(gran, col) {
  * e `origem` continuam completos no bloco agregado — o que eles perdem é só o eixo do
  * tempo, que a UI não desenha para eles.
  */
-const DIMS_SERIE = ['bdr', 'canal_macro', 'tier', 'vidas'];
+// `lista_abm` entra na SERIE (5a dimensao) porque a pergunta que motivou o corte e
+// comparativa NO TEMPO ("o que vem da lista e o que vem de fora, semana a semana").
+// Custo medido antes de aceitar: sao 3 valores, contra 15 de bdr e 5 de vidas, logo
+// ~3x periodos de linhas novas. O teto de 220 pontos e o rebaixamento de granularidade
+// continuam valendo para ela como para as outras.
+const DIMS_SERIE = ['bdr', 'canal_macro', 'tier', 'vidas', 'lista_abm'];
 
 async function coorteAgregada(pipes, since, until, bdrIds, gran, recorte) {
   // `canal` entra e `origem` FICA, em vez de ser substituída: a origem contaminada é
@@ -1394,7 +1427,7 @@ async function coorteAgregada(pipes, since, until, bdrIds, gran, recorte) {
   const dims = [
     ['bdr', 'owner_id'], ['porte', 'dim_porte'], ['tier', 'dim_tier'],
     ['vidas', 'dim_vidas'], ['canal', 'dim_canal'], ['canal_macro', 'dim_canal_macro'],
-    ['origem', 'dim_origem'],
+    ['origem', 'dim_origem'], ['lista_abm', 'dim_lista_abm'],
   ];
   // A SÉRIE CARREGA MENOS COLUNAS QUE O AGREGADO, de propósito: ela multiplica cada
   // corte pelo número de períodos, e os campos de régua de toque (atividade, herdado,
@@ -1656,7 +1689,8 @@ async function coorteDetalhe(pipes, since, until, bdrIds, recorte) {
     SELECT lead_id, lead_name, owner_id, pipeline_id, stage_id, criado,
            motivo_desqualificacao, deal_id, company_id, company_name,
            colaboradores, vidas, vidas_efetivas, tier_colaboradores,
-           dim_porte, dim_tier, dim_vidas, dim_canal, dim_canal_macro, dim_origem, owner_bdr,
+           dim_porte, dim_tier, dim_vidas, dim_canal, dim_canal_macro, dim_origem,
+           dim_lista_abm, owner_bdr,
            atividade_real, so_automacao, toque_herdado, nunca_tocado,
            com_tentativa, teve_conversa,
            atingiu_tentativa_etapa, atingiu_conectado_etapa,
@@ -1725,6 +1759,7 @@ async function coorteDetalhe(pipes, since, until, bdrIds, recorte) {
       dim_porte: wh.str(r.dim_porte), dim_tier: wh.str(r.dim_tier),
       dim_vidas: wh.str(r.dim_vidas), dim_origem: wh.str(r.dim_origem),
       dim_canal: wh.str(r.dim_canal), dim_canal_macro: wh.str(r.dim_canal_macro),
+      dim_lista_abm: wh.str(r.dim_lista_abm),
     })),
   };
 }
@@ -1878,7 +1913,8 @@ module.exports = async (req, res) => {
      * OR dentro do campo, AND entre campos: repetir `canal_macro` soma valores; misturar
      * campos intersecta.
      */
-    const DIMS_FILTRAVEIS = ['bdr', 'porte', 'tier', 'vidas', 'canal', 'canal_macro', 'origem'];
+    const DIMS_FILTRAVEIS = ['bdr', 'porte', 'tier', 'vidas', 'canal', 'canal_macro', 'origem',
+                             'lista_abm'];
     const grupos = {};
     const addFiltro = (d, v) => {
       if (!DIMS_FILTRAVEIS.includes(d) || v == null || v === '') return;

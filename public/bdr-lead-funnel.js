@@ -298,10 +298,11 @@
   // AS DIMENSÕES DA TELA, em um lugar só — a ordem é a de utilidade, não a alfabética.
   // `canal_macro` vem primeiro entre os atributos porque "só outbound" é o corte mais
   // pedido; `origem` fica por último e carrega o aviso de contaminação onde aparece.
-  var DIMENSOES = ['bdr', 'canal_macro', 'canal', 'tier', 'vidas', 'porte', 'origem'];
+  var DIMENSOES = ['bdr', 'canal_macro', 'lista_abm', 'canal', 'tier', 'vidas', 'porte', 'origem'];
   var ROT_DIM = {
     bdr: 'BDR', canal_macro: 'Canal', canal: 'Canal (detalhe)', porte: 'Colaboradores',
-    tier: 'Tier colabs', vidas: 'Vidas', origem: 'Origem (crua)'
+    tier: 'Tier colabs', vidas: 'Vidas', origem: 'Origem (crua)',
+    lista_abm: 'Lista ABM'
   };
 
   /**
@@ -710,7 +711,8 @@
       { mode: 'bdr', label: 'por BDR', fn: 'AxLeadFunnel.switchQuebra' },
       { mode: 'canal_macro', label: 'por Canal', fn: 'AxLeadFunnel.switchQuebra' },
       { mode: 'tier', label: 'por Tier', fn: 'AxLeadFunnel.switchQuebra' },
-      { mode: 'vidas', label: 'por Vidas', fn: 'AxLeadFunnel.switchQuebra' }
+      { mode: 'vidas', label: 'por Vidas', fn: 'AxLeadFunnel.switchQuebra' },
+      { mode: 'lista_abm', label: 'por Lista ABM', fn: 'AxLeadFunnel.switchQuebra' }
     ]) : '';
     var controlesSerie = '<div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;margin-left:auto">' +
       '<span style="font-size:.66rem;color:var(--text2);text-transform:uppercase;letter-spacing:.05em">Período</span>' + tabsGran +
@@ -718,7 +720,7 @@
       '</div>';
     var tipSerie = 'A MESMA coorte dos cards, com o eixo do tempo aberto — cada ponto é a coorte de leads CRIADOS naquele período, seguida até hoje. Barras = leads criados (escala à esquerda); linhas = taxas (escala à direita). ' +
       '"Até Qualificado" responde a pergunta do desfecho: de quem chegou a cada etapa, quanto virou Qualificado. "Passo a passo" mede cada degrau sobre o anterior. "Esforço × contato" mostra as três réguas no tempo (tentou / falou com / conversou por voz). "Volume" larga a taxa e mostra os absolutos, porque taxa sem volume esconde a escala. ' +
-      'PERÍODO é escolha sua: dia, semana ISO, mês ou trimestre. "Auto" usa o padrão adaptativo (dia até 31 dias, semana até 120, mês até 550, trimestre acima). QUEBRAR desenha uma linha por BDR, canal, tier ou faixa de vidas em vez de uma linha só do time — no máximo 6 linhas, as maiores por volume, e o rodapé diz quantas ficaram de fora. ' +
+      'PERÍODO é escolha sua: dia, semana ISO, mês ou trimestre. "Auto" usa o padrão adaptativo (dia até 31 dias, semana até 120, mês até 550, trimestre acima). QUEBRAR desenha uma linha por BDR, canal, tier, faixa de vidas ou pertencimento à Lista ABM em vez de uma linha só do time — no máximo 6 linhas, as maiores por volume, e o rodapé diz quantas ficaram de fora. ' +
       'O EIXO DE % NÃO É FIXO EM 0–100: ele se ajusta ao mínimo e ao máximo das linhas VISÍVEIS, e clicar na legenda para esconder uma linha reescala o eixo na hora. O intervalo em vigor está escrito no rodapé — compare dois prints só depois de conferir que a escala é a mesma. ' +
       'O ÚLTIMO PONTO É PARCIAL e está tracejado: a coorte recente ainda está viva e ainda vai converter — ler a queda do fim como piora é o erro clássico de gráfico de coorte. ' +
       'O filtro de campo no card acima vale aqui e em toda a seção. Clique num ponto para ver os leads daquela coorte.';
@@ -1704,6 +1706,7 @@
       (convDim === 'origem'
         ? '<br><span style="color:var(--red)">⚠ Corte contaminado na FONTE:</span> <code>axenya_origem_canonica</code> devolve <strong>booleano</strong> em 64% dos leads. "true" não é uma origem.'
         : '') +
+      (convDim === 'lista_abm' ? '<br><span style="color:var(--text)">Pertencimento da EMPRESA, no estado de HOJE:</span> a marca <code>lista_abm_distribution</code> foi gravada em <strong>4.208 empresas</strong> em 12/08/2026, e a distribuição de carteira que ela representa é de <strong>23/jun/2026</strong> — lead criado ANTES dessa data não pode ser atribuído à lista, mesmo aparecendo como "Na lista ABM". <strong>"(sem empresa)"</strong> não é "fora da lista": é lead sem empresa associada no CRM, logo conta que não foi conferida contra a lista. <strong>2.158 contas da carteira não existem no HubSpot</strong> e por isso caem fora deste corte.' : '') +
       // Filtro de campo ativo numa dimensão diferente da tabela: a tela AVISA em vez
       // de fingir que a tabela seguiu o filtro. O cruzamento entre dois campos não
       // existe nesta agregação, e mostrar a tabela cheia sem dizer isso seria deixar
@@ -1960,6 +1963,7 @@
           '<strong>"true" não é uma origem.</strong> Use o corte <strong>Canal</strong>, que é a cascata de evidências que substitui este — ' +
           'ele classifica 85% da coorte contra 36% aqui. Este corte fica visível só para auditar a cascata.'
         : '') +
+      (reguaDim === 'lista_abm' ? '<br><span style="color:var(--text)">Pertencimento da EMPRESA, no estado de HOJE:</span> a marca <code>lista_abm_distribution</code> foi gravada em <strong>4.208 empresas</strong> em 12/08/2026, e a distribuição de carteira que ela representa é de <strong>23/jun/2026</strong> — lead criado ANTES dessa data não pode ser atribuído à lista, mesmo aparecendo como "Na lista ABM". <strong>"(sem empresa)"</strong> não é "fora da lista": é lead sem empresa associada no CRM, logo conta que não foi conferida contra a lista. <strong>2.158 contas da carteira não existem no HubSpot</strong> e por isso caem fora deste corte.' : '') +
       (ehBdr
         ? '<br><span style="color:var(--text)">A coluna de coorte é <strong>coorte</strong>, e coorte não é o mês da pessoa.</span> ' +
           'No mesmo período o time tocou <strong>' + ni(tj.leads_tocados) + ' leads</strong> de qualquer safra, com <strong>' +

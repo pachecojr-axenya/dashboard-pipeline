@@ -761,6 +761,57 @@ async function call(query) {
     'nao identificado: ' + (naoIdent / SEM.body.coorte.criados * 100).toFixed(1) + '%');
   ok(!!(SEM.body.premissas || {}).canal_em_vez_de_origem, 'a cascata de canal esta declarada em premissas');
 
+  // ── 7g-bis. LISTA ABM ────────────────────────────────────────────────────────
+  // O corte que responde "o que vem da carteira ABM e o que vem de fora". Ele nasce de
+  // `dim_company.in_lista_abm_distribution`, gravada em 12/08/2026 em 4.208 empresas.
+  //
+  // As asserções aqui protegem as DUAS coisas que dariam número plausível e errado:
+  //   (a) a partição — se "(sem empresa)" fosse dobrado em "Fora da lista", a taxa de
+  //       fora-da-lista passaria a incluir lead sem conta nenhuma, e a comparação que
+  //       motivou o corte (lista × fora) mediria três coisas em duas colunas;
+  //   (b) o campo no DRILL — foi assim que `dim_canal` quebrou na leva 7: entrou no
+  //       SELECT, ficou fora do mapa de saída, e o filtro "parecia" funcionar com a
+  //       conta agregada certa e o detalhe devolvendo undefined.
+  console.log('\n== lista ABM (carteira x fora da carteira) ==');
+  const VALORES_LISTA = ['Na lista ABM', 'Fora da lista', '(sem empresa)'];
+  const listas = SEM.body.coorte.por_dimensao.lista_abm || [];
+  ok(listas.length > 0, 'a dimensao lista_abm existe', listas.map(c => c.valor).join(','));
+  ok(listas.reduce((a, r) => a + r.criados, 0) === SEM.body.coorte.criados,
+    'lista_abm e PARTICAO da coorte (todo lead cai em exatamente um balde)',
+    listas.reduce((a, r) => a + r.criados, 0) + ' == ' + SEM.body.coorte.criados);
+  ok(listas.every(c => VALORES_LISTA.indexOf(c.valor) >= 0),
+    'nenhum balde fora dos tres declarados (nada de NULL virando rotulo vazio)',
+    listas.map(c => c.valor).join(' | '));
+  // `por_dimensao` tem UMA LINHA POR (valor x owner_bdr) — quem e BDR viaja com a linha
+  // em todas as dimensoes. Logo `find()` devolve so a fatia dos BDRs e SOMAR por valor e
+  // obrigatorio: a primeira versao deste teste leu 1.645 onde havia 1.652 e acusou o
+  // codigo de um defeito que era da assercao.
+  const somaValor = (arr, v) => arr.filter(c => c.valor === v).reduce((a, r) => a + r.criados, 0);
+  const naLista = somaValor(listas, 'Na lista ABM');
+  ok(naLista > 0, 'existe massa NA LISTA (senao o corte e decorativo)', naLista);
+  // "(sem empresa)" separado de "Fora da lista" e o ponto todo do bucket: sem ele a
+  // ausencia de conta seria contada como conta conferida e reprovada.
+  ok(listas.some(c => c.valor === '(sem empresa)'),
+    'lead SEM EMPRESA tem balde proprio, nao cai em "Fora da lista"',
+    somaValor(listas, '(sem empresa)'));
+  ok(SEM.body.coorte.leads.every(l => VALORES_LISTA.indexOf(l.dim_lista_abm) >= 0),
+    'todo lead do DRILL carrega dim_lista_abm (o defeito da leva 7 foi campo fora do mapa)');
+  // O filtro tem de RECORTAR de verdade: a coorte filtrada e menor que a inteira e igual
+  // ao balde correspondente do payload sem filtro.
+  const FIL = await call({ funil: 'todos', since: '2026-06-01', until: '2026-08-11',
+    f: 'lista_abm:Na lista ABM', refresh: '1' });
+  ok(FIL.body.coorte.criados === naLista,
+    'filtrar por lista_abm devolve exatamente o balde do payload sem filtro',
+    FIL.body.coorte.criados + ' == ' + naLista);
+  ok(FIL.body.coorte.leads.every(l => l.dim_lista_abm === 'Na lista ABM'),
+    'o drill do recorte NAO traz lead de fora do recorte');
+  // As facetas seguem somando o universo inteiro mesmo com recorte — e o que faz trocar
+  // de fatia sem limpar o filtro (recorte e COLUNA, nao WHERE).
+  const facetasFil = FIL.body.coorte.por_dimensao.lista_abm || [];
+  ok(facetasFil.reduce((a, r) => a + r.criados, 0) === SEM.body.coorte.criados,
+    'com recorte ativo as FACETAS continuam somando o universo (recorte e coluna, nao WHERE)',
+    facetasFil.reduce((a, r) => a + r.criados, 0) + ' == ' + SEM.body.coorte.criados);
+
   // ── 7h. ETAPAS ENUMERADAS ────────────────────────────────────────────────────
   // "Se eu tento ordenar, não consigo, porque N está no meio da ordem alfabética."
   // O contrato: ordenar os rótulos como TEXTO tem de devolver a ordem do funil.
