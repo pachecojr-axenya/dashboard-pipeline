@@ -135,6 +135,213 @@
 > gráficos presentes; rotas-chave (`/novo`, `/novo-board`, `/novo-ae`, `/novo-bdr`) = 200 sem
 > regressão. **Não commitado, não deployado.**
 
+### 🚀 DEPLOY DE PRODUÇÃO | /novo-bdr: linha do tempo + filtro por campo (2026-08-11)
+
+> Autorização explícita do dono ("Refine e deploy"). `git fetch`: o Treble V10 da sessão
+> paralela já tinha entrado (`c643876`) e a árvore estava na mesma base — `stash` +
+> `merge --ff-only` (já up to date) + `stash pop`, sem conflito.
+>
+> Commit `b65beb0`, push OK. `npm run check` PASS **54/0**. `npm run predeploy` PASS
+> (`origin/main b65beb0`, projeto canônico). Deployment
+> `dashboard-axenya-lz4kfcm2k-axenya-f1a041f6.vercel.app`.
+>
+> Pós-deploy em `axenya-pipeline-dashboard.vercel.app`: `/novo-bdr`, `/novo-bdr/treble`,
+> `/novo-bdr/workload`, `/novo`, `/forecast`, `/growth` = 200. No bundle servido:
+> `bdr-lead-funnel.js?v=3` (cache invalidado), com "Linha do tempo da conversão",
+> "Filtrar por campo", "Tentativa+ → Qualificado", `drillBucket` e `bucket_parcial`
+> presentes; zero ocorrência de "Cadência de Leads".
+
+### Feat | /novo-bdr: linha do tempo da conversão, etapa→Qualificado e filtro por campo (2026-08-11)
+
+> Refino pedido pelo dono sobre a leva anterior: faltava **série temporal**, faltava
+> **cada etapa comparada a Qualificado** e tudo isso precisava ser **filtrável pelos
+> campos**.
+>
+> **1. Linha do tempo (card novo).** Coorte por **período de criação** do lead: barras
+> = criados (eixo esquerdo), linhas = taxas (eixo direito). Três leituras em tabs — *Até
+> Qualificado* (Criado→Qual, Tentativa+→Qual, Conectado+→Qual), *Passo a passo* (cada
+> degrau sobre o anterior) e *Volume* (absolutos, porque taxa sem volume esconde a
+> escala). Granularidade **adaptativa**: semana ISO até 120 dias de janela, mês acima —
+> semana em 936 dias daria 134 pontos ilegíveis, mês em 11 dias daria um ponto só.
+>
+> **O último ponto é declarado PARCIAL**: sai tracejado, com `*` no rótulo do eixo e
+> aviso no tooltip e no rodapé. Coorte recente ainda está viva e converte menos; ler a
+> queda do fim como piora é o erro clássico de gráfico de coorte, e ele estaria à
+> disposição de qualquer um que abrisse a tela.
+>
+> **2. Cada etapa até Qualificado.** Os tiles viraram dois grupos rotulados: *Passo a
+> passo* (etapa sobre a anterior) e *Cada etapa até Qualificado* (Criado→Qual,
+> Tentativa+→Qual, Conectado+→Qual, mais o descarte) — a segunda pergunta é "quanto vale
+> ter tentado / ter conectado", que o passo adjacente não responde. A tabela por dimensão
+> ganhou a coluna **Tentativa+ → Qualif.**
+>
+> **3. Filtro por campo.** Dois selects (campo + valor, com o volume no rótulo) que
+> recortam **cards, funil e linha do tempo** — e o drill herda o recorte, senão o modal
+> não bateria com o card. É **um campo por vez**: o cruzamento entre dois campos não
+> existe nesta agregação (o GROUP BY sai por dimensão isolada), e quando a tabela mostra
+> outra dimensão a tela **avisa** em vez de fingir que seguiu o filtro.
+>
+> **Custo:** a série sai da **mesma varredura** do agregado — `bucket` entrou como coluna
+> e as linhas do total viajam com `bucket='total'`, num UNION ALL sobre a mesma CTE.
+> Rodar uma segunda consulta dobraria o custo do bloco mais caro do endpoint para
+> desenhar o mesmo dado com outro GROUP BY. A série carrega 7 colunas onde o agregado
+> carrega 13 (as de régua de toque não vão ao eixo do tempo): payload da janela completa
+> ficou em **3,12 MB**, contra teto de 4 MB no teste.
+>
+> **Armadilha registrada no código:** `UNION ALL` no BigQuery casa por **posição**, não
+> por nome — as métricas ausentes da série entram como `CAST(NULL AS INT64)` na mesma
+> posição do bloco agregado. Fora de ordem não daria erro: daria número errado com
+> rótulo certo.
+>
+> **Detalhe de drill:** numa janela longa a lista por lead cobre só os 1.500 mais
+> recentes, então o drill de um mês antigo abre vazio. Isso agora tem frase própria —
+> "a agregação conta 897 e esta lista está vazia; não é ausência de lead" — em vez de uma
+> tabela vazia que lê como "não há leads".
+>
+> **Validação:** `scripts/test-bdr-lead-funnel.js` ganhou mais 21 asserções (a série
+> fecha com a coorte nas 5 dimensões; etapas encaixam em CADA período; bucket parcial é
+> o último; rótulos da série casam com os da tabela pelo mesmo colapso de nome; janela
+> curta usa semana ISO). A régua de semana ISO do JS foi conferida contra o
+> `FORMAT_DATE('%G-W%V')` do BigQuery lead a lead nos períodos cobertos pelo detalhe:
+> W30/W31/W32/W33 batem exatamente. `npm run check` **54 PASS / 0 FAIL**; Chromium
+> headless sem erro de console, com tabs, filtro, aviso de dimensão divergente e os dois
+> drills exercitados.
+
+### 🚀 DEPLOY DE PRODUÇÃO | Treble V10: cada envio, tentativa, entrega e erro (2026-08-11)
+
+> Autorização explícita do dono ("deploy do que falta do macro ao mais granular").
+> Commit `cc70ce9`, push OK, `npm run check` **exit 0** (54/0 no smoke do MKT Budget,
+> suíte Treble PASS), `npm run predeploy` PASS (`origin/main cc70ce9`, projeto
+> canônico). Deployment `dashboard-axenya-1cr70xi4e-axenya-f1a041f6.vercel.app`.
+>
+> **O deploy carrega também o `8c73894` da sessão paralela** (funil de leads), porque
+> ele já estava commitado E pushado em `origin/main` antes deste deploy — o que, pela
+> régua do `docs/github-source-of-truth.md`, é justamente a condição para ir a
+> produção. Nada de working tree suja entrou: `git status` limpo no preflight.
+>
+> Pós-deploy em `axenya-pipeline-dashboard.vercel.app`: `/novo-bdr/treble` = 200,
+> `/api/bdr-treble-dw` = 401 (auth ativa, função no ar), e o `bdr-treble.js` servido
+> contém as abas novas (`Tentativas por lead`, `Reconciliação`) e o `leadKey`.
+> Envs `TREBLE_WAREHOUSE_*` já existiam: V10 não pediu variável nova.
+
+### Feat | Treble V10: do macro ao granular, com prova do próprio armazém (2026-08-11)
+
+> Diagnóstico que originou a leva: o painel lia **7 das 15 colunas** de
+> `fact_deployment_status` e **nenhuma** das outras 4 fatos que a Treble entrega
+> (`fact_deployment_daily`, `fact_agent_messages`, `dim_hsm`, e as janelas por lead da
+> própria fato). O que entrou, na ordem macro → granular:
+>
+> 1. **Origem** (`origin`): separa HSM disparado do inbox Sales.ai (**3.296 de 4.738 =
+>    70%**) do blast por API (1.163), CSV (264) e envio simples (15). A tela somava os
+>    quatro como se fossem a mesma operação.
+> 2. **Tentativa por lead**: `attemptSeq` numera a tentativa na **história da pessoa**,
+>    não no recorte (numerar dentro do período diria "1ª tentativa" para quem já levou
+>    cinco em julho). Vieram com ela: intervalo desde a anterior, leads distintos
+>    (**3.468 para 4.738 tentativas**) e o outlier — **um número com 120 tentativas em
+>    67 flows** que inflava todo denominador em silêncio. O lead aparece como pseudônimo
+>    (hash salgado, 12 hex): pseudonimização declarada, não anonimização.
+> 3. **Tempo**: `timestamp_failure` entrou (existe em **100%** das falhas e nunca era
+>    selecionado) e entrega/resposta deixaram de ser flag 0/1. Medido: p50 de entrega
+>    **10s**, p90 **35s**; resposta p50 **5 min** depois de entregue.
+> 4. **HSM**: template nomeado por join `dim_hsm.name = poll_name`, com a cobertura
+>    (**11,7%**) na cara, porque a fato **não tem `hsm_id`**. "HSM desativado" agora diz
+>    qual template (38 casos, 100% em `thauan financeiro diagnóstico`).
+> 5. **Erro** com onde e quando: `MISSING_PARAMETER` concentra **40,2%** num flow só —
+>    é configuração nossa, conserto de hoje — enquanto `META_CHOSE_NOT_DELIVER` espalha
+>    em 47 flows, que é reputação/política de template. A coluna de concentração é o que
+>    separa os dois diagnósticos.
+> 6. **Leitura**: `read_at` existe em `fact_agent_messages` (**238 de 324** HSM
+>    entregues lidos). A tela afirmava "leitura indisponível" — verdade na fato de
+>    deployment, **falso no armazém**. Entra com denominador próprio e fora do funil,
+>    porque cobre só conversa que passou por agente.
+> 7. **Desfechos que a fato de status não expressa**, do pré-agregado: `to_agents`,
+>    `in_process`, `optout`, `revoked`, `failure_rate_limit`. Medido: `SUCCESS` **==**
+>    `in_process`, então o rótulo honesto é "em processamento", não "processado sem
+>    confirmação".
+> 8. **Reconciliação** contra `fact_deployment_daily`, segundo caminho independente.
+>
+> **`fact_deployment_daily.day` é UTC e esta tela conta em BRT** (medido: 23/07 dá 618
+> em UTC e 611 em BRT). A paridade conta **UTC nas duas pontas** de propósito e exibe o
+> delta de fuso: comparar régua diferente reprovaria para sempre por fuso, que é o mesmo
+> mal do check que passa por acidente, ao contrário. Julho/2026 fecha exato:
+> 2.958 = 2.958 tentativas, 1.853 = 1.853 entregues, 246 = 246 respondidas.
+>
+> **A asserção de PII ficou mais afiada, não mais frouxa.** A antiga era
+> `!sql.includes('cellphone')` — proibia até ler o telefone para pseudonimizar e não
+> olhava onde o dado sai. A nova recorta a **projeção do SELECT externo** (o que chega
+> ao browser) e proíbe PII ali; a CTE pode ler o telefone para hash e janela.
+> **Provado por mutação, não por PASS:** telefone na projeção, sentinela `-1` virando
+> zero e paridade com régua torta **reprovam** os testes novos; restaurado, a suíte
+> volta a passar. Smoke browser V10 verifica as 8 abas por conteúdo e valida que o lead
+> na tela é hash de 12 hex, nunca telefone.
+
+### 🚀 DEPLOY DE PRODUÇÃO | /novo-bdr: conversão entre etapas + corte só de BDRs (2026-08-11)
+
+> Autorização explícita do dono (escolha "Commit + push + deploy"). `git fetch`:
+> `main` == `origin/main` `335347a`, sem divergência. Commit `8c73894` (ver entrada
+> abaixo), push OK. `npm run check` PASS **54/0** antes do commit.
+>
+> **O V10 do Treble de outra sessão estava no working tree e NÃO entrou no deploy:**
+> os 4 arquivos (`api/bdr-treble-dw.js`, `public/bdr-treble.js`, os 2 scripts) foram
+> para `git stash` — com cópia de segurança fora do repo antes — o preflight rodou com
+> a árvore limpa, e o `stash pop` devolveu tudo idêntico ao backup (`diff` conferido
+> arquivo a arquivo). Deployar com working tree suja teria publicado trabalho não
+> commitado de outra pessoa, que é exatamente o que `docs/github-source-of-truth.md`
+> existe para impedir.
+>
+> `npm run predeploy` PASS (`origin/main 8c73894`, projeto canônico). Deployment
+> `dashboard-axenya-9k16dl82m-axenya-f1a041f6.vercel.app`.
+>
+> Pós-deploy confirmado em `axenya-pipeline-dashboard.vercel.app`: `/novo-bdr`,
+> `/novo-bdr/treble`, `/novo-bdr/workload`, `/novo`, `/forecast` = 200;
+> `/api/bdr-lead-funnel` = 401 (auth ativa). No HTML servido: `bdr-lead-funnel.js?v=2`
+> (cache invalidado), zero ocorrência de "Cadência de Leads" e de
+> `chart-bdr-leads-funnel` — a seção saiu de fato, não só do código local.
+
+### Feat | /novo-bdr: conversão entre etapas, corte só de BDRs e saída da Cadência de Leads (2026-08-11)
+
+> Pedido do dono, três partes na mesma leva: **taxas de conversão entre etapas e do
+> processo** (por BDR e por categoria), **tirar os executivos do corte por BDR** e
+> **remover os gráficos a partir da Cadência de Leads**.
+>
+> **1. Conversão (novo).** Dois cards na seção Funil de Leads: *Conversão do funil*
+> (seis taxas — os quatro passos, o processo ponta a ponta e o descarte — mais o funil
+> em barras, cada etapa clicável) e *Conversão por dimensão* (tabs BDR / Colaboradores
+> / Tier / Vidas / Origem, ordenável, com drill). A régua é de **coorte acumulada**:
+> leads criados na janela, seguidos até hoje; "chegou a Conectado+" = visitou a etapa.
+> `coorteAgregada` ganhou `COUNTIF(max_rank>=2)`; a conversão sai em `coorte.conversao`
+> nas duas populações.
+>
+> **DEFEITO ACHADO E CORRIGIDO NA PRÓPRIA MEDIÇÃO:** o passo "Qualificado → Deal" deu
+> **110% (11 deals para 10 qualificados)** em ago/26 — `com_deal` **não é subconjunto**
+> de `qualificados`, existe lead que vira negócio sem passar pela etapa. O passo passou
+> a usar a interseção (`qual_com_deal`), e o avulso não sumiu: virou `deal_sem_qualificar`,
+> declarado na tela. Na janela completa são 2 leads.
+>
+> **2. Só BDRs (default ligado).** O corte por pessoa listava TODO dono de lead —
+> Aurilia Rodrigues (519 leads, SuperAdmin), closers (Rafael Leite Ferreira, Juliana,
+> Guilherme, Fausto), Placement, BDRs arquivados e 2.218 leads **sem dono nenhum**.
+> Classificação em três degraus (roster canônico → BDR ativo do portal fora do roster,
+> caso da Raina Cândido → o resto, com o papel nomeado); `owner_role` sozinho não basta,
+> porque o portal marca como BDR quem está TAMBÉM no time de closer. A marca viaja em
+> **todas** as dimensões, então ligar o filtro não deixa o corte por porte contando lead
+> de executivo. Nada some: o rodapé declara os três baldes (não-BDR / arquivado / sem
+> dono) e o botão desliga.
+>
+> **3. Cadência de Leads REMOVIDA** (7 cards R16–R22, ~230 linhas de `bdr.html` + o
+> consumo de `/api/bdr-leads`). Era a seção que lia `hs_lead_status` no CONTATO e via
+> ~10% do funil — substituída pelo Funil de Leads no objeto certo (auditoria de 11/08).
+> O endpoint continua no ar; só a tela parou de consumi-lo.
+>
+> **Validação:** `scripts/test-bdr-lead-funnel.js` ganhou 21 asserções novas (partição
+> BDR + fora do time == total; nenhum passo acima de 100%; etapas encaixam; mesmo total
+> nas 5 dimensões) — TODOS OS CASOS PASSARAM contra o BigQuery. `_check-inline-js.js` em
+> `bdr.html` limpo; Chromium headless sem erro de console; `/novo-bdr` = 200 com as
+> seções Originação, Handoff, Fluxo, Qualidade e Funil de Leads (sem Cadência).
+> ⚠ `npm run check` para em `test-bdr-treble-dw` por causa do **V10 do Treble não
+> commitado de outra sessão** (`assert.ok(!sql.includes('cellphone'))`); com aquele
+> arquivo em stash o teste PASSA — não é desta leva.
+
 ### 🚀 DEPLOY DE PRODUÇÃO | Drawers do forecast: origem do ARR (HubSpot × calculado) (2026-08-11)
 
 > Autorização explícita do dono ("Sim, faça o deploy e commit"). `git fetch` encontrou

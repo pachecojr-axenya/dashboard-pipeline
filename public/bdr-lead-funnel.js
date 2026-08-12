@@ -30,12 +30,29 @@
   var LOADED = null;
   var funil = 'todos';          // todos | principal | diagnostico
   var reguaDim = 'bdr';         // bdr | porte | tier | vidas | origem
+  var convDim = 'bdr';          // dimensão da tabela de CONVERSÃO (tabs próprias)
   var wfView = 'status';        // status | mov  — "ver pelo status" é o default pedido
+  // SÓ BDRs, ligado por padrão. A tabela chamada "BDR" listava todo dono de lead —
+  // SuperAdmin com 613 leads, closers, Placement, ex-BDR arquivado — rankeados junto
+  // com o time. Quem não é BDR não some da existência: sai do corte de gente e o
+  // rodapé diz quantos e quantos leads foram para trás do filtro.
+  var soBdr = true;
+  // FILTRO DE CAMPO: um par (dimensão, valor) que recorta os cards, o funil e a linha
+  // do tempo. É UM campo por vez — o cruzamento entre dois campos não existe nesta
+  // agregação (o GROUP BY sai por dimensão isolada), e a tela avisa em vez de fingir.
+  var filtroDim = null, filtroVal = null;
+  var serieView = 'ate_qual';   // ate_qual | passo | volume
   // Ordenação por tabela. dir: 1 asc, -1 desc.
   var sort = {
     wf:    { col: 'saldo_fim', dir: -1 },
     mov:   { col: 'n',         dir: -1 },
-    regua: { col: 'n',         dir: -1 },
+    // A conversão nasce ordenada por VOLUME, não por taxa: taxa de 3 leads no topo
+    // do rank é ruído com cara de campeão.
+    conv:  { col: 'criados',   dir: -1 },
+    // No corte por BDR o rank nasce por TRABALHO NA JANELA, não por "criados":
+    // ordenar por criados joga para o fim quem trabalhou carteira antiga, que é
+    // exatamente quem a coluna de trabalho existe para tornar visível.
+    regua: { col: 'trab_toques', dir: -1 },
     leads: { col: 'n_movimentos', dir: -1 }
   };
 
@@ -84,7 +101,154 @@
     if (s.col === col) s.dir = -s.dir; else { s.col = col; s.dir = -1; }
     if (tabela === 'wf' || tabela === 'mov') waterfallTabela();
     else if (tabela === 'regua') tabelaRegua();
+    else if (tabela === 'conv') tabelaConversao();
     else if (tabela === 'leads') { if (window._lfLastDrill) window._lfLastDrill(); }
+  }
+
+  // ── A COORTE, agregada, com o filtro de gente aplicado ────────────────────────
+  // O servidor manda cada dimensão quebrada por `bdr` (é BDR sim/não). Colapsar aqui
+  // é o que permite ligar/desligar o filtro sem uma segunda ida ao banco — e o filtro
+  // vale para TODA dimensão, não só para a de gente: se valesse só ali, o corte por
+  // porte continuaria contando lead de executivo e as duas tabelas da mesma tela
+  // mediriam universos diferentes com a mesma cara.
+  var CAMPOS = ['criados', 'com_atividade', 'por_etapa', 'conectados', 'ambos',
+    'so_automacao', 'toque_herdado', 'nunca_tocados', 'qualificados', 'com_deal',
+    'qual_com_deal', 'deal_sem_qualificar', 'desqualificados', 'trab_leads', 'trab_toques'];
+
+  function linhasDim(dim, incluirNaoBdr) {
+    var raw = (D && D.coorte && D.coorte.por_dimensao && D.coorte.por_dimensao[dim]) || [];
+    var m = {}, ordem = [];
+    raw.forEach(function (r) {
+      if (soBdr && !incluirNaoBdr && r.bdr === false) return;
+      var a = m[r.valor];
+      if (!a) {
+        a = m[r.valor] = { valor: r.valor, roster: r.roster !== false, bdr: r.bdr !== false, papel: r.papel || null };
+        CAMPOS.forEach(function (f) { a[f] = 0; });
+        ordem.push(r.valor);
+      }
+      // Um valor de dimensão pode chegar em duas linhas (BDR e não-BDR); o papel que
+      // fica é o de quem é BDR, porque é o que a linha passa a representar.
+      if (r.bdr === false && a.papel == null) a.papel = r.papel || null;
+      CAMPOS.forEach(function (f) { a[f] += r[f] || 0; });
+    });
+    return ordem.map(function (k) { return m[k]; });
+  }
+
+  /**
+   * O QUE O FILTRO TIROU, em três baldes — sem isto, filtrar é esconder.
+   *
+   * Um número só ("52 donos, 4.905 leads") não deixa auditar, porque os três casos
+   * pedem julgamento diferente: LEAD SEM DONO é órfão do CRM e não é trabalho de
+   * ninguém (2.218 na janela completa, o maior balde de longe); BDR ARQUIVADO é
+   * trabalho real de gente que saiu; NÃO-BDR é executivo/closer/Placement, que é o
+   * caso que o filtro existe para resolver. Jogar os três na mesma frase esconderia
+   * que o corte mais pesado não tem nada a ver com executivo.
+   */
+  function excluidos(dim) {
+    var raw = (D && D.coorte && D.coorte.por_dimensao && D.coorte.por_dimensao[dim]) || [];
+    var donos = {}, criados = 0, toques = 0;
+    var baldes = { sem_dono: 0, arquivado: 0, nao_bdr: 0 };
+    raw.forEach(function (r) {
+      if (r.bdr !== false) return;
+      criados += r.criados || 0;
+      toques += r.trab_toques || 0;
+      var papel = r.papel || 'não é BDR';
+      var balde = /sem dono|desconhecido/i.test(r.valor + ' ' + papel) ? 'sem_dono'
+        : /arquivad/i.test(papel) ? 'arquivado' : 'nao_bdr';
+      baldes[balde] += r.criados || 0;
+      if (dim === 'bdr' && (r.criados || r.trab_toques)) donos[r.valor] = papel;
+    });
+    return { criados: criados, toques: toques, donos: donos, n_donos: Object.keys(donos).length, baldes: baldes };
+  }
+  function baldesTxt(ex) {
+    var p = [];
+    if (ex.baldes.nao_bdr) p.push('<strong>' + ni(ex.baldes.nao_bdr) + '</strong> de executivo/closer/Placement');
+    if (ex.baldes.arquivado) p.push('<strong>' + ni(ex.baldes.arquivado) + '</strong> de BDR arquivado (gente que saiu)');
+    if (ex.baldes.sem_dono) p.push('<strong>' + ni(ex.baldes.sem_dono) + '</strong> <em>sem dono nenhum</em> no CRM — lead órfão, não é trabalho de ninguém');
+    return p.join('; ');
+  }
+
+  function soma(linhas, campo) {
+    return linhas.reduce(function (a, r) { return a + (r[campo] || 0); }, 0);
+  }
+
+  var ROT_DIM = { bdr: 'BDR', porte: 'Colaboradores', tier: 'Tier colabs', vidas: 'Vidas', origem: 'Origem' };
+
+  /**
+   * O RECORTE ATIVO — o que os cards, o funil e a linha do tempo estão medindo.
+   *
+   * Sem filtro é a coorte inteira (somada pela dimensão BDR, que é partição). Com
+   * filtro é UMA fatia de UM campo. A mesma função serve os três, e isso não é
+   * economia de código: é o que garante que o card e o gráfico logo abaixo dele não
+   * possam divergir por terem sido somados em dois lugares.
+   */
+  function linhasFoco() {
+    if (filtroDim && filtroVal != null) {
+      return linhasDim(filtroDim).filter(function (r) { return r.valor === filtroVal; });
+    }
+    return linhasDim('bdr');
+  }
+  function focoLabel() {
+    return filtroDim && filtroVal != null ? ROT_DIM[filtroDim] + ' = ' + filtroVal : 'time inteiro';
+  }
+
+  // ── A SÉRIE, agrupada por período ─────────────────────────────────────────────
+  function serieBuckets() {
+    var S = (D && D.coorte && D.coorte.serie) || {};
+    var dim = filtroDim || 'bdr';
+    var raw = ((S.por_dimensao || {})[dim] || []).filter(function (r) {
+      if (soBdr && r.bdr === false) return false;
+      if (filtroDim && filtroVal != null && r.valor !== filtroVal) return false;
+      return true;
+    });
+    var m = {};
+    raw.forEach(function (r) {
+      var a = m[r.bucket];
+      if (!a) a = m[r.bucket] = { bucket: r.bucket, criados: 0, por_etapa: 0, conectados: 0, qualificados: 0, qual_com_deal: 0, com_deal: 0, desqualificados: 0 };
+      ['criados', 'por_etapa', 'conectados', 'qualificados', 'qual_com_deal', 'com_deal', 'desqualificados'].forEach(function (f) { a[f] += r[f] || 0; });
+    });
+    return Object.keys(m).sort().map(function (k) { return m[k]; });
+  }
+
+  // '2026-08' → 'ago/26' · '2026-W32' → 'S32/26'. Rótulo curto porque 12 pontos com
+  // rótulo longo viram um eixo ilegível na primeira tela estreita.
+  var MES_PT = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+  function rotBucket(b) {
+    var w = String(b).match(/^(\d{4})-W(\d{2})$/);
+    if (w) return 'S' + w[2] + '/' + w[1].slice(2);
+    var m = String(b).match(/^(\d{4})-(\d{2})$/);
+    return m ? MES_PT[+m[2] - 1] + '/' + m[1].slice(2) : String(b);
+  }
+
+  /**
+   * OS PASSOS DE CONVERSÃO, a partir da agregação — a mesma conta do servidor, aqui
+   * aplicada ao recorte que está na tela (dimensão × filtro de gente).
+   *
+   * A régua é de COORTE e é ACUMULADA: "chegou a Conectado+" quer dizer que o lead
+   * VISITOU a etapa, não que esteja nela agora. Por isso os passos encaixam e a
+   * conversão do processo é o produto deles — não uma sexta conta independente.
+   */
+  function passosDe(linhas) {
+    var criados = soma(linhas, 'criados'), tent = soma(linhas, 'por_etapa'),
+        con = soma(linhas, 'conectados'), qual = soma(linhas, 'qualificados'),
+        deal = soma(linhas, 'com_deal'), dq = soma(linhas, 'desqualificados'),
+        qualDeal = soma(linhas, 'qual_com_deal'), dealSemQual = soma(linhas, 'deal_sem_qualificar');
+    return {
+      criados: criados, tentativa: tent, conectado: con, qualificado: qual, deal: deal, desq: dq,
+      // Deal SEM passar por Qualificado. O passo usa a interseção, senão a taxa
+      // estoura 100% (medido em ago/26: 11 deals para 10 qualificados) — e o avulso
+      // não some, vira nota: virou negócio sem a etapa registrada.
+      qual_com_deal: qualDeal, deal_sem_qualificar: dealSemQual,
+      passos: [
+        { rot: 'Novo → Tentativa+', n: tent, base: criados, cor: COR.tentativa, nivel: 'tentativa' },
+        { rot: 'Tentativa+ → Conectado+', n: con, base: tent, cor: COR.conectado, nivel: 'conectado' },
+        { rot: 'Conectado+ → Qualificado', n: qual, base: con, cor: COR.qualificado, nivel: 'qualificado' },
+        { rot: 'Qualificado → Deal', n: qualDeal, base: qual, cor: C_BOM, nivel: 'deal' }
+      ],
+      processo: { n: qual, base: criados },
+      ate_deal: { n: deal, base: criados },
+      descarte: { n: dq, base: criados }
+    };
   }
 
   // ── carga ──────────────────────────────────────────────────────────────────────
@@ -125,8 +289,29 @@
   }
 
   function switchFunil(f) { funil = f; if (typeof _setActive === 'function') _setActive('lf-funil-tabs', f); D = null; LOADED = null; paint(); }
-  function switchDim(m) { reguaDim = m; if (typeof _setActive === 'function') _setActive('lf-dim-tabs', m); tabelaRegua(); }
+  function switchDim(m) {
+    reguaDim = m;
+    // A ordem padrão acompanha a dimensão: trabalho em pessoa, criados em atributo.
+    sort.regua = { col: m === 'bdr' ? 'trab_toques' : 'n', dir: -1 };
+    if (typeof _setActive === 'function') _setActive('lf-dim-tabs', m);
+    tabelaRegua();
+  }
   function switchWf(v) { wfView = v; if (typeof _setActive === 'function') _setActive('lf-wf-tabs', v); waterfallTabela(); }
+  function switchConvDim(m) {
+    convDim = m;
+    if (typeof _setActive === 'function') _setActive('lf-conv-dim-tabs', m);
+    tabelaConversao();
+  }
+  // O filtro de gente muda TODA a seção de coorte (conversão, funil e as duas
+  // tabelas), então repinta em vez de atualizar um card só.
+  function toggleSoBdr() { soBdr = !soBdr; paint(); }
+  // Trocar a DIMENSÃO limpa o valor de propósito: manter "Priscilla" selecionada ao
+  // pular para a dimensão Porte deixaria um filtro que não casa com nada, e a tela
+  // ficaria vazia sem dizer por quê.
+  function setFiltroDim(d) { filtroDim = d || null; filtroVal = null; paint(); }
+  function setFiltroVal(v) { filtroVal = (v === '' || v == null) ? null : v; paint(); }
+  function limpaFiltro() { filtroDim = null; filtroVal = null; paint(); }
+  function switchSerie(v) { serieView = v; if (typeof _setActive === 'function') _setActive('lf-serie-tabs', v); serieChart(); }
 
   // ── HTML da seção ──────────────────────────────────────────────────────────────
   function sectionHtml() {
@@ -146,9 +331,17 @@
       { mode: 'diagnostico', label: 'Diagnóstico (Site)', fn: 'AxLeadFunnel.switchFunil' }
     ]) : '';
 
+    // MARCA DE ESTADO NUNCA SÓ POR COR: o botão do filtro carrega ✅/✖️ e a palavra,
+    // porque há BDR daltônico no time e "verde = ligado" é ilegível para ele.
+    var btnBdr = '<button type="button" onclick="AxLeadFunnel.toggleSoBdr()" ' +
+      'style="background:' + (soBdr ? 'var(--teal)' : 'var(--card2)') + ';color:' + (soBdr ? '#fff' : 'var(--text2)') + ';' +
+      'border:1px solid var(--border);border-radius:8px;padding:.3rem .7rem;font-size:.74rem;font-weight:600;cursor:pointer" ' +
+      'title="Tira do corte de gente quem não é BDR: executivo/closer, Placement, admin e ex-BDR arquivado. Ninguém some do dado — desligue para ver todos os donos de lead.">' +
+      (soBdr ? '✅ Só BDRs' : '✖️ Todos os donos') + '</button>';
+
     var barraFunil = '<div class="novo-card" style="grid-column:1/-1;display:flex;align-items:center;gap:1rem;flex-wrap:wrap;padding:.6rem .9rem">' +
       '<span style="font-size:.72rem;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:.06em">Funil</span>' +
-      tabsFunil +
+      tabsFunil + btnBdr +
       '<span style="font-size:.7rem;color:var(--text2)">Pipeline <strong>Backup</strong> excluído (parou de receber lead em 09/04/2026)</span>' +
       '<span id="lf-selo" style="margin-left:auto;font-size:.7rem;color:var(--text2)"></span>' +
       '</div>';
@@ -185,8 +378,36 @@
       { mode: 'vidas', label: 'Vidas', fn: 'AxLeadFunnel.switchDim' },
       { mode: 'origem', label: 'Origem', fn: 'AxLeadFunnel.switchDim' }
     ]) : '';
+    var tabsConvDim = (typeof _subTabs === 'function') ? _subTabs('lf-conv-dim-tabs', convDim, [
+      { mode: 'bdr', label: 'BDR', fn: 'AxLeadFunnel.switchConvDim' },
+      { mode: 'porte', label: 'Colaboradores', fn: 'AxLeadFunnel.switchConvDim' },
+      { mode: 'tier', label: 'Tier colabs', fn: 'AxLeadFunnel.switchConvDim' },
+      { mode: 'vidas', label: 'Vidas', fn: 'AxLeadFunnel.switchConvDim' },
+      { mode: 'origem', label: 'Origem', fn: 'AxLeadFunnel.switchConvDim' }
+    ]) : '';
+
+    var tipConv = 'CONVERSÃO DE COORTE: leads CRIADOS na janela, seguidos até hoje. A régua é ACUMULADA — "chegou a Conectado+" quer dizer que o lead VISITOU a etapa, não que esteja nela agora — e por isso os passos encaixam (todo Conectado+ é Tentativa+) e a conversão do processo é o PRODUTO dos passos, não uma conta à parte. ' +
+      'NÃO é "movimentações no período": essa régua conta o mesmo lead a cada toque e infla o número várias vezes. ' +
+      'Cada taxa carrega NUMERADOR e DENOMINADOR ao lado, porque 50% de 4 e 50% de 400 pedem decisões diferentes. ' +
+      'DUAS ARMADILHAS DE LEITURA, e elas são do método, não do dado: (1) a coorte recente ainda está viva, então o mês corrente sempre converte menos que um mês fechado — comparar os dois subestima o corrente; (2) "Qualificado → Deal" fica perto de 100% por construção, porque o deal nasce da qualificação: ali o número interessante é o VOLUME, não a taxa. ' +
+      'O passo mais estreito é o que a operação tem para atacar. Clique em qualquer etapa para ver os leads.';
+    var tipConvTab = 'A mesma conversão de coorte, aberta por dimensão. Cada passo mostra a taxa SOBRE A ETAPA ANTERIOR (não sobre o total) — é o que separa "perde no primeiro contato" de "perde na qualificação", e essas duas falhas pedem coaching diferente. A coluna final é o processo inteiro, criado → qualificado. ' +
+      'Toda coluna com ⇅ ordena; a ordem nasce por VOLUME de propósito, porque taxa de 3 leads no topo do rank é ruído com cara de campeão. Clique numa linha para os leads.';
+
+    var tabsSerie = (typeof _subTabs === 'function') ? _subTabs('lf-serie-tabs', serieView, [
+      { mode: 'ate_qual', label: 'Até Qualificado', fn: 'AxLeadFunnel.switchSerie' },
+      { mode: 'passo', label: 'Passo a passo', fn: 'AxLeadFunnel.switchSerie' },
+      { mode: 'volume', label: 'Volume', fn: 'AxLeadFunnel.switchSerie' }
+    ]) : '';
+    var tipSerie = 'A MESMA coorte dos cards, com o eixo do tempo aberto — cada ponto é a coorte de leads CRIADOS naquele período, seguida até hoje. Barras = leads criados (escala à esquerda); linhas = taxas (escala à direita, 0–100%). ' +
+      '"Até Qualificado" responde a pergunta do desfecho: de quem chegou a cada etapa, quanto virou Qualificado. "Passo a passo" mede cada degrau sobre o anterior. "Volume" larga a taxa e mostra os absolutos, porque taxa sem volume esconde a escala. ' +
+      'O ÚLTIMO PONTO É PARCIAL e está tracejado: a coorte recente ainda está viva e ainda vai converter — ler a queda do fim como piora é o erro clássico de gráfico de coorte. Mês fechado contra mês fechado é comparação legítima; qualquer um deles contra o mês corrente, não. ' +
+      'Granularidade automática: semana ISO em janela de até 120 dias, mês acima disso. O filtro de campo no card acima vale aqui. Clique num ponto para ver os leads daquela coorte.';
 
     return hdr + aviso + barraFunil +
+      painel('Conversão do funil | do lead criado ao deal', tipConv, 'conv') +
+      card('Linha do tempo da conversão | coorte por período de criação', tipSerie, 'serie', 340, tabsSerie, true) +
+      painel('Conversão por dimensão | onde o funil aperta', tipConvTab, 'convtab', tabsConvDim) +
       card('Waterfall macro | o funil aberto que abre, recebe, perde e fecha',
         'Aberto@início + entrou no funil + reativados − qualificados − desqualificados = Aberto@fim. ABERTO = Novo + Tentativa + Conectado; qualificado e desqualificado são SAÍDAS do funil de prospecção (um vira deal, o outro morre), e contá-los no saldo faria o funil só crescer. A barra "Resíduo" é o que a aritmética não explica — ela aparece em vez de ser diluída nas outras, porque waterfall que não fecha no saldo é ficção. O saldo de abertura usa a etapa do lead em T0 derivada de fact_stage_entry (dim_lead só sabe o agora); método validado em 18.294 de 18.296 leads. Clique numa barra para os leads.',
         'macro', 340, null, true) +
@@ -201,7 +422,10 @@
       card('Criados e movimentados por dia',
         'Barras = leads criados no dia (entrada no funil). Linhas = movimentações que chegaram em cada etapa naquele dia. É a taxa por dia: quantos leads novos, quantos passaram para tentativa, conectado, qualificado ou desqualificado.', 'pordia', 320, null, true) +
       painel('Taxa de contato | AS DUAS RÉGUAS, lado a lado',
-        'A tela NÃO escolhe entre as duas réguas. ETAPA = o lead chegou a Tentativa+ no histórico de etapa. ATIVIDADE REAL = houve ligação conectada, e-mail enviado ou LinkedIn enviado (nota não conta: nota não é ação). Medido em jul/26: 89,4% contra 46,7%, com 1.009 leads movidos para Tentativa sem UM toque no CRM — a premissa "teve que passar, senão não tem como" não se sustenta no dado. Toda coluna com ⇅ ordena; clique numa linha para os leads.',
+        'A tela NÃO escolhe entre as duas réguas. ETAPA = o lead chegou a Tentativa+ no histórico de etapa. ATIVIDADE REAL = houve ligação conectada, e-mail enviado, LinkedIn, WhatsApp manual ou reunião realizada (nota não conta: nota não é ação). Medido em jul/26: 89,4% contra 46,7%, com 1.009 leads movidos para Tentativa sem UM toque no CRM — a premissa "teve que passar, senão não tem como" não se sustenta no dado. ' +
+        'O TOQUE SÓ CONTA APÓS A CRIAÇÃO DO LEAD (correção de 11/08/2026): a régua liga toque→lead pelo contato, e o contato tem vida anterior ao lead — sem o limite, "falou com" contava trabalho de outro ciclo, às vezes de outra pessoa. Em ago/26 isso valia 19 leads (210 → 191), o mais antigo com toque de 18/07/2024. O toque anterior não é descartado: vira a coluna "Toque só antes do lead". ' +
+        'NO CORTE POR BDR HÁ DUAS RÉGUAS DE PESSOA e elas respondem coisas diferentes. "Criaram/Falaram com" é COORTE (leads criados na janela) atribuída ao DONO do lead — certa para atributo de lead, enganosa para pessoa, porque quem trabalha carteira antiga aparece com denominador minúsculo. "Trabalhou na janela" é o que a pessoa fez no período em lead de qualquer safra, atribuída a QUEM TOCOU: dos 1.585 toques de ago/26, 378 (24%) foram feitos por alguém diferente do dono atual do lead. Todo BDR do roster tem linha mesmo zerada, porque linha ausente lê como "não fez nada" e é indistinguível de "não foi medido". ' +
+        'Toda coluna com ⇅ ordena; clique numa linha para os leads.',
         'regua', tabsDim) +
       card('Desqualificações por dia',
         'Entradas em Desqualificado por dia, empilhadas por MOTIVO (o objeto Leads tem o campo — o contato nunca teve). Preenchimento: Lead pipeline 99,2%, Diagnóstico Site 0,0% (1.056 sem motivo). Clique num dia para o drill.', 'disq', 300, null, true) +
@@ -220,6 +444,9 @@
     // então trocar o filtro re-renderizava o MESMO dado e a tela ficava presa.
     if (!D || LOADED !== chaveJanela()) { if (!LOADING) load(); return; }
     selo();
+    painelConversao();
+    serieChart();
+    tabelaConversao();
     macroChart();
     porEtapaChart();
     waterfallTabela();
@@ -527,30 +754,406 @@
     return l['dim_' + reguaDim] || (reguaDim === 'bdr' ? (l.bdr || '(sem dono)') : '(sem valor)');
   }
 
+  // ── CONVERSÃO: os cards de taxa + o funil em barras ───────────────────────────
+  // O funil é HTML e não canvas de propósito: cada etapa precisa carregar TRÊS
+  // números (absoluto, % do topo e % do passo anterior) mais o rótulo da queda, e
+  // enfiar isso em datalabel de gráfico vira sopa ilegível na primeira largura de
+  // tela apertada.
+  /**
+   * A BARRA DE FILTRO DE CAMPO. Dois selects em vez de chips: são 27 BDRs e 15
+   * origens, e uma parede de chips vira ruído antes de virar navegação.
+   *
+   * A segunda combo carrega o VOLUME no rótulo ("Priscilla Feliciello · 2.398"),
+   * porque escolher uma fatia sem saber o tamanho dela é como se escolhe uma taxa de
+   * 100% que tem denominador 2.
+   */
+  function barraFiltroHtml() {
+    var opDim = ['bdr', 'porte', 'tier', 'vidas', 'origem'].map(function (d) {
+      return '<option value="' + d + '"' + (filtroDim === d ? ' selected' : '') + '>' + ROT_DIM[d] + '</option>';
+    }).join('');
+    var opVal = '';
+    if (filtroDim) {
+      opVal = linhasDim(filtroDim).slice().sort(function (a, b) { return b.criados - a.criados; })
+        .map(function (r) {
+          return '<option value="' + esc(r.valor) + '"' + (filtroVal === r.valor ? ' selected' : '') + '>' +
+            esc(r.valor) + ' · ' + ni(r.criados) + '</option>';
+        }).join('');
+    }
+    var sel = 'background:var(--card2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:.3rem .55rem;font-size:.75rem;max-width:260px';
+    return '<div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin:0 0 .8rem">' +
+      '<span style="font-size:.72rem;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:.06em">Filtrar por campo</span>' +
+      '<select style="' + sel + '" onchange="AxLeadFunnel.setFiltroDim(this.value)">' +
+        '<option value=""' + (filtroDim ? '' : ' selected') + '>— campo —</option>' + opDim + '</select>' +
+      (filtroDim ? '<select style="' + sel + '" onchange="AxLeadFunnel.setFiltroVal(this.value)">' +
+        '<option value=""' + (filtroVal == null ? ' selected' : '') + '>— todos os valores —</option>' + opVal + '</select>' : '') +
+      (filtroDim || filtroVal != null
+        ? '<button type="button" onclick="AxLeadFunnel.limpaFiltro()" style="background:var(--card2);color:var(--teal);border:1px solid var(--border);border-radius:8px;padding:.3rem .7rem;font-size:.74rem;font-weight:600;cursor:pointer">✖ limpar</button>'
+        : '') +
+      '<span style="font-size:.72rem;color:var(--text2)">Medindo: <strong style="color:var(--text)">' + esc(focoLabel()) + '</strong>' +
+      (filtroVal != null ? ' — cards, funil e linha do tempo seguem este recorte' : '') + '</span>' +
+      '</div>';
+  }
+
+  function painelConversao() {
+    var el = document.getElementById('lf-conv'); if (!el || !D) return;
+    var linhas = linhasFoco();
+    var P = passosDe(linhas);
+    if (!P.criados) {
+      el.innerHTML = barraFiltroHtml() +
+        '<p style="color:var(--text2);padding:1rem 0">Nenhum lead criado no período para <strong>' + esc(focoLabel()) + '</strong>' + (soBdr ? ', com o filtro "só BDRs" ligado' : '') + '.</p>';
+      return;
+    }
+
+    var tile = function (rot, n, base, cor, sub, nivel) {
+      var p = base ? (n / base * 100) : null;
+      return '<div style="flex:1 1 150px;min-width:150px;background:var(--card2);border-radius:10px;padding:.6rem .75rem;' +
+        'border-left:3px solid ' + cor + ';cursor:pointer" onclick="AxLeadFunnel.drillEtapa(\'' + nivel + '\')" title="Clique para ver os leads">' +
+        '<div style="font-size:.68rem;color:var(--text2);font-weight:600;letter-spacing:.02em">' + rot + '</div>' +
+        '<div style="font-size:1.35rem;font-weight:800;color:var(--text);line-height:1.35">' + (p == null ? '—' : p.toFixed(1).replace('.', ',') + '%') + '</div>' +
+        '<div style="font-size:.68rem;color:var(--text2)">' + ni(n) + ' de ' + ni(base) + (sub ? ' · ' + sub : '') + '</div></div>';
+    };
+
+    var faixa = function (rot, conteudo) {
+      return '<div style="font-size:.7rem;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin:.2rem 0 .35rem">' + rot + '</div>' +
+        '<div style="display:flex;gap:.6rem;flex-wrap:wrap;margin:0 0 .9rem">' + conteudo + '</div>';
+    };
+    // DOIS GRUPOS, porque são duas perguntas. O passo a passo diz onde o funil aperta;
+    // "até Qualificado" diz quanto cada etapa VALE como previsão de desfecho — e é a
+    // segunda que responde "quanto vale ter conectado com alguém".
+    var tiles =
+      faixa('Passo a passo | cada etapa sobre a anterior',
+        P.passos.map(function (s) {
+          return tile(s.rot, s.n, s.base, s.cor, 'perde ' + ni(s.base - s.n), s.nivel);
+        }).join('')) +
+      faixa('Cada etapa até Qualificado | o que a etapa vale como desfecho',
+        tile('Criado → Qualificado', P.qualificado, P.criados, C_TOTAL, 'processo inteiro', 'qualificado') +
+        tile('Tentativa+ → Qualificado', P.qualificado, P.tentativa, COR.tentativa, 'de quem foi tentado', 'qualificado') +
+        tile('Conectado+ → Qualificado', P.qualificado, P.conectado, COR.conectado, 'de quem conectou', 'qualificado') +
+        tile('Descarte | Criado → Desqualificado', P.descarte.n, P.descarte.base, C_RUIM, 'saiu por baixo', 'desqualificado'));
+
+    // O funil propriamente dito: largura proporcional ao topo, com a queda nomeada
+    // ENTRE as barras — é ali que mora a decisão, não no tamanho da barra.
+    var etapas = [
+      { rot: 'Criados na janela', n: P.criados, cor: COR.novo, nivel: 'criados' },
+      { rot: 'Chegaram a Tentativa+', n: P.tentativa, cor: COR.tentativa, nivel: 'tentativa' },
+      { rot: 'Chegaram a Conectado+', n: P.conectado, cor: COR.conectado, nivel: 'conectado' },
+      { rot: 'Qualificados', n: P.qualificado, cor: COR.qualificado, nivel: 'qualificado' },
+      // A barra usa a INTERSEÇÃO (qualificado E com deal): o funil tem de descer.
+      // O deal que nasceu sem passar por Qualificado está na nota abaixo.
+      { rot: 'Viraram deal', n: P.qual_com_deal, cor: C_BOM, nivel: 'deal' }
+    ];
+    var funilHtml = etapas.map(function (e, i) {
+      var w = P.criados ? Math.max(e.n / P.criados * 100, e.n ? 1.5 : 0) : 0;
+      var ant = i ? etapas[i - 1] : null;
+      var queda = ant ? ant.n - e.n : 0;
+      var salto = i
+        ? '<div style="display:flex;align-items:center;gap:.5rem;font-size:.7rem;color:var(--text2);margin:.1rem 0 .1rem .2rem">' +
+          '<span style="color:' + (ant.n && e.n / ant.n >= 0.5 ? C_BOM_T : 'var(--red)') + ';font-weight:700">↓ ' + pct(e.n, ant.n) + '</span>' +
+          '<span>passa ' + ni(e.n) + ' · perde ' + ni(queda) + '</span></div>'
+        : '';
+      return salto +
+        '<div style="display:flex;align-items:center;gap:.6rem;margin:.12rem 0;cursor:pointer" onclick="AxLeadFunnel.drillEtapa(\'' + e.nivel + '\')">' +
+        '<div style="width:190px;min-width:120px;font-size:.76rem;color:var(--text);font-weight:600">' + e.rot + '</div>' +
+        '<div style="flex:1;background:var(--card2);border-radius:5px;overflow:hidden;height:26px;position:relative">' +
+        '<div style="width:' + w.toFixed(2) + '%;height:100%;background:' + e.cor + ';border-radius:5px"></div></div>' +
+        '<div style="width:150px;min-width:110px;text-align:right;font-size:.78rem;font-weight:700;white-space:nowrap">' + ni(e.n) +
+        ' <span style="font-weight:400;color:var(--text2);font-size:.72rem">' + pct(e.n, P.criados) + ' do topo</span></div></div>';
+    }).join('');
+
+    var ex = excluidos('bdr');
+    // O denominador do "quanto ficou de fora" é a COORTE INTEIRA, não a fatia em foco:
+    // com um filtro de campo ativo, dividir pelo recorte daria um percentual que não
+    // significa nada — 4.905 sobre os 137 leads de um BDR.
+    var totalCoorte = soma(linhasDim('bdr'), 'criados') + ex.criados;
+    var notaFiltro = soBdr && (ex.criados || ex.n_donos)
+      ? '<br><strong style="color:var(--text)">Filtro "só BDRs" ligado:</strong> ficaram de fora <strong>' + ni(ex.criados) +
+        '</strong> leads criados (' + pct(ex.criados, totalCoorte) + ' da coorte) e ' + ni(ex.toques) + ' toques, de ' + ni(ex.n_donos) + ' donos — ' +
+        baldesTxt(ex) + '. Desligue o botão para incluí-los.'
+      : (!soBdr ? '<br><strong style="color:var(--text)">Filtro desligado:</strong> a conta inclui TODO dono de lead — executivo, Placement, admin, ex-BDR arquivado e lead sem dono, junto com o time.' : '');
+
+    el.innerHTML = barraFiltroHtml() + tiles + funilHtml +
+      '<p style="font-size:.71rem;color:var(--text2);margin:.7rem 0 0;line-height:1.6">' +
+      (filtroVal != null ? 'Recorte ativo: <strong style="color:var(--text)">' + esc(focoLabel()) + '</strong>. ' : '') +
+      'Coorte de <strong>' + ni(P.criados) + '</strong> leads criados na janela, seguidos até hoje; a régua é acumulada, então todo Conectado+ também é Tentativa+ e a conversão do processo é o produto dos passos. ' +
+      'A coorte recente <strong>ainda está viva</strong>: mês corrente sempre converte menos que mês fechado, e comparar os dois subestima o corrente. ' +
+      '"Qualificado → Deal" fica perto de 100% <strong>por construção</strong> (o deal nasce da qualificação) — ali leia o volume, não a taxa.' +
+      (P.deal_sem_qualificar
+        ? '<br><strong style="color:var(--text)">' + ni(P.deal_sem_qualificar) + ' lead(s) com deal SEM ter passado por Qualificado</strong> no histórico de etapa — ' +
+          'por isso o passo usa a interseção (' + ni(P.qual_com_deal) + ' de ' + ni(P.qualificado) + ') e não o total de ' + ni(P.deal) + ' com deal: ' +
+          'sem esse cuidado a taxa passava de 100%, que é onde a régua avisa que o funil não é linear no CRM.'
+        : '') +
+      notaFiltro + '</p>';
+  }
+
+  // ── LINHA DO TEMPO da conversão ───────────────────────────────────────────────
+  // Barras = volume criado (esquerda); linhas = taxa (direita, 0–100%). O último ponto
+  // é PARCIAL e sai tracejado: a coorte recente ainda vai converter, e desenhar a queda
+  // final como se fosse resultado é o erro clássico do gráfico de coorte.
+  function serieChart() {
+    if (!D || typeof _novoMkChart !== 'function') return;
+    var cv = document.getElementById('lf-serie'); if (!cv) return;
+    var th_ = _novoTheme();
+    var B = serieBuckets();
+    var host = cv.parentNode;
+    var velha = host && host.querySelector('.lf-serie-nota');
+    if (velha) velha.remove();
+    if (!B.length) {
+      if (host) {
+        var p0 = document.createElement('p');
+        p0.className = 'lf-serie-nota';
+        p0.style.cssText = 'font-size:.75rem;color:var(--text2);margin:.6rem 0 0';
+        p0.textContent = 'Sem coorte no período para ' + focoLabel() + '.';
+        host.appendChild(p0);
+      }
+      return;
+    }
+    var parcial = (D.coorte.serie || {}).bucket_parcial;
+    var iParcial = B.map(function (b) { return b.bucket; }).indexOf(parcial);
+    var labels = B.map(function (b) { return rotBucket(b.bucket) + (b.bucket === parcial ? ' *' : ''); });
+    var taxa = function (num, den) { return B.map(function (b) { return b[den] ? +(b[num] / b[den] * 100).toFixed(1) : null; }); };
+
+    // O tracejado do trecho final marca o ponto imaturo em TODA linha — marca de
+    // estado nunca só por cor, e aqui nem por cor: é a forma do traço mais o " *" no
+    // rótulo do eixo, mais a nota abaixo.
+    var dash = function () {
+      return iParcial > 0 ? { borderDash: function (ctx) { return ctx.p1DataIndex === iParcial ? [6, 4] : undefined; } } : undefined;
+    };
+    // COR NÃO PODE SER O ÚNICO CANAL. Além de cores distintas (o "processo" saía
+    // turquesa igual ao "conectado", porque C_TOTAL e COR.conectado são a MESMA cor),
+    // cada linha ganha um FORMATO DE PONTO próprio — círculo, losango, triângulo — que
+    // é o que faz o gráfico continuar legível para quem não distingue os matizes.
+    var FORMAS = ['circle', 'rectRot', 'triangle'];
+    var iLinha = 0;
+    var linha = function (label, cor, dados) {
+      var forma = FORMAS[iLinha++ % FORMAS.length];
+      return { type: 'line', label: label, data: dados, borderColor: cor, backgroundColor: cor,
+        yAxisID: 'y1', tension: .25, borderWidth: 2, pointRadius: 3.5, pointHoverRadius: 6,
+        pointStyle: forma, spanGaps: true, segment: dash(), datalabels: { display: false } };
+    };
+    var C_PROCESSO = 'rgba(147,112,219,.95)';   // roxo: nenhuma etapa usa, então não colide
+    var barras = { type: 'bar', label: 'Leads criados', data: B.map(function (b) { return b.criados; }),
+      backgroundColor: B.map(function (b) { return b.bucket === parcial ? 'rgba(88,166,255,.35)' : 'rgba(88,166,255,.55)'; }),
+      borderRadius: 3, yAxisID: 'y', order: 9,
+      datalabels: { anchor: 'end', align: 'top', color: th_.cText2, font: { family: NOVO_FONT, size: 9 }, formatter: function (v) { return v ? ni(v) : ''; } } };
+
+    var ds;
+    if (serieView === 'volume') {
+      ds = [barras,
+        linha('Chegaram a Tentativa+', COR.tentativa, B.map(function (b) { return b.por_etapa; })),
+        linha('Chegaram a Conectado+', COR.conectado, B.map(function (b) { return b.conectados; })),
+        linha('Qualificados', C_BOM_T, B.map(function (b) { return b.qualificados; }))];
+      // Em "Volume" as linhas são absolutos, então elas moram no MESMO eixo das barras;
+      // deixá-las no eixo de % faria três linhas colarem no teto sem significado.
+      ds.slice(1).forEach(function (d) { d.yAxisID = 'y'; });
+    } else if (serieView === 'passo') {
+      ds = [barras,
+        linha('Novo → Tentativa+', COR.tentativa, taxa('por_etapa', 'criados')),
+        linha('Tentativa+ → Conectado+', COR.conectado, B.map(function (b) { return b.por_etapa ? +(b.conectados / b.por_etapa * 100).toFixed(1) : null; })),
+        // Verde CHEIO, não o verde translúcido da etapa: ao lado do turquesa do
+        // "conectado" o tom fraco quase encosta, e aí só a forma do ponto separava.
+        linha('Conectado+ → Qualificado', C_BOM_T, B.map(function (b) { return b.conectados ? +(b.qualificados / b.conectados * 100).toFixed(1) : null; }))];
+    } else {
+      ds = [barras,
+        linha('Criado → Qualificado', C_PROCESSO, taxa('qualificados', 'criados')),
+        linha('Tentativa+ → Qualificado', COR.tentativa, B.map(function (b) { return b.por_etapa ? +(b.qualificados / b.por_etapa * 100).toFixed(1) : null; })),
+        linha('Conectado+ → Qualificado', COR.conectado, B.map(function (b) { return b.conectados ? +(b.qualificados / b.conectados * 100).toFixed(1) : null; }))];
+    }
+    // As linhas ficam por cima das barras, sempre: barra desenhada em cima da linha
+    // esconde justamente o ponto que se quer ler.
+    ds.forEach(function (d, i) { if (i) d.order = 1; });
+
+    _novoMkChart('lf-serie', {
+      type: 'bar', plugins: [ChartDataLabels],
+      data: { labels: labels, datasets: ds },
+      options: {
+        responsive: true, maintainAspectRatio: false, layout: { padding: { top: 22 } },
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: true, labels: { color: th_.cText2, font: { family: NOVO_FONT, size: 10 }, padding: 8, usePointStyle: true } },
+          tooltip: {
+            callbacks: {
+              label: function (c) {
+                var v = c.parsed.y;
+                if (v == null) return c.dataset.label + ': —';
+                var ehTaxa = c.dataset.yAxisID === 'y1';
+                return c.dataset.label + ': ' + (ehTaxa ? String(v).replace('.', ',') + '%' : ni(v));
+              },
+              afterBody: function (items) {
+                var b = B[items[0].dataIndex];
+                var l = ['', ni(b.criados) + ' criados · ' + ni(b.por_etapa) + ' tentativa+ · ' + ni(b.conectados) + ' conectado+ · ' +
+                  ni(b.qualificados) + ' qualificados · ' + ni(b.desqualificados) + ' desqualificados'];
+                if (b.bucket === parcial) l.push('⚠ COORTE PARCIAL: ainda está viva e vai converter mais');
+                return l;
+              }
+            }
+          }
+        },
+        scales: {
+          x: { grid: { display: false }, ticks: { color: th_.cText2, font: { family: NOVO_FONT, size: 10 } } },
+          y: { position: 'left', beginAtZero: true, grid: { color: th_.cGrid },
+            ticks: { color: th_.cText2, font: { family: NOVO_FONT }, precision: 0, callback: function (v) { return ni(v); } },
+            title: { display: true, text: serieView === 'volume' ? 'leads' : 'leads criados', color: th_.cText2, font: { family: NOVO_FONT, size: 10 } } },
+          y1: { position: 'right', display: serieView !== 'volume', beginAtZero: true, max: 100, grid: { display: false },
+            ticks: { color: th_.cText2, font: { family: NOVO_FONT }, callback: function (v) { return v + '%'; } } }
+        },
+        onClick: function (e, el) { if (!el.length) return; drillBucket(B[el[0].index].bucket); }
+      }
+    });
+
+    if (host) {
+      var p = document.createElement('p');
+      p.className = 'lf-serie-nota';
+      p.style.cssText = 'font-size:.71rem;color:var(--text2);margin:.5rem 0 0;line-height:1.6';
+      p.innerHTML = 'Coorte por <strong>período de criação</strong> do lead (' +
+        ((D.coorte.serie || {}).granularidade === 'semana' ? 'semana ISO' : 'mês') + '), medindo <strong>' + esc(focoLabel()) + '</strong>' +
+        (soBdr ? ', só donos que são BDR' : ', todos os donos de lead') + '. ' +
+        (iParcial >= 0 ? '<strong style="color:var(--text)">' + rotBucket(parcial) + ' está marcado com * e tracejado: coorte PARCIAL</strong> — ela ainda vai converter, então a queda no fim é maturidade, não piora. ' : '') +
+        'Mês fechado contra mês fechado é comparação legítima; qualquer um deles contra o período corrente, não. Clique num ponto para ver os leads da coorte.';
+      host.appendChild(p);
+    }
+  }
+
+  // ── CONVERSÃO por dimensão ────────────────────────────────────────────────────
+  function tabelaConversao() {
+    var el = document.getElementById('lf-convtab'); if (!el || !D) return;
+    var agg = linhasDim(convDim);
+    if (!agg.length) { el.innerHTML = '<p style="color:var(--text2);padding:1rem 0">Nenhum lead criado no período.</p>'; return; }
+
+    var todas = agg.map(function (r) {
+      return {
+        k: r.valor, roster: r.roster, papel: r.papel,
+        criados: r.criados, tent: r.por_etapa, con: r.conectados,
+        // `deal` aqui é a INTERSEÇÃO com qualificado — ver passosDe(): o total de
+        // com_deal pode superar os qualificados e faria a taxa passar de 100%.
+        qual: r.qualificados, deal: r.qual_com_deal, dq: r.desqualificados,
+        // As taxas são de PASSO (sobre a etapa anterior), menos a última, que é o
+        // processo inteiro. Misturar as duas na mesma linha sem dizer qual é qual foi
+        // como o "funil" antigo fazia parecer que 90% chegava ao fim.
+        tx1: r.criados ? r.por_etapa / r.criados : 0,
+        tx2: r.por_etapa ? r.conectados / r.por_etapa : 0,
+        tx3: r.conectados ? r.qualificados / r.conectados : 0,
+        tx4: r.qualificados ? r.qual_com_deal / r.qualificados : 0,
+        // Cada etapa medida contra o DESFECHO, não contra o degrau seguinte: é o que
+        // diz quanto vale ter tentado e quanto vale ter conectado.
+        txtq: r.por_etapa ? r.qualificados / r.por_etapa : 0,
+        txe2e: r.criados ? r.qualificados / r.criados : 0,
+        txdq: r.criados ? r.desqualificados / r.criados : 0
+      };
+    });
+    var ord = ordena(todas, 'conv', function (r, c) { return c === 'k' ? r.k : r[c]; }).slice(0, 25);
+    var T = passosDe(agg);
+    var rotDim = { bdr: 'BDR', porte: 'Colaboradores', tier: 'Tier colabs', vidas: 'Vidas', origem: 'Origem' }[convDim];
+
+    // Célula de taxa com barra: o percentual sozinho não deixa comparar linhas de
+    // relance, e a barra sozinha não deixa auditar.
+    var cel = function (a, b, cor) {
+      var p = b ? Math.round(a / b * 100) : 0;
+      return '<td style="min-width:112px"><div style="display:flex;align-items:center;gap:.4rem;justify-content:flex-end">' +
+        '<span style="color:var(--text2);font-size:.7rem">' + ni(a) + '</span>' +
+        '<div style="flex:1;max-width:44px;height:6px;background:var(--card2);border-radius:3px;overflow:hidden">' +
+        '<div style="width:' + p + '%;height:100%;background:' + cor + '"></div></div>' +
+        '<span style="white-space:nowrap;font-weight:600">' + pct(a, b) + '</span></div></td>';
+    };
+
+    var html = '<div style="font-size:.74rem;color:var(--text2);margin:.1rem 0 .6rem;line-height:1.6">' +
+      'Cada passo é medido <strong>sobre a etapa anterior</strong>, não sobre o total — é o que separa "perde no primeiro contato" de "perde na qualificação". ' +
+      'A última coluna é o processo inteiro (criado → qualificado). ' +
+      (convDim === 'bdr'
+        ? 'No corte por pessoa a coorte é atribuída ao <strong>dono do lead</strong>: quem trabalha carteira antiga aparece com denominador pequeno, e a coluna <em>Trabalhou na janela</em> da tabela de taxa de contato é a régua complementar.'
+        : 'Corte por atributo do LEAD, onde a coorte é a régua certa — o atributo nasce com o lead.') +
+      (convDim === 'origem'
+        ? '<br><span style="color:var(--red)">⚠ Corte contaminado na FONTE:</span> <code>axenya_origem_canonica</code> devolve <strong>booleano</strong> em 64% dos leads. "true" não é uma origem.'
+        : '') +
+      // Filtro de campo ativo numa dimensão diferente da tabela: a tela AVISA em vez
+      // de fingir que a tabela seguiu o filtro. O cruzamento entre dois campos não
+      // existe nesta agregação, e mostrar a tabela cheia sem dizer isso seria deixar
+      // duas leituras contraditórias na mesma tela.
+      (filtroVal != null
+        ? (convDim === filtroDim
+            ? '<br><strong style="color:var(--text)">Filtro ativo em ' + esc(focoLabel()) + '</strong> — a linha dele está nesta tabela; as outras seguem visíveis para comparação.'
+            : '<br><span style="color:var(--red)">⚠ Esta tabela NÃO segue o filtro de ' + esc(focoLabel()) + '</span>: o cruzamento entre dois campos ' +
+              '(' + esc(ROT_DIM[filtroDim]) + ' × ' + esc(ROT_DIM[convDim]) + ') não existe nesta agregação, que sai por dimensão isolada. ' +
+              'Os cards e a linha do tempo acima seguem o filtro; esta tabela mostra a coorte inteira do recorte de gente.')
+        : '') +
+      '</div>';
+
+    html += '<table class="lb" style="font-size:.78rem;width:100%;min-width:1080px"><thead><tr>' +
+      th('conv', 'k', rotDim, 'left') +
+      th('conv', 'criados', 'Criados') +
+      th('conv', 'tx1', 'Novo → Tentativa+') +
+      th('conv', 'tx2', 'Tentativa+ → Conectado+') +
+      th('conv', 'tx3', 'Conectado+ → Qualificado') +
+      th('conv', 'tx4', 'Qualificado → Deal') +
+      th('conv', 'txtq', 'Tentativa+ → Qualif.<br><span style="font-weight:400;font-size:.66rem;color:var(--text2)">até o desfecho</span>') +
+      th('conv', 'txdq', 'Descarte') +
+      th('conv', 'txe2e', 'Processo<br><span style="font-weight:400;font-size:.66rem;color:var(--text2)">criado → qualificado</span>') +
+      '</tr></thead><tbody>';
+    ord.forEach(function (r) {
+      var selo = convDim === 'bdr' && !r.roster
+        ? ' <span style="font-weight:400;font-size:.64rem;color:var(--text2)" title="' + esc(r.papel || 'fora do roster canônico') + '">(' + esc(r.papel || 'fora do roster') + ')</span>'
+        : '';
+      html += '<tr style="cursor:pointer' + (r.criados ? '' : ';opacity:.62') + '" onclick="AxLeadFunnel.drillConv(' + JSON.stringify(r.k).replace(/"/g, '&quot;') + ')">' +
+        '<td style="text-align:left;white-space:nowrap;max-width:250px;overflow:hidden;text-overflow:ellipsis;font-weight:600">' + esc(r.k) + selo + '</td>' +
+        '<td style="font-weight:700">' + ni(r.criados) + '</td>' +
+        cel(r.tent, r.criados, COR.tentativa) + cel(r.con, r.tent, COR.conectado) +
+        cel(r.qual, r.con, COR.qualificado) + cel(r.deal, r.qual, C_BOM) +
+        cel(r.qual, r.tent, COR.tentativa) +
+        cel(r.dq, r.criados, C_RUIM) + cel(r.qual, r.criados, C_TOTAL) + '</tr>';
+    });
+    html += '</tbody><tfoot><tr><td style="text-align:left;font-weight:700">Total</td>' +
+      '<td style="font-weight:700">' + ni(T.criados) + '</td>' +
+      '<td style="font-weight:700;text-align:right">' + pct(T.tentativa, T.criados) + '</td>' +
+      '<td style="font-weight:700;text-align:right">' + pct(T.conectado, T.tentativa) + '</td>' +
+      '<td style="font-weight:700;text-align:right">' + pct(T.qualificado, T.conectado) + '</td>' +
+      '<td style="font-weight:700;text-align:right">' + pct(T.qual_com_deal, T.qualificado) + '</td>' +
+      '<td style="font-weight:700;text-align:right">' + pct(T.qualificado, T.tentativa) + '</td>' +
+      '<td style="font-weight:700;text-align:right">' + pct(T.desq, T.criados) + '</td>' +
+      '<td style="font-weight:700;text-align:right">' + pct(T.qualificado, T.criados) + '</td>' +
+      '</tr></tfoot></table>' +
+      '<p style="font-size:.71rem;color:var(--text2);margin:.45rem 0 0">' +
+      (todas.length > 25 ? 'Mostrando 25 de ' + ni(todas.length) + ' valores de ' + rotDim + ' — o Total soma TODOS. ' : '') +
+      'Agregado no BigQuery: cobre <strong>100% da coorte</strong>' + (soBdr ? ' do recorte de BDRs' : ' de todos os donos de lead') + ', não a lista capada do drill. ' +
+      'Taxa com denominador de um dígito é ruído: leia a coluna <em>Criados</em> antes de rankear.' +
+      '</p>';
+    el.innerHTML = html;
+  }
+
   function tabelaRegua() {
     var el = document.getElementById('lf-regua'); if (!el || !D) return;
     // A TABELA LÊ A AGREGAÇÃO DO BIGQUERY, não a lista de leads. A lista vem capada em
     // 3.000 para o drill; somar ela daria total errado em janela longa — e daria errado
     // de um jeito plausível, que é o pior tipo.
-    var agg = (D.coorte.por_dimensao || {})[reguaDim] || [];
+    var agg = linhasDim(reguaDim);
     if (!agg.length) { el.innerHTML = '<p style="color:var(--text2);padding:1rem 0">Nenhum lead criado no período.</p>'; return; }
 
+    // A COLUNA DE TRABALHO SÓ EXISTE NO CORTE POR PESSOA. Coorte é a régua certa para
+    // atributo de LEAD (porte, tier, vidas, origem — o atributo nasce com o lead); para
+    // PESSOA ela mede a safra e não o mês, e sozinha faz a tela mentir por omissão.
+    var ehBdr = reguaDim === 'bdr';
     var todas = agg.map(function (r) {
       return {
-        k: r.valor, n: r.criados, ativ: r.com_atividade, etapa: r.por_etapa, ambos: r.ambos,
-        auto: r.so_automacao, nunca: r.nunca_tocados, qual: r.qualificados,
-        deal: r.com_deal, dq: r.desqualificados,
+        k: r.valor, papel: r.papel, n: r.criados, ativ: r.com_atividade, etapa: r.por_etapa, ambos: r.ambos,
+        auto: r.so_automacao, herd: r.toque_herdado || 0, nunca: r.nunca_tocados,
+        qual: r.qualificados, deal: r.com_deal, dq: r.desqualificados,
+        trab_leads: r.trab_leads || 0, trab_toques: r.trab_toques || 0,
+        roster: r.roster !== false,
         lacuna: r.por_etapa - r.ambos,
         tx_etapa: r.criados ? r.por_etapa / r.criados : 0,
         tx_ativ: r.criados ? r.com_atividade / r.criados : 0
       };
     });
+    // Coluna que não existe nesta dimensão não pode reger a ordem: cair em `undefined`
+    // ordenaria tudo por -Infinity e o rank viraria ordem de chegada do BigQuery.
+    if (!ehBdr && /^trab_/.test(sort.regua.col)) sort.regua = { col: 'n', dir: -1 };
     var ord = ordena(todas, 'regua', function (r, c) { return c === 'k' ? r.k : r[c]; }).slice(0, 25);
 
     var t = todas.reduce(function (a, r) {
-      ['n', 'etapa', 'ativ', 'ambos', 'qual', 'deal', 'dq', 'auto', 'nunca'].forEach(function (f) { a[f] += r[f]; });
+      ['n', 'etapa', 'ativ', 'ambos', 'qual', 'deal', 'dq', 'auto', 'herd', 'nunca'].forEach(function (f) { a[f] += r[f]; });
       return a;
-    }, { n: 0, etapa: 0, ativ: 0, ambos: 0, qual: 0, deal: 0, dq: 0, auto: 0, nunca: 0 });
+    }, { n: 0, etapa: 0, ativ: 0, ambos: 0, qual: 0, deal: 0, dq: 0, auto: 0, herd: 0, nunca: 0 });
+    // Total do time vem do payload (DISTINCT no banco), NÃO da soma das linhas: lead
+    // tocado por dois BDRs conta em cada linha e uma vez só no time.
+    var tj = (D.trabalho_na_janela || { leads_tocados: 0, toques: 0 });
 
     var barra = function (a, b, cor) {
       var p = b ? Math.round(a / b * 100) : 0;
@@ -563,45 +1166,105 @@
 
     var html = '<div style="font-size:.74rem;color:var(--text2);margin:.1rem 0 .6rem;line-height:1.6">' +
       '<strong style="color:var(--text)">Criaram ' + ni(t.n) + ' e falaram com ' + ni(t.ativ) + '</strong> (' + pct(t.ativ, t.n) + ') — ' +
-      'atividade real distinta por lead: ligação conectada, e-mail, LinkedIn, WhatsApp manual ou reunião realizada.<br>' +
+      'atividade real distinta por lead, <strong>posterior à criação do lead</strong>: ligação conectada, e-mail, LinkedIn, WhatsApp manual ou reunião realizada.<br>' +
       'Pela régua de <strong>etapa</strong> seriam ' + ni(t.etapa) + ' (' + pct(t.etapa, t.n) + '), e a diferença é o alerta: ' +
       '<strong style="color:var(--red)">' + ni(t.etapa - t.ambos) + ' movidos de etapa sem nenhum toque registrado</strong>. ' +
       'Além disso, <strong>' + ni(t.nunca) + ' nunca foram tocados</strong> por ninguém' +
-      (t.auto ? ' e <strong>' + ni(t.auto) + '</strong> só por automação (não conta como esforço do BDR)' : '') + '.' +
+      (t.auto ? ' e <strong>' + ni(t.auto) + '</strong> só por automação (não conta como esforço do BDR)' : '') +
+      (t.herd ? ' e <strong>' + ni(t.herd) + '</strong> têm toque apenas <strong>anterior ao lead</strong> (herdado do contato, de outro ciclo)' : '') + '.' +
+      // A dimensão Origem está contaminada na fonte (axenya_origem_canonica devolve
+      // booleano em 64% dos leads). O aviso vive AQUI, no corte, porque quem só abre
+      // "Origem" nunca leria a premissa — e "true" como categoria parece análise.
+      (reguaDim === 'origem'
+        ? '<br><span style="color:var(--red)">⚠ Este corte está contaminado na FONTE:</span> ' +
+          '<code>axenya_origem_canonica</code> devolve <strong>booleano</strong> em 64% dos leads (9.836 "true" + 1.040 "false"). ' +
+          '<strong>"true" não é uma origem</strong> — é erro de mapeamento de propriedade, e o conserto é no silver, não nesta tela. ' +
+          'Enquanto isso, leia só as fatias com nome de verdade.'
+        : '') +
+      (ehBdr
+        ? '<br><span style="color:var(--text)">Esta coluna é <strong>coorte</strong>, e coorte não é o mês da pessoa.</span> ' +
+          'No mesmo período o time tocou <strong>' + ni(tj.leads_tocados) + ' leads</strong> de qualquer safra, com <strong>' +
+          ni(tj.toques) + ' toques</strong> — é a coluna <em>Trabalhou na janela</em>, atribuída a <strong>quem tocou</strong>, ' +
+          'não ao dono do lead. Ler só "criou/falou" subestima quem trabalha carteira antiga.'
+        : '') +
       '</div>';
 
-    html += '<table class="lb" style="font-size:.78rem;width:100%"><thead><tr>' +
-      th('regua', 'k', rotDim, 'left') +
+    // As duas colunas de TRABALHO ficam encostadas no nome, antes da coorte: é a
+    // primeira coisa que se lê num corte por pessoa, e a coorte vem como contexto.
+    var thTrab = ehBdr
+      ? th('regua', 'trab_leads', 'Trabalhou<br><span style="font-weight:400;font-size:.66rem;color:var(--text2)">leads na janela</span>') +
+        th('regua', 'trab_toques', 'Toques<br><span style="font-weight:400;font-size:.66rem;color:var(--text2)">na janela</span>')
+      : '';
+
+    // `width:100%` sozinho fazia as 14 colunas do corte por BDR se comprimirem até o
+    // cabeçalho CLIPAR ("Toque pré-lead" virava "Toque pré"), em vez de o contêiner
+    // rolar. O contêiner já tem overflow-x:auto; o que faltava era o min-width para a
+    // tabela poder ser mais larga que o cartão. Coluna cortada é coluna que não existe.
+    html += '<table class="lb" style="font-size:.78rem;width:100%;min-width:' + (ehBdr ? 1180 : 940) + 'px"><thead><tr>' +
+      th('regua', 'k', rotDim, 'left') + thTrab +
       th('regua', 'n', 'Criaram<br><span style="font-weight:400;font-size:.66rem;color:var(--text2)">X leads</span>') +
       th('regua', 'ativ', 'Falaram com<br><span style="font-weight:400;font-size:.66rem;color:var(--text2)">Y distintos</span>') +
       th('regua', 'tx_ativ', 'Tx contato<br><span style="font-weight:400;font-size:.66rem;color:var(--text2)">por ATIVIDADE</span>') +
       th('regua', 'tx_etapa', 'Tx contato<br><span style="font-weight:400;font-size:.66rem;color:var(--text2)">por ETAPA</span>') +
       th('regua', 'lacuna', 'Etapa sem<br>toque') +
-      th('regua', 'auto', 'Só<br>automação') + th('regua', 'nunca', 'Nunca<br>tocados') +
+      th('regua', 'auto', 'Só<br>automação') +
+      th('regua', 'herd', 'Toque<br><span style="font-weight:400;font-size:.66rem;color:var(--text2)">pré-lead</span>') +
+      th('regua', 'nunca', 'Nunca<br>tocados') +
       th('regua', 'qual', 'Qualificados') + th('regua', 'deal', 'Com deal') + th('regua', 'dq', 'Desqualif.') +
       '</tr></thead><tbody>';
     ord.forEach(function (r) {
-      html += '<tr style="cursor:pointer" onclick="AxLeadFunnel.drillDim(' + JSON.stringify(r.k).replace(/"/g, '&quot;') + ')">' +
-        '<td style="text-align:left;white-space:nowrap;max-width:210px;overflow:hidden;text-overflow:ellipsis;font-weight:600">' + esc(r.k) + '</td>' +
+      // Linha inteira em zero é AFIRMAÇÃO ("medimos e não houve"), não lacuna — e ela
+      // precisa aparecer, senão o BDR que não criou nada desaparece da tabela.
+      var vazia = ehBdr && !r.n && !r.trab_toques;
+      // Marca de estado NUNCA só por cor: quem não é do roster leva a palavra, e a
+      // palavra diz O QUE a pessoa é — "fora do roster" sozinho não distinguia BDR
+      // não cadastrado de closer.
+      var selo = ehBdr && !r.roster
+        ? ' <span style="font-weight:400;font-size:.64rem;color:var(--text2)" title="Dono de lead fora do roster canônico de BDR">(' + esc(r.papel || 'fora do roster') + ')</span>'
+        : '';
+      html += '<tr style="cursor:pointer' + (vazia ? ';opacity:.62' : '') + '" onclick="AxLeadFunnel.drillDim(' + JSON.stringify(r.k).replace(/"/g, '&quot;') + ')">' +
+        '<td style="text-align:left;white-space:nowrap;max-width:230px;overflow:hidden;text-overflow:ellipsis;font-weight:600">' + esc(r.k) + selo + '</td>' +
+        (ehBdr
+          ? '<td style="font-weight:600;color:' + (r.trab_leads ? C_BOM_T : 'var(--text2)') + '">' + ni(r.trab_leads) + '</td>' +
+            '<td style="font-weight:600;color:' + (r.trab_toques ? C_BOM_T : 'var(--text2)') + '">' + ni(r.trab_toques) + '</td>'
+          : '') +
         '<td style="font-weight:600">' + ni(r.n) + '</td>' +
-        '<td style="font-weight:600;color:' + C_BOM_T + '">' + ni(r.ativ) + '</td>' +
+        '<td style="font-weight:600;color:' + (r.ativ ? C_BOM_T : 'var(--text2)') + '">' + ni(r.ativ) + '</td>' +
         barra(r.ativ, r.n, COR.conectado) + barra(r.etapa, r.n, COR.tentativa) +
         '<td style="color:' + (r.lacuna ? 'var(--red)' : 'var(--text2)') + '">' + ni(r.lacuna) + '</td>' +
         '<td style="color:var(--text2)">' + ni(r.auto) + '</td>' +
+        '<td style="color:var(--text2)">' + ni(r.herd) + '</td>' +
         '<td style="color:' + (r.nunca ? 'var(--red)' : 'var(--text2)') + '">' + ni(r.nunca) + '</td>' +
         '<td>' + ni(r.qual) + '</td><td>' + ni(r.deal) + '</td><td>' + ni(r.dq) + '</td></tr>';
     });
     html += '</tbody><tfoot><tr><td style="text-align:left;font-weight:700">Total</td>' +
+      // O total de trabalho é DISTINCT no banco, não a soma das linhas: lead tocado por
+      // dois BDRs conta em cada linha e uma vez só no time. Somar aqui inflaria.
+      (ehBdr ? '<td style="font-weight:700">' + ni(tj.leads_tocados) + '</td><td style="font-weight:700">' + ni(tj.toques) + '</td>' : '') +
       '<td style="font-weight:700">' + ni(t.n) + '</td><td style="font-weight:700">' + ni(t.ativ) + '</td>' +
       '<td style="font-weight:700;text-align:right">' + pct(t.ativ, t.n) + '</td>' +
       '<td style="font-weight:700;text-align:right">' + pct(t.etapa, t.n) + '</td>' +
       '<td style="font-weight:700">' + ni(t.etapa - t.ambos) + '</td>' +
-      '<td style="font-weight:700">' + ni(t.auto) + '</td><td style="font-weight:700">' + ni(t.nunca) + '</td>' +
+      '<td style="font-weight:700">' + ni(t.auto) + '</td><td style="font-weight:700">' + ni(t.herd) + '</td>' +
+      '<td style="font-weight:700">' + ni(t.nunca) + '</td>' +
       '<td style="font-weight:700">' + ni(t.qual) + '</td><td style="font-weight:700">' + ni(t.deal) + '</td>' +
       '<td style="font-weight:700">' + ni(t.dq) + '</td></tr></tfoot></table>' +
       '<p style="font-size:.71rem;color:var(--text2);margin:.45rem 0 0">' +
       (todas.length > 25 ? 'Mostrando 25 de ' + ni(todas.length) + ' valores de ' + rotDim + ' — o Total soma TODOS. ' : '') +
       'Os números desta tabela são agregados no BigQuery e cobrem <strong>100% da coorte</strong>. ' +
+      (ehBdr
+        ? 'Linha zerada é <strong>afirmação</strong>: o BDR está no roster, foi medido, e não criou nem tocou lead do recorte na janela — não é dado faltando. ' +
+          'O total de <em>Trabalhou/Toques</em> é DISTINCT do time (' + ni(tj.leads_tocados) + '/' + ni(tj.toques) + ') e por isso ' +
+          'pode ser menor que a soma das linhas: lead tocado por dois BDRs conta em cada um' +
+          (soBdr ? ', e ele conta TODO mundo que tocou, inclusive quem o filtro tirou das linhas' : '') + '. '
+        : '') +
+      (function () {
+        var ex = excluidos(reguaDim);
+        if (!soBdr) return '<br>Filtro <strong>desligado</strong>: a tabela inclui todo dono de lead, BDR ou não. ';
+        if (!ex.criados && !ex.n_donos) return '';
+        return '<br>Filtro <strong>"só BDRs"</strong> ligado: saíram ' + ni(ex.criados) + ' leads de ' + ni(ex.n_donos) + ' donos — ' +
+          baldesTxt(ex) + '. Desligue o botão no topo da seção para vê-los. ';
+      })() +
       (D.coorte.leads_truncado ? 'O <em>drill</em> mostra os ' + ni(D.coorte.leads.length) + ' leads mais recentes (a lista é capada; a conta não).' : '') +
       '</p>';
     el.innerHTML = html;
@@ -748,6 +1411,16 @@
     var etapa = l.atingiu_tentativa_etapa ? '✅ etapa' : '— etapa';
     if (c.length) return etapa + ' / <span style="color:' + C_BOM_T + '">✅ ' + c.join(' · ') + '</span>';
     if (l.so_automacao) return etapa + ' / <span style="color:var(--text2)">🤖 só automação (' + (l.toques_automacao || 0) + ')</span>';
+    // Afirmar ausência exige declarar o universo: aqui o universo INCLUI o histórico do
+    // contato anterior ao lead, e dizer "nenhum toque" quando havia toque de outro ciclo
+    // é o que gera desconfiança justa. O toque herdado é nomeado, e não creditado.
+    if (l.toques_manuais_antes || l.toques_automacao_antes) {
+      var a = [];
+      if (l.toques_manuais_antes) a.push(l.toques_manuais_antes + ' manual(is)');
+      if (l.toques_automacao_antes) a.push('🤖 ' + l.toques_automacao_antes);
+      return etapa + ' / <span style="color:var(--text2)">↩ ' + a.join(' · ') +
+        ' no contato ANTES deste lead — herdado, não conta como esforço no lead</span>';
+    }
     return etapa + ' / <span style="color:var(--red)">✖ nenhum toque</span>';
   }
 
@@ -834,19 +1507,110 @@
     abre('Dia | ' + fmtBRfull(dia), L, null, 'Leads criados nesse dia ou que se movimentaram nesse dia.');
   }
 
-  function drillDim(k) {
+  // A coorte, com a trilha colada para quem também se movimentou na janela, e com o
+  // filtro de gente aplicado — se o drill ignorasse o filtro, clicar num total de
+  // 2.289 abriria uma lista de 2.302 e a tela se contradiria em um clique.
+  function coorteFiltrada(filtro) {
     var byId = {}; movimentados().forEach(function (l) { byId[l.lead_id] = l; });
-    var list = (D.coorte.leads || []).filter(function (l) { return dimOf(l) === k; }).map(function (l) {
+    return (D.coorte.leads || []).filter(function (l) {
+      if (soBdr && l.owner_bdr === false) return false;
+      // O drill herda o filtro de campo. Se não herdasse, clicar num card de "Priscilla"
+      // abriria a lista do time inteiro e o total do modal não bateria com o card.
+      if (filtroDim && filtroVal != null && l['dim_' + filtroDim] !== filtroVal) return false;
+      return filtro(l);
+    }).map(function (l) {
       var m = byId[l.lead_id];
       return m ? Object.assign({}, l, { passos: m.passos, status_atual: m.status_atual, n_movimentos: m.n_movimentos }) : l;
     });
-    var agg = ((D.coorte.por_dimensao || {})[reguaDim] || []).filter(function (r) { return r.valor === k; })[0];
+  }
+  function notaCap(agg, list) {
+    if (agg == null || agg === list.length) return '';
+    // O CASO ZERO PRECISA DE OUTRA FRASE. Numa janela longa, a lista por lead cobre só
+    // os 1.500 mais recentes, então o drill de um período antigo abre VAZIO — e "lista
+    // vazia" lê como "não há leads", que é o oposto do que a agregação diz. Aqui a tela
+    // afirma o que ela sabe (o número) e por que não pode mostrar a lista.
+    if (!list.length) {
+      return '<br><strong style="color:var(--red)">A agregação conta ' + ni(agg) + ' leads e esta lista está vazia</strong> — ' +
+        'não é ausência de lead: o detalhe por lead vem capado nos <strong>1.500 mais recentes</strong> da janela, e este recorte está fora desse corte. ' +
+        'Para ver os leads, estreite o período no filtro da página; a conta acima já cobre 100% da coorte.';
+    }
+    return '<br><strong>' + ni(agg) + '</strong> na agregação contra <strong>' + ni(list.length) +
+      '</strong> nesta lista: a lista por lead é capada em 1.500 (mais recentes) e a agregação cobre tudo.';
+  }
+
+  function drillDim(k) {
+    var list = coorteFiltrada(function (l) { return dimOf(l) === k; });
+    var linha = linhasDim(reguaDim).filter(function (r) { return r.valor === k; })[0];
     abre('Funil de Leads | ' + k, list, null,
       'Coorte: leads <strong>criados</strong> na janela nesta fatia. A trilha aparece para quem também se movimentou na janela.' +
-      (agg && agg.criados !== list.length
-        ? '<br><strong>' + ni(agg.criados) + '</strong> na agregação contra <strong>' + ni(list.length) +
-          '</strong> nesta lista: a lista por lead é capada em 1.500 (mais recentes) e a agregação cobre tudo.'
-        : ''));
+      notaCap(linha && linha.criados, list));
+  }
+
+  function drillConv(k) {
+    var dimAntes = reguaDim;
+    reguaDim = convDim;                       // dimOf lê o corte ativo
+    var list = coorteFiltrada(function (l) { return dimOf(l) === k; });
+    reguaDim = dimAntes;
+    var linha = linhasDim(convDim).filter(function (r) { return r.valor === k; })[0];
+    abre('Conversão | ' + k, list, null,
+      'Coorte desta fatia: leads <strong>criados</strong> na janela. A coluna "Trilha" mostra por onde cada um passou — é ali que a taxa de conversão vira auditável.' +
+      notaCap(linha && linha.criados, list));
+  }
+
+  // Cada etapa do funil abre os leads que a ATINGIRAM (régua acumulada), não os que
+  // estão nela agora. Abrir "quem está lá" num funil de coorte daria uma lista menor
+  // que o número clicado, e a tela passaria a se desmentir sozinha.
+  function drillEtapa(nivel) {
+    var f = {
+      criados: function () { return true; },
+      tentativa: function (l) { return l.atingiu_tentativa_etapa; },
+      conectado: function (l) { return l.atingiu_conectado_etapa; },
+      qualificado: function (l) { return l.qualificado; },
+      deal: function (l) { return !!l.deal_id; },
+      desqualificado: function (l) { return l.desqualificado; }
+    }[nivel] || function () { return true; };
+    var rot = { criados: 'Criados na janela', tentativa: 'Chegaram a Tentativa+',
+      conectado: 'Chegaram a Conectado+', qualificado: 'Qualificados',
+      deal: 'Viraram deal', desqualificado: 'Desqualificados' }[nivel] || nivel;
+    var P = passosDe(linhasFoco());
+    var esperado = { criados: P.criados, tentativa: P.tentativa, conectado: P.conectado,
+      qualificado: P.qualificado, deal: P.deal, desqualificado: P.descarte.n }[nivel];
+    var list = coorteFiltrada(f);
+    abre('Conversão | ' + rot + (filtroVal != null ? ' | ' + focoLabel() : ''), list, null,
+      'Régua <strong>acumulada</strong>: são os leads da coorte que <strong>visitaram</strong> esta etapa em algum momento, não os que estão nela agora.' +
+      (soBdr ? ' Só donos que são BDR.' : ' Todos os donos de lead.') +
+      (filtroVal != null ? ' Recorte: <strong>' + esc(focoLabel()) + '</strong>.' : '') +
+      notaCap(esperado, list));
+  }
+
+  // Semana ISO em JS, para o drill do gráfico casar com o FORMAT_DATE('%G-W%V') do
+  // BigQuery. Reimplementar a régua do bucket é o tipo de duplicação que costuma
+  // derivar — por isso a chave é comparada, não reconstruída por aproximação.
+  function isoWeekKey(ymd) {
+    var m = String(ymd || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (!m) return null;
+    var d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
+    var dow = d.getUTCDay() || 7;               // domingo = 7
+    d.setUTCDate(d.getUTCDate() + 4 - dow);     // quinta da mesma semana define o ano ISO
+    var ano = d.getUTCFullYear();
+    var jan1 = new Date(Date.UTC(ano, 0, 1));
+    var semana = Math.ceil(((d - jan1) / 86400000 + 1) / 7);
+    return ano + '-W' + String(semana).padStart(2, '0');
+  }
+  function bucketDoLead(l) {
+    var gran = (D.coorte.serie || {}).granularidade;
+    return gran === 'semana' ? isoWeekKey(l.criado) : String(l.criado || '').slice(0, 7);
+  }
+  function drillBucket(bucket) {
+    var B = serieBuckets().filter(function (b) { return b.bucket === bucket; })[0] || {};
+    var list = coorteFiltrada(function (l) { return bucketDoLead(l) === bucket; });
+    var parcial = (D.coorte.serie || {}).bucket_parcial === bucket;
+    abre('Coorte de ' + rotBucket(bucket) + (filtroVal != null ? ' | ' + focoLabel() : ''), list, null,
+      'Leads <strong>criados</strong> neste período, seguidos até hoje: ' + ni(B.criados) + ' criados · ' +
+      ni(B.por_etapa) + ' chegaram a Tentativa+ · ' + ni(B.conectados) + ' a Conectado+ · ' +
+      ni(B.qualificados) + ' qualificados · ' + ni(B.desqualificados) + ' desqualificados.' +
+      (parcial ? ' <strong style="color:var(--text)">Coorte PARCIAL</strong> — ainda está viva e vai converter mais.' : '') +
+      notaCap(B.criados, list));
   }
 
   function drillDisq(f) {
@@ -878,7 +1642,16 @@
     sort: doSort,
     switchFunil: switchFunil,
     switchDim: switchDim,
+    switchConvDim: switchConvDim,
+    switchSerie: switchSerie,
     switchWf: switchWf,
+    toggleSoBdr: toggleSoBdr,
+    setFiltroDim: setFiltroDim,
+    setFiltroVal: setFiltroVal,
+    limpaFiltro: limpaFiltro,
+    drillEtapa: drillEtapa,
+    drillBucket: drillBucket,
+    drillConv: drillConv,
     drillMacro: drillMacro,
     drillStatus: drillStatus,
     drillSeta: drillSeta,

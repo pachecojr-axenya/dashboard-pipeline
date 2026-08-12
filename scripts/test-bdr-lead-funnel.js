@@ -104,9 +104,12 @@ async function call(query) {
 
   const co = J.coorte || {};
   ok(co.criados === 2302, 'leads criados == 2.302 (medido à mão no BQ)', co.criados);
-  // 1.601, NÃO 1.076: a régua antiga omitia WhatsApp. Ver o bloco 2b.
-  ok(co.taxa_contato && co.taxa_contato.por_atividade.n === 1601,
-    'régua de ATIVIDADE == 1.601 (com WhatsApp manual; era 1.076 sem)', co.taxa_contato && co.taxa_contato.por_atividade.n);
+  // 1.504 depois de DUAS correções, em direções opostas — e é por isso que o número
+  // sozinho não conta a história: 1.076 (régua sem WhatsApp) → 1.601 (WhatsApp entrou,
+  // +525) → 1.504 (o toque passou a exigir ser POSTERIOR À CRIAÇÃO do lead, −97).
+  // Ver os blocos 2b e 2d.
+  ok(co.taxa_contato && co.taxa_contato.por_atividade.n === 1504,
+    'régua de ATIVIDADE == 1.504 (WhatsApp dentro, toque pré-lead fora)', co.taxa_contato && co.taxa_contato.por_atividade.n);
   ok(co.taxa_contato && co.taxa_contato.criados === 2302,
     '"criaram X" viaja como absoluto no payload', co.taxa_contato && co.taxa_contato.criados);
   ok(co.taxa_contato && co.taxa_contato.por_etapa.n === 2057,
@@ -118,8 +121,8 @@ async function call(query) {
   const t = co.taxa_contato || {};
   ok(t.por_etapa.n > t.por_atividade.n,
     'ETAPA > ATIVIDADE (se empatar um dia, é notícia)', t.por_etapa.pct + '% vs ' + t.por_atividade.pct + '%');
-  ok(t.etapa_sem_atividade === 504,
-    'movidos de etapa SEM toque == 504 (era 1.009 na régua sem WhatsApp)', t.etapa_sem_atividade);
+  ok(t.etapa_sem_atividade === 579,
+    'movidos de etapa SEM toque == 579 (1.009 sem WhatsApp, 504 antes do corte pré-lead)', t.etapa_sem_atividade);
   ok(t.por_etapa.n - t.por_atividade.n === t.etapa_sem_atividade - t.atividade_sem_etapa,
     'partição fecha: (etapa − atividade) == (etapa_sem_ativ − ativ_sem_etapa)');
 
@@ -129,12 +132,18 @@ async function call(query) {
   // leads que tinham WhatsApp digitado à mão. Achado por auditoria de caso do dono, não
   // por teste — e é justamente isso que este bloco impede de repetir.
   console.log('\n== regua de atividade, canal por canal ==');
-  ok(t.so_automacao >= 0 && t.nunca_tocados >= 0,
-    'automação e nunca-tocados sao buckets SEPARADOS e visiveis',
-    'so automacao ' + t.so_automacao + ' | nunca tocados ' + t.nunca_tocados);
-  ok(t.por_atividade.n + t.so_automacao + t.nunca_tocados === t.criados,
-    'particao MECE: falou com + so automacao + nunca tocado == criados',
-    t.por_atividade.n + ' + ' + t.so_automacao + ' + ' + t.nunca_tocados + ' = ' + t.criados);
+  ok(t.so_automacao >= 0 && t.nunca_tocados >= 0 && t.toque_herdado >= 0,
+    'automação, herdado e nunca-tocados sao buckets SEPARADOS e visiveis',
+    'so automacao ' + t.so_automacao + ' | herdado ' + t.toque_herdado + ' | nunca tocados ' + t.nunca_tocados);
+  ok(t.por_atividade.n + t.so_automacao + t.toque_herdado + t.nunca_tocados === t.criados,
+    'particao MECE de 4 buckets: falou com + so automacao + herdado + nunca tocado == criados',
+    t.por_atividade.n + ' + ' + t.so_automacao + ' + ' + t.toque_herdado + ' + ' + t.nunca_tocados + ' = ' + t.criados);
+  // O bucket novo tem de ser NAO-VAZIO em jul/26: se zerar, ou a regua parou de olhar
+  // o historico do contato ou o limite temporal caiu -- e nos dois casos o numero de
+  // "falou com" volta a inflar em silencio.
+  ok(t.toque_herdado === 118,
+    'toque HERDADO (so anterior ao lead) == 118 em jul/26 -- eram creditados como contato',
+    t.toque_herdado);
   // co.leads e a lista CAPADA do drill; a asserçao vale sobre ela porque o que se prova
   // aqui e a REGUA (todo WhatsApp conta), nao o total (esse vem da agregacao).
   const comWpp = (co.leads || []).filter(l => l.whatsapp_manual > 0);
@@ -153,6 +162,94 @@ async function call(query) {
     'atividade_real e exatamente "houve toque manual", sem terceira via');
   ok((co.leads || []).every(l => !(l.atividade_real && l.so_automacao)),
     'so_automacao e atividade_real sao mutuamente exclusivos');
+
+  // ── 2d. O TOQUE TEM DE SER POSTERIOR À CRIAÇÃO DO LEAD ────────────────────────
+  // Achado por auditoria de caso do dono (11/08, "a Gabi falou com 5 e criou 5"). A
+  // régua liga toque→lead pelo CONTATO, e o contato tem vida anterior ao lead: sem
+  // limite temporal, "falou com" contava trabalho de outro ciclo, às vezes de outra
+  // pessoa. Em ago/26 eram 19 leads (9% do "falou com"), o mais antigo com toque de
+  // 18/07/2024; por pessoa mudava a leitura (Raina Cândido saía com 2 de 11 tendo 0).
+  console.log('\n== toque posterior a criacao do lead ==');
+  const herd = (co.leads || []).filter(l => l.toque_herdado);
+  ok(herd.length > 0, 'ha leads no bucket HERDADO na amostra do drill', herd.length + ' de ' + (co.leads || []).length);
+  ok(herd.every(l => l.toques_manuais === 0),
+    'lead HERDADO nao tem NENHUM toque posterior a criacao -- senao nao seria herdado');
+  // O bucket cobre historico manual E de automacao anterior ao lead, e os DOIS campos
+  // viajam: sem o de automacao, o lead cujo unico historico e robo pre-lead cairia em
+  // "nenhum toque" no drill -- afirmacao falsa por ausencia de CAMPO.
+  ok(herd.every(l => l.toques_manuais_antes > 0 || l.toques_automacao_antes > 0),
+    'lead HERDADO nomeia quantos toques houve ANTES: afirmar ausencia exige declarar o universo');
+  ok(herd.some(l => l.toques_manuais_antes > 0),
+    'ha lead herdado por toque MANUAL anterior (o caso que inflava "falou com")',
+    herd.filter(l => l.toques_manuais_antes > 0).length + ' de ' + herd.length);
+  ok(herd.every(l => !l.atividade_real),
+    'toque anterior ao lead NAO conta como "falou com" (era exatamente o defeito)');
+  ok((co.leads || []).every(l => !(l.atividade_real && l.nunca_tocado)) &&
+     (co.leads || []).every(l => !(l.toque_herdado && l.nunca_tocado)),
+    'os 4 buckets sao mutuamente exclusivos lead a lead, nao so no total');
+  // O campo tem de VIAJAR mesmo em lead com toque: e o que impede o front de dizer
+  // "nenhum toque" por ausencia de CAMPO -- a mesma regressao que quase voltou na leva 4.
+  ok((co.leads || []).every(l => typeof l.toques_manuais_antes === 'number'),
+    'toques_manuais_antes viaja em TODO lead, nao so no herdado');
+  ok(/posterior/i.test((J.premissas || {}).toque_apos_criacao || ''),
+    'o corte pre-lead esta DECLARADO em premissas (numero novo sem premissa e indistinguivel de numero errado)');
+
+  // ── 2e. O CORTE POR BDR NÃO PODE MENTIR POR OMISSÃO ───────────────────────────
+  // Mesma auditoria: a tabela dizia "Gabriele criou 5, falou com 5" e ela tinha tocado
+  // 41 leads no mês; e quem criou ZERO simplesmente não ganhava linha — Cíntia
+  // Rodrigues (35 leads/66 toques), Anderson Souza, Thauan Pontes e Yokyko Muramoto
+  // estavam AUSENTES com trabalho medido no armazém. Ausência lê como "não fez nada".
+  console.log('\n== corte por BDR: trabalho na janela e roster visivel ==');
+  const { BDR_TEAM } = require(path.join(ROOT, 'lib', 'bdr-team.js'));
+  const bdrRows = (co.por_dimensao && co.por_dimensao.bdr) || [];
+  const nomes = bdrRows.map(r => r.valor);
+  const faltando = BDR_TEAM.filter(n => nomes.indexOf(n) < 0);
+  ok(faltando.length === 0,
+    'TODO BDR do roster tem linha, mesmo zerado (linha ausente e indistinguivel de "nao medido")',
+    faltando.length ? 'faltando: ' + faltando.join(', ') : BDR_TEAM.length + '/' + BDR_TEAM.length);
+  ok(bdrRows.every(r => typeof r.trab_leads === 'number' && typeof r.trab_toques === 'number'),
+    'toda linha carrega o trabalho na janela, nao so a coorte');
+  ok(bdrRows.every(r => typeof r.roster === 'boolean'),
+    'a linha declara se e do roster -- tabela "BDR" nao pode creditar quem nao e BDR');
+  ok(bdrRows.some(r => r.roster === false),
+    'dono de lead fora do roster APARECE marcado, em vez de virar BDR por engano',
+    bdrRows.filter(r => !r.roster).map(r => r.valor).slice(0, 4).join(', '));
+  // O caso que originou tudo: existe BDR cujo trabalho na janela e MUITO maior que a
+  // coorte. Se isso deixar de existir, a coluna nova perdeu o sentido -- ou quebrou.
+  const carteira = bdrRows.filter(r => r.roster && r.trab_leads > r.criados * 2);
+  ok(carteira.length > 0,
+    'ha BDR cujo trabalho na janela supera de longe a coorte (o defeito "criou 5, falou com 5")',
+    carteira.map(r => r.valor + ': coorte ' + r.criados + ' vs trabalho ' + r.trab_leads).slice(0, 3).join(' | '));
+  const tj = J.trabalho_na_janela || {};
+  ok(tj.leads_tocados > 0 && tj.toques > 0,
+    'o total de trabalho do time viaja no payload', tj.leads_tocados + ' leads / ' + tj.toques + ' toques');
+  // O total é DISTINCT no banco; a soma das linhas conta duas vezes o lead tocado por
+  // dois BDRs. Se o total ficar MAIOR que a soma, o DISTINCT sumiu.
+  ok(tj.leads_tocados <= tj.soma_das_linhas.leads,
+    'total do time <= soma das linhas (DISTINCT no banco; lead tocado por 2 BDRs conta em cada linha)',
+    tj.leads_tocados + ' <= ' + tj.soma_das_linhas.leads);
+  ok(/quem TOCOU/i.test(tj.atribuicao || ''),
+    'a atribuicao do trabalho (quem tocou, nao o dono) esta declarada no bloco');
+  ok(/24%|378/.test((J.premissas || {}).trabalho_na_janela || ''),
+    'a premissa declara a ESCALA da divergencia de atribuicao (24% dos toques nao sao do dono)');
+  ok(/roster/i.test((J.premissas || {}).roster_sempre_visivel || ''),
+    'a regra do roster sempre visivel esta declarada em premissas');
+
+  // ── 2f. A DIMENSÃO ORIGEM ESTÁ CONTAMINADA NA FONTE ───────────────────────────
+  // Achado de tabela na mesma auditoria: axenya_origem_canonica devolve BOOLEANO. Não
+  // se conserta nesta tela (é projeção do silver), mas "true" como categoria parece
+  // análise — então tem de estar declarado, e o teste impede a declaração de sumir
+  // num refactor enquanto o dado continuar sujo.
+  console.log('\n== dimensao origem contaminada (declarada, nao escondida) ==');
+  const orig = (co.por_dimensao && co.por_dimensao.origem) || [];
+  const bool = orig.filter(r => r.valor === 'true' || r.valor === 'false');
+  if (bool.length) {
+    ok(/boolean/i.test((J.divergencias_conhecidas || {}).origem_contaminada || ''),
+      'origem booleana esta DECLARADA em divergencias_conhecidas enquanto o dado estiver sujo',
+      bool.map(r => r.valor + ': ' + r.criados).join(' | '));
+  } else {
+    ok(true, 'origem nao tem mais valor booleano -- o silver foi consertado, reveja a declaracao');
+  }
 
   // ── 2c. A RAZÃO da desqualificação, e as duas contradições ────────────────────
   console.log('\n== razao auditavel da desqualificacao ==');
@@ -287,9 +384,9 @@ async function call(query) {
   ok(T.coorte.criados > 10000, 'a agregacao cobre a coorte inteira, nao a lista capada',
     T.coorte.criados + ' criados contra ' + T.coorte.leads.length + ' no detalhe');
   ok(T.coorte.leads_truncado === true, 'a truncagem do detalhe e DECLARADA na janela longa');
-  ok(T.coorte.taxa_contato.por_atividade.n + T.coorte.taxa_contato.so_automacao + T.coorte.taxa_contato.nunca_tocados === T.coorte.criados,
-    'MECE vale na janela completa tambem',
-    T.coorte.taxa_contato.por_atividade.n + '+' + T.coorte.taxa_contato.so_automacao + '+' + T.coorte.taxa_contato.nunca_tocados + '=' + T.coorte.criados);
+  ok(T.coorte.taxa_contato.por_atividade.n + T.coorte.taxa_contato.so_automacao + T.coorte.taxa_contato.toque_herdado + T.coorte.taxa_contato.nunca_tocados === T.coorte.criados,
+    'MECE de 4 buckets vale na janela completa tambem',
+    T.coorte.taxa_contato.por_atividade.n + '+' + T.coorte.taxa_contato.so_automacao + '+' + T.coorte.taxa_contato.toque_herdado + '+' + T.coorte.taxa_contato.nunca_tocados + '=' + T.coorte.criados);
   ok(Math.abs(T.macro.residuo) <= Math.max(5, T.macro.aberto_fim * 0.005),
     'o waterfall FECHA na janela de 936 dias (era -1.285 antes da barra de saida do recorte)',
     T.macro.residuo + ' de ' + T.macro.aberto_fim);
@@ -307,11 +404,96 @@ async function call(query) {
   ok(!!(T.premissas || {}).janela_universal, 'a janela universal esta declarada em premissas');
   ok(!!(T.premissas || {}).agregacao_no_banco, 'a agregacao no banco esta declarada em premissas');
 
+  // ── 6b. CONVERSÃO ENTRE ETAPAS e o corte "só BDRs" ────────────────────────────
+  // As duas coisas que este bloco impede de voltar:
+  //  · TAXA ACIMA DE 100%. Aconteceu de verdade na primeira medição: 11 leads com
+  //    deal para 10 qualificados em ago/26, porque `com_deal` NÃO é subconjunto de
+  //    `qualificados` — há lead que vira negócio sem passar pela etapa. O passo usa
+  //    a interseção, e o avulso viaja como `deal_sem_qualificar` em vez de sumir.
+  //  · FILTRO QUE ESCONDE. "Só BDRs" recorta o corte de gente; se o que ele tira não
+  //    fechasse com a diferença entre as duas populações, seria dado sumindo em
+  //    silêncio — e filtro que some com dado é indistinguível de bug.
+  console.log('\n== conversão entre etapas + corte de BDR ==');
+  const CV = (T.coorte || {}).conversao || {};
+  ok(!!CV.bdr && !!CV.todos, 'a conversão vem nas DUAS populações (só BDRs e todos)');
+  ok(CV.todos.criados === T.coorte.criados, 'a população "todos" é a coorte inteira', CV.todos.criados + ' vs ' + T.coorte.criados);
+  ok(CV.bdr.criados <= CV.todos.criados, 'o recorte de BDR nunca é maior que o total', CV.bdr.criados + ' <= ' + CV.todos.criados);
+  const foraCriados = (CV.fora_do_time || []).reduce((a, r) => a + r.criados, 0);
+  ok(CV.bdr.criados + foraCriados === CV.todos.criados,
+    'BDR + fora do time == total: o filtro RECORTA, nao esconde', CV.bdr.criados + ' + ' + foraCriados + ' = ' + CV.todos.criados);
+  ok((CV.fora_do_time || []).every(r => r.papel && r.papel.length > 2),
+    'todo dono excluido tem o PAPEL nomeado (executivo, arquivado, sem dono...)');
+  ['bdr', 'todos'].forEach(pop => {
+    const C = CV[pop];
+    ok(C.passos.every(p => p.pct === null || (p.pct >= 0 && p.pct <= 100)),
+      'nenhum passo de conversao passa de 100% em "' + pop + '"', C.passos.map(p => p.pct).join(' / '));
+    // A régua é acumulada, então as etapas ENCAIXAM. Se um dia deixarem de encaixar,
+    // o funil parou de ser funil e a tela precisa gritar em vez de desenhar.
+    ok(C.etapas.tentativa <= C.criados && C.etapas.conectado <= C.etapas.tentativa &&
+       C.etapas.qualificado <= C.etapas.conectado,
+      'as etapas ENCAIXAM (regua acumulada) em "' + pop + '"',
+      [C.criados, C.etapas.tentativa, C.etapas.conectado, C.etapas.qualificado].join(' >= '));
+    ok(C.passos.every(p => p.n + p.perda === p.base), 'passa + perde == base, em todo passo de "' + pop + '"');
+  });
+  ok(CV.bdr.etapas.deal >= CV.bdr.passos[3].n,
+    'deal total >= deal QUALIFICADO (a diferenca e o lead que virou negocio sem a etapa)',
+    CV.bdr.etapas.deal + ' >= ' + CV.bdr.passos[3].n);
+  ok(!!(T.premissas || {}).so_bdr_no_corte_de_gente, 'o corte "só BDRs" esta declarado em premissas');
+  ok(!!(T.premissas || {}).conversao_por_coorte, 'a regua de conversao por coorte esta declarada em premissas');
+  // A marca de BDR viaja em TODA dimensão: sem isso, ligar o filtro recortaria a
+  // tabela de gente e deixaria o corte por porte/origem contando lead de executivo.
+  dimsEsperadas.forEach(d => {
+    ok((T.coorte.por_dimensao[d] || []).every(r => typeof r.bdr === 'boolean'),
+      'a dimensao "' + d + '" carrega a marca de BDR por linha');
+  });
+  const somaBdr = dimsEsperadas.map(d =>
+    (T.coorte.por_dimensao[d] || []).filter(r => r.bdr).reduce((a, r) => a + r.criados, 0));
+  ok(somaBdr.every(v => v === somaBdr[0]),
+    'o recorte de BDR da o MESMO total nas 5 dimensoes', somaBdr.join(' / '));
+  ok(somaBdr[0] === CV.bdr.criados, 'o recorte por dimensao bate com a conversao de BDR', somaBdr[0] + ' vs ' + CV.bdr.criados);
+
+  // ── 6c. LINHA DO TEMPO da conversão ───────────────────────────────────────────
+  // A série é a MESMA coorte com o eixo aberto. Se ela não fechar com o agregado, o
+  // gráfico e o card ao lado dele passam a contar histórias diferentes do mesmo mês —
+  // e o gráfico ganha, porque parece mais concreto.
+  console.log('\n== linha do tempo (serie por coorte de criacao) ==');
+  const SE = (T.coorte || {}).serie || {};
+  ok(!!SE.por_dimensao, 'a serie vem no payload');
+  ok(SE.granularidade === 'mes', 'janela longa usa MES (semana daria 134 pontos ilegiveis)', SE.granularidade);
+  dimsEsperadas.forEach(d => {
+    const s = (SE.por_dimensao[d] || []).reduce((a, r) => a + r.criados, 0);
+    ok(s === T.coorte.criados, 'a serie da dimensao "' + d + '" fecha com a coorte', s + ' vs ' + T.coorte.criados);
+  });
+  const bucketsS = Array.from(new Set((SE.por_dimensao.bdr || []).map(r => r.bucket))).sort();
+  ok(bucketsS.length > 1, 'a serie tem mais de um periodo (senao nao e serie)', bucketsS.length + ' buckets');
+  ok(bucketsS.every(b => /^\d{4}-(\d{2}|W\d{2})$/.test(b)), 'todo bucket tem formato de periodo', bucketsS.slice(0, 3).join(','));
+  ok(SE.bucket_parcial === bucketsS[bucketsS.length - 1],
+    'o bucket PARCIAL declarado e o ultimo (coorte viva, converte menos)', SE.bucket_parcial);
+  // A série tem as mesmas etapas encaixadas — por período, e não só no total.
+  ok((SE.por_dimensao.bdr || []).every(r => r.por_etapa <= r.criados && r.conectados <= r.por_etapa && r.qualificados <= r.conectados),
+    'as etapas encaixam em CADA periodo da serie, nao so no total');
+  ok((SE.por_dimensao.bdr || []).every(r => typeof r.bdr === 'boolean' && r.valor),
+    'toda linha da serie carrega valor e marca de BDR (o filtro de campo depende disso)');
+  // O colapso por nome canônico tem de valer nos DOIS lados: se a série viesse por
+  // owner_id e a tabela por nome, filtrar "Cíntia Rodrigues" no gráfico não acharia
+  // nada — e a tela ficaria vazia sem dizer por quê.
+  const nomesTab = new Set((T.coorte.por_dimensao.bdr || []).map(r => r.valor));
+  ok((SE.por_dimensao.bdr || []).every(r => nomesTab.has(r.valor)),
+    'os rotulos da serie casam com os da tabela (mesmo colapso por nome canonico)');
+  ok(!!(T.premissas || {}).serie_por_coorte_de_criacao, 'a regua da serie esta declarada em premissas');
+  ok(!!(T.premissas || {}).filtro_de_campo_e_de_um_campo_so, 'o limite do filtro de campo esta declarado em premissas');
+
   // ── 7. Mês corrente não explode (a janela que a tela abre por padrão) ─────────
   console.log('\n== mês corrente (default da tela) ==');
   const cur = await call({ funil: 'todos', refresh: '1' });
   ok(cur.code === 200 && cur.body.success, 'mês corrente responde 200', cur.code);
   ok(cur.body.coorte.criados >= 0 && Object.keys(cur.body.waterfall.setas).length >= 0, 'payload íntegro no mês parcial');
+  // Granularidade ADAPTATIVA: mês numa janela de 11 dias daria UM ponto, que não é
+  // série. A regra vira semana ISO abaixo de 120 dias, e isso é contrato, não estética.
+  ok((cur.body.coorte.serie || {}).granularidade === 'semana',
+    'janela curta usa SEMANA ISO (mes daria um ponto so)', (cur.body.coorte.serie || {}).granularidade);
+  ok(((cur.body.coorte.serie || {}).por_dimensao.bdr || []).every(r => /^\d{4}-W\d{2}$/.test(r.bucket)),
+    'os buckets da janela curta sao semanas ISO');
 
   // ── 8. Contraprova ao vivo (opcional) ─────────────────────────────────────────
   if (PORTAL) {

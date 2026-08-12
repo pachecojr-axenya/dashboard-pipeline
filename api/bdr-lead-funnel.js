@@ -99,7 +99,6 @@
 const { setCORSHeaders, requireAuth, getHubspotToken, methodCheck } = require('./_helpers');
 const { hubspotPost } = require('../lib/hubspot');
 const { BDR_TEAM, resolveTeamIds } = require('../lib/bdr-team');
-const whq = require('../lib/hubspot-wh-queries');
 const wh = require('../lib/hubspot-warehouse');
 
 // ── Pipelines de lead ────────────────────────────────────────────────────────────
@@ -206,6 +205,29 @@ const ATIV_MANUAL = `(
 const ATIV_AUTOMACAO = `(f.is_outbound_message AND f.source_label = 'INTEGRATION')`;
 
 /**
+ * O TOQUE TEM DE SER POSTERIOR À CRIAÇÃO DO LEAD — correção de 11/08/2026.
+ *
+ * A régua liga toque→lead pelo CONTATO (`fact_engagement` não tem `lead_id`), e o
+ * contato tem vida própria: ele pode ter sido trabalhado meses ou ANOS antes de
+ * alguém criar este lead. Sem limite temporal, "falou com" contava esse histórico
+ * como se fosse trabalho no lead da coorte.
+ *
+ * Escala medida na coorte de ago/26 (258 leads, 01–11/08): "falou com" cai de **210
+ * para 191** — **19 leads (9%)** cuja ÚNICA prova de contato é um toque anterior à
+ * própria existência do lead, um deles de **18/07/2024**. Por BDR o efeito é
+ * desigual e muda leitura de pessoa: **Raina Cândido aparecia com 2 de 11 e o número
+ * real é 0** (os dois toques são pré-criação); Allan Valença cai 31→25; Gabriele
+ * Almeida 5→4. Nos leads movimentados na janela o mesmo corte é 535→510 (25 leads),
+ * e ali ele também limpa o `contradiz_motivo` — desqualificar como "não houve
+ * tentativa de contato" deixa de ser contradição quando o toque é de outro ciclo.
+ *
+ * O toque anterior NÃO é descartado em silêncio: vira o bucket `toque_herdado`, que
+ * é informação real ("o contato já tinha sido trabalhado antes deste lead", muitas
+ * vezes por outra pessoa) — só não é esforço no lead que se está medindo.
+ */
+const APOS_CRIACAO = `f.occurred_at >= b2.criado_em`;
+
+/**
  * Atividade por lead, para os leads que a janela toca (criados OU movimentados).
  * Uma consulta, uma régua — servindo tanto a coorte quanto o drill de desqualificação.
  */
@@ -220,23 +242,33 @@ async function atividade(pipes, since, until) {
       WHERE ch.object_type = 'lead' AND ch.property = 'hs_pipeline_stage'
         AND DATE(ch.changed_at, 'America/Sao_Paulo') BETWEEN DATE(@since) AND DATE(@until)
     ),
+    -- A criação do lead entra aqui porque a régua de toque é limitada a ela (ver
+    -- APOS_CRIACAO): o contato tem vida anterior ao lead e ela não é esforço no lead.
+    alvo_c AS (
+      SELECT a.lead_id, l.hs_created_at AS criado_em
+      FROM alvo a
+      JOIN ${wh.t('silver', 'dim_lead')} l ON l.lead_id = a.lead_id AND l.is_current
+    ),
     l2c AS (
       SELECT b.from_id AS lead_id, ANY_VALUE(b.to_id) AS contact_id, COUNT(DISTINCT b.to_id) AS n_contatos
       FROM ${wh.t('silver', 'bridge_association')} b
-      JOIN alvo a ON a.lead_id = b.from_id
+      JOIN alvo_c a ON a.lead_id = b.from_id
       WHERE b.from_object = 'lead' AND b.to_object = 'contact' AND b.is_active
       GROUP BY 1
     )
     SELECT c.lead_id, c.n_contatos,
-           COUNTIF(f.is_connected) AS ligacoes_conectadas,
-           COUNTIF(f.kind = 'emails' AND f.is_outbound_message) AS emails_enviados,
-           COUNTIF(f.channel_type = 'LINKEDIN_MESSAGE' AND f.is_outbound_message) AS linkedin_enviados,
-           COUNTIF(f.channel_type = 'WHATS_APP' AND f.is_outbound_message AND IFNULL(f.source_label,'') != 'INTEGRATION') AS whatsapp_manual,
-           COUNTIF(f.is_meeting_held) AS reunioes,
-           COUNTIF(${ATIV_MANUAL}) AS toques_manuais,
-           COUNTIF(${ATIV_AUTOMACAO}) AS toques_automacao,
-           FORMAT_TIMESTAMP('%F', MIN(IF(${ATIV_MANUAL}, f.occurred_at, NULL)), 'America/Sao_Paulo') AS primeiro_toque
+           COUNTIF(${APOS_CRIACAO} AND f.is_connected) AS ligacoes_conectadas,
+           COUNTIF(${APOS_CRIACAO} AND f.kind = 'emails' AND f.is_outbound_message) AS emails_enviados,
+           COUNTIF(${APOS_CRIACAO} AND f.channel_type = 'LINKEDIN_MESSAGE' AND f.is_outbound_message) AS linkedin_enviados,
+           COUNTIF(${APOS_CRIACAO} AND f.channel_type = 'WHATS_APP' AND f.is_outbound_message AND IFNULL(f.source_label,'') != 'INTEGRATION') AS whatsapp_manual,
+           COUNTIF(${APOS_CRIACAO} AND f.is_meeting_held) AS reunioes,
+           COUNTIF(${APOS_CRIACAO} AND ${ATIV_MANUAL}) AS toques_manuais,
+           COUNTIF(${APOS_CRIACAO} AND ${ATIV_AUTOMACAO}) AS toques_automacao,
+           -- Herdado do contato: existe, é informação, e NÃO conta como toque no lead.
+           COUNTIF(NOT ${APOS_CRIACAO} AND ${ATIV_MANUAL}) AS toques_manuais_antes,
+           FORMAT_TIMESTAMP('%F', MIN(IF(${APOS_CRIACAO} AND ${ATIV_MANUAL}, f.occurred_at, NULL)), 'America/Sao_Paulo') AS primeiro_toque
     FROM l2c c
+    JOIN alvo_c b2 ON b2.lead_id = c.lead_id
     LEFT JOIN ${wh.t('silver', 'fact_engagement')} f ON f.contact_id = c.contact_id
     GROUP BY 1, 2
   `, [
@@ -255,6 +287,7 @@ async function atividade(pipes, since, until) {
       reunioes: wh.num(r.reunioes),
       toques_manuais: wh.num(r.toques_manuais),
       toques_automacao: wh.num(r.toques_automacao),
+      toques_manuais_antes: wh.num(r.toques_manuais_antes),
       primeiro_toque: wh.str(r.primeiro_toque),
     };
   });
@@ -641,7 +674,7 @@ const DIM_SQL = {
  * consultas com a mesma intenção escrita duas vezes é como os totais da tabela param
  * de bater com a soma dos drills.
  */
-function coorteCTE(pipes) {
+function coorteCTE(pipes, bdrIds) {
   const canonPairs = Object.keys(STAGE_CANON)
     .map(sid => `STRUCT('${sid}' AS sid, '${STAGE_CANON[sid]}' AS c)`)
     .join(',');
@@ -651,7 +684,10 @@ function coorteCTE(pipes) {
       SELECT l.lead_id, l.lead_name, l.owner_id, l.pipeline_id, l.stage_id,
              l.motivo_desqualificacao,
              IFNULL(NULLIF(l.origem_canonica,''), l.origem_fonte) AS origem,
-             DATE(l.hs_created_at, 'America/Sao_Paulo') AS criado
+             DATE(l.hs_created_at, 'America/Sao_Paulo') AS criado,
+             -- timestamp, não data: a régua de toque é limitada à criação do lead
+             -- (APOS_CRIACAO), e no dia da criação a hora decide.
+             l.hs_created_at AS criado_em
       FROM ${wh.t('silver', 'dim_lead')} l
       WHERE l.is_current AND l.pipeline_id IN (${sqlList(pipes)})
         AND DATE(l.hs_created_at, 'America/Sao_Paulo') BETWEEN DATE(@since) AND DATE(@until)
@@ -689,16 +725,22 @@ function coorteCTE(pipes) {
     -- sem declarar o que foi procurado foi o defeito de 11/08 (caso Rui Medeiros), e
     -- devolver só o total reintroduz ele pela porta de trás — o front cairia em
     -- "nenhum toque" por ausência de campo, não por ausência de toque.
+    -- Toque só conta APÓS a criação do lead. O contato tem vida anterior ao lead e ela
+    -- não é esforço neste lead — ver APOS_CRIACAO. O que ficou de fora não desaparece:
+    -- vira toques_manuais_antes e o bucket toque_herdado.
     ativ AS (
       SELECT c.lead_id,
-             COUNTIF(f.is_connected) AS ligacoes_conectadas,
-             COUNTIF(f.kind = 'emails' AND f.is_outbound_message) AS emails_enviados,
-             COUNTIF(f.channel_type = 'LINKEDIN_MESSAGE' AND f.is_outbound_message) AS linkedin_enviados,
-             COUNTIF(f.channel_type = 'WHATS_APP' AND f.is_outbound_message AND IFNULL(f.source_label,'') != 'INTEGRATION') AS whatsapp_manual,
-             COUNTIF(f.is_meeting_held) AS reunioes,
-             COUNTIF(${ATIV_MANUAL})    AS toques_manuais,
-             COUNTIF(${ATIV_AUTOMACAO}) AS toques_automacao
+             COUNTIF(${APOS_CRIACAO} AND f.is_connected) AS ligacoes_conectadas,
+             COUNTIF(${APOS_CRIACAO} AND f.kind = 'emails' AND f.is_outbound_message) AS emails_enviados,
+             COUNTIF(${APOS_CRIACAO} AND f.channel_type = 'LINKEDIN_MESSAGE' AND f.is_outbound_message) AS linkedin_enviados,
+             COUNTIF(${APOS_CRIACAO} AND f.channel_type = 'WHATS_APP' AND f.is_outbound_message AND IFNULL(f.source_label,'') != 'INTEGRATION') AS whatsapp_manual,
+             COUNTIF(${APOS_CRIACAO} AND f.is_meeting_held) AS reunioes,
+             COUNTIF(${APOS_CRIACAO} AND ${ATIV_MANUAL})    AS toques_manuais,
+             COUNTIF(${APOS_CRIACAO} AND ${ATIV_AUTOMACAO}) AS toques_automacao,
+             COUNTIF(NOT ${APOS_CRIACAO} AND ${ATIV_MANUAL})    AS toques_manuais_antes,
+             COUNTIF(NOT ${APOS_CRIACAO} AND ${ATIV_AUTOMACAO}) AS toques_automacao_antes
       FROM l2c c
+      JOIN base b2 ON b2.lead_id = c.lead_id
       LEFT JOIN ${wh.t('silver', 'fact_engagement')} f ON f.contact_id = c.contact_id
       GROUP BY 1
     ),
@@ -719,6 +761,8 @@ function coorteCTE(pipes) {
               OR (SELECT c.c FROM canon c WHERE c.sid = b.stage_id) = 'desqualificado') AS desqualificado,
              IFNULL(a.toques_manuais, 0)      AS toques_manuais,
              IFNULL(a.toques_automacao, 0)    AS toques_automacao,
+             IFNULL(a.toques_manuais_antes, 0)   AS toques_manuais_antes,
+             IFNULL(a.toques_automacao_antes, 0) AS toques_automacao_antes,
              IFNULL(a.ligacoes_conectadas, 0) AS ligacoes_conectadas,
              IFNULL(a.emails_enviados, 0)     AS emails_enviados,
              IFNULL(a.linkedin_enviados, 0)   AS linkedin_enviados,
@@ -740,10 +784,25 @@ function coorteCTE(pipes) {
              ${DIM_SQL.tier}   AS dim_tier,
              ${DIM_SQL.vidas}  AS dim_vidas,
              ${DIM_SQL.origem} AS dim_origem,
+             -- PARTIÇÃO MECE de 4 buckets, em ORDEM DE PRIORIDADE — a soma dos quatro
+             -- é criados, e isso está afirmado em teste. O que sabemos DEPOIS da
+             -- criação manda; o herdado só entra quando não há nada depois.
              toques_manuais > 0 AS atividade_real,
              toques_manuais = 0 AND toques_automacao > 0 AS so_automacao,
+             toques_manuais = 0 AND toques_automacao = 0
+               AND (toques_manuais_antes > 0 OR toques_automacao_antes > 0) AS toque_herdado,
+             toques_manuais = 0 AND toques_automacao = 0
+               AND toques_manuais_antes = 0 AND toques_automacao_antes = 0 AS nunca_tocado,
              max_rank >= 1 AS atingiu_tentativa_etapa,
-             max_rank >= 2 AS atingiu_conectado_etapa
+             max_rank >= 2 AS atingiu_conectado_etapa,
+             -- QUEM É BDR VIAJA COM A LINHA, em TODAS as dimensões — não só no corte
+             -- por pessoa. Sem isto, ligar "só BDRs" filtraria a tabela de gente e
+             -- deixaria o corte por porte/origem contando lead de executivo: os dois
+             -- números na mesma tela, com a mesma cara, medindo universos diferentes.
+             -- A lista vem interpolada, não por @param, porque o cliente BQ deste
+             -- projeto recusa ARRAY em parâmetro (lib/bigquery.js:250). sqlList() só
+             -- deixa passar [A-Za-z0-9_-], e os ids vêm de dim_owner, não do request.
+             owner_id IN (${sqlList(bdrIds || [])}${(bdrIds || []).length ? '' : "''"}) AS owner_bdr
       FROM flat f
     )`;
 }
@@ -761,63 +820,240 @@ function coorteCTE(pipes) {
  * o drill, não para a conta. A conta é a agregação, e ela cobre 100% da coorte
  * independente do cap.
  */
-async function coorteAgregada(pipes, since, until) {
+/**
+ * A SÉRIE TEMPORAL SAI DA MESMA VARREDURA, e é por isso que ela cabe.
+ *
+ * A coorte é cara: a CTE junta lead → contato → engajamento → empresa → bronze. Rodar
+ * uma SEGUNDA consulta só para a linha do tempo dobraria o custo e o tempo de resposta
+ * para desenhar o mesmo dado com outro GROUP BY. Aqui o bucket entra como coluna: as
+ * linhas do agregado saem com `bucket='total'`, as da série com o período de verdade,
+ * tudo num UNION ALL sobre a MESMA CTE.
+ *
+ * GRANULARIDADE ADAPTATIVA: mês em janela longa, semana ISO em janela curta. Semana em
+ * 936 dias daria 134 pontos ilegíveis; mês em 11 dias daria UM ponto, que não é série.
+ * O corte é declarado no payload, porque mudar de régua sem avisar é como duas telas
+ * "iguais" passam a discordar.
+ */
+const GRAN_LIMITE_DIAS = 120;
+function bucketSql(gran) {
+  return gran === 'semana'
+    ? `FORMAT_DATE('%G-W%V', criado)`   // semana ISO: ano-semana, sem virada quebrada
+    : `FORMAT_DATE('%Y-%m', criado)`;
+}
+
+async function coorteAgregada(pipes, since, until, bdrIds, gran) {
   const dims = [
     ['bdr', 'owner_id'], ['porte', 'dim_porte'], ['tier', 'dim_tier'],
     ['vidas', 'dim_vidas'], ['origem', 'dim_origem'],
   ];
+  // A SÉRIE CARREGA MENOS COLUNAS QUE O AGREGADO, de propósito: ela multiplica cada
+  // corte pelo número de períodos, e os campos de régua de toque (atividade, herdado,
+  // automação) não são desenhados no eixo do tempo. Na janela completa isso é ~800
+  // linhas — mandar 13 campos onde 7 bastam engordaria a resposta perto do teto da
+  // Vercel para nada.
+  //
+  // A ORDEM DAS COLUNAS É O CONTRATO: UNION ALL no BigQuery casa por POSIÇÃO, não por
+  // nome. Um campo fora de lugar aqui não dá erro — dá número errado com rótulo certo,
+  // que é o defeito mais caro que existe. Por isso as ausentes entram como
+  // CAST(NULL AS INT64) na MESMA posição do bloco agregado.
+  const METRICAS_SERIE = `
+           COUNT(*) AS criados,
+           CAST(NULL AS INT64) AS com_atividade,
+           COUNTIF(atingiu_tentativa_etapa) AS por_etapa,
+           COUNTIF(atingiu_conectado_etapa) AS conectados,
+           CAST(NULL AS INT64) AS ambos,
+           CAST(NULL AS INT64) AS so_automacao,
+           CAST(NULL AS INT64) AS toque_herdado,
+           CAST(NULL AS INT64) AS nunca_tocados,
+           COUNTIF(qualificado) AS qualificados,
+           COUNTIF(deal_id IS NOT NULL) AS com_deal,
+           COUNTIF(qualificado AND deal_id IS NOT NULL) AS qual_com_deal,
+           CAST(NULL AS INT64) AS deal_sem_qualificar,
+           COUNTIF(desqualificado) AS desqualificados`;
+  // `owner_bdr` entra no GROUP BY de TODA dimensão: é o que permite ao front somar
+  // "só BDRs" em qualquer corte sem uma segunda ida ao banco, e é 2x linhas, não 2x
+  // varredura — a CTE é a mesma.
   const blocos = dims.map(([nome, col]) => `
-    SELECT '${nome}' AS dimensao, CAST(${col} AS STRING) AS valor,
+    SELECT '${nome}' AS dimensao, CAST(${col} AS STRING) AS valor, owner_bdr, 'total' AS bucket,
            COUNT(*) AS criados,
            COUNTIF(atividade_real) AS com_atividade,
            COUNTIF(atingiu_tentativa_etapa) AS por_etapa,
+           COUNTIF(atingiu_conectado_etapa) AS conectados,
            COUNTIF(atingiu_tentativa_etapa AND atividade_real) AS ambos,
            COUNTIF(so_automacao) AS so_automacao,
-           COUNTIF(NOT atividade_real AND NOT so_automacao) AS nunca_tocados,
+           COUNTIF(toque_herdado) AS toque_herdado,
+           COUNTIF(nunca_tocado) AS nunca_tocados,
            COUNTIF(qualificado) AS qualificados,
            COUNTIF(deal_id IS NOT NULL) AS com_deal,
+           -- O DEAL NÃO É SUBCONJUNTO DO QUALIFICADO, e isso apareceu como taxa de
+           -- 110% na primeira medição (ago/26: 11 deals para 10 qualificados). Há
+           -- lead que ganha deal sem NUNCA ter passado por Qualificado no histórico
+           -- de etapa. O passo do funil precisa do cruzamento, senão a conversão
+           -- estoura 100% e a tela vira piada; e o caso avulso não some — vira
+           -- deal_sem_qualificar, que é achado de processo, não erro de conta.
+           COUNTIF(qualificado AND deal_id IS NOT NULL) AS qual_com_deal,
+           COUNTIF(NOT qualificado AND deal_id IS NOT NULL) AS deal_sem_qualificar,
            COUNTIF(desqualificado) AS desqualificados
-    FROM dim GROUP BY 1, 2`).join('\n    UNION ALL');
+    FROM dim GROUP BY 1, 2, 3`).join('\n    UNION ALL');
+
+  // Os mesmos cortes, agora por período de CRIAÇÃO do lead — a coorte é seguida até
+  // hoje, então o eixo do tempo é quando o lead nasceu, não quando ele converteu.
+  const blocosSerie = dims.map(([nome, col]) => `
+    SELECT '${nome}' AS dimensao, CAST(${col} AS STRING) AS valor, owner_bdr, ${bucketSql(gran)} AS bucket,
+    ${METRICAS_SERIE}
+    FROM dim GROUP BY 1, 2, 3, 4`).join('\n    UNION ALL');
 
   const P = [
     { name: 'since', type: 'DATE', value: since },
     { name: 'until', type: 'DATE', value: until },
   ];
-  const { rows } = await wh.query(coorteCTE(pipes) + blocos, P);
-  const por = {};
+  const { rows } = await wh.query(coorteCTE(pipes, bdrIds) + blocos + '\n    UNION ALL' + blocosSerie, P);
+  const por = {}, serie = {};
   rows.forEach(r => {
     const d = wh.str(r.dimensao);
-    (por[d] = por[d] || []).push({
+    const bucket = wh.str(r.bucket);
+    const base = {
       valor: wh.str(r.valor) || '(sem valor)',
+      bdr: wh.bool(r.owner_bdr),
       criados: wh.num(r.criados),
-      com_atividade: wh.num(r.com_atividade),
       por_etapa: wh.num(r.por_etapa),
-      ambos: wh.num(r.ambos),
-      so_automacao: wh.num(r.so_automacao),
-      nunca_tocados: wh.num(r.nunca_tocados),
+      conectados: wh.num(r.conectados),
       qualificados: wh.num(r.qualificados),
       com_deal: wh.num(r.com_deal),
+      qual_com_deal: wh.num(r.qual_com_deal),
       desqualificados: wh.num(r.desqualificados),
-    });
+    };
+    if (bucket === 'total') {
+      (por[d] = por[d] || []).push({
+        ...base,
+        com_atividade: wh.num(r.com_atividade),
+        ambos: wh.num(r.ambos),
+        so_automacao: wh.num(r.so_automacao),
+        toque_herdado: wh.num(r.toque_herdado),
+        nunca_tocados: wh.num(r.nunca_tocados),
+        deal_sem_qualificar: wh.num(r.deal_sem_qualificar),
+      });
+    } else {
+      (serie[d] = serie[d] || []).push({ ...base, bucket });
+    }
   });
-  return por;
+  return { por, serie };
+}
+
+/**
+ * QUEM É BDR E QUEM É EXECUTIVO — a classificação, em um lugar só.
+ *
+ * O corte por pessoa desta tela listava TODO dono de lead, e dono de lead não é
+ * sinônimo de BDR: em ago/26 apareciam Aurilia Rodrigues (613 leads, SuperAdmin),
+ * Beatriz Honorato, Rafael Leite Ferreira, André Pontes e mais uma dúzia de closers e
+ * ex-BDRs arquivados, misturados com o time. Numa tabela chamada "BDR", isso não é
+ * informação a mais: é gente que não é BDR ocupando o rank de BDR.
+ *
+ * A régua tem três degraus, do mais forte para o mais fraco:
+ *   1. ROSTER canônico (`lib/bdr-team.js`) — 13 nomes, a mesma fonte que o resto de
+ *      /novo-bdr já usa. Quem está aqui é BDR, ponto.
+ *   2. BDR ATIVO DO PORTAL fora do roster — `owner_role='BDR'`, não arquivado e SEM
+ *      time de closer. É o caso da Raina Cândido (137 leads em jun–ago/26): BDR de
+ *      verdade que ninguém cadastrou no roster. Excluí-la apagaria trabalho real.
+ *   3. O RESTO é não-BDR, com o motivo nomeado — executivo, closer que também está no
+ *      time de BDR do portal (Rafael, Juliana, Guilherme, Fausto), Placement, ou BDR
+ *      arquivado. Não some da tela: fica atrás do filtro, e o filtro diz quantos são.
+ *
+ * `owner_role` sozinho não resolve o degrau 3: o portal marca como BDR quem está no
+ * time "BDR (Prospecção / Pré-vendas)" mesmo estando TAMBÉM em "Executivos de Vendas
+ * (Closer)" — quatro pessoas hoje. Time de closer vence.
+ */
+const TIME_CLOSER = /executivos de vendas/i;
+async function ownersInfo() {
+  const { rows } = await wh.query(`
+    SELECT owner_id, full_name, email, teams, owner_role, archived
+    FROM ${wh.t('silver', 'dim_owner')}
+    WHERE is_current
+  `);
+  const info = {};
+  rows.forEach(r => {
+    const id = wh.str(r.owner_id);
+    if (!id) return;
+    info[id] = {
+      nome: wh.str(r.full_name) || wh.str(r.email) || id,
+      teams: wh.str(r.teams) || '',
+      role: wh.str(r.owner_role) || '',
+      archived: wh.bool(r.archived),
+    };
+  });
+  return info;
+}
+
+/** Classifica UM owner_id. `roster` = está no BDR_TEAM canônico. */
+function classificaOwner(info, roster) {
+  if (roster) return { bdr: true, papel: 'BDR do roster' };
+  if (!info) return { bdr: false, papel: 'dono desconhecido' };
+  const closer = TIME_CLOSER.test(info.teams);
+  if (info.role === 'BDR' && !info.archived && !closer) return { bdr: true, papel: 'BDR do portal, fora do roster' };
+  if (info.role === 'BDR' && info.archived) return { bdr: false, papel: 'BDR arquivado' };
+  if (closer) return { bdr: false, papel: 'Executivo de vendas (closer)' };
+  return { bdr: false, papel: info.role ? `${info.role} (não é BDR)` : 'sem papel no portal' };
+}
+
+/**
+ * AS TAXAS DE CONVERSÃO, calculadas em um lugar só, a partir da agregação.
+ *
+ * Cada passo declara NUMERADOR e DENOMINADOR além do percentual. Taxa sem os dois
+ * absolutos é irrefutável do jeito errado: 50% de 4 e 50% de 400 pedem decisões
+ * diferentes, e quem lê só o percentual não tem como saber em qual dos dois está.
+ *
+ * A régua é de COORTE e ela é acumulada: "chegou a Conectado" quer dizer que o lead
+ * VISITOU a etapa em algum momento, não que ele esteja lá agora. Por isso os passos
+ * encaixam (todo Conectado+ é Tentativa+) e a conversão do processo é o produto dos
+ * passos, não uma sexta conta independente.
+ */
+function conversao(linhas) {
+  const s = f => linhas.reduce((a, r) => a + (r[f] || 0), 0);
+  const criados = s('criados'), tentativa = s('por_etapa'), conectado = s('conectados');
+  const qualificado = s('qualificados'), deal = s('com_deal'), desq = s('desqualificados');
+  const qualComDeal = s('qual_com_deal'), dealSemQual = s('deal_sem_qualificar');
+  const passo = (rot, de, num, den) => ({
+    passo: rot, de, n: num, base: den,
+    pct: den ? +(num / den * 100).toFixed(1) : null,
+    perda: den - num,
+  });
+  return {
+    criados,
+    etapas: { tentativa, conectado, qualificado, deal, desqualificados: desq },
+    // Deal que nunca passou por Qualificado. Não entra no passo (estouraria 100%) e
+    // não é escondido: é lead que virou negócio sem a etapa registrada.
+    deal_sem_qualificar: dealSemQual,
+    passos: [
+      passo('Novo → Tentativa+', 'criados', tentativa, criados),
+      passo('Tentativa+ → Conectado+', 'tentativa', conectado, tentativa),
+      passo('Conectado+ → Qualificado', 'conectado', qualificado, conectado),
+      passo('Qualificado → Deal', 'qualificado', qualComDeal, qualificado),
+    ],
+    processo: {
+      criado_para_qualificado: passo('Criado → Qualificado', 'criados', qualificado, criados),
+      criado_para_deal: passo('Criado → Deal', 'criados', deal, criados),
+      descarte: passo('Criado → Desqualificado', 'criados', desq, criados),
+    },
+  };
 }
 
 /** Detalhe por lead, para o DRILL. Capado, com a truncagem declarada. */
 const COORTE_TETO = 1500;
 const DESQ_TETO = 1500;
-async function coorteDetalhe(pipes, since, until) {
+async function coorteDetalhe(pipes, since, until, bdrIds) {
   const P = [
     { name: 'since', type: 'DATE', value: since },
     { name: 'until', type: 'DATE', value: until },
   ];
-  const { rows } = await wh.query(coorteCTE(pipes) + `
+  const { rows } = await wh.query(coorteCTE(pipes, bdrIds) + `
     SELECT lead_id, lead_name, owner_id, pipeline_id, stage_id, criado,
            motivo_desqualificacao, deal_id, company_id, company_name,
            colaboradores, vidas, tier_colaboradores,
-           dim_porte, dim_tier, dim_vidas, dim_origem,
-           atividade_real, so_automacao, atingiu_tentativa_etapa, atingiu_conectado_etapa,
+           dim_porte, dim_tier, dim_vidas, dim_origem, owner_bdr,
+           atividade_real, so_automacao, toque_herdado, nunca_tocado,
+           atingiu_tentativa_etapa, atingiu_conectado_etapa,
            qualificado, desqualificado, toques_manuais, toques_automacao,
+           toques_manuais_antes, toques_automacao_antes,
            ligacoes_conectadas, emails_enviados, linkedin_enviados, whatsapp_manual, reunioes
     FROM dim
     ORDER BY criado DESC
@@ -838,14 +1074,22 @@ async function coorteDetalhe(pipes, since, until) {
       desqualificado: wh.bool(r.desqualificado),
       atividade_real: wh.bool(r.atividade_real),
       so_automacao: wh.bool(r.so_automacao),
+      toque_herdado: wh.bool(r.toque_herdado),
+      nunca_tocado: wh.bool(r.nunca_tocado),
       toques_manuais: wh.num(r.toques_manuais),
       toques_automacao: wh.num(r.toques_automacao),
+      // Toque no CONTATO anterior ao lead. Os DOIS viajam: se só o manual viajasse, o
+      // lead cujo único histórico é automação pré-lead cairia em "✖ nenhum toque" no
+      // drill — afirmação de ausência falsa, por ausência de CAMPO e não de toque.
+      toques_manuais_antes: wh.num(r.toques_manuais_antes),
+      toques_automacao_antes: wh.num(r.toques_automacao_antes),
       // Por canal — o drill nomeia o canal em vez de afirmar ausência sem universo.
       ligacoes_conectadas: wh.num(r.ligacoes_conectadas),
       emails_enviados: wh.num(r.emails_enviados),
       linkedin_enviados: wh.num(r.linkedin_enviados),
       whatsapp_manual: wh.num(r.whatsapp_manual),
       reunioes: wh.num(r.reunioes),
+      owner_bdr: wh.bool(r.owner_bdr),
       deal_id: wh.str(r.deal_id),
       empresa_id: wh.str(r.company_id),
       empresa: wh.str(r.company_name),
@@ -859,6 +1103,77 @@ async function coorteDetalhe(pipes, since, until) {
       dim_vidas: wh.str(r.dim_vidas), dim_origem: wh.str(r.dim_origem),
     })),
   };
+}
+
+/**
+ * TRABALHO NA JANELA — o que a pessoa fez no período, fora da coorte.
+ *
+ * Existe porque a coorte responde outra pergunta e o corte por BDR fazia a tela
+ * mentir por omissão. A coorte é "dos leads CRIADOS na janela, em quantos se falou" —
+ * régua certa para atributo de lead (porte, tier, vidas, origem), porque o atributo
+ * nasce com o lead. Para PESSOA ela é enganosa: BDR que trabalha carteira antiga
+ * aparece com denominador minúsculo, e BDR que não criou nada **desaparece da tabela**.
+ *
+ * Auditoria de caso do dono (11/08, ago/26): Gabriele Almeida aparecia com "criou 5,
+ * falou com 5" — e no mesmo período tocou **41 leads com 64 toques**. Pior, o
+ * `GROUP BY` da coorte simplesmente não emitia linha para quem criou zero: **Cíntia
+ * Rodrigues (35 leads / 66 toques), Anderson Souza (12/27), Thauan Pontes (6/10) e
+ * Yokyko Muramoto (6/9) estavam ausentes da tabela** com trabalho medido no armazém.
+ * Ausência lida como "não fez nada" é o mesmo defeito do "✖ sem toque" do Rui
+ * Medeiros, na dimensão de gente.
+ *
+ * ATRIBUIÇÃO POR QUEM TOCOU (`fact_engagement.owner_id`), não pelo dono do lead — a
+ * coluna responde "o que ESTA pessoa fez". A diferença é material e não teórica: dos
+ * 1.585 toques de ago/26 no recorte, **378 (24%) foram feitos por alguém diferente do
+ * dono atual do lead**. Creditar pelo dono daria a uma BDR o toque que outra fez.
+ * A coluna `criados` continua sendo por dono do lead — são réguas diferentes de
+ * propósito, e ambas estão declaradas em `premissas.trabalho_na_janela`.
+ */
+async function trabalhoNaJanela(pipes, since, until) {
+  const { rows } = await wh.query(`
+    WITH l AS (
+      SELECT lead_id FROM ${wh.t('silver', 'dim_lead')}
+      WHERE is_current AND pipeline_id IN (${sqlList(pipes)})
+    ),
+    l2c AS (
+      SELECT b.from_id AS lead_id, ANY_VALUE(b.to_id) AS contact_id
+      FROM ${wh.t('silver', 'bridge_association')} b JOIN l ON l.lead_id = b.from_id
+      WHERE b.from_object='lead' AND b.to_object='contact' AND b.is_active GROUP BY 1
+    ),
+    -- engagement_id viaja porque UM CONTATO PODE TER VÁRIOS LEADS: o join
+    -- toque→contato→lead multiplica o mesmo toque por quantos leads o contato tem.
+    -- Sem o DISTINCT, Gabriele Almeida aparecia com 173 toques tendo feito 168 —
+    -- inflação de 3% que cresce com o reuso de contato, e infla justamente quem
+    -- trabalha a mesma base mais de uma vez.
+    tq AS (
+      SELECT DISTINCT f.owner_id, c.lead_id, f.engagement_id
+      FROM l2c c
+      JOIN ${wh.t('silver', 'fact_engagement')} f ON f.contact_id = c.contact_id
+      WHERE DATE(f.occurred_at, 'America/Sao_Paulo') BETWEEN DATE(@since) AND DATE(@until)
+        AND ${ATIV_MANUAL}
+    )
+    SELECT 'owner' AS escopo, owner_id,
+           COUNT(DISTINCT lead_id) AS leads, COUNT(DISTINCT engagement_id) AS toques
+    FROM tq GROUP BY 1, 2
+    UNION ALL
+    -- O total do time NÃO é a soma das linhas: lead tocado por dois BDRs entraria duas
+    -- vezes. Sai daqui, com DISTINCT sobre o time inteiro.
+    SELECT 'time' AS escopo, NULL,
+           COUNT(DISTINCT lead_id), COUNT(DISTINCT engagement_id) FROM tq
+  `, [
+    { name: 'since', type: 'DATE', value: since },
+    { name: 'until', type: 'DATE', value: until },
+  ]);
+  const porOwner = {};
+  let semDono = { leads: 0, toques: 0 };
+  let time = { leads: 0, toques: 0 };
+  rows.forEach(r => {
+    const v = { leads: wh.num(r.leads), toques: wh.num(r.toques) };
+    if (wh.str(r.escopo) === 'time') { time = v; return; }
+    const id = wh.str(r.owner_id);
+    if (!id) semDono = v; else porOwner[id] = v;
+  });
+  return { porOwner, semDono, time };
 }
 
 /** Contraprova ao vivo: Search API por etapa (barata, `total` sem paginar). */
@@ -918,18 +1233,33 @@ module.exports = async (req, res) => {
       return res.status(200).json({ ..._cache[cacheKey].data, cache: true });
     }
 
-    // A atividade vem PRIMEIRO porque a régua é única e a coorte depende dela.
-    const [snap, wf, mac, ativ, agg, det, owners] = await Promise.all([
+    // O QUEM VEM ANTES DO QUANTO: a lista de owner_ids de BDR entra nas consultas de
+    // coorte como parâmetro, então ela não pode ser resolvida depois. A consulta é a
+    // dim_owner inteira (dezenas de linhas) — serializar isto custa milissegundos.
+    const info = await ownersInfo();
+    const owners = {};
+    Object.keys(info).forEach(id => { owners[id] = info[id].nome; });
+
+    const idToBdr = resolveTeamIds(owners);
+    // Papel por owner_id, e a lista de ids que a tabela "BDR" aceita como BDR.
+    const papelDe = {};
+    Object.keys(info).forEach(id => { papelDe[id] = classificaOwner(info[id], !!idToBdr[id]); });
+    const bdrIds = Object.keys(papelDe).filter(id => papelDe[id].bdr);
+
+    // Semana em janela longa daria 134 pontos ilegíveis; mês em janela de 11 dias daria
+    // UM ponto, que não é série. O corte viaja no payload em vez de ficar implícito.
+    const gran = dias <= GRAN_LIMITE_DIAS ? 'semana' : 'mes';
+
+    const [snap, wf, mac, ativ, aggTudo, det, trab] = await Promise.all([
       snapshot(pipes),
       waterfall(pipes, since, until),
       macro(pipes, since, until),
-      atividade(pipes, since, until),
-      coorteAgregada(pipes, since, until),   // GROUP BY no BigQuery
-      coorteDetalhe(pipes, since, until),    // detalhe capado, para o drill
-      whq.ownerMap(),
+      atividade(pipes, since, until),        // a régua é única, e a coorte depende dela
+      coorteAgregada(pipes, since, until, bdrIds, gran), // GROUP BY + série, uma varredura
+      coorteDetalhe(pipes, since, until, bdrIds),    // detalhe capado, para o drill
+      trabalhoNaJanela(pipes, since, until), // o que a PESSOA fez, fora da coorte
     ]);
-
-    const idToBdr = resolveTeamIds(owners);
+    const agg = aggTudo.por;
 
     // Nome do dono e do autor. Autor: `updated_by_user_id` casa com
     // `dim_owner.owner_id` em 17/17 hoje — coincidência medida, não contrato, e por
@@ -974,22 +1304,88 @@ module.exports = async (req, res) => {
 
     // A dimensão BDR vem do BQ por owner_id; colapsar em nome canônico é aqui, porque
     // é o JS que conhece o roster (dois owner_ids podem ser o mesmo BDR por alias).
+    const ZERO_COORTE = () => ({ criados: 0, com_atividade: 0, por_etapa: 0, conectados: 0,
+      ambos: 0, so_automacao: 0, toque_herdado: 0, nunca_tocados: 0, qualificados: 0,
+      com_deal: 0, qual_com_deal: 0, deal_sem_qualificar: 0, desqualificados: 0 });
+    const CAMPOS_COORTE = Object.keys(ZERO_COORTE());
+
     const porDimensao = { ...agg };
     if (agg.bdr) {
       const m = {};
+      const linha = k => (m[k] = m[k] || { valor: k, ...ZERO_COORTE(), trab_leads: 0, trab_toques: 0 });
+      // O papel viaja por NOME canônico, porque é por nome que as linhas colapsam.
+      // Um nome só tem um papel: se qualquer owner_id dele é BDR, o nome é BDR.
+      const papelPorNome = {};
+      const marcaPapel = id => {
+        const nomeCanon = bdrDe(id), p = papelDe[id] || classificaOwner(info[id], !!idToBdr[id]);
+        const atual = papelPorNome[nomeCanon];
+        if (!atual || (p.bdr && !atual.bdr)) papelPorNome[nomeCanon] = p;
+      };
       agg.bdr.forEach(r => {
-        const k = bdrDe(r.valor);
-        const a = m[k] = m[k] || { valor: k, criados: 0, com_atividade: 0, por_etapa: 0, ambos: 0,
-          so_automacao: 0, nunca_tocados: 0, qualificados: 0, com_deal: 0, desqualificados: 0 };
-        Object.keys(a).forEach(f => { if (f !== 'valor') a[f] += r[f]; });
+        marcaPapel(r.valor);
+        const a = linha(bdrDe(r.valor));
+        CAMPOS_COORTE.forEach(f => { a[f] += r[f] || 0; });
       });
-      porDimensao.bdr = Object.values(m);
+
+      // TRABALHO NA JANELA colado na mesma linha. É o que impede a tabela de dizer
+      // "criou 5, falou com 5" para quem tocou 41 leads no mesmo período.
+      //
+      // Colapsar por nome soma `leads` de owner_ids distintos: BDR com 2 ids (Cíntia,
+      // 86900152 legado + 87213208 ativo) pode contar duas vezes um lead tocado pelos
+      // dois. Declarado em `divergencias_conhecidas.trabalho_multi_owner_id` — o id
+      // legado não tem linhas no BQ, então hoje o efeito medido é zero.
+      Object.keys(trab.porOwner).forEach(id => {
+        marcaPapel(id);
+        const a = linha(bdrDe(id));
+        a.trab_leads  += trab.porOwner[id].leads;
+        a.trab_toques += trab.porOwner[id].toques;
+      });
+
+      // O ROSTER INTEIRO GANHA LINHA, mesmo zerado. Linha ausente lê como "não fez
+      // nada" e é indistinguível de "não foi medido"; linha em zero é uma afirmação.
+      BDR_TEAM.forEach(n => linha(n));
+
+      // Duas marcas, e elas respondem coisas diferentes: `roster` diz se a pessoa está
+      // no BDR_TEAM canônico; `bdr` diz se ela é BDR de verdade — o que inclui o BDR
+      // ativo do portal fora do roster e EXCLUI closer, Placement, admin e ex-BDR
+      // arquivado. É `bdr` que o filtro "só BDRs" usa; sem ela a tabela chamada "BDR"
+      // rankeava executivo junto com o time.
+      porDimensao.bdr = Object.values(m).map(r => {
+        const roster = BDR_TEAM.indexOf(r.valor) >= 0;
+        const p = papelPorNome[r.valor] || (roster ? { bdr: true, papel: 'BDR do roster' } : { bdr: false, papel: 'dono desconhecido' });
+        return { ...r, roster, bdr: roster || p.bdr, papel: p.papel };
+      });
+
+      // A SÉRIE PASSA PELO MESMO COLAPSO. Se o eixo do tempo continuasse por owner_id
+      // enquanto a tabela mostra nome canônico, filtrar "Cíntia Rodrigues" no gráfico
+      // não acharia nada — o filtro casa por rótulo, e os dois rótulos têm de ser o
+      // MESMO. Aqui o colapso é por (nome, bucket).
+      if (aggTudo.serie.bdr) {
+        const ZERO_SERIE = { criados: 0, por_etapa: 0, conectados: 0, qualificados: 0,
+          com_deal: 0, qual_com_deal: 0, desqualificados: 0 };
+        const CAMPOS_SERIE = Object.keys(ZERO_SERIE);
+        const s = {};
+        aggTudo.serie.bdr.forEach(r => {
+          const nomeCanon = bdrDe(r.valor), k = nomeCanon + '|' + r.bucket;
+          const a = s[k] = s[k] || { valor: nomeCanon, bucket: r.bucket, ...ZERO_SERIE };
+          CAMPOS_SERIE.forEach(f => { a[f] += r[f] || 0; });
+        });
+        const papelDeNome = {};
+        (porDimensao.bdr || []).forEach(r => { papelDeNome[r.valor] = r; });
+        aggTudo.serie.bdr = Object.values(s).map(r => {
+          const ref = papelDeNome[r.valor] || {};
+          return { ...r, roster: !!ref.roster, bdr: ref.bdr !== false, papel: ref.papel || null };
+        });
+      }
     }
 
     // Os totais saem da AGREGAÇÃO, nunca da lista capada — é isso que faz a tabela
-    // continuar certa quando o detalhe é truncado.
+    // continuar certa quando o detalhe é truncado. Só campos NUMÉRICOS entram: somar
+    // `roster` daria contagem de gente disfarçada de métrica.
     const tot = (porDimensao.bdr || []).reduce((a, r) => {
-      Object.keys(r).forEach(f => { if (f !== 'valor') a[f] = (a[f] || 0) + r[f]; });
+      Object.keys(r).forEach(f => {
+        if (typeof r[f] === 'number') a[f] = (a[f] || 0) + r[f];
+      });
       return a;
     }, {});
     const n = tot.criados || 0;
@@ -1050,10 +1446,49 @@ module.exports = async (req, res) => {
           etapa_sem_atividade: (tot.por_etapa || 0) - (tot.ambos || 0),
           atividade_sem_etapa: (tot.com_atividade || 0) - (tot.ambos || 0),
           so_automacao: tot.so_automacao || 0,
+          toque_herdado: tot.toque_herdado || 0,
           nunca_tocados: tot.nunca_tocados || 0,
         },
         qualificados: tot.qualificados || 0,
         com_deal: tot.com_deal || 0,
+        // AS TAXAS DE CONVERSÃO, nas duas populações, sem a tela ter de escolher uma
+        // calada. `bdr` é o funil do time; `todos` inclui executivo, Placement e ex-BDR
+        // arquivado que também são donos de lead. A diferença entre os dois é o tamanho
+        // do que o filtro tira — e ela fica no payload para poder ser conferida.
+        // A LINHA DO TEMPO da mesma coorte, pelo período de CRIAÇÃO do lead. Vem por
+        // dimensão × valor, para o filtro de campo funcionar no gráfico sem uma segunda
+        // ida ao banco. O último bucket é declarado PARCIAL: a coorte recente ainda
+        // está viva e sempre converte menos — ler a queda do fim como piora é o erro
+        // clássico de gráfico de coorte.
+        serie: {
+          granularidade: gran,
+          regra_granularidade: `semana ISO em janela de até ${GRAN_LIMITE_DIAS} dias, mês acima disso (janela atual: ${dias} dias)`,
+          bucket_parcial: (() => {
+            const bs = new Set();
+            Object.keys(aggTudo.serie).forEach(d => aggTudo.serie[d].forEach(r => bs.add(r.bucket)));
+            return Array.from(bs).sort().pop() || null;
+          })(),
+          por_dimensao: aggTudo.serie,
+        },
+        conversao: {
+          regua: 'COORTE acumulada: leads CRIADOS na janela, seguidos até hoje. "Chegou a Conectado" = visitou a etapa em algum momento, não "está lá agora" — por isso os passos encaixam e a conversão do processo é o produto deles.',
+          bdr: conversao((porDimensao.bdr || []).filter(r => r.bdr)),
+          todos: conversao(porDimensao.bdr || []),
+          fora_do_time: (porDimensao.bdr || []).filter(r => !r.bdr && (r.criados || r.trab_toques))
+            .map(r => ({ dono: r.valor, papel: r.papel, criados: r.criados, toques_na_janela: r.trab_toques })),
+        },
+      },
+      // O QUE O TIME FEZ NA JANELA, independente da coorte. Vive fora de `coorte` de
+      // propósito: misturar as duas no mesmo objeto é como alguém soma um com o outro.
+      trabalho_na_janela: {
+        camada: 'silver', tabela: 'fact_engagement + bridge_association + dim_lead',
+        atribuicao: 'quem TOCOU (fact_engagement.owner_id), não o dono do lead',
+        // DISTINCT sobre o time, não soma das linhas: lead tocado por dois BDRs conta
+        // uma vez aqui e uma vez em cada linha, e as duas coisas estão certas.
+        leads_tocados: trab.time.leads,
+        toques: trab.time.toques,
+        soma_das_linhas: { leads: tot.trab_leads || 0, toques: tot.trab_toques || 0 },
+        sem_dono_no_toque: trab.semDono,
       },
       desqualificacoes: desq.slice(0, DESQ_TETO),
       desqualificacoes_total: desq.length,
@@ -1071,6 +1506,13 @@ module.exports = async (req, res) => {
         duas_reguas_de_contato: 'A tela mostra as DUAS e não escolhe. Régua de ETAPA = chegou a Tentativa+. Régua de ATIVIDADE REAL = ligação conectada OU e-mail enviado OU LinkedIn enviado (nota não conta). Medido em jul/26: 89,4% contra 46,7%, com 1.009 leads movidos para Tentativa sem UM toque no CRM. A premissa "teve que passar, senão não tem como" não se sustenta.',
         automacao_nao_e_esforco: 'Automação não é esforço do BDR: movimentação com source_type AUTOMATION_PLATFORM/INTEGRATION aparece como "Automação"/"Integração" no autor, nunca creditada a um BDR. Escala medida: 24% de TODAS as movimentações de etapa não têm autor humano (1.812 de 7.568 desde 01/07) — mas isso NÃO se distribui igual: em jul/26 as desqualificações foram 1.499 por CRM_UI e 1 por integração, ou seja a automação move lead ADIANTE (inscrição em sequência), quase nunca desqualifica. Ler os 24% como "um quarto das desqualificações é robô" seria errado.',
         dono_no_instante: 'Atribuição pelo dono NO INSTANTE do movimento (fact_owner_assignment), não pelo dono atual — em 184/184 casos rastreáveis a troca de dono veio DEPOIS do toque, então "dono atual" reescreve o passado.',
+        toque_apos_criacao: 'CORREÇÃO de 11/08/2026: o toque só conta se for POSTERIOR à criação do lead. A régua liga toque→lead pelo CONTATO (fact_engagement não tem lead_id) e o contato tem vida anterior ao lead — sem o limite, "falou com" contava trabalho de outro ciclo, às vezes de outra pessoa. Efeito na coorte de ago/26 (258 leads): 210 → 191, ou seja 19 leads (9%) cuja única prova de contato era um toque anterior à existência do lead, o mais antigo de 18/07/2024. Por pessoa o efeito muda a leitura: Raina Cândido saía com 2 de 11 e o número real é 0; Allan Valença 31 → 25; Gabriele Almeida 5 → 4. Nos leads movimentados na janela o corte é 535 → 510. O toque anterior NÃO é jogado fora: vira o bucket toque_herdado e o campo toques_manuais_antes no drill.',
+        trabalho_na_janela: 'A tabela tem DUAS réguas lado a lado e elas respondem perguntas diferentes. "Criaram/Falaram com" é COORTE — dos leads criados na janela, em quantos se falou — e é atribuída ao DONO do lead. "Trabalhou na janela" é o que a pessoa fez no período em leads de qualquer safra, atribuída a QUEM TOCOU (fact_engagement.owner_id). A segunda existe porque a primeira, no corte por pessoa, fazia a tela mentir por omissão: em ago/26 Gabriele Almeida aparecia com "criou 5, falou com 5" tendo tocado 41 leads com 64 toques, e Cíntia Rodrigues (35 leads/66 toques), Anderson Souza (12/27), Thauan Pontes (6/10) e Yokyko Muramoto (6/9) NÃO TINHAM LINHA na tabela, porque criaram zero e o GROUP BY não emite linha para zero. Atribuir por quem tocou não é detalhe: dos 1.585 toques de ago/26, 378 (24%) foram feitos por alguém diferente do dono atual do lead. Coorte é a régua certa para atributo de LEAD (porte, tier, vidas, origem); para PESSOA ela precisa da coluna de trabalho ao lado.',
+        so_bdr_no_corte_de_gente: `A tabela chamada "BDR" listava TODO dono de lead, e dono de lead não é sinônimo de BDR: apareciam SuperAdmin (Aurilia Rodrigues, 613 leads), closers (Rafael Leite Ferreira, André Pontes, Beatriz Honorato), Placement e ex-BDR arquivado, rankeados junto com o time. O filtro "só BDRs" (ligado por padrão) usa três degraus: (1) roster canônico de lib/bdr-team.js; (2) BDR ATIVO do portal fora do roster — owner_role='BDR', não arquivado e SEM time de closer, hoje o caso da Raina Cândido com 137 leads, que excluir apagaria trabalho real; (3) o resto é não-BDR, com o papel NOMEADO (closer, Placement, BDR arquivado). owner_role sozinho não basta: o portal marca como BDR quem está no time "BDR (Prospecção / Pré-vendas)" mesmo estando TAMBÉM em "Executivos de Vendas (Closer)" — 4 pessoas hoje, e time de closer vence. Ninguém some: desligar o filtro devolve todo mundo, e a lista do que foi tirado está em coorte.conversao.fora_do_time.`,
+        serie_por_coorte_de_criacao: `A linha do tempo indexa a coorte pelo período de CRIAÇÃO do lead, não pelo período em que a conversão aconteceu — é a mesma régua dos cards, com o eixo aberto. Duas consequências que MUDAM A LEITURA: (1) o ÚLTIMO bucket é sempre PARCIAL (declarado em serie.bucket_parcial e tracejado na tela): a coorte recente ainda está viva e ainda vai converter, então a queda no fim do gráfico é maturidade, não piora — ler como piora é o erro clássico de gráfico de coorte; (2) a taxa de um mês antigo é FINAL e não muda mais, então comparar mês fechado com mês fechado é legítimo, mas comparar qualquer um deles com o mês corrente não é. Granularidade adaptativa: semana ISO em janela de até ${GRAN_LIMITE_DIAS} dias, mês acima — semana em 936 dias daria 134 pontos ilegíveis e mês em 11 dias daria um ponto só, que não é série.`,
+        filtro_de_campo_e_de_um_campo_so: 'O filtro por campo (BDR, colaboradores, tier, vidas, origem) recorta os cards, o funil e a linha do tempo somando a fatia daquela dimensão. Ele aceita UM campo por vez: o cruzamento entre dois campos (BDR X **e** porte 500+) NÃO existe nesta agregação, porque o GROUP BY sai por dimensão isolada — cruzar exigiria uma consulta por par e o custo não se paga. Quando o filtro está ativo numa dimensão e a tabela mostra outra, a tela AVISA em vez de fingir que a tabela seguiu o filtro.',
+        conversao_por_coorte: `As taxas de conversão são de COORTE (leads criados na janela, seguidos até hoje) e ACUMULADAS: "chegou a Conectado+" significa que o lead visitou a etapa, não que esteja nela agora. Consequências que mudam leitura: (a) os passos encaixam por construção — todo Conectado+ é Tentativa+ — e a conversão do processo é o PRODUTO dos passos, não uma conta independente; (b) a coorte recente ainda está viva, então o fim da janela sempre converte menos que o começo, e comparar mês fechado com mês corrente subestima o corrente; (c) a régua NÃO é "movimentações no período" — essa infla ~4x porque conta o mesmo lead a cada toque. Denominador e numerador viajam em absoluto ao lado de cada taxa: 50% de 4 e 50% de 400 pedem decisões diferentes.`,
+        roster_sempre_visivel: `Todos os ${BDR_TEAM.length} BDRs do roster canônico ganham linha, mesmo zerada, e a coluna roster marca quem é do time. Linha ausente é indistinguível de "não foi medido" e lê como "não fez nada"; linha em zero é uma afirmação verificável. Dono de lead fora do roster (hoje Placement com 7 criados, e BDR do portal fora do BDR_TEAM como Raina Cândido) aparece com roster=false em vez de ser creditado como BDR.`,
         motivo_desqualificacao: 'Existe no objeto Leads (17 valores). Preenchimento desigual: principal 99,2%, Backup 34,4%, DIAGNÓSTICO SITE 0,0% (1.056 desqualificados sem nenhum motivo). "(sem motivo)" no drill do Diagnóstico Site é o dado, não falha da tela.',
         tier_do_bronze: 'tier_colaboradores e numero_de_vidas são lidos de bronze.raw_contact porque NÃO estão projetados em dim_contact (10.946 e 10.591 no portal, 0 alcançáveis pelo silver). MEDIDA TEMPORÁRIA: a correção é a projeção no 10_silver.sql (F0).',
         tier_vidas_nao_existe: 'Não existe propriedade tier_vidas em nenhum objeto do portal. Qualquer faixa de vidas é DERIVAÇÃO, e as faixas não foram decididas.',
@@ -1082,8 +1524,11 @@ module.exports = async (req, res) => {
       },
       divergencias_conhecidas: {
         preenchimento_dimensoes: 'vidas na empresa 6,9%, porte 11,4%, segmento 0,06%, employees 65,1%. Cortes por vidas/porte são majoritariamente "(sem valor)" e a tela mostra essa categoria em vez de esconder.',
+        origem_contaminada: 'ACHADO EM 11/08/2026, NÃO CORRIGIDO AQUI: a dimensão "Origem" tem 10.876 de 16.887 leads (64%) com valor BOOLEANO — "true" 9.836 e "false" 1.040 — vindos de axenya_origem_canonica no objeto Leads. Não são categorias de origem; são lixo de mapeamento de propriedade no portal/ETL. O corte por Origem é, hoje, majoritariamente ILEGÍVEL, e "true" NÃO deve ser lido como uma origem. Consertar exige mexer na projeção do silver (fora do escopo desta tela) ou trocar a fonte por hs_object_source_detail_1 + detalhes_fonte. Declarado em vez de escondido: esconder faria o corte parecer análise.',
         lead_multi_contato: `Leads com mais de 1 contato ativo nesta janela: ${ativ.multiContato}. A régua de atividade usa ANY_VALUE do contato; com 1:1 (18.209 de 18.210) o efeito é nulo, mas não é zero por contrato.`,
         autor_join: 'updated_by_user_id casa com dim_owner.owner_id em 17/17 usuários medidos. É coincidência medida, não contrato do HubSpot — o id cru viaja no payload para auditoria.',
+        trabalho_multi_owner_id: 'Em "Trabalhou na janela" os leads distintos são contados por owner_id e depois somados por nome canônico. BDR com dois owner_ids (Cíntia: 86900152 legado + 87213208 ativo) contaria duas vezes um lead tocado pelos dois ids. O id legado não tem linhas no BQ, então o efeito medido hoje é ZERO — mas não é zero por contrato.',
+        trabalho_dono_diferente: `Em ago/26, ${trab.semDono.toques || 0} toques na janela vieram de engajamento sem owner_id (${trab.semDono.leads || 0} leads) e não são atribuíveis a ninguém. Eles entram no total do time e em nenhuma linha de pessoa — por isso a soma das linhas pode ficar abaixo do total.`,
         etapa_derivada_vs_dim: 'A etapa derivada de fact_stage_entry discorda de dim_lead em 2 de 18.296 leads (0,01%). Afeta o saldo do macro nessa ordem de grandeza e e parte do residuo declarado.',
         etapas_nao_mapeadas: `Movimentos com etapa fora do mapa canônico: ${wf.naoMapeadas}. Etapa nova no portal aparece como "(etapa não mapeada)" em vez de cair fora em silêncio.`,
       },

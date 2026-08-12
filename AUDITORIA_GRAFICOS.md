@@ -35,6 +35,22 @@
 > Edit/Write + integração manual) nas 5 entradas do `STATUS_LOG.md` desta mesma data (2026-08-11),
 > a partir de "Fix | Cotação: auditoria dos drawers..." até "Feat | Cotação: 4 cards viáveis...".
 
+## Adendo | BDR: conversão entre etapas (novo) e Cadência de Leads REMOVIDA (2026-08-11)
+
+> **R16–R22 (Cadência de Leads | Contatos do Time) saíram da tela** a pedido do dono.
+> Eram os cards que liam `hs_lead_status` no CONTATO e viam ~10% do funil (jul/26: 234
+> contatos contra 2.302 leads) — a auditoria de 11/08 já os havia declarado a régua
+> errada, e a seção Funil de Leads (objeto 0-136) os substitui. `/api/bdr-leads`
+> continua no ar; a tela só parou de consumi-lo.
+>
+> **Novos: Conversão do funil e Conversão por dimensão** (dentro de Funil de Leads),
+> estado **🟢 validado contra o BigQuery** por `scripts/test-bdr-lead-funnel.js`
+> (partição BDR + fora do time == total; nenhum passo acima de 100%; etapas encaixam
+> pela régua acumulada; mesmo total nas 5 dimensões). Régua: **coorte acumulada**, não
+> movimentações. Armadilha registrada: `com_deal` **não é subconjunto** de
+> `qualificados` — o passo Qualificado → Deal usa a interseção, senão dá 110%.
+> Detalhe em `STATUS_LOG.md`, entrada de 2026-08-11.
+
 ## Adendo | Meta vs Ach: fonte Inter explícita, menos negrito, André por último (2026-08-05)
 
 > **Estado inalterado: 🟡 não validado contra o HubSpot** — ajuste puramente visual/de
