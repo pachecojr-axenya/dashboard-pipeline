@@ -1208,7 +1208,7 @@
     .bill-cell input {
       width: 100%; padding: .35rem .45rem; border-radius: 7px;
       border: 1px solid var(--border); background: var(--card2); color: var(--text);
-      font-size: .82rem; text-align: right;
+      font-size: .82rem; text-align: right; font-family: var(--font);
     }
     .bill-cell input:focus { outline: none; border-color: var(--teal); box-shadow: 0 0 0 2px rgba(35,209,180,.25); }
     .bill-input-row { position: relative; display: flex; align-items: center; }
@@ -1223,13 +1223,23 @@
     .bill-input-row:focus-within .bill-dup-btn { display: flex; }
     .bill-dup-btn:hover { background: var(--teal); color: var(--bg); border-color: var(--teal); }
     .bill-yr-sep { grid-column: 1 / -1; font-size: .7rem; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: .06em; margin-top: .3rem; border-top: 1px solid var(--border); padding-top: .4rem; }
+    /* Mês real vindo do HubSpot (2026-08-12): esmaecido + travado, não é digitação manual. */
+    .bill-cell.locked { opacity: .6; }
+    .bill-cell.locked label { display: flex; align-items: center; gap: .25rem; }
+    .bill-cell.locked input {
+      cursor: default; background: transparent; border-style: dashed;
+    }
+    .bill-lock { font-size: .68rem; }
+    /* Mesmo tratamento na tabela principal (fora do editor), colunas Real/Probabilizada. */
+    td.m.hs-locked { opacity: .6; }
     .bill-repeat-btn {
       background: var(--card2); color: var(--teal); border: 1px solid var(--border);
       border-radius: 8px; padding: .35rem .7rem; font-size: .78rem; cursor: pointer; font-weight: 600;
+      font-family: var(--font);
     }
     .bill-repeat-btn:hover { border-color: var(--teal); }
     .bill-foot { display: flex; justify-content: flex-end; gap: .6rem; margin-top: 1.3rem; }
-    .bill-foot button { padding: .5rem 1.4rem; border-radius: 9px; border: none; cursor: pointer; font-size: .85rem; font-weight: 600; transition: opacity .12s; }
+    .bill-foot button { padding: .5rem 1.4rem; border-radius: 9px; border: none; cursor: pointer; font-size: .85rem; font-weight: 600; transition: opacity .12s; font-family: var(--font); }
     .bill-foot button:hover { opacity: .85; }
     .bill-cancel { background: var(--card2); color: var(--text2); }
     .bill-save { background: var(--teal); color: #0d1117; }
@@ -1301,6 +1311,16 @@
     .deal-owner-hist .oh-name { color: var(--text); font-weight: 600; }
     .deal-owner-hist .oh-meta { color: var(--text2); font-size: .76rem; white-space: nowrap; }
     .deal-owner-hist .oh-cur { background: rgba(45,212,191,.09); border-radius: 6px; }
+    /* Tickets de Faturamento (painel Ganho, 2026-08-12): mesmo grid da Trilha de etapas. */
+    .deal-billing-tickets { grid-column: 1 / -1; padding: .2rem .1rem 0; }
+    .deal-billing-tickets .bt-row {
+      display: grid; grid-template-columns: 80px 1fr 90px 70px; gap: .8rem;
+      align-items: baseline; padding: .34rem .25rem; border-bottom: 1px solid var(--border); font-size: .82rem;
+    }
+    .deal-billing-tickets .bt-head { font-size: .66rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+    .deal-billing-tickets .bt-row span:nth-child(3) { text-align: right; font-variant-numeric: tabular-nums; color: var(--text); }
+    .deal-billing-tickets .bt-link { color: var(--teal); text-decoration: none; white-space: nowrap; }
+    .deal-billing-tickets .bt-link:hover { text-decoration: underline; }
     .deal-modal-list {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -1747,8 +1767,8 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
 <script src="/forecast-columns.js?v=1"></script>
 <script src="/prob-engine.js?v=4"></script>
 <script src="/revenue-engine.js?v=2"></script>
-<script src="/faturamento-manual.js?v=1"></script>
-<script src="/forecast-engine.js?v=1"></script>
+<script src="/faturamento-manual.js?v=2"></script>
+<script src="/forecast-engine.js?v=2"></script>
 <script src="/ax-ui.js?v=1"></script>
 </head>
 
@@ -2057,17 +2077,22 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
 
       <!-- Receita — Ganho (faturamento real x forecast) -->
       <section class="help-section" id="help-sec-ganho" style="display:none">
-        <h3 class="help-h3">Faturamento real x Forecast (Ganho)</h3>
-        <p class="help-p">Deals em <strong>Ganho/Implantação</strong> já fechados podem já estar faturando — e o valor real varia mês a mês, diferente da projeção do forecast. Por isso o painel separa em <strong>duas listas</strong>:</p>
+        <h3 class="help-h3">Faturamento real × Forecast (Ganho)</h3>
+        <p class="help-p">Deals em <strong>Ganho/Implantação</strong> já fechados podem já estar faturando — e o valor real varia mês a mês, diferente da projeção do forecast. Cada MÊS de cada deal usa, em ordem de prioridade:</p>
         <table class="help-table">
-          <thead><tr><th>Lista</th><th>Como a receita é calculada</th></tr></thead>
+          <thead><tr><th>Prioridade</th><th>Origem do valor</th><th>Como aparece na tabela</th></tr></thead>
           <tbody>
-            <tr><td><strong>Forecast (projeção)</strong></td><td>Cálculo padrão (1ª fatura × modelo), prob. 100% (Ganho) / 80% (Implantação)</td></tr>
-            <tr><td><strong>Em faturamento (manual)</strong></td><td>Valores reais digitados à mão, mês a mês — substituem o forecast</td></tr>
+            <tr><td>1ª</td><td><strong>Real do HubSpot</strong> — puxado automaticamente do ticket de faturamento do time de operações</td><td>🔒 esmaecido, não editável</td></tr>
+            <tr><td>2ª</td><td><strong>Manual</strong> — digitado à mão no editor (✎ na linha do deal)</td><td>✏️ editável, sem cadeado</td></tr>
+            <tr><td>3ª</td><td><strong>Projeção (régua)</strong> — mesmo cálculo das demais etapas, usado só nos meses onde ainda não há dado real nem manual</td><td>valor normal, sem marcação</td></tr>
           </tbody>
         </table>
-        <p class="help-p" style="margin-top:.6rem;"><strong>Gate automático:</strong> quando o campo <em>Vencimento da 1ª Fatura</em> (HubSpot) está preenchido e já passou, o deal entra automaticamente na lista de faturamento manual. Também é possível forçar a marcação no editor (botão ✎ na linha do deal).</p>
-        <p class="help-p">No editor é possível preencher cada mês individualmente; ao focar uma célula aparece um botão para <strong>duplicar aquele valor para os meses seguintes</strong>, e o botão <strong>Limpar</strong> apaga tudo. Os valores são salvos globalmente (todos os usuários veem o mesmo) e refletem automaticamente no painel Overall.</p>
+
+        <p class="help-p" style="margin-top:.9rem;"><strong>De onde vem o dado real do HubSpot</strong></p>
+        <p class="help-p">Um deal Ganho pode estar associado a uma ou mais <strong>Apólices</strong> (objeto do HubSpot mantido pelo time de operações/faturamento). Toda apólice tem, todo mês, um <strong>ticket de faturamento</strong> — preencher o valor real da fatura é obrigatório para o time do Sérgio fechar esse ticket. O painel segue essa cadeia — <strong>Deal → Apólice(s) associada(s) → tickets de faturamento daquele mês</strong> — e soma o valor quando o deal tem mais de uma apólice. Isso substitui a projeção sem precisar de digitação manual.</p>
+        <p class="help-p"><strong>Quando o painel busca isso no HubSpot:</strong> não é uma sincronização automática em segundo plano nem em tempo real na tabela. Ao <strong>abrir o modal do deal</strong> (clique no nome, só neste painel), a seção "Tickets de Faturamento" consulta o HubSpot naquele instante e mostra mês, operadora, valor e um link direto para cada ticket. Os valores 🔒 que já aparecem na TABELA foram trazidos numa rodada de sincronização anterior — o modal é o lugar para conferir o estado mais atual e abrir o ticket de origem no HubSpot.</p>
+        <p class="help-p"><strong>Gate automático (entrada na lista "Em faturamento"):</strong> quando o campo <em>Vencimento da 1ª Fatura</em> (HubSpot) está preenchido e já passou, o deal entra automaticamente. Também é possível forçar a marcação no editor.</p>
+        <p class="help-p">No editor, meses 🔒 (já sincronizados do HubSpot) não podem ser editados — o valor real sempre vence. Nos demais meses é possível preencher individualmente; ao focar uma célula aparece um botão para <strong>duplicar aquele valor para os meses seguintes</strong>, e o botão <strong>Limpar</strong> apaga tudo o que é editável. Os valores são salvos globalmente (todos os usuários veem o mesmo) e refletem automaticamente no painel Overall.</p>
       </section>
 
       <!-- Receita — demais etapas -->
@@ -2685,25 +2710,39 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       document.getElementById('bill-manual-chk').checked = _billManual;
 
       const saved = e.months || {};
+      const savedMeta = e.monthsMeta || {};
       const hasSaved = Object.keys(saved).length > 0;
       const vencKey = d.vencimento_primeira_fatura ? d.vencimento_primeira_fatura.substring(0, 7) : null; // YYYY-MM
       const seedVal = d.premio_mensal != null ? d.premio_mensal : (d.primeira_fatura != null ? d.primeira_fatura : '');
+      // Prévia da régua (2026-08-12, integração apólice↔HubSpot): mês sem dado real/manual
+      // ainda vem preenchido com a MESMA projeção que o motor único usaria (não um valor
+      // fixo repetido) — mesma chamada que a tabela já faz (dealMonths[di] ~ d.prob_ajustada).
+      const proj = _fcDealMonthly(d, d.prob_ajustada);
 
       let html = '', curYear = null;
-      MONTHS.forEach(m => {
+      MONTHS.forEach((m, mi) => {
         const key = _fcMonthKey(m);
         if (m.y !== curYear) { curYear = m.y; html += `<div class="bill-yr-sep">${curYear}</div>`; }
         const pre = vencKey && key < vencKey;   // mês anterior ao vencimento (não fatura ainda)
+        const locked = !!(savedMeta[key] && savedMeta[key].source === 'hubspot');
         let val = '';
         if (key in saved) val = saved[key];
-        else if (!hasSaved && !pre && seedVal !== '' && vencKey && key >= vencKey) val = seedVal; // seed inicial
+        else if (!hasSaved && !pre && seedVal !== '' && vencKey && key >= vencKey) val = seedVal; // seed inicial (deal sem nenhum histórico ainda)
+        else if (proj[mi] && proj[mi].rec != null) val = proj[mi].rec; // prévia da régua p/ mês sem dado real
         const disp = (val === '' || val == null) ? '' : _billFmt(Number(val));
-        html += `<div class="bill-cell${pre ? ' pre' : ''}"><label>${esc(m.label)}</label>`
-              + `<div class="bill-input-row">`
-              + `<input type="text" inputmode="decimal" data-key="${key}" value="${disp}" onfocus="this.select()" onblur="fcBillFmtBlur(this)">`
-              + `<button class="bill-dup-btn" type="button" title="Duplicar este valor para os meses seguintes" onmousedown="event.preventDefault()" onclick="fcBillDupFrom(this)">`
-              + `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="7 7 12 12 17 7"/><polyline points="7 13 12 18 17 13"/></svg>`
-              + `</button></div></div>`;
+        if (locked) {
+          html += `<div class="bill-cell${pre ? ' pre' : ''} locked"><label>${esc(m.label)} <span class="bill-lock" title="Valor real do HubSpot (ticket de faturamento) — não editável aqui">🔒</span></label>`
+                + `<div class="bill-input-row">`
+                + `<input type="text" data-key="${key}" value="${disp}" readonly tabindex="-1">`
+                + `</div></div>`;
+        } else {
+          html += `<div class="bill-cell${pre ? ' pre' : ''}"><label>${esc(m.label)}</label>`
+                + `<div class="bill-input-row">`
+                + `<input type="text" inputmode="decimal" data-key="${key}" value="${disp}" onfocus="this.select()" onblur="fcBillFmtBlur(this)">`
+                + `<button class="bill-dup-btn" type="button" title="Duplicar este valor para os meses seguintes" onmousedown="event.preventDefault()" onclick="fcBillDupFrom(this)">`
+                + `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="7 7 12 12 17 7"/><polyline points="7 13 12 18 17 13"/></svg>`
+                + `</button></div></div>`;
+        }
       });
       document.getElementById('bill-grid').innerHTML = html;
       document.getElementById('bill-overlay').classList.add('open');
@@ -2735,9 +2774,10 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       const n = _billParse(inp.value);
       inp.value = isNaN(n) ? '' : _billFmt(n);
     }
-    // Duplica o valor desta célula para todos os meses seguintes (cada célula segue editável).
+    // Duplica o valor desta célula para todos os meses seguintes AINDA EDITÁVEIS
+    // (meses travados — dado real do HubSpot — nunca são sobrescritos por aqui).
     function fcBillDupFrom(btn) {
-      const inputs = Array.from(document.querySelectorAll('#bill-grid input'));
+      const inputs = Array.from(document.querySelectorAll('#bill-grid input:not([readonly])'));
       const inp = btn.closest('.bill-input-row').querySelector('input');
       const idx = inputs.indexOf(inp);
       if (idx < 0) return;
@@ -2746,9 +2786,9 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       const disp = _billFmt(n);
       for (let i = idx + 1; i < inputs.length; i++) inputs[i].value = disp;
     }
-    // Apaga o valor de todos os meses.
+    // Apaga o valor dos meses editáveis (não toca nos meses travados — dado real do HubSpot).
     function fcBillClear() {
-      document.querySelectorAll('#bill-grid input').forEach(inp => { inp.value = ''; });
+      document.querySelectorAll('#bill-grid input:not([readonly])').forEach(inp => { inp.value = ''; });
     }
 
     async function fcBillSave() {
@@ -2878,6 +2918,43 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
         .catch(() => { const elNow = document.getElementById('dm-owner-hist'); if (elNow) elNow.innerHTML = '<span style="color:var(--text2)">indisponível</span>'; });
     }
 
+    // ── Tickets de Faturamento (painel Ganho, 2026-08-12) ───────────────────────
+    // Só no painel Ganho: modal do deal mostra os tickets reais de faturamento do
+    // HubSpot (via apólice associada — integração apólice↔HubSpot, /api/deal-billing-tickets).
+    // Mesmo padrão lazy/cache de _fillOwnerHistory.
+    const _billingTicketsCache = {};
+    function _dealModalBillingSection(d) {
+      if (FC_PANEL_STAGE !== 'Ganho') return '';
+      return `<div class="deal-sec">Tickets de Faturamento (HubSpot)</div>
+        <div class="deal-billing-tickets" id="dm-billing-tickets" data-deal="${esc(d.hs_id)}"><span style="color:var(--text2)">Carregando…</span></div>`;
+    }
+    function _renderBillingTickets(el, data) {
+      if (!el) return;
+      if (!data || !data.success) { el.innerHTML = '<span style="color:var(--text2)">indisponível</span>'; return; }
+      if (!data.apolices.length) { el.innerHTML = '<span style="color:var(--text2)">Nenhuma apólice associada a este deal ainda.</span>'; return; }
+      if (!data.tickets.length) { el.innerHTML = '<span style="color:var(--text2)">Apólice associada, mas ainda sem ticket de faturamento.</span>'; return; }
+      let h = '<div class="bt-row bt-head"><span>Mês</span><span>Operadora</span><span>Valor</span><span></span></div>';
+      data.tickets.forEach(t => {
+        const val = t.valorDaFatura != null ? fmtBRL(t.valorDaFatura) : '—';
+        h += `<div class="bt-row"><span>${t.mes ? esc(t.mes) : '—'}</span><span>${t.operadora ? esc(t.operadora) : '—'}</span><span>${val}</span><span><a href="${esc(t.hubspotUrl)}" target="_blank" rel="noopener" class="bt-link">Ver ticket ›</a></span></div>`;
+      });
+      el.innerHTML = h;
+    }
+    function _fillBillingTickets(id) {
+      const el = document.getElementById('dm-billing-tickets');
+      if (!el || !id) return;
+      if (_billingTicketsCache[id]) { _renderBillingTickets(el, _billingTicketsCache[id]); return; }
+      fetch('/api/deal-billing-tickets?dealId=' + encodeURIComponent(id), { credentials: 'same-origin' })
+        .then(r => r.json())
+        .then(data => {
+          _billingTicketsCache[id] = data;
+          const cur = currentDeals[currentDealIndex];
+          const elNow = document.getElementById('dm-billing-tickets');
+          if (elNow && cur && String(cur.hs_id) === String(id)) _renderBillingTickets(elNow, data);
+        })
+        .catch(() => { const elNow = document.getElementById('dm-billing-tickets'); if (elNow) elNow.innerHTML = '<span style="color:var(--text2)">indisponível</span>'; });
+    }
+
     // ── Histórico de Prob AE (mouse-over) ───────────────────────────────────────
     // Decisão nº 6 (reunião de forecast, 31-jul-2026): "Histórico de probabilidade
     // do AE como material de estudo (mouse-over no dash): não para cálculo — para
@@ -2984,6 +3061,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       body += cell('Prob. Etapa', pct(d.prob_etapa)) + cell('Prob. AE', _fcProbAeCell(d, pct(d.probabilidade)));
       body += cell('Prob. Ajustada', pct(d.prob_ajustada)) + cell('Quarter', (d.quarter && !quarterEmpty(d.quarter)) ? esc(d.quarter) : muted);
       body += cell('Dt. Receita', dt(d.data_prevista_para_receita)) + cell('Dt. Vigência', dt(d.vigencia));
+      body += _dealModalBillingSection(d);
       body += _dealModalExtras(d);
       body += '</div>';
 
@@ -2997,6 +3075,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
 
       document.getElementById('deal-modal-box').innerHTML = body;
       _fillOwnerHistory(d.hs_id);
+      if (FC_PANEL_STAGE === 'Ganho') _fillBillingTickets(d.hs_id);
     }
 
     function closeDealModal() {
@@ -3858,32 +3937,55 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
               const vit = data.vit === true ? 'Sim' : (data.vit === false ? 'Não' : '—');
               const vidas = data.vidas || 0;
               const n = data.n;
-              let formulaStr = '—';
-              if (data.fb) {
-                // Fallback vidas×VPV (Cot/Cons/Neg sem base de 1ª Fatura) — não passa pela
-                // régua do modelo de remuneração, calcula direto de `vidas`. Nunca aparece
-                // em deal POC (2026-08-11): esse fallback fica sem receita para POC.
-                formulaStr = vidas > 0 && data.rec != null
-                  ? `Estimativa por Vidas (sem base de 1ª Fatura) · vidas × R$${Math.round(data.rec / vidas)}/vida`
-                  : 'Estimativa por Vidas (sem base de 1ª Fatura)';
-              } else if (data.mod === 'Fee por vida') {
-                formulaStr = 'Fee por vida (valor fixo)';
-              } else if (data.mod === 'Corretagem') {
-                if (data.ag === true) {
-                  if (vidas < 200) {
-                    formulaStr = n <= 3
-                      ? `Corretagem + Agenc. · Mês ${n} (1–3) · 100% da 1ª Fatura`
-                      : `Corretagem + Agenc. · Mês ${n} (4+) · 2% da 1ª Fatura`;
-                  } else {
-                    formulaStr = n === 1
-                      ? `Corretagem + Agenc. · Mês 1 · 95% da 1ª Fatura`
-                      : `Corretagem + Agenc. · Mês ${n} (2+) · 5% da 1ª Fatura`;
-                  }
+              let originRow;
+              if (data.manual) {
+                // Mês real/manual: `n` (mês de contrato) não se aplica — mostrar a
+                // ORIGEM do valor em vez de tentar computar a fórmula da régua (que
+                // usaria n=null e apareceria quebrada, ex. "Mês null").
+                if (data.locked) {
+                  const ids = data.ticketIds || [];
+                  const links = ids.length
+                    ? ids.map(id => `<a href="https://app.hubspot.com/contacts/44715285/ticket/${esc(id)}" target="_blank" rel="noopener" style="color:var(--teal)">#${esc(id)}</a>`).join(', ')
+                    : '—';
+                  originRow = `
+                    <div class="tt-row sep"><span class="tt-lbl">Origem</span><span class="tt-val">🔒 HubSpot (faturamento real)</span></div>
+                    <div class="tt-row"><span class="tt-lbl">Ticket${ids.length > 1 ? 's' : ''} de faturamento</span><span class="tt-val">${links}</span></div>
+                  `;
                 } else {
-                  formulaStr = vidas < 200
-                    ? `Corretagem · 2% da 1ª Fatura`
-                    : `Corretagem · 5% da 1ª Fatura`;
+                  originRow = `<div class="tt-row sep"><span class="tt-lbl">Origem</span><span class="tt-val">✏️ Faturamento manual (digitado)</span></div>`;
                 }
+              } else {
+                let formulaStr = '—';
+                if (data.fb) {
+                  // Fallback vidas×VPV (Cot/Cons/Neg sem base de 1ª Fatura) — não passa pela
+                  // régua do modelo de remuneração, calcula direto de `vidas`. Nunca aparece
+                  // em deal POC (2026-08-11): esse fallback fica sem receita para POC.
+                  formulaStr = vidas > 0 && data.rec != null
+                    ? `Estimativa por Vidas (sem base de 1ª Fatura) · vidas × R$${Math.round(data.rec / vidas)}/vida`
+                    : 'Estimativa por Vidas (sem base de 1ª Fatura)';
+                } else if (data.mod === 'Fee por vida') {
+                  formulaStr = 'Fee por vida (valor fixo)';
+                } else if (data.mod === 'Corretagem') {
+                  if (data.ag === true) {
+                    if (vidas < 200) {
+                      formulaStr = n <= 3
+                        ? `Corretagem + Agenc. · Mês ${n} (1–3) · 100% da 1ª Fatura`
+                        : `Corretagem + Agenc. · Mês ${n} (4+) · 2% da 1ª Fatura`;
+                    } else {
+                      formulaStr = n === 1
+                        ? `Corretagem + Agenc. · Mês 1 · 95% da 1ª Fatura`
+                        : `Corretagem + Agenc. · Mês ${n} (2+) · 5% da 1ª Fatura`;
+                    }
+                  } else {
+                    formulaStr = vidas < 200
+                      ? `Corretagem · 2% da 1ª Fatura`
+                      : `Corretagem · 5% da 1ª Fatura`;
+                  }
+                }
+                originRow = `
+                  <div class="tt-row sep"><span class="tt-lbl">Mês de receita</span><span class="tt-val">${n}</span></div>
+                  <div class="tt-row"><span class="tt-lbl">Fórmula</span><span class="tt-val">${formulaStr}</span></div>
+                `;
               }
               const h = `
                 <div style="font-weight:700; color:var(--teal); margin-bottom:.8rem; padding-bottom:.5rem; font-size:.9rem">${esc(data.dealname)}</div>
@@ -3892,8 +3994,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
                 <div class="tt-row"><span class="tt-lbl">Vitalício</span><span class="tt-val">${vit}</span></div>
                 <div class="tt-row"><span class="tt-lbl">1ª Fatura</span><span class="tt-val">${fmtBRL(data.pf)}</span></div>
                 <div class="tt-row"><span class="tt-lbl">Vidas</span><span class="tt-val">${vidas || '—'}</span></div>
-                <div class="tt-row sep"><span class="tt-lbl">Mês de receita</span><span class="tt-val">${n}</span></div>
-                <div class="tt-row"><span class="tt-lbl">Fórmula</span><span class="tt-val">${formulaStr}</span></div>
+                ${originRow}
                 <div class="tt-row total"><span class="tt-lbl">Receita Real</span><span class="tt-val">${fmtBRL(data.rec)}</span></div>
               `;
               tooltip.innerHTML = h;
@@ -3929,6 +4030,16 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
 
             } else {
               // ── Receita Probabilizada tooltip ─────────────────────────────
+              let originRow = '';
+              if (data.locked) {
+                const ids = data.ticketIds || [];
+                const links = ids.length
+                  ? ids.map(id => `<a href="https://app.hubspot.com/contacts/44715285/ticket/${esc(id)}" target="_blank" rel="noopener" style="color:var(--teal)">#${esc(id)}</a>`).join(', ')
+                  : '—';
+                originRow = `<div class="tt-row"><span class="tt-lbl">Origem</span><span class="tt-val">🔒 HubSpot — ticket${ids.length > 1 ? 's' : ''} ${links}</span></div>`;
+              } else if (data.manual) {
+                originRow = `<div class="tt-row"><span class="tt-lbl">Origem</span><span class="tt-val">✏️ Faturamento manual (digitado)</span></div>`;
+              }
               let h = `
                 <div style="font-weight:700; color:var(--teal); margin-bottom:.8rem; padding-bottom:.5rem; font-size:.9rem">${esc(data.dealname)}</div>
                 <div class="tt-row"><span class="tt-lbl">Modelo</span><span class="tt-val">${esc(data.mod)}</span></div>
@@ -3936,6 +4047,7 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
                 <div class="tt-row"><span class="tt-lbl">Vitalício</span><span class="tt-val">${data.vit === true ? 'Sim' : (data.vit === false ? 'Não' : '—')}</span></div>
                 <div class="tt-row"><span class="tt-lbl">1ª Fatura</span><span class="tt-val">${fmtBRL(data.pf)}</span></div>
                 <div class="tt-row"><span class="tt-lbl">Receita Bruta Mensal</span><span class="tt-val">${fmtBRL(data.rec)}</span></div>
+                ${originRow}
                 <div class="tt-row sep"><span class="tt-lbl">Prob. da Etapa</span><span class="tt-val">${fmtPct(data.sp)}</span></div>
               `;
               if (data.cp != null) {
@@ -3960,8 +4072,20 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
 
       table.addEventListener('mousemove', e => {
         if (tooltip.classList.contains('show')) {
-          tooltip.style.left = (e.clientX + 15) + 'px';
-          tooltip.style.top = (e.clientY + 15) + 'px';
+          // Mantém o tooltip sempre dentro da viewport: se não couber à direita/abaixo
+          // do cursor (linhas de baixo/colunas da direita da tabela), inverte pro lado
+          // esquerdo/acima em vez de deixar vazar a tela.
+          const margin = 10;
+          const w = tooltip.offsetWidth || 280;
+          const h = tooltip.offsetHeight || 200;
+          let left = e.clientX + 15;
+          let top = e.clientY + 15;
+          if (left + w > window.innerWidth - margin) left = e.clientX - w - 15;
+          if (top + h > window.innerHeight - margin) top = e.clientY - h - 15;
+          left = Math.max(margin, Math.min(left, window.innerWidth - w - margin));
+          top = Math.max(margin, Math.min(top, window.innerHeight - h - margin));
+          tooltip.style.left = left + 'px';
+          tooltip.style.top = top + 'px';
         }
       });
 
@@ -4353,6 +4477,8 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
           const sep = i === 0 ? ' m-sep' : (m.mo === 0 ? ' y-sep' : '');
           const now = m.key === NOW_KEY ? ' now' : '';
           if (mObj != null) {
+            const mKey = _fcMonthKey(m);
+            const locked = FaturamentoManual.monthFromHubspot(d, mKey);
             const realCalcData = {
               isReal: true,
               dealname: d.dealname,
@@ -4364,9 +4490,12 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
               vidas: d.vidas,
               n: mObj.n,
               rec: mObj.rec,
+              manual: !!mObj.manual,
+              locked: locked,
+              ticketIds: locked ? FaturamentoManual.monthTicketIds(d, mKey) : undefined,
               fb: mObj.vpvFallback,      // fallback vidas×VPV (Cot/Cons/Neg sem base de régua)
             };
-            h += `<td class="m real m-hide v${sep}${now}" data-col="${ci}" data-calc="${esc(JSON.stringify(realCalcData))}">${fmtBRL(mObj.rec)}</td>`;
+            h += `<td class="m real m-hide v${sep}${now}${locked ? ' hs-locked' : ''}" data-col="${ci}" data-calc="${esc(JSON.stringify(realCalcData))}">${fmtBRL(mObj.rec)}</td>`;
           } else {
             h += `<td class="m real m-hide${sep}${now}" data-col="${ci}"></td>`;
           }
@@ -4380,6 +4509,8 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
           const now = m.key === NOW_KEY ? ' now' : '';
           if (mObj != null) {
             const pi = d.prob_info;
+            const mKey = _fcMonthKey(m);
+            const locked = FaturamentoManual.monthFromHubspot(d, mKey);
             const calcData = {
               dealname: d.dealname,
               mod: d.modelo_remuneracao,
@@ -4391,9 +4522,12 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
               cp: pi.cp,
               modStr: pi.modStr,
               probAdj: mObj.probAdj,
-              val: mObj.val
+              val: mObj.val,
+              manual: !!mObj.manual,
+              locked: locked,
+              ticketIds: locked ? FaturamentoManual.monthTicketIds(d, mKey) : undefined,
             };
-            h += `<td class="m m-hide v${sep}${now}" data-col="${ci}" data-calc="${esc(JSON.stringify(calcData))}">${fmtBRL(mObj.val)}</td>`;
+            h += `<td class="m m-hide v${sep}${now}${locked ? ' hs-locked' : ''}" data-col="${ci}" data-calc="${esc(JSON.stringify(calcData))}">${fmtBRL(mObj.val)}</td>`;
           } else {
             h += `<td class="m m-hide${sep}${now}" data-col="${ci}"></td>`;
           }
@@ -4706,8 +4840,18 @@ html[data-theme="light"] .nav-drawer-footer{border-top-color:rgba(0,0,0,.1)}
       });
       kpisEl.addEventListener('mousemove', e => {
         if (calcTooltip.classList.contains('show')) {
-          calcTooltip.style.left = (e.clientX + 15) + 'px';
-          calcTooltip.style.top = (e.clientY + 15) + 'px';
+          // Mesmo clamp de viewport do tooltip da tabela (evita vazar a tela).
+          const margin = 10;
+          const w = calcTooltip.offsetWidth || 280;
+          const h = calcTooltip.offsetHeight || 200;
+          let left = e.clientX + 15;
+          let top = e.clientY + 15;
+          if (left + w > window.innerWidth - margin) left = e.clientX - w - 15;
+          if (top + h > window.innerHeight - margin) top = e.clientY - h - 15;
+          left = Math.max(margin, Math.min(left, window.innerWidth - w - margin));
+          top = Math.max(margin, Math.min(top, window.innerHeight - h - margin));
+          calcTooltip.style.left = left + 'px';
+          calcTooltip.style.top = top + 'px';
         }
       });
       kpisEl.addEventListener('mouseout', e => {

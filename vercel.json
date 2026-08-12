@@ -39,6 +39,10 @@
     {
       "path":     "/api/snapshot",
       "schedule": "59 2 * * *"
+    },
+    {
+      "path":     "/api/sync-faturamento-hubspot",
+      "schedule": "30 3 * * *"
     }
   ],
   "headers": [

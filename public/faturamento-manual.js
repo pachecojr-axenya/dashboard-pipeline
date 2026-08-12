@@ -52,6 +52,22 @@
     return (e && e.months) ? e.months : {};
   }
 
+  // Origem de UM mês (2026-08-12, integração apólice↔HubSpot): true se o valor veio
+  // do ticket de faturamento real (Sérgio/operações), não de digitação manual. Usado
+  // pelo editor do painel Ganho e pela tabela principal para travar/esmaecer esses meses.
+  function monthFromHubspot(d, key) {
+    var e = entry(d);
+    return !!(e && e.monthsMeta && e.monthsMeta[key] && e.monthsMeta[key].source === 'hubspot');
+  }
+
+  // IDs dos tickets de faturamento (HubSpot) que originaram o valor de UM mês (pode
+  // ser mais de um quando o deal tem mais de uma apólice). [] se não houver registro.
+  function monthTicketIds(d, key) {
+    var e = entry(d);
+    var meta = e && e.monthsMeta && e.monthsMeta[key];
+    return (meta && Array.isArray(meta.ticketIds)) ? meta.ticketIds : [];
+  }
+
   // Metadados de edição (ADR-004): { em, por, anterior } ou null (entrada legada,
   // anterior à Fase 4 — sem registro de autor).
   function meta(d) {
@@ -62,6 +78,7 @@
   root.FaturamentoManual = {
     config: config, setData: setData, data: data, entry: entry, load: load,
     monthKey: monthKey, vencido: vencido, elegivel: elegivel,
-    isManual: isManual, manualMonths: manualMonths, meta: meta
+    isManual: isManual, manualMonths: manualMonths, meta: meta,
+    monthFromHubspot: monthFromHubspot, monthTicketIds: monthTicketIds
   };
 })(typeof window !== 'undefined' ? window : this);

@@ -57,17 +57,6 @@
     // fica sem receita em vez de estimar só a partir de `vidas` (ver bloco abaixo).
     // Ver docs/forecast-revenue-rules.md §2.
 
-    // Faturamento manual: substitui integralmente o forecast pelos valores digitados.
-    var _man = FM.manualMonths(d, todayStr());
-    if (_man) {
-      return MONTHS.map(function (m) {
-        var v = _man[FM.monthKey(m)];
-        if (v == null || isNaN(v)) return null;
-        var val = Number(v);
-        return { val: val, rec: val, probAdj: 1, n: null, manual: true };
-      });
-    }
-
     if (d.stage === 'Diagnóstico') {
       var vidas = d.vidas || d.colaboradores || 0;
       if (!vidas) return NIL;
@@ -128,15 +117,28 @@
       return MONTHS.map(function (m) { if (probAdj == null) return null; var diff = (m.y - rsCN.y) * 12 + (m.mo - rsCN.mo); if (diff < 0) return null; return { val: recCN * probAdj, rec: recCN, probAdj: probAdj, n: diff + 1, vpvFallback: true }; });
     }
 
-    // Demais etapas: início na data prevista + régua (cap 24m).
+    // Demais etapas: início na data prevista + régua (cap 24m). Faturamento manual
+    // (Receita Real digitada OU sincronizada do HubSpot) substitui só o(s) mês(es) que
+    // já tem valor; mês sem dado real ainda cai NESTA MESMA régua em vez de ficar sem
+    // receita — senão um deal Ganho parcialmente faturado (ex.: só os últimos 4 meses
+    // com fatura real) ficaria sem projeção nos meses futuros que ainda não faturaram.
     var revStart2 = parseRevenueDate(d.data_prevista_para_receita);
-    return MONTHS.map(function (m) {
+    var regua2 = MONTHS.map(function (m) {
       if (!revStart2 || probAdj == null) return null;
       var diff = (m.y - revStart2.y) * 12 + (m.mo - revStart2.mo);
       if (diff < 0 || diff > 23) return null;
       var n = diff + 1; var rec = calcReceita(n, d);
       if (rec == null) return null;
       return { val: rec * probAdj, rec: rec, probAdj: probAdj, n: n };
+    });
+
+    var _man = FM.manualMonths(d, todayStr());
+    if (!_man) return regua2;
+    return MONTHS.map(function (m, i) {
+      var v = _man[FM.monthKey(m)];
+      if (v == null || isNaN(v)) return regua2[i];
+      var val = Number(v);
+      return { val: val, rec: val, probAdj: 1, n: null, manual: true };
     });
   }
 
