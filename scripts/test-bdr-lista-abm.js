@@ -43,12 +43,39 @@ ok(/COMPANY_PROPERTIES = \[[\s\S]{0,400}'lista'/.test(api),
   'a propriedade `lista` e pedida ao HubSpot');
 ok(api.includes('company_in_lista_abm'), 'o deal carrega `company_in_lista_abm`');
 ok(api.includes('company_lista'), 'o deal carrega o texto CRU `company_lista` (auditavel)');
-// Sem empresa -> null, nao false. E o contrato do 3o bucket, do lado do servidor.
-ok(/company_in_lista_abm: ctx\.company_id\s*\n?\s*\?/.test(api)
-   || /ctx\.company_id[\s\S]{0,120}indexOf\(LISTA_ABM_TOKEN\)/.test(api),
-  'deal SEM empresa devolve null (nao false) em company_in_lista_abm');
+// Sem empresa -> null, nao false. E o contrato do 3o bucket, do lado do servidor: a
+// ausencia de conta tem de sair do endpoint como AUSENCIA, nao como negativa.
+ok(/if \(!temConta\) return null;/.test(api),
+  'deal SEM conta conferivel devolve null (nao false) em company_in_lista_abm');
+ok(/temConta = true/.test(api) && (api.match(/temConta = true/g) || []).length === 2,
+  'os DOIS caminhos (contexto completo e enxuto) declaram que ha conta conferivel',
+  (api.match(/temConta = true/g) || []).length);
 ok(api.includes('LISTA_ABM_TOKEN') && api.includes("split(';')"),
   'pertencimento por TOKEN EXATO, nao por substring');
+
+// O DEFEITO QUE ESCAPOU (12/08/2026, achado pelo dono na tela): eu provei
+// `company_in_lista_abm` chamando o endpoint com `includeContext=true`, e a PAGINA chama
+// `/api/forecast-table?includeLost=true`. Sem um dos dois parametros o contexto de empresa
+// nunca e buscado, `company_id` fica nulo em TODO deal e o corte inteiro devolve
+// "(sem empresa)" -- 1.558 de 1.558, lido na tela como "nada veio da lista".
+//
+// A licao que virou assercao: PROVAR UM CAMPO COM UMA QUERY QUE A TELA NAO FAZ NAO PROVA
+// O CAMPO NA TELA. O que se trava aqui e a QUERY DA PAGINA, nao a capacidade do endpoint.
+console.log('\n== a pagina PEDE o dado (o defeito de 12/08) ==');
+var mFetch = bdr.match(/fetch\('\/api\/forecast-table\?([^']*)'\)/);
+ok(!!mFetch, 'a pagina chama /api/forecast-table');
+if (mFetch) {
+  var q = mFetch[1];
+  ok(/includeLista=true|includeContext=true/.test(q),
+    'a query da pagina pede includeLista (ou includeContext) -- sem isso TODO deal vira "(sem empresa)"', q);
+}
+ok(api.includes('includeLista'), 'o endpoint aceita includeLista');
+ok(/const includeLista = includeContext \|\|/.test(api),
+  'includeContext IMPLICA includeLista (la a empresa ja vem inteira)');
+ok(api.includes('function mapWithLimit'),
+  'os lotes tem teto de concorrencia (sequencial custava 17,4s; paralelo 7,4s)');
+ok(/mapWithLimit\(lotes, 4/.test(api) && /mapWithLimit\(chunks, 4/.test(api),
+  'associacao E batch read usam o teto (o gargalo era a associacao, nao as propriedades)');
 
 console.log('\n== os tres buckets (_fLista) ==');
 const mF = bdr.match(/function _fLista\(d\)\{[^}]*\}/);

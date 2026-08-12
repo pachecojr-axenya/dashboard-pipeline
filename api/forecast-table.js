@@ -334,10 +334,33 @@ function pickPrimaryAssociation(toList) {
   return String((primary || list[0]).toObjectId || '');
 }
 
+/**
+ * Executa `fn` sobre os lotes com TETO de concorrência.
+ *
+ * Os lotes eram sequenciais e era ali que o tempo morava: medido em 12/08/2026 nos 1.558
+ * deals, buscar a associação deal→empresa em 16 lotes um após o outro levava ~12s dos
+ * 17s da resposta — e o caminho "enxuto" (só empresa, só a propriedade `lista`) não
+ * economizou NADA (17,1s contra 17,4s do contexto completo), porque o gargalo nunca foi
+ * a quantidade de propriedades. Presumi errado antes de medir.
+ *
+ * O teto existe para não trocar latência por 429: o PAT compartilhado tem limite por
+ * janela de 10s, e a resposta ao 429 aqui é um `catch` que devolve mapa VAZIO — ou seja
+ * um estouro de limite se disfarçaria de "deal sem empresa", que é o mesmo defeito que
+ * este conserto está corrigindo.
+ */
+async function mapWithLimit(items, limit, fn) {
+  const out = [];
+  for (let i = 0; i < items.length; i += limit) {
+    out.push(...await Promise.all(items.slice(i, i + limit).map(fn)));
+  }
+  return out;
+}
+
 async function fetchDealAssociationMap(token, dealIds, toType, errors) {
   const map = {};
-  for (let i = 0; i < dealIds.length; i += 100) {
-    const batch = dealIds.slice(i, i + 100);
+  const lotes = [];
+  for (let i = 0; i < dealIds.length; i += 100) lotes.push(dealIds.slice(i, i + 100));
+  await mapWithLimit(lotes, 4, async (batch) => {
     try {
       const resp = await hubspotPost(token, `/crm/v4/associations/deals/${toType}/batch/read`, {
         inputs: batch.map(id => ({ id: String(id) }))
@@ -351,27 +374,65 @@ async function fetchDealAssociationMap(token, dealIds, toType, errors) {
       console.error(`[forecast-table] association ${toType} unavailable:`, e.message);
       if (errors) errors.push(`association:${toType}`);
     }
-  }
+  });
   return map;
 }
 
 async function batchReadObjects(token, objectType, ids, properties, errors) {
   const uniqueIds = [...new Set((ids || []).filter(Boolean).map(String))];
   const map = {};
-  for (let i = 0; i < uniqueIds.length; i += 100) {
-    const chunk = uniqueIds.slice(i, i + 100);
-    try {
+  const chunks = [];
+  for (let i = 0; i < uniqueIds.length; i += 100) chunks.push(uniqueIds.slice(i, i + 100));
+  await mapWithLimit(chunks, 4, async (chunk) => {
+    {
+      try {
       const resp = await hubspotPost(token, `/crm/v3/objects/${objectType}/batch/read`, {
         properties,
         inputs: chunk.map(id => ({ id: String(id) }))
       });
       (resp.results || []).forEach(r => { map[String(r.id)] = r.properties || {}; });
-    } catch (e) {
-      console.error(`[forecast-table] batch read ${objectType} unavailable:`, e.message);
-      if (errors) errors.push(`batch:${objectType}`);
+      } catch (e) {
+        console.error(`[forecast-table] batch read ${objectType} unavailable:`, e.message);
+        if (errors) errors.push(`batch:${objectType}`);
+      }
     }
-  }
+  });
   return map;
+}
+
+/**
+ * Caminho ENXUTO para o pertencimento à Lista ABM: só a associação deal→empresa e só a
+ * propriedade `lista`.
+ *
+ * Existe porque o `includeContext` completo custa CARO e a primeira metade do /novo-bdr
+ * não precisa dele. Medido em 12/08/2026 nos 1.558 deals: sem contexto 4,0s · contexto
+ * completo 14,6s (3,6x, e ele ainda busca associação e batch de CONTATO, que aquela
+ * página não usa).
+ *
+ * O defeito que isto conserta: `company_in_lista_abm` saía de `ctx.company_id`, que só
+ * é populado com `includeContext=true` — e a página chama
+ * `/api/forecast-table?includeLost=true`, sem ele. Resultado: 1.558 de 1.558 deals em
+ * "(sem empresa)", ou seja o corte inteiro dizendo "nada veio da lista". Provar um campo
+ * com uma query que a tela NÃO faz não prova o campo na tela.
+ */
+async function fetchDealListaMap(token, rawDeals) {
+  const errors = [];
+  const dealIds = rawDeals.map(r => String(r.id || r.properties?.hs_object_id || '')).filter(Boolean);
+  const dealCompany = await fetchDealAssociationMap(token, dealIds, 'companies', errors);
+  const companyIds = Object.keys(dealCompany).reduce((acc, k) => {
+    if (acc.indexOf(dealCompany[k]) < 0) acc.push(dealCompany[k]);
+    return acc;
+  }, []);
+  const companies = await batchReadObjects(token, 'companies', companyIds, ['lista'], errors);
+  const out = {};
+  dealIds.forEach(dealId => {
+    const cid = dealCompany[dealId];
+    // Associação AUSENTE e associação PRESENTE com empresa ilegível são coisas
+    // diferentes, mas as duas significam "não há conta conferível" — as duas viram
+    // null, nunca false. `false` é afirmação de que a conta foi checada.
+    out[dealId] = cid ? { company_id: cid, lista: (companies[cid] || {}).lista || null } : null;
+  });
+  return { byDeal: out, errors, companies: companyIds.length };
 }
 
 async function fetchDealContext(token, rawDeals) {
@@ -413,17 +474,27 @@ module.exports = async function handler(req, res) {
 
   const includeLost = !!(req.query && String(req.query.includeLost) === 'true');
   const includeContext = !!(req.query && (String(req.query.includeContext) === 'true' || String(req.query.includeAssociations) === 'true'));
+  // `includeLista`: só o pertencimento à Lista ABM, sem o contexto completo. Implícito
+  // quando `includeContext` está ligado (lá a empresa já vem inteira).
+  const includeLista = includeContext || !!(req.query && String(req.query.includeLista) === 'true');
 
   try {
     const [rawDeals, ownerMap] = await Promise.all([fetchDeals(token, includeLost), fetchOwners(token)]);
     const contextResult = includeContext ? await fetchDealContext(token, rawDeals) : { byDeal: {}, errors: [], contacts: 0, companies: 0 };
     const dealContext = contextResult.byDeal || {};
+    const listaResult = (includeLista && !includeContext)
+      ? await fetchDealListaMap(token, rawDeals)
+      : { byDeal: {}, errors: [], companies: 0 };
+    const dealLista = listaResult.byDeal || {};
 
     const deals = rawDeals
       .filter(r => includeLost || r.properties.hs_is_closed_lost !== 'true')
       .map(r => {
         const p = r.properties;
-        const ctx = dealContext[String(r.id || p.hs_object_id || '')] || {};
+        // Uma expressão só para o id do deal: ela indexa DOIS mapas (contexto e lista) e
+        // escrevê-la duas vezes é como um dos dois passa a indexar por chave diferente.
+        const dealId = String(r.id || p.hs_object_id || '');
+        const ctx = dealContext[dealId] || {};
         const contact = ctx.contact || {};
         const company = ctx.company || {};
         // closed-lost → 'Perdido' mesmo quando o stage id do BID não está mapeado.
@@ -557,10 +628,25 @@ module.exports = async function handler(req, res) {
           // — deal SEM empresa associada — não é `false`: é `null`, e a tela o mostra
           // como "(sem empresa)". Dobrar ausência de conta em "fora da lista"
           // afirmaria que a conta foi conferida contra a lista quando não há conta.
-          company_lista: ctx.company_id ? (company.lista || null) : null,
-          company_in_lista_abm: ctx.company_id
-            ? listaTokens(company.lista).indexOf(LISTA_ABM_TOKEN) >= 0
-            : null,
+          // LISTA ABM: vem do contexto completo quando ele foi pedido, senão do caminho
+          // enxuto. Quando NENHUM dos dois foi pedido o valor é `null` e a tela mostra
+          // "(sem empresa)" — por isso a página TEM de pedir um dos dois. Foi exatamente
+          // essa a falha: 1.558 de 1.558 deals em "(sem empresa)".
+          company_lista: (function () {
+            if (ctx.company_id) return company.lista || null;
+            var l = dealLista[dealId];
+            return l ? (l.lista || null) : null;
+          })(),
+          company_in_lista_abm: (function () {
+            var texto = null, temConta = false;
+            if (ctx.company_id) { texto = company.lista; temConta = true; }
+            else {
+              var l = dealLista[dealId];
+              if (l) { texto = l.lista; temConta = true; }
+            }
+            if (!temConta) return null;
+            return listaTokens(texto).indexOf(LISTA_ABM_TOKEN) >= 0;
+          })(),
         };
       });
 

@@ -360,7 +360,7 @@ function _bdrHelpSection(c){
 function _bdrOpenHelp(headerTitle,charts){
   var detailRows=BDR_HELP_DETAIL.map(function(f){return _bdrHelpRow(f[0],f[1]);}).join('');
   var html=
-    '<p style="font-size:.78rem;color:var(--muted);margin:0 0 1.1rem">Fonte: <code style="color:var(--text2)">GET /api/forecast-table?includeLost=true</code> (deals dos pipelines Vendas + Bid). Time de BDRs = roster do drawer de Configurações com vigência por mês de originação (13 BDRs até 2026-07; Anderson, Cintia, Thauan e Yokyko saem a partir de 2026-08). Filtro de período do painel = data de entrada em Reunião Agendada.</p>'+
+    '<p style="font-size:.78rem;color:var(--muted);margin:0 0 1.1rem">Fonte: <code style="color:var(--text2)">GET /api/forecast-table?includeLost=true&includeLista=true</code> (deals dos pipelines Vendas + Bid; <code>includeLista</code> traz o pertencimento a Lista ABM pela empresa associada — sem ele TODO deal cai em “(sem empresa)”). Time de BDRs = roster do drawer de Configurações com vigência por mês de originação (13 BDRs até 2026-07; Anderson, Cintia, Thauan e Yokyko saem a partir de 2026-08). Filtro de período do painel = data de entrada em Reunião Agendada.</p>'+
     charts.map(_bdrHelpSection).join('')+
     '<div style="margin-top:.5rem;padding-top:1rem;border-top:1px solid var(--border)">'+
       '<h3 style="font-size:.92rem;color:var(--text);margin:0 0 .25rem">Tabela de detalhe (comum a todos)</h3>'+
@@ -779,7 +779,7 @@ function novoLoadData(){
   var btn=document.getElementById('btn-refresh'); if(btn) btn.classList.add('spinning');
   document.getElementById('novo-content').innerHTML='<div style="text-align:center;padding:3rem 0;color:var(--text2)">'+t('loading')+'</div>';
   _bdrLoadMetas();
-  fetch('/api/forecast-table?includeLost=true').then(function(r){ if(!r.ok) return r.text().then(function(txt){ throw new Error(txt||('HTTP '+r.status)); }); return r.json(); }).then(function(data){
+  fetch('/api/forecast-table?includeLost=true&includeLista=true').then(function(r){ if(!r.ok) return r.text().then(function(txt){ throw new Error(txt||('HTTP '+r.status)); }); return r.json(); }).then(function(data){
     _novoDeals=Array.isArray(data)?data:(data.deals||[]);window._novoDealsRaw=_novoDeals;
     if(btn) btn.classList.remove('spinning');
     novoRender();
