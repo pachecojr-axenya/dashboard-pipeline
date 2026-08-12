@@ -1,5 +1,41 @@
 # Dashboard Enhancement Loop — Status Log
 
+### 🚀 DEPLOY DE PRODUÇÃO | Fix C07 (probabilidade ao vivo) + Diagnóstico + doc de premissas (2026-08-12)
+
+> Autorização explícita do dono ("faça o commit e o deploy"), continuação da mesma sessão da
+> integração apólice↔HubSpot (Fase 1/2/3, já deployada por sessão paralela — ver entrada
+> "🚀 DEPLOY DE PRODUÇÃO | Cotação + design system + faturamento Fase 3" abaixo).
+>
+> **Origem:** o dono notou que a "P. Etapa" da tabela do Forecast não batia com o funil ao vivo
+> do CRO (C06/C07). Investigação achou 2 bugs reais no card **C07** ("Probabilidade de Ganho
+> por Etapa", `dashboard.html`): `_novoWinProbPipe` reimplementava a conta em vez de chamar
+> `ProbEngine.funnelDerivedProbPipe` (a mesma fonte que já alimenta o 🟡 "P. Realtime" do painel
+> Ganho) — divergia por não ter o gate de amostra mínima (≥20) e por incluir Diagnóstico via
+> cálculo próprio, enquanto o motor único excluía Diagnóstico por completo (deixando a coluna
+> "P. Realtime" sempre vazia pra deals em Diagnóstico — lido pelo dono como "ainda zerado" depois
+> de eu mostrar exemplos reais como Embelleze/Hilti Brasil/Termotécnica).
+>
+> **Fix**: `_novoWinProbPipe` agora delega em `_novoFunnelDerivedProbPipe` (já existia no mesmo
+> arquivo, sem os 2 bugs) — zero cópia nova. Diagnóstico entrou no `order` de
+> `funnelDerivedProbPipe` (`prob-engine.js`) — seguro porque `_autoProbInfo` intercepta
+> `stage === 'Diagnóstico'` **antes** de consultar esse resultado e fixa 6% sempre; o valor
+> derivado do funil pra Diagnóstico é só informativo, nunca pesa a receita real. Confirmado ao
+> vivo: `funnelDerivedProbPipe` agora devolve Diagnóstico = 2,88% (n=625, amostra de sobra);
+> `calcProbInfo` de um deal em Diagnóstico continua devolvendo `final: 0.06` idêntico a antes.
+>
+> **Documentado** em `docs/forecast-revenue-rules.md` §7 (nova seção): fonte de dados, fórmula
+> exata, etapas cobertas, amostra mínima, por que Diagnóstico é seguro, cache de 1h no painel
+> Ganho, e quando a janela de datas do CRO pode divergir do painel Ganho (filtro de período
+> ativo — não é bug). Tooltips do C07 e do "P. Realtime" atualizados pra bater com a doc.
+>
+> `npm run check`: 54 PASS, 0 FAIL (antes e depois). Commit `9f45762`. `npm run predeploy` PASS
+> (`origin/main` == local, projeto canônico `dashboard-axenya`). Deployment
+> `dashboard-axenya-2kjlpofvn-axenya-f1a041f6.vercel.app`, alias `project-bsmfu.vercel.app`.
+>
+> Pós-deploy confirmado: `/novo`, `/forecast`, `/forecast-overall`, `/novo-bdr`,
+> `/novo-bdr/treble`, `/novo-bdr/workload`, `/novo-bdr/no-show`, `/novo-bdr/list-attack`,
+> `/novo-cotacao` = 200; `/api/forecast-table` = 401 (auth ativa, sem bypass em produção).
+
 ### Feat | /novo-bdr: corte por Lista ABM (carteira × fora da carteira) (2026-08-12)
 
 > Pedido do dono: *"quero entender originação, taxas, volume pensando no que vem dessa
