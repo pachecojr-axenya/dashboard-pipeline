@@ -372,7 +372,7 @@ async function snapshot(pipes, recorte) {
   // O snapshot é ESTADO DE AGORA, então aqui o recorte por BDR usa o dono ATUAL — e é
   // a régua certa justamente por ser o oposto da do fluxo: "de quem é este funil hoje"
   // não é a mesma pergunta que "quem trabalhou este movimento na época".
-  const porBdr = !!(recorte && recorte.dim === 'bdr' && (recorte.ownerIds || []).length);
+  const porBdr = !!(recorte && recorte.grupos && recorte.grupos.bdr && (recorte.ownerIds || []).length);
   const { rows } = await wh.query(`
     WITH ${recorteFluxoCTE(pipes, recorte)}
     base AS (
@@ -596,7 +596,7 @@ async function macro(pipes, since, until, recorte) {
   // Usar o dono de HOJE nos três lugares faria o waterfall de uma BDR incluir o saldo
   // de leads que na época eram de outra pessoa — e ele fecharia mesmo assim, contando a
   // história errada com aritmética certa.
-  const porBdr = !!(recorte && recorte.dim === 'bdr' && (recorte.ownerIds || []).length);
+  const porBdr = !!(recorte && recorte.grupos && recorte.grupos.bdr && (recorte.ownerIds || []).length);
   const idsBdr = porBdr ? sqlList(recorte.ownerIds) : '';
   const OA = wh.t('silver', 'fact_owner_assignment');
   const donoEm = q => porBdr ? `
@@ -1155,20 +1155,57 @@ const RECORTE_COL = {
   porte: 'dim_porte', tier: 'dim_tier', vidas: 'dim_vidas',
   canal: 'dim_canal', canal_macro: 'dim_canal_macro', origem: 'dim_origem',
 };
-function recorteExpr(rec) {
-  if (!rec || !rec.dim || rec.val == null || rec.val === '') return 'TRUE';
-  if (rec.dim === 'bdr') {
-    const ids = rec.ownerIds || [];
-    return `d.owner_id IN (${sqlList(ids)}${ids.length ? '' : "''"})`;
-  }
-  const col = RECORTE_COL[rec.dim];
-  return col ? `d.${col} = @rec_val` : 'TRUE';
+
+/**
+ * O RECORTE É UMA COMBINAÇÃO, não um campo — mudou em 12/08/2026 a pedido do dono
+ * ("semana, outbound e por BDR; preciso desse mix").
+ *
+ * A gramática é a de facetas, e ela não é arbitrária: **OR dentro do mesmo campo, AND
+ * entre campos**. "Canal = Outbound ou Evento" é uma pergunta legítima ("como vai o que
+ * não é inbound"); "Canal = Outbound e Canal = Evento" não existe — nenhum lead tem dois
+ * canais. Já "Canal = Outbound E BDR = Felipe" é a pergunta do dono, e ela só faz sentido
+ * como interseção.
+ *
+ * `recorte.grupos` é `{ dimensao: [valores] }`; `ownerIds` é a união dos owner_ids dos
+ * BDRs escolhidos, resolvida no handler (único lugar que conhece o roster).
+ */
+function recorteVazio(rec) {
+  return !rec || !rec.grupos || Object.keys(rec.grupos).length === 0;
 }
-/** Parâmetro do recorte, só quando ele existe (parâmetro órfão é ruído no job). */
+function recorteExpr(rec) {
+  if (recorteVazio(rec)) return 'TRUE';
+  const partes = [];
+  Object.keys(rec.grupos).forEach(dim => {
+    if (dim === 'bdr') {
+      const ids = rec.ownerIds || [];
+      partes.push(`d.owner_id IN (${sqlList(ids)}${ids.length ? '' : "''"})`);
+      return;
+    }
+    const col = RECORTE_COL[dim];
+    if (!col) return;
+    const ps = rec.grupos[dim].map((_, i) => `@rec_${dim}_${i}`);
+    partes.push(`d.${col} IN (${ps.join(',')})`);
+  });
+  return partes.length ? partes.join(' AND ') : 'TRUE';
+}
+/** Parâmetros do recorte, um por valor. Parâmetro órfão é ruído no job. */
 function recorteParams(rec) {
-  return (rec && rec.dim && rec.dim !== 'bdr' && rec.val != null && RECORTE_COL[rec.dim])
-    ? [{ name: 'rec_val', type: 'STRING', value: String(rec.val) }]
-    : [];
+  if (recorteVazio(rec)) return [];
+  const out = [];
+  Object.keys(rec.grupos).forEach(dim => {
+    if (dim === 'bdr' || !RECORTE_COL[dim]) return;
+    rec.grupos[dim].forEach((v, i) => {
+      out.push({ name: `rec_${dim}_${i}`, type: 'STRING', value: String(v) });
+    });
+  });
+  return out;
+}
+/** Descrição legível do recorte, para o payload e para a tela. */
+function recorteRotulo(rec) {
+  if (recorteVazio(rec)) return null;
+  return Object.keys(rec.grupos)
+    .map(d => `${d} = ${rec.grupos[d].join(' ou ')}`)
+    .join(' E ');
 }
 
 /**
@@ -1194,14 +1231,24 @@ function recorteParams(rec) {
  *    (fact_owner_assignment), e filtrar pelo dono atual sobre um movimento atribuído ao
  *    dono da época faria a barra e a tabela do MESMO card discordarem.
  */
+const FAIXA_DE_COL = {
+  dim_porte: 'porte', dim_tier: 'tier', dim_vidas: 'vidas',
+  dim_canal: 'canal', dim_canal_macro: 'canal_macro', dim_origem: 'origem',
+};
+/** Só as dimensões de ATRIBUTO — BDR entra por dono, não por lista de leads. */
+function dimsAtributo(rec) {
+  return recorteVazio(rec) ? [] : Object.keys(rec.grupos).filter(d => d !== 'bdr' && RECORTE_COL[d]);
+}
 function recorteFluxoCTE(pipes, rec) {
-  if (!rec || !rec.dim || rec.val == null || rec.val === '' || rec.dim === 'bdr') return '';
-  const col = RECORTE_COL[rec.dim];
-  if (!col) return '';
-  const faixa = {
-    dim_porte: DIM_SQL.porte, dim_tier: DIM_SQL.tier, dim_vidas: DIM_SQL.vidas,
-    dim_canal: DIM_SQL.canal, dim_canal_macro: DIM_SQL.canal_macro, dim_origem: DIM_SQL.origem,
-  }[col];
+  const dims = dimsAtributo(rec);
+  if (!dims.length) return '';
+  // AND entre campos, OR dentro do campo — a mesma gramática do recorteExpr, aplicada
+  // sobre o universo inteiro dos pipelines (o fluxo alcança lead criado há um ano).
+  const cond = dims.map(d => {
+    const faixa = DIM_SQL[FAIXA_DE_COL[RECORTE_COL[d]]];
+    const ps = rec.grupos[d].map((_, i) => `@rec_${d}_${i}`);
+    return `(${faixa}) IN (${ps.join(',')})`;
+  }).join(' AND ');
   return `
     rec_base AS (
       SELECT l.lead_id, l.pipeline_id,
@@ -1227,17 +1274,23 @@ function recorteFluxoCTE(pipes, rec) {
       LEFT JOIN ${wh.t('bronze', 'raw_contact')} r ON r.object_id = bc.contact_id
       WHERE l.is_current AND l.pipeline_id IN (${sqlList(pipes)})
     ),
-    rec_leads AS (SELECT lead_id FROM rec_base WHERE ${faixa} = @rec_val),`;
+    rec_leads AS (SELECT lead_id FROM rec_base WHERE ${cond}),`;
 }
 
-/** A condição que amarra o movimento ao recorte. `col` é a coluna de lead_id da query. */
+/**
+ * A condição que amarra o movimento ao recorte. `col` é a coluna de lead_id da query e
+ * `ownerCol` a do dono no instante — as duas metades entram JUNTAS quando o recorte
+ * combina atributo e pessoa ("Canal = Outbound E BDR = Felipe").
+ */
 function recorteFluxoWhere(rec, col, ownerCol) {
-  if (!rec || !rec.dim || rec.val == null || rec.val === '') return '';
-  if (rec.dim === 'bdr') {
+  if (recorteVazio(rec)) return '';
+  let sql = '';
+  if (rec.grupos.bdr && ownerCol) {
     const ids = rec.ownerIds || [];
-    return ownerCol ? ` AND ${ownerCol} IN (${sqlList(ids)}${ids.length ? '' : "''"})` : '';
+    sql += ` AND ${ownerCol} IN (${sqlList(ids)}${ids.length ? '' : "''"})`;
   }
-  return (col && RECORTE_COL[rec.dim]) ? ` AND ${col} IN (SELECT lead_id FROM rec_leads)` : '';
+  if (col && dimsAtributo(rec).length) sql += ` AND ${col} IN (SELECT lead_id FROM rec_leads)`;
+  return sql;
 }
 
 /**
@@ -1665,8 +1718,13 @@ async function coorteDetalhe(pipes, since, until, bdrIds, recorte) {
       motivo: wh.str(r.motivo_desqualificacao),
       origem: wh.str(r.dim_origem),
       // As faixas vêm do SQL. O front LÊ, não recalcula.
+      // `dim_canal`/`dim_canal_macro` entraram no SELECT mas ficaram FORA deste mapa na
+      // primeira versão: o drill vinha com o canal `undefined` e o teste "todo lead do
+      // drill atende as duas condições" reprovou em 321 de 321. Campo que não é copiado
+      // aqui simplesmente não existe para a tela.
       dim_porte: wh.str(r.dim_porte), dim_tier: wh.str(r.dim_tier),
       dim_vidas: wh.str(r.dim_vidas), dim_origem: wh.str(r.dim_origem),
+      dim_canal: wh.str(r.dim_canal), dim_canal_macro: wh.str(r.dim_canal_macro),
     })),
   };
 }
@@ -1698,7 +1756,7 @@ async function coorteDetalhe(pipes, since, until, bdrIds, recorte) {
 async function trabalhoNaJanela(pipes, since, until, recorte) {
   // Recorte por BDR aqui filtra QUEM TOCOU, não o dono do lead — é a régua da própria
   // coluna. Recorte por atributo filtra os leads tocados.
-  const porBdr = !!(recorte && recorte.dim === 'bdr' && (recorte.ownerIds || []).length);
+  const porBdr = !!(recorte && recorte.grupos && recorte.grupos.bdr && (recorte.ownerIds || []).length);
   const { rows } = await wh.query(`
     WITH ${recorteFluxoCTE(pipes, recorte)}
     l AS (
@@ -1809,13 +1867,40 @@ module.exports = async (req, res) => {
     const gran = granQueCabe(granBruta, dias);
     const granRebaixada = gran !== granBruta ? granBruta : null;
 
-    // RECORTE: uma dimensão, um valor. Vem do request e vale para a SEÇÃO INTEIRA.
-    const dimPedida = ['bdr', 'porte', 'tier', 'vidas', 'canal', 'canal_macro', 'origem']
-      .includes(String(req.query.dim)) ? String(req.query.dim) : null;
-    const valPedido = req.query.val == null || req.query.val === '' ? null : String(req.query.val).slice(0, 200);
-    const recorte = dimPedida && valPedido ? { dim: dimPedida, val: valPedido } : null;
+    /**
+     * RECORTE COMBINADO. Vem do request e vale para a SEÇÃO INTEIRA.
+     *
+     * Formato: `f=canal_macro:Outbound,bdr:Felipe Andrade,tier:tier-1` (cada par
+     * percent-encoded). Aceita também o `dim`/`val` antigo — um link salvo por alguém
+     * antes desta versão continua abrindo o mesmo recorte em vez de abrir a tela inteira
+     * sem avisar que o filtro caiu.
+     *
+     * OR dentro do campo, AND entre campos: repetir `canal_macro` soma valores; misturar
+     * campos intersecta.
+     */
+    const DIMS_FILTRAVEIS = ['bdr', 'porte', 'tier', 'vidas', 'canal', 'canal_macro', 'origem'];
+    const grupos = {};
+    const addFiltro = (d, v) => {
+      if (!DIMS_FILTRAVEIS.includes(d) || v == null || v === '') return;
+      const val = String(v).slice(0, 200);
+      grupos[d] = grupos[d] || [];
+      // Teto de 12 valores por campo: além disso o filtro deixa de recortar e o SQL só
+      // engorda. Silenciosamente descartar seria pior — o payload declara o que entrou.
+      if (grupos[d].indexOf(val) < 0 && grupos[d].length < 12) grupos[d].push(val);
+    };
+    String(req.query.f || '').split(',').forEach(par => {
+      if (!par) return;
+      const i = par.indexOf(':');
+      if (i < 0) return;
+      addFiltro(decodeURIComponent(par.slice(0, i)), decodeURIComponent(par.slice(i + 1)));
+    });
+    addFiltro(String(req.query.dim || ''), req.query.val);   // compat com link antigo
+    const recorte = Object.keys(grupos).length ? { grupos } : null;
 
-    cacheKey = `${funilKey}|${since}|${until}|${gran}|${recorte ? recorte.dim + '=' + recorte.val : '-'}`;
+    const chaveRecorte = recorte
+      ? Object.keys(grupos).sort().map(d => d + '=' + grupos[d].slice().sort().join('|')).join('&')
+      : '-';
+    cacheKey = `${funilKey}|${since}|${until}|${gran}|${chaveRecorte}`;
     if (_cache[cacheKey] && Date.now() - _cache[cacheKey].at < CACHE_TTL && req.query.refresh !== '1') {
       return res.status(200).json({ ..._cache[cacheKey].data, cache: true });
     }
@@ -1843,8 +1928,9 @@ module.exports = async (req, res) => {
     //
     // Sem nenhum id casado, o recorte devolve VAZIO em vez de devolver tudo: filtro que
     // não encontra ninguém e mostra o time inteiro é a falha silenciosa clássica.
-    if (recorte && recorte.dim === 'bdr') {
-      recorte.ownerIds = Object.keys(owners).filter(id => (idToBdr[id] || owners[id]) === recorte.val);
+    if (recorte && recorte.grupos.bdr) {
+      const alvo = new Set(recorte.grupos.bdr);
+      recorte.ownerIds = Object.keys(owners).filter(id => alvo.has(idToBdr[id] || owners[id]));
       recorte.sem_correspondencia = recorte.ownerIds.length === 0;
     }
 
@@ -2069,9 +2155,14 @@ module.exports = async (req, res) => {
       // indistinguível de um print da tela inteira — e é assim que um número de uma BDR
       // vira "o número do time" numa apresentação.
       recorte: recorte ? {
-        dimensao: recorte.dim, valor: recorte.val,
+        grupos: recorte.grupos,
+        rotulo: recorteRotulo(recorte),
+        combinacao: 'OR dentro do mesmo campo, AND entre campos',
+        // Compat: quem lia dimensao/valor continua lendo o primeiro par.
+        dimensao: Object.keys(recorte.grupos)[0],
+        valor: recorte.grupos[Object.keys(recorte.grupos)[0]][0],
         aplicado_em: 'coorte, série, waterfall macro e detalhado, snapshot, por dia e desqualificações',
-        regua_bdr: recorte.dim === 'bdr'
+        regua_bdr: recorte.grupos.bdr
           ? 'dono NO INSTANTE no fluxo (waterfall/macro), dono do lead na coorte, dono ATUAL no snapshot, quem TOCOU no trabalho na janela'
           : null,
         owner_ids: recorte.ownerIds || null,

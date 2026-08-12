@@ -62,7 +62,9 @@ const CASOS = [
   { nome: 'base', query: { funil: 'todos', since: '2026-06-01', until: '2026-08-11' } },
   { nome: 'gran-mes', query: { funil: 'todos', since: '2026-06-01', until: '2026-08-11', gran: 'mes' } },
   { nome: 'recorte-bdr', query: { funil: 'todos', since: '2026-06-01', until: '2026-08-11', dim: 'bdr', val: null } },
-  { nome: 'recorte-canal', query: { funil: 'todos', since: '2026-06-01', until: '2026-08-11', dim: 'canal_macro', val: 'Outbound' } },
+  { nome: 'recorte-canal', query: { funil: 'todos', since: '2026-06-01', until: '2026-08-11', f: 'canal_macro:Outbound' } },
+  // A COMBINAÇÃO é o caso que o smoke precisa exercitar: canal + pessoa ao mesmo tempo.
+  { nome: 'combo', query: { funil: 'todos', since: '2026-06-01', until: '2026-08-11', f: 'canal_macro:Outbound,bdr:__BDR__' } },
 ];
 
 (async () => {
@@ -80,6 +82,7 @@ const CASOS = [
       if (!bdrEscolhido) throw new Error('caso base precisa vir antes do recorte por BDR');
       q.val = bdrEscolhido;
     }
+    if (q.f && q.f.indexOf('__BDR__') >= 0) q.f = q.f.replace('__BDR__', encodeURIComponent(bdrEscolhido));
     const res = fakeRes();
     await h({ method: 'GET', url: '/api/bdr-lead-funnel', headers: {}, query: q }, res);
     if (res._code !== 200) throw new Error(c.nome + ': HTTP ' + res._code + ' ' + JSON.stringify(res._json).slice(0, 200));

@@ -1,5 +1,61 @@
 # Dashboard Enhancement Loop — Status Log
 
+### Feat | /novo-bdr: filtros combinados, selo por card e "ver todos os BDRs" (2026-08-12)
+
+> Três pedidos do dono depois de olhar a leva 6 no ar, e um deles virou correção de bug.
+>
+> **1. FILTROS COMBINADOS.** *"Semana, outbound e por BDR — não consigo, e seria
+> importante esse mix."* O recorte aceitava um campo; passou a aceitar uma combinação
+> com a gramática de facetas: **OR dentro do mesmo campo, AND entre campos**. "Canal =
+> Outbound ou Evento" é pergunta legítima; "Canal = Outbound e Canal = Evento" não
+> existe — nenhum lead tem dois canais. Cada filtro vira um **chip com ✖ próprio**,
+> porque texto corrido ("Outbound e Felipe e tier-1") não deixa tirar UM deles: vira
+> tudo ou nada, e a pergunta seguinte quase sempre é "e sem o tier?". Provado contra o
+> banco: Outbound (3.257) ∩ Felipe (348) = **321**, e o waterfall segue a combinação
+> inteira, não só o primeiro campo. Link antigo com `dim`/`val` continua abrindo o mesmo
+> recorte em vez de cair calado para a tela inteira.
+>
+> **2. ESCOPO VISÍVEL: barra no topo + selo em cada card.** A barra de filtro morava
+> DENTRO do card "Conversão do funil" — um controle que recorta nove blocos aparecendo
+> como se fosse de um card. Subiu para a barra da seção. E **todo card ganhou o selo do
+> recorte** ("🏷 Canal = Outbound · BDR = Felipe Andrade"): quem tira print de um card
+> leva só o card, e sem o selo um gráfico de uma fatia é indistinguível do gráfico do
+> time na reunião seguinte. Regra que ficou: **universo é global, forma é local** —
+> período, quebra e visão continuam no cabeçalho do próprio gráfico.
+>
+> **3. "POR BDR VEM PARCIAL, PRECISO VER TODOS E SELECIONAR."** A quebra listava os 6
+> maiores e ponto. O cap mudou de lugar: a legenda lista **todos os 15**, e o cap passou
+> a valer só para quantos vêm LIGADOS — os demais entram como série oculta, visíveis e
+> riscados na legenda, a um clique de ligar. Com 30 séries a cor sozinha repete, então a
+> FORMA do ponto varia a cada volta da paleta (8 cores × 6 formas = 48 combinações
+> separáveis).
+>
+> **4. O card "criados e movimentados" ganhou período PRÓPRIO.** Ele obedecia o seletor
+> de outro card, o que é confuso mesmo com a nota avisando. Agora começa seguindo a
+> linha do tempo e desacopla no primeiro clique — **sem ida ao banco**, porque o grão
+> diário já vem no payload e agregar para cima é conta de browser.
+>
+> **BUG ACHADO PELO TESTE NOVO: o drill não carregava o canal.** `dim_canal` e
+> `dim_canal_macro` entraram no SELECT do detalhe e ficaram FORA do mapa de saída — o
+> lead chegava com o canal `undefined`. A asserção "todo lead do drill atende as duas
+> condições" reprovou em **321 de 321**, e sem ela o filtro combinado pareceria
+> funcionar (a conta estava certa; era o drill que não sabia dizer por quê). Campo que
+> não é copiado no mapa simplesmente não existe para a tela.
+>
+> **AJUSTE DE LEITURA: taxa com denominador de um dígito não vira ponto.** Com o eixo
+> auto-escalado, uma semana parcial de 5 leads e 1 qualificado marcava 100% e ACHATAVA
+> as outras onze semanas contra o chão — medido no recorte "Outbound + Felipe", o eixo
+> ia a 0–100%; com a régua de 5, foi para **0–33%** e o gráfico voltou a ser legível. A
+> tela já dizia isso em palavras na tabela ("taxa de 3 leads é ruído com cara de
+> campeão"); agora a régua vale também no desenho, declarada no rodapé.
+>
+> **PROVA.** Teste do endpoint **174 → 183 casos** (interseção, OR no mesmo campo,
+> compatibilidade do link antigo, drill que atende as duas condições). Smoke de render
+> **30 → 44 casos**, e ele pegou duas asserções minhas escritas contra a API errada do
+> Chart.js (`getDatasetMeta().hidden` é `null` até alguém clicar; a visibilidade real
+> sai de `isDatasetVisible()`).
+
+
 ### Feat | /novo-bdr: o filtro vale para a seção inteira, e a discagem que falhou vira esforço (2026-08-12)
 
 > Leva 6 do funil de Leads. Pedido do dono, sete frentes — e três delas viraram

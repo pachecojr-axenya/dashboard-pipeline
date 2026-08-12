@@ -640,6 +640,67 @@ async function call(query) {
       'todo lead do drill carrega a faixa recortada');
   }
 
+  // ── 7d-bis. FILTROS COMBINADOS: "semana, outbound e por BDR" ─────────────────
+  // Pedido literal do dono (12/08). A gramática é de facetas: OR dentro do mesmo campo,
+  // AND entre campos. O que este bloco trava é que a combinação seja de fato uma
+  // INTERSEÇÃO — filtro que ignora a segunda condição devolve o número da primeira e
+  // parece funcionar.
+  console.log('\n== filtros combinados ==');
+  // O payload quebra cada valor em várias linhas (BDR sim/não × dentro/fora do recorte),
+  // então "o total do canal" é a SOMA das linhas daquele valor. Pegar uma linha só foi
+  // o erro que fez este teste acusar o endpoint de não somar — o endpoint estava certo.
+  const somaPorValor = (arr) => {
+    const m = {};
+    (arr || []).forEach(r => { m[r.valor] = (m[r.valor] || 0) + r.criados; });
+    return m;
+  };
+  const totCanal = somaPorValor(SEM.body.coorte.por_dimensao.canal_macro);
+  const canalTopNome = Object.keys(totCanal).filter(k => totCanal[k] > 100)
+    .sort((a, b) => totCanal[b] - totCanal[a])[0];
+  const canalTop = { valor: canalTopNome, criados: totCanal[canalTopNome] };
+  const COMBO = await call({ funil: 'todos', since: '2026-06-01', until: '2026-08-11',
+    f: 'canal_macro:' + encodeURIComponent(canalTop.valor) + ',bdr:' + encodeURIComponent(algumBdr.valor),
+    gran: 'semana', refresh: '1' });
+  const CB = COMBO.body;
+  ok(CB.success && CB.recorte && CB.recorte.grupos.canal_macro && CB.recorte.grupos.bdr,
+    'o recorte combinado viaja com os DOIS campos', CB.recorte && CB.recorte.rotulo);
+  ok(CB.granularidade.escolhida === 'semana', 'a granularidade convive com a combinação', CB.granularidade.escolhida);
+  // A interseção é MENOR que cada uma das partes, e não pode ser zero por engano: o
+  // BDR escolhido é o de maior volume e o canal também.
+  const soCanal = await call({ funil: 'todos', since: '2026-06-01', until: '2026-08-11',
+    f: 'canal_macro:' + encodeURIComponent(canalTop.valor), refresh: '1' });
+  ok(CB.coorte.criados <= soCanal.body.coorte.criados && CB.coorte.criados <= R.coorte.criados,
+    'a combinação é INTERSEÇÃO: menor que o canal sozinho e menor que o BDR sozinho',
+    CB.coorte.criados + ' <= ' + soCanal.body.coorte.criados + ' (canal) e <= ' + R.coorte.criados + ' (bdr)');
+  ok(CB.coorte.criados > 0, 'a combinação escolhida tem massa (senão o teste não prova nada)', CB.coorte.criados);
+  // E os blocos de FLUXO também intersectam — foi aqui que o recorte por atributo e o
+  // recorte por pessoa precisaram entrar na MESMA consulta.
+  ok(CB.waterfall.movimentos <= R.waterfall.movimentos && CB.waterfall.movimentos <= soCanal.body.waterfall.movimentos,
+    'o waterfall segue a combinação inteira, não só o primeiro campo',
+    CB.waterfall.movimentos + ' <= ' + R.waterfall.movimentos + ' e <= ' + soCanal.body.waterfall.movimentos);
+  ok((CB.coorte.leads || []).every(l => l.dim_canal_macro === canalTop.valor && l.bdr === algumBdr.valor),
+    'todo lead do drill atende AS DUAS condições');
+  ok(CB.macro.residuo === 0 || Math.abs(CB.macro.residuo) <= Math.max(5, CB.macro.aberto_fim * 0.05),
+    'o waterfall macro fecha com a combinação aplicada', CB.macro.conferencia);
+  // OR dentro do mesmo campo: dois canais somam, não intersectam (nenhum lead tem dois).
+  const canal2Nome = Object.keys(totCanal).filter(k => k !== canalTop.valor && totCanal[k] > 0)
+    .sort((a, b) => totCanal[b] - totCanal[a])[0];
+  const canal2 = canal2Nome ? { valor: canal2Nome, criados: totCanal[canal2Nome] } : null;
+  if (canal2) {
+    const OR = await call({ funil: 'todos', since: '2026-06-01', until: '2026-08-11',
+      f: 'canal_macro:' + encodeURIComponent(canalTop.valor) + ',canal_macro:' + encodeURIComponent(canal2.valor),
+      refresh: '1' });
+    ok(OR.body.coorte.criados === canalTop.criados + canal2.criados,
+      'dois valores do MESMO campo somam (OR), nao intersectam',
+      OR.body.coorte.criados + ' == ' + canalTop.criados + ' + ' + canal2.criados);
+  }
+  // Link antigo (dim/val) continua abrindo o mesmo recorte.
+  const LEGADO = await call({ funil: 'todos', since: '2026-06-01', until: '2026-08-11',
+    dim: 'bdr', val: algumBdr.valor, refresh: '1' });
+  ok(LEGADO.body.coorte.criados === R.coorte.criados,
+    'link antigo com dim/val continua valendo (nao cai calado para a tela inteira)',
+    LEGADO.body.coorte.criados + ' vs ' + R.coorte.criados);
+
   // ── 7e. AS TRÊS RÉGUAS DE CONTATO ────────────────────────────────────────────
   // Decisão do head de BDRs: discagem que não conectou É tentativa. As três têm de
   // ENCAIXAR — quem conversou também tentou, quem teve atividade também tentou —

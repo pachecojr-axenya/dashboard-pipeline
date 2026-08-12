@@ -54,6 +54,10 @@
    * (dentro/fora do recorte), então as combos continuam com todos os valores enquanto a
    * conta usa só a fatia.
    */
+  // FILTROS COMBINADOS: lista de {dim, val}. OR dentro do mesmo campo, AND entre
+  // campos — a gramática de facetas. `filtroDim`/`filtroVal` seguem existindo como o
+  // par que os dois selects estão montando AGORA, antes de virar chip.
+  var filtros = [];
   var filtroDim = null, filtroVal = null;
   var serieView = 'ate_qual';   // ate_qual | passo | volume
   // Granularidade da linha do tempo e do gráfico por período. null = deixa o servidor
@@ -66,6 +70,10 @@
   // Quebra da linha do tempo: uma linha por valor da dimensão (BDR, canal, tier, vidas)
   // em vez de uma linha só do total.
   var quebraDim = null;
+  // Período PRÓPRIO do gráfico "criados e movimentados". null = segue a linha do tempo.
+  // Ele pode ser local porque o payload desse card já vem no grão DIÁRIO: a agregação
+  // acontece no browser, sem ida ao banco.
+  var granDia = null;
   // Visão da tabela por dimensão: contato (as três réguas), funil (conversão) ou
   // penetração (empresas). Ver tabelaRegua().
   var reguaView = 'contato';
@@ -308,10 +316,29 @@
   // há mais o passo de "achar a fatia no meio do todo", e é isso que faz card, gráfico
   // e waterfall não poderem divergir: eles não recortam, eles recebem recortado.
   function linhasFoco() { return linhasDim('bdr'); }
-  function focoLabel() {
-    return filtroDim && filtroVal != null ? ROT_DIM[filtroDim] + ' = ' + filtroVal : 'time inteiro';
+  function focoLabel() { return filtros.length ? filtroRotulo(false) : 'time inteiro'; }
+  function temFiltro() { return filtros.length > 0; }
+  /** `{dim: [valores]}` — a mesma forma que o servidor recebe. */
+  function gruposFiltro() {
+    var g = {};
+    filtros.forEach(function (f) { (g[f.dim] = g[f.dim] || []).push(f.val); });
+    return g;
   }
-  function temFiltro() { return !!(filtroDim && filtroVal != null); }
+  function filtroQS() {
+    return filtros.map(function (f) {
+      return encodeURIComponent(f.dim) + ':' + encodeURIComponent(f.val);
+    }).join(',');
+  }
+  /** Rótulo curto para o selo do card: dois campos e "+N", com o resto no title. */
+  function filtroRotulo(curto) {
+    var g = gruposFiltro();
+    var ds = Object.keys(g);
+    var txt = ds.map(function (d) {
+      return (ROT_DIM[d] || d) + ' = ' + g[d].join(' ou ');
+    });
+    if (!curto || txt.length <= 2) return txt.join(' · ');
+    return txt.slice(0, 2).join(' · ') + ' +' + (txt.length - 2);
+  }
 
   // ── A SÉRIE, agrupada por período ─────────────────────────────────────────────
   var CAMPOS_SERIE = ['criados', 'com_atividade', 'por_etapa', 'conectados', 'qualificados',
@@ -346,7 +373,19 @@
     return Object.keys(m).sort().map(function (k) { return m[k]; });
   }
 
-  /** Os valores de uma dimensão na série, ordenados por volume — para a quebra. */
+  /**
+   * TODOS os valores da dimensão na série, ordenados por volume.
+   *
+   * Era capado em 6 e o dono reclamou com razão: *"por BDR vem parcial, preciso poder
+   * ver todos e selecionar"*. Capar a LISTA tirava a escolha; o que precisa ser capado
+   * é quantos vêm LIGADOS por padrão — mais de meia dúzia de linhas num gráfico deixa
+   * de ser leitura e vira mancha. Os demais entram como dataset oculto: aparecem na
+   * legenda, riscados, e um clique liga qualquer um.
+   *
+   * O teto de 30 é de desenho, não de escolha: acima disso a legenda ocupa mais tela
+   * que o gráfico. Quando ele morde, o rodapé diz quantos ficaram de fora.
+   */
+  var QUEBRA_VISIVEIS = 6, QUEBRA_TETO = 30;
   function valoresDaSerie(dim, teto) {
     var S = (D && D.coorte && D.coorte.serie) || {};
     var m = {};
@@ -355,7 +394,11 @@
       if (r.rec === false) return;
       m[r.valor] = (m[r.valor] || 0) + (r.criados || 0);
     });
-    return Object.keys(m).sort(function (a, b) { return m[b] - m[a]; }).slice(0, teto || 6);
+    // Valor sem nenhum lead na janela não vira linha: seria uma reta em zero com nome
+    // de gente, e o gráfico já tem a tabela ao lado para dizer "este BDR fez zero".
+    var vals = Object.keys(m).filter(function (k) { return m[k] > 0; })
+      .sort(function (a, b) { return m[b] - m[a]; });
+    return teto ? vals.slice(0, teto) : vals;
   }
 
   // '2026-08' → 'ago/26' · '2026-W32' → 'S32/26'. Rótulo curto porque 12 pontos com
@@ -422,7 +465,7 @@
   function chaveJanela() {
     var j = janelaAtual();
     return funil + '|' + (j.tudo ? 'tudo' : j.since) + '|' + j.until +
-      '|' + (gran || 'auto') + '|' + (filtroDim && filtroVal != null ? filtroDim + '=' + filtroVal : '-');
+      '|' + (gran || 'auto') + '|' + filtroQS();
   }
 
   function load(force) {
@@ -430,8 +473,7 @@
     var qs = j.tudo ? 'tudo=1&until=' + j.until : 'since=' + j.since + '&until=' + j.until;
     var url = '/api/bdr-lead-funnel?funil=' + funil + '&' + qs +
       (gran ? '&gran=' + gran : '') +
-      (filtroDim && filtroVal != null
-        ? '&dim=' + encodeURIComponent(filtroDim) + '&val=' + encodeURIComponent(filtroVal) : '') +
+      (filtros.length ? '&f=' + filtroQS() : '') +
       (force ? '&refresh=1' : '');
     var chave = chaveJanela();
     var myReq = ++REQ;
@@ -480,15 +522,44 @@
   // Trocar a DIMENSÃO limpa o valor de propósito: manter "Priscilla" selecionada ao
   // pular para a dimensão Porte deixaria um filtro que não casa com nada, e a tela
   // ficaria vazia sem dizer por quê.
-  function setFiltroDim(d) { filtroDim = d || null; filtroVal = null; paint(); }
-  function setFiltroVal(v) { filtroVal = (v === '' || v == null) ? null : v; paint(); }
-  function limpaFiltro() { filtroDim = null; filtroVal = null; paint(); }
+  // Trocar a DIMENSÃO limpa o valor: manter "Priscilla" selecionada ao pular para
+  // Porte deixaria um filtro que não casa com nada.
+  function setFiltroDim(d) { filtroDim = d || null; filtroVal = null; repintaBarra(); }
+  // Escolher um valor ADICIONA um chip e devolve os selects ao estado neutro — assim o
+  // gesto seguinte é escolher o próximo campo, que é o que "quero semana, outbound e
+  // por BDR" pede.
+  function setFiltroVal(v) {
+    if (v === '' || v == null || !filtroDim) return;
+    var ja = filtros.some(function (f) { return f.dim === filtroDim && f.val === v; });
+    if (!ja) filtros.push({ dim: filtroDim, val: v });
+    filtroVal = null;
+    paint();
+  }
+  function tiraFiltro(dim, val) {
+    filtros = filtros.filter(function (f) { return !(f.dim === dim && f.val === val); });
+    paint();
+  }
+  function limpaFiltro() { filtros = []; filtroDim = null; filtroVal = null; paint(); }
+  // Trocar só o campo dos selects não muda o recorte, então não vale recarregar a
+  // seção inteira: repinta a barra e pronto.
+  function repintaBarra() {
+    var el = document.getElementById('lf-barra-filtro');
+    if (el) el.innerHTML = barraFiltroHtml(); else paint();
+  }
   function switchSerie(v) { serieView = v; if (typeof _setActive === 'function') _setActive('lf-serie-tabs', v); serieChart(); }
   // Trocar a granularidade recarrega: o agrupamento é feito no BigQuery, e refazê-lo no
   // browser exigiria mandar sempre o grão diário de TODAS as dimensões — 7 dimensões ×
   // 937 dias é payload que não cabe.
   function switchGran(g) { gran = g === 'auto' ? null : g; if (typeof _setActive === 'function') _setActive('lf-gran-tabs', g); paint(); }
   // A QUEBRA é só de desenho (os dados já vieram por dimensão), então não recarrega.
+  // Local e SEM recarga: o grão diário já está no payload, então agrupar para cima é
+  // conta de browser. É por isso que este seletor pode existir sem custo, enquanto o da
+  // linha do tempo precisa do banco.
+  function switchGranDia(g) {
+    granDia = g === 'auto' ? null : g;
+    if (typeof _setActive === 'function') _setActive('lf-granday-tabs', g);
+    porDia();
+  }
   function switchQuebra(d) {
     quebraDim = d === 'nenhuma' ? null : d;
     if (typeof _setActive === 'function') _setActive('lf-quebra-tabs', d);
@@ -523,11 +594,25 @@
       'title="Tira do corte de gente quem não é BDR: executivo/closer, Placement, admin e ex-BDR arquivado. Ninguém some do dado — desligue para ver todos os donos de lead.">' +
       (soBdr ? '✅ Só BDRs' : '✖️ Todos os donos') + '</button>';
 
-    var barraFunil = '<div class="novo-card" style="grid-column:1/-1;display:flex;align-items:center;gap:1rem;flex-wrap:wrap;padding:.6rem .9rem">' +
-      '<span style="font-size:.72rem;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:.06em">Funil</span>' +
-      tabsFunil + btnBdr +
-      '<span style="font-size:.7rem;color:var(--text2)">Pipeline <strong>Backup</strong> excluído (parou de receber lead em 09/04/2026)</span>' +
-      '<span id="lf-selo" style="margin-left:auto;font-size:.7rem;color:var(--text2)"></span>' +
+    /**
+     * A BARRA DE CONTROLES DA SEÇÃO — e a razão de o filtro de campo ter subido para cá.
+     *
+     * Ele morava dentro do card "Conversão do funil", e isso mentia sobre o alcance: um
+     * controle que recorta os nove blocos aparecia como se fosse daquele card. Regra que
+     * vale para a seção inteira mora na barra da seção; controle que muda só o desenho
+     * de um gráfico (período, quebra, visão) fica no cabeçalho do próprio card.
+     *
+     * A segunda linha só existe quando há dado — sem `D` não há valores para listar, e
+     * uma combo vazia convida ao clique que não faz nada.
+     */
+    var barraFunil = '<div class="novo-card" style="grid-column:1/-1;padding:.6rem .9rem">' +
+      '<div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">' +
+        '<span style="font-size:.72rem;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:.06em">Funil</span>' +
+        tabsFunil + btnBdr +
+        '<span style="font-size:.7rem;color:var(--text2)">Pipeline <strong>Backup</strong> excluído (parou de receber lead em 09/04/2026)</span>' +
+        '<span id="lf-selo" style="margin-left:auto;font-size:.7rem;color:var(--text2)"></span>' +
+      '</div>' +
+      (D ? '<div style="border-top:1px solid var(--border);margin-top:.55rem;padding-top:.55rem">' + barraFiltroHtml() + '</div>' : '') +
       '</div>';
 
     if (ERR) {
@@ -540,14 +625,31 @@
     }
 
     var i = (typeof _infoBtn === 'function') ? _infoBtn : function () { return ''; };
+    /**
+     * O SELO DE RECORTE, em TODO card.
+     *
+     * O filtro vale para a seção inteira, mas quem tira print de um card leva só o
+     * card. Sem o selo, um gráfico de "Canal = Outbound" é indistinguível do gráfico do
+     * time inteiro na reunião seguinte — e é assim que o número de uma fatia vira "o
+     * número do time". Com ele, o recorte viaja junto da imagem.
+     *
+     * É texto, não cor: há BDR daltônico no time, e a etiqueta precisa ser legível em
+     * qualquer print, inclusive em preto e branco.
+     */
+    var seloRecorte = temFiltro()
+      ? '<span style="margin-left:.5rem;font-size:.68rem;font-weight:600;color:var(--teal);' +
+        'border:1px solid var(--teal);border-radius:999px;padding:.1rem .5rem;white-space:nowrap" ' +
+        'title="' + esc(filtroRotulo(false)) + ' — este card segue o filtro da seção. Limpe na barra do topo para ver o time inteiro.">' +
+        '🏷 ' + esc(filtroRotulo(true)) + '</span>'
+      : '';
     var card = function (titulo, tip, id, h, extra, wide) {
       return '<div class="novo-card"' + (wide ? ' style="grid-column:1/-1"' : '') + '>' +
-        '<div class="novo-card-header"><h3>' + titulo + '</h3>' + i(tip, id) + (extra || '') + '</div>' +
+        '<div class="novo-card-header"><h3>' + titulo + '</h3>' + i(tip, id) + seloRecorte + (extra || '') + '</div>' +
         '<canvas id="lf-' + id + '" style="max-height:' + (h || 320) + 'px"></canvas></div>';
     };
     var painel = function (titulo, tip, id, extra) {
       return '<div class="novo-card" style="grid-column:1/-1">' +
-        '<div class="novo-card-header"><h3>' + titulo + '</h3>' + i(tip, id) + (extra || '') + '</div>' +
+        '<div class="novo-card-header"><h3>' + titulo + '</h3>' + i(tip, id) + seloRecorte + (extra || '') + '</div>' +
         '<div id="lf-' + id + '" style="overflow-x:auto;margin-top:.5rem"></div></div>';
     };
 
@@ -596,6 +698,13 @@
       { mode: 'mes', label: 'Mês', fn: 'AxLeadFunnel.switchGran' },
       { mode: 'trimestre', label: 'Trimestre', fn: 'AxLeadFunnel.switchGran' }
     ]) : '';
+    var tabsGranDia = (typeof _subTabs === 'function') ? _subTabs('lf-granday-tabs', granDia || 'auto', [
+      { mode: 'auto', label: 'Segue', fn: 'AxLeadFunnel.switchGranDia' },
+      { mode: 'dia', label: 'Dia', fn: 'AxLeadFunnel.switchGranDia' },
+      { mode: 'semana', label: 'Semana', fn: 'AxLeadFunnel.switchGranDia' },
+      { mode: 'mes', label: 'Mês', fn: 'AxLeadFunnel.switchGranDia' },
+      { mode: 'trimestre', label: 'Trimestre', fn: 'AxLeadFunnel.switchGranDia' }
+    ]) : '';
     var tabsQuebra = (typeof _subTabs === 'function') ? _subTabs('lf-quebra-tabs', quebraDim || 'nenhuma', [
       { mode: 'nenhuma', label: 'Time todo', fn: 'AxLeadFunnel.switchQuebra' },
       { mode: 'bdr', label: 'por BDR', fn: 'AxLeadFunnel.switchQuebra' },
@@ -640,8 +749,10 @@
           '<div><canvas id="lf-snapshot" style="max-height:320px"></canvas></div>' +
           '<div id="lf-snapshot-giro" style="overflow-x:auto"></div>' +
         '</div></div>' +
-      card('Criados e movimentados por dia',
-        'Barras = leads criados no dia (entrada no funil). Linhas = movimentações que chegaram em cada etapa naquele dia. É a taxa por dia: quantos leads novos, quantos passaram para tentativa, conectado, qualificado ou desqualificado.', 'pordia', 320, null, true) +
+      card('Criados e movimentados por período',
+        'Barras = leads criados no período (entrada no funil), vindos da agregação do banco — NÃO da lista do drill, que é capada em 1.500 e desenhava menos de 10% da coorte em janela longa. Linhas = movimentações que CHEGARAM em cada etapa. ' +
+        'O seletor de período deste card é PRÓPRIO: ele começa seguindo a linha do tempo e desacopla no primeiro clique, sem ida ao banco (o grão diário já veio no payload). O drill por clique só existe no grão diário — agrupado, um clique pegaria um mês inteiro de leads.',
+        'pordia', 320, tabsGranDia, true) +
       painel('Esforço, funil e penetração | por ' + (ROT_DIM[reguaDim] || reguaDim),
         'A tela NÃO escolhe entre as duas réguas. ETAPA = o lead chegou a Tentativa+ no histórico de etapa. ATIVIDADE REAL = houve ligação conectada, e-mail enviado, LinkedIn, WhatsApp manual ou reunião realizada (nota não conta: nota não é ação). Medido em jul/26: 89,4% contra 46,7%, com 1.009 leads movidos para Tentativa sem UM toque no CRM — a premissa "teve que passar, senão não tem como" não se sustenta no dado. ' +
         'O TOQUE SÓ CONTA APÓS A CRIAÇÃO DO LEAD (correção de 11/08/2026): a régua liga toque→lead pelo contato, e o contato tem vida anterior ao lead — sem o limite, "falou com" contava trabalho de outro ciclo, às vezes de outra pessoa. Em ago/26 isso valia 19 leads (210 → 191), o mais antigo com toque de 18/07/2024. O toque anterior não é descartado: vira a coluna "Toque só antes do lead". ' +
@@ -1009,8 +1120,9 @@
    *    sempre diário e a agregação para cima acontece aqui — para cima sempre dá, para
    *    baixo nunca daria.
    */
+  function granDoCard() { return granDia || granAtual(); }
   function chaveGran(ymd) {
-    var g = granAtual();
+    var g = granDoCard();
     if (g === 'dia') return ymd;
     var d = new Date(ymd + 'T12:00:00');
     if (g === 'mes') return ymd.slice(0, 7);
@@ -1075,7 +1187,7 @@
         },
         // O drill só faz sentido no grão diário: agrupado, um clique pegaria um mês
         // inteiro de leads e a lista viria capada sem dizer.
-        onClick: function (e, el) { if (!el.length || granAtual() !== 'dia') return; drillDia(chaves[el[0].index]); }
+        onClick: function (e, el) { if (!el.length || granDoCard() !== 'dia') return; drillDia(chaves[el[0].index]); }
       }
     });
 
@@ -1086,10 +1198,11 @@
       var p = document.createElement('p');
       p.className = 'lf-pordia-nota';
       p.style.cssText = 'font-size:.71rem;color:var(--text2);margin:.5rem 0 0;line-height:1.5';
-      p.innerHTML = 'Agrupado por <strong>' + esc(GRAN_PT[granAtual()] || granAtual()) + '</strong> (segue o seletor da linha do tempo). ' +
+      p.innerHTML = 'Agrupado por <strong>' + esc(GRAN_PT[granDoCard()] || granDoCard()) + '</strong>' +
+        (granDia ? ' (escolhido neste card)' : ' (seguindo a linha do tempo — troque aqui em cima para desacoplar)') + '. ' +
         'Barras = <strong>' + ni(totalCriados) + '</strong> leads criados no recorte, da agregação do banco — <strong>não</strong> da lista do drill, que é capada. ' +
         'Linhas = movimentações que CHEGARAM em cada etapa no período. ' +
-        (granAtual() === 'dia' ? 'Clique numa barra para ver os leads do dia.' : 'O clique para drill só existe no grão diário.');
+        (granDoCard() === 'dia' ? 'Clique numa barra para ver os leads do dia.' : 'O clique para drill só existe no grão diário.');
       cv.parentNode.appendChild(p);
     }
   }
@@ -1122,28 +1235,62 @@
     if (filtroDim) {
       // As opções vêm do universo COMPLETO (terceiro argumento), não do recorte: com o
       // filtro aplicado, listar só o recorte deixaria uma opção só na combo e seria
-      // impossível trocar de fatia sem limpar o filtro antes.
-      opVal = linhasDim(filtroDim, false, true).slice().sort(function (a, b) { return b.criados - a.criados; })
+      // impossível somar uma segunda fatia. O que já está escolhido some da lista, para
+      // o mesmo valor não virar dois chips.
+      var jaEscolhidos = {};
+      filtros.forEach(function (f) { if (f.dim === filtroDim) jaEscolhidos[f.val] = 1; });
+      opVal = linhasDim(filtroDim, false, true).slice()
+        .sort(function (a, b) { return b.criados - a.criados; })
+        .filter(function (r) { return !jaEscolhidos[r.valor]; })
         .map(function (r) {
-          return '<option value="' + esc(r.valor) + '"' + (filtroVal === r.valor ? ' selected' : '') + '>' +
-            esc(r.valor) + ' · ' + ni(r.criados) + '</option>';
+          return '<option value="' + esc(r.valor) + '">' + esc(r.valor) + ' · ' + ni(r.criados) + '</option>';
         }).join('');
     }
     var sel = 'background:var(--card2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:.3rem .55rem;font-size:.75rem;max-width:260px';
-    return '<div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin:0 0 .8rem">' +
+
+    /**
+     * OS CHIPS SÃO O RECORTE ATIVO, e cada um sai sozinho.
+     *
+     * Com filtros combinados, um texto corrido ("Canal = Outbound e BDR = Felipe e Tier
+     * = tier-1") não deixa tirar UM deles — vira tudo ou nada. O chip com ✖ próprio é o
+     * que permite testar "e sem o tier?" sem remontar o recorte inteiro.
+     */
+    var chips = filtros.map(function (f) {
+      return '<span style="display:inline-flex;align-items:center;gap:.35rem;background:var(--card2);' +
+        'border:1px solid var(--teal);border-radius:999px;padding:.15rem .3rem .15rem .6rem;font-size:.72rem;white-space:nowrap">' +
+        '<strong style="color:var(--text2);font-weight:600">' + esc(ROT_DIM[f.dim] || f.dim) + '</strong>' +
+        '<span style="color:var(--text)">' + esc(f.val) + '</span>' +
+        '<button type="button" title="Tirar este filtro" aria-label="Tirar filtro ' + esc(f.val) + '" ' +
+        'onclick="AxLeadFunnel.tiraFiltro(' + JSON.stringify(f.dim).replace(/"/g, '&quot;') + ',' +
+        JSON.stringify(f.val).replace(/"/g, '&quot;') + ')" ' +
+        'style="background:none;border:none;color:var(--text2);cursor:pointer;font-size:.8rem;line-height:1;padding:0 .2rem">✖</button>' +
+        '</span>';
+    }).join(' ');
+
+    // MECE do recorte: quantos leads sobraram e quanto isso é do total sem filtro.
+    var noRecorte = soma(linhasDim('bdr'), 'criados');
+    var universo = soma(linhasDim('bdr', false, true), 'criados');
+
+    return '<div id="lf-barra-filtro" style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">' +
       '<span style="font-size:.72rem;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:.06em">Filtrar por campo</span>' +
       '<select style="' + sel + '" onchange="AxLeadFunnel.setFiltroDim(this.value)">' +
         '<option value=""' + (filtroDim ? '' : ' selected') + '>— campo —</option>' + opDim + '</select>' +
-      (filtroDim ? '<select style="' + sel + '" onchange="AxLeadFunnel.setFiltroVal(this.value)">' +
-        '<option value=""' + (filtroVal == null ? ' selected' : '') + '>— todos os valores —</option>' + opVal + '</select>' : '') +
-      (filtroDim || filtroVal != null
-        ? '<button type="button" onclick="AxLeadFunnel.limpaFiltro()" style="background:var(--card2);color:var(--teal);border:1px solid var(--border);border-radius:8px;padding:.3rem .7rem;font-size:.74rem;font-weight:600;cursor:pointer">✖ limpar</button>'
+      (filtroDim
+        ? '<select style="' + sel + '" onchange="AxLeadFunnel.setFiltroVal(this.value)">' +
+          '<option value="" selected>— escolha um valor —</option>' + opVal + '</select>'
         : '') +
-      '<span style="font-size:.72rem;color:var(--text2)">Medindo: <strong style="color:var(--text)">' + esc(focoLabel()) + '</strong>' +
-      (filtroVal != null
-        ? ' — <strong style="color:var(--teal)">a seção inteira</strong> segue este recorte: cards, funil, linha do tempo, os dois waterfalls, snapshot, por dia e desqualificações'
-        : '') + '</span>' +
-      (LOADING ? '<span style="font-size:.72rem;color:var(--text2)">recalculando no banco…</span>' : '') +
+      (chips ? '<span style="display:flex;gap:.35rem;flex-wrap:wrap">' + chips + '</span>' : '') +
+      (filtros.length
+        ? '<button type="button" onclick="AxLeadFunnel.limpaFiltro()" style="background:var(--card2);color:var(--teal);border:1px solid var(--border);border-radius:8px;padding:.3rem .7rem;font-size:.74rem;font-weight:600;cursor:pointer">✖ limpar tudo</button>'
+        : '') +
+      '<span style="font-size:.72rem;color:var(--text2);margin-left:auto">' +
+        (filtros.length
+          ? 'Recorte: <strong style="color:var(--text)">' + ni(noRecorte) + '</strong> de ' + ni(universo) +
+            ' leads (' + pct(noRecorte, universo) + ') — <strong style="color:var(--teal)">a seção inteira</strong> segue este recorte' +
+            (noRecorte === 0 ? ' · <strong style="color:var(--red)">nenhum lead nesta combinação</strong>' : '')
+          : 'Sem filtro: <strong style="color:var(--text)">' + ni(universo) + '</strong> leads — o time inteiro') +
+        (LOADING ? ' · <em>recalculando no banco…</em>' : '') +
+      '</span>' +
       '</div>';
   }
 
@@ -1152,8 +1299,10 @@
     var linhas = linhasFoco();
     var P = passosDe(linhas);
     if (!P.criados) {
-      el.innerHTML = barraFiltroHtml() +
-        '<p style="color:var(--text2);padding:1rem 0">Nenhum lead criado no período para <strong>' + esc(focoLabel()) + '</strong>' + (soBdr ? ', com o filtro "só BDRs" ligado' : '') + '.</p>';
+      el.innerHTML = '<p style="color:var(--text2);padding:1rem 0">Nenhum lead criado no período para <strong>' +
+        esc(focoLabel()) + '</strong>' + (soBdr ? ', com o filtro "só BDRs" ligado' : '') +
+        (temFiltro() ? '. <strong style="color:var(--text)">A combinação de filtros não devolveu nenhum lead</strong> — tire um dos chips na barra do topo para alargar o recorte.' : '.') +
+        '</p>';
       return;
     }
 
@@ -1224,7 +1373,7 @@
         baldesTxt(ex) + '. Desligue o botão para incluí-los.'
       : (!soBdr ? '<br><strong style="color:var(--text)">Filtro desligado:</strong> a conta inclui TODO dono de lead — executivo, Placement, admin, ex-BDR arquivado e lead sem dono, junto com o time.' : '');
 
-    el.innerHTML = barraFiltroHtml() + tiles + funilHtml +
+    el.innerHTML = tiles + funilHtml +
       '<p style="font-size:.71rem;color:var(--text2);margin:.7rem 0 0;line-height:1.6">' +
       (filtroVal != null ? 'Recorte ativo: <strong style="color:var(--text)">' + esc(focoLabel()) + '</strong>. ' : '') +
       'Coorte de <strong>' + ni(P.criados) + '</strong> leads criados na janela, seguidos até hoje; a régua é acumulada, então todo Conectado+ também é Tentativa+ e a conversão do processo é o produto dos passos. ' +
@@ -1310,9 +1459,28 @@
     var dash = function () {
       return iParcial > 0 ? { borderDash: function (ctx) { return ctx.p1DataIndex === iParcial ? [6, 4] : undefined; } } : undefined;
     };
+    /**
+     * TAXA COM DENOMINADOR DE UM DÍGITO NÃO VIRA PONTO.
+     *
+     * A tabela de conversão já diz isso em palavras ("taxa de 3 leads no topo do rank é
+     * ruído com cara de campeão"); no gráfico o estrago é maior, porque a auto-escala
+     * do eixo obedece ao ponto extremo: uma semana parcial com 5 leads e 1 qualificado
+     * marca 100% e ACHATA as outras onze semanas contra o chão. Medido no recorte
+     * "Outbound + Felipe": o eixo ia a 0–100% por causa de um bucket de 5.
+     *
+     * Abaixo de 5 no denominador o ponto vira lacuna — o volume continua visível na
+     * barra, e a nota do rodapé diz a régua. Esconder o ponto é menos enganoso do que
+     * desenhar 100% de 1.
+     */
+    var DEN_MIN = 5;
+    var taxaSegura = function (num, den) { return den >= DEN_MIN ? +(num / den * 100).toFixed(1) : null; };
     var iLinha = 0;
     var linha = function (label, cor, dados, eixo) {
-      var forma = FORMAS[iLinha++ % FORMAS.length];
+      // A FORMA muda a cada volta da paleta: com 30 séries a cor sozinha repete, e duas
+      // linhas da mesma cor são indistinguíveis para qualquer um — não só para quem não
+      // enxerga matiz. 8 cores × 6 formas = 48 combinações separáveis.
+      var n = iLinha++;
+      var forma = FORMAS[Math.floor(n / PALETA_QUEBRA.length) % FORMAS.length];
       return { type: 'line', label: label, data: dados, borderColor: cor, backgroundColor: cor,
         yAxisID: eixo || 'y1', tension: .25, borderWidth: 2, pointRadius: 3.5, pointHoverRadius: 6,
         pointStyle: forma, spanGaps: true, segment: dash(),
@@ -1323,10 +1491,10 @@
     // A MÉTRICA de cada visão, em um lugar só — é ela que a quebra por dimensão repete
     // para cada valor. Sem isto, quebrar por BDR precisaria duplicar as três visões.
     var METRICA = {
-      ate_qual: { rot: 'Criado → Qualificado', taxa: true, f: function (b) { return b.criados ? +(b.qualificados / b.criados * 100).toFixed(1) : null; } },
-      passo:    { rot: 'Novo → Tentativa+',    taxa: true, f: function (b) { return b.criados ? +(b.por_etapa / b.criados * 100).toFixed(1) : null; } },
+      ate_qual: { rot: 'Criado → Qualificado', taxa: true, f: function (b) { return taxaSegura(b.qualificados, b.criados); } },
+      passo:    { rot: 'Novo → Tentativa+',    taxa: true, f: function (b) { return taxaSegura(b.por_etapa, b.criados); } },
       volume:   { rot: 'Leads criados',        taxa: false, f: function (b) { return b.criados; } },
-      contato:  { rot: 'Falou com',            taxa: true, f: function (b) { return b.criados ? +(b.com_atividade / b.criados * 100).toFixed(1) : null; } }
+      contato:  { rot: 'Falou com',            taxa: true, f: function (b) { return taxaSegura(b.com_atividade, b.criados); } }
     };
 
     var ds, notaQuebra = '';
@@ -1335,16 +1503,8 @@
       // 6 linhas num gráfico deixa de ser leitura e vira mancha, então entra o top 6 por
       // volume e o rodapé diz quantos ficaram de fora — capar calado seria fingir
       // cobertura.
-      var vals = valoresDaSerie(quebraDim, 6);
-      var totalVals = Object.keys((function () {
-        var m = {};
-        (((D.coorte.serie || {}).por_dimensao || {})[quebraDim] || []).forEach(function (r) {
-          if (soBdr && r.bdr === false) return;
-          if (r.rec === false) return;
-          m[r.valor] = 1;
-        });
-        return m;
-      })()).length;
+      var todosVals = valoresDaSerie(quebraDim);
+      var vals = todosVals.slice(0, QUEBRA_TETO);
       var M = METRICA[serieView] || METRICA.ate_qual;
       ds = vals.map(function (v, i) {
         var Bv = serieBuckets(quebraDim, v);
@@ -1354,14 +1514,22 @@
           var bb = porBucket[b.bucket];
           return bb ? M.f(bb) : null;
         });
-        return linha(String(v), PALETA_QUEBRA[i % PALETA_QUEBRA.length], dados, M.taxa ? 'y1' : 'y');
+        var d = linha(String(v), PALETA_QUEBRA[i % PALETA_QUEBRA.length], dados, M.taxa ? 'y1' : 'y');
+        // Além dos N maiores, entra OCULTO: visível na legenda, fora do desenho. Se o
+        // usuário já mexeu naquela série, a escolha dele manda.
+        if (escondidas[String(v)] === undefined) d.hidden = i >= QUEBRA_VISIVEIS;
+        return d;
       });
       notaQuebra = 'Quebrado por <strong>' + esc(ROT_DIM[quebraDim] || quebraDim) + '</strong>, medindo <strong>' +
-        esc(M.rot) + '</strong>' +
-        (totalVals > vals.length ? ' — mostrando os <strong>' + vals.length + '</strong> maiores de ' + ni(totalVals) + ' valores, por volume de leads criados' : '') +
-        '. Clique na legenda para isolar uma linha; o eixo se ajusta ao que ficou visível. ';
+        esc(M.rot) + '</strong> — <strong>' + Math.min(QUEBRA_VISIVEIS, vals.length) + ' de ' + ni(vals.length) +
+        '</strong> ligados por padrão (os maiores por volume). <strong style="color:var(--text)">Todos estão na legenda</strong>: ' +
+        'clique para ligar ou desligar qualquer um, e o eixo se reajusta ao que ficar visível. ' +
+        (todosVals.length > vals.length
+          ? '<span style="color:var(--red)">Acima de ' + QUEBRA_TETO + ' valores a legenda fica maior que o gráfico, então ' +
+            ni(todosVals.length - vals.length) + ' com menos volume ficaram fora — use o filtro do topo para recortar.</span> '
+          : '');
     } else {
-      var taxa = function (num, den) { return B.map(function (b) { return b[den] ? +(b[num] / b[den] * 100).toFixed(1) : null; }); };
+      var taxa = function (num, den) { return B.map(function (b) { return taxaSegura(b[num], b[den]); }); };
       var barras = { type: 'bar', label: 'Leads criados', data: B.map(function (b) { return b.criados; }),
         backgroundColor: B.map(function (b) { return b.bucket === parcial ? 'rgba(88,166,255,.35)' : 'rgba(88,166,255,.55)'; }),
         borderRadius: 3, yAxisID: 'y', order: 9, hidden: !!escondidas['Leads criados'],
@@ -1375,10 +1543,10 @@
       } else if (serieView === 'passo') {
         ds = [barras,
           linha('Novo → Tentativa+', COR.tentativa, taxa('por_etapa', 'criados')),
-          linha('Tentativa+ → Conectado+', COR.conectado, B.map(function (b) { return b.por_etapa ? +(b.conectados / b.por_etapa * 100).toFixed(1) : null; })),
+          linha('Tentativa+ → Conectado+', COR.conectado, B.map(function (b) { return taxaSegura(b.conectados, b.por_etapa); })),
           // Verde CHEIO, não o verde translúcido da etapa: ao lado do turquesa do
           // "conectado" o tom fraco quase encosta, e aí só a forma do ponto separava.
-          linha('Conectado+ → Qualificado', C_BOM_T, B.map(function (b) { return b.conectados ? +(b.qualificados / b.conectados * 100).toFixed(1) : null; }))];
+          linha('Conectado+ → Qualificado', C_BOM_T, B.map(function (b) { return taxaSegura(b.qualificados, b.conectados); }))];
       } else if (serieView === 'contato') {
         // A VISÃO DE ESFORÇO no eixo do tempo: tentou, falou, conversou. É aqui que
         // "tentou mais e converteu menos" vira uma pergunta respondível.
@@ -1389,8 +1557,8 @@
       } else {
         ds = [barras,
           linha('Criado → Qualificado', C_PROCESSO, taxa('qualificados', 'criados')),
-          linha('Tentativa+ → Qualificado', COR.tentativa, B.map(function (b) { return b.por_etapa ? +(b.qualificados / b.por_etapa * 100).toFixed(1) : null; })),
-          linha('Conectado+ → Qualificado', COR.conectado, B.map(function (b) { return b.conectados ? +(b.qualificados / b.conectados * 100).toFixed(1) : null; }))];
+          linha('Tentativa+ → Qualificado', COR.tentativa, B.map(function (b) { return taxaSegura(b.qualificados, b.por_etapa); })),
+          linha('Conectado+ → Qualificado', COR.conectado, B.map(function (b) { return taxaSegura(b.qualificados, b.conectados); }))];
       }
       // As linhas ficam por cima das barras, sempre: barra desenhada em cima da linha
       // esconde justamente o ponto que se quer ler.
@@ -1477,6 +1645,8 @@
         notaQuebra +
         (iParcial >= 0 ? '<strong style="color:var(--text)">' + rotBucket(parcial) + ' está marcado com * e tracejado: coorte PARCIAL</strong> — ela ainda vai converter, então a queda no fim é maturidade, não piora. ' : '') +
         'Período fechado contra período fechado é comparação legítima; qualquer um deles contra o corrente, não. ' +
+        '<strong style="color:var(--text)">Taxa com menos de ' + DEN_MIN + ' leads no denominador não vira ponto</strong> — ' +
+        '100% de 1 lead levaria o eixo ao teto e achataria todo o resto; o volume continua na barra. ' +
         '<span id="lf-serie-escala" style="color:var(--text)">eixo % em ' + String(esc1.min).replace('.', ',') + '–' + String(esc1.max).replace('.', ',') + '%</span>. ' +
         'Clique num ponto para ver os leads da coorte.';
       host.appendChild(p);
@@ -1538,12 +1708,9 @@
       // de fingir que a tabela seguiu o filtro. O cruzamento entre dois campos não
       // existe nesta agregação, e mostrar a tabela cheia sem dizer isso seria deixar
       // duas leituras contraditórias na mesma tela.
-      (filtroVal != null
-        ? (convDim === filtroDim
-            ? '<br><strong style="color:var(--text)">Filtro ativo em ' + esc(focoLabel()) + '</strong> — a linha dele está nesta tabela; as outras seguem visíveis para comparação.'
-            : '<br><span style="color:var(--red)">⚠ Esta tabela NÃO segue o filtro de ' + esc(focoLabel()) + '</span>: o cruzamento entre dois campos ' +
-              '(' + esc(ROT_DIM[filtroDim]) + ' × ' + esc(ROT_DIM[convDim]) + ') não existe nesta agregação, que sai por dimensão isolada. ' +
-              'Os cards e a linha do tempo acima seguem o filtro; esta tabela mostra a coorte inteira do recorte de gente.')
+      (temFiltro()
+        ? '<br><strong style="color:var(--text)">Recorte ativo: ' + esc(focoLabel()) + '</strong> — esta tabela é o CRUZAMENTO do recorte com ' +
+          esc(ROT_DIM[convDim] || convDim) + '. Antes o cruzamento não existia e a tela avisava que a tabela ignorava o filtro; agora ela o segue.'
         : '') +
       '</div>';
 
@@ -2265,6 +2432,7 @@
     switchConvDim: switchConvDim,
     switchSerie: switchSerie,
     switchGran: switchGran,
+    switchGranDia: switchGranDia,
     switchQuebra: switchQuebra,
     switchReguaView: switchReguaView,
     switchDisqView: switchDisqView,
@@ -2273,6 +2441,7 @@
     setFiltroDim: setFiltroDim,
     setFiltroVal: setFiltroVal,
     limpaFiltro: limpaFiltro,
+    tiraFiltro: tiraFiltro,
     drillEtapa: drillEtapa,
     drillBucket: drillBucket,
     drillConv: drillConv,

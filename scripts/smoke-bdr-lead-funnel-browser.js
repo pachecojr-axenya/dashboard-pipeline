@@ -51,8 +51,10 @@ const server = http.createServer((req, res) => {
   if (p === '/api/bdr-lead-funnel') {
     // Qual fixture responde: a mesma decisão que o endpoint tomaria.
     let nome = 'base';
-    if (u.searchParams.get('dim') === 'bdr') nome = 'recorte-bdr';
-    else if (u.searchParams.get('dim') === 'canal_macro') nome = 'recorte-canal';
+    const f = u.searchParams.get('f') || '';
+    if (f.indexOf('canal_macro') >= 0 && f.indexOf('bdr') >= 0) nome = 'combo';
+    else if (f.indexOf('bdr') >= 0 || u.searchParams.get('dim') === 'bdr') nome = 'recorte-bdr';
+    else if (f.indexOf('canal_macro') >= 0 || u.searchParams.get('dim') === 'canal_macro') nome = 'recorte-canal';
     else if (u.searchParams.get('gran') === 'mes') nome = 'gran-mes';
     res.writeHead(200, { 'Content-Type': MIME['.json'] });
     return res.end(fixture(nome));
@@ -195,8 +197,12 @@ async function run() {
   // Quebra por BDR desenha uma linha por pessoa.
   await js("AxLeadFunnel.switchQuebra('bdr')");
   await sleep(800);
+  // O CAP MUDOU DE LUGAR em 12/08: a legenda lista TODOS (o dono pediu "ver todos e
+  // selecionar") e o cap passou a valer só para quantos vêm LIGADOS. A asserção de
+  // quantos ficam visíveis está no bloco "quebra por BDR" mais abaixo.
   const nLinhas = await js(`(function(){var c=Chart.getChart('lf-serie');return c.data.datasets.length;})()`);
-  ok(nLinhas >= 2 && nLinhas <= 6, 'quebrar por BDR desenha uma linha por pessoa (capado em 6)', nLinhas + ' séries');
+  const nVis = await js(`(function(){var c=Chart.getChart('lf-serie');return c.data.datasets.filter(function(d,i){return c.isDatasetVisible(i);}).length;})()`);
+  ok(nLinhas >= 2 && nVis <= 6, 'quebrar por BDR lista todos e liga no máximo 6', nLinhas + ' séries, ' + nVis + ' ligadas');
   const rot = await js(`(function(){var c=Chart.getChart('lf-serie');return c.data.datasets.map(function(d){return d.label;}).join(' | ');})()`);
   ok(rot.indexOf(META.bdr) >= 0, 'a quebra usa o NOME canônico do BDR (o mesmo da tabela)', rot.slice(0, 120));
   await js("AxLeadFunnel.switchQuebra('nenhuma')");
@@ -252,6 +258,84 @@ async function run() {
   await js("AxLeadFunnel.switchDisqView('autor')");
   await sleep(500);
 
+  // ── filtros COMBINADOS e a barra no topo ────────────────────────────────────
+  console.log('\n== filtros combinados na tela ==');
+  ok(await js("!!document.getElementById('lf-barra-filtro')"), 'a barra de filtro vive na barra da SEÇÃO, não dentro de um card');
+  const dentroDeCard = await js(`(function(){var b=document.getElementById('lf-barra-filtro');if(!b)return 'ausente';
+    var c=b.closest('.novo-card'); return c&&c.querySelector('canvas')?'dentro de card com grafico':'na barra da secao';})()`);
+  ok(dentroDeCard === 'na barra da secao', 'a barra não mora dentro de um card de gráfico', dentroDeCard);
+
+  await js("AxLeadFunnel.setFiltroDim('canal_macro')");
+  await sleep(300);
+  await js("AxLeadFunnel.setFiltroVal('Outbound')");
+  for (let i = 0; i < 30; i += 1) { if (await js("document.querySelectorAll('#lf-barra-filtro button[onclick*=tiraFiltro]').length")) break; await sleep(400); }
+  await js("AxLeadFunnel.setFiltroDim('bdr')");
+  await sleep(300);
+  await js("AxLeadFunnel.setFiltroVal(" + JSON.stringify(META.bdr) + ")");
+  for (let i = 0; i < 40; i += 1) {
+    const n = await js("document.querySelectorAll('#lf-barra-filtro button[onclick*=tiraFiltro]').length");
+    if (n >= 2) break;
+    await sleep(400);
+  }
+  const chips = await js("document.querySelectorAll('#lf-barra-filtro button[onclick*=tiraFiltro]').length");
+  ok(chips === 2, 'dois filtros ativos viram DOIS chips, cada um com seu ✖', chips + ' chip(s)');
+  const txtBarra = await js("document.getElementById('lf-barra-filtro').innerText");
+  ok(txtBarra.indexOf('Outbound') >= 0 && txtBarra.indexOf(META.bdr) >= 0,
+    'a barra nomeia os dois filtros ativos', txtBarra.replace(/\s+/g, ' ').slice(0, 110));
+
+  // O SELO tem de estar em TODO card — é ele que faz o print carregar o recorte.
+  const selos = await js(`(function(){var n=0;document.querySelectorAll('#lf-host .novo-card-header').forEach(function(h){
+    if(h.innerText.indexOf('🏷')>=0)n++;});return n;})()`);
+  ok(selos >= 8, 'todo card carrega o selo do recorte (o print sai com o filtro junto)', selos + ' cards com selo');
+  const txtSelo = await js(`(function(){var h=document.querySelector('#lf-host .novo-card-header');
+    var s=[].slice.call(document.querySelectorAll('#lf-host .novo-card-header span')).filter(function(x){return x.innerText.indexOf('🏷')>=0;})[0];
+    return s?s.innerText:'';})()`);
+  ok(/Canal|BDR/i.test(txtSelo), 'o selo nomeia os campos do recorte', txtSelo);
+
+  // Tirar UM chip não pode derrubar o outro.
+  await js("AxLeadFunnel.tiraFiltro('canal_macro','Outbound')");
+  for (let i = 0; i < 40; i += 1) {
+    if (await js("document.querySelectorAll('#lf-barra-filtro button[onclick*=tiraFiltro]').length") === 1) break;
+    await sleep(400);
+  }
+  ok(await js("document.querySelectorAll('#lf-barra-filtro button[onclick*=tiraFiltro]').length") === 1,
+    'tirar um chip mantém o outro (testar "e sem o canal?" sem remontar o recorte)');
+  await js("AxLeadFunnel.limpaFiltro()");
+  for (let i = 0; i < 30; i += 1) { if (!(await js("document.querySelectorAll('#lf-barra-filtro button[onclick*=tiraFiltro]').length"))) break; await sleep(400); }
+
+  // ── quebra: TODOS os valores na legenda ─────────────────────────────────────
+  console.log('\n== quebra por BDR: ver todos e selecionar ==');
+  await js("AxLeadFunnel.switchQuebra('bdr')");
+  await sleep(900);
+  const q = JSON.parse(await js(`(function(){var c=Chart.getChart('lf-serie');
+    return JSON.stringify({total:c.data.datasets.length,
+      visiveis:c.data.datasets.filter(function(d,i){return c.isDatasetVisible(i);}).length});})()`));
+  ok(q.total > 6, 'a legenda lista TODOS os BDRs, não só os 6 maiores', q.total + ' séries');
+  ok(q.visiveis <= 6 && q.visiveis > 0, 'só os maiores vêm ligados (o resto fica clicável na legenda)', q.visiveis + ' visíveis');
+  // Ligar um dos ocultos tem de funcionar e reescalar.
+  await js(`(function(){var c=Chart.getChart('lf-serie');
+    var i=c.data.datasets.findIndex(function(d,k){return !c.isDatasetVisible(k);});
+    if(i<0)return false; c.options.plugins.legend.onClick.call(c,null,{datasetIndex:i,text:c.data.datasets[i].label},{chart:c});return true;})()`);
+  await sleep(400);
+  const depoisLigar = JSON.parse(await js(`(function(){var c=Chart.getChart('lf-serie');
+    return JSON.stringify({visiveis:c.data.datasets.filter(function(d,i){return c.isDatasetVisible(i);}).length});})()`));
+  ok(depoisLigar.visiveis === q.visiveis + 1, 'ligar um BDR oculto pela legenda funciona', q.visiveis + ' → ' + depoisLigar.visiveis);
+  await js("AxLeadFunnel.switchQuebra('nenhuma')");
+  await sleep(500);
+
+  // ── período próprio do card "criados e movimentados" ────────────────────────
+  console.log('\n== período próprio do gráfico por período ==');
+  ok(await js("!!document.getElementById('lf-granday-tabs')"), 'o card tem seletor de período PRÓPRIO');
+  const rotAntes = await js(`(function(){var c=Chart.getChart('lf-pordia');return c.data.labels.length;})()`);
+  await js("AxLeadFunnel.switchGranDia('mes')");
+  await sleep(600);
+  const rotDepois = await js(`(function(){var c=Chart.getChart('lf-pordia');return c.data.labels.length;})()`);
+  ok(rotDepois < rotAntes, 'trocar o período do card reagrupa SEM recarregar', rotAntes + ' → ' + rotDepois + ' pontos');
+  const notaDia = await js("(document.querySelector('.lf-pordia-nota')||{}).innerText||''");
+  ok(notaDia.indexOf('escolhido neste card') >= 0, 'a nota diz que o período foi escolhido ali');
+  await js("AxLeadFunnel.switchGranDia('auto')");
+  await sleep(500);
+
   // ── filtro global ───────────────────────────────────────────────────────────
   console.log('\n== o filtro vale para a seção inteira ==');
   const criadosAntes = await js("AxLeadFunnel && document.getElementById('lf-selo').innerText");
@@ -265,9 +349,10 @@ async function run() {
   }
   const seloDepois = await js("document.getElementById('lf-selo').innerText");
   ok(seloDepois !== criadosAntes, 'aplicar o filtro RECARREGA a seção', seloDepois.slice(0, 80));
-  const textoFiltro = await js("document.getElementById('lf-conv').innerText");
-  ok(textoFiltro.indexOf('seção inteira') >= 0 || textoFiltro.indexOf(META.bdr) >= 0,
-    'a tela declara o recorte ativo');
+  const textoBarra = await js("document.getElementById('lf-barra-filtro').innerText");
+  const temSelo = await js(`(function(){var n=0;document.querySelectorAll('#lf-host .novo-card-header').forEach(function(h){if(h.innerText.indexOf('🏷')>=0)n++;});return n;})()`);
+  ok((textoBarra.indexOf('seção inteira') >= 0 || textoBarra.indexOf(META.bdr) >= 0) && temSelo >= 8,
+    'a tela declara o recorte ativo na barra E no selo de cada card', temSelo + ' cards com selo');
   const macroTem = await js("(document.querySelector('.lf-macro-nota')||{}).innerText||''");
   ok(macroTem.indexOf('Conferência') >= 0, 'o waterfall macro continua conferindo com o filtro aplicado',
     macroTem.slice(0, 90));
