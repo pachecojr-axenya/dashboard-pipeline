@@ -1,5 +1,31 @@
 # Dashboard Enhancement Loop — Status Log
 
+### 🚀 DEPLOY DE PRODUÇÃO | Cotação (10 cards) + design system oficial + faturamento Fase 3 (2026-08-12)
+
+> Autorização explícita do dono ("faça o commit e o deploy", confirmado com as sessões
+> paralelas antes de seguir). `git fetch` encontrou avanço no upstream (`a1a05e9` →
+> `a29b4f7`, 7 commits de BDR — funil de leads/conversão + Treble, sem overlap de arquivo
+> com este trabalho, exceto `STATUS_LOG.md`/`AUDITORIA_GRAFICOS.md`).
+>
+> A working dir tinha, além do Cotação, mudanças de duas outras sessões paralelas ainda
+> não commitadas: a promoção de `docs/design-system-proposal.md` a `docs/design-system.md`
+> oficial (+ gate `scripts/_check-design-tokens.js` plugado no `npm run check`) e a Fase 3
+> da integração apólice↔HubSpot (`api/deal-billing-tickets.js`,
+> `api/sync-faturamento-hubspot.js`, cron novo em `vercel.json`). Commitado em 3 commits
+> separados por assunto (`32f0fee` Cotação, `360db65` design system, `c475fbf`
+> faturamento) para manter o histórico rastreável por tema, depois `merge` do upstream
+> (`d837cf5`, conflito só nos 2 docs compartilhados, resolvido mantendo as duas metades).
+>
+> `npm run check` PASS antes e depois do merge (inclui o gate de design tokens novo,
+> 0 erro nos 7 painéis migrados — os 4 avisos de cor legada em `cotacao.html` são dívida
+> pré-existente, não deste commit). `npm run predeploy` PASS (`main` == `origin/main`
+> `d837cf5`, projeto canônico `dashboard-axenya` confirmado). Deployment
+> `dashboard-axenya-hiny46il9-axenya-f1a041f6.vercel.app`, alias `project-bsmfu.vercel.app`.
+>
+> Pós-deploy confirmado: `/novo`, `/novo-board`, `/novo-ae`, `/novo-bdr`, `/novo-cotacao`,
+> `/novo-cs`, `/novo-48h`, `/forecast`, `/forecast-delta`, `/forecast-overall` = 200;
+> `/api/auth/me`, `/api/forecast-table` = 401 (auth ativa, sem bypass em produção).
+
 ### Fix | Cotação: auditoria dos drawers "i" + 3 dicas com % de cobertura congelada (2026-08-11)
 
 > Pedido do dono: auditar se os drawers de informação (botão "i") de cada card do Cotação
