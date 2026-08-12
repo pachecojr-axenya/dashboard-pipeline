@@ -1,5 +1,140 @@
 # Dashboard Enhancement Loop — Status Log
 
+### Fix | Cotação: auditoria dos drawers "i" + 3 dicas com % de cobertura congelada (2026-08-11)
+
+> Pedido do dono: auditar se os drawers de informação (botão "i") de cada card do Cotação
+> seguem a Regra primária "memória de cálculo sempre visível" (README §4) — campos do HubSpot
+> + fórmula + uso do filtro de período, corretos e atualizados. Revisei os 18 `_infoBtn` do
+> painel (KPIs + gráficos) contra o código real de cada um. 4 achados:
+>
+> 1. **Corrigido**: as dicas de **Por Porte**, **Tempo Médio de Resposta** e **Desfecho da
+>    Cotação** (as 3 construídas nas rodadas anteriores deste mesmo dia) tinham a % de
+>    cobertura do campo **craftada como texto fixo** (19%/"a maioria"/39%, o valor medido no
+>    momento em que testei o dado) em vez de calculada a cada render — ia ficar desatualizada
+>    conforme o preenchimento evoluísse. Adicionadas `pctComVidas`/`pctComResposta`/
+>    `pctComDesfecho` em `novoRender()` (mesmo padrão já usado pelo KPI "Fechados no Período",
+>    que já calculava `finaisSemData`/`finaisTotal` dinamicamente) e trocado o número fixo pela
+>    variável nas 3 dicas.
+> 2. **Não corrigido, fica registrado**: a dica do KPI "Over SLA" cita `hs_time_to_close_sla_status`
+>    e `sla_cumprido` como os campos nativos vazios que justificam o SLA hardcoded
+>    (`COT_TK_SLA_DIAS=10`) — mas a investigação via MCP do HubSpot do dia anterior achou um
+>    terceiro campo, `cotacao_sla_status` (enum: No prazo/Atenção/Atrasado), nunca checado.
+>    Pendente: medir cobertura real antes de decidir se atualiza a dica ou substitui a régua.
+> 3. **Não corrigido, pré-existente**: a dica do KPI "Tickets Abertos" cita
+>    `semantic/referencia.json > tickets_cotacao` como se o painel lesse esse arquivo ao vivo —
+>    na verdade `COT_TK_STAGES`/`COT_TK_FINAL` são um mapa hardcoded no próprio HTML, com
+>    comentário do autor original já admitindo ser cópia temporária ("ao portar, trocar por
+>    SEMANTIC_REF"). Dica não é falsa, mas sugere mais dinamismo do que existe.
+> 4. **Não corrigido, pré-existente**: `'kpi-ticket-medio':'Q04'` em `COT_CARD_CODES` é código
+>    morto — não existe card com essa key em lugar nenhum do arquivo.
+>
+> **Validação**: `_check-inline-js.js` = 0 erros; `/novo-cotacao` confirmado ao vivo com as 3
+> variáveis de percentual presentes no HTML servido. **Não commitado, não deployado.**
+
+### Feat | Cotação: Tempo de Resposta + Desfecho da Cotação, 2 placeholders mortos removidos (2026-08-11)
+
+> Continuação da rodada anterior — pedido do dono pra investigar, via MCP do HubSpot (consulta
+> direta ao schema e aos 188 tickets reais do pipeline 847948895), se os 4 cards ainda
+> bloqueados tinham dado em algum outro campo antes de desistir deles.
+>
+> **Achado principal**: existe um namespace inteiro `cotacao_*` de propriedades específicas do
+> pipeline que o `/api/pull-tickets` nunca buscou (a allowlist de `properties` em
+> `fetchCotacaoTickets` nunca incluiu esse prefixo). Dois campos reais resolveram 2 dos 4
+> bloqueios:
+> - **`time_to_first_agent_reply`** (nativo do HubSpot, ms) — 38/188 (20%) preenchido. Card
+>   **Tempo Médio de Resposta**: histograma de faixas (`<1 dia` a `15+ dias` + `(sem dado)` em
+>   vermelho para os 80% sem o campo).
+> - **`cotacao_status_final`** (enum: Ganho/Perdido/Cancelado/Sem Resposta/Ticket Duplicado) —
+>   73/188 (39%) preenchido. Card **Desfecho da Cotação** (renomeado do "Taxa de Aprovação de
+>   Cotação" original — o campo tem 5 categorias, não é binário). Bucket dos 61% sem valor
+>   rotulado **"(em andamento)"**, não "(sem dado)" — são tickets ainda ativos, o campo só
+>   preenche no desfecho final, não é lacuna de preenchimento.
+>
+> Os outros 2 ficaram confirmados mortos, agora com evidência (não suposição): `prioridade`
+> (campo custom, Baixa/Média/Alta/Urgente) = 0/188, mesmo destino do `hs_ticket_priority` que já
+> sabíamos vazio; `valor_da_fatura` (mais próximo de "valor" que existe no ticket) = 3/188 (1,6%),
+> é campo de faturamento pós-venda, não de cotação. **Removidos do painel** (não ficam mais como
+> placeholder) por decisão do dono: "Construa os 2 destravados, e exclua os dois mortos." A
+> seção "Requer campo que não existe" saiu do HTML (ficaria vazia).
+>
+> **Código**: `time_to_first_agent_reply` e `cotacao_status_final` adicionados à allowlist
+> `properties` de `fetchCotacaoTickets` (`lib/hubspot.js`) e ao SELECT via `JSON_VALUE(r.payload,
+> ...)` de `cotacaoTickets()` (`lib/hubspot-wh-queries.js`), mesmo padrão já usado para `content`/
+> `comercial_vidas`. Cards em `public/cotacao.html`: `buildCotTempoResposta` +
+> `cotOpenTempoResposta` (drill próprio, não reaproveita `cotOpenTickets` porque nem `modo:'idade'`
+> nem `'ciclo'` correspondem a tempo de resposta) e `buildCotDesfecho`. Códigos de auditoria
+> `cot-tempo-resposta`=Q17, `cot-desfecho`=Q18.
+>
+> Cada card foi desenhado por um subagente `Explore` isolado (sem Edit/Write, só retorna o
+> código) — evita duas escritas simultâneas no mesmo HTML (Regra de coordenação nº 7). A
+> integração final (aplicar os blocos no arquivo) foi feita manualmente, uma edição por vez.
+>
+> **Validação**: servidor local reiniciado (mudança em `lib/`); `/api/pull-tickets` confirmado
+> ao vivo — 38/188 com `time_to_first_agent_reply`, 73/188 com `cotacao_status_final`, batendo
+> exatamente com a consulta direta ao HubSpot via MCP. `_check-inline-js.js` = 0 erros. Zero
+> placeholders restantes em `cotacao.html`. Rotas-chave (`/novo`, `/novo-board`, `/novo-ae`,
+> `/novo-bdr`, `/forecast`, `/novo-cotacao`) = 200. **Não commitado, não deployado.**
+
+### Feat | Cotação: Distribuição de Tempo no Funil + Por Porte (2026-08-11)
+
+> Pedido do dono: replicar os gráficos de um painel de referência externo
+> (`growth-playground.vercel.app/tickets-performance.html`, HTML/CSS puro, sem Chart.js) dentro
+> do nosso Cotação. Antes de construir, testei cada campo contra o HubSpot real em vez de supor:
+> `segmento`/`operadora_atual`/`beneficio_axenya` (propriedades de EMPRESA, hoje só usadas pelo CS
+> Dashboard) vieram **0/188, 0/188 e booleano com 20/188** — não servem pro que pareciam servir
+> (são campos de cliente ativo, a base de Cotação é majoritariamente prospect). Os gráficos
+> "Por Tipo de Benefício" e "Operadoras" (volume + lifecycle de fornecedor) foram descartados por
+> falta de dado real, não construídos sobre suposição.
+>
+> Achei substituto melhor para "Por Porte": o próprio **ticket** já tem `comercial_vidas` (o
+> `vidas` que o armazém já usava, só não estava na allowlist da API live) — 36/188 (19%)
+> preenchido depois de adicionado. Card **Por Porte**: buckets 0-200/200-2.000/>2.000/`(sem
+> dado)` vidas (convenção do README §3), com o bucket vazio em destaque (mesmo padrão do
+> `'(sem responsável)'` do Ranking por Responsável). Card **Distribuição de Tempo no Funil**:
+> histograma de tickets abertos por faixa de idade (`createdate`→hoje), 0-5/6-10/11-15/16-30/30+
+> dias, as duas últimas faixas em laranja/vermelho — ideia inspirada no painel de referência,
+> adaptada pra usar dado que já tínhamos (sem depender do conceito de "tempo no funil" pré-
+> calculado que o outro painel tinha).
+>
+> **Código**: `comercial_vidas` adicionado à allowlist de `fetchCotacaoTickets`
+> (`lib/hubspot.js`). Também estendi a busca de empresa associada (`companies/batch/read` na API
+> live, `LEFT JOIN raw_company` via `JSON_VALUE` no armazém) pra trazer `segmento`/
+> `beneficio_axenya`/`operadora_atual` — fica pronto pra uso futuro mesmo não tendo virado
+> gráfico agora. Funções `buildCotTempoFunil` e `buildCotPorte` em `public/cotacao.html`.
+> Códigos `cot-tempo-funil`=Q15, `cot-porte`=Q16. Mesma técnica de subagente `Explore` (desenha,
+> não grava) + integração manual da rodada anterior.
+>
+> **Validação**: servidor reiniciado após mudança em `lib/`; `/api/pull-tickets` confirmado ao
+> vivo com os campos novos e as taxas de cobertura acima. `_check-inline-js.js` = 0 erros. Rotas-
+> chave = 200. **Não commitado, não deployado.**
+
+### Feat | Cotação: 4 cards viáveis construídos (Volume por Mês, Etapa, Responsável, Tempo por Etapa) (2026-08-11)
+
+> Painel `/novo-cotacao` tinha 8 cards em placeholder tracejado ("Card a construir"). Dividi em
+> 2 grupos: **viáveis com o payload atual** (dado já chega em `POST /api/pull-tickets`, só falta
+> o card) vs. **bloqueados por dado que não existe/não é preenchido**. Construí os 4 viáveis:
+> **Volume de Tickets por Mês** (`createdate`, 100% preenchido), **Tickets por Etapa**
+> (`hs_pipeline_stage`, ordem do funil via `COT_TK_STAGES`), **Ranking por Responsável**
+> (`hubspot_owner_id` via `_tkOwner`, bucket `'(sem responsável)'` em vermelho — 31% dos tickets
+> não têm responsável e isso tem que ficar visível, não escondido) e **Tempo por Etapa** (média
+> de dias por etapa via `hs_date_entered_*`/`hs_date_exited_*`, com `n=` da amostra no rótulo).
+>
+> Seção "Cards viáveis... ainda não construídos" renomeada pra "Tickets de Cotação | análises
+> por mês, etapa, responsável e tempo" (não fazia mais sentido chamar de placeholder o que
+> virou gráfico real). Os 4 bloqueados (Tempo Médio de Resposta, Taxa de Aprovação, Valor Médio
+> por Ticket, Prioridade dos Tickets) ficaram documentados como tal — resolvidos ou removidos
+> nas 2 rodadas seguintes deste mesmo dia (ver entradas acima).
+>
+> **Técnica**: cada um dos 4 cards foi desenhado por um subagente `Explore` isolado em paralelo
+> (sem Edit/Write, só retorna o código como texto) — evita a corrida de escrita simultânea no
+> mesmo HTML que a Regra de coordenação nº 7 do topo deste arquivo alerta. Integração final
+> (aplicar os 4 blocos + registrar códigos `cot-vol-mes`=Q11 a `cot-tempo-etapa`=Q14 em
+> `COT_CARD_CODES`) feita manualmente, uma edição por vez, sem paralelismo de escrita.
+>
+> **Validação**: `_check-inline-js.js` = 0 erros; `/novo-cotacao` confirmado ao vivo com os 4
+> gráficos presentes; rotas-chave (`/novo`, `/novo-board`, `/novo-ae`, `/novo-bdr`) = 200 sem
+> regressão. **Não commitado, não deployado.**
+
 ### 🚀 DEPLOY DE PRODUÇÃO | Drawers do forecast: origem do ARR (HubSpot × calculado) (2026-08-11)
 
 > Autorização explícita do dono ("Sim, faça o deploy e commit"). `git fetch` encontrou

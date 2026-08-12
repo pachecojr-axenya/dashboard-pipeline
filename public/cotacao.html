@@ -151,7 +151,7 @@ function exportModalCSV(){ var title=document.getElementById('modal-title').text
 
 var NOVO_LANG=(function(){ try{return localStorage.getItem('novo_lang')||'pt';}catch(e){return 'pt';} })();
 function novoToggleLang(){ NOVO_LANG=NOVO_LANG==='pt'?'en':'pt'; try{localStorage.setItem('novo_lang',NOVO_LANG);}catch(e){} (function(_e){if(_e)_e.textContent=NOVO_LANG.toUpperCase();})(document.getElementById('novo-lang-label')); novoRender(); }
-var COT_CARD_CODES={'kpi-cotacao':'Q01','kpi-tickets':'Q02','kpi-open':'Q03','kpi-ticket-medio':'Q04','cot-ae':'Q05','cot-vidas':'Q06','kpi-tk-criados':'Q07','kpi-tk-fechados':'Q08','kpi-tk-ciclo':'Q09','kpi-tk-sla':'Q10'};
+var COT_CARD_CODES={'kpi-cotacao':'Q01','kpi-tickets':'Q02','kpi-open':'Q03','kpi-ticket-medio':'Q04','cot-ae':'Q05','cot-vidas':'Q06','kpi-tk-criados':'Q07','kpi-tk-fechados':'Q08','kpi-tk-ciclo':'Q09','kpi-tk-sla':'Q10','cot-vol-mes':'Q11','cot-etapa':'Q12','cot-owner':'Q13','cot-tempo-etapa':'Q14','cot-tempo-funil':'Q15','cot-porte':'Q16','cot-tempo-resposta':'Q17','cot-desfecho':'Q18'};
 var _novoShowInfo=(function(){try{return localStorage.getItem('cotacao_show_info')!=='0';}catch(e){return true;}})();
 function _codeTag(key){var c=COT_CARD_CODES[key]||'';return c?'<span class="novo-code-tag">'+c+'</span>':'';}
 function novoToggleInfo(){_novoShowInfo=!_novoShowInfo;document.body.classList.toggle('novo-info-on',_novoShowInfo);var b=document.getElementById('btn-info-toggle');if(b)b.classList.toggle('highlighted',_novoShowInfo);try{localStorage.setItem('cotacao_show_info',_novoShowInfo?'1':'0');}catch(e){}}
@@ -253,6 +253,10 @@ function novoRender(){
   var tkOver=tkAbertos.filter(function(t){ var d=_tkIdade(t); return d!=null&&d>COT_TK_SLA_DIAS; });
   var finaisSemData=tks.filter(function(t){ return !_tkAberto(t)&&!t.closed_date; }).length;
   var finaisTotal=tks.length-tkAbertos.length;
+  var _pct=function(n){ return tks.length?Math.round(100*n/tks.length):0; };
+  var pctComVidas=_pct(tks.filter(function(t){ var v=parseFloat(t.comercial_vidas); return t.comercial_vidas&&!isNaN(v); }).length);
+  var pctComResposta=_pct(tks.filter(function(t){ return t.time_to_first_agent_reply!=null&&!isNaN(parseFloat(t.time_to_first_agent_reply)); }).length);
+  var pctComDesfecho=_pct(tks.filter(function(t){ return !!t.cotacao_status_final; }).length);
   var _tv=function(v){ return tkErr?'—':v; };
   var _ts2=function(s){ return tkErr?('erro | '+_ne(tkErr).slice(0,60)):s; };
   var _tc=function(c){ return tkErr?'var(--text2)':c; };
@@ -292,17 +296,16 @@ function novoRender(){
     '<div class="novo-card"><div class="novo-card-header"><h3>Deals em Cotação por AE (proxy)</h3>'+_infoBtn('Snapshot atual: deals na etapa Cotação por responsável. Não usa filtro de período.','cot-ae')+'</div><canvas id="chart-cot-ae" style="max-height:300px"></canvas></div>'+ 
     '<div class="novo-card"><div class="novo-card-header"><h3>Vidas em Cotação por AE (proxy)</h3>'+_infoBtn('Snapshot atual: vidas de deals na etapa Cotação por AE. Não usa filtro de período.','cot-vidas')+'</div><canvas id="chart-cot-vidas" style="max-height:300px"></canvas></div>'+ 
 
-    '<div class="section-hdr"><h2>Cards viáveis com o payload atual | ainda não construídos</h2></div>'+
-    _placeholder('','Volume de Tickets por Mês','O dado já chega em /api/pull-tickets (createdate em 100% dos tickets). Card a construir.',['createdate'])+
-    _placeholder('','Tickets por Etapa','O dado já chega (hs_pipeline_stage em 100%). Card a construir.',['hs_pipeline_stage'])+
-    _placeholder('','Ranking por Responsável','O dado já chega (hubspot_owner_id em 69% | 31% sem responsável). Card a construir, com o vazio exposto.',['hubspot_owner_id'])+
-    _placeholder('','Tempo por Etapa','O endpoint já pede hs_date_entered_* e hs_date_exited_* das 7 etapas. Card a construir.',['hs_date_entered_*','hs_date_exited_*'])+
+    '<div class="section-hdr"><h2>Tickets de Cotação | análises por mês, etapa, responsável e tempo</h2></div>'+
+    '<div class="novo-card"><div class="novo-card-header"><h3>Volume de Tickets por Mês</h3>'+_infoBtn('Contagem de tickets do pipeline de Cotação por mês de criação (createdate). Usa TODOS os tickets do acervo, sem aplicar o filtro de período do topo. Clique numa barra para ver a lista do mês.','cot-vol-mes')+'</div><canvas id="chart-cot-vol-mes" style="max-height:300px"></canvas></div>'+
+    '<div class="novo-card"><div class="novo-card-header"><h3>Tickets por Etapa</h3>'+_infoBtn('Snapshot atual: todos os tickets do pipeline de Cotação por etapa atual, na ordem do funil. Não usa filtro de período.','cot-etapa')+'</div><canvas id="chart-cot-etapa" style="max-height:300px"></canvas></div>'+
+    '<div class="novo-card"><div class="novo-card-header"><h3>Ranking por Responsável</h3>'+_infoBtn('Snapshot atual: todos os tickets por hubspot_owner_id. Não usa filtro de período. Barra "(sem responsável)" em destaque.','cot-owner')+'</div><canvas id="chart-cot-owner" style="max-height:300px"></canvas></div>'+
+    '<div class="novo-card"><div class="novo-card-header"><h3>Tempo por Etapa</h3>'+_infoBtn('Média de dias entre entrada e saída de cada etapa (hs_date_entered_* / hs_date_exited_*), só entram tickets que já passaram e saíram da etapa. Não usa filtro de período. n = tamanho da amostra por etapa.','cot-tempo-etapa')+'</div><canvas id="chart-cot-tempo-etapa" style="max-height:300px"></canvas></div>'+
+    '<div class="novo-card"><div class="novo-card-header"><h3>Distribuição de Tempo no Funil</h3>'+_infoBtn('Tickets abertos (etapa não-final) agrupados por dias desde a criação (createdate) até hoje. Não usa filtro de período. Clique numa barra para ver a lista de tickets da faixa.','cot-tempo-funil')+'</div><canvas id="chart-cot-tempo-funil" style="max-height:300px"></canvas></div>'+
+    '<div class="novo-card"><div class="novo-card-header"><h3>Por Porte</h3>'+_infoBtn('Snapshot atual: todos os tickets por porte (comercial_vidas), em buckets de 0-200 / 200-2.000 / >2.000 vidas. Cobertura do campo: '+pctComVidas+'% dos tickets têm comercial_vidas preenchido | os demais aparecem em "(sem dado)" em destaque. Não usa filtro de período.','cot-porte')+'</div><canvas id="chart-cot-porte" style="max-height:300px"></canvas></div>'+
 
-    '<div class="section-hdr"><h2>Requer campo que não existe ou não é preenchido no portal</h2></div>'+
-    _placeholder('','Tempo Médio de Resposta','Não há campo de primeira resposta preenchido neste pipeline. Requer implantar a medição.',['time_to_first_agent_reply'])+
-    _placeholder('','Taxa de Aprovação de Cotação','Requer um campo de desfecho (aprovado/recusado) que não existe no pipeline hoje | as etapas finais não distinguem aprovação de recusa.',['status_cotacao','razao_perda'])+
-    _placeholder('','Valor Médio por Ticket','Requer vidas e valor no TICKET. Hoje esses números vivem no deal, não no ticket.',['num_vidas','valor_estimado'])+
-    _placeholder('','Prioridade dos Tickets','hs_ticket_priority existe mas está 100% vazio neste pipeline. Requer rotina de preenchimento.',['hs_ticket_priority'])+
+    '<div class="novo-card"><div class="novo-card-header"><h3>Tempo Médio de Resposta</h3>'+_infoBtn('Tempo entre a criação do ticket e a primeira resposta do agente por e-mail (time_to_first_agent_reply). Cobertura do campo: '+pctComResposta+'% dos tickets | os demais aparecem em "(sem dado)".','cot-tempo-resposta')+'</div><canvas id="chart-cot-tempo-resposta" style="max-height:300px"></canvas></div>'+
+    '<div class="novo-card"><div class="novo-card-header"><h3>Desfecho da Cotação</h3>'+_infoBtn('Snapshot atual: todos os tickets por cotacao_status_final. Cobertura do campo: '+pctComDesfecho+'% dos tickets têm desfecho final preenchido | os demais estão ativos e aparecem em "(em andamento)". Não usa filtro de período. Clique numa barra para ver a lista de tickets.','cot-desfecho')+'</div><canvas id="chart-cot-desfecho" style="max-height:300px"></canvas></div>'+
     '</div>';
 
   if(window.AxFilter&&AxFilter.afterRender) AxFilter.afterRender();
@@ -311,6 +314,14 @@ function novoRender(){
   if(window.AxFresh) AxFresh.remount();
   buildCotAE();
   buildCotVidas();
+  buildCotVolMes();
+  buildCotEtapa();
+  buildCotOwner();
+  buildCotTempoEtapa();
+  buildCotTempoFunil();
+  buildCotPorte();
+  buildCotTempoResposta();
+  buildCotDesfecho();
 }
 
 function _tkRows(list,modo){
@@ -374,6 +385,207 @@ function buildCotVidas(){
       tooltip:{callbacks:{label:function(c){return _ni(c.parsed.x)+' vidas';}}}},
       scales:{x:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT}}},y:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}}},
       onClick:function(e,el){ if(!el.length)return; var ae=labels[el[0].index]; novoOpenDealsModal('Vidas em Cotação | '+ae, cotacao.filter(function(d){return (d.ae||'(sem AE)')===ae;})); }}});
+}
+
+function buildCotVolMes(){
+  var th=_novoTheme(), tks=window._tkRaw||[];
+  if(!tks.length){ document.getElementById('chart-cot-vol-mes').parentElement.insertAdjacentHTML('beforeend',AxUI.emptyState('Nenhum ticket disponível.')); return; }
+  var map={};
+  tks.forEach(function(t){ if(!t.createdate) return; var ym=String(t.createdate).slice(0,7); map[ym]=(map[ym]||0)+1; });
+  var labels=Object.keys(map).sort();
+  var vals=labels.map(function(ym){ return map[ym]; });
+  if(!labels.length){ document.getElementById('chart-cot-vol-mes').parentElement.insertAdjacentHTML('beforeend',AxUI.emptyState('Nenhum ticket com createdate.')); return; }
+  _novoMkChart('chart-cot-vol-mes',{type:'bar',plugins:[ChartDataLabels],
+    data:{labels:labels.map(_mlbl),datasets:[{data:vals,backgroundColor:'rgba(58,184,183,.75)',borderRadius:4}]},
+    options:{responsive:true,layout:{padding:{top:24}},plugins:{legend:{display:false},
+      datalabels:{anchor:'end',align:'top',color:th.cText,font:{family:NOVO_FONT,size:11,weight:'bold'}},
+      tooltip:{callbacks:{label:function(c){return c.parsed.y+' tickets';}}}},
+      scales:{x:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}},y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0}}},
+      onClick:function(e,el){ if(!el.length)return; var ym=labels[el[0].index]; cotOpenTickets('Tickets criados | '+_mlbl(ym), tks.filter(function(t){return t.createdate&&String(t.createdate).slice(0,7)===ym;}),'idade'); }}});
+}
+
+function buildCotEtapa(){
+  var th=_novoTheme(), tks=window._tkRaw||[];
+  if(!tks.length){ document.getElementById('chart-cot-etapa').parentElement.insertAdjacentHTML('beforeend',AxUI.emptyState('Nenhum ticket carregado.')); return; }
+  var order=['1262941018','1262941019','1293302338','1263003034','1263003035','1263003036','1263003039'];
+  var known=order.map(function(id){return COT_TK_STAGES[id];});
+  var map={}; tks.forEach(function(t){ var lbl=_tkStage(t); map[lbl]=(map[lbl]||0)+1; });
+  var extra=Object.keys(map).filter(function(l){return known.indexOf(l)<0;}).sort(function(a,b){return map[b]-map[a];});
+  var labels=known.concat(extra);
+  var vals=labels.map(function(l){return map[l]||0;});
+  _novoMkChart('chart-cot-etapa',{type:'bar',plugins:[ChartDataLabels],
+    data:{labels:labels,datasets:[{data:vals,backgroundColor:'rgba(58,184,183,.75)',borderRadius:4}]},
+    options:{indexAxis:'y',responsive:true,layout:{padding:{right:45}},plugins:{legend:{display:false},
+      datalabels:{anchor:'end',align:'right',color:th.cText,font:{family:NOVO_FONT,size:11,weight:'bold'}},
+      tooltip:{callbacks:{label:function(c){return c.parsed.x+' tickets';}}}},
+      scales:{x:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0}},y:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}}},
+      onClick:function(e,el){ if(!el.length)return; var lbl=labels[el[0].index]; cotOpenTickets('Tickets | '+lbl, tks.filter(function(t){return _tkStage(t)===lbl;}),'idade'); }}});
+}
+
+function buildCotOwner(){
+  var th=_novoTheme(), tks=window._tkRaw||[];
+  if(!tks.length){ document.getElementById('chart-cot-owner').parentElement.insertAdjacentHTML('beforeend',AxUI.emptyState('Nenhum ticket disponível.')); return; }
+  var map={}; tks.forEach(function(t){var o=_tkOwner(t); map[o]=(map[o]||0)+1;});
+  var labels=Object.keys(map).sort(function(a,b){return map[b]-map[a];});
+  var vals=labels.map(function(l){return map[l];});
+  var cores=labels.map(function(l){return l==='(sem responsável)'?'var(--red)':'rgba(58,184,183,.75)';});
+  _novoMkChart('chart-cot-owner',{type:'bar',plugins:[ChartDataLabels],
+    data:{labels:labels,datasets:[{data:vals,backgroundColor:cores,borderRadius:4}]},
+    options:{indexAxis:'y',responsive:true,layout:{padding:{right:45}},plugins:{legend:{display:false},
+      datalabels:{anchor:'end',align:'right',color:th.cText,font:{family:NOVO_FONT,size:11,weight:'bold'}},
+      tooltip:{callbacks:{label:function(c){return c.parsed.x+' tickets';}}}},
+      scales:{x:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0}},y:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}}},
+      onClick:function(e,el){ if(!el.length)return; var owner=labels[el[0].index]; cotOpenTickets('Tickets | '+owner,tks.filter(function(t){return _tkOwner(t)===owner;}),'idade'); }}});
+}
+
+function buildCotTempoEtapa(){
+  var th=_novoTheme(), tks=window._tkRaw||[];
+  var stats=Object.keys(COT_TK_STAGES).map(function(id){
+    var durs=[];
+    tks.forEach(function(t){ var d=_dias(t['hs_date_entered_'+id],t['hs_date_exited_'+id]); if(d!=null&&d>=0) durs.push(d); });
+    return {id:id,label:COT_TK_STAGES[id],n:durs.length,avg:durs.length?(durs.reduce(function(a,b){return a+b;},0)/durs.length):null};
+  }).filter(function(s){ return s.n>0; });
+  if(!stats.length){ document.getElementById('chart-cot-tempo-etapa').parentElement.insertAdjacentHTML('beforeend',AxUI.emptyState('Nenhuma etapa com tickets que já entraram e saíram dela.')); return; }
+  var labels=stats.map(function(s){return s.label;});
+  var vals=stats.map(function(s){return Math.round(s.avg*10)/10;});
+  var ns=stats.map(function(s){return s.n;});
+  var ids=stats.map(function(s){return s.id;});
+  _novoMkChart('chart-cot-tempo-etapa',{type:'bar',plugins:[ChartDataLabels],
+    data:{labels:labels,datasets:[{data:vals,backgroundColor:'rgba(58,184,183,.75)',borderRadius:4}]},
+    options:{indexAxis:'y',responsive:true,layout:{padding:{right:60}},plugins:{legend:{display:false},
+      datalabels:{anchor:'end',align:'right',color:th.cText,font:{family:NOVO_FONT,size:11,weight:'bold'},formatter:function(v,ctx){ return _d1(v)+'d | n='+ns[ctx.dataIndex]; }},
+      tooltip:{callbacks:{label:function(c){ return _d1(c.parsed.x)+'d de média | n='+ns[c.dataIndex]+' tickets'; }}}},
+      scales:{x:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT}}},y:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}}},
+      onClick:function(e,el){ if(!el.length)return; cotOpenTempoEtapa(ids[el[0].index],labels[el[0].index]); }}});
+}
+function cotOpenTempoEtapa(stageId,stageLabel){
+  var tks=window._tkRaw||[], list=[];
+  tks.forEach(function(t){
+    var ent=t['hs_date_entered_'+stageId], ext=t['hs_date_exited_'+stageId], d=_dias(ent,ext);
+    if(d!=null&&d>=0) list.push({t:t,ent:ent,ext:ext,dias:d});
+  });
+  if(!list.length){ openModal('Tempo em Etapa | '+stageLabel,AxUI.emptyState('Nenhum ticket com essa etapa concluída.')); return; }
+  list.sort(function(a,b){ return b.dias-a.dias; });
+  var rows=list.map(function(r){
+    return '<tr><td style="text-align:left">'+_ne(r.t.subject||'(sem assunto)')+'</td><td>'+_dt(r.ent)+'</td><td>'+_dt(r.ext)+'</td><td>'+_d1(r.dias)+'</td></tr>';
+  }).join('');
+  openModal('Tempo em Etapa | '+stageLabel+' ('+list.length+')','<table class="lb"><thead><tr><th style="text-align:left">Ticket</th><th>Entrada</th><th>Saída</th><th>Dias na etapa</th></tr></thead><tbody>'+rows+'</tbody></table>');
+}
+
+function buildCotTempoFunil(){
+  var th=_novoTheme(), tks=window._tkRaw||[];
+  var abertos=tks.filter(function(t){ return _tkAberto(t) && _tkIdade(t)!=null; });
+  if(!abertos.length){ document.getElementById('chart-cot-tempo-funil').parentElement.insertAdjacentHTML('beforeend',AxUI.emptyState('Nenhum ticket aberto com createdate.')); return; }
+  var labels=['0-5 dias','6-10 dias','11-15 dias','16-30 dias','30+ dias'];
+  var faixaDe=function(idade){
+    if(idade<=5) return 0;
+    if(idade<=10) return 1;
+    if(idade<=15) return 2;
+    if(idade<=30) return 3;
+    return 4;
+  };
+  var vals=[0,0,0,0,0];
+  var grupos=[[],[],[],[],[]];
+  abertos.forEach(function(t){ var i=faixaDe(_tkIdade(t)); vals[i]++; grupos[i].push(t); });
+  var cores=['rgba(58,184,183,.75)','rgba(58,184,183,.75)','rgba(58,184,183,.75)','var(--orange)','var(--red)'];
+  _novoMkChart('chart-cot-tempo-funil',{type:'bar',plugins:[ChartDataLabels],
+    data:{labels:labels,datasets:[{data:vals,backgroundColor:cores,borderRadius:4}]},
+    options:{responsive:true,layout:{padding:{top:24}},plugins:{legend:{display:false},
+      datalabels:{anchor:'end',align:'top',color:th.cText,font:{family:NOVO_FONT,size:11,weight:'bold'}},
+      tooltip:{callbacks:{label:function(c){return c.parsed.y+' tickets';}}}},
+      scales:{x:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}},y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0}}},
+      onClick:function(e,el){ if(!el.length)return; var i=el[0].index; cotOpenTickets('Tempo no funil | '+labels[i], grupos[i],'idade'); }}});
+}
+
+function buildCotPorte(){
+  var th=_novoTheme(), tks=window._tkRaw||[];
+  if(!tks.length){ document.getElementById('chart-cot-porte').parentElement.insertAdjacentHTML('beforeend',AxUI.emptyState('Nenhum ticket disponível.')); return; }
+  var ORDEM=['0-200 vidas','200-2.000 vidas','>2.000 vidas','(sem dado)'];
+  var _bucket=function(t){
+    var v=parseFloat(t.comercial_vidas);
+    if(!t.comercial_vidas || isNaN(v)) return '(sem dado)';
+    if(v<=200) return '0-200 vidas';
+    if(v<=2000) return '200-2.000 vidas';
+    return '>2.000 vidas';
+  };
+  var map={}; tks.forEach(function(t){var b=_bucket(t); map[b]=(map[b]||0)+1;});
+  var labels=ORDEM.filter(function(b){return map[b]!=null;});
+  var vals=labels.map(function(l){return map[l];});
+  var cores=labels.map(function(l){return l==='(sem dado)'?'var(--red)':'rgba(58,184,183,.75)';});
+  _novoMkChart('chart-cot-porte',{type:'bar',plugins:[ChartDataLabels],
+    data:{labels:labels,datasets:[{data:vals,backgroundColor:cores,borderRadius:4}]},
+    options:{indexAxis:'y',responsive:true,layout:{padding:{right:45}},plugins:{legend:{display:false},
+      datalabels:{anchor:'end',align:'right',color:th.cText,font:{family:NOVO_FONT,size:11,weight:'bold'}},
+      tooltip:{callbacks:{label:function(c){return c.parsed.x+' tickets';}}}},
+      scales:{x:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0}},y:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}}},
+      onClick:function(e,el){ if(!el.length)return; var b=labels[el[0].index]; cotOpenTickets('Tickets | '+b,tks.filter(function(t){return _bucket(t)===b;}),'idade'); }}});
+}
+
+function buildCotTempoResposta(){
+  var th=_novoTheme(), tks=window._tkRaw||[];
+  if(!tks.length){ document.getElementById('chart-cot-tempo-resposta').parentElement.insertAdjacentHTML('beforeend',AxUI.emptyState('Nenhum ticket carregado.')); return; }
+  var labels=['<1 dia','1-3 dias','3-7 dias','7-15 dias','15+ dias','(sem dado)'];
+  var faixaDe=function(dias){
+    if(dias<1) return 0;
+    if(dias<3) return 1;
+    if(dias<7) return 2;
+    if(dias<15) return 3;
+    return 4;
+  };
+  var vals=[0,0,0,0,0,0];
+  var grupos=[[],[],[],[],[],[]];
+  tks.forEach(function(t){
+    var ms=t.time_to_first_agent_reply!=null?parseFloat(t.time_to_first_agent_reply):NaN;
+    if(isNaN(ms)){ vals[5]++; grupos[5].push(t); return; }
+    var dias=ms/86400000, i=faixaDe(dias);
+    vals[i]++; grupos[i].push(t);
+  });
+  var cores=['rgba(58,184,183,.75)','rgba(58,184,183,.75)','rgba(58,184,183,.75)','rgba(58,184,183,.75)','var(--orange)','var(--red)'];
+  _novoMkChart('chart-cot-tempo-resposta',{type:'bar',plugins:[ChartDataLabels],
+    data:{labels:labels,datasets:[{data:vals,backgroundColor:cores,borderRadius:4}]},
+    options:{responsive:true,layout:{padding:{top:24}},plugins:{legend:{display:false},
+      datalabels:{anchor:'end',align:'top',color:th.cText,font:{family:NOVO_FONT,size:11,weight:'bold'}},
+      tooltip:{callbacks:{label:function(c){return c.parsed.y+' tickets';}}}},
+      scales:{x:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}},y:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0}}},
+      onClick:function(e,el){ if(!el.length)return; var i=el[0].index; cotOpenTempoResposta(labels[i],grupos[i]); }}});
+}
+function cotOpenTempoResposta(faixa,list){
+  if(!list||!list.length){ openModal('Tempo de resposta | '+faixa,AxUI.emptyState('Nenhum ticket.')); return; }
+  var semDado=(faixa==='(sem dado)');
+  var ord=list.slice().sort(function(a,b){
+    if(semDado) return (b.createdate||'').localeCompare(a.createdate||'');
+    return (parseFloat(b.time_to_first_agent_reply)/86400000)-(parseFloat(a.time_to_first_agent_reply)/86400000);
+  });
+  var rows=ord.map(function(t){
+    var id=_tkId(t);
+    var url=id?('https://app.hubspot.com/contacts/44715285/ticket/'+id):'#';
+    var nome=id?('<a href="'+url+'" target="_blank" rel="noopener" style="color:var(--teal);text-decoration:none">'+_ne(t.subject||'(sem assunto)')+'</a>'):_ne(t.subject||'(sem assunto)');
+    var tdNome='<td style="text-align:left;max-width:300px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+nome+'</td>';
+    if(semDado) return '<tr>'+tdNome+'<td>'+_dt(t.createdate)+'</td></tr>';
+    var dias=parseFloat(t.time_to_first_agent_reply)/86400000;
+    return '<tr>'+tdNome+'<td>'+_dt(t.createdate)+'</td><td>'+_d1(dias)+'</td></tr>';
+  }).join('');
+  var head=semDado?'<tr><th style="text-align:left">Ticket</th><th>Criado</th></tr>':'<tr><th style="text-align:left">Ticket</th><th>Criado</th><th>Dias até resposta</th></tr>';
+  openModal('Tempo de resposta | '+faixa+' ('+list.length+')','<table class="lb"><thead>'+head+'</thead><tbody>'+rows+'</tbody></table>');
+}
+
+function buildCotDesfecho(){
+  var th=_novoTheme(), tks=window._tkRaw||[];
+  if(!tks.length){ document.getElementById('chart-cot-desfecho').parentElement.insertAdjacentHTML('beforeend',AxUI.emptyState('Nenhum ticket disponível.')); return; }
+  var ORDEM=['Ganho','Perdido','Cancelado','Sem Resposta','Ticket Duplicado','(em andamento)'];
+  var _desfecho=function(t){ return t.cotacao_status_final || '(em andamento)'; };
+  var map={}; tks.forEach(function(t){var d=_desfecho(t); map[d]=(map[d]||0)+1;});
+  var labels=ORDEM.filter(function(d){return map[d]!=null;});
+  var vals=labels.map(function(l){return map[l];});
+  var CORES={'Ganho':'var(--green)','Perdido':'var(--red)','Cancelado':'var(--orange)','Sem Resposta':'var(--text2)','Ticket Duplicado':'var(--text2)','(em andamento)':'rgba(58,184,183,.75)'};
+  var cores=labels.map(function(l){return CORES[l];});
+  _novoMkChart('chart-cot-desfecho',{type:'bar',plugins:[ChartDataLabels],
+    data:{labels:labels,datasets:[{data:vals,backgroundColor:cores,borderRadius:4}]},
+    options:{indexAxis:'y',responsive:true,layout:{padding:{right:45}},plugins:{legend:{display:false},
+      datalabels:{anchor:'end',align:'right',color:th.cText,font:{family:NOVO_FONT,size:11,weight:'bold'}},
+      tooltip:{callbacks:{label:function(c){return c.parsed.x+' tickets';}}}},
+      scales:{x:{grid:{color:th.cGrid},ticks:{color:th.cText2,font:{family:NOVO_FONT},precision:0}},y:{grid:{display:false},ticks:{color:th.cText,font:{family:NOVO_FONT}}}},
+      onClick:function(e,el){ if(!el.length)return; var d=labels[el[0].index]; cotOpenTickets('Tickets | '+d,tks.filter(function(t){return d==='(em andamento)'?!t.cotacao_status_final:t.cotacao_status_final===d;}),'idade'); }}});
 }
 
 (function(){

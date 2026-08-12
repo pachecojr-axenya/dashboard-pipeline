@@ -1,5 +1,40 @@
 # Auditoria crítica dos gráficos 🟡 | 2026-06-12
 
+## Adendo | Cotação: 10 cards construídos, 2 removidos, dado de ticket/empresa estendido (2026-08-11)
+
+> **Estado inalterado: 🟡 não validado contra o HubSpot** (painel segue oculto/🔴 no menu até
+> validação do dono, ver adendo de 2026-07-29 abaixo) — esta rodada troca placeholder por
+> gráfico real e corrige dica, não altera a régua de nenhum card já existente nem pede validação
+> ainda.
+>
+> Dos 8 cards em placeholder ("Card a construir" / "Requer campo que não existe"), **8 foram
+> resolvidos**: Volume de Tickets por Mês (Q11), Tickets por Etapa (Q12), Ranking por
+> Responsável (Q13, bucket `'(sem responsável)'` em destaque), Tempo por Etapa (Q14),
+> Distribuição de Tempo no Funil (Q15, novo — não estava na lista original de placeholders),
+> Por Porte (Q16), Tempo Médio de Resposta (Q17) e Desfecho da Cotação (Q18, era "Taxa de
+> Aprovação"). **2 foram removidos** do painel por decisão do dono (Valor Médio por Ticket,
+> Prioridade dos Tickets) — testados contra o HubSpot real (via MCP), confirmados sem dado
+> aproveitável (`valor_da_fatura` 1,6%; `prioridade` 0%).
+>
+> **Dado novo no ticket** (`api/pull-tickets.js` → `lib/hubspot.js`/`lib/hubspot-wh-queries.js`):
+> `comercial_vidas`, `time_to_first_agent_reply`, `cotacao_status_final` — nenhum estava na
+> allowlist antes desta rodada, apesar de existirem no portal. **Dado novo da empresa
+> associada** (mesmo par de arquivos): `segmento`, `beneficio_axenya`, `operadora_atual` — só
+> `beneficio_axenya` teve alguma cobertura (10,6%, e é booleano, não categórico); os outros
+> dois vieram 0% (são campos de cliente ativo, a base de Cotação é majoritariamente prospect).
+> Ficam capturados mas não alimentam gráfico nenhum hoje.
+>
+> **Ressalvas de cobertura a levar em conta antes de validar** (percentuais calculados ao vivo
+> em `novoRender()`, não congelados — ver Fix de auditoria dos drawers, mesma data no
+> `STATUS_LOG.md`): comercial_vidas ~19%, time_to_first_agent_reply ~20%,
+> cotacao_status_final ~39%, hubspot_owner_id ~69% (31% sem responsável). Nenhum desses campos
+> é majoritariamente preenchido — os gráficos que dependem deles são legítimos, mas o dono
+> precisa saber que está vendo um recorte, não o universo.
+>
+> Detalhe completo (achados de dado, decisões do dono, técnica de subagente `Explore` sem
+> Edit/Write + integração manual) nas 5 entradas do `STATUS_LOG.md` desta mesma data (2026-08-11),
+> a partir de "Fix | Cotação: auditoria dos drawers..." até "Feat | Cotação: 4 cards viáveis...".
+
 ## Adendo | Meta vs Ach: fonte Inter explícita, menos negrito, André por último (2026-08-05)
 
 > **Estado inalterado: 🟡 não validado contra o HubSpot** — ajuste puramente visual/de
