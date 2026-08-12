@@ -1,5 +1,51 @@
 # Dashboard Enhancement Loop — Status Log
 
+### Feat | /novo-bdr: corte por Lista ABM (carteira × fora da carteira) (2026-08-12)
+
+> Pedido do dono: *"quero entender originação, taxas, volume pensando no que vem dessa
+> lista ou fora dela quando falamos de outbound."* A `Lista ABM` entrou como **dimensão
+> e filtro** do funil de leads, saindo de `dim_company.in_lista_abm_distribution` —
+> propriedade `lista` criada no HubSpot no mesmo dia e gravada em **4.208 empresas**
+> (as que estão na carteira de um BDR na planilha ABM Distribution).
+>
+> **O ACHADO: o esforço é igual, o desfecho não é.** Coorte de 23/jun a 12/08, recorte
+> `Canal = Outbound` (2.461 leads): na lista **1.520** contra **928** fora. Tentativa
+> 79,4% × 84,7%, atividade real 67,5% × 69,8%, conversa por voz 14,5% × 15,2%,
+> desqualificação 49,9% × 51,5% — tudo praticamente empatado. **Qualificação: 4,7% na
+> lista contra 7,1% fora**, e never-touched 26,1% × 22,5%. Sem o recorte por canal a
+> distância é maior ainda (5,0% × 10,1%), porque o inbound de fora da lista puxa para
+> cima. Ou seja: a carteira ABM recebe o mesmo trabalho e converte ~1/3 menos.
+>
+> **TRÊS buckets, não dois.** "(sem empresa)" é balde próprio porque o lead pode não ter
+> empresa associada, e dobrá-lo em "Fora da lista" afirmaria que a conta dele foi
+> conferida contra a lista — não foi, não há conta. Medido: 148 leads, com atividade de
+> **16% contra 68%** dos outros dois. É balde de qualidade de dado, não um terceiro braço
+> comparável, e essa leitura só existe porque ele não foi diluído.
+>
+> **A régua é interpolada nos DOIS lugares que derivam dimensão** (coorte e fluxo), com
+> as mesmas duas colunas e os mesmos nomes. Divergir ali faria o filtro recortar a coorte
+> por uma régua e o waterfall por outra, com a mesma etiqueta na tela.
+>
+> **Custo declarado da 5ª dimensão na série:** o pior caso (janela completa + grão
+> diário) foi de **3,92 para 4,10 MB**, com teto de 4,5 — a margem caiu de 0,58 para
+> 0,40 MB. Entrou na série de propósito, porque a pergunta é comparativa no tempo, e o
+> teste trava o teto.
+>
+> **Ressalva que viaja na tela:** a marca é o estado de HOJE e a distribuição de carteira
+> é de **23/jun/2026** — lead criado antes disso não pode ser atribuído à lista. E
+> **2.158 contas da carteira não existem no HubSpot** (1.837 com domínio, 321 sem chave
+> nenhuma), logo caem fora do corte; a lista delas está em
+> `20_Company/Sales/ABM_Lista_HubSpot/nao_encontradas_no_hubspot.csv`. Criá-las foi
+> avaliado e o dono decidiu **não criar** por ora.
+>
+> **Uma asserção nova REPROVOU por defeito do teste, não do código:** `por_dimensao` tem
+> uma linha por (valor × `owner_bdr`), então `find()` lia 1.645 onde havia 1.652. Somar
+> por valor é obrigatório — e vale para qualquer leitura futura desse payload.
+>
+> Teste: 183 → **192 casos**. Smoke de render: 44, com fixtures recapturadas. Bundle
+> v5 → **v6** (sem isso o browser serve o funil antigo). Commit `893ae70`, deploy
+> `dashboard-axenya-9h8raa0z7`, v=6 conferido nos bytes servidos pela URL do dono.
+
 ### Feat | /novo-bdr: filtros combinados, selo por card e "ver todos os BDRs" (2026-08-12)
 
 > Três pedidos do dono depois de olhar a leva 6 no ar, e um deles virou correção de bug.
