@@ -1,5 +1,56 @@
 # Dashboard Enhancement Loop — Status Log
 
+### Feat | /novo-bdr: Lista ABM na primeira metade + a ficha que explica "(sem empresa)" (2026-08-12)
+
+> Dois pedidos do dono depois de ver o corte no ar só no funil de leads: *"queria esse da
+> lista também na primeira metade da página em originação, meta, weekly… preciso
+> acompanhar como está no geral"* e *"nos ícones de informação não me fala o que significa
+> sem empresa"*.
+>
+> **A primeira metade é grão de DEAL, não de lead** — vem do `/api/forecast-table`, que
+> passou a pedir `lista` ao HubSpot e a devolver `company_lista` (texto cru, auditável) e
+> `company_in_lista_abm` (token exato). Medido ao vivo: **1.558 deals → 179 na lista
+> (11,5%), 1.353 fora, 26 sem empresa**, soma == total.
+>
+> **Entrou por três portas, e a do meio é a que mais rende.** `_dimFnDeal`/`_dimFacetKey`
+> são o mapeador GENÉRICO, então Weekly (R13) e Monthly (R14) ganharam "Por Lista ABM"
+> numa única edição (o gerador `_DIM_TABS` é compartilhado). `_BDR_FACETS` deu a faceta
+> combinável, então o corte cruza com **BDR × Origem × Desfecho × Porte × Mês em todo
+> drill da primeira metade, sem gráfico novo**. E a Originação (R12) ganhou a 3ª
+> dimensão, reusando o ramo empilhado que já existia para canal.
+>
+> **META NÃO GANHA DENOMINADOR POR LISTA.** Metas são por BDR; inventar meta por lista
+> seria número novo sem regra. O que entrou é a **composição do realizado** — de onde veio
+> o atingimento — no card e por BDR no detalhe, com o absoluto ao lado do percentual.
+>
+> **De quebra: a régua de elegibilidade da meta estava escrita IDÊNTICA em dois lugares**
+> e a composição por lista seria a terceira cópia. Virou `_teamEligibleDeals`, uma só.
+> Régua de meta duplicada é número de gente derivando em silêncio.
+>
+> **TRÊS defeitos silenciosos, todos provados por MUTAÇÃO** (o teste reprova com o
+> defeito e passa sem — check que passa no estado defeituoso é espelho):
+> **1.** `byCanal` era `=== 'canal'`, então a aba nova cairia no ramo por-BDR e
+> renderizaria IGUAL a "Por BDR" — filtro que não faz nada é pior que filtro nenhum.
+> **2.** o drill do ramo empilhado marcava `sel.fonte` FIXO: com a dimensão nova marcaria
+> a faceta ERRADA com rótulo de Lista ABM, e o modal abriria vazio (família do `dim_canal`
+> fora do mapa de saída, leva 7).
+> **3.** `null` (sem empresa) dobrado em `false` (fora da lista) transformaria ausência de
+> conta em "conferi e não está na lista".
+>
+> **AS FICHAS.** Uma constante por arquivo (`_HELP_LISTA_ABM` / `HELP_LISTA_ABM`), citada
+> pelas 4 fichas de card da primeira metade e pelas 2 de corte por dimensão do funil,
+> dizendo o que é cada um dos três valores, **por que o terceiro não é o segundo**, a data
+> da distribuição (23/jun), as 2.158 contas fora do CRM e que pertencimento **não é
+> origem**. Texto em um lugar só porque a mesma explicação em 6 fichas é como elas passam
+> a discordar entre si. A ficha da série também foi corrigida: ela listava as quebras
+> antigas, e **oferecer um corte que a ficha nega é o ícone morto de novo**.
+>
+> Teste novo `test-bdr-lista-abm.js`: **40 casos**, dentro do `npm run check` (não vai ao
+> banco, então roda no CI sem credencial). Bundle v6 → **v7**. `origin/main` andou 2
+> commits durante o trabalho (C07/prob-engine): `comm -12` confirmou **zero arquivo
+> comum**, rebase limpo e `npm run check` DEPOIS do rebase. Commit `0dd5093`, deploy
+> `dashboard-axenya-58nley1mz`, v=7 conferido nos bytes servidos.
+
 ### 🚀 DEPLOY DE PRODUÇÃO | Fix C07 (probabilidade ao vivo) + Diagnóstico + doc de premissas (2026-08-12)
 
 > Autorização explícita do dono ("faça o commit e o deploy"), continuação da mesma sessão da
