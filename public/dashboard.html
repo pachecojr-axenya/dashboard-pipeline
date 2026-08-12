@@ -5266,24 +5266,31 @@ function novoLoadFunnel() {
 // prob(etapa) = GANHOS ABSOLUTOS ÷ deals que entraram na etapa, no funil histórico
 // daquele pipeline. Diferente do C06 (avanço para a próxima etapa): aqui o numerador
 // é sempre o Ganho absoluto, não "chegou à Implantação".
+// Motor único (2026-08-12): delega a _novoFunnelDerivedProbPipe (linha ~597, já usada
+// pelo resto do dashboard) em vez de reimplementar a conta. Antes esta função tinha
+// cópia própria SEM gate de amostra mínima (>=20) e incluindo Diagnóstico — que o
+// motor único nunca inclui (Diagnóstico é sempre fixo em 6% em todo o projeto) —
+// causando divergência com o "P. Realtime" do painel Ganho (forecast-stage.html),
+// que já consumia o motor único. `n` (tamanho da amostra) continua calculado aqui,
+// só para exibir no tooltip do gráfico — não influencia o valor de `prob`.
 function _novoWinProbPipe(pipe) {
   var d = _novoFunnelData;
   if (!d || !d[pipe] || !d[pipe].stages) return null;
   var cnt = {};
   d[pipe].stages.forEach(function(s) { cnt[s.stage] = s.count || 0; });
-  var finalC = cnt['Ganho'] || 0;
-  if (finalC <= 0) return null;
+  var derived = _novoFunnelDerivedProbPipe();      // fonte única (prob-engine.js)
+  var probs = derived && derived[pipe];
+  if (!probs) return null;
   var out = {};
   (_FUNNEL_STAGES[pipe] || []).forEach(function(s) {
-    if (s === 'Implantação') return;   // é o alvo, não etapa de origem
-    var c = cnt[s] || 0;
-    out[s] = c > 0 ? { prob: Math.min(1, finalC / c), n: c } : null;
+    if (s === 'Implantação' || probs[s] == null) return;   // alvo, ou sem amostra mínima/fora da régua (Diagnóstico)
+    out[s] = { prob: probs[s], n: cnt[s] || 0 };
   });
   return out;
 }
 // Card do C07 com corpo próprio (para exibir spinner enquanto o funil carrega).
 function _novoWinProbCard() {
-  var tip = 'Chance de fechamento (ganho) de um deal em cada etapa, por pipeline (Vendas e Bid). = ganhos absolutos ÷ deals que entraram na etapa, no funil histórico de cada pipeline. Etapas: Reunião Agendada, Diagnóstico, Cotação, Proposta Enviada, Consultoria e Negociação (Implantação fica de fora | é o alvo). Diferente do C06 (avanço entre etapas): aqui o numerador é sempre o Ganho absoluto. Sem ajuste do AE (é a prob-base por etapa que alimenta os forecasts). Eixo Y até 40%. n (no tooltip) = tamanho da amostra; n pequeno = número instável.';
+  var tip = 'Chance de fechamento (ganho) de um deal em cada etapa, por pipeline (Vendas e Bid). = ganhos absolutos ÷ deals que entraram na etapa, no funil histórico de cada pipeline. Etapas: Reunião Agendada, Diagnóstico, Cotação, Proposta Enviada, Consultoria e Negociação (Implantação fica de fora | é o alvo). Diferente do C06 (avanço entre etapas): aqui o numerador é sempre o Ganho absoluto. Amostra mínima de 20 deals entrados na etapa (por pipeline) pra aparecer — abaixo disso a barra simplesmente não é desenhada, não é lida como 0%. Puramente informativo: NÃO substitui o 6% fixo de Diagnóstico (regra separada, nunca deriva do funil) nem entra no forecast de caixa — é a prob-base das métricas de pipeline ponderado (docs/forecast-revenue-rules.md §7). Eixo Y até 40%. n (no tooltip) = tamanho da amostra.';
   return '<div class="novo-card"><div class="novo-card-header"><h3>Probabilidade de Ganho por Etapa</h3>' + _infoBtn(tip, 'winprob', 'funil') + '</div>' +
     '<div id="novo-winprob-body" style="min-height:300px;position:relative"><canvas id="chart-novo-winprob" style="max-height:320px"></canvas></div></div>';
 }

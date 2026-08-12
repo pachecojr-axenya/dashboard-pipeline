@@ -56,13 +56,18 @@
 
   // C07 | prob. de GANHO por etapa, POR PIPELINE (ganho absoluto ÷ entraram na etapa),
   // a partir do payload de /api/funnel-stages. Idêntico a _novoFunnelDerivedProbPipe do CRO.
+  // Diagnóstico ENTRA na conta (2026-08-12) — antes ficava de fora, deixando o card C07
+  // e a coluna "P. Realtime" (forecast-stage.html) sem número pra Diagnóstico (lido como
+  // "zerado" por quem olhava a tabela). Seguro incluir: _autoProbInfo (abaixo) já
+  // intercepta Diagnóstico ANTES de consultar este resultado e retorna 6% fixo sempre —
+  // este valor aqui é só informativo (compara com a régua), nunca chega na receita/peso.
   function funnelDerivedProbPipe(funnelData) {
     if (!funnelData) return null;
     function forPipe(pd) {
       if (!pd || !pd.stages) return {};
       var cnt = {}; pd.stages.forEach(function (s) { cnt[s.stage] = s.count || 0; });
       var ganho = cnt['Ganho'] || 0; if (ganho <= 0) return {};
-      var order = ['Reunião Agendada', 'Cotação', 'Proposta Enviada', 'Consultoria', 'Negociação'];
+      var order = ['Reunião Agendada', 'Diagnóstico', 'Cotação', 'Proposta Enviada', 'Consultoria', 'Negociação'];
       var out = {};
       order.forEach(function (s) { var c = cnt[s] || 0; if (c >= MIN_SAMPLE) { var p = ganho / c; if (p > 1) p = 1; if (p < 0) p = 0; out[s] = p; } });
       return out;

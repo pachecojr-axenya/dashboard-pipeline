@@ -219,3 +219,52 @@ andamento, ver STATUS_LOG.md):
   unificação correta é: todo consumidor chama o motor único (nunca reimplementa a régua/ajuste
   à mão), passando o `ctx` certo para a família que faz sentido pra aquela métrica — e sempre
   respeitando o override manual absoluto acima.
+
+## 7. `funnelDerivedProbPipe` — premissas exatas do C07 / 🟡 P. Realtime
+
+Este é o cálculo que dá origem ao número "ao vivo" da família **pipeline ponderado** (seção 6):
+o card **C07** ("Probabilidade de Ganho por Etapa", CRO Dashboard) e a coluna **🟡 P. Realtime**
+(`forecast-stage.html`, aparece em todas as etapas, inclusive Ganho). Função única:
+`funnelDerivedProbPipe(funnelData)` em `public/prob-engine.js`.
+
+- **Fonte de dados**: `GET /api/funnel-stages` — contagem de deals únicos que **entraram** em
+  cada etapa desde `since` (default `2025-08-01`, sem filtro de data explícito) e quantos desses
+  **fecharam como Ganho** (etapa `"Ganho"` no mesmo payload). Cada deal conta uma vez por etapa
+  que visitou no período, não é um funil sequencial estrito.
+- **Fórmula, POR PIPELINE (Vendas × Bid, nunca combinados)**: `prob(etapa) = Ganho ÷ deals que
+  entraram na etapa`, no funil histórico daquele pipeline, `clamp(p, 0, 1)`.
+- **Etapas cobertas**: Reunião Agendada, Diagnóstico, Cotação, Proposta Enviada, Consultoria,
+  Negociação. **Implantação nunca é etapa de origem** (é o alvo/numerador via "Ganho", não uma
+  etapa a medir) e por isso nunca aparece no resultado.
+- **Amostra mínima (`MIN_SAMPLE = 20`)**: uma etapa só entra no resultado se **≥20 deals**
+  entraram nela naquele pipeline. Abaixo disso a etapa fica **ausente do objeto** (não é `0`,
+  é a chave simplesmente não existir) — quem consome trata ausência como "sem dado", cai no
+  `"—"` (P. Realtime) ou no fallback da régua flat (`stageProbFor`, quando `ctx.funnelProbPipe`
+  é a fonte escolhida).
+- **Diagnóstico entrou no cálculo em 2026-08-12** (antes ficava de fora do array `order`, sem
+  motivo documentado — resultado: C07 e P. Realtime sempre mostravam "—"/nada pra Diagnóstico,
+  lido por quem olhava a tabela como "zerado"). É **seguro** ter Diagnóstico aqui porque
+  `_autoProbInfo` (mesmo arquivo) intercepta `deal.stage === 'Diagnóstico'` **antes** de sequer
+  consultar este resultado e devolve `0,06` fixo sempre — o valor que `funnelDerivedProbPipe`
+  calcula para Diagnóstico é **só informativo** (compara com a régua fixa de 6%), nunca chega a
+  pesar a receita ou a probabilidade real de nenhum deal.
+- **Nunca influencia o forecast de caixa** (família "caixa", seção 6) — só a família "pipeline
+  ponderado" o consome, e mesmo nela é substituído pelo override manual por deal (P. Ajust.)
+  quando existe, e pela régua flat quando a etapa não tem amostra mínima.
+- **Consumidores — motor único, sem cópia (corrigido 2026-08-12)**: `_novoFunnelDerivedProbPipe`
+  (`dashboard.html`) e `FC_FUNNEL_PROB`/`_fcLoadFunnelProb` (`forecast-stage.html`) chamam
+  `ProbEngine.funnelDerivedProbPipe` direto. **Antes de 2026-08-12**, o card C07
+  (`_novoWinProbPipe`) tinha uma reimplementação própria da mesma fórmula — divergia em dois
+  pontos: sem gate de amostra mínima (mostrava número com qualquer `n > 0`) e incluía Diagnóstico
+  via cálculo próprio (quando o motor único ainda excluía Diagnóstico por completo) — corrigido
+  para delegar em `_novoFunnelDerivedProbPipe`, que já existia no mesmo arquivo pra outro
+  propósito e não tinha nenhum desses dois problemas.
+- **Cache local (`forecast-stage.html`)**: o resultado fica em `sessionStorage`
+  (`fc_funnel_prob_pipe_v1`) por até **1 hora** antes de recarregar do `/api/funnel-stages` —
+  P. Realtime pode ficar até 1h atrás de um reload fresco do CRO Dashboard (que não cacheia).
+  Não afeta a receita (é informativo), só a leitura do número em si por essa janela curta.
+- **Janela de datas**: sem filtro de período ativo no CRO Dashboard, os dois pontos de consumo
+  usam o mesmo `since=2025-08-01` (default do endpoint) — batem. Se o CRO tiver um filtro de
+  data ativo (`since`/`until` custom), o C07 passa a refletir só aquela janela, enquanto
+  `forecast-stage.html` continua no default — divergência esperada nesse caso específico, não
+  é bug (o painel Ganho/etapas não tem filtro de período equivalente).
