@@ -1292,6 +1292,25 @@ function granPadrao(dias) {
   if (dias <= 550) return 'mes';
   return 'trimestre';
 }
+
+/**
+ * TETO DE PONTOS — a escolha do leitor é respeitada até onde ela ainda desenha algo.
+ *
+ * Pedir "dia" numa janela de 937 dias são 937 colunas de meio pixel: ilegível como
+ * gráfico e, pior, **5,82 MB de resposta**, acima do teto da Vercel — a tela não
+ * responderia, que é falha bem pior do que um eixo grosso. Acima de MAX_PONTOS o
+ * servidor sobe um degrau de granularidade e DECLARA no payload
+ * (`granularidade.rebaixada_de`), para a tela poder dizer ao usuário por que ele pediu
+ * dia e recebeu semana. Rebaixar em silêncio seria a mesma classe de defeito de capar
+ * lista sem avisar.
+ */
+const MAX_PONTOS = 220;
+const PONTOS_POR_DIA = { dia: 1, semana: 1 / 7, mes: 1 / 30.4, trimestre: 1 / 91.3 };
+function granQueCabe(gran, dias) {
+  let i = GRANS.indexOf(gran);
+  while (i < GRANS.length - 1 && dias * PONTOS_POR_DIA[GRANS[i]] > MAX_PONTOS) i++;
+  return GRANS[i];
+}
 function bucketSql(gran, col) {
   const c = col || 'criado';
   if (gran === 'dia') return `FORMAT_DATE('%F', ${c})`;
@@ -1299,6 +1318,22 @@ function bucketSql(gran, col) {
   if (gran === 'trimestre') return `CONCAT(FORMAT_DATE('%Y', ${c}), '-Q', CAST(EXTRACT(QUARTER FROM ${c}) AS STRING))`;
   return `FORMAT_DATE('%Y-%m', ${c})`;
 }
+
+/**
+ * QUAIS DIMENSÕES GANHAM SÉRIE — e por que não são todas.
+ *
+ * O bloco agregado é barato (uma linha por valor); a SÉRIE multiplica cada valor pelo
+ * número de períodos, e é ela que estoura o payload. Medido na janela completa com
+ * granularidade diária: 9.827 linhas de série e **5,82 MB**, acima do teto de resposta
+ * da Vercel (~4,5 MB) — ou seja a tela voltaria a não responder, que é exatamente o
+ * defeito que a leva 4 pagou caro para consertar.
+ *
+ * A série existe para UMA coisa: quebrar a linha do tempo por dimensão. Então ela sai
+ * só para as quatro dimensões que a tela oferece na quebra. `porte`, `canal` (detalhe)
+ * e `origem` continuam completos no bloco agregado — o que eles perdem é só o eixo do
+ * tempo, que a UI não desenha para eles.
+ */
+const DIMS_SERIE = ['bdr', 'canal_macro', 'tier', 'vidas'];
 
 async function coorteAgregada(pipes, since, until, bdrIds, gran, recorte) {
   // `canal` entra e `origem` FICA, em vez de ser substituída: a origem contaminada é
@@ -1384,7 +1419,7 @@ async function coorteAgregada(pipes, since, until, bdrIds, gran, recorte) {
 
   // Os mesmos cortes, agora por período de CRIAÇÃO do lead — a coorte é seguida até
   // hoje, então o eixo do tempo é quando o lead nasceu, não quando ele converteu.
-  const blocosSerie = dims.map(([nome, col]) => `
+  const blocosSerie = dims.filter(([nome]) => DIMS_SERIE.indexOf(nome) >= 0).map(([nome, col]) => `
     SELECT '${nome}' AS dimensao, CAST(${col} AS STRING) AS valor, owner_bdr, no_recorte, ${bucketSql(gran)} AS bucket,
     ${METRICAS_SERIE}
     FROM dim GROUP BY 1, 2, 3, 4, 5`).join('\n    UNION ALL');
@@ -1770,7 +1805,9 @@ module.exports = async (req, res) => {
     // GRANULARIDADE: escolha do leitor, com default que pensa (ver GRANS/granPadrao).
     const granPedida = GRANS.includes(String(req.query.gran)) ? String(req.query.gran) : null;
     const granDefault = granPadrao(dias);
-    const gran = granPedida || granDefault;
+    const granBruta = granPedida || granDefault;
+    const gran = granQueCabe(granBruta, dias);
+    const granRebaixada = gran !== granBruta ? granBruta : null;
 
     // RECORTE: uma dimensão, um valor. Vem do request e vale para a SEÇÃO INTEIRA.
     const dimPedida = ['bdr', 'porte', 'tier', 'vidas', 'canal', 'canal_macro', 'origem']
@@ -2044,8 +2081,12 @@ module.exports = async (req, res) => {
         escolhida: gran,
         pedida: granPedida,
         padrao: granDefault,
+        // Rebaixamento DECLARADO: quem pediu "dia" numa janela longa precisa saber que
+        // recebeu semana, e por quê.
+        rebaixada_de: granRebaixada,
+        max_pontos: MAX_PONTOS,
         opcoes: GRANS,
-        regra: `padrão adaptativo: dia até 31 dias, semana ISO até ${GRAN_LIMITE_DIAS}, mês até 550, trimestre acima. A escolha manual vence e viaja aqui.`,
+        regra: `padrão adaptativo: dia até 31 dias, semana ISO até ${GRAN_LIMITE_DIAS}, mês até 550, trimestre acima. A escolha manual vence, até o teto de ${MAX_PONTOS} pontos — acima disso o servidor sobe um degrau e declara em rebaixada_de.`,
       },
       snapshot: { camada: 'silver', tabela: 'dim_lead', por_etapa: snap.porEtapa, etapas_nao_mapeadas: snap.naoMapeadas },
       // Waterfall MACRO: o saldo que abre, recebe, perde e fecha. A soma FECHA, e o

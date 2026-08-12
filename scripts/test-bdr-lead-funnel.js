@@ -479,9 +479,21 @@ async function call(query) {
   ok((T.granularidade || {}).padrao === 'trimestre' && (T.granularidade || {}).pedida === null,
     'o payload declara a granularidade PEDIDA e a PADRAO separadamente',
     JSON.stringify(T.granularidade || {}));
-  dimsEsperadas.forEach(d => {
+  // A SÉRIE SAI SÓ PARA AS DIMENSÕES DE QUEBRA (bdr, canal_macro, tier, vidas) — e isso
+  // é contrato, não omissão. A série multiplica cada valor pelo número de períodos, e
+  // mandar as 7 dimensões custava 5,82 MB na janela completa com grão fino, acima do
+  // teto de resposta da Vercel. `porte`, `canal` e `origem` continuam COMPLETOS no
+  // bloco agregado; o que eles não têm é o eixo do tempo, que a tela não desenha para
+  // eles. As duas asserções abaixo travam as duas metades disso.
+  const DIMS_SERIE = ['bdr', 'canal_macro', 'tier', 'vidas'];
+  DIMS_SERIE.forEach(d => {
     const s = (SE.por_dimensao[d] || []).reduce((a, r) => a + r.criados, 0);
     ok(s === T.coorte.criados, 'a serie da dimensao "' + d + '" fecha com a coorte', s + ' vs ' + T.coorte.criados);
+  });
+  dimsEsperadas.filter(d => DIMS_SERIE.indexOf(d) < 0).forEach(d => {
+    const agg = (T.coorte.por_dimensao[d] || []).reduce((a, r) => a + r.criados, 0);
+    ok(agg === T.coorte.criados,
+      'a dimensao "' + d + '" (sem serie, por peso) continua COMPLETA no agregado', agg + ' vs ' + T.coorte.criados);
   });
   const bucketsS = Array.from(new Set((SE.por_dimensao.bdr || []).map(r => r.bucket))).sort();
   ok(bucketsS.length > 1, 'a serie tem mais de um periodo (senao nao e serie)', bucketsS.length + ' buckets');
@@ -537,6 +549,18 @@ async function call(query) {
     ok(somaS === r.body.coorte.criados,
       'a coorte fecha em gran=' + g + ' (agrupar nao pode criar nem sumir lead)', somaS + ' vs ' + r.body.coorte.criados);
   }
+  // TETO DE PONTOS: pedir "dia" na janela completa daria 937 colunas e 5,82 MB de
+  // resposta — acima do teto da Vercel, ou seja a tela não responderia. O servidor sobe
+  // um degrau e DECLARA; rebaixar em silêncio seria a mesma classe de defeito de capar
+  // uma lista sem avisar.
+  const gDia = await call({ funil: 'todos', tudo: '1', gran: 'dia', refresh: '1' });
+  const GR = gDia.body.granularidade || {};
+  ok(GR.pedida === 'dia' && GR.escolhida !== 'dia' && GR.rebaixada_de === 'dia',
+    'gran=dia em janela longa e REBAIXADA e o rebaixamento e declarado',
+    JSON.stringify({ pedida: GR.pedida, escolhida: GR.escolhida, rebaixada_de: GR.rebaixada_de }));
+  const mbPior = JSON.stringify(gDia.body).length / 1048576;
+  ok(mbPior < 4.5, 'o pior caso (janela completa + gran fina) cabe no teto de resposta da Vercel', mbPior.toFixed(2) + ' MB');
+
   // A série DIÁRIA existe SEMPRE, independente da granularidade escolhida — é ela que
   // alimenta "criados por dia" e ela conserta o gráfico que era desenhado da lista
   // capada em 1.500. Sem esta asserção, o bug volta na primeira janela longa.

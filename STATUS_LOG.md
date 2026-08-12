@@ -107,6 +107,18 @@
 > cortados em silêncio por `max-width` + `ellipsis`), o eixo que não reescalava, e a
 > abreviação de nome mutilando "Discou 4–9x, ninguém atendeu" em **"Discou a."**.
 >
+> **O TETO DE PAYLOAD QUASE VOLTOU PELA PORTA DA GRANULARIDADE.** Medido depois do
+> primeiro deploy: `tudo=1&gran=dia` gerava **5,82 MB em 35,8s** — acima do teto de
+> resposta da Vercel (~4,5 MB), ou seja a tela voltaria a não responder, que é
+> exatamente o defeito que a leva 4 pagou caro para consertar. O grão fino multiplica
+> cada valor de cada dimensão pelo número de períodos. Duas proteções: (1) a SÉRIE sai
+> só para as quatro dimensões que a tela quebra (bdr, canal, tier, vidas) — as outras
+> continuam completas no agregado, só sem eixo do tempo; (2) **teto de 220 pontos**: o
+> servidor sobe um degrau de granularidade e DECLARA (`granularidade.rebaixada_de`),
+> com a tela dizendo "você pediu dia, mas nesta janela isso daria mais de 220 pontos".
+> Rebaixar em silêncio seria a mesma classe de defeito de capar lista sem avisar. Pior
+> caso agora: **3,92 MB em 9,7s**. Travado em teste.
+
 > **RECONCILIAÇÃO DE HOJE, conferida a pedido.** O `close` das 20:30 **passou a
 > extrair**: o run de 11/08 23:33 UTC capturou movimentações de lead até 20:03 BRT do
 > mesmo dia (antes o dia inteiro ficava invisível). O que continua valendo é a

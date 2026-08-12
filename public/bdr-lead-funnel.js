@@ -1469,7 +1469,10 @@
       var g = (D.granularidade || {});
       p.innerHTML = 'Coorte por <strong>período de criação</strong> do lead (<strong>' +
         esc(GRAN_PT[granAtual()] || granAtual()) + '</strong>' +
-        (g.pedida ? ', escolhido' : ', padrão para esta janela') + '), medindo <strong>' + esc(focoLabel()) + '</strong>' +
+        (g.rebaixada_de
+          ? ' — <span style="color:var(--text)">você pediu <strong>' + esc(GRAN_PT[g.rebaixada_de] || g.rebaixada_de) +
+            '</strong>, mas nesta janela isso daria mais de ' + ni(g.max_pontos) + ' pontos: ilegível como gráfico e grande demais para a resposta chegar</span>'
+          : (g.pedida ? ', escolhido' : ', padrão para esta janela')) + '), medindo <strong>' + esc(focoLabel()) + '</strong>' +
         (soBdr ? ', só donos que são BDR' : ', todos os donos de lead') + '. ' +
         notaQuebra +
         (iParcial >= 0 ? '<strong style="color:var(--text)">' + rotBucket(parcial) + ' está marcado com * e tracejado: coorte PARCIAL</strong> — ela ainda vai converter, então a queda no fim é maturidade, não piora. ' : '') +
