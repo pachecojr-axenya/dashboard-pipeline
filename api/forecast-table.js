@@ -98,8 +98,19 @@ const COMPANY_PROPERTIES = [
   'domain',
   'industry',
   'numberofemployees',
+  // `lista` (12/08/2026): texto livre com a(s) lista(s) de pertencimento da conta,
+  // separadas por `; `. Chega crua para a tela e o pertencimento é derivado por TOKEN
+  // EXATO abaixo — a mesma régua do `in_lista_abm_distribution` no armazém, porque
+  // duas definições de "está na lista" é como duas telas passam a discordar.
+  'lista',
   'hs_object_id',
 ];
+
+/** Token exato dentro do texto livre de `company.lista`. */
+const LISTA_ABM_TOKEN = 'lista_abm_distribution';
+function listaTokens(v) {
+  return String(v || '').split(';').map(t => t.trim()).filter(Boolean);
+}
 
 // Tempo médio por etapa (AE Deal Velocity): entrada/saída v2 de cada etapa do pipeline Vendas.
 // stage_days[etapa] = (saída || hoje) - entrada, em dias. Usado pela tabela A19 do painel AE.
@@ -541,6 +552,15 @@ module.exports = async function handler(req, res) {
           company_domain: company.domain || null,
           company_employees: company.numberofemployees ? parseInt(company.numberofemployees) : null,
           company_segment: company.industry || null,
+          // LISTA ABM. `company_lista` é o texto cru (auditável) e
+          // `company_in_lista_abm` é o pertencimento por token exato. O terceiro estado
+          // — deal SEM empresa associada — não é `false`: é `null`, e a tela o mostra
+          // como "(sem empresa)". Dobrar ausência de conta em "fora da lista"
+          // afirmaria que a conta foi conferida contra a lista quando não há conta.
+          company_lista: ctx.company_id ? (company.lista || null) : null,
+          company_in_lista_abm: ctx.company_id
+            ? listaTokens(company.lista).indexOf(LISTA_ABM_TOKEN) >= 0
+            : null,
         };
       });
 

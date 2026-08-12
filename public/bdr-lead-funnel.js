@@ -120,19 +120,40 @@
    * sem o outro. `fields` nomeia as propriedades e tabelas de onde o número sai, no
    * mesmo formato das fichas antigas do painel.
    */
+  /**
+   * O CORTE LISTA ABM, explicado UMA vez e citado por toda ficha que o oferece.
+   *
+   * O dono pediu explicitamente (12/08/2026): *"nos ícones de informação não me fala o
+   * que significa sem empresa"*. O bucket do meio é o que mais precisa de texto, porque
+   * "(sem empresa)" e "Fora da lista" parecem a mesma coisa e não são: um é conta que
+   * foi conferida contra a lista e não está nela, o outro é ausência de conta para
+   * conferir. Somar os dois transformaria falta de dado em resposta.
+   */
+  var HELP_LISTA_ABM = ' CORTE LISTA ABM (3 valores): "Na lista ABM" = a empresa do lead está'
+    + ' na carteira distribuída na planilha ABM Distribution (marca lista_abm_distribution em'
+    + ' company.lista, 4.208 empresas em 12/08/2026). "Fora da lista" = a empresa EXISTE no'
+    + ' CRM e NÃO está na carteira. "(sem empresa)" = o lead NÃO TEM EMPRESA ASSOCIADA — não'
+    + ' há conta para conferir contra a lista, e por isso ele tem balde próprio em vez de ser'
+    + ' somado em "Fora": ausência de dado não é resposta. Medido: esses leads têm 16% de'
+    + ' atividade contra 68% dos outros dois, ou seja é bolsão de qualidade de dado e não um'
+    + ' terceiro braço comparável. RESSALVAS: a marca é o estado de HOJE e a distribuição de'
+    + ' carteira é de 23/jun/2026, então lead criado antes disso não pode ser atribuído à'
+    + ' lista; 2.158 contas da carteira não existem no HubSpot e ficam fora do corte; e estar'
+    + ' na carteira não significa ter VINDO da lista (é co-ocorrência, não origem) — para ler'
+    + ' como origem, cruze com Canal = Outbound.';
   var FICHAS = [
     { key: 'conv', title: 'Conversão do funil | do lead criado ao deal',
       desc: 'Coorte de leads CRIADOS na janela, seguida até hoje. A régua é ACUMULADA: "chegou a Conectado+" quer dizer que o lead VISITOU a etapa em algum momento, não que esteja nela agora — por isso os passos encaixam e a conversão do processo é o PRODUTO deles. NÃO é "movimentações no período", régua que conta o mesmo lead a cada toque e infla ~4x. A coorte recente ainda está viva: o período corrente sempre converte menos que um fechado.',
       formula: 'passo = leads que atingiram a etapa ÷ leads que atingiram a etapa anterior · processo = qualificados ÷ criados · Qualificado→Deal usa a INTERSEÇÃO (qualificado E com deal), senão a taxa passa de 100%',
       fields: [['hs_pipeline_stage', 'Etapa do lead; o histórico vem de fact_stage_entry (visitas) e fact_crm_change (movimentos).'], ['hs_createdate', 'Define a coorte: o lead entra pela data de criação, não pela data em que converteu.'], ['bridge_association lead→deal', 'Deal originado do lead.']] },
     { key: 'serie', title: 'Linha do tempo da conversão',
-      desc: 'A mesma coorte dos cards com o eixo do tempo aberto: cada ponto é a coorte criada naquele período, seguida até hoje. Período é escolha (dia, semana ISO, mês, trimestre); "Auto" usa dia até 31 dias, semana até 120, mês até 550 e trimestre acima. QUEBRAR desenha uma linha por BDR, canal, tier ou vidas (máximo 6, as maiores por volume). O eixo de % se ajusta ao mínimo e máximo das linhas VISÍVEIS — clicar na legenda reescala. O último ponto é PARCIAL (tracejado e com *): a coorte ainda vai converter.',
+      desc: 'A mesma coorte dos cards com o eixo do tempo aberto: cada ponto é a coorte criada naquele período, seguida até hoje. Período é escolha (dia, semana ISO, mês, trimestre); "Auto" usa dia até 31 dias, semana até 120, mês até 550 e trimestre acima. QUEBRAR desenha uma linha por BDR, canal, tier, vidas ou Lista ABM (máximo 6, as maiores por volume). O eixo de % se ajusta ao mínimo e máximo das linhas VISÍVEIS — clicar na legenda reescala. O último ponto é PARCIAL (tracejado e com *): a coorte ainda vai converter.',
       formula: 'taxa do período = numerador ÷ denominador DENTRO da coorte daquele período · eixo % = [mín − 10% da amplitude, máx + 10%], com amplitude mínima de 5 p.p.',
       fields: [['hs_createdate', 'Bucket do eixo (dia/semana ISO/mês/trimestre), em America/Sao_Paulo.'], ['fact_stage_entry', 'Etapas visitadas por lead, que alimentam cada taxa.']] },
     { key: 'convtab', title: 'Conversão por dimensão',
-      desc: 'A mesma conversão de coorte, aberta por dimensão. Cada passo é medido SOBRE A ETAPA ANTERIOR — é o que separa "perde no primeiro contato" de "perde na qualificação". A última coluna é o processo inteiro. Com um filtro ativo em outra dimensão, esta tabela mostra o CRUZAMENTO (ex.: o tier daquele BDR).',
+      desc: 'A mesma conversão de coorte, aberta por dimensão. Cada passo é medido SOBRE A ETAPA ANTERIOR — é o que separa "perde no primeiro contato" de "perde na qualificação". A última coluna é o processo inteiro. Com um filtro ativo em outra dimensão, esta tabela mostra o CRUZAMENTO (ex.: o tier daquele BDR).' + HELP_LISTA_ABM,
       formula: 'cada célula = etapa ÷ etapa anterior, dentro da fatia da dimensão',
-      fields: [['hubspot_owner_id', 'Dono do lead, colapsado para o nome canônico do roster de BDR.'], ['tier_colaboradores', 'Tier do contato, lido do bronze (não existe no silver).'], ['company_lives_bucket', 'Faixa de vidas do armazém (dim_lead_context).']] },
+      fields: [['hubspot_owner_id', 'Dono do lead, colapsado para o nome canônico do roster de BDR.'], ['tier_colaboradores', 'Tier do contato, lido do bronze (não existe no silver).'], ['company_lives_bucket', 'Faixa de vidas do armazém (dim_lead_context).'], ['dim_company.in_lista_abm_distribution', 'Pertencimento à carteira ABM, por token exato em company.lista; NULL quando o lead não tem empresa.']] },
     { key: 'macro', title: 'Waterfall macro | o funil que abre, recebe, perde e fecha',
       desc: 'Aberto@início + entrou + entrou sem registro + reativados (+ recebidos de outro BDR) − qualificados − desqualificados − saiu do recorte (− passados para outro BDR) = Aberto@fim. ABERTO = Novo + Tentativa + Conectado; qualificado e desqualificado são SAÍDAS do funil de prospecção. O que a aritmética não explica vira a barra "Resíduo", exposta em vez de diluída: waterfall que não fecha no saldo é ficção.',
       formula: 'saldo em T = última entrada de fact_stage_entry com entered_at ≤ T (dim_lead só sabe o agora) · resíduo = fecho medido − fecho calculado',
@@ -154,9 +175,9 @@
       formula: 'criados = GROUP BY dia sobre a coorte · movimentações = fact_crm_change agrupado pelo mesmo período',
       fields: [['hs_createdate', 'Data de criação do lead.'], ['fact_crm_change', 'Data da movimentação de etapa.']] },
     { key: 'regua', title: 'Esforço, funil e penetração por dimensão',
-      desc: 'TRÊS VISÕES. CONTATO: as três réguas empilhadas — TENTOU (discou ou mandou mensagem; discagem que não conectou CONTA, decisão do head de BDRs em 12/08/2026), FALOU COM (mensagem enviada, ligação conectada ou reunião realizada) e CONVERSOU (voz atendida, com duração). FUNIL: criou, avançou, qualificou, perdeu. PENETRAÇÃO: empresas distintas, empresas novas e leads por empresa. No corte por pessoa, "Trabalhou na janela" é atribuída a QUEM TOCOU, não ao dono do lead.',
+      desc: 'TRÊS VISÕES. CONTATO: as três réguas empilhadas — TENTOU (discou ou mandou mensagem; discagem que não conectou CONTA, decisão do head de BDRs em 12/08/2026), FALOU COM (mensagem enviada, ligação conectada ou reunião realizada) e CONVERSOU (voz atendida, com duração). FUNIL: criou, avançou, qualificou, perdeu. PENETRAÇÃO: empresas distintas, empresas novas e leads por empresa. No corte por pessoa, "Trabalhou na janela" é atribuída a QUEM TOCOU, não ao dono do lead.' + HELP_LISTA_ABM,
       formula: 'tx contato por ATIVIDADE = leads com toque real ÷ criados · tx por ETAPA = leads que chegaram a Tentativa+ ÷ criados · discagens por conversa = discagens ÷ ligações conectadas · leads por empresa = criados ÷ empresas distintas',
-      fields: [['fact_engagement.is_connected', 'Ligação atendida; a discagem sem conexão entra como tentativa.'], ['fact_engagement.disposition_label', 'Desfecho da ligação (Sem resposta, Ocupado, Número errado…).'], ['fact_engagement.duration_ms', 'Tempo ao telefone, somado só nas conectadas.'], ['fact_engagement.channel_type', 'WhatsApp e LinkedIn; WhatsApp de INTEGRATION vai para o bucket de automação.'], ['bridge_association lead→company', 'Empresa do lead, para a penetração.']] },
+      fields: [['fact_engagement.is_connected', 'Ligação atendida; a discagem sem conexão entra como tentativa.'], ['fact_engagement.disposition_label', 'Desfecho da ligação (Sem resposta, Ocupado, Número errado…).'], ['fact_engagement.duration_ms', 'Tempo ao telefone, somado só nas conectadas.'], ['fact_engagement.channel_type', 'WhatsApp e LinkedIn; WhatsApp de INTEGRATION vai para o bucket de automação.'], ['bridge_association lead→company', 'Empresa do lead, para a penetração E para o corte de Lista ABM; sem ela o lead cai em "(sem empresa)".']] },
     { key: 'disq', title: 'Desqualificações por período',
       desc: 'Entradas em Desqualificado empilhadas por MOTIVO. O objeto Leads tem o campo (o contato nunca teve), mas o preenchimento é desigual: Lead pipeline 99,2%, Diagnóstico Site 0,0% (1.056 sem motivo). "(sem motivo)" ali é o dado, não falha da tela.',
       formula: 'COUNT de movimentos com destino = Desqualificado, por dia × motivo',
