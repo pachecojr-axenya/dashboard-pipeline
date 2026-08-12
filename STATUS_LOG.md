@@ -1,5 +1,45 @@
 # Dashboard Enhancement Loop — Status Log
 
+### Fix | Lista ABM dizia "(sem empresa)" em 100% dos deals — a página não pedia o dado (2026-08-12)
+
+> Achado pelo dono NA TELA, horas depois do deploy: *"filtre por lista ABM no BDR
+> Performance em originação e tudo sem empresa… ou tá bem errado ou você tá me falando que
+> nada veio da lista"*. Estava errado.
+>
+> `company_in_lista_abm` saía de `ctx.company_id`, que só é populado com
+> `includeContext=true`. A página chama `/api/forecast-table?includeLost=true` — **sem
+> ele**. O contexto de empresa nunca era buscado e o campo era `null` em **1.558 de 1.558
+> deals**, que a tela mostra, corretamente, como "(sem empresa)". Reproduzido com a query
+> EXATA da página antes de mexer.
+>
+> **A CAUSA DA FALHA NA VERIFICAÇÃO, que é a parte que importa:** eu provei o campo
+> chamando o endpoint com `includeContext=true`, uma query que a tela não faz. **Provar um
+> campo com uma query que a tela não faz não prova o campo na tela.** O teste passa a ler a
+> query do `fetch` em `bdr.html` e a exigir `includeLista` ou `includeContext` — reprova por
+> mutação ao voltar a query antiga.
+>
+> **DUAS HIPÓTESES MINHAS DESMENTIDAS POR MEDIÇÃO, antes de aceitar o conserto:**
+> **1.** o caminho "enxuto" (só associação de empresa, só a propriedade `lista`) **não
+> economizou nada** — 17,1s contra 17,4s do contexto completo. O gargalo nunca foram as
+> propriedades: eram os **16 lotes de associação rodando em série**.
+> **2.** paralelizar com teto resolveu: `includeLista` **6,9s**, `includeContext` **7,4s**
+> (era 17,4s). A página sai de 3,9s para 6,9s, **+3,0s**, e o `includeContext` ficou 2,4x
+> mais rápido de brinde — `bdr-no-show`, que o usa, ganha junto.
+>
+> O teto de concorrência (4) não é enfeite: a resposta a 429 aqui é um `catch` que devolve
+> mapa **vazio**, então um estouro de limite se disfarçaria de "deal sem empresa" — o mesmo
+> defeito que este commit corrige.
+>
+> **Ausência de conta continua `null`, nunca `false`.** `false` é afirmação de que a conta
+> foi conferida contra a lista. Os dois caminhos concordam no número, o que é a contraprova
+> de que nenhum está inventando: **179 na lista (11,5%) · 1.353 fora · 26 sem empresa**, 0
+> erro. A ficha da fonte de dados citava a query antiga e foi corrigida junto: texto que
+> mente sobre a chamada é como o próximo leitor repete o erro.
+>
+> **Não verificado:** o endpoint em produção está atrás de login (401 sem cookie), então a
+> prova de ponta a ponta é o código rodando contra o HubSpot ao vivo + a query nos bytes
+> servidos. Commit `926a49c`, deploy `dashboard-axenya-28miiars1`.
+
 ### Feat | /novo-bdr: Lista ABM na primeira metade + a ficha que explica "(sem empresa)" (2026-08-12)
 
 > Dois pedidos do dono depois de ver o corte no ar só no funil de leads: *"queria esse da
