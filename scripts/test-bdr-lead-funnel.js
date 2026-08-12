@@ -108,21 +108,33 @@ async function call(query) {
   // sozinho não conta a história: 1.076 (régua sem WhatsApp) → 1.601 (WhatsApp entrou,
   // +525) → 1.504 (o toque passou a exigir ser POSTERIOR À CRIAÇÃO do lead, −97).
   // Ver os blocos 2b e 2d.
-  ok(co.taxa_contato && co.taxa_contato.por_atividade.n === 1504,
-    'régua de ATIVIDADE == 1.504 (WhatsApp dentro, toque pré-lead fora)', co.taxa_contato && co.taxa_contato.por_atividade.n);
+  // A COORTE DE JULHO ESTÁ FECHADA NA CRIAÇÃO E VIVA NA CONVERSÃO, e essa distinção é o
+  // que separa regressão de dado novo. `criados` é imutável (nenhum lead nasce em
+  // julho depois de julho) e continua sendo igualdade exata. Já "falou com" SOBE com o
+  // tempo: um lead criado em 20/07 tocado pela primeira vez em 11/08 entra na conta
+  // hoje e não entrava ontem. Medido em 11/08/2026: 1.504. Em 12/08: 1.514, e a
+  // diferença foi conferida por caminho independente no BigQuery — exatamente 10 leads
+  // de julho com PRIMEIRO toque em 11–12/08. Travar a igualdade aqui faria o teste
+  // reprovar todo dia por causa do trabalho do time; travar só ">=" deixaria uma queda
+  // passar batida. Então: piso no medido, teto na coorte, e o valor impresso.
+  ok(co.taxa_contato && co.taxa_contato.por_atividade.n >= 1504 && co.taxa_contato.por_atividade.n <= co.criados,
+    'régua de ATIVIDADE >= 1.504 e <= criados (coorte viva: só sobe)', co.taxa_contato && co.taxa_contato.por_atividade.n);
   ok(co.taxa_contato && co.taxa_contato.criados === 2302,
     '"criaram X" viaja como absoluto no payload', co.taxa_contato && co.taxa_contato.criados);
   ok(co.taxa_contato && co.taxa_contato.por_etapa.n === 2057,
     'régua de ETAPA == 2.057', co.taxa_contato && co.taxa_contato.por_etapa.n);
-  ok(co.com_deal === 172, 'leads com deal == 172', co.com_deal);
+  // Mesma natureza: deal criado hoje para lead de julho entra na coorte de julho.
+  ok(co.com_deal >= 172 && co.com_deal <= co.criados, 'leads com deal >= 172 (coorte viva)', co.com_deal);
 
   // ── 2. As duas réguas DISCORDAM — o gap é o achado, não o erro ────────────────
   console.log('\n== as duas réguas de taxa de contato ==');
   const t = co.taxa_contato || {};
   ok(t.por_etapa.n > t.por_atividade.n,
     'ETAPA > ATIVIDADE (se empatar um dia, é notícia)', t.por_etapa.pct + '% vs ' + t.por_atividade.pct + '%');
-  ok(t.etapa_sem_atividade === 579,
-    'movidos de etapa SEM toque == 579 (1.009 sem WhatsApp, 504 antes do corte pré-lead)', t.etapa_sem_atividade);
+  // O gap DESCE com o tempo pelo mesmo motivo que "falou com" sobe: o toque que faltava
+  // chegou. 579 em 11/08 → 569 em 12/08, os mesmos 10 leads do bloco acima.
+  ok(t.etapa_sem_atividade <= 579 && t.etapa_sem_atividade > 0,
+    'movidos de etapa SEM toque <= 579 e > 0 (o gap só encolhe; se zerar, é notícia)', t.etapa_sem_atividade);
   ok(t.por_etapa.n - t.por_atividade.n === t.etapa_sem_atividade - t.atividade_sem_etapa,
     'partição fecha: (etapa − atividade) == (etapa_sem_ativ − ativ_sem_etapa)');
 
@@ -459,14 +471,22 @@ async function call(query) {
   console.log('\n== linha do tempo (serie por coorte de criacao) ==');
   const SE = (T.coorte || {}).serie || {};
   ok(!!SE.por_dimensao, 'a serie vem no payload');
-  ok(SE.granularidade === 'mes', 'janela longa usa MES (semana daria 134 pontos ilegiveis)', SE.granularidade);
+  // GRANULARIDADE virou ESCOLHA (12/08/2026) com default adaptativo: dia até 31,
+  // semana até 120, mês até 550, trimestre acima. O contrato que o teste trava é o
+  // default, não o valor fixo — e que a escolha manual VENÇA o default, porque foi
+  // exatamente a ausência disso que travou o "quero ver por mês" do dono.
+  ok(SE.granularidade === 'trimestre', 'janela de 937 dias usa TRIMESTRE por padrao', SE.granularidade);
+  ok((T.granularidade || {}).padrao === 'trimestre' && (T.granularidade || {}).pedida === null,
+    'o payload declara a granularidade PEDIDA e a PADRAO separadamente',
+    JSON.stringify(T.granularidade || {}));
   dimsEsperadas.forEach(d => {
     const s = (SE.por_dimensao[d] || []).reduce((a, r) => a + r.criados, 0);
     ok(s === T.coorte.criados, 'a serie da dimensao "' + d + '" fecha com a coorte', s + ' vs ' + T.coorte.criados);
   });
   const bucketsS = Array.from(new Set((SE.por_dimensao.bdr || []).map(r => r.bucket))).sort();
   ok(bucketsS.length > 1, 'a serie tem mais de um periodo (senao nao e serie)', bucketsS.length + ' buckets');
-  ok(bucketsS.every(b => /^\d{4}-(\d{2}|W\d{2})$/.test(b)), 'todo bucket tem formato de periodo', bucketsS.slice(0, 3).join(','));
+  ok(bucketsS.every(b => /^\d{4}-(\d{2}|W\d{2}|Q\d)$|^\d{4}-\d{2}-\d{2}$/.test(b)),
+    'todo bucket tem formato de periodo', bucketsS.slice(0, 3).join(','));
   ok(SE.bucket_parcial === bucketsS[bucketsS.length - 1],
     'o bucket PARCIAL declarado e o ultimo (coorte viva, converte menos)', SE.bucket_parcial);
   // A série tem as mesmas etapas encaixadas — por período, e não só no total.
@@ -488,12 +508,185 @@ async function call(query) {
   const cur = await call({ funil: 'todos', refresh: '1' });
   ok(cur.code === 200 && cur.body.success, 'mês corrente responde 200', cur.code);
   ok(cur.body.coorte.criados >= 0 && Object.keys(cur.body.waterfall.setas).length >= 0, 'payload íntegro no mês parcial');
-  // Granularidade ADAPTATIVA: mês numa janela de 11 dias daria UM ponto, que não é
-  // série. A regra vira semana ISO abaixo de 120 dias, e isso é contrato, não estética.
-  ok((cur.body.coorte.serie || {}).granularidade === 'semana',
-    'janela curta usa SEMANA ISO (mes daria um ponto so)', (cur.body.coorte.serie || {}).granularidade);
-  ok(((cur.body.coorte.serie || {}).por_dimensao.bdr || []).every(r => /^\d{4}-W\d{2}$/.test(r.bucket)),
-    'os buckets da janela curta sao semanas ISO');
+  // Granularidade ADAPTATIVA: mês numa janela de 12 dias daria UM ponto, que não é
+  // série. Abaixo de 31 dias o padrão é DIA, e isso é contrato, não estética.
+  ok((cur.body.coorte.serie || {}).granularidade === 'dia',
+    'mes corrente usa DIA por padrao (mes daria um ponto so)', (cur.body.coorte.serie || {}).granularidade);
+  ok(((cur.body.coorte.serie || {}).por_dimensao.bdr || []).every(r => /^\d{4}-\d{2}-\d{2}$/.test(r.bucket)),
+    'os buckets da janela curta sao dias');
+
+  // ── 7b. GRANULARIDADE MANUAL vence o padrão ───────────────────────────────────
+  // O pedido literal do dono: "se eu pego os últimos três meses, só mostra por semana;
+  // não consigo um filtro para olhar por mês". O contrato é que a escolha ganhe do
+  // default E que o bucket mude de forma junto — declarar 'mes' e continuar entregando
+  // semana seria a pior versão disso, porque a tela pareceria obedecer.
+  console.log('\n== granularidade escolhida pelo leitor ==');
+  const FORMATO = {
+    dia: /^\d{4}-\d{2}-\d{2}$/, semana: /^\d{4}-W\d{2}$/,
+    mes: /^\d{4}-\d{2}$/, trimestre: /^\d{4}-Q\d$/,
+  };
+  for (const g of ['dia', 'semana', 'mes', 'trimestre']) {
+    const r = await call({ funil: 'todos', since: '2026-05-15', until: '2026-08-11', gran: g, refresh: '1' });
+    const s = ((r.body || {}).coorte || {}).serie || {};
+    const bs = Array.from(new Set((s.por_dimensao && s.por_dimensao.bdr || []).map(x => x.bucket)));
+    ok(s.granularidade === g, 'gran=' + g + ' e respeitada', s.granularidade);
+    ok(bs.length > 0 && bs.every(b => FORMATO[g].test(b)),
+      'os buckets de gran=' + g + ' tem o formato de ' + g, bs.slice(0, 3).join(','));
+    // O total NÃO pode mudar com a granularidade: mesma coorte, outro agrupamento.
+    const somaS = (s.por_dimensao && s.por_dimensao.bdr || []).reduce((a, x) => a + x.criados, 0);
+    ok(somaS === r.body.coorte.criados,
+      'a coorte fecha em gran=' + g + ' (agrupar nao pode criar nem sumir lead)', somaS + ' vs ' + r.body.coorte.criados);
+  }
+  // A série DIÁRIA existe SEMPRE, independente da granularidade escolhida — é ela que
+  // alimenta "criados por dia" e ela conserta o gráfico que era desenhado da lista
+  // capada em 1.500. Sem esta asserção, o bug volta na primeira janela longa.
+  const gTri = await call({ funil: 'todos', tudo: '1', gran: 'trimestre', refresh: '1' });
+  const serDia = ((gTri.body.coorte.serie || {}).por_dimensao || {}).__dia || [];
+  const somaSerDia = serDia.reduce((a, r) => a + r.criados, 0);
+  ok(somaSerDia === gTri.body.coorte.criados,
+    'a serie DIARIA cobre 100% da coorte mesmo com gran=trimestre (o grafico por dia nao sai da lista capada)',
+    somaSerDia + ' vs ' + gTri.body.coorte.criados + ' | detalhe capado em ' + gTri.body.coorte.leads.length);
+  ok(serDia.every(r => /^\d{4}-\d{2}-\d{2}$/.test(r.bucket)), 'a serie __dia e sempre diaria');
+
+  // ── 7c. RECORTE: o filtro vale para a TELA INTEIRA ────────────────────────────
+  // "Todos esses gráficos precisam desses filtros" (dono, 12/08). O que este bloco
+  // trava não é o filtro funcionar num card — é ele valer no MESMO universo em todos:
+  // waterfall, macro, snapshot e desqualificações têm de encolher juntos. Filtro que
+  // recorta a tabela e deixa o gráfico ao lado com o time inteiro é pior que filtro
+  // nenhum, porque as duas leituras ficam na mesma tela parecendo comparáveis.
+  console.log('\n== recorte (o filtro vale para a secao inteira) ==');
+  const SEM = await call({ funil: 'todos', since: '2026-06-01', until: '2026-08-11', refresh: '1' });
+  ok(SEM.body.recorte === null, 'sem filtro, o recorte viaja NULO (e nao um objeto vazio que parece filtro)');
+
+  // Escolhe o BDR com mais leads criados no período, para o recorte ter massa.
+  const algumBdr = (SEM.body.coorte.por_dimensao.bdr || [])
+    .filter(r => r.bdr && r.criados > 20).sort((a, b) => b.criados - a.criados)[0];
+  const COM = await call({ funil: 'todos', since: '2026-06-01', until: '2026-08-11',
+    dim: 'bdr', val: algumBdr.valor, refresh: '1' });
+  const R = COM.body;
+  ok(R.recorte && R.recorte.dimensao === 'bdr' && R.recorte.valor === algumBdr.valor,
+    'o recorte ativo e DECLARADO no payload', JSON.stringify(R.recorte && R.recorte.valor));
+  ok((R.recorte.owner_ids || []).length > 0 && !R.recorte.sem_correspondencia,
+    'o nome do BDR virou owner_id (sem isso o filtro devolveria vazio calado)', (R.recorte.owner_ids || []).join(','));
+  ok(R.coorte.criados === algumBdr.criados,
+    'a coorte recortada == a linha daquele BDR na tela sem filtro', R.coorte.criados + ' vs ' + algumBdr.criados);
+  ok(R.coorte.criados < SEM.body.coorte.criados, 'o recorte ENCOLHE a coorte', R.coorte.criados + ' < ' + SEM.body.coorte.criados);
+  // Os blocos de FLUXO também: se o waterfall ignorasse o recorte, ele continuaria
+  // igual — e é exatamente esse o defeito que o dono relatou nos waterfalls.
+  ok(R.waterfall.movimentos < SEM.body.waterfall.movimentos,
+    'o WATERFALL segue o recorte', R.waterfall.movimentos + ' < ' + SEM.body.waterfall.movimentos);
+  ok(R.macro.aberto_fim <= SEM.body.macro.aberto_fim,
+    'o MACRO segue o recorte', R.macro.aberto_fim + ' <= ' + SEM.body.macro.aberto_fim);
+  const snapR = Object.values(R.snapshot.por_etapa).reduce((a, b) => a + b, 0);
+  const snapS = Object.values(SEM.body.snapshot.por_etapa).reduce((a, b) => a + b, 0);
+  ok(snapR < snapS, 'o SNAPSHOT segue o recorte', snapR + ' < ' + snapS);
+  ok(R.desqualificacoes_total <= SEM.body.desqualificacoes_total,
+    'as DESQUALIFICACOES seguem o recorte', R.desqualificacoes_total + ' <= ' + SEM.body.desqualificacoes_total);
+  ok((R.coorte.leads || []).every(l => l.bdr === algumBdr.valor),
+    'o DRILL so mostra lead do recorte (drill que contradiz o card que o abriu e pior que drill nenhum)');
+  ok(R.macro.residuo === 0 || Math.abs(R.macro.residuo) <= Math.max(5, R.macro.aberto_fim * 0.05),
+    'o waterfall macro CONTINUA FECHANDO com recorte aplicado', R.macro.conferencia);
+
+  // ── 7d. CRUZAMENTO: BDR × dimensão, sem segunda consulta ──────────────────────
+  // "Quero ver por BDR, mas também desse BDR qual seria por tier, por vidas" (dono).
+  // A tela dizia que o cruzamento não existia. Ele existe porque cada bloco sai
+  // marcado com dentro/fora do recorte no mesmo GROUP BY.
+  console.log('\n== cruzamento BDR x dimensao ==');
+  ['tier', 'vidas', 'canal_macro', 'porte'].forEach(d => {
+    const dentro = (R.coorte.por_dimensao[d] || []).filter(r => r.rec !== false)
+      .reduce((a, r) => a + r.criados, 0);
+    const tudo = (R.coorte.por_dimensao[d] || []).reduce((a, r) => a + r.criados, 0);
+    ok(dentro === R.coorte.criados,
+      'o cruzamento BDR x ' + d + ' fecha com a coorte recortada', dentro + ' vs ' + R.coorte.criados);
+    ok(tudo === SEM.body.coorte.criados,
+      'as FACETAS de ' + d + ' continuam completas (senao a combo de valores ficaria com uma opcao so)',
+      tudo + ' vs ' + SEM.body.coorte.criados);
+  });
+  // Recorte por atributo (não por gente) usa o outro caminho — lista de leads.
+  const porTier = (SEM.body.coorte.por_dimensao.tier || [])
+    .filter(r => r.valor !== '(não preenchido)' && r.criados > 50).sort((a, b) => b.criados - a.criados)[0];
+  if (porTier) {
+    const RT = await call({ funil: 'todos', since: '2026-06-01', until: '2026-08-11',
+      dim: 'tier', val: porTier.valor, refresh: '1' });
+    ok(RT.body.coorte.criados > 0 && RT.body.coorte.criados < SEM.body.coorte.criados,
+      'recorte por ATRIBUTO (tier=' + porTier.valor + ') encolhe a coorte', RT.body.coorte.criados);
+    ok(RT.body.waterfall.movimentos < SEM.body.waterfall.movimentos,
+      'recorte por atributo tambem alcanca o waterfall', RT.body.waterfall.movimentos);
+    ok((RT.body.coorte.leads || []).every(l => l.dim_tier === porTier.valor),
+      'todo lead do drill carrega a faixa recortada');
+  }
+
+  // ── 7e. AS TRÊS RÉGUAS DE CONTATO ────────────────────────────────────────────
+  // Decisão do head de BDRs: discagem que não conectou É tentativa. As três têm de
+  // ENCAIXAR — quem conversou também tentou, quem teve atividade também tentou —
+  // senão a tela mostra três números que não são camadas de nada.
+  console.log('\n== esforco x atividade x conversa ==');
+  const TC = SEM.body.coorte.taxa_contato;
+  ok(TC.por_esforco && TC.por_conversa, 'as tres reguas viajam no payload');
+  ok(TC.por_esforco.n >= TC.por_atividade.n,
+    'ESFORCO >= ATIVIDADE (discar sem conectar conta em um e nao no outro)',
+    TC.por_esforco.n + ' >= ' + TC.por_atividade.n);
+  ok(TC.por_atividade.n >= TC.por_conversa.n,
+    'ATIVIDADE >= CONVERSA (mensagem entregue conta; so voz atendida e conversa)',
+    TC.por_atividade.n + ' >= ' + TC.por_conversa.n);
+  ok(TC.discagens >= TC.ligacoes_conectadas,
+    'discagens >= conectadas', TC.discagens + ' >= ' + TC.ligacoes_conectadas);
+  ok(TC.discagens_por_conversa === null || TC.discagens_por_conversa >= 1,
+    'discagens por conversa >= 1 (a razao que separa cadencia ruim de lista ruim)', TC.discagens_por_conversa);
+  ok(typeof TC.numero_errado === 'number',
+    'numero errado tem campo PROPRIO (telefone errado e problema de dado, nao de cadencia)', TC.numero_errado);
+  ok(typeof TC.minutos_ao_telefone === 'number' && TC.minutos_ao_telefone >= 0,
+    'o tempo ao telefone e medido (a pergunta "quanto tempo" era irrespondivel)', TC.minutos_ao_telefone + ' min');
+  ok(!!(SEM.body.premissas || {}).tres_reguas_de_contato, 'as tres reguas estao declaradas em premissas');
+  // O drill precisa do esforço, senão o lead com 12 discagens sem resposta continua
+  // aparecendo como "nunca tocado" na ficha — que é o defeito de origem.
+  ok((SEM.body.coorte.leads || []).every(l => typeof l.discagens === 'number'),
+    'todo lead do drill carrega as discagens');
+  const comDiscagemSemToque = (SEM.body.coorte.leads || []).filter(l => l.discagens > 0 && !l.atividade_real);
+  ok(comDiscagemSemToque.every(l => l.com_tentativa),
+    'lead com discagem e sem conexao aparece como TENTATIVA, nunca como "nunca tocado"',
+    comDiscagemSemToque.length + ' leads nessa situacao no recorte');
+
+  // ── 7f. PENETRAÇÃO: empresas e leads por empresa ─────────────────────────────
+  console.log('\n== penetracao (empresas e leads por empresa) ==');
+  const PEN = SEM.body.coorte.penetracao;
+  ok(PEN && PEN.empresas > 0, 'empresas distintas vem no payload', PEN && PEN.empresas);
+  ok(PEN.empresas <= SEM.body.coorte.criados,
+    'empresas <= leads (uma empresa pode ter varios leads; o contrario nao existe)',
+    PEN.empresas + ' <= ' + SEM.body.coorte.criados);
+  ok(PEN.leads_por_empresa >= 1, 'leads por empresa >= 1', PEN.leads_por_empresa);
+  ok(PEN.empresas_novas <= PEN.empresas, 'empresas novas <= empresas', PEN.empresas_novas + ' <= ' + PEN.empresas);
+  ok((SEM.body.coorte.por_dimensao.bdr || []).some(r => r.empresas > 0),
+    'a penetracao existe POR BDR (era a pergunta: quantos leads por empresa cada um insere)');
+
+  // ── 7g. CANAL: a dimensão que substitui a Origem contaminada ─────────────────
+  console.log('\n== canal (outbound x inbound) ==');
+  const canais = SEM.body.coorte.por_dimensao.canal_macro || [];
+  ok(canais.length > 0, 'a dimensao canal_macro existe', canais.map(c => c.valor).join(','));
+  ok(canais.reduce((a, r) => a + r.criados, 0) === SEM.body.coorte.criados,
+    'canal_macro e PARTICAO da coorte (todo lead cai em exatamente um balde)');
+  ok(canais.some(c => c.valor === 'Outbound' && c.criados > 0),
+    'existe balde OUTBOUND com massa (era o "quero ver so outbound")',
+    (canais.find(c => c.valor === 'Outbound') || {}).criados);
+  ok(canais.some(c => c.valor === '(não identificado)'),
+    'o NAO IDENTIFICADO aparece como faixa em vez de virar "outros"');
+  const naoIdent = (canais.find(c => c.valor === '(não identificado)') || {}).criados || 0;
+  ok(naoIdent / SEM.body.coorte.criados < 0.35,
+    'o canal classifica a maior parte da coorte (origem crua classificava 36%)',
+    'nao identificado: ' + (naoIdent / SEM.body.coorte.criados * 100).toFixed(1) + '%');
+  ok(!!(SEM.body.premissas || {}).canal_em_vez_de_origem, 'a cascata de canal esta declarada em premissas');
+
+  // ── 7h. ETAPAS ENUMERADAS ────────────────────────────────────────────────────
+  // "Se eu tento ordenar, não consigo, porque N está no meio da ordem alfabética."
+  // O contrato: ordenar os rótulos como TEXTO tem de devolver a ordem do funil.
+  console.log('\n== etapas enumeradas ==');
+  const rot = SEM.body.rotulos || {};
+  const ordemFunil = ['novo', 'tentativa', 'conectado', 'qualificado', 'desqualificado'];
+  const rotulosOrdenados = ordemFunil.map(c => rot[c]).sort((a, b) => String(a).localeCompare(String(b), 'pt-BR'));
+  ok(JSON.stringify(rotulosOrdenados) === JSON.stringify(ordemFunil.map(c => rot[c])),
+    'ordenar os rotulos por TEXTO devolve a ordem do funil', rotulosOrdenados.join(' | '));
+  ok(ordemFunil.every((c, i) => String(rot[c]).startsWith(String(i + 1))),
+    'cada etapa carrega o proprio numero');
 
   // ── 8. Contraprova ao vivo (opcional) ─────────────────────────────────────────
   if (PORTAL) {
@@ -502,9 +695,19 @@ async function call(query) {
     const svp = pv.body.diagnostics.snapshot_vs_portal || {};
     ok(!svp.erro, 'contraprova executou', svp.erro || 'ok');
     if (!svp.erro) {
-      ok(svp.total_portal === svp.total_armazem,
-        'TOTAL do portal == TOTAL do armazém (parte por parte difere pela defasagem; o total, não)',
-        svp.total_portal + ' vs ' + svp.total_armazem);
+      // O TOTAL BATIA NA UNHA em 11/08 (16.887 = 16.887) e em 12/08 abriu 2 (16.922 no
+      // armazém contra 16.920 no portal). A causa está MEDIDA e não é da tela: o check
+      // `deleted_objects_detected` do próprio ETL reporta 6 leads arquivados no portal
+      // que continuam vigentes na dim_lead (a flag archived não propagou). Por isso a
+      // asserção deixa de ser igualdade exata e passa a ser um TETO — se a divergência
+      // crescer, o teste volta a gritar, que é o que importa.
+      const gap = Math.abs(svp.total_portal - svp.total_armazem);
+      ok(gap <= 10 && gap / svp.total_portal < 0.001,
+        'TOTAL do portal ≈ TOTAL do armazém (gap ≤ 10 e < 0,1%; a causa é deleção não propagada, reportada por deleted_objects_detected)',
+        svp.total_portal + ' vs ' + svp.total_armazem + ' (gap ' + gap + ')');
+      ok(svp.total_armazem >= svp.total_portal,
+        'o armazém nunca tem MENOS que o portal (menos seria perda de cobertura; mais é deleção não propagada)',
+        svp.total_armazem + ' >= ' + svp.total_portal);
     }
   }
 
