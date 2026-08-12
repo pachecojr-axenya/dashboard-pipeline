@@ -1,5 +1,124 @@
 # Dashboard Enhancement Loop — Status Log
 
+### Feat | /novo-bdr: o filtro vale para a seção inteira, e a discagem que falhou vira esforço (2026-08-12)
+
+> Leva 6 do funil de Leads. Pedido do dono, sete frentes — e três delas viraram
+> **correção de número**, não tela nova.
+>
+> **1. O FILTRO PASSOU A VALER PARA TUDO.** Era client-side e alcançava três cards;
+> agora vai ao banco como parâmetro e recorta coorte, linha do tempo, os dois
+> waterfalls, snapshot, criados por período e desqualificações. O desenho que
+> destrava isso: o recorte vira **coluna booleana** (`no_recorte`) no mesmo GROUP BY,
+> em vez de `WHERE`. Com `WHERE`, filtrar "tier-1" apagaria as outras faixas da
+> resposta e a combo de valores ficaria com uma opção só — impossível trocar de fatia
+> sem limpar o filtro. Como coluna, as facetas somam tudo e a conta soma só o recorte.
+> **De brinde, o CRUZAMENTO passou a existir**: com o recorte em "BDR = X", o bloco da
+> dimensão `tier` filtrado por `no_recorte` É a distribuição de tier daquele BDR, sem
+> produto cartesiano e sem segunda varredura. A tela dizia "o cruzamento não existe
+> nesta agregação"; agora existe.
+>
+> **2. TRÊS RÉGUAS DE CONTATO, empilhadas** (decisão do head de BDRs trazida pelo
+> dono): ESFORÇO (discou ou mandou mensagem — **discagem que não conectou conta**),
+> ATIVIDADE (chegou algo do outro lado) e CONVERSA (voz atendida, com duração).
+> Medido em 01/07–11/08: **9.365 ligações registradas para 704 conectadas (7,5%)** —
+> Sem resposta 4.659, Ocupado 3.404, mensagem de voz 338, número errado 69. Ler só
+> "conectou" apaga 8.661 discagens de esforço real; ler só "discou" transforma lista
+> de telefone ruim em produtividade. `numero_errado` viaja em campo próprio porque
+> telefone errado é problema de DADO e não de cadência, e as duas coisas pedem ações
+> opostas. **A flag `is_attempt` do armazém NÃO foi usada**: ela marca 5.196 e-mails
+> de ENTRADA como tentativa e deixa de fora 1.908 discagens Sem resposta/Ocupado.
+>
+> **3. GRANULARIDADE virou escolha** (dia, semana ISO, mês, trimestre) com o padrão
+> ainda adaptativo. Era só automática, e "últimos três meses" ficava preso em semana.
+>
+> **4. O EIXO DE % DEIXOU DE SER 0–100** e acompanha as taxas visíveis, reescalando ao
+> clique na legenda. Salvaguardas: folga de 10% da amplitude e amplitude mínima de
+> 5 p.p., com o intervalo em vigor escrito no rodapé — zoom sem régua engana tanto
+> quanto eixo achatado.
+>
+> **5. CANAL substitui a Origem contaminada.** `axenya_origem_canonica` traz o BOOLEANO
+> "true" em 64% dos leads. O canal é uma cascata de evidências (origem declarada →
+> pipeline → origem do contato → `source_detail` com Lusha/Apollo/planilha = outbound
+> → `analytics_source`) e **classifica 85% da coorte contra 36% da origem crua**, com
+> o "(não identificado)" (7,7%) visível em vez de virar "outros". A origem crua
+> continua na tela, com aviso, para auditar a cascata.
+>
+> **6. PENETRAÇÃO por BDR** (empresas distintas, empresas novas na janela, leads por
+> empresa) e a tabela em TRÊS VISÕES — contato, funil, penetração. Vinte colunas numa
+> tabela é planilha com barra de rolagem: cada coluna existe, nenhuma é lida.
+>
+> **7. SUBMOTIVO DA DESQUALIFICAÇÃO POR EVIDÊNCIA — e o "ML" pedido NÃO foi feito, de
+> propósito.** O pedido era condicional ("se tiver propriedade com a explicação do
+> motivo, quero um ML dos submotivos") e a condição foi medida e **não se cumpre**:
+> não há campo de razão livre no lead nem no contato, e no negócio
+> `motivo_do_declinio_ou_perdido` também é ENUM (16 valores). O único texto livre são
+> as NOTAS: dos 3.565 desqualificados de 01/06–11/08, só **296 (8,3%)** têm nota perto
+> da desqualificação, e destas 76 são template (webinar, ficha do Prospector) e 139 não
+> têm sinal — sobram **81 leads, 2,3%**. Clusterizar aquilo produziria clusters de
+> template com nome de insight. No lugar entrou o submotivo derivado do que o CRM
+> REGISTROU, que cobre 100%: **58% "mensagem entregue, sem conversa", 18% "falou por
+> voz e não avançou", 11% "nenhum esforço registrado", 8% discou e ninguém atendeu, 2%
+> telefone errado**. A leitura que destrava: "não houve tentativa de contato" com 12
+> discagens não atendidas e o mesmo motivo sem nenhuma discagem são problemas OPOSTOS.
+>
+> **AS TRÊS CORREÇÕES DE NÚMERO, todas achadas ao fazer o resto:**
+>
+> → **"Criados por dia" saía da lista do DRILL**, capada em 1.500. Em janela longa o
+> gráfico desenhava menos de 10% da coorte, com a forma toda errada e sem nenhum
+> aviso. Agora sai de um `GROUP BY` diário próprio que cobre 100% em qualquer janela,
+> e o front agrega para cima conforme a granularidade — para cima sempre dá, para
+> baixo nunca daria.
+>
+> → **O waterfall macro NÃO FECHAVA com recorte por pessoa** (resíduo +10 em 68, 15%).
+> Duas causas, e as duas eram invisíveis no agregado: (a) **transferência de carteira**
+> — lead troca de dono sem que isso seja movimento de etapa, então some do saldo de um
+> BDR sem barra que explique; (b) **ENTRADA SEM REGISTRO** — lead cuja entrada existe
+> em `fact_stage_entry` (que vem das propriedades `hs_v2_date_entered_*`) e **não** em
+> `fact_crm_change` (histórico de propriedade, que às vezes não registra a criação).
+> No agregado a (b) valia +1 em 4.206 (0,02%) e passou dois meses invisível; com o
+> denominador 60x menor virou 12%. **O defeito não mudou de tamanho, mudou de
+> visibilidade.** Com as barras novas: resíduo **ZERO** no recorte por BDR e **0** na
+> janela de 937 dias (era 1). Achado por reconciliação lead a lead, não por leitura de
+> código.
+>
+> → **Faixa de VIDAS passou a sair de `dim_lead_context.company_lives_bucket`**
+> (`vidas_efetivas`), que cobre **16.172 de 18.331 leads (88%)** contra 8.673 (47%) da
+> régua anterior. Os rótulos são os do armazém ("Fora ICP", "200-1000", "1000-5000",
+> "5000+"), não faixas inventadas na tela: renomear faria a tela e o mart dizerem
+> coisas diferentes do mesmo lead. Divergência declarada: 522 leads onde as duas
+> fontes existem e discordam.
+>
+> **UI.** Etapas **numeradas** (1 Novo … 5 Desqualificado) — o pedido era poder
+> ORDENAR, e ordenação de coluna de texto é `localeCompare`, então a ordem do funil
+> tinha de estar dentro do texto. O ícone **"i" dos cards agora ABRE** a memória de
+> cálculo: ele não abria porque `_infoBtn` só adiciona `onclick` quando existe ficha em
+> `BDR_HELP_CHARTS`, e os cards do funil não tinham — sem ficha o botão renderiza igual
+> e não faz nada, que é a pior combinação. As 11 fichas foram escritas junto do código
+> que desenha os cards, com registro PREGUIÇOSO (o arquivo carrega no `<head>` e o
+> catálogo só nasce no `<body>`). O **snapshot** ocupa a largura e ganha o painel de
+> **giro** ao lado, no lugar do vazio do tamanho de outro card — estoque sozinho não
+> distingue etapa parada de etapa que girou muito e voltou ao mesmo lugar.
+>
+> **PROVA.** Teste do endpoint **113 → 172 casos**, todos passando, incluindo
+> contraprova ao vivo na Search API. **Smoke de RENDER novo**
+> (`smoke-bdr-lead-funnel-browser.js`, Chrome headless por CDP sobre fixtures reais
+> capturadas do endpoint, 30 casos) — e ele **pegou três defeitos que nenhum teste de
+> dados pegaria**: cabeçalho CLIPADO na matriz de desqualificação (nomes de BDR
+> cortados em silêncio por `max-width` + `ellipsis`), o eixo que não reescalava, e a
+> abreviação de nome mutilando "Discou 4–9x, ninguém atendeu" em **"Discou a."**.
+>
+> **RECONCILIAÇÃO DE HOJE, conferida a pedido.** O `close` das 20:30 **passou a
+> extrair**: o run de 11/08 23:33 UTC capturou movimentações de lead até 20:03 BRT do
+> mesmo dia (antes o dia inteiro ficava invisível). O que continua valendo é a
+> defasagem intradiária: às 08:48 de 12/08 o armazém tinha 0 lead criado e 0
+> movimentação de etapa do próprio dia. **Achado novo:** o total do armazém contra o
+> portal batia NA UNHA em 11/08 (16.887 = 16.887) e em 12/08 abriu **2** (16.922 ×
+> 16.920) — a causa está medida e é do ETL, não da tela: o check
+> `deleted_objects_detected` reporta 184 leads arquivados no portal, **6 ainda
+> VIGENTES na `dim_lead`**. O teste passou a travar o SENTIDO da diferença (armazém
+> nunca menor que o portal, que seria perda de cobertura) e um teto de 0,1%.
+
+
 ### 🚀 DEPLOY DE PRODUÇÃO | Cotação (10 cards) + design system oficial + faturamento Fase 3 (2026-08-12)
 
 > Autorização explícita do dono ("faça o commit e o deploy", confirmado com as sessões
