@@ -1,5 +1,20 @@
 # Dashboard Enhancement Loop — Status Log
 
+### 🚀 DEPLOY DE PRODUÇÃO | Delta: Fechado passa a contar deals "nascidos fechados" (2026-08-14)
+
+> Autorização explícita do dono ("quero"), continuação da mesma sessão da entrada "Delta |
+> Fechado passa a contar deals 'nascidos fechados'" abaixo.
+>
+> `git fetch`/`git status --short --branch` limpo, `HEAD == origin/main` antes do commit (sem
+> divergência). `npm run check` completo antes do commit: 0 FAIL. Commit `21df70f` (5 arquivos:
+> `STATUS_LOG.md`, `api/history.js`, `lib/forecast-compute.js`, `public/forecast-delta.html`,
+> `scripts/test-forecast-delta-e2e.js`). `npm run deploy` (preflight + `vercel --prod --yes`):
+> deployment `dpl_FeajFCSZFGrr7ZiTkAaD3ZHoPUiC`, READY.
+>
+> **Pós-deploy confirmado nos dois hosts** (`project-bsmfu.vercel.app` e
+> `axenya-pipeline-dashboard.vercel.app`): `/`, `/forecast-delta`, `/novo` = 200; `/api/history`
+> = 401 (auth ativa).
+
 ### Delta | Fechado passa a contar deals "nascidos fechados" (2026-08-14)
 
 > Achado do dono, investigando ao vivo no HubSpot: o deal **"Grupo Recovery - Vitalício"**
