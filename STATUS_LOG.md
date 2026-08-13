@@ -1,5 +1,36 @@
 # Dashboard Enhancement Loop — Status Log
 
+### 🚀 DEPLOY DE PRODUÇÃO | Delta (full-width/valores/Fechado/toggle) + destrava build do Lista ABM (2026-08-13)
+
+> Autorização explícita do dono ("faça o commit e deploy"), continuação da mesma sessão da entrada
+> "Delta | D02 full-width..." abaixo.
+>
+> **Build travado achado no caminho:** `npm run deploy` (Vercel) roda `npm run build` = `npm run
+> check` — 1 FAIL em qualquer passo derruba o build inteiro, de qualquer commit. Ao tentar
+> deployar, `test-bdr-lista-abm.js` (feature do Samuel, commits `0dd5093`/`926a49c`/`162342b`,
+> 2026-08-12, já commitados/pushados/deployados por ele — não era sessão paralela ao vivo) deu 2
+> FAIL. Confirmado por isolamento (stash só dos meus 4 arquivos + rodar o teste contra o
+> `origin/main` limpo) que o defeito é **do teste, não da feature**: (1) `COMPANY_PROPERTIES →
+> 'lista'` — a distância real no arquivo é 426 chars, a regex só tolerava até 400 (um comentário
+> explicativo empurrou o texto); (2) `HELP_LISTA_ABM` em `bdr-lead-funnel.js` — a constante existe
+> e está correta, mas o arquivo tem quebra de linha CRLF e a regex só aceitava `;\n` (LF). Corrigidas
+> as 2 regexes (janela 400→600 chars; aceita `;\r?\n`) em `scripts/test-bdr-lista-abm.js` — **nenhum
+> arquivo de produto da feature (bdr.html/bdr-lead-funnel.js/forecast-table.js) foi tocado**, só a
+> tolerância do teste. Autorizado pelo dono após confirmar que os commits do Samuel eram de ontem,
+> já integrados (não sessão simultânea). Commit `c6b6c14`.
+>
+> **Deploy do Delta** (commit `e97a76e`, ver entrada abaixo para o detalhe das 4 mudanças):
+> `git fetch`/`git status --short --branch` limpo, `HEAD == origin/main` antes do deploy (rebase
+> via fast-forward + stash pop já feito para incorporar 4 commits do Samuel que chegaram durante o
+> trabalho — zero arquivo comum além do `STATUS_LOG.md`, resolvido manualmente). `npm run check`
+> completo: 0 FAIL, `_check-design-tokens` sem novo erro. `npm run deploy` (preflight +
+> `vercel --prod --yes`): deployment `dpl_6ftMnbtdjAPePWHJG4SAbsu6cKoQ`, READY.
+>
+> **Pós-deploy confirmado nos dois hosts** (`project-bsmfu.vercel.app` e
+> `axenya-pipeline-dashboard.vercel.app`): `/`, `/novo`, `/forecast-delta`, `/novo-board`,
+> `/novo-ae`, `/novo-bdr` = 200; `/api/forecast-table`, `/api/history` = 401 (auth ativa, sem
+> bypass em produção).
+
 ### Delta | D02 full-width, valores compactos sem "R$", Fechado sempre Real, toggle Ativos/Todo o Pipe (2026-08-13)
 
 > A pedido do dono, 4 ajustes no painel Delta (`forecast-delta.html`), todos girando em torno do
