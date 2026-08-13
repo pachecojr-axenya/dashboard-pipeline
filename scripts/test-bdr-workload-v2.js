@@ -418,5 +418,55 @@ async function withBqStub(rows, fn) {
   const ritmoQ = drill.queryFor(drill.parse(req('kind=activity&since=2026-07-01&until=2026-07-02&context=domain:ritmo')), false);
   assert(/channel IN \(/.test(ritmoQ.sql), 'domain:ritmo deve filtrar o conjunto de canais de ritmo');
 
+  // --- fonte=armazem | o ritmo migra, o resto fica, e a fronteira e testada ---
+  assert.equal(sem.parse(req('v=2&since=2026-07-01&until=2026-07-02')).fonte, 'medallion', 'default tem de continuar medallion: a migracao e opt-in');
+  assert.equal(sem.parse(req('v=2&since=2026-07-01&until=2026-07-02&fonte=armazem')).fonte, 'armazem');
+  assert.throws(() => sem.parse(req('v=2&since=2026-07-01&until=2026-07-02&fonte=csv')), /fonte inválida/);
+
+  // A assercao que importa: depois da mescla, o RITMO e do armazem e o CRM e do
+  // medallion. Se alguem trocar a lista de campos e o CRM passar a vir do
+  // armazem, esses numeros viram ZERO na tela sem erro nenhum | e o modo de
+  // falha que este teste existe para pegar.
+  const linhaMed = { metric_date: '2026-08-12', owner_id: '85310335', owner_name: 'Anderson Souza', calls: 10, emails: 5, whatsapp: 30, whatsapp_manual: 20, whatsapp_treble: 10, linkedin: 1, meetings: 2, activities_total: 48, contacts_touched: 9, companies_touched: 7, calls_no_answer: 3, companies_inserted: 4, contacts_inserted: 6, attempted: 8, crm_movements: 11, connected: 2, qualified: 1, disqualified: 3, sql_deals: 1, refreshed_at: '2026-08-12T23:00:00Z' };
+  const linhaArm = { metric_date: '2026-08-12', owner_id: '85310335', owner_name: 'Anderson Souza', calls: 10, emails: 5, whatsapp: 20, whatsapp_manual: 20, whatsapp_treble: 10, linkedin: 1, meetings: 2, activities_total: 38, contacts_touched: 8, companies_touched: 7, calls_no_answer: 3 };
+  const soArmazem = { metric_date: '2026-08-13', owner_id: '90141426', owner_name: 'Giovana Nunes', calls: 66, emails: 0, whatsapp: 0, whatsapp_manual: 0, whatsapp_treble: 0, linkedin: 0, meetings: 0, activities_total: 66, contacts_touched: 40, companies_touched: 30, calls_no_answer: 20 };
+  const soMedallion = { metric_date: '2026-08-07', owner_id: '87213208', owner_name: 'Cintia Rodrigues', calls: 0, emails: 0, whatsapp: 0, activities_total: 0, companies_inserted: 2, contacts_inserted: 0, attempted: 0, crm_movements: 2, connected: 0, qualified: 0, disqualified: 0, sql_deals: 0 };
+  const mescla = sem.mergeRitmoDoArmazem([linhaMed, soMedallion], [linhaArm, soArmazem]);
+  const fundida = mescla.rows.find((r) => r.metric_date === '2026-08-12');
+  assert.equal(fundida.whatsapp, 20, 'WhatsApp tem de vir do armazem (manual), nao os 30 inflados do medallion');
+  assert.equal(fundida.activities_total, 38, 'atividades tem de vir do armazem (sem automacao)');
+  assert.equal(fundida.contacts_touched, 8, 'contatos tocados tem de vir do armazem');
+  assert.equal(fundida.crm_movements, 11, 'movimento de CRM NAO tem mart no armazem: tem de continuar vindo do medallion');
+  assert.equal(fundida.companies_inserted, 4, 'insercao NAO tem mart no armazem: tem de continuar vindo do medallion');
+  assert.equal(fundida.sql_deals, 1, 'SQL NAO tem mart no armazem: tem de continuar vindo do medallion');
+  assert.equal(fundida.refreshed_at, '2026-08-12T23:00:00Z', 'refreshed_at so existe no medallion');
+  // Uniao das chaves: hoje so existe no armazem (o ETL do medallion roda 20:00) e
+  // linha vazia do medallion nao pode sumir.
+  const hoje = mescla.rows.find((r) => r.metric_date === '2026-08-13');
+  assert.equal(hoje.calls, 66, 'dia que so o armazem tem precisa aparecer');
+  assert.equal(hoje.crm_movements, 0, 'linha so do armazem tem de nascer com CRM zerado EXPLICITO, nao ausente');
+  assert(mescla.rows.some((r) => r.metric_date === '2026-08-07'), 'linha so do medallion nao pode sumir na mescla');
+  assert.deepStrictEqual({ s: mescla.substituidas, n: mescla.novas, m: mescla.somenteMedallion }, { s: 1, n: 1, m: 1 });
+  // Todo campo de ritmo declarado tem de existir na linha do armazem do teste,
+  // senao a lista e a query saem de sincronia sem ninguem perceber.
+  sem.CAMPOS_RITMO_ARMAZEM.forEach((campo) => { assert(Object.prototype.hasOwnProperty.call(fundida, campo), `campo de ritmo ausente apos a mescla: ${campo}`); });
+
+  // Queda para o medallion quando o mart do armazem nao responde. E o caso real:
+  // as 5 colunas de desfecho dependem de rebuild da imagem do ETL, e sem elas o
+  // BigQuery devolve "Unrecognized name".
+  await withBqStub((sql) => {
+    if (sql.includes('mart_bdr_workload_dimension_daily')) throw new Error('Unrecognized name: calls_no_answer_total');
+    return [linhaMed];
+  }, async () => {
+    const caiu = await sem.carregarRows('2026-08-12', '2026-08-12', sem.parse(req('v=2&since=2026-08-12&until=2026-08-12&fonte=armazem')));
+    assert(/Unrecognized name/.test(caiu.erro), 'o erro do armazem tem de viajar no payload, nao virar 500 nem zero calado');
+    assert.equal(caiu.rows[0].whatsapp, 30, 'na queda, o ritmo volta a ser o do medallion');
+  });
+  await withBqStub([linhaMed], async () => {
+    const semFonte = await sem.carregarRows('2026-08-12', '2026-08-12', sem.parse(req('v=2&since=2026-08-12&until=2026-08-12')));
+    assert.equal(semFonte.erro, null);
+    assert.equal(semFonte.mescla, null, 'sem fonte=armazem nao pode haver mescla: o default nao muda nada');
+  });
+
   console.log('PASS bdr-workload-v2 API contract tests');
 })().catch((error) => { console.error(error); process.exit(1); });
