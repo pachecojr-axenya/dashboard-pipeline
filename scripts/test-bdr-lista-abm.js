@@ -39,7 +39,7 @@ function ok(cond, texto, extra) {
 }
 
 console.log('== o dado chega (api/forecast-table) ==');
-ok(/COMPANY_PROPERTIES = \[[\s\S]{0,400}'lista'/.test(api),
+ok(/COMPANY_PROPERTIES = \[[\s\S]{0,600}'lista'/.test(api),
   'a propriedade `lista` e pedida ao HubSpot');
 ok(api.includes('company_in_lista_abm'), 'o deal carrega `company_in_lista_abm`');
 ok(api.includes('company_lista'), 'o deal carrega o texto CRU `company_lista` (auditavel)');
@@ -132,7 +132,7 @@ ok(bdr.includes('<th>Na lista ABM</th>'), 'a tabela do detalhe expoe a composica
 console.log('\n== a ficha explica "(sem empresa)" (pedido do dono) ==');
 [['bdr.html', bdr, '_HELP_LISTA_ABM'], ['bdr-lead-funnel.js', funnel, 'HELP_LISTA_ABM']]
   .forEach(([nome, txt, konst]) => {
-    const m = txt.match(new RegExp('var ' + konst + "\\s*=[\\s\\S]{0,2400}?;\\n"));
+    const m = txt.match(new RegExp('var ' + konst + "\\s*=[\\s\\S]{0,2400}?;\\r?\\n"));
     ok(!!m, `${nome}: a constante ${konst} existe`);
     if (!m) return;
     const ficha = m[0];
