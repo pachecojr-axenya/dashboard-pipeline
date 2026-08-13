@@ -1,5 +1,56 @@
 # Dashboard Enhancement Loop — Status Log
 
+### Delta | Escopo vira multiselect por etapa (2026-08-13)
+
+> Motivo direto: comparando o D02 ("Todo o Pipe") com a planilha de forecast Q4 da Ágatta, o
+> número dela ("Diagnóstico pra frente") não batia com nenhuma das 2 opções do toggle binário —
+> "Ativos" não tem Diagnóstico, "Todo o Pipe" tem Diagnóstico MAS TAMBÉM Reunião Agendada, que a
+> régua dela explicitamente exclui. O toggle de 2 posições não tinha como representar
+> combinações arbitrárias de etapas. **Não deployado ainda** (só local, `npm run check` limpo).
+
+- **`lib/forecast-compute.js` — escopo deixa de ser sentinela fixa ('ativos'/'pipe'/'tudo') e
+  vira lista `|`-delimitada de etapas livre.** `_parseDeltaScopeStages(scope)` faz o parse (ou
+  devolve `null` para os 2 casos especiais — `scope==='tudo'` ou ausente — que os chamadores
+  tratam à parte). `applyDeltaScope`/`deltaScopeStages`/`deltaRowInScope` reescritos em cima dela.
+  `DELTA_DEFAULT_STAGES` (Cotação/Consultoria/Negociação) substitui o antigo default 'ativos'
+  quando `scope` vem ausente (consumidor legado). `'tudo'` continua existindo como sentinela
+  **legado**, só para o D09 (que força esse valor de propósito, independente da seleção do
+  usuário) — nunca exposto na UI. Ganho/Implantação **não são etapas selecionáveis** na lista —
+  seguem de fora por design, representados só pela barra aditiva "Fechado" do D02 (incluí-los
+  duplicaria com ela). String vazia (`''`) é seleção válida = 0 etapas = 0 deals, não "sem
+  filtro" — distinto de `null`/ausente, que cai no default.
+- **`api/history.js`**: `deltaScoped` deixa de comparar contra as 3 strings antigas e vira
+  `scopeParam !== null` (presença do parâmetro, mesmo vazio, já ativa o modo por escopo — o
+  front manda `scope=` sempre). Caveat do escopo agora monta a frase dinamicamente a partir de
+  `FC.deltaScopeStages(scopeParam)` em vez de 3 mensagens fixas.
+- **`public/forecast-delta.html`**: o `.seg-ctrl` binário de Escopo virou um dropdown multiselect
+  (`.fdd-wrapper`/`.fdd-panel`/`.custom-cb`), no MESMO padrão visual/de interação de
+  Executivo/Quarter (`_cbHead`, checkboxes, "Todos"/"Nenhum") — só que com semântica diferente:
+  em Executivo/Quarter, conjunto vazio = "todos" (filtro opcional, omitido da URL); em Escopo,
+  `scope` é SEMPRE enviado e conjunto vazio é uma seleção legítima (0 etapas), então não há
+  sentinela `__NONE__` nem o "desmarcar tudo vira limpar o Set" do `toggleAe`/`toggleQuarter`.
+  Opções são as 5 etapas fixas (`DELTA_SCOPE_STAGES`), não vêm do servidor, então o painel é
+  montado uma vez no load (`buildScopeFilter()`), não a cada `refresh()`. Variável antiga `scope`
+  (string) removida; `scopeFilter` (Set) + `scopeQS()` (junta em string `|`-delimitada) tomam o
+  lugar nos 3 pontos que montavam a URL (`refresh`, os 2 fetches de drill). Resumo do header
+  condensado e ficha "i" do D02 atualizados; menções a "filtro Ativos/Todo o Pipe" nos textos de
+  D02/D04/D07/D08 viraram "filtro de Escopo" (não é mais binário).
+- **`scripts/test-forecast-delta-scope.js` reescrito** (existia desde 2026-07-20, cobria o
+  contrato ANTIGO com `scope='ativos'` literal — não estava plugado no `npm run check`, lacuna
+  pré-existente). Casos novos cobrem exatamente o cenário Ágatta ("Diagnóstico pra frente" sem
+  Reunião Agendada), seleção vazia, nome de etapa desconhecido (defensivo) e o sentinela `'tudo'`
+  legado. **Agora plugado em `npm run check`** (`package.json`, logo após
+  `test-forecast-delta-e2e.js`) — fecha a lacuna de cobertura, não só documenta o novo contrato.
+- **Validação**: `node --check` nos 2 arquivos backend; `_check-inline-js` no
+  `forecast-delta.html` (0 erros); `test-forecast-delta-scope.js` rodado isoladamente com deals
+  sintéticos (11 casos, incluindo Bid/Standby nas duas grafias/Ganho/Implantação) — TODOS OK;
+  `npm run check` completo — 0 FAIL, `test-forecast-delta-leva2.js`/`test-forecast-delta-e2e.js`
+  (fixtures próprias, não exercitam `scope`) continuam OK, invariante Σ Δ = Δtotal intacto.
+  Servidor local reiniciado (mudou `api/`/`lib/`); `/forecast-delta` = 200; markup do dropdown
+  (`#btn-scope`/`#scope-menu`) confirmado no HTML servido. **Sem smoke visual com dado real**
+  (sem `GOOGLE_SERVICE_ACCOUNT_JSON` neste ambiente local, mesma ressalva de sempre) — recomendo
+  verificar visualmente antes do deploy.
+
 ### 🚀 DEPLOY DE PRODUÇÃO | Delta (full-width/valores/Fechado/toggle) + destrava build do Lista ABM (2026-08-13)
 
 > Autorização explícita do dono ("faça o commit e deploy"), continuação da mesma sessão da entrada

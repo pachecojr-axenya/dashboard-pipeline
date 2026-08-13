@@ -264,11 +264,15 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
       </div>
     </div>
     <!-- Grupo 2 | QUAIS deals contam (Executivo=quem, Quarter=quando, Escopo=quais etapas).
-         Escopo tinha saído da UI em 2026-08-06 (variável fixa em 'ativos'); reintroduzido em
-         2026-08-13 (pedido do dono) com 2 opções: Ativos (Cotação/Consultoria/Negociação,
-         como antes) e Todo o Pipe (+ Reunião Agendada/Diagnóstico, mesma régua de prob. do
-         forecast — forecast_flat, sem números novos). Ganho/Implantação continuam de fora dos
-         dois modos — seguem representados só pela barra aditiva "Fechado" do D02. -->
+         Escopo tinha saído da UI em 2026-08-06 (variável fixa em 'ativos'), voltou em 2026-08-13
+         como toggle binário Ativos/Todo o Pipe, e virou este multiselect por etapa no mesmo dia
+         (pedido do dono: precisava combinar etapas livremente, ex. "Diagnóstico pra frente SEM
+         Reunião Agendada" — nenhuma das 2 opções do toggle cobria isso). Régua de probabilidade
+         de cada etapa é sempre a forecast_flat de sempre — o multiselect só decide QUAIS deals
+         entram no cálculo, não muda nenhuma fórmula. Ganho/Implantação não são etapas
+         selecionáveis aqui — seguem representados só pela barra aditiva "Fechado" do D02 (entrar
+         no multiselect duplicaria com ela, ver ficha "i" do D02). Bid e Stand by continuam
+         sempre de fora, como desde 2026-07-20. -->
     <div class="hg hg-filters">
       <span class="hg-label">Filtrar por</span>
       <div class="hg-row">
@@ -280,12 +284,9 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
           <button class="fdd-trigger" id="btn-quarter" onclick="toggleQuarterMenu()"><span id="btn-quarter-lbl">Quarter</span><span class="fdd-arr"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span></button>
           <div id="quarter-menu" class="fdd-panel"></div>
         </div>
-        <div class="ctl">
-          <span class="ctl-label">Escopo</span>
-          <div class="seg-ctrl" id="scope-toggle" role="group" aria-label="Escopo">
-            <button class="seg-btn active" data-v="ativos" aria-pressed="true">Ativos</button>
-            <button class="seg-btn" data-v="pipe" aria-pressed="false">Todo o Pipe</button>
-          </div>
+        <div class="fdd-wrapper">
+          <button class="fdd-trigger" id="btn-scope" onclick="toggleScopeMenu()"><span id="btn-scope-lbl">Escopo</span><span class="fdd-arr"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span></button>
+          <div id="scope-menu" class="fdd-panel"></div>
         </div>
       </div>
     </div>
@@ -406,7 +407,7 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
     <div class="sec-hdr">
       <span class="ccode">D07</span>
       <h3>Visão unificada por etapa</h3>
-      <span class="sec-note">Todas as etapas de Vendas (independe do filtro Ativos/Todo o Pipe; Bid no D08) | Movimentação: <b>Novo</b> (entrou) / <b>Avançou</b> (saiu p/ etapa posterior) / <b>Perdido</b> | clique numa linha para o drill</span>
+      <span class="sec-note">Todas as etapas de Vendas (independe do filtro de Escopo; Bid no D08) | Movimentação: <b>Novo</b> (entrou) / <b>Avançou</b> (saiu p/ etapa posterior) / <b>Perdido</b> | clique numa linha para o drill</span>
       <span class="toggle-wrap"><button type="button" class="ibtn" data-help="D07" aria-label="Memória de cálculo | D07">i</button></span>
     </div>
     <div style="overflow:auto"><table class="utable" id="stage-table"></table></div>
@@ -417,7 +418,7 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
     <div class="sec-hdr">
       <span class="ccode">D08</span>
       <h3>Pipe de Bid por etapa</h3>
-      <span class="sec-note">Pipeline Bid completo (independe do filtro Ativos/Todo o Pipe) | receita probabilizada do Bid usa prob fixa 0,5% (só Proposta/Negociação) | clique numa linha para o drill</span>
+      <span class="sec-note">Pipeline Bid completo (independe do filtro de Escopo) | receita probabilizada do Bid usa prob fixa 0,5% (só Proposta/Negociação) | clique numa linha para o drill</span>
       <span class="toggle-wrap"><button type="button" class="ibtn" data-help="D08" aria-label="Memória de cálculo | D08">i</button></span>
     </div>
     <div style="overflow:auto"><table class="utable" id="bid-table"></table></div>
@@ -476,7 +477,14 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
     { key: 'delta', label: 'Δ', align: 'right', type: 'num' },
     { key: 'tipo', label: 'Movimentação', align: 'left', type: 'str' }
   ];
-  var metric = 'prob', horizon = 'arr', scope = 'ativos';   // horizon: 'arr' (ARR estimado) | 'Total' (receita da régua no horizonte completo); scope: 'ativos' (Cotação/Consultoria/Negociação) | 'pipe' (+ Reunião Agendada/Diagnóstico) — remove Bid+Standby sempre
+  var metric = 'prob', horizon = 'arr';   // horizon: 'arr' (ARR estimado) | 'Total' (receita da régua no horizonte completo)
+  // Escopo: quais etapas do funil de Vendas entram no cálculo (Bid e Stand by sempre de fora;
+  // Ganho/Implantação nunca aqui — ver comentário no HTML). Multiselect livre (2026-08-13) — o
+  // default replica o antigo "Ativos". DELTA_SCOPE_STAGES é a ordem de exibição no dropdown
+  // (ordem do funil), não precisa bater com a ordem de seleção.
+  var DELTA_SCOPE_STAGES = ['Reunião Agendada', 'Diagnóstico', 'Cotação', 'Consultoria', 'Negociação'];
+  var scopeFilter = new Set(['Cotação', 'Consultoria', 'Negociação']);
+  function scopeQS(){ return Array.from(scopeFilter).join('|'); }
   var aeFilter = new Set(), quarterFilter = new Set();     // filtros multiselect (vazio = todos; '__NONE__' = nenhum)
   function filterQS(){ var p=''; if(aeFilter.size) p+='&ae='+encodeURIComponent(Array.from(aeFilter).join('|')); if(quarterFilter.size) p+='&q='+encodeURIComponent(Array.from(quarterFilter).join('|')); return p; }
   var quarterMetric = 'arr';              // toggle ARR Total / Ponderado da seção de quarter
@@ -598,7 +606,7 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
     if(!a || !b){ cs.style.display='block'; cs.className='state'; cs.innerHTML=AxUI.emptyState('Escolha as duas datas.'); return; }
     if(!(b > a)){ cs.style.display='block'; cs.className='state'; cs.innerHTML=AxUI.banner('A Foto B (depois) precisa ser posterior à Foto A (antes).', {severity:'error'}); if(chart){chart.destroy();chart=null;} document.getElementById('kpis').innerHTML=''; return; }
     cs.style.display='block'; cs.className='state'; cs.innerHTML='<span class="spin"></span>Calculando…';
-    fetch('/api/history?action=compare&a='+a+'&b='+b+'&scope='+scope+filterQS(), {credentials:'same-origin'})
+    fetch('/api/history?action=compare&a='+a+'&b='+b+'&scope='+encodeURIComponent(scopeQS())+filterQS(), {credentials:'same-origin'})
       .then(function(r){ return r.json().then(function(j){ return {ok:r.ok, j:j}; }); })
       .then(function(res){
         var j = res.j;
@@ -1048,7 +1056,7 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
     list.innerHTML = '<div class="state"><span class="spin"></span>Carregando lista…</div>';
     var a=document.getElementById('dateA').value, b=document.getElementById('dateB').value;
     var seq = ++saiuSeq;
-    fetch('/api/history?action=compare-drill&a='+a+'&b='+b+'&row='+encodeURIComponent('kpi:arrTotal')+'&measure='+measureKey()+'&scope='+scope+filterQS(), {credentials:'same-origin'})
+    fetch('/api/history?action=compare-drill&a='+a+'&b='+b+'&row='+encodeURIComponent('kpi:arrTotal')+'&measure='+measureKey()+'&scope='+encodeURIComponent(scopeQS())+filterQS(), {credentials:'same-origin'})
       .then(function(r){ return r.json(); })
       .then(function(d){
         if(seq !== saiuSeq) return;
@@ -1080,7 +1088,7 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
     modal.style.display='flex'; modal.setAttribute('aria-hidden','false');
     setTimeout(function(){ document.getElementById('drill-x').focus(); },0);
     drillFmt = valFmt || fmtBRL;
-    var q = '/api/history?action=compare-drill&a='+a+'&b='+b+'&row='+encodeURIComponent(target)+'&measure='+m+'&scope='+scope+filterQS()+(field?'&field='+encodeURIComponent(field):'');
+    var q = '/api/history?action=compare-drill&a='+a+'&b='+b+'&row='+encodeURIComponent(target)+'&measure='+m+'&scope='+encodeURIComponent(scopeQS())+filterQS()+(field?'&field='+encodeURIComponent(field):'');
     fetch(q, {credentials:'same-origin'})
       .then(function(r){ return r.json(); })
       .then(function(d){ if(!d.success){ body.innerHTML=AxUI.banner(esc(d.error||'erro'), {severity:'error'}); return; }
@@ -1166,6 +1174,32 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
   window.selectAllQuarters=function(){ quarterFilter.clear(); document.querySelectorAll('#quarter-menu input').forEach(function(c){c.checked=true;}); updateQuarterBtnLabel(); refresh(); };
   window.clearAllQuarters=function(){ quarterFilter.clear(); quarterFilter.add('__NONE__'); document.querySelectorAll('#quarter-menu input').forEach(function(c){c.checked=false;}); updateQuarterBtnLabel(); refresh(); };
   window.toggleQuarter=function(){ quarterFilter.clear(); var cbs=document.querySelectorAll('#quarter-menu input'); var n=0; cbs.forEach(function(c){if(c.checked){quarterFilter.add(c.value);n++;}}); if(n===0)quarterFilter.add('__NONE__'); else if(n===cbs.length)quarterFilter.clear(); updateQuarterBtnLabel(); refresh(); };
+
+  // ── Escopo (multiselect por etapa, 2026-08-13) ──────────────────────────────
+  // Semântica DIFERENTE de Executivo/Quarter: lá, conjunto vazio = "todos" (filtro opcional,
+  // omitido da URL); aqui `scope` é SEMPRE enviado, e conjunto vazio é uma seleção legítima
+  // (zero etapas -> zero deals no escopo). Por isso não há sentinela '__NONE__' nem o
+  // "desmarcar tudo = limpar o Set" do toggleAe/toggleQuarter — o Set reflete 1:1 o que está
+  // marcado. Opções são fixas (DELTA_SCOPE_STAGES), não vêm do servidor, então o painel é
+  // construído uma vez no load, não a cada refresh() como buildAeFilter/buildQuarterFilter.
+  function buildScopeFilter(){
+    var m=document.getElementById('scope-menu'); if(!m) return;
+    var h=_cbHead('selectAllScope()','clearAllScope()');
+    DELTA_SCOPE_STAGES.forEach(function(st){ var ck=scopeFilter.has(st); h+='<label class="custom-cb"><input type="checkbox" value="'+esc(st)+'" onchange="toggleScopeStage()" '+(ck?'checked':'')+'><span class="cb-box"></span>'+esc(st)+'</label>'; });
+    m.innerHTML=h; updateScopeBtnLabel();
+  }
+  function updateScopeBtnLabel(){
+    var lbl=document.getElementById('btn-scope-lbl'), btn=document.getElementById('btn-scope'); if(!lbl) return;
+    if(scopeFilter.size===0){ lbl.textContent='Nenhuma etapa'; btn.classList.add('filter-active'); }
+    else if(scopeFilter.size===DELTA_SCOPE_STAGES.length){ lbl.textContent='Todo o pipe'; btn.classList.add('filter-active'); }
+    else { lbl.textContent=scopeFilter.size+' etapa'+(scopeFilter.size>1?'s':''); btn.classList.add('filter-active'); }
+  }
+  window.toggleScopeMenu=function(){ document.getElementById('btn-scope').closest('.fdd-wrapper').classList.toggle('open'); };
+  window.selectAllScope=function(){ scopeFilter=new Set(DELTA_SCOPE_STAGES); document.querySelectorAll('#scope-menu input').forEach(function(c){c.checked=true;}); updateScopeBtnLabel(); refresh(); };
+  window.clearAllScope=function(){ scopeFilter.clear(); document.querySelectorAll('#scope-menu input').forEach(function(c){c.checked=false;}); updateScopeBtnLabel(); refresh(); };
+  window.toggleScopeStage=function(){ scopeFilter.clear(); document.querySelectorAll('#scope-menu input').forEach(function(c){ if(c.checked) scopeFilter.add(c.value); }); updateScopeBtnLabel(); refresh(); };
+  buildScopeFilter();
+
   document.addEventListener('click', function(e){ document.querySelectorAll('.fdd-wrapper.open').forEach(function(w){ if(!w.contains(e.target)) w.classList.remove('open'); }); });
 
   // toggles (segmented control canônico) — thumb medido por botão ativo, como no
@@ -1213,9 +1247,11 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
     var b = lastJ ? lastJ.b.resolvedTab : document.getElementById('dateB').value;
     var dTxt = (a||'—')+' × '+(b||'—');
     var mTxt = metric==='prob' ? 'Probabilizada' : 'Real';
-    // scope volta ao resumo (2026-08-13, toggle reintroduzido). horizon segue fora (2026-08-06,
-    // sem botão pra conectar) — sempre o mesmo valor fixo ('arr').
-    var sTxt = scope==='pipe' ? 'Todo o Pipe' : 'Ativos';
+    // scope no resumo (2026-08-13, virou multiselect por etapa no mesmo dia). horizon segue fora
+    // (2026-08-06, sem botão pra conectar) — sempre o mesmo valor fixo ('arr').
+    var sTxt = scopeFilter.size===0 ? 'Nenhuma etapa'
+      : scopeFilter.size===DELTA_SCOPE_STAGES.length ? 'Todo o pipe'
+      : Array.from(scopeFilter).join('+');
     return [aeTxt, qTxt, dTxt, mTxt, sTxt].join(' | ');
   }
   function updateHdrSummary(){ var el=document.getElementById('hdr-summary'); if(el) el.textContent = hdrSummaryTxt(); }
@@ -1246,11 +1282,10 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
     });
   }
   wireToggle('metric-toggle', function(v){ metric=v; refresh(); });
-  // scope-toggle reintroduzido (2026-08-13, pedido do dono) — ver comentário no HTML
-  // (.hg-filters). horizon-toggle CONTINUA removido (2026-08-06): a variável `horizon`
-  // segue fixa em 'arr' no default declarado acima; sem elemento pra conectar,
-  // wireToggle('horizon-toggle') quebraria em runtime.
-  wireToggle('scope-toggle', function(v){ scope=v; refresh(); });
+  // horizon-toggle CONTINUA removido (2026-08-06): a variável `horizon` segue fixa em 'arr' no
+  // default declarado acima; sem elemento pra conectar, wireToggle('horizon-toggle') quebraria
+  // em runtime. Escopo saiu do padrão .seg-ctrl/wireToggle no mesmo dia em que voltou (virou
+  // multiselect por etapa) — wiring próprio logo abaixo, junto de Executivo/Quarter.
   wireToggle('quarter-toggle', function(v){ quarterMetric=v; if(lastJ) renderQuarterTable(lastJ); });
   wireToggle('q3trend-toggle', function(v){ q3TrendMetric=v; if(q3TrendPoints) drawQ3TrendChart(q3TrendPoints, q3TrendQuarterLabel()); });
   document.getElementById('dateA').addEventListener('change', refresh);
@@ -1272,7 +1307,7 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
       '<p class="hk"><b>Medidas |</b> Horizonte <b>ARR</b>: Probabilizada = <code>arr_estimado</code> × prob. final da etapa | Real = ARR estimado bruto. Horizonte <b>Pipeline total</b>: receita da régua no horizonte completo (motor canônico <code>forecast-compute</code> → <code>forecast-engine</code>, Regra primária nº 3), ancorada na data de cada foto.</p>'+
       '<p class="hk"><b>Fórmula |</b> a barra da etapa é Σ(B) − Σ(A). Invariante verificado: Σ Δ das etapas = Δ do total (selo nos KPIs).</p>'+
       '<p class="hk"><b>Decomposição saudável × perda real (2026-08-07) |</b> cada barra de Δ é colorida em 2 segmentos — verde = "saudável" (deal avançou de etapa, foi p/ Ganho/Implantação, entrou novo na etapa, ou permaneceu e GANHOU valor) | vermelho = "perda real" (foi p/ Perdido/regrediu/saiu do pipe sem avançar, ou permaneceu e PERDEU valor). Mesma classificação do drill da barra (clique pra ver os deals de cada tipo). Os 2 segmentos somam exatamente o Δ total da barra.</p>'+
-      '<p class="hk"><b>Escopo (toggle reintroduzido 2026-08-13) |</b> <b>Ativos</b> = Cotação, Consultoria, Negociação (default) | <b>Todo o Pipe</b> = Ativos + Reunião Agendada e Diagnóstico, com a mesma régua de probabilidade do forecast (<code>forecast_flat</code>: Reunião Agendada 6%, Diagnóstico 6% fixo — nenhum número novo). Os dois modos removem sempre Bid e Stand by, e nenhum dos dois inclui Ganho/Implantação como barra própria — isso é sempre a barra "Fechado" abaixo.</p>'+
+      '<p class="hk"><b>Escopo (multiselect por etapa, 2026-08-13) |</b> escolha livremente quais etapas do funil de Vendas entram no cálculo — <b>Reunião Agendada, Diagnóstico, Cotação, Consultoria, Negociação</b> — para combinações como "Diagnóstico pra frente" (sem Reunião Agendada) sem precisar de um toggle fixo pra cada combinação. Default: Cotação + Consultoria + Negociação (o antigo "Ativos"). A régua de probabilidade de cada etapa é sempre a mesma do forecast (<code>forecast_flat</code>: Reunião Agendada e Diagnóstico 6% fixo, Cotação ~18,6%, Consultoria ~28,5%, Negociação ~49,3%) — o multiselect só decide QUAIS deals entram, nunca muda a fórmula. Bid e Stand by saem sempre, independente da seleção. <b>Ganho/Implantação não são selecionáveis aqui</b> — entram sempre pela barra aditiva "Fechado" abaixo, nunca como barra própria do waterfall (selecioná-los duplicaria com o Fechado).</p>'+
       '<p class="hk"><b>Fechado (2026-08-02; sempre valor Real desde 2026-08-13) |</b> hoje um deal que vira Ganho entre A e B "derruba" o Total @ B como se fosse perda de valor — na verdade é vitória: o valor só migrou de pipe aberto ponderado para fechado/contratado. <b>Implantação conta como Ganho</b> nesta barra (decisão do dono, 2026-08-02). A barra <b>Fechado</b> soma o ARR Real (na foto A) dos deals que foram para Ganho ou Implantação no período — <b>sempre Real, mesmo com "Medida: Probabilizada" selecionada no header</b> (um deal já fechado não é mais uma estimativa; antes a barra caía para o ARR Ponderado nesse modo, subestimando o que já foi de fato ganho). A barra <b>Total B + Fechado</b> comunica o quadro completo (o que já foi executado, sempre Real, + o que ainda está por vir, na medida selecionada). São barras INFORMATIVAS/aditivas — não entram no Σ Δ nem no invariante das etapas.</p>' },
     D03: { title: 'KPIs comparativos | A → B', sem: ['arr_estimado_fallback','arr_ponderado_forecast'], html:
       '<p class="hk"><b>O que mostra |</b> os mesmos KPIs do D01, só que em A → B com delta absoluto e %.</p>'+
@@ -1281,7 +1316,7 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
       '<p class="hk"><b>Drill |</b> Vidas, ARR Total e ARR Ponderado abrem a lista de deals com a Movimentação (Novo | Permaneceu | Avançou | Caiu | Ganho).</p>' },
     D04: { title: 'Funil | deals por etapa', sem: [], html:
       '<p class="hk"><b>O que mostra |</b> a contagem de deals abertos por etapa do funil em cada foto (A em cinza, B em turquesa).</p>'+
-      '<p class="hk"><b>Campos |</b> etapa da foto (coluna Etapa do snapshot; Closed Lost → Perdido, fora do funil). Escopo Ativos/Todo o Pipe do header.</p>'+
+      '<p class="hk"><b>Campos |</b> etapa da foto (coluna Etapa do snapshot; Closed Lost → Perdido, fora do funil). Segue o filtro de Escopo do header.</p>'+
       '<p class="hk"><b>Drill |</b> clique na etapa para ver os deals e a Movimentação de cada um.</p>' },
     D05: { title: 'Deals que saíram do pipe', sem: [], html:
       '<p class="hk"><b>O que mostra |</b> deals presentes na Foto A que não estão mais no escopo na Foto B, com o destino final e o valor.</p>'+
@@ -1292,11 +1327,11 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
       '<p class="hk"><b>Campos |</b> quarter = campo <code>quarter</code> do deal (fallback: quarter da <code>data_prevista_para_receita</code>); sem nenhum dos dois → "Sem quarter". ARR como no D03.</p>'+
       '<p class="hk"><b>Drill |</b> clique na linha para ver os deals do quarter na métrica do toggle.</p>' },
     D07: { title: 'Visão unificada por etapa', sem: ['arr_estimado_fallback','arr_ponderado_forecast'], html:
-      '<p class="hk"><b>O que mostra |</b> TODAS as etapas de Vendas (independe do filtro Ativos/Todo o Pipe; o pipeline Bid tem visão própria no D08): deals, movimentação, vidas e ARRs por etapa, em A → B.</p>'+
+      '<p class="hk"><b>O que mostra |</b> TODAS as etapas de Vendas (independe do filtro de Escopo; o pipeline Bid tem visão própria no D08): deals, movimentação, vidas e ARRs por etapa, em A → B.</p>'+
       '<p class="hk"><b>Movimentação |</b> Novo = entrou na etapa | Avançou = saiu para etapa posterior (inclui Ganho/Implantação) | Perdido = foi para Perdido.</p>'+
       '<p class="hk"><b>Campos |</b> ARR Total = Σ <code>arr_estimado</code> (com fallbacks) dos deals da etapa; ARR Ponderado = Σ ARR × prob. final da etapa. Δ ARR Pond. = B − A.</p>' },
     D08: { title: 'Pipe de Bid por etapa', sem: ['arr_estimado_fallback'], html:
-      '<p class="hk"><b>O que mostra |</b> o pipeline <b>Bid</b> completo, por etapa, em A → B — deals, movimentação, vidas e ARRs. Independe do filtro Ativos/Todo o Pipe do header (que remove o Bid das demais visões).</p>'+
+      '<p class="hk"><b>O que mostra |</b> o pipeline <b>Bid</b> completo, por etapa, em A → B — deals, movimentação, vidas e ARRs. Independe do filtro de Escopo do header (que remove o Bid das demais visões).</p>'+
       '<p class="hk"><b>Régua do Bid |</b> a probabilidade do Bid no motor canônico é <b>fixa em 0,5%</b> e só as etapas <b>Proposta Enviada</b> e <b>Negociação</b> têm linha de receita no Overall — nas demais etapas o deal aparece com deals/vidas/ARR e receita zerada, como no painel canônico. ARR Ponderado do Bid = <code>arr_estimado</code> × 0,5%.</p>'+
       '<p class="hk"><b>Escopo |</b> deals de Bid criados desde jan/2025 (mesmo filtro do painel Forecast, Regra primária nº 3); Perdido sai do escopo.</p>'+
       '<p class="hk"><b>Movimentação |</b> mesma leitura do D07: Novo | Avançou | Perdido, pelo destino bruto na Foto B.</p>' },
