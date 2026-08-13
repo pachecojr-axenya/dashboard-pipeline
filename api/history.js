@@ -213,7 +213,16 @@ module.exports = async function handler(req, res) {
       
       // rawBStageById: etapa bruta em B (inclui Perdido) para stageUnified.movement e drill
       const rawBStageById = {}; mappedB.forEach(d => { rawBStageById[FC.dealId(d)] = d.stage; });
-      
+
+      // Deals "nascidos fechados" (2026-08-14, achado do dono: "Grupo Recovery - Vitalício",
+      // criado E ganho no mesmo dia) — existem em B (raw) já Ganho/Implantação, mas não
+      // existem em NENHUM estado na Foto A (raw, não só o escopo aberto): nunca foram
+      // fotografados abertos, então o loop de contribA em FC.closedWonAgg não os alcança
+      // (ele só compara quem JÁ estava no conjunto aberto de A). Fora do Bid — Fechado é
+      // conceito só de Vendas, Bid tem visão própria no D08.
+      const idsInA = new Set(mappedA.map(d => FC.dealId(d)));
+      const newlyClosedRaw = mappedB.filter(d => d.pipeline !== 'Bid' && FC.CLOSED_STAGES.has(d.stage) && !idsInA.has(FC.dealId(d)));
+
       // Escopo ANTES do compute. scope=ativos|tudo (remove Bid+Standby) tem
       // precedência; sem ele, mantém o toggle legado includeClosedStages.
       let scopedInputA = deltaScoped ? FC.applyDeltaScope(mappedA, scopeParam) : (includeClosedStages ? mappedA : FC.excludeClosedStages(mappedA));
@@ -255,9 +264,12 @@ module.exports = async function handler(req, res) {
       const cA = FC.dealContributions(scopedInputA, fA.refDate, evalA.manual, evalA.probManual, evalA.stageProb);
       const cB = FC.dealContributions(scopedInputB, fB.refDate, evalB.manual, evalB.probManual, evalB.stageProb);
       // Fechado (Tarefa do dono, reunião 2026-07-31): Σ ARR/ARR Ponderado (na foto A)
-      // dos deals que foram para GANHO no período — ver nota em FC.closedWonAgg.
-      // Exposição ADITIVA/informativa: não participa do invariante Σ Δ = Δtotal.
-      const fechado = FC.closedWonAgg(cA, cB, rawBStageById);
+      // dos deals que foram para GANHO no período — ver nota em FC.closedWonAgg. Inclui
+      // também os "nascidos fechados" (newlyClosedRaw acima), calculados na config/refDate
+      // da Foto B (só existem nela). Exposição ADITIVA/informativa: não participa do
+      // invariante Σ Δ = Δtotal.
+      const newlyClosedContrib = FC.dealContributions(newlyClosedRaw, fB.refDate, evalB.manual, evalB.probManual, evalB.stageProb);
+      const fechado = FC.closedWonAgg(cA, cB, rawBStageById, newlyClosedContrib);
       // ARR por linha do waterfall (horizonte ARR no menu, pedido do dono 2026-07-24):
       // agrega arr/arrPond das contribuições por rowKey — campos ADITIVOS em a/b/delta.
       // Com escopo (ativos|tudo) todo deal escopado tem rowKey, então Σ Δ(linhas) bate
@@ -344,7 +356,7 @@ module.exports = async function handler(req, res) {
                 ? 'Tudo (todas as etapas, sem Bid e Standby)'
                 : (FC.deltaScopeStages(scopeParam).length ? FC.deltaScopeStages(scopeParam).join(', ') : 'nenhuma etapa selecionada') + ' (sem Bid e Standby; Ganho/Implantação sempre via barra Fechado)')
             : (includeClosedStages ? 'Escopo inclui Implantação e Ganho' : 'Escopo exclui Implantação e Ganho'),
-          'Fechado = Σ ARR/ARR Ponderado (na foto A) dos deals que foram para Ganho entre A e B | SEMPRE o valor Real (nunca o Probabilizado, mesmo com "Medida: Probabilizada" selecionado) — um deal que já fechou não é mais uma estimativa | valor INFORMATIVO/aditivo, não entra no Σ Δ do waterfall | "Total B + Fechado" = o que já foi executado (fechado no período) + o que ainda está por vir (pipe aberto em B)',
+          'Fechado = Σ ARR/ARR Ponderado (na foto A) dos deals que foram para Ganho entre A e B, + deals que já nasceram Ganho/Implantação entre as duas fotos (criados e fechados no mesmo intervalo, nunca fotografados abertos) | SEMPRE o valor Real (nunca o Probabilizado, mesmo com "Medida: Probabilizada" selecionado) — um deal que já fechou não é mais uma estimativa | valor INFORMATIVO/aditivo, não entra no Σ Δ do waterfall | "Total B + Fechado" = o que já foi executado (fechado no período) + o que ainda está por vir (pipe aberto em B)',
         ],
       });
     }

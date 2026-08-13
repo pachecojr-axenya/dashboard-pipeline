@@ -1,5 +1,49 @@
 # Dashboard Enhancement Loop — Status Log
 
+### Delta | Fechado passa a contar deals "nascidos fechados" (2026-08-14)
+
+> Achado do dono, investigando ao vivo no HubSpot: o deal **"Grupo Recovery - Vitalício"**
+> (`60844049805`… não, ID real `63532078873`, pipeline Vendas, etapa **Ganho**, ARR
+> R$ 234.600, `data_prevista_para_receita` Q3 2026) estava **invisível no Delta inteiro** —
+> não aparecia no escopo aberto (Ganho não é etapa selecionável) nem na barra "Fechado" (que
+> só rastreia quem SAIU do aberto entre A e B). Causa raiz: o deal foi **criado e fechado no
+> mesmo dia** (`createdate` 2026-08-06 18:36, `closedate` 2026-08-06 18:43 — 7 minutos de
+> diferença), então **nenhuma foto diária (cron 02:59) jamais o capturou aberto** — ele pula
+> direto de "não existia" para "Ganho" entre uma foto e a seguinte. `closedWonAgg` só olhava
+> `contribA` (quem já estava no conjunto escopado da Foto A), então um deal que nunca esteve
+> em NENHUM estado na Foto A não tinha como ser alcançado. Pedido do dono: "Preciso considerar
+> esses deals. Porque isso impacta DIRETAMENTE na nossa fotografia do pipe." **Não deployado
+> ainda** (só local, `npm run check` limpo).
+
+- **`lib/forecast-compute.js` — `closedWonAgg` ganha um 4º parâmetro** (`newAlreadyClosed`,
+  opcional — comportamento antigo preservado sem ele): array de contribuições (mesmo formato
+  de `dealContributions`) dos deals que **não existem em NENHUM estado na Foto A** (raw, não
+  só o escopo aberto) e já são Ganho/Implantação na Foto B. Somados incondicionalmente ao
+  agregado, sem checar Escopo — um deal que nunca existiu não tem etapa-de-origem pra comparar
+  contra a seleção do usuário.
+- **`api/history.js`**: computa `newlyClosedRaw` (deals de `mappedB` — raw — cujo ID não está
+  em `mappedA` — raw — e cuja etapa está em `FC.CLOSED_STAGES`, excluindo sempre Bid) logo
+  após montar `rawBStageById`; calcula a contribuição desses deals com `FC.dealContributions`
+  na config/refDate da Foto B (só existem nela) e passa pro `closedWonAgg`. Caveat do Fechado
+  atualizado pra mencionar os dois casos (saiu do aberto + nasceu fechado).
+- **`public/forecast-delta.html`**: ficha "i" do D02 (parágrafo Fechado) atualizada com a
+  explicação do caso e o achado real que motivou.
+- **`scripts/test-forecast-delta-e2e.js` estendido**: novo deal sintético ("Grupo Recovery -
+  Vitalício") que só existe na foto B (2026-07-09), já em Ganho — réplica direta do caso real.
+  Assertions atualizadas: Fechado passa de 1 para 2 deals; `arr` = 345.000 (Cappta) + 234.600
+  (novo) = 579.600; `arrPond` = 170.085 (Cappta, ponderado pela prob. de A) + 234.600 (novo,
+  arr==arrPond porque Ganho pesa 100%) = 404.685 — confere que o agregado combina
+  corretamente os dois critérios (quem saiu do aberto × quem nasceu fechado) sem misturar as
+  réguas de ponderação.
+- **Validação**: `node --check` nos 2 arquivos backend; `_check-inline-js` no
+  `forecast-delta.html` (0 erros); teste isolado com deals sintéticos reproduzindo o caso real
+  (`FC.dealId`/`FC.CLOSED_STAGES`/`FC.dealContributions`/`FC.closedWonAgg` diretos) — confirma
+  detecção do deal "nascido fechado", exclusão de deal já existente em A (não conta como
+  novo) e exclusão de deal Bid (mesmo Ganho e novo); `npm run check` completo — 0 FAIL,
+  `test-forecast-delta-e2e.js` com as novas assertions passando com os valores exatos
+  previstos, nenhuma outra assertion (invariantes, KPIs, stageUnified, quarters) afetada —
+  confirma que o deal novo fica isolado do escopo aberto, só entra em Fechado.
+
 ### 🚀 DEPLOY DE PRODUÇÃO | Delta: Escopo vira multiselect por etapa (2026-08-13)
 
 > Autorização explícita do dono ("faça o commit e deploy"), continuação da mesma sessão da

@@ -59,6 +59,12 @@ const SNAP = {
     // entre A e B — não deve "derrubar" o Total B, deve virar Σ ARR/ARR Ponderado
     // do agregado informativo j.fechado.
     { id: '8', name: 'Cappta', pipeline: 'Vendas', stage: 'Ganho', vidas: 1000, arr: 345000, modelo: 'Fee por vida', pf: 28750, revDate: '2026-08-01', quarter: 'Q3 2026', prob: 1.0 },
+    // "Nascido fechado" (2026-08-14, achado do dono: deal real "Grupo Recovery - Vitalício",
+    // criado e Ganho no mesmo dia, ~7min de diferença) — só existe na foto B, NUNCA aparece
+    // na foto A em nenhum estado (nem aberto, nem qualquer outro). Sem o 4º parâmetro de
+    // FC.closedWonAgg este deal seria invisível no Delta inteiro: nunca no escopo aberto
+    // (Ganho não é etapa selecionável) nem em Fechado (que só olhava quem SAIU do aberto).
+    { id: '9', name: 'Grupo Recovery - Vitalício', pipeline: 'Vendas', stage: 'Ganho', vidas: 381, arr: 234600, modelo: 'Fee por vida', pf: 391000, revDate: '2026-09-30', quarter: 'Q3 2026', prob: 1.0, created: '2026-07-09' },
   ]),
 };
 const DAILY_DATES = ['2026-07-09', '2026-07-08'];   // desc
@@ -131,9 +137,14 @@ function call(url){
   // ── Fechado (2026-08-02): Cappta foi para Ganho entre A e B — vira o agregado
   // informativo, não "derruba" o waterfall (invariante acima segue intacto).
   check('fechado presente no payload', cmp.body.fechado && typeof cmp.body.fechado === 'object', JSON.stringify(cmp.body.fechado));
-  check('fechado identifica 1 deal (Cappta)', cmp.body.fechado && cmp.body.fechado.deals === 1, 'deals=' + (cmp.body.fechado && cmp.body.fechado.deals));
-  check('fechado soma o ARR de Cappta na foto A (345.000)', cmp.body.fechado && near(cmp.body.fechado.arr, 345000), 'arr=' + (cmp.body.fechado && cmp.body.fechado.arr));
-  check('fechado não conta Beta (foi para Perdido, não Ganho)', cmp.body.fechado && cmp.body.fechado.arr < 345000 + 360000, 'arr=' + (cmp.body.fechado && cmp.body.fechado.arr));
+  check('fechado identifica 2 deals (Cappta + nascido fechado)', cmp.body.fechado && cmp.body.fechado.deals === 2, 'deals=' + (cmp.body.fechado && cmp.body.fechado.deals));
+  check('fechado soma o ARR de Cappta (345.000) + Grupo Recovery (234.600)', cmp.body.fechado && near(cmp.body.fechado.arr, 345000 + 234600), 'arr=' + (cmp.body.fechado && cmp.body.fechado.arr));
+  check('fechado não conta Beta (foi para Perdido, não Ganho)', cmp.body.fechado && cmp.body.fechado.arr < 345000 + 234600 + 360000, 'arr=' + (cmp.body.fechado && cmp.body.fechado.arr));
+  // "Nascido fechado" (2026-08-14): Grupo Recovery só existe na foto B, já em Ganho — nunca
+  // foi visto aberto. arr==arrPond pra ele (régua Ganho=100%); Cappta pesa pela prob. de A
+  // (Negociação, min(régua 49,3%, manual 50%)=49,3% → arrPond 170.085), então o TOTAL
+  // arr!=arrPond (o Fechado combina os dois critérios corretamente).
+  check('fechado inclui o deal nascido fechado (arrPond bate: Cappta@A 170.085 + Grupo Recovery@B 234.600)', cmp.body.fechado && near(cmp.body.fechado.arrPond, 170085 + 234600, 1), 'arrPond=' + (cmp.body.fechado && cmp.body.fechado.arrPond));
   check('caveat descreve a barra Fechado', cmp.body.caveats.some(c => /Fechado/.test(c) && /Ganho/.test(c)));
 
   // ── MEDIDA ÚNICA point-in-time (2026-07-30): A com sidecar (Cotação 10%), B sem ──
