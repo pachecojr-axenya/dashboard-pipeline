@@ -1,5 +1,23 @@
 # Dashboard Enhancement Loop — Status Log
 
+### 🚀 DEPLOY DE PRODUÇÃO | Delta: Escopo vira multiselect por etapa (2026-08-13)
+
+> Autorização explícita do dono ("faça o commit e deploy"), continuação da mesma sessão da
+> entrada "Delta | Escopo vira multiselect por etapa" abaixo.
+>
+> `git fetch`/`git status --short --branch` limpo, `HEAD == origin/main` antes do commit (sem
+> divergência desta vez — nenhuma outra sessão pushou nesse meio-tempo). `npm run check`
+> completo antes e depois do commit: 0 FAIL, incluindo `test-forecast-delta-scope.js` recém
+> plugado no gate. Commit `06e2a60` (6 arquivos: `STATUS_LOG.md`, `api/history.js`,
+> `lib/forecast-compute.js`, `package.json`, `public/forecast-delta.html`,
+> `scripts/test-forecast-delta-scope.js`). `npm run deploy` (preflight + `vercel --prod --yes`):
+> deployment `dpl_f5qDxXoq957ny3vEYMxhHJjyJCsF`, READY.
+>
+> **Pós-deploy confirmado nos dois hosts** (`project-bsmfu.vercel.app` e
+> `axenya-pipeline-dashboard.vercel.app`): `/`, `/forecast-delta`, `/novo`, `/novo-board` = 200;
+> `/api/history` = 401 (auth ativa); markup do novo dropdown (`#scope-menu`) confirmado presente
+> no HTML servido em produção.
+
 ### Delta | Escopo vira multiselect por etapa (2026-08-13)
 
 > Motivo direto: comparando o D02 ("Todo o Pipe") com a planilha de forecast Q4 da Ágatta, o
