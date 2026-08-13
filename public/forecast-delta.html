@@ -18,7 +18,7 @@
 body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;line-height:1.5}
 button,input,select,textarea{font-family:var(--font)}
 a{color:var(--teal);text-decoration:none}
-.wrap{max-width:1180px;margin:0 auto;padding:1.25rem 1.5rem 3rem}
+.wrap{max-width:none;margin:0 auto;padding:1.25rem 2rem 3rem}
 .hdr{display:flex;align-items:center;gap:.9rem;margin-bottom:.35rem;flex-wrap:wrap}
 .hdr h1{font-size:1.15rem;font-weight:600;margin:0}
 .sub{color:var(--text2);font-size:.82rem;margin:0 0 1.25rem}
@@ -263,9 +263,12 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
         </div>
       </div>
     </div>
-    <!-- Grupo 2 | QUAIS deals contam (Executivo=quem, Quarter=quando). Escopo removido a
-         pedido do dono (2026-08-06) — variável `scope` continua fixa em 'ativos' no JS
-         (mesmo default do botão que existia), só a opção de trocar para "Tudo" saiu da UI. -->
+    <!-- Grupo 2 | QUAIS deals contam (Executivo=quem, Quarter=quando, Escopo=quais etapas).
+         Escopo tinha saído da UI em 2026-08-06 (variável fixa em 'ativos'); reintroduzido em
+         2026-08-13 (pedido do dono) com 2 opções: Ativos (Cotação/Consultoria/Negociação,
+         como antes) e Todo o Pipe (+ Reunião Agendada/Diagnóstico, mesma régua de prob. do
+         forecast — forecast_flat, sem números novos). Ganho/Implantação continuam de fora dos
+         dois modos — seguem representados só pela barra aditiva "Fechado" do D02. -->
     <div class="hg hg-filters">
       <span class="hg-label">Filtrar por</span>
       <div class="hg-row">
@@ -276,6 +279,13 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
         <div class="fdd-wrapper">
           <button class="fdd-trigger" id="btn-quarter" onclick="toggleQuarterMenu()"><span id="btn-quarter-lbl">Quarter</span><span class="fdd-arr"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span></button>
           <div id="quarter-menu" class="fdd-panel"></div>
+        </div>
+        <div class="ctl">
+          <span class="ctl-label">Escopo</span>
+          <div class="seg-ctrl" id="scope-toggle" role="group" aria-label="Escopo">
+            <button class="seg-btn active" data-v="ativos" aria-pressed="true">Ativos</button>
+            <button class="seg-btn" data-v="pipe" aria-pressed="false">Todo o Pipe</button>
+          </div>
         </div>
       </div>
     </div>
@@ -332,7 +342,7 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
         <button type="button" class="ibtn" data-help="D02" aria-label="Memória de cálculo | D02">i</button>
       </div>
     </div>
-    <div class="chart-wrap"><canvas id="wf"></canvas><div class="state ax-empty" id="chart-state" aria-live="polite">Selecione duas fotos…</div></div>
+    <div class="chart-wrap" style="height:560px"><canvas id="wf"></canvas><div class="state ax-empty" id="chart-state" aria-live="polite">Selecione duas fotos…</div></div>
     <div class="wf-legend" style="display:flex;gap:1.1rem;align-items:center;font-size:.72rem;color:var(--text2);margin:.5rem 0 0;flex-wrap:wrap">
       <span style="display:inline-flex;align-items:center;gap:.35rem"><span style="width:10px;height:10px;border-radius:2px;background:rgba(63,185,80,.85);display:inline-block"></span>Avançou/Ganho (saudável)</span>
       <span style="display:inline-flex;align-items:center;gap:.35rem"><span style="width:10px;height:10px;border-radius:2px;background:rgba(248,81,73,.85);display:inline-block"></span>Perda real (churn)</span>
@@ -396,7 +406,7 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
     <div class="sec-hdr">
       <span class="ccode">D07</span>
       <h3>Visão unificada por etapa</h3>
-      <span class="sec-note">Todas as etapas de Vendas (independe do filtro Ativos/Tudo; Bid no D08) | Movimentação: <b>Novo</b> (entrou) / <b>Avançou</b> (saiu p/ etapa posterior) / <b>Perdido</b> | clique numa linha para o drill</span>
+      <span class="sec-note">Todas as etapas de Vendas (independe do filtro Ativos/Todo o Pipe; Bid no D08) | Movimentação: <b>Novo</b> (entrou) / <b>Avançou</b> (saiu p/ etapa posterior) / <b>Perdido</b> | clique numa linha para o drill</span>
       <span class="toggle-wrap"><button type="button" class="ibtn" data-help="D07" aria-label="Memória de cálculo | D07">i</button></span>
     </div>
     <div style="overflow:auto"><table class="utable" id="stage-table"></table></div>
@@ -407,7 +417,7 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
     <div class="sec-hdr">
       <span class="ccode">D08</span>
       <h3>Pipe de Bid por etapa</h3>
-      <span class="sec-note">Pipeline Bid completo (independe do filtro Ativos/Tudo) | receita probabilizada do Bid usa prob fixa 0,5% (só Proposta/Negociação) | clique numa linha para o drill</span>
+      <span class="sec-note">Pipeline Bid completo (independe do filtro Ativos/Todo o Pipe) | receita probabilizada do Bid usa prob fixa 0,5% (só Proposta/Negociação) | clique numa linha para o drill</span>
       <span class="toggle-wrap"><button type="button" class="ibtn" data-help="D08" aria-label="Memória de cálculo | D08">i</button></span>
     </div>
     <div style="overflow:auto"><table class="utable" id="bid-table"></table></div>
@@ -466,7 +476,7 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
     { key: 'delta', label: 'Δ', align: 'right', type: 'num' },
     { key: 'tipo', label: 'Movimentação', align: 'left', type: 'str' }
   ];
-  var metric = 'prob', horizon = 'arr', scope = 'ativos';   // horizon: 'arr' (ARR estimado) | 'Total' (receita da régua no horizonte completo); scope = ativos|tudo (remove Bid+Standby)
+  var metric = 'prob', horizon = 'arr', scope = 'ativos';   // horizon: 'arr' (ARR estimado) | 'Total' (receita da régua no horizonte completo); scope: 'ativos' (Cotação/Consultoria/Negociação) | 'pipe' (+ Reunião Agendada/Diagnóstico) — remove Bid+Standby sempre
   var aeFilter = new Set(), quarterFilter = new Set();     // filtros multiselect (vazio = todos; '__NONE__' = nenhum)
   function filterQS(){ var p=''; if(aeFilter.size) p+='&ae='+encodeURIComponent(Array.from(aeFilter).join('|')); if(quarterFilter.size) p+='&q='+encodeURIComponent(Array.from(quarterFilter).join('|')); return p; }
   var quarterMetric = 'arr';              // toggle ARR Total / Ponderado da seção de quarter
@@ -476,6 +486,24 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
   // no horizonte completo (probTotal/realTotal). O TCV 12M saiu do menu (2026-07-24).
   function measureKey(){ if(horizon === 'arr') return metric === 'prob' ? 'arrPond' : 'arr'; return metric + 'Total'; }
   function fmtBRL(v){ if(v==null||isNaN(v)) return '-'; return 'R$ ' + Math.round(v).toLocaleString('pt-BR'); }
+  // Formato compacto SEM prefixo "R$" (2026-08-13, pedido do dono): usado só nos rótulos/
+  // tooltip/eixo do gráfico D02 (waterfall), pra ganhar espaço e deixar os números maiores —
+  // panorama macro na barra, valor exato de qualquer forma disponível no drill (clique).
+  // NÃO reusar fmtBRL/fmtBRLc aqui de propósito: essas duas continuam servindo os KPIs
+  // (D01/D03) e o drill (openDrill), que devem seguir mostrando "R$" e o valor cheio.
+  function fmtCompact(v){
+    if(v==null||isNaN(v)) return '—';
+    var sign = v<0 ? '-' : '';
+    var av = Math.abs(v);
+    if(av>=1e6) return sign+(av/1e6).toFixed(1).replace('.',',')+'M';
+    if(av>=1e3){
+      var k = Math.round(av/1e3);
+      // 999.500-999.999 arredondam pra 1000K — vira 1,0M em vez de "quebrar" a casa de milhar.
+      return k>=1000 ? sign+(av/1e6).toFixed(1).replace('.',',')+'M' : sign+k+'K';
+    }
+    return sign+Math.round(av).toLocaleString('pt-BR');
+  }
+  function fmtCompactc(v){ return (v>=0?'+':'-')+fmtCompact(Math.abs(v)); }
   function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
   // x.id vem de _dealId() no backend: hs_id real quando existe, ou chave sintética
   // "n:nome|m:modelo" quando o deal não tem hs_id — só a 1ª forma é um ID válido do HubSpot.
@@ -653,7 +681,11 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
     // o valor só migrou de pipe aberto ponderado para fechado/contratado. Exposição
     // ADITIVA/informativa (barra própria + "Total B + Fechado"), NÃO participa do
     // Σ Δ do waterfall nem da barra Total @ B (ver caveat do card e ficha i do D02).
-    var fechadoVal = (j.fechado && j.fechado[m]) || 0;
+    // SEMPRE 'arr' (Real), nunca a medida do toggle (2026-08-13, pedido do dono): um deal
+    // que já foi para Ganho/Implantação não é mais uma estimativa probabilizada — é receita
+    // real. Antes usava j.fechado[m], que virava arrPond (probabilizado) com "Medida:
+    // Probabilizada" selecionado, subestimando o que já foi de fato ganho.
+    var fechadoVal = (j.fechado && j.fechado.arr) || 0;
     if(j.fechado){
       labels.push('Fechado (Ganho/Implantação no período)'); data.push([0, fechadoVal]); colors.push('rgba(63,185,80,.5)'); dataline.push(fechadoVal);
       runArr.push(null); toArr.push(null); midArr.push(null); healArr.push(null); lossArr.push(null); kinds.push('fechado');
@@ -737,26 +769,28 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
           legend:{display:false},
           tooltip:{
             callbacks:{
-              label:function(ctx){ var i=ctx.dataIndex; var k=kinds[i]; return (k==='delta'?'Δ ':(TOOLTIP_PREFIX[k]||'')) + fmtBRL(dataline[i]); },
+              label:function(ctx){ var i=ctx.dataIndex; var k=kinds[i]; return (k==='delta'?'Δ ':(TOOLTIP_PREFIX[k]||'')) + fmtCompact(dataline[i]); },
               // linhas extras só nas barras de Δ, só quando o segmento tem magnitude
-              // (>R$0,50) — evita "Perda real: R$ 0" quando a barra é 100% saudável (e vice-versa).
+              // (>R$0,50) — evita "Perda real: 0" quando a barra é 100% saudável (e vice-versa).
               afterLabel:function(ctx){
                 var i=ctx.dataIndex; if(kinds[i]!=='delta') return;
                 var lines = [];
-                if(Math.abs(healArr[i]||0) > 0.5) lines.push('Avançou/Ganho (saudável): '+fmtBRLc(healArr[i]));
-                if(Math.abs(lossArr[i]||0) > 0.5) lines.push('Perda real (churn): '+fmtBRLc(lossArr[i]));
+                if(Math.abs(healArr[i]||0) > 0.5) lines.push('Avançou/Ganho (saudável): '+fmtCompactc(healArr[i]));
+                if(Math.abs(lossArr[i]||0) > 0.5) lines.push('Perda real (churn): '+fmtCompactc(lossArr[i]));
                 return lines;
               }
             }
           },
           datalabels:{
-            anchor:'end', align:'end', color:textc, font:{size:10,weight:'700'},
-            formatter:function(v,ctx){ var i=ctx.dataIndex; return kinds[i]==='delta' ? fmtBRLc(dataline[i]) : fmtBRL(dataline[i]); }
+            // Sem "R$" na frente + fonte maior (10→12, 2026-08-13): o espaço ganho ao tirar o
+            // prefixo de moeda vai direto pro tamanho do número, que é o que o dono quer mais legível.
+            anchor:'end', align:'end', color:textc, font:{size:12,weight:'700'},
+            formatter:function(v,ctx){ var i=ctx.dataIndex; return kinds[i]==='delta' ? fmtCompactc(dataline[i]) : fmtCompact(dataline[i]); }
           }
         },
         scales:{
           x:{ ticks:{ color:textc, maxRotation:35, minRotation:0, font:{size:10} }, grid:{display:false} },
-          y:{ min:yMin, ticks:{ color:textc, callback:function(v){ return (v/1e6).toFixed(1)+'M'; } }, grid:{color:gridc} }
+          y:{ min:yMin, ticks:{ color:textc, callback:function(v){ return fmtCompact(v); } }, grid:{color:gridc} }
         }
       }
     });
@@ -1179,9 +1213,10 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
     var b = lastJ ? lastJ.b.resolvedTab : document.getElementById('dateB').value;
     var dTxt = (a||'—')+' × '+(b||'—');
     var mTxt = metric==='prob' ? 'Probabilizada' : 'Real';
-    // horizon/scope saíram do resumo (2026-08-06) junto com os botões — não há mais opção
-    // pra resumir, sempre o mesmo valor fixo ('arr'/'ativos').
-    return [aeTxt, qTxt, dTxt, mTxt].join(' | ');
+    // scope volta ao resumo (2026-08-13, toggle reintroduzido). horizon segue fora (2026-08-06,
+    // sem botão pra conectar) — sempre o mesmo valor fixo ('arr').
+    var sTxt = scope==='pipe' ? 'Todo o Pipe' : 'Ativos';
+    return [aeTxt, qTxt, dTxt, mTxt, sTxt].join(' | ');
   }
   function updateHdrSummary(){ var el=document.getElementById('hdr-summary'); if(el) el.textContent = hdrSummaryTxt(); }
   var _hdrEl = document.getElementById('app-header');
@@ -1211,9 +1246,11 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
     });
   }
   wireToggle('metric-toggle', function(v){ metric=v; refresh(); });
-  // horizon-toggle e scope-toggle removidos da UI (2026-08-06, pedido do dono) — as
-  // variáveis `horizon`/`scope` continuam fixas nos defaults declarados acima ('arr'/
-  // 'ativos'); sem elemento pra conectar, wireToggle('...') quebraria em runtime.
+  // scope-toggle reintroduzido (2026-08-13, pedido do dono) — ver comentário no HTML
+  // (.hg-filters). horizon-toggle CONTINUA removido (2026-08-06): a variável `horizon`
+  // segue fixa em 'arr' no default declarado acima; sem elemento pra conectar,
+  // wireToggle('horizon-toggle') quebraria em runtime.
+  wireToggle('scope-toggle', function(v){ scope=v; refresh(); });
   wireToggle('quarter-toggle', function(v){ quarterMetric=v; if(lastJ) renderQuarterTable(lastJ); });
   wireToggle('q3trend-toggle', function(v){ q3TrendMetric=v; if(q3TrendPoints) drawQ3TrendChart(q3TrendPoints, q3TrendQuarterLabel()); });
   document.getElementById('dateA').addEventListener('change', refresh);
@@ -1235,8 +1272,8 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
       '<p class="hk"><b>Medidas |</b> Horizonte <b>ARR</b>: Probabilizada = <code>arr_estimado</code> × prob. final da etapa | Real = ARR estimado bruto. Horizonte <b>Pipeline total</b>: receita da régua no horizonte completo (motor canônico <code>forecast-compute</code> → <code>forecast-engine</code>, Regra primária nº 3), ancorada na data de cada foto.</p>'+
       '<p class="hk"><b>Fórmula |</b> a barra da etapa é Σ(B) − Σ(A). Invariante verificado: Σ Δ das etapas = Δ do total (selo nos KPIs).</p>'+
       '<p class="hk"><b>Decomposição saudável × perda real (2026-08-07) |</b> cada barra de Δ é colorida em 2 segmentos — verde = "saudável" (deal avançou de etapa, foi p/ Ganho/Implantação, entrou novo na etapa, ou permaneceu e GANHOU valor) | vermelho = "perda real" (foi p/ Perdido/regrediu/saiu do pipe sem avançar, ou permaneceu e PERDEU valor). Mesma classificação do drill da barra (clique pra ver os deals de cada tipo). Os 2 segmentos somam exatamente o Δ total da barra.</p>'+
-      '<p class="hk"><b>Escopo |</b> segue o filtro Ativos/Tudo do header (sem Bid e Stand by).</p>'+
-      '<p class="hk"><b>Fechado (2026-08-02) |</b> hoje um deal que vira Ganho entre A e B "derruba" o Total @ B como se fosse perda de valor — na verdade é vitória: o valor só migrou de pipe aberto ponderado para fechado/contratado. <b>Implantação conta como Ganho</b> nesta barra (decisão do dono, 2026-08-02). A barra <b>Fechado</b> soma ARR/ARR Ponderado (na foto A) dos deals que foram para Ganho ou Implantação no período (clique para ver a lista); a barra <b>Total B + Fechado</b> comunica o quadro completo (o que já foi executado + o que ainda está por vir). São barras INFORMATIVAS/aditivas — não entram no Σ Δ nem no invariante das etapas.</p>' },
+      '<p class="hk"><b>Escopo (toggle reintroduzido 2026-08-13) |</b> <b>Ativos</b> = Cotação, Consultoria, Negociação (default) | <b>Todo o Pipe</b> = Ativos + Reunião Agendada e Diagnóstico, com a mesma régua de probabilidade do forecast (<code>forecast_flat</code>: Reunião Agendada 6%, Diagnóstico 6% fixo — nenhum número novo). Os dois modos removem sempre Bid e Stand by, e nenhum dos dois inclui Ganho/Implantação como barra própria — isso é sempre a barra "Fechado" abaixo.</p>'+
+      '<p class="hk"><b>Fechado (2026-08-02; sempre valor Real desde 2026-08-13) |</b> hoje um deal que vira Ganho entre A e B "derruba" o Total @ B como se fosse perda de valor — na verdade é vitória: o valor só migrou de pipe aberto ponderado para fechado/contratado. <b>Implantação conta como Ganho</b> nesta barra (decisão do dono, 2026-08-02). A barra <b>Fechado</b> soma o ARR Real (na foto A) dos deals que foram para Ganho ou Implantação no período — <b>sempre Real, mesmo com "Medida: Probabilizada" selecionada no header</b> (um deal já fechado não é mais uma estimativa; antes a barra caía para o ARR Ponderado nesse modo, subestimando o que já foi de fato ganho). A barra <b>Total B + Fechado</b> comunica o quadro completo (o que já foi executado, sempre Real, + o que ainda está por vir, na medida selecionada). São barras INFORMATIVAS/aditivas — não entram no Σ Δ nem no invariante das etapas.</p>' },
     D03: { title: 'KPIs comparativos | A → B', sem: ['arr_estimado_fallback','arr_ponderado_forecast'], html:
       '<p class="hk"><b>O que mostra |</b> os mesmos KPIs do D01, só que em A → B com delta absoluto e %.</p>'+
       '<p class="hk"><b>Point-in-time |</b> o ARR Ponderado de cada foto usa a config vigente NELA (mesma medida única do D02) — derisks e reclassificações do período aparecem no delta. Deals, Vidas e ARR Total independem de probabilidade.</p>'+
@@ -1244,7 +1281,7 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
       '<p class="hk"><b>Drill |</b> Vidas, ARR Total e ARR Ponderado abrem a lista de deals com a Movimentação (Novo | Permaneceu | Avançou | Caiu | Ganho).</p>' },
     D04: { title: 'Funil | deals por etapa', sem: [], html:
       '<p class="hk"><b>O que mostra |</b> a contagem de deals abertos por etapa do funil em cada foto (A em cinza, B em turquesa).</p>'+
-      '<p class="hk"><b>Campos |</b> etapa da foto (coluna Etapa do snapshot; Closed Lost → Perdido, fora do funil). Escopo Ativos/Tudo do header.</p>'+
+      '<p class="hk"><b>Campos |</b> etapa da foto (coluna Etapa do snapshot; Closed Lost → Perdido, fora do funil). Escopo Ativos/Todo o Pipe do header.</p>'+
       '<p class="hk"><b>Drill |</b> clique na etapa para ver os deals e a Movimentação de cada um.</p>' },
     D05: { title: 'Deals que saíram do pipe', sem: [], html:
       '<p class="hk"><b>O que mostra |</b> deals presentes na Foto A que não estão mais no escopo na Foto B, com o destino final e o valor.</p>'+
@@ -1255,11 +1292,11 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
       '<p class="hk"><b>Campos |</b> quarter = campo <code>quarter</code> do deal (fallback: quarter da <code>data_prevista_para_receita</code>); sem nenhum dos dois → "Sem quarter". ARR como no D03.</p>'+
       '<p class="hk"><b>Drill |</b> clique na linha para ver os deals do quarter na métrica do toggle.</p>' },
     D07: { title: 'Visão unificada por etapa', sem: ['arr_estimado_fallback','arr_ponderado_forecast'], html:
-      '<p class="hk"><b>O que mostra |</b> TODAS as etapas de Vendas (independe do filtro Ativos/Tudo; o pipeline Bid tem visão própria no D08): deals, movimentação, vidas e ARRs por etapa, em A → B.</p>'+
+      '<p class="hk"><b>O que mostra |</b> TODAS as etapas de Vendas (independe do filtro Ativos/Todo o Pipe; o pipeline Bid tem visão própria no D08): deals, movimentação, vidas e ARRs por etapa, em A → B.</p>'+
       '<p class="hk"><b>Movimentação |</b> Novo = entrou na etapa | Avançou = saiu para etapa posterior (inclui Ganho/Implantação) | Perdido = foi para Perdido.</p>'+
       '<p class="hk"><b>Campos |</b> ARR Total = Σ <code>arr_estimado</code> (com fallbacks) dos deals da etapa; ARR Ponderado = Σ ARR × prob. final da etapa. Δ ARR Pond. = B − A.</p>' },
     D08: { title: 'Pipe de Bid por etapa', sem: ['arr_estimado_fallback'], html:
-      '<p class="hk"><b>O que mostra |</b> o pipeline <b>Bid</b> completo, por etapa, em A → B — deals, movimentação, vidas e ARRs. Independe do filtro Ativos/Tudo do header (que remove o Bid das demais visões).</p>'+
+      '<p class="hk"><b>O que mostra |</b> o pipeline <b>Bid</b> completo, por etapa, em A → B — deals, movimentação, vidas e ARRs. Independe do filtro Ativos/Todo o Pipe do header (que remove o Bid das demais visões).</p>'+
       '<p class="hk"><b>Régua do Bid |</b> a probabilidade do Bid no motor canônico é <b>fixa em 0,5%</b> e só as etapas <b>Proposta Enviada</b> e <b>Negociação</b> têm linha de receita no Overall — nas demais etapas o deal aparece com deals/vidas/ARR e receita zerada, como no painel canônico. ARR Ponderado do Bid = <code>arr_estimado</code> × 0,5%.</p>'+
       '<p class="hk"><b>Escopo |</b> deals de Bid criados desde jan/2025 (mesmo filtro do painel Forecast, Regra primária nº 3); Perdido sai do escopo.</p>'+
       '<p class="hk"><b>Movimentação |</b> mesma leitura do D07: Novo | Avançou | Perdido, pelo destino bruto na Foto B.</p>' },

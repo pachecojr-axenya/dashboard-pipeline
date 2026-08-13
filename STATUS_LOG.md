@@ -1,5 +1,59 @@
 # Dashboard Enhancement Loop — Status Log
 
+### Delta | D02 full-width, valores compactos sem "R$", Fechado sempre Real, toggle Ativos/Todo o Pipe (2026-08-13)
+
+> A pedido do dono, 4 ajustes no painel Delta (`forecast-delta.html`), todos girando em torno do
+> D02 (Waterfall do forecast por etapa) ficar pequeno/pouco legível na tela. `origin/main` andou 4
+> commits (Fix/Feat Lista ABM) durante o trabalho — confirmado zero arquivo comum além do próprio
+> `STATUS_LOG.md`, rebase (fast-forward + stash pop) limpo, `npm run check` DEPOIS do rebase.
+
+- **Full-width**: `.wrap{max-width:1180px}` → `max-width:none` (padding lateral 2rem). Afeta os
+  9 cards (D01–D09) igualmente — não há grid nesta página (cada `.novo-card` já era um bloco
+  cheio da largura de `.wrap`, ao contrário do `dashboard.html`), então bastou 1 regra. Altura do
+  `.chart-wrap` do D02 subiu de 440px (herdado da classe genérica) para 560px inline, pra
+  acompanhar a largura maior.
+- **Valores compactos sem "R$" no D02**: nova função `fmtCompact`/`fmtCompactc` (só para
+  datalabels/tooltip/eixo Y do D02 — **não** mexe em `fmtBRL`/`fmtBRLc`, que continuam servindo os
+  KPIs do D01/D03 e o drill, propositalmente com `R$` e valor cheio). Formato `750K` / `12,3M`
+  (vírgula decimal, sem sinal exceto nos Δ). Fonte do datalabel 10px→12px (espaço ganho do prefixo
+  removido). Edge case tratado: 999.500–999.999 arredondava para `1000K` — agora vira `1,0M`.
+  Drill (clique na barra) continua abrindo o modal com `fmtBRL` (valor exato, "R$ " incluso) —
+  sem mudança aí, como pedido.
+- **Fechado sempre Real**: a barra "Fechado" do D02 lia `j.fechado[m]` (`m` = medida do toggle
+  Real/Probabilizada) — com "Probabilizada" selecionada, mostrava `arrPond` de deals que **já
+  foram para Ganho/Implantação**, subestimando o que já foi de fato ganho (uma vitória não é mais
+  uma estimativa). Trocado para `j.fechado.arr` incondicional, ignorando o toggle. "Total B +
+  Fechado" continua somando os dois (pipe aberto na medida escolhida + fechado sempre Real) —
+  comportamento já documentado como intencional ("o que já foi executado + o que ainda está por
+  vir").
+- **Toggle Ativos/Todo o Pipe reintroduzido** (tinha sido removido da UI em 2026-08-06, variável
+  `scope` fixada em `'ativos'`; e Diagnóstico tinha sido excluído até do modo "Tudo" antigo por
+  decisão de 2026-07-20 — **ambas revertidas agora, a pedido explícito do dono nesta sessão**).
+  Em vez de reativar o `scope='tudo'` legado (que inclui Ganho/Implantação como barra própria do
+  waterfall — duplicaria com a barra aditiva "Fechado"), criado um **terceiro valor de escopo**,
+  `'pipe'` (`lib/forecast-compute.js`: `DELTA_PIPE_STAGES`, `applyDeltaScope`,
+  `deltaScopeStages`, `deltaRowInScope`): Ativos (Cotação/Consultoria/Negociação, default) +
+  Reunião Agendada + Diagnóstico — Ganho/Implantação continuam de fora dos dois modos, sempre via
+  Fechado. Régua de probabilidade das 2 etapas novas é a `forecast_flat` de sempre (Reunião
+  Agendada 6%, Diagnóstico 6% fixo via `_autoProbInfo`) — nenhum número novo, só parou de filtrar
+  os deals. `'tudo'` continua existente no backend (D09 força esse valor de propósito,
+  independente do toggle) — só não é mais exposto na UI. `api/history.js`: `scopeParam`/
+  `deltaScoped` e o texto do caveat aceitam `'pipe'`. Front: novo `#scope-toggle` (`.seg-ctrl`,
+  mesmo padrão do `#metric-toggle`) em `.hg-filters`, `wireToggle('scope-toggle', ...)`, resumo do
+  header condensado e ficha "i" do D02 atualizados. Textos "Ativos/Tudo" (D02/D04/D07/D08,
+  visíveis e na ficha) viraram "Ativos/Todo o Pipe" por consistência com o novo rótulo do toggle.
+- **Validação**: `node --check` em `lib/forecast-compute.js`/`api/history.js`; `_check-inline-js`
+  em `forecast-delta.html` (0 erros); `npm run check` completo (54 PASS MKT Budget + suites de
+  Delta — `test-forecast-delta-leva2.js`, `test-forecast-delta-e2e.js` — 0 FAIL, invariante
+  Σ Δ = Δtotal intacto, payload `fechado` inalterado no backend); `_check-design-tokens` sem novo
+  erro (6 ocorrências de cor legada em CSS puro no `forecast-delta.html` já eram dívida
+  pré-existente, não introduzidas aqui). Lógica do escopo `pipe` testada isoladamente com deals
+  sintéticos (`applyDeltaScope`/`deltaScopeStages`/`deltaRowInScope`): inclui exatamente as 5
+  etapas esperadas, exclui Ganho/Implantação/Stand by/Bid. **Ressalva**: sem
+  `GOOGLE_SERVICE_ACCOUNT_JSON` neste ambiente local não há fotos reais no BQ para um smoke visual
+  do D02 renderizado (`action=fotos` retorna erro de config, não é regressão desta mudança) —
+  recomendo um smoke visual (Playwright ou manual) contra dado real antes do deploy.
+
 ### Fix | Lista ABM dizia "(sem empresa)" em 100% dos deals — a página não pedia o dado (2026-08-12)
 
 > Achado pelo dono NA TELA, horas depois do deploy: *"filtre por lista ABM no BDR

@@ -182,8 +182,8 @@ module.exports = async function handler(req, res) {
       if (!(b > a)) return res.status(400).json({ success: false, error: 'Data B deve ser posterior a Data A' });
 
       const includeClosedStages = params.get('includeClosedStages') === '1';
-      const scopeParam = params.get('scope'); // 'ativos' | 'tudo' | null (aditivo/retrocompat)
-      const deltaScoped = scopeParam === 'ativos' || scopeParam === 'tudo';
+      const scopeParam = params.get('scope'); // 'ativos' | 'pipe' | 'tudo' | null (aditivo/retrocompat)
+      const deltaScoped = scopeParam === 'ativos' || scopeParam === 'pipe' || scopeParam === 'tudo';
       const _setOf = v => v ? new Set(String(v).split('|').filter(Boolean)) : null;
       const aeSel = _setOf(params.get('ae'));   // filtro Executivo (multiselect)
       const qSel = _setOf(params.get('q'));      // filtro Quarter (multiselect)
@@ -336,9 +336,11 @@ module.exports = async function handler(req, res) {
             + ((cfgA && cfgB) ? '' : ' ⚠ Config não snapshotada em ' + (!cfgA && !cfgB ? 'A e B' : (!cfgA ? 'A' : 'B')) + ' — essa(s) foto(s) usa(m) a config atual.'),
           'Ganho/Implantação depende do faturamento manual (gate: vencimento ≤ data da foto) | em datas anteriores ao início do faturamento a etapa aparece subestimada — não é erro, é fidelidade ponto-no-tempo',
           deltaScoped
-            ? (scopeParam === 'tudo' ? 'Escopo: Tudo (todas as etapas, sem Bid e Standby)' : 'Escopo: Ativos (Cotação, Consultoria, Negociação)')
+            ? (scopeParam === 'tudo' ? 'Escopo: Tudo (todas as etapas, sem Bid e Standby)'
+              : scopeParam === 'pipe' ? 'Escopo: Todo o Pipe (Reunião Agendada, Diagnóstico, Cotação, Consultoria, Negociação)'
+              : 'Escopo: Ativos (Cotação, Consultoria, Negociação)')
             : (includeClosedStages ? 'Escopo inclui Implantação e Ganho' : 'Escopo exclui Implantação e Ganho'),
-          'Fechado = Σ ARR/ARR Ponderado (na foto A) dos deals que foram para Ganho entre A e B | valor INFORMATIVO/aditivo, não entra no Σ Δ do waterfall | "Total B + Fechado" = o que já foi executado (fechado no período) + o que ainda está por vir (pipe aberto em B)',
+          'Fechado = Σ ARR/ARR Ponderado (na foto A) dos deals que foram para Ganho entre A e B | SEMPRE o valor Real (nunca o Probabilizado, mesmo com "Medida: Probabilizada" selecionado) — um deal que já fechou não é mais uma estimativa | valor INFORMATIVO/aditivo, não entra no Σ Δ do waterfall | "Total B + Fechado" = o que já foi executado (fechado no período) + o que ainda está por vir (pipe aberto em B)',
         ],
       });
     }
@@ -348,8 +350,8 @@ module.exports = async function handler(req, res) {
       const measure = params.get('measure') || 'prob12';
       const field = params.get('field');
       const includeClosedStages = params.get('includeClosedStages') === '1';
-      const scopeParam = params.get('scope'); // 'ativos' | 'tudo' | null (aditivo/retrocompat)
-      const deltaScoped = scopeParam === 'ativos' || scopeParam === 'tudo';
+      const scopeParam = params.get('scope'); // 'ativos' | 'pipe' | 'tudo' | null (aditivo/retrocompat)
+      const deltaScoped = scopeParam === 'ativos' || scopeParam === 'pipe' || scopeParam === 'tudo';
       const _setOf = v => v ? new Set(String(v).split('|').filter(Boolean)) : null;
       const aeSel = _setOf(params.get('ae'));
       const qSel = _setOf(params.get('q'));
