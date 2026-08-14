@@ -2,6 +2,7 @@
 
 const { setCORSHeaders, requireAuth, getHubspotToken, methodCheck } = require('./_helpers');
 const bq = require('../lib/bigquery');
+const wh = require('../lib/hubspot-warehouse');
 const { _service: workloadService } = require('./bdr-workload');
 const { BDR_TEAM, canonicalizeBdrName, bdrOwnerIds, bdrOwnerIdClause } = require('../lib/bdr-team');
 
@@ -9,6 +10,45 @@ const PROJECT = 'gen-lang-client-0423905839';
 const GOLD = 'axenya_sales_hubspot_bdr_prd_sae1_gold';
 const TABLE = `${PROJECT}.${GOLD}.bdr_workload_daily_dimension_v2`;
 const REACTIVITY_TABLE = `${PROJECT}.${GOLD}.bdr_workload_reactivity_v2`;
+
+// ---------------------------------------------------------------------------
+// FONTE DO BLOCO DE RITMO | armazém canônico (default desde 13/08/2026)
+//
+// O Workload nasceu lendo o medallion (`axenya_sales_hubspot_bdr_prd_sae1_gold`,
+// Cloud Run Job `bdr-etl-job`, 20:00 em dia útil). O ritmo agora vem do armazém
+// da fonte única (`axenya_hubspot_prd_*`, reconcile 06:30 + botão Atualizar, 83
+// checks). `?fonte=medallion` continua vivo e é como se compara.
+//
+// MEDIDO CONTRA O MART JÁ DEPLOYADO em 13/08/2026 | 30 dias, roster de 13 BDRs,
+// sem hoje (`node scripts/compare-workload-sources.js --adc`):
+//   ligações  7.378 = 7.378     e-mails   5.801 = 5.801
+//   LinkedIn    871 =   871     reuniões    163 =   163
+//   conectadas  567 =   567     sem resposta 3.765 = 3.765
+//   ocupado   2.577 = 2.577     nº errado      58 =    58
+//   sem desfecho 128 =   128
+//   WhatsApp MANUAL 2.755 = 2.755  <- a linha que autorizou a troca
+//
+// O que muda de valor é só automação: WhatsApp total 3.706 -> 2.755 e atividades
+// 17.919 -> 16.968, os dois pelos mesmos 951 disparos do Treble, que o armazém
+// mede à parte (decisão de 10/08 | automação não é esforço do BDR, ninguém
+// digitou). Não é cobertura menor, é régua declarada | ver `premissas`.
+//
+// E o armazém enxerga HOJE: 13/08 às 15h ele tinha 273 atividades do roster
+// contra 8 do medallion, que só roda às 20:00. Os 3 pares dia x dono que
+// existem só no medallion em 30 dias têm `activities_total = 0` | linha vazia,
+// não dado perdido.
+//
+// O QUE NÃO MIGRA AINDA, e por isso o endpoint é HÍBRIDO em vez de trocar de
+// tabela: inserção (empresas/contatos criados), movimento de CRM
+// (tentativa/conectado/qualificado/desqualificado), SQL e Penetração não têm
+// mart no armazém. Esses blocos seguem no medallion e o payload DIZ isso em
+// `source.camadas`, para quem desconfiar de um número saber a procedência sem
+// ler código.
+const WAREHOUSE_TABLE = wh.t('gold', 'mart_bdr_workload_dimension_daily');
+const FONTES = ['medallion', 'armazem'];
+// Colunas que o armazém passa a mandar. O resto da linha continua vindo do
+// medallion | é esta lista, e só ela, que define a fronteira do híbrido.
+const CAMPOS_RITMO_ARMAZEM = ['calls', 'calls_conversation', 'calls_dial', 'calls_voicemail', 'calls_no_answer', 'calls_busy', 'calls_wrong_number', 'calls_no_outcome', 'calls_talk_time_s', 'emails', 'whatsapp', 'whatsapp_manual', 'whatsapp_treble', 'linkedin', 'meetings', 'activities_total', 'companies_touched', 'contacts_touched'];
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
 const CHANNELS = ['calls', 'emails', 'whatsapp', 'linkedin', 'meetings'];
 const CHANNEL_SQL = { calls: 'calls_total', emails: 'emails_sent_total', whatsapp: 'whatsapp_total', linkedin: 'linkedin_total', meetings: 'meetings_total' };
@@ -23,7 +63,11 @@ async function cachedFilterOptions() { if (filterOptionsCache.val && Date.now() 
 // evita refazer as queries a cada troca de aba/recarga. refresh=1 ignora o cache.
 const PAYLOAD_TTL_MS = 45 * 1000;
 let payloadCache = new Map();
-function payloadKey(r) { return JSON.stringify({ s: r.since, u: r.until, b: r.bdr || '', c: (r.channels || []).join(','), bd: r.businessDays, p: (r.portes || []).join(','), sg: (r.segmentos || []).join(','), pe: (r.personas || []).join(',') }); }
+// `f` (fonte) ENTRA NA CHAVE: sem ela, um pedido com `?fonte=medallion` receberia
+// o payload do armazém que ficou em cache 45s antes, e a comparação entre as duas
+// fontes compararia uma fonte com ela mesma | o jeito mais rápido de "provar"
+// paridade perfeita e não estar provando nada.
+function payloadKey(r) { return JSON.stringify({ s: r.since, u: r.until, b: r.bdr || '', c: (r.channels || []).join(','), bd: r.businessDays, p: (r.portes || []).join(','), sg: (r.segmentos || []).join(','), pe: (r.personas || []).join(','), f: r.fonte || '' }); }
 
 const LIVE_RHYTHM_FIELDS = ['calls', 'callsConversation', 'callsDial', 'callsVoicemail', 'callsNoAnswer', 'callsBusy', 'callsWrongNumber', 'callsNoOutcome', 'callsTalkTimeS', 'emails', 'whatsapp', 'whatsappManual', 'whatsappTreble', 'linkedin', 'meetings', 'activities', 'total'];
 const LIVE_CRM_FIELDS = ['attempted', 'crmMovements', 'connected', 'qualified', 'disqualified'];
@@ -81,7 +125,15 @@ function parse(req) {
   const since = parseDate(q.get('since'), 'since');
   const until = parseDate(q.get('until'), 'until');
   if (since > until) throw bad('since > until');
-  return { since, until, bdr, bdrIds: bdrOwnerIds(bdr), channels, businessDays: q.get('businessDays') !== 'false', portes, segmentos, personas, porte: portes[0] || null, segmento: segmentos[0] || null, persona: personas[0] || null, refresh: q.get('refresh') === '1' };
+  // DEFAULT VIRADO PARA O ARMAZÉM em 13/08/2026, depois da paridade medida
+  // (`node scripts/compare-workload-sources.js --adc`): os 9 números de ritmo e
+  // desfecho batem na unha e o WhatsApp manual bate em 2.755, então o que muda é
+  // só automação. `?fonte=medallion` continua vivo e é como se compara | manter
+  // a rota antiga foi o que achou 7 defeitos silenciosos na migração da F5, que
+  // trocar e olhar a tela não acharia.
+  const fonte = q.get('fonte') || 'armazem';
+  if (!FONTES.includes(fonte)) throw bad('fonte inválida (medallion|armazem)');
+  return { since, until, bdr, bdrIds: bdrOwnerIds(bdr), channels, businessDays: q.get('businessDays') !== 'false', portes, segmentos, personas, porte: portes[0] || null, segmento: segmentos[0] || null, persona: personas[0] || null, refresh: q.get('refresh') === '1', fonte };
 }
 function todayIso() { return new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString().slice(0, 10); }
 function includesToday(r) { const t = todayIso(); return r.since <= t && r.until >= t; }
@@ -99,6 +151,56 @@ function previousRange(requested) { const days = Math.floor((new Date(`${request
 function inClause(alias, expr, name, values, params, type) { if (!values || !values.length) return null; const names = values.map((v, i) => { const pn = `${name}${i}`; params.push({ name: pn, type: type || 'STRING', value: v }); return `@${pn}`; }); return `${expr} IN (${names.join(',')})`; }
 function filterSql(alias, requested, params) { const wh = [`${alias}.metric_date BETWEEN @since AND @until`]; const oc = bdrOwnerIdClause(alias, requested.bdrIds, requested.bdr); if (oc) wh.push(oc); const pc = inClause(alias, `COALESCE(NULLIF(${alias}.porte,''),'desconhecido')`, 'porte', requested.portes, params); if (pc) wh.push(pc); const sc = inClause(alias, `COALESCE(NULLIF(${alias}.segmento,''),'desconhecido')`, 'segmento', requested.segmentos, params); if (sc) wh.push(sc); const xc = inClause(alias, `COALESCE(NULLIF(${alias}.persona,''),'não classificada')`, 'persona', requested.personas, params); if (xc) wh.push(xc); if (requested.businessDays) wh.push(`EXTRACT(DAYOFWEEK FROM ${alias}.metric_date) NOT IN (1,7)`); return wh.join(' AND '); }
 async function queryRows(since, until, requested) { const r = Object.assign({}, requested, { since, until }); const params = [{ name: 'since', type: 'DATE', value: since }, { name: 'until', type: 'DATE', value: until }]; const sql = `SELECT metric_date, owner_id, owner_name, SUM(calls_total) calls, SUM(calls_conversation_total) calls_conversation, SUM(calls_dial_total) calls_dial, SUM(calls_voicemail_total) calls_voicemail, SUM(calls_no_answer_total) calls_no_answer, SUM(calls_busy_total) calls_busy, SUM(calls_wrong_number_total) calls_wrong_number, SUM(calls_no_outcome_total) calls_no_outcome, SUM(calls_talk_time_s) calls_talk_time_s, SUM(emails_sent_total) emails, SUM(whatsapp_total) whatsapp, SUM(whatsapp_manual_total) whatsapp_manual, SUM(whatsapp_treble_total) whatsapp_treble, SUM(linkedin_total) linkedin, SUM(meetings_total) meetings, SUM(activities_total) activities_total, SUM(companies_touched) companies_touched, SUM(contacts_touched) contacts_touched, SUM(companies_inserted) companies_inserted, SUM(contacts_inserted) contacts_inserted, SUM(attempted_total) attempted, SUM(crm_movements) crm_movements, SUM(connected_total) connected, SUM(qualified_total) qualified, SUM(disqualified_total) disqualified, SUM(sql_deals) sql_deals, MAX(refreshed_at) refreshed_at FROM \`${TABLE}\` d WHERE ${filterSql('d', r, params)} GROUP BY metric_date, owner_id, owner_name ORDER BY metric_date, owner_name`; const { rows } = await bq.query(sql, params); return { sql, rows }; }
+// Mesma janela, mesmos filtros, mesmo grão do `queryRows` | a diferença está só
+// nos nomes de coluna e na régua de WhatsApp.
+//
+// O armazém chama de `whatsapp_total` o que o medallion chama de
+// `whatsapp_manual_total`, e de `whatsapp_automacao_total` o que o medallion
+// chama de `whatsapp_treble_total`. NÃO renomeei o armazém para caber no
+// vocabulário do medallion: a régua decidida em 10/08 é a do armazém (automação
+// medida à parte), e reescrever o mart para agradar o consumidor é como as duas
+// pontas voltam a divergir. O de-para vive aqui, num lugar só.
+async function queryWarehouseRows(since, until, requested) {
+  const r = Object.assign({}, requested, { since, until });
+  const params = [{ name: 'since', type: 'DATE', value: since }, { name: 'until', type: 'DATE', value: until }];
+  const sql = `SELECT metric_date, owner_id, owner_name, SUM(calls_total) calls, SUM(calls_conversation_total) calls_conversation, SUM(calls_dial_total) calls_dial, SUM(calls_voicemail_total) calls_voicemail, SUM(calls_no_answer_total) calls_no_answer, SUM(calls_busy_total) calls_busy, SUM(calls_wrong_number_total) calls_wrong_number, SUM(calls_no_outcome_total) calls_no_outcome, SUM(calls_talk_time_s) calls_talk_time_s, SUM(emails_sent_total) emails, SUM(whatsapp_total) whatsapp, SUM(whatsapp_total) whatsapp_manual, SUM(whatsapp_automacao_total) whatsapp_treble, SUM(linkedin_total) linkedin, SUM(meetings_total) meetings, SUM(activities_total) activities_total, SUM(companies_touched) companies_touched, SUM(contacts_touched) contacts_touched FROM ${WAREHOUSE_TABLE} d WHERE ${filterSql('d', r, params)} GROUP BY metric_date, owner_id, owner_name ORDER BY metric_date, owner_name`;
+  const { rows } = await bq.query(sql, params);
+  return { sql, rows };
+}
+// Costura por dia x dono. Por que NÃO um JOIN em SQL entre as duas tabelas:
+// porte, segmento e persona são calculados por réguas DIFERENTES nos dois lados
+// (o armazém tira de `dim_company`/`dim_contact`, o medallion tirava do CI, que
+// congelou em 25/06). Casar linha por dimensão perderia linha dos dois lados em
+// silêncio. Dia e dono são a única chave que significa a mesma coisa nas duas.
+//
+// União das chaves, não interseção: dia que só o armazém tem (hoje, antes das
+// 20:00) precisa aparecer, e dia que só o medallion tem não pode sumir.
+//
+// `linhasSoNoArmazem` fica na casa das centenas e ISSO É ESPERADO, não perda nem
+// ganho de dado: o SQL não filtra por dono quando ninguém pede um BDR (a peneira
+// do roster é `isTeamOwner`, por nome, depois), e o armazém tem os 127 donos do
+// portal enquanto o medallion só ingere os 13 do roster. Medido em 30 dias: 263
+// linhas casadas, 258 só no armazém (não-roster, descartadas adiante) e 3 só no
+// medallion, todas com `activities_total = 0`.
+function mergeRitmoDoArmazem(medallionRows, warehouseRows) {
+  const chave = (row) => `${String(row.metric_date).slice(0, 10)}|${String(row.owner_id || '')}`;
+  const porChave = new Map();
+  (medallionRows || []).forEach((row) => porChave.set(chave(row), Object.assign({}, row)));
+  let substituidas = 0;
+  let novas = 0;
+  (warehouseRows || []).forEach((row) => {
+    const k = chave(row);
+    const alvo = porChave.get(k);
+    if (alvo) { substituidas += 1; CAMPOS_RITMO_ARMAZEM.forEach((campo) => { alvo[campo] = row[campo]; }); return; }
+    novas += 1;
+    // Linha que só existe no armazém: o bloco de CRM dela é ZERO de verdade
+    // (o medallion não a produziu), e zero explícito é melhor que ausência,
+    // que sumiria do gráfico sem ninguém notar.
+    porChave.set(k, Object.assign({ companies_inserted: 0, contacts_inserted: 0, attempted: 0, crm_movements: 0, connected: 0, qualified: 0, disqualified: 0, sql_deals: 0, refreshed_at: null }, row));
+  });
+  const rows = Array.from(porChave.values()).sort((a, b) => String(a.metric_date).localeCompare(String(b.metric_date)) || String(a.owner_name || '').localeCompare(String(b.owner_name || '')));
+  return { rows, substituidas, novas, somenteMedallion: (medallionRows || []).length - substituidas };
+}
 function bqItem(row, source, requested) {
   return {
     date: String(row.metric_date || row.date).slice(0, 10),
@@ -181,9 +283,43 @@ function bucketHours(h) { if (h == null || !Number.isFinite(Number(h))) return '
 function reactivityFromRows(rows) { const touched = rows.filter((r) => String(r.has_touch) === 'true' || r.has_touch === true || Number(r.has_touch) === 1); const hours = touched.map((r) => Number(r.hours_to_first_touch)).filter((x) => Number.isFinite(x)); const buckets = { lt_1h: 0, '1_4h': 0, '4_24h': 0, '24_72h': 0, '72h_plus': 0, sem_toque: 0 }; rows.forEach((r) => { buckets[bucketHours((String(r.has_touch) === 'true' || r.has_touch === true || Number(r.has_touch) === 1) ? Number(r.hours_to_first_touch) : null)] += 1; }); return { p50Hours: percentile(hours, 0.5), p75Hours: percentile(hours, 0.75), withoutFirstTouch: buckets.sem_toque, eligible: rows.length, touched: touched.length, coverage: rows.length ? touched.length / rows.length : 0, buckets }; }
 async function queryReactivity(requested) { const params = [{ name: 'since', type: 'DATE', value: requested.since }, { name: 'until', type: 'DATE', value: requested.until }]; const wh = ['eligible_date BETWEEN @since AND @until']; const oc = bdrOwnerIdClause('', requested.bdrIds, requested.bdr); if (oc) wh.push(oc); const pc = inClause('', "COALESCE(NULLIF(porte,''),'desconhecido')", 'porte', requested.portes, params); if (pc) wh.push(pc); const sc = inClause('', "COALESCE(NULLIF(segmento,''),'desconhecido')", 'segmento', requested.segmentos, params); if (sc) wh.push(sc); const xc = inClause('', "COALESCE(NULLIF(persona,''),'não classificada')", 'persona', requested.personas, params); if (xc) wh.push(xc); const sql = `SELECT owner_name, eligible_date, hours_to_first_touch, has_touch, porte, segmento, persona FROM \`${REACTIVITY_TABLE}\` WHERE ${wh.join(' AND ')}`; const { rows } = await bq.query(sql, params); return reactivityFromRows(rows.filter((r) => isTeamOwner(r.owner_name))); }
 async function queryFilterOptions() { const sql = `SELECT ARRAY_AGG(DISTINCT COALESCE(NULLIF(porte,''),'desconhecido') IGNORE NULLS ORDER BY COALESCE(NULLIF(porte,''),'desconhecido')) portes, ARRAY_AGG(DISTINCT COALESCE(NULLIF(segmento,''),'desconhecido') IGNORE NULLS ORDER BY COALESCE(NULLIF(segmento,''),'desconhecido')) segmentos, ARRAY_AGG(DISTINCT COALESCE(NULLIF(persona,''),'não classificada') IGNORE NULLS ORDER BY COALESCE(NULLIF(persona,''),'não classificada')) personas FROM \`${TABLE}\``; const { rows } = await bq.query(sql, []); const row = rows[0] || {}; return { bdr: BDR_TEAM, porte: row.portes || PORTE_VALUES, segmento: row.segmentos || [], persona: row.personas || [] }; }
-async function build(requested) { if (!bq.isConfigured()) throw Object.assign(new Error('BigQuery não configurado'), { statusCode: 503 }); const prevRange = previousRange(requested); const [currentRows, previousRows, reactivity, filterOptions, live] = await Promise.all([queryRows(requested.since, requested.until, requested), queryRows(prevRange.since, prevRange.until, requested), queryReactivity(requested), cachedFilterOptions(), liveRowsForToday(requested)]); const current = rowsToAggregates(currentRows.rows, requested, live.used ? live : null); const previous = rowsToAggregates(previousRows.rows, requested, null); addBaseline(current, previous); const totals = Object.values(current.byBdr).reduce((acc, row) => { Object.keys(acc).forEach((k) => { if (typeof acc[k] === 'number') acc[k] += num(row[k]); }); return acc; }, { calls: 0, callsConversation: 0, callsDial: 0, callsVoicemail: 0, callsNoAnswer: 0, callsBusy: 0, callsWrongNumber: 0, callsNoOutcome: 0, callsTalkTimeS: 0, emails: 0, whatsapp: 0, whatsappManual: 0, whatsappTreble: 0, linkedin: 0, meetings: 0, activities: 0, total: 0, companiesTouched: 0, contactsTouched: 0, companiesInserted: 0, contactsInserted: 0, attempted: 0, crmMovements: 0, connected: 0, qualified: 0, disqualified: 0, sqlDeals: 0 }); const selectedSum = requested.channels.reduce((sum, channel) => sum + totals[channel], 0); const refreshedAt = live.used && live.generatedAt && (!current.refreshedAt || live.generatedAt > current.refreshedAt) ? live.generatedAt : current.refreshedAt; return { success: true, contractVersion: '2.1', requestedRange: { since: requested.since, until: requested.until }, resolvedRange: { since: requested.since, until: requested.until }, baselineRange: prevRange, filtersApplied: { bdr: requested.bdr, channels: requested.channels, businessDays: requested.businessDays, porte: requested.porte, segmento: requested.segmento, persona: requested.persona }, filtersIgnored: [], filterOptions, supportedFilters: { pulse: ['bdr', 'channels', 'businessDays', 'porte', 'segmento', 'persona'], channels: ['bdr', 'channels', 'businessDays', 'porte', 'segmento', 'persona'], management: ['bdr', 'channels', 'businessDays', 'porte', 'segmento', 'persona'], penetration: ['bdr', 'porte', 'segmento', 'persona'], evolution: ['bdr', 'channels', 'businessDays', 'porte', 'segmento', 'persona'] }, source: { kind: live.used ? 'hybrid' : 'bq-operational', table: TABLE, refreshedAt, liveToday: live.used, liveCached: !!live.cached, liveOverlay: live.used ? 'HubSpot live usado apenas sem filtros porte/segmento/persona.' : (live.disabledByFilters ? 'HubSpot live desativado porque há filtro porte/segmento/persona; somente Gold v2.' : 'Fonte BQ operacional') }, quality: { status: live.error ? 'warn' : 'pass', checks: [{ key: 'mece_total', status: totals.total === selectedSum ? 'pass' : 'fail', message: 'ritmo real = soma dos canais selecionados' }, { key: 'reactivity', status: 'pass', message: 'Reatividade vem de bdr_workload_reactivity_v2.' }, { key: 'call_outcome', status: (live.unknownDispositions && live.unknownDispositions.length) ? 'warn' : 'pass', message: (live.unknownDispositions && live.unknownDispositions.length) ? `Desfecho de ligação não reconhecido no live (cai em sem conexão): ${live.unknownDispositions.join(' | ')}. Atualizar CALL_DISPOSITION_GUID.` : 'Desfecho de ligação resolvido por GUID do HubSpot; conectada = disposition Conectado.' }, { key: 'live_merge', status: live.used ? 'pass' : (includesToday(requested) ? 'warn' : 'pass'), message: live.used ? 'Hoje agregado do HubSpot live no servidor.' : (live.disabledByFilters ? 'Live omitido por filtro ICP.' : (live.error || 'Janela sem hoje.')) }] }, coverage: { reactivity: { status: 'available', eligible: reactivity.eligible, touched: reactivity.touched, coverage: reactivity.coverage } }, data: { rhythm: { totals, series: current.series.sort((a, b) => a.date.localeCompare(b.date) || a.bdr.localeCompare(b.bdr)), byBdr: Object.values(current.byBdr).sort((a, b) => a.bdr.localeCompare(b.bdr)) }, reactivity, management: Object.values(current.byBdr).sort((a, b) => a.bdr.localeCompare(b.bdr)) } };
+// Carrega a janela na fonte pedida. Com `fonte=armazem`, o bloco de ritmo vem do
+// armazém e o resto continua no medallion.
+//
+// A QUEDA PARA O MEDALLION É DE PROPÓSITO, e não é preguiça de tratar erro: as 5
+// colunas de desfecho de ligação do mart do armazém dependem de um rebuild da
+// imagem do ETL que pode não ter acontecido ainda (o SQL é assado na imagem do
+// Cloud Run | mexer no BQ à mão é revertido no próximo run). Se elas não
+// existirem, o BigQuery devolve "Unrecognized name" e a alternativa a cair de
+// volta seria a página inteira em 500. Cair e DIZER que caiu preserva a tela e
+// deixa o defeito visível no selo, em vez de trocar um número por zero calado.
+async function carregarRows(since, until, requested) {
+  const medallion = await queryRows(since, until, requested);
+  if (requested.fonte !== 'armazem') return { rows: medallion.rows, mescla: null, erro: null };
+  try {
+    const armazem = await queryWarehouseRows(since, until, requested);
+    const mescla = mergeRitmoDoArmazem(medallion.rows, armazem.rows);
+    return { rows: mescla.rows, mescla, erro: null };
+  } catch (error) {
+    return { rows: medallion.rows, mescla: null, erro: error.message || String(error) };
+  }
+}
+async function build(requested) { if (!bq.isConfigured()) throw Object.assign(new Error('BigQuery não configurado'), { statusCode: 503 }); const prevRange = previousRange(requested); const [currentRows, previousRows, reactivity, filterOptions, live] = await Promise.all([carregarRows(requested.since, requested.until, requested), carregarRows(prevRange.since, prevRange.until, requested), queryReactivity(requested), cachedFilterOptions(), liveRowsForToday(requested)]); const armazemAtivo = requested.fonte === 'armazem' && !currentRows.erro; const current = rowsToAggregates(currentRows.rows, requested, live.used ? live : null); const previous = rowsToAggregates(previousRows.rows, requested, null); addBaseline(current, previous); const totals = Object.values(current.byBdr).reduce((acc, row) => { Object.keys(acc).forEach((k) => { if (typeof acc[k] === 'number') acc[k] += num(row[k]); }); return acc; }, { calls: 0, callsConversation: 0, callsDial: 0, callsVoicemail: 0, callsNoAnswer: 0, callsBusy: 0, callsWrongNumber: 0, callsNoOutcome: 0, callsTalkTimeS: 0, emails: 0, whatsapp: 0, whatsappManual: 0, whatsappTreble: 0, linkedin: 0, meetings: 0, activities: 0, total: 0, companiesTouched: 0, contactsTouched: 0, companiesInserted: 0, contactsInserted: 0, attempted: 0, crmMovements: 0, connected: 0, qualified: 0, disqualified: 0, sqlDeals: 0 }); const selectedSum = requested.channels.reduce((sum, channel) => sum + totals[channel], 0); const refreshedAt = live.used && live.generatedAt && (!current.refreshedAt || live.generatedAt > current.refreshedAt) ? live.generatedAt : current.refreshedAt; return { success: true, contractVersion: '2.1', requestedRange: { since: requested.since, until: requested.until }, resolvedRange: { since: requested.since, until: requested.until }, baselineRange: prevRange, filtersApplied: { bdr: requested.bdr, channels: requested.channels, businessDays: requested.businessDays, porte: requested.porte, segmento: requested.segmento, persona: requested.persona }, filtersIgnored: [], filterOptions, supportedFilters: { pulse: ['bdr', 'channels', 'businessDays', 'porte', 'segmento', 'persona'], channels: ['bdr', 'channels', 'businessDays', 'porte', 'segmento', 'persona'], management: ['bdr', 'channels', 'businessDays', 'porte', 'segmento', 'persona'], penetration: ['bdr', 'porte', 'segmento', 'persona'], evolution: ['bdr', 'channels', 'businessDays', 'porte', 'segmento', 'persona'] }, source: { kind: live.used ? 'hybrid' : 'bq-operational', table: armazemAtivo ? WAREHOUSE_TABLE.replace(/`/g, '') : TABLE, refreshedAt, liveToday: live.used, liveCached: !!live.cached, liveOverlay: live.used ? 'HubSpot live usado apenas sem filtros porte/segmento/persona.' : (live.disabledByFilters ? 'HubSpot live desativado porque há filtro porte/segmento/persona; somente Gold v2.' : 'Fonte BQ operacional'), fonte: requested.fonte, fonteEfetiva: armazemAtivo ? 'armazem' : 'medallion',
+  // Camada POR BLOCO. Existe para quem desconfiar de um número saber de onde
+  // ele veio sem abrir o código | migração pela metade que não se declara é
+  // como a tela mostra parte do funil como se fosse o todo.
+  camadas: { ritmo: armazemAtivo ? 'armazem-gold' : 'medallion-gold', desfechoLigacao: armazemAtivo ? 'armazem-gold' : 'medallion-gold', insercao: 'medallion-gold', crm: 'medallion-gold', sql: 'medallion-gold', penetracao: 'medallion-gold' },
+  premissas: armazemAtivo ? [
+    'WhatsApp digitado por gente bate na unha | 2.755 nas duas fontes em 30 dias no roster, zero de diferença. É esta linha que autoriza a troca: nenhuma mensagem de esforço real se perde.',
+    'WhatsApp total CAI de 3.706 para 2.755 e atividades de 17.920 para 16.969 | os dois deltas são os mesmos 951 disparos automáticos do Treble, que o armazém mede à parte pela régua de 10/08/2026 (automação não é esforço do BDR, ninguém digitou). Quem comparar com um print antigo vai ver o número cair sem o time ter trabalhado menos.',
+    'Automação por BDR NÃO é comparável entre as fontes | o medallion credita 951 disparos ao roster e o armazém 454. O Treble grava sem dono, então os dois INFEREM: o armazém pelo dono no instante do toque, o medallion pelo dono atual. Não muda esforço em nenhuma das réguas, mas invalida ler "automação por BDR" como se fosse um número só.',
+    'Contatos tocados 1,6% e empresas tocadas 4,5% de diferença ainda em aberto | é o WARN `parity_workload_v2` da suíte do armazém.',
+    'Inserção, CRM, SQL e Penetração seguem no medallion | não há mart desses blocos no armazém.',
+  ] : [],
+  mescla: currentRows.mescla ? { linhasComRitmoDoArmazem: currentRows.mescla.substituidas, linhasSoNoArmazem: currentRows.mescla.novas, linhasSoNoMedallion: currentRows.mescla.somenteMedallion } : null,
+  fallbackErro: currentRows.erro || null }, quality: { status: (live.error || currentRows.erro) ? 'warn' : 'pass', checks: [{ key: 'mece_total', status: totals.total === selectedSum ? 'pass' : 'fail', message: 'ritmo real = soma dos canais selecionados' }, { key: 'fonte_ritmo', status: currentRows.erro ? 'warn' : 'pass', message: currentRows.erro ? `Pedido fonte=armazem e o mart não respondeu (${currentRows.erro}) | ritmo caiu de volta no medallion. Se o erro fala em coluna desconhecida, falta rebuildar a imagem do ETL.` : (armazemAtivo ? 'Ritmo e desfecho de ligação vêm do armazém canônico; inserção, CRM, SQL e Penetração seguem no medallion.' : 'Ritmo vem do medallion (default).') },{ key: 'reactivity', status: 'pass', message: 'Reatividade vem de bdr_workload_reactivity_v2.' }, { key: 'call_outcome', status: (live.unknownDispositions && live.unknownDispositions.length) ? 'warn' : 'pass', message: (live.unknownDispositions && live.unknownDispositions.length) ? `Desfecho de ligação não reconhecido no live (cai em sem conexão): ${live.unknownDispositions.join(' | ')}. Atualizar CALL_DISPOSITION_GUID.` : 'Desfecho de ligação resolvido por GUID do HubSpot; conectada = disposition Conectado.' }, { key: 'live_merge', status: live.used ? 'pass' : (includesToday(requested) ? 'warn' : 'pass'), message: live.used ? 'Hoje agregado do HubSpot live no servidor.' : (live.disabledByFilters ? 'Live omitido por filtro ICP.' : (live.error || 'Janela sem hoje.')) }] }, coverage: { reactivity: { status: 'available', eligible: reactivity.eligible, touched: reactivity.touched, coverage: reactivity.coverage } }, data: { rhythm: { totals, series: current.series.sort((a, b) => a.date.localeCompare(b.date) || a.bdr.localeCompare(b.bdr)), byBdr: Object.values(current.byBdr).sort((a, b) => a.bdr.localeCompare(b.bdr)) }, reactivity, management: Object.values(current.byBdr).sort((a, b) => a.bdr.localeCompare(b.bdr)) } };
 }
 
 module.exports = async function handler(req, res) { setCORSHeaders(req, res); if (!methodCheck(req, res, ['GET'])) return; const user = requireAuth(req, res); if (!user) return; try { const requested = parse(req); if (requested.refresh) return res.status(200).json(await build(requested)); const key = payloadKey(requested); const hit = payloadCache.get(key); if (hit && Date.now() - hit.at < PAYLOAD_TTL_MS) return res.status(200).json(hit.val); const val = await build(requested); if (payloadCache.size > 200) payloadCache.clear(); payloadCache.set(key, { at: Date.now(), val }); return res.status(200).json(val); } catch (error) { return res.status(error.statusCode || 500).json({ success: false, error: error.message }); } };
 module.exports._service = { liveRowsForToday };
-module.exports._test = { parse, CHANNELS, CHANNEL_SQL, isBusiness, build, TABLE, REACTIVITY_TABLE, normalizeTimestamp, aggregateLivePayload, liveRowsForToday, previousRange, activityBucket, percentile, bucketHours, reactivityFromRows, rowsToAggregates, liveLineage, todayIso };
+module.exports._test = { parse, payloadKey, CHANNELS, CHANNEL_SQL, isBusiness, build, TABLE, REACTIVITY_TABLE, normalizeTimestamp, aggregateLivePayload, liveRowsForToday, previousRange, activityBucket, percentile, bucketHours, reactivityFromRows, rowsToAggregates, liveLineage, todayIso, WAREHOUSE_TABLE, FONTES, CAMPOS_RITMO_ARMAZEM, mergeRitmoDoArmazem, carregarRows };
