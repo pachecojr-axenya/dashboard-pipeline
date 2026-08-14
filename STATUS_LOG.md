@@ -1,5 +1,21 @@
 # Dashboard Enhancement Loop — Status Log
 
+### 🚀 DEPLOY DE PRODUÇÃO | Delta: drill em Total @ A/B + fix da etapa de origem (2026-08-14)
+
+> Autorização explícita do dono ("sim"), continuação da mesma sessão da entrada "Delta | D02:
+> drill em Total @ A/B + fix da etapa de origem no drill de quem avançou" abaixo.
+>
+> `origin/main` andou 1 commit (fix do refresh gate do Workload) durante o trabalho —
+> confirmado zero arquivo comum, rebase (fast-forward + stash pop) limpo, sem conflito.
+> `npm run check` completo antes do commit: 0 FAIL. Commit `a07d090` (4 arquivos:
+> `STATUS_LOG.md`, `api/history.js`, `lib/forecast-compute.js`, `public/forecast-delta.html`).
+> `npm run deploy` (preflight + `vercel --prod --yes`): deployment
+> `dpl_5FsCrPWWT4biYKPkjdX4dFea8cx5`, READY.
+>
+> **Pós-deploy confirmado nos dois hosts** (`project-bsmfu.vercel.app` e
+> `axenya-pipeline-dashboard.vercel.app`): `/forecast-delta` = 200; `/api/history` = 401 (auth
+> ativa).
+
 ### Delta | D02: drill em Total @ A/B + fix da etapa de origem no drill de quem avançou (2026-08-14)
 
 > Dois pedidos do dono na mesma rodada. **Não deployado ainda** (`npm run check` limpo,
