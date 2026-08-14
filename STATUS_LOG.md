@@ -1,5 +1,31 @@
 # Dashboard Enhancement Loop — Status Log
 
+### Delta | Foto A/B persistem na URL entre reloads (2026-08-14)
+
+> Pedido do dono: dar refresh na página perdia a comparação em andamento (Foto A/B sempre
+> resetavam pro default — B = foto mais recente, A = ~4 fotos atrás). Nenhum outro filtro do
+> painel (Executivo/Quarter/Escopo/Medida) tinha esse problema reportado ainda — escopo desta
+> mudança é só Foto A/B, os dois parâmetros que definem a comparação em si. **Não deployado
+> ainda** (só front-end, `npm run check` limpo).
+
+- **`public/forecast-delta.html`** — nova função `syncUrlDates(a, b)`: escreve `?a=&b=` na URL
+  via `history.replaceState` (não `pushState` — não empilha uma entrada de histórico a cada
+  troca de data/refresh; só reescreve a query string, preserva path/hash/outros params).
+  Chamada dentro de `refresh()`, logo depois da validação `b > a` já existente (mesmo ponto
+  que hoje dispara o fetch).
+- **`loadFotos()`** — ao montar os defaults de Foto A/B, agora primeiro checa `?a=&b=` na URL:
+  se as duas forem datas `YYYY-MM-DD` válidas, dentro da janela coberta por fotos
+  (`fotoMin`/`fotoMax`) e `B > A`, usa essas em vez do default. Não precisa bater 1:1 com uma
+  foto conhecida — o backend já resolve "foto ≤ data" em `action=compare`, mesma tolerância
+  que os inputs de data sempre tiveram. Formato inválido, fora da janela, ou só um dos dois
+  presentes → cai no default de sempre, sem erro.
+- **Validação**: `_check-inline-js` (0 erros); lógica de validação/serialização testada
+  isoladamente com `URL`/`URLSearchParams` do Node (mesmas classes do browser) — datas
+  válidas aceitas, formato inválido/B≤A/fora da janela/só um param presente corretamente
+  rejeitados (caem no default); `syncUrlDates` preserva outros query params e hash existentes
+  na URL. `npm run check` completo — 0 FAIL (mudança é só front-end, não toca `api/`/`lib/`).
+  Servidor local confirma `/forecast-delta?a=...&b=...` = 200.
+
 ### 🚀 DEPLOY DE PRODUÇÃO | Delta: Fechado passa a contar deals "nascidos fechados" (2026-08-14)
 
 > Autorização explícita do dono ("quero"), continuação da mesma sessão da entrada "Delta |

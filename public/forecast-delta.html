@@ -575,6 +575,14 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
       .finally(function(){ if(btn.textContent!=='📸 Capturar agora'){ btn.disabled=false; btn.textContent='📸 Capturar agora'; } });
   }
 
+  // Mantém Foto A/B na URL (?a=&b=, 2026-08-14) — replaceState (não pushState) pra não
+  // empilhar uma entrada de histórico a cada troca de data/refresh; só reescreve query
+  // string + hash, preserva o resto da URL. Lida com a página aberta sem "?" nenhum.
+  function syncUrlDates(a, b){
+    var url = new URL(window.location.href);
+    url.searchParams.set('a', a); url.searchParams.set('b', b);
+    history.replaceState(null, '', url.pathname + '?' + url.searchParams.toString() + url.hash);
+  }
   function loadFotos(){
     return fetch('/api/history?action=fotos&cadence=daily', {credentials:'same-origin'})
       .then(function(r){ return r.json(); })
@@ -590,7 +598,17 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
         // mais antiga). Só datas YYYY-MM-DD servem de default: no fallback do Sheet as
         // fotos mensais têm tab "Mmm AAAA", que o input[type=date] rejeita (ficava vazio).
         var isoFotos = fotos.filter(function(f){ return /^\d{4}-\d{2}-\d{2}$/.test(f.tab); });
-        if(isoFotos.length){
+        // Foto A/B na URL (?a=&b=, 2026-08-14, pedido do dono: manter a comparação ao dar
+        // refresh na página) têm precedência sobre o default — só se as duas forem datas
+        // YYYY-MM-DD válidas, dentro da janela coberta por fotos e B > A. Não precisa bater
+        // 1:1 com uma foto conhecida (o backend já resolve "foto <= data" em action=compare).
+        var urlParams = new URLSearchParams(window.location.search);
+        var urlA = urlParams.get('a'), urlB = urlParams.get('b');
+        var isIso = function(s){ return !!s && /^\d{4}-\d{2}-\d{2}$/.test(s); };
+        var urlOk = isIso(urlA) && isIso(urlB) && urlA >= fotoMin && urlA <= fotoMax && urlB >= fotoMin && urlB <= fotoMax && urlB > urlA;
+        if(urlOk){
+          dA.value = urlA; dB.value = urlB;
+        } else if(isoFotos.length){
           dB.value = isoFotos[0].tab;
           dA.value = isoFotos[Math.min(isoFotos.length-1, 4)].tab;
         }
@@ -605,6 +623,7 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
     var cs = document.getElementById('chart-state');
     if(!a || !b){ cs.style.display='block'; cs.className='state'; cs.innerHTML=AxUI.emptyState('Escolha as duas datas.'); return; }
     if(!(b > a)){ cs.style.display='block'; cs.className='state'; cs.innerHTML=AxUI.banner('A Foto B (depois) precisa ser posterior à Foto A (antes).', {severity:'error'}); if(chart){chart.destroy();chart=null;} document.getElementById('kpis').innerHTML=''; return; }
+    syncUrlDates(a, b);
     cs.style.display='block'; cs.className='state'; cs.innerHTML='<span class="spin"></span>Calculando…';
     fetch('/api/history?action=compare&a='+a+'&b='+b+'&scope='+encodeURIComponent(scopeQS())+filterQS(), {credentials:'same-origin'})
       .then(function(r){ return r.json().then(function(j){ return {ok:r.ok, j:j}; }); })
