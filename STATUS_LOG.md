@@ -1,5 +1,47 @@
 # Dashboard Enhancement Loop — Status Log
 
+### Workload | a ressalva do carimbo estava na aba errada (2026-08-14)
+
+> Dono voltou: "selecionei do dia 10 ao 13 e ainda aparece 2 ligações conectadas do Allan".
+
+**As 2 continuam 2 de propósito** — nada foi reclassificado, e há teste impedindo. O defeito era
+outro e é meu: o aviso do carimbo tinha sido colocado no card agregado da aba **Canais**,
+enquanto o número que gera a dúvida ("Allan: 124 ligações, 2 conectadas") é lido no **ranking
+por BDR da aba Gestão**, uma pessoa por linha. Ressalva que não fica na mesma tabela do número
+que ela ressalva não alcança quem está lendo.
+
+- **`api/bdr-workload-semantic.js`** — `queryQualidadeCarimbo` passou a agrupar por
+  `owner_name` e devolver `porBdr`, com a mesma peneira de roster do resto do payload. Cada
+  linha de `data.management` recebe `longaSemConexao` e `reuniaoAgendada`. O acumulador de
+  `totals` não tem essas chaves, então elas **não entram em nenhum total** — auditoria não vira
+  métrica somada por acidente.
+- **`public/bdr-workload-v2.js`** — coluna **"60s+ s/ carimbo"** no ranking, logo depois de
+  "Taxa conexão", ordenável e clicável (abre o drill `outcome:longa_sem_conexao` já filtrado no
+  BDR da linha). Auditoria indisponível renderiza **travessão**, nunca zero: zero leria como
+  "carimbo perfeito", que é a conclusão errada.
+
+**E a coluna por BDR mudou a leitura do achado.** Medido em 10–13/08:
+
+| BDR | ligações | conectadas | 60s+ s/ carimbo | reunião agendada |
+|---|---|---|---|---|
+| Giovana Nunes | 153 | 4 | 1 | 0 |
+| Priscilla Feliciello | 125 | 30 | 2 | 0 |
+| **Allan Valença** | 124 | **2** | **11** | **1** |
+| Marcelli Netto | 105 | 8 | 4 | 0 |
+| Leticia Romão | 99 | 3 | 0 | 0 |
+| Felipe Andrade | 96 | 7 | 1 | 0 |
+| Bruna Reis | 89 | 12 | 1 | 1 |
+| Gabriele Almeida | 73 | 0 | 0 | 0 |
+| Emanuelle Braga | 65 | 3 | 2 | 0 |
+
+O resto do time fica entre 0 e 4; o Allan tem 11. **Não é artefato do integrador, é hábito de
+preenchimento dele** — vira coaching individual, não conserto de pipeline. E separa dois casos
+que pareciam iguais: Gabriele fez 73 ligações com 0 conectadas **e 0 longas** (não conectou
+mesmo); Allan tem 11 conversas escondidas atrás do carimbo.
+
+`npm run check`: 0 FAIL, com 4 asserções novas travando a coluna, o drill dela, a ordenação e o
+travessão para auditoria indisponível.
+
 ### Workload | "124 ligações e 2 conectadas" está certo, e mesmo assim engana (2026-08-14)
 
 > Dúvida do dono sobre Allan Valença. Conferido contra o HubSpot ao vivo, não contra a tela.

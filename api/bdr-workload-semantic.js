@@ -243,17 +243,32 @@ const REUNIAO_AGENDADA_GUID = '2e7360c1-6b71-40e9-ab2b-30ae98a4678c';
 const TOUCH_MART = wh.t('gold', 'mart_bdr_touch');
 const FACT_ENGAGEMENT = wh.t('silver', 'fact_engagement');
 const CONVERSA_MIN_S = 60;
+// Sai POR BDR, e não só o total do time: o número que gera a dúvida ("Allan: 124
+// ligações, 2 conectadas") é lido no ranking da aba Gestão, uma pessoa por
+// linha. Aviso agregado na aba Canais não alcança quem está olhando a linha do
+// Allan — a ressalva tem de estar na MESMA tabela do número que ela ressalva.
 async function queryQualidadeCarimbo(requested) {
   const params = [{ name: 'since', type: 'DATE', value: requested.since }, { name: 'until', type: 'DATE', value: requested.until }];
+  const vazio = { ligacoes: null, longaSemConexao: null, reuniaoAgendada: null, desfechoNaoMapeado: null, pisoConversaS: CONVERSA_MIN_S, porBdr: {}, erro: null };
   try {
-    const sql = `SELECT COUNT(*) ligacoes, COUNTIF(t.call_duration_s >= ${CONVERSA_MIN_S} AND COALESCE(t.call_outcome,'') != 'connected') longa_sem_conexao, COUNTIF(e.disposition_id = '${REUNIAO_AGENDADA_GUID}') reuniao_agendada, COUNTIF(COALESCE(t.call_outcome,'') = '' AND COALESCE(e.disposition_id,'') != '') desfecho_nao_mapeado FROM ${TOUCH_MART} t LEFT JOIN ${FACT_ENGAGEMENT} e USING (engagement_id) WHERE t.channel = 'call' AND ${filterSql('t', requested, params)}`;
+    const sql = `SELECT t.owner_name, COUNT(*) ligacoes, COUNTIF(t.call_duration_s >= ${CONVERSA_MIN_S} AND COALESCE(t.call_outcome,'') != 'connected') longa_sem_conexao, COUNTIF(e.disposition_id = '${REUNIAO_AGENDADA_GUID}') reuniao_agendada, COUNTIF(COALESCE(t.call_outcome,'') = '' AND COALESCE(e.disposition_id,'') != '') desfecho_nao_mapeado FROM ${TOUCH_MART} t LEFT JOIN ${FACT_ENGAGEMENT} e USING (engagement_id) WHERE t.channel = 'call' AND ${filterSql('t', requested, params)} GROUP BY t.owner_name`;
     const { rows } = await bq.query(sql, params);
-    const r = rows[0] || {};
-    return { ligacoes: num(r.ligacoes), longaSemConexao: num(r.longa_sem_conexao), reuniaoAgendada: num(r.reuniao_agendada), desfechoNaoMapeado: num(r.desfecho_nao_mapeado), pisoConversaS: CONVERSA_MIN_S, erro: null };
+    const out = Object.assign({}, vazio, { ligacoes: 0, longaSemConexao: 0, reuniaoAgendada: 0, desfechoNaoMapeado: 0, porBdr: {} });
+    rows.forEach((r) => {
+      const bdr = canonicalizeBdrName(r.owner_name);
+      // Mesma peneira do resto do payload: dono fora do roster (ou já fora do
+      // time na janela) não entra no total nem vira linha.
+      if (!isTeamOwner(bdr, requested.until) && !isTeamOwner(bdr, requested.since)) return;
+      if (requested.bdr && bdr !== requested.bdr) return;
+      const item = { ligacoes: num(r.ligacoes), longaSemConexao: num(r.longa_sem_conexao), reuniaoAgendada: num(r.reuniao_agendada), desfechoNaoMapeado: num(r.desfecho_nao_mapeado) };
+      const acc = out.porBdr[bdr] || (out.porBdr[bdr] = { ligacoes: 0, longaSemConexao: 0, reuniaoAgendada: 0, desfechoNaoMapeado: 0 });
+      Object.keys(item).forEach((k) => { acc[k] += item[k]; out[k] += item[k]; });
+    });
+    return out;
   } catch (error) {
     // Auditoria indisponível não pode derrubar a tela nem virar zero calado:
     // zero aqui significaria "carimbo perfeito", que é a conclusão errada.
-    return { ligacoes: null, longaSemConexao: null, reuniaoAgendada: null, desfechoNaoMapeado: null, pisoConversaS: CONVERSA_MIN_S, erro: String(error.message || error).slice(0, 200) };
+    return Object.assign({}, vazio, { erro: String(error.message || error).slice(0, 200) });
   }
 }
 // Costura por dia x dono. Por que NÃO um JOIN em SQL entre as duas tabelas:
@@ -399,7 +414,14 @@ async function build(requested) { if (!bq.isConfigured()) throw Object.assign(ne
   // é de porte/segmento/persona (DISTINCT na tabela inteira) e não pode carregar
   // o roster junto — roster depende do período pedido.
   const filterOptions = Object.assign({}, filterOptionsBase, { bdr: activeTeam(requested.since, requested.until) });
-  const armazemAtivo = requested.fonte === 'armazem' && !currentRows.erro; const current = rowsToAggregates(currentRows.rows, requested, live.used ? live : null); const previous = rowsToAggregates(previousRows.rows, requested, null); addBaseline(current, previous); const totals = Object.values(current.byBdr).reduce((acc, row) => { Object.keys(acc).forEach((k) => { if (typeof acc[k] === 'number') acc[k] += num(row[k]); }); return acc; }, { calls: 0, callsConversation: 0, callsDial: 0, callsVoicemail: 0, callsNoAnswer: 0, callsBusy: 0, callsWrongNumber: 0, callsNoOutcome: 0, callsTalkTimeS: 0, emails: 0, whatsapp: 0, whatsappManual: 0, whatsappTreble: 0, linkedin: 0, meetings: 0, activities: 0, total: 0, companiesTouched: 0, contactsTouched: 0, companiesInserted: 0, contactsInserted: 0, attempted: 0, crmMovements: 0, connected: 0, qualified: 0, disqualified: 0, sqlDeals: 0 }); const selectedSum = requested.channels.reduce((sum, channel) => sum + totals[channel], 0); const refreshedAt = live.used && live.generatedAt && (!current.refreshedAt || live.generatedAt > current.refreshedAt) ? live.generatedAt : current.refreshedAt; return { success: true, contractVersion: '2.1', requestedRange: { since: requested.since, until: requested.until }, resolvedRange: { since: requested.since, until: requested.until }, baselineRange: prevRange, filtersApplied: { bdr: requested.bdr, channels: requested.channels, businessDays: requested.businessDays, porte: requested.porte, segmento: requested.segmento, persona: requested.persona }, filtersIgnored: [], filterOptions, supportedFilters: { pulse: ['bdr', 'channels', 'businessDays', 'porte', 'segmento', 'persona'], channels: ['bdr', 'channels', 'businessDays', 'porte', 'segmento', 'persona'], management: ['bdr', 'channels', 'businessDays', 'porte', 'segmento', 'persona'], penetration: ['bdr', 'porte', 'segmento', 'persona'], evolution: ['bdr', 'channels', 'businessDays', 'porte', 'segmento', 'persona'] }, source: { kind: live.used ? 'hybrid' : 'bq-operational', table: armazemAtivo ? WAREHOUSE_TABLE.replace(/`/g, '') : TABLE, refreshedAt, liveToday: live.used, liveCached: !!live.cached, liveOverlay: live.used ? 'HubSpot live usado apenas sem filtros porte/segmento/persona.' : (live.disabledByFilters ? 'HubSpot live desativado porque há filtro porte/segmento/persona; somente Gold v2.' : 'Fonte BQ operacional'), fonte: requested.fonte, fonteEfetiva: armazemAtivo ? 'armazem' : 'medallion',
+  const armazemAtivo = requested.fonte === 'armazem' && !currentRows.erro; const current = rowsToAggregates(currentRows.rows, requested, live.used ? live : null); const previous = rowsToAggregates(previousRows.rows, requested, null); addBaseline(current, previous); // Cola a auditoria do carimbo em cada linha de BDR. Sem isto o "2 conectadas"
+  // do ranking continua sozinho na tela, que foi exatamente a dúvida levantada.
+  Object.keys(current.byBdr).forEach((bdr) => {
+    const q = (qualidadeCarimbo.porBdr || {})[bdr];
+    current.byBdr[bdr].longaSemConexao = q ? q.longaSemConexao : (qualidadeCarimbo.erro ? null : 0);
+    current.byBdr[bdr].reuniaoAgendada = q ? q.reuniaoAgendada : (qualidadeCarimbo.erro ? null : 0);
+  });
+  const totals = Object.values(current.byBdr).reduce((acc, row) => { Object.keys(acc).forEach((k) => { if (typeof acc[k] === 'number') acc[k] += num(row[k]); }); return acc; }, { calls: 0, callsConversation: 0, callsDial: 0, callsVoicemail: 0, callsNoAnswer: 0, callsBusy: 0, callsWrongNumber: 0, callsNoOutcome: 0, callsTalkTimeS: 0, emails: 0, whatsapp: 0, whatsappManual: 0, whatsappTreble: 0, linkedin: 0, meetings: 0, activities: 0, total: 0, companiesTouched: 0, contactsTouched: 0, companiesInserted: 0, contactsInserted: 0, attempted: 0, crmMovements: 0, connected: 0, qualified: 0, disqualified: 0, sqlDeals: 0 }); const selectedSum = requested.channels.reduce((sum, channel) => sum + totals[channel], 0); const refreshedAt = live.used && live.generatedAt && (!current.refreshedAt || live.generatedAt > current.refreshedAt) ? live.generatedAt : current.refreshedAt; return { success: true, contractVersion: '2.1', requestedRange: { since: requested.since, until: requested.until }, resolvedRange: { since: requested.since, until: requested.until }, baselineRange: prevRange, filtersApplied: { bdr: requested.bdr, channels: requested.channels, businessDays: requested.businessDays, porte: requested.porte, segmento: requested.segmento, persona: requested.persona }, filtersIgnored: [], filterOptions, supportedFilters: { pulse: ['bdr', 'channels', 'businessDays', 'porte', 'segmento', 'persona'], channels: ['bdr', 'channels', 'businessDays', 'porte', 'segmento', 'persona'], management: ['bdr', 'channels', 'businessDays', 'porte', 'segmento', 'persona'], penetration: ['bdr', 'porte', 'segmento', 'persona'], evolution: ['bdr', 'channels', 'businessDays', 'porte', 'segmento', 'persona'] }, source: { kind: live.used ? 'hybrid' : 'bq-operational', table: armazemAtivo ? WAREHOUSE_TABLE.replace(/`/g, '') : TABLE, refreshedAt, liveToday: live.used, liveCached: !!live.cached, liveOverlay: live.used ? 'HubSpot live usado apenas sem filtros porte/segmento/persona.' : (live.disabledByFilters ? 'HubSpot live desativado porque há filtro porte/segmento/persona; somente Gold v2.' : 'Fonte BQ operacional'), fonte: requested.fonte, fonteEfetiva: armazemAtivo ? 'armazem' : 'medallion',
   // Camada POR BLOCO. Existe para quem desconfiar de um número saber de onde
   // ele veio sem abrir o código | migração pela metade que não se declara é
   // como a tela mostra parte do funil como se fosse o todo.
