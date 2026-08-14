@@ -1,7 +1,7 @@
 'use strict';
 
 const { setCORSHeaders, requireAuth, methodCheck } = require('./_helpers');
-const { BDR_TEAM } = require('../lib/bdr-team');
+const { BDR_TEAM, activeTeam } = require('../lib/bdr-team');
 
 function enabledFromEnv(value) {
   if (value == null || value === '') return false;
@@ -13,7 +13,10 @@ module.exports = async function handler(req, res) {
   if (!methodCheck(req, res, ['GET'])) return;
   const user = requireAuth(req, res);
   if (!user) return;
-  return res.status(200).json({ success: true, enabled: enabledFromEnv(process.env.BDR_FLAG_WORKLOAD_V2), team: BDR_TEAM, source: 'BDR_FLAG_WORKLOAD_V2', defaultEnabledWhenUnset: false });
+  // `team` é o roster de HOJE (fallback do seletor no boot). O roster que vale
+  // para a janela pedida vem em `filterOptions.bdr` de /api/bdr-workload-semantic,
+  // que conhece o período — este endpoint não conhece.
+  return res.status(200).json({ success: true, enabled: enabledFromEnv(process.env.BDR_FLAG_WORKLOAD_V2), team: activeTeam(), teamHistorico: BDR_TEAM, source: 'BDR_FLAG_WORKLOAD_V2', defaultEnabledWhenUnset: false });
 };
 
 module.exports._test = { enabledFromEnv };

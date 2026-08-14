@@ -66,7 +66,7 @@
 
 const { hubspotPost, hubspotGet } = require('../lib/hubspot');
 const { setCORSHeaders, requireAuth, getHubspotToken, methodCheck } = require('./_helpers');
-const { BDR_TEAM, HS_ALIAS, norm, resolveTeamIds } = require('../lib/bdr-team');
+const { BDR_TEAM, BDR_EXITS, HS_ALIAS, norm, resolveTeamIds } = require('../lib/bdr-team');
 const whq = require('../lib/hubspot-wh-queries');
 const wh = require('../lib/hubspot-warehouse');
 
@@ -81,8 +81,11 @@ const CONTACT_PROPS = [
 // Muramoto deixam o time ATIVO de BDRs. Na cadência, a vigência é pelo MÊS DE CRIAÇÃO
 // do contato: contatos dos BDRs saídos criados ANTES do corte continuam contando;
 // criados a partir do corte saem do total (teamIdsAtivos + createdate < corte).
-const BDR_TEAM_EFFECTIVE_FROM = '2026-08';
-const BDR_TEAM_EXITED = ['Anderson Souza', 'Cintia Rodrigues', 'Thauan Pontes', 'Yokyko Muramoto'];
+// Derivado de BDR_EXITS (lib/bdr-team.js) desde 14/08/2026: a mesma lista estava
+// escrita aqui, no Workload e em public/bdr.html, e três cópias da régua de
+// vigência é como uma tela passa a mostrar 13 BDRs e a vizinha 9.
+const BDR_TEAM_EXITED = Object.keys(BDR_EXITS);
+const BDR_TEAM_EFFECTIVE_FROM = Object.values(BDR_EXITS).sort()[0].slice(0, 7);
 
 // Cache em memória por instância serverless (mesmo padrão do fetchOwners).
 let _cache = { at: 0, data: null, fonte: null };

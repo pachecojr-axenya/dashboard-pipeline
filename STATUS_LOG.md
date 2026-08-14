@@ -1,5 +1,65 @@
 # Dashboard Enhancement Loop — Status Log
 
+### Workload | os 4 BDRs que saíram do time continuavam na tela desde 01/08 (2026-08-14)
+
+> Pedido do dono: conferir se o Workload captura tudo do banco, se o botão Atualizar faz o
+> trabalho dele, e garantir que Thauan, Yokyko, Anderson e Cintia **não apareçam a partir de
+> agosto** (saíram da empresa). Auditado contra o BigQuery de produção, não contra a tela.
+
+**O que estava errado, medido.** A regra de vigência de 03/08/2026 existia em DOIS lugares —
+`api/bdr-leads.js` (cadência) e `public/bdr.html` (BDR Performance) — e **não no Workload**.
+Em 01–14/08 o mart do armazém ainda trazia os quatro: **30 atividades e 10 movimentos de CRM**
+(Yokyko 12, Cíntia 10, Anderson 5, Thauan 3 — quase tudo reunião de agenda herdada e e-mail
+automático em contato que ficou com o nome antigo). Pouco em volume, muito em leitura: eram
+**4 nomes a mais no seletor e no ranking**, dividindo a média do time.
+
+**A régua escolhida é POR DATA DA LINHA, não remoção do roster.** Apagar o nome da lista faria
+o trabalho real de julho sumir e o total de julho cair sem ninguém ter trabalhado menos.
+Prova nas duas pontas (`mart_bdr_workload_dimension_daily`, roster de 14 owner_ids):
+
+| janela | donos antes | donos depois | atividades antes | depois |
+|---|---|---|---|---|
+| 01–14/08 | 13 | **9** | 4.670 | **4.643** |
+| julho inteiro | 13 | **13** | 17.865 | **17.865** |
+
+- **`lib/bdr-team.js`** — fonte única da vigência: `BDR_EXITS` (nome → primeiro dia FORA),
+  `isActiveBdrOn(nome, data)`, `activeTeam(since, until)` e `exitedCutClause(alias, coluna)`.
+  O corte SQL sai como `NOT COALESCE(..., FALSE)` de propósito: `NOT (NULL)` é NULL e o WHERE
+  **descarta** a linha — um corte para tirar 4 nomes acabaria tirando toda linha sem dono, em
+  silêncio. `api/bdr-leads.js` passou a DERIVAR daqui em vez de ter a lista própria.
+- **`api/bdr-workload-semantic.js`** — corte no `filterSql` (metric_date), na reatividade
+  (eligible_date), no agregado do BQ e no overlay live (que semeava os 13 nomes zerados na
+  tela de hoje). `filterOptions.bdr` virou **roster da janela** (9 em agosto, 13 em julho),
+  e o payload declara o que fez no check `roster_saidas`.
+- **`drill`, `compare`, `penetration`, `history`, `calls`** — mesmo corte. No drill não é
+  detalhe: sem ele a tabela listaria a linha que o gráfico já não conta, e a tela se
+  contradiria sozinha. No `compare` o roster é a **união** das duas janelas — quem estava em A
+  e saiu antes de B tem de aparecer com b=0, senão a queda dele some do waterfall.
+- **`api/bdr-workload-config.js`** — `team` passou a ser o roster de HOJE (fallback do seletor
+  no boot); `teamHistorico` mantém os 13 para quem precisar.
+
+**Segundo achado, do botão Atualizar: ele cobre METADE da tela e nada dizia isso.** O botão
+dispara o `hubspot-platform-reconcile` (armazém), de onde vêm **ritmo e desfecho de ligação**.
+**Inserção, CRM, SQL e Penetração continuam no medallion**, carregado pelo `bdr-etl-job`
+(us-central1) **1x por dia, ~20:15 BRT** — e o botão não o dispara. Medido em 14/08 às 12:40:
+`silver.activities.ingested_at` = 13/08 20:02 BRT, **16h7 de idade**, com o selo verde dizendo
+"atualizado agora mesmo". Selo verde em cima de número velho é pior que não ter selo.
+  - `source.frescorCamadas` no payload (idade e cadência por camada, e `atualizadoPeloBotao`),
+    check `frescor_medallion` (warn acima de 28h), e uma linha ao lado do selo na tela:
+    `· CRM/inserção/SQL/penetração: 17h`, com o porquê no tooltip.
+  - **Não resolvido, e é decisão do dono:** fazer o botão disparar TAMBÉM o `bdr-etl-job` exige
+    IAM novo para a SA do dashboard nesse job e gasta orçamento de request do HubSpot num
+    segundo ETL. A alternativa melhor é migrar esses quatro blocos para o armazém, que já tem
+    `fact_crm_change` (391k linhas, histórico de propriedade), `fact_stage_entry` e
+    `mart_account_cohort` — o insumo existe, falta o mart de consumo.
+
+**Testes.** `scripts/test-bdr-workload-v2.js` ganhou 20 asserções da regra de saída, incluindo
+os modos de a linha voltar por outra porta: grafia crua do HubSpot (`Cíntia`), owner_id, o
+**segundo** owner_id da Cintia (86900152), NULL-safety da cláusula, e a checagem de que a
+vigência do Workload é a MESMA de `bdr-leads.js` e de `public/bdr.html` (2026-08). Fixture do
+arquivo migrada de "Thauan Pontes" para "Marcelli Netto" — com o corte no ar, o BDR de fixture
+não pode ser um que saiu. `npm run check`: 0 FAIL.
+
 ### 🚀 DEPLOY DE PRODUÇÃO | Delta: drill em Total @ A/B + fix da etapa de origem (2026-08-14)
 
 > Autorização explícita do dono ("sim"), continuação da mesma sessão da entrada "Delta | D02:

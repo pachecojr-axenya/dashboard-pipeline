@@ -32,7 +32,7 @@ const { hubspotPost, hubspotGet } = require('../lib/hubspot');
 const { setCORSHeaders, requireAuth, getHubspotToken, methodCheck } = require('./_helpers');
 const kv = require('../lib/kv');
 const env = require('../lib/env');
-const { BDR_TEAM, HS_ALIAS, norm, resolveTeamIds } = require('../lib/bdr-team');
+const { BDR_TEAM, HS_ALIAS, norm, resolveTeamIds, bdrExitDate } = require('../lib/bdr-team');
 const whq = require('../lib/hubspot-wh-queries');
 const wh = require('../lib/hubspot-warehouse');
 
@@ -193,6 +193,21 @@ async function build(token, bdrName, sinceMs, untilMs, options = {}) {
       { propertyName: 'hubspot_owner_id', operator: 'IN', values: ownerIds },
       { propertyName: 'hs_timestamp', operator: 'BETWEEN', value: String(sinceMs), highValue: String(untilMs) },
     ], ['hs_timestamp', 'hs_call_duration', 'hs_call_disposition', 'hs_call_title']);
+  }
+
+  // Corte de saída: ligação carimbada DEPOIS de o BDR sair não é esforço dele
+  // (é telefone que continuou tocando num contato que ficou com o nome antigo).
+  // Fica aqui, e não só no agregado, senão o drill mostraria a ligação que o
+  // gráfico já não conta e a tela se contradiria sozinha.
+  const saida = bdrExitDate(bdrName);
+  if (saida) {
+    rows = rows.filter((r) => {
+      const ts = r.properties && r.properties.hs_timestamp;
+      if (!ts) return true;
+      const ms = /^\d+$/.test(String(ts)) ? Number(ts) : Date.parse(ts);
+      if (!Number.isFinite(ms)) return true;
+      return new Date(ms - 3 * 60 * 60 * 1000).toISOString().slice(0, 10) < saida;
+    });
   }
 
   const detail = options.detail === true;

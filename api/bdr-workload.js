@@ -41,7 +41,7 @@ const { hubspotPost, hubspotGet } = require('../lib/hubspot');
 const { setCORSHeaders, requireAuth, getHubspotToken, methodCheck } = require('./_helpers');
 const kv = require('../lib/kv');
 const env = require('../lib/env');
-const { BDR_TEAM, HS_ALIAS, norm, resolveTeamIds, findUnresolvedOwners } = require('../lib/bdr-team');
+const { BDR_TEAM, HS_ALIAS, norm, resolveTeamIds, findUnresolvedOwners, isActiveBdrOn, activeTeam } = require('../lib/bdr-team');
 const whq = require('../lib/hubspot-wh-queries');
 const wh = require('../lib/hubspot-warehouse');
 
@@ -511,14 +511,26 @@ async function buildPayloadArmazem(idToBdr, teamIds, sinceMs, untilMs, opcoes = 
 async function buildPayload(token, sinceMs, untilMs, opcoes = {}) {
   const viaBQ = opcoes.fonte !== 'api' && wh.isConfigured();
   const ownerMap = viaBQ ? await whq.ownerMap() : await fetchOwnersRaw(token);
-  const idToBdr = resolveTeamIds(ownerMap);
+  // Janela em BRT (UTC-3) — é a régua de dia que o resto do workload usa.
+  const janelaSince = new Date(sinceMs - 3 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const janelaUntil = new Date(untilMs - 3 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const idToBdrBruto = resolveTeamIds(ownerMap);
+  // BDR que JÁ tinha saído no primeiro dia da janela sai do payload inteiro:
+  // não adianta filtrar depois, porque cada request a menos no HubSpot é
+  // orçamento de API que não se gasta com quem não trabalha mais aqui. Janela
+  // que CRUZA a saída mantém o dono (o corte fino é por dia, no agregador).
+  const idToBdr = {};
+  Object.keys(idToBdrBruto).forEach((id) => {
+    if (isActiveBdrOn(idToBdrBruto[id], janelaSince)) idToBdr[id] = idToBdrBruto[id];
+  });
   const teamIds = Object.keys(idToBdr);
   if (!teamIds.length) throw new Error('Nenhum owner do time de BDRs encontrado no portal');
+  const teamDaJanela = activeTeam(janelaSince, janelaUntil);
 
   if (viaBQ) {
     const p = await buildPayloadArmazem(idToBdr, teamIds, sinceMs, untilMs,
       { atribuidos: opcoes.atribuidos });
-    return { success: true, generatedAt: new Date().toISOString(), team: BDR_TEAM,
+    return { success: true, generatedAt: new Date().toISOString(), team: teamDaJanela,
              fonte: 'bq', ...p };
   }
 
@@ -629,7 +641,7 @@ async function buildPayload(token, sinceMs, untilMs, opcoes = {}) {
   return {
     success: true,
     generatedAt: new Date().toISOString(),
-    team: BDR_TEAM,
+    team: teamDaJanela,
     fonte: 'api',
     companiesCreated,
     contactsCreated,

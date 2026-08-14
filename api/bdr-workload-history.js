@@ -2,7 +2,7 @@
 
 const { setCORSHeaders, requireAuth, methodCheck } = require('./_helpers');
 const bq = require('../lib/bigquery');
-const { canonicalizeBdrName, BDR_TEAM } = require('../lib/bdr-team');
+const { canonicalizeBdrName, BDR_TEAM, isActiveBdrOn } = require('../lib/bdr-team');
 
 const TEAM_SET = new Set(BDR_TEAM);
 // Guarda de camada semântica: só nomes canônicos do time entram no payload.
@@ -10,7 +10,10 @@ const TEAM_SET = new Set(BDR_TEAM);
 // a um BDR) que a canonicalização não resolve; sem este filtro esses registros
 // contaminariam os totais "Todos os BDRs" no front. É filtro semântico no
 // contrato da API, não compensação de bug no browser.
-function isTeamMember(canonName) { return TEAM_SET.has(canonName); }
+// Agora COM DATA: a guarda continua barrando owner fora do time e passa a
+// barrar também a linha de quem já tinha saído NAQUELE dia — sem apagar o
+// histórico dele de antes da saída, que é o que esta tela existe para mostrar.
+function isTeamMember(canonName, dateIso) { return TEAM_SET.has(canonName) && isActiveBdrOn(canonName, dateIso); }
 
 const PROJECT = 'gen-lang-client-0423905839';
 const GOLD = 'axenya_sales_hubspot_bdr_prd_sae1_gold';
@@ -67,7 +70,10 @@ function buildTargetsMap(targetRows = []) {
   const byName = new Map();
   targetRows.forEach((r) => {
     const name = canonicalizeBdrName(r.owner_name);
-    if (!isTeamMember(name)) return;
+    // Meta é cadastro, não linha de dia: aqui vale a pertinência ao time SEM a
+    // data. Cortar por saída aqui zeraria a meta das linhas de julho de quem
+    // saiu em agosto, e o atingimento histórico deles iria para o infinito.
+    if (!TEAM_SET.has(name)) return;
     const family = normalizeFamily(r.activity_family);
     const value = num(r.target_daily);
     if (!byName.has(name)) byName.set(name, { total: 0, calls: 0, emails: 0, whatsapp: 0, linkedin: 0, meetings: 0 });
@@ -104,18 +110,18 @@ function buildHistoryPayload(rows, dealRows, since, until, historySince, sqlSumm
       sql_deals: 0,
       refreshed_at: timestamp(r.refreshed_at),
     };
-  }).filter((row) => isTeamMember(row.owner_name));
+  }).filter((row) => isTeamMember(row.owner_name, row.metric_date));
   const sqlDeals = dealRows.map((r) => ({
     deal_id: str(r.deal_id),
     bdr: canonicalizeBdrName(r.bdr),
     sql_date: ymd(r.sql_date),
     deal_stage_id: str(r.deal_stage_id),
-  })).filter((row) => isTeamMember(row.bdr));
+  })).filter((row) => isTeamMember(row.bdr, row.sql_date));
   const dailyByKey = new Map(dailyRows.map((row) => [`${row.metric_date}|${row.owner_name}`, row]));
   sqlSummaryRows.forEach((summary) => {
     const sqlDate = ymd(summary.metric_date);
     const bdr = canonicalizeBdrName(summary.owner_name);
-    if (!isTeamMember(bdr)) return;
+    if (!isTeamMember(bdr, sqlDate)) return;
     const key = `${sqlDate}|${bdr}`;
     let row = dailyByKey.get(key);
     if (!row) {

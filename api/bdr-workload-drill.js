@@ -2,7 +2,7 @@
 
 const { setCORSHeaders, requireAuth, methodCheck } = require('./_helpers');
 const bq = require('../lib/bigquery');
-const { BDR_TEAM, canonicalizeBdrName, bdrOwnerIds, bdrOwnerIdClause } = require('../lib/bdr-team');
+const { BDR_TEAM, canonicalizeBdrName, bdrOwnerIds, bdrOwnerIdClause, exitedCutClause } = require('../lib/bdr-team');
 
 const PROJECT = 'gen-lang-client-0423905839';
 const GOLD = 'axenya_sales_hubspot_bdr_prd_sae1_gold';
@@ -92,6 +92,11 @@ function addFilters(alias, requested, dateField, params, options = {}) {
     const oc = bdrOwnerIdClause(alias, requested.bdrIds, requested.bdr);
     if (oc) where.push(oc);
   }
+  // Mesmo corte de saída do gráfico. Sem ele o drill listaria a linha que o
+  // agregado já não conta, e a tabela viraria a prova de que o gráfico "perdeu"
+  // registro.
+  const ex = exitedCutClause(alias, dateField);
+  if (ex) where.push(ex);
   if (requested.porte) {
     where.push(`COALESCE(NULLIF(${alias}.porte,''),'desconhecido') = @porte`);
     params.push({ name: 'porte', type: 'STRING', value: requested.porte });
