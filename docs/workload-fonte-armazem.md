@@ -85,6 +85,14 @@ assado na imagem do Cloud Run:
 2. `node scripts/compare-workload-sources.js --adc` passou contra o mart real.
 3. Só então o default virou.
 
+**Correção de diagnóstico:** o relato inicial ligava os BLOCK do fechamento de
+11 e 12/08 ao `close` não extrair o dia. Objeto por objeto, não era: no close de
+11/08 os grandes tinham drift real do dia não lido (company 18, contact 53, lead
+35, deal 2) e **todos abaixo do limite** | quem reprovava era **1 ticket**, porque
+o recorte de Cotação tem ~192 tickets e 1/192 = 0,52% estoura sozinho um limite
+de 0,50%. As duas correções seguem certas; a causa que as ligava, não. Corrigido
+no check com um piso absoluto de 2 objetos ao lado do limite relativo.
+
 **Efeito colateral do passo 1, que vale registrar:** a mesma imagem levou a leva
 de 12/08 do objeto deal (34 propriedades novas), e isso derrubou o
 `qa_field_fidelity [deal]` com 44 campos `armazém='' vivo='<valor>'`. Não era
