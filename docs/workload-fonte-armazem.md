@@ -102,6 +102,36 @@ relidos. Conserto: `MODE=backfill SCOPE=deal LOOKBACK_DAYS=1200` (6min27s, 1.364
 MB). Voltou a 0 divergentes e a suíte fechou 83 checks, 0 BLOCK. O ramo
 `backfill` do `entrypoint.sh` não honrava o SCOPE e passou a honrar.
 
+## Frescor do dia corrente
+
+O armazém só tinha DOIS refreshes automáticos: reconcile 06:30 e close 20:30.
+Entre eles, o "hoje" do armazém ficava congelado às 06:30 — **14 horas**. A tela
+de Workload escondia isso com o overlay ao vivo do HubSpot, mas o overlay é
+desligado quando há filtro de porte/segmento/persona (`disabledByFilters`), e
+qualquer outro consumidor do armazém via o dia pela metade.
+
+Desde 13/08/2026 há refresh intraday às **10h, 13h, 16h e 19h** em dia útil, o
+que leva a defasagem máxima de 14h para ~3h. Cada ciclo custa ~140s de extração,
+289 requests na API do HubSpot e ~4,3 GB no BigQuery (≈US$ 0,03).
+
+Dois detalhes de implementação que não são arbitrários:
+
+- **Rodam no job `reconcile`, não no `close`**, porque é o `reconcile` que a
+  trava de concorrência do botão Atualizar enxerga. Os dois jobs fazem
+  `CREATE OR REPLACE TABLE` no mesmo gold, e duas execuções simultâneas
+  reescrevem as mesmas tabelas. (A trava também foi corrigida para enxergar o
+  `close` — ver `lib/hubspot-jobs.js`.)
+- **Sem overrides de ambiente.** Passar `containerOverrides` no corpo exige a
+  permissão `run.jobs.runWithOverrides`, que a service account não tem
+  (`roles/run.invoker` não a inclui) — o primeiro desenho tomou `PERMISSION_DENIED`.
+  Usam o env padrão do job (reconcile, 3 dias, escopo tudo), que é a MESMA
+  chamada do `hubspot-reconcile-0630` já provado, e uma janela de 3 dias é
+  estritamente mais segura que a de 1.
+
+Reconciliação do dia corrente, medida em 13/08 às 21:52 contra o HubSpot ao vivo,
+BDR a BDR: **13 de 13 com delta zero** nos cinco canais (314 ligações, 185
+e-mails, 141 WhatsApp manual, 24 LinkedIn, 7 reuniões).
+
 Se o mart não responder, `fonte=armazem` **cai de volta no medallion** e diz o
 motivo em `source.fallbackErro` e no check `fonte_ritmo` | preferível a devolver
 zero calado nos cards de desfecho, que é o modo de falha do `/calls/v1` que matou

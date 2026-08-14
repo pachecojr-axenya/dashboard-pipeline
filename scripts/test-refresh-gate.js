@@ -64,6 +64,18 @@ caso('execução viva de OUTRO escopo também recusa', () => {
   assert.strictEqual(v.motivo, 'concorrencia');
 });
 
+caso('fechamento em andamento tambem recusa o botao', () => {
+  // A trava olhava so o `reconcile`, entao o `close` era invisivel e o botao
+  // podia disparar por cima de um fechamento. Os dois fazem CREATE OR REPLACE no
+  // mesmo gold: duas execucoes simultaneas reescrevem as mesmas tabelas e quem
+  // le no meio ve o estado de ninguem. Com refresh intraday, a colisao deixa de
+  // ser hipotese.
+  const fechamento = Object.assign(exec({ viva: true, idadeMin: 2 }), { job: 'hubspot-platform-close' });
+  const v = jobs.gate([fechamento], 'workload');
+  assert.strictEqual(v.ok, false);
+  assert.strictEqual(v.motivo, 'concorrencia');
+});
+
 caso('execução viva há mais de 30 min é considerada morta e libera', () => {
   // Zumbi não pode travar o botão por uma hora inteira (task-timeout é 60 min).
   const v = jobs.gate([exec({ viva: true, idadeMin: 31 })], 'workload');
