@@ -12,26 +12,29 @@ const TABLE = `${PROJECT}.${GOLD}.bdr_workload_daily_dimension_v2`;
 const REACTIVITY_TABLE = `${PROJECT}.${GOLD}.bdr_workload_reactivity_v2`;
 
 // ---------------------------------------------------------------------------
-// FONTE DO BLOCO DE RITMO | medallion (default) ou armazém canônico
+// FONTE DO BLOCO DE RITMO | armazém canônico (default desde 13/08/2026)
 //
 // O Workload nasceu lendo o medallion (`axenya_sales_hubspot_bdr_prd_sae1_gold`,
-// Cloud Run Job `bdr-etl-job`, 20:00 em dia útil). O armazém da fonte única
-// (`axenya_hubspot_prd_*`, reconcile 06:30 + botão Atualizar, 83 checks) hoje
-// serve o MESMO bloco de ritmo por outro caminho, e a comparação está feita.
+// Cloud Run Job `bdr-etl-job`, 20:00 em dia útil). O ritmo agora vem do armazém
+// da fonte única (`axenya_hubspot_prd_*`, reconcile 06:30 + botão Atualizar, 83
+// checks). `?fonte=medallion` continua vivo e é como se compara.
 //
-// MEDIDO EM 13/08/2026 | 30 dias, só o roster de 13 BDRs, sem hoje:
-//   ligações  7.378 = 7.378     e-mails  5.801 = 5.801
-//   LinkedIn    871 =   871     reuniões   164 =   164
-//   WhatsApp  2.755 x 3.706  |  atividades 16.969 x 17.920
-//   contatos tocados 7.015 x 7.329 (4,3%)
+// MEDIDO CONTRA O MART JÁ DEPLOYADO em 13/08/2026 | 30 dias, roster de 13 BDRs,
+// sem hoje (`node scripts/compare-workload-sources.js --adc`):
+//   ligações  7.378 = 7.378     e-mails   5.801 = 5.801
+//   LinkedIn    871 =   871     reuniões    163 =   163
+//   conectadas  567 =   567     sem resposta 3.765 = 3.765
+//   ocupado   2.577 = 2.577     nº errado      58 =    58
+//   sem desfecho 128 =   128
+//   WhatsApp MANUAL 2.755 = 2.755  <- a linha que autorizou a troca
 //
-// Os dois deltas de WhatsApp e de atividades são EXATAMENTE 951, que é a
-// automação do Treble: o armazém a mede à parte (decisão de 10/08 | automação
-// não é esforço do BDR, ninguém digitou) e o medallion ainda a soma no total.
-// Não é divergência de cobertura, é régua declarada | ver `premissas` no payload.
+// O que muda de valor é só automação: WhatsApp total 3.706 -> 2.755 e atividades
+// 17.919 -> 16.968, os dois pelos mesmos 951 disparos do Treble, que o armazém
+// mede à parte (decisão de 10/08 | automação não é esforço do BDR, ninguém
+// digitou). Não é cobertura menor, é régua declarada | ver `premissas`.
 //
-// E o armazém enxerga HOJE: 13/08 às 15h ele tinha 298 atividades do roster
-// contra 8 do medallion, que só roda às 20:00. Os 4 pares dia x dono que
+// E o armazém enxerga HOJE: 13/08 às 15h ele tinha 273 atividades do roster
+// contra 8 do medallion, que só roda às 20:00. Os 3 pares dia x dono que
 // existem só no medallion em 30 dias têm `activities_total = 0` | linha vazia,
 // não dado perdido.
 //
@@ -60,7 +63,11 @@ async function cachedFilterOptions() { if (filterOptionsCache.val && Date.now() 
 // evita refazer as queries a cada troca de aba/recarga. refresh=1 ignora o cache.
 const PAYLOAD_TTL_MS = 45 * 1000;
 let payloadCache = new Map();
-function payloadKey(r) { return JSON.stringify({ s: r.since, u: r.until, b: r.bdr || '', c: (r.channels || []).join(','), bd: r.businessDays, p: (r.portes || []).join(','), sg: (r.segmentos || []).join(','), pe: (r.personas || []).join(',') }); }
+// `f` (fonte) ENTRA NA CHAVE: sem ela, um pedido com `?fonte=medallion` receberia
+// o payload do armazém que ficou em cache 45s antes, e a comparação entre as duas
+// fontes compararia uma fonte com ela mesma | o jeito mais rápido de "provar"
+// paridade perfeita e não estar provando nada.
+function payloadKey(r) { return JSON.stringify({ s: r.since, u: r.until, b: r.bdr || '', c: (r.channels || []).join(','), bd: r.businessDays, p: (r.portes || []).join(','), sg: (r.segmentos || []).join(','), pe: (r.personas || []).join(','), f: r.fonte || '' }); }
 
 const LIVE_RHYTHM_FIELDS = ['calls', 'callsConversation', 'callsDial', 'callsVoicemail', 'callsNoAnswer', 'callsBusy', 'callsWrongNumber', 'callsNoOutcome', 'callsTalkTimeS', 'emails', 'whatsapp', 'whatsappManual', 'whatsappTreble', 'linkedin', 'meetings', 'activities', 'total'];
 const LIVE_CRM_FIELDS = ['attempted', 'crmMovements', 'connected', 'qualified', 'disqualified'];
@@ -118,11 +125,13 @@ function parse(req) {
   const since = parseDate(q.get('since'), 'since');
   const until = parseDate(q.get('until'), 'until');
   if (since > until) throw bad('since > until');
-  // `fonte` é OPT-IN e o default não muda nada: a tela em produção continua
-  // lendo o medallion até alguém decidir virar. Manter a rota antiga viva e
-  // comparar foi o que achou 7 defeitos silenciosos na migração da F5 | trocar
-  // e olhar a tela não acha nenhum.
-  const fonte = q.get('fonte') || 'medallion';
+  // DEFAULT VIRADO PARA O ARMAZÉM em 13/08/2026, depois da paridade medida
+  // (`node scripts/compare-workload-sources.js --adc`): os 9 números de ritmo e
+  // desfecho batem na unha e o WhatsApp manual bate em 2.755, então o que muda é
+  // só automação. `?fonte=medallion` continua vivo e é como se compara | manter
+  // a rota antiga foi o que achou 7 defeitos silenciosos na migração da F5, que
+  // trocar e olhar a tela não acharia.
+  const fonte = q.get('fonte') || 'armazem';
   if (!FONTES.includes(fonte)) throw bad('fonte inválida (medallion|armazem)');
   return { since, until, bdr, bdrIds: bdrOwnerIds(bdr), channels, businessDays: q.get('businessDays') !== 'false', portes, segmentos, personas, porte: portes[0] || null, segmento: segmentos[0] || null, persona: personas[0] || null, refresh: q.get('refresh') === '1', fonte };
 }
@@ -313,4 +322,4 @@ async function build(requested) { if (!bq.isConfigured()) throw Object.assign(ne
 
 module.exports = async function handler(req, res) { setCORSHeaders(req, res); if (!methodCheck(req, res, ['GET'])) return; const user = requireAuth(req, res); if (!user) return; try { const requested = parse(req); if (requested.refresh) return res.status(200).json(await build(requested)); const key = payloadKey(requested); const hit = payloadCache.get(key); if (hit && Date.now() - hit.at < PAYLOAD_TTL_MS) return res.status(200).json(hit.val); const val = await build(requested); if (payloadCache.size > 200) payloadCache.clear(); payloadCache.set(key, { at: Date.now(), val }); return res.status(200).json(val); } catch (error) { return res.status(error.statusCode || 500).json({ success: false, error: error.message }); } };
 module.exports._service = { liveRowsForToday };
-module.exports._test = { parse, CHANNELS, CHANNEL_SQL, isBusiness, build, TABLE, REACTIVITY_TABLE, normalizeTimestamp, aggregateLivePayload, liveRowsForToday, previousRange, activityBucket, percentile, bucketHours, reactivityFromRows, rowsToAggregates, liveLineage, todayIso, WAREHOUSE_TABLE, FONTES, CAMPOS_RITMO_ARMAZEM, mergeRitmoDoArmazem, carregarRows };
+module.exports._test = { parse, payloadKey, CHANNELS, CHANNEL_SQL, isBusiness, build, TABLE, REACTIVITY_TABLE, normalizeTimestamp, aggregateLivePayload, liveRowsForToday, previousRange, activityBucket, percentile, bucketHours, reactivityFromRows, rowsToAggregates, liveLineage, todayIso, WAREHOUSE_TABLE, FONTES, CAMPOS_RITMO_ARMAZEM, mergeRitmoDoArmazem, carregarRows };

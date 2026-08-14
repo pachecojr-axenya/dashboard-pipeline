@@ -419,9 +419,15 @@ async function withBqStub(rows, fn) {
   assert(/channel IN \(/.test(ritmoQ.sql), 'domain:ritmo deve filtrar o conjunto de canais de ritmo');
 
   // --- fonte=armazem | o ritmo migra, o resto fica, e a fronteira e testada ---
-  assert.equal(sem.parse(req('v=2&since=2026-07-01&until=2026-07-02')).fonte, 'medallion', 'default tem de continuar medallion: a migracao e opt-in');
-  assert.equal(sem.parse(req('v=2&since=2026-07-01&until=2026-07-02&fonte=armazem')).fonte, 'armazem');
+  assert.equal(sem.parse(req('v=2&since=2026-07-01&until=2026-07-02')).fonte, 'armazem', 'default virou armazem em 13/08/2026, depois da paridade medida');
+  assert.equal(sem.parse(req('v=2&since=2026-07-01&until=2026-07-02&fonte=medallion')).fonte, 'medallion', 'a rota antiga tem de continuar viva: e com ela que se compara');
   assert.throws(() => sem.parse(req('v=2&since=2026-07-01&until=2026-07-02&fonte=csv')), /fonte inválida/);
+  // A fonte TEM de entrar na chave do cache. Sem isso um pedido de uma fonte
+  // recebe o payload da outra dentro da janela de 45s, e a comparacao entre as
+  // duas compara uma fonte com ela mesma.
+  const kArm = sem.payloadKey(sem.parse(req('v=2&since=2026-07-01&until=2026-07-02&fonte=armazem')));
+  const kMed = sem.payloadKey(sem.parse(req('v=2&since=2026-07-01&until=2026-07-02&fonte=medallion')));
+  assert.notEqual(kArm, kMed, 'fonte tem de fazer parte da chave do cache de payload');
 
   // A assercao que importa: depois da mescla, o RITMO e do armazem e o CRM e do
   // medallion. Se alguem trocar a lista de campos e o CRM passar a vir do
@@ -463,9 +469,16 @@ async function withBqStub(rows, fn) {
     assert.equal(caiu.rows[0].whatsapp, 30, 'na queda, o ritmo volta a ser o do medallion');
   });
   await withBqStub([linhaMed], async () => {
-    const semFonte = await sem.carregarRows('2026-08-12', '2026-08-12', sem.parse(req('v=2&since=2026-08-12&until=2026-08-12')));
-    assert.equal(semFonte.erro, null);
-    assert.equal(semFonte.mescla, null, 'sem fonte=armazem nao pode haver mescla: o default nao muda nada');
+    // `fonte=medallion` tem de sair INTOCADO pelo caminho novo: e a rota de
+    // comparacao, e uma mescla escondida ali faria o compare comparar o armazem
+    // com ele mesmo.
+    const soMed = await sem.carregarRows('2026-08-12', '2026-08-12', sem.parse(req('v=2&since=2026-08-12&until=2026-08-12&fonte=medallion')));
+    assert.equal(soMed.erro, null);
+    assert.equal(soMed.mescla, null, 'fonte=medallion nao pode mesclar nada');
+    assert.equal(soMed.rows[0].whatsapp, 30, 'fonte=medallion devolve o numero do medallion, com automacao somada');
+    // E o default (armazem) TEM de mesclar.
+    const padrao = await sem.carregarRows('2026-08-12', '2026-08-12', sem.parse(req('v=2&since=2026-08-12&until=2026-08-12')));
+    assert(padrao.mescla, 'o default virou armazem: tem de mesclar');
   });
 
   console.log('PASS bdr-workload-v2 API contract tests');
