@@ -45,8 +45,8 @@ assert(js.includes('coorte empresa+owner com lead elegível criado no período, 
 assert(js.includes('mesmo owner em até 30 dias; correlação, não causalidade'), 'associação/conversão 30D deve declarar correlação, não causalidade');
 assert(js.includes("if(!r.eligible)return panel(head+cards") && js.includes("st('empty','Nenhum lead elegível criado no período'"), 'pulso deve renderizar empty state de reatividade quando eligible=0');
 assert(js.includes("['crm','CRM']") && js.includes("['contato_efetivo','Contato efetivo']"), 'domínios CRM habilitados');
-assert(html.includes('/bdr-workload-v2-core.js?v=4') && html.includes('/bdr-workload-v2-charts.js?v=5') && html.includes('/bdr-workload-v2.js?v=13') && html.includes('/bdr-workload-info.js?v=3'), 'ordem/cache-busters v2 modular');
-assert(html.indexOf('/bdr-workload-v2-core.js') < html.indexOf('/bdr-workload-v2-charts.js') && html.indexOf('/bdr-workload-v2-charts.js') < html.indexOf('/bdr-workload-v2.js?v=13'), 'ordem dos scripts v2 modular inválida');
+assert(html.includes('/bdr-workload-v2-core.js?v=4') && html.includes('/bdr-workload-v2-charts.js?v=5') && html.includes('/bdr-workload-v2.js?v=14') && html.includes('/bdr-workload-info.js?v=4'), 'ordem/cache-busters v2 modular');
+assert(html.indexOf('/bdr-workload-v2-core.js') < html.indexOf('/bdr-workload-v2-charts.js') && html.indexOf('/bdr-workload-v2-charts.js') < html.indexOf('/bdr-workload-v2.js?v=14'), 'ordem dos scripts v2 modular inválida');
 assert(core.includes('window.WorkloadBDRV2Core') && charts.includes('window.WorkloadBDRV2Charts') && js.includes('WorkloadBDRV2Core') && js.includes('WorkloadBDRV2Charts'), 'namespaces modulares explícitos ausentes');
 assert(js.includes('Período anterior equivalente') && core.includes('previousEquivalent') && core.includes('rangeDays'), 'janela anterior equivalente visível/correta em Canais');
 assert(core.includes('2–3') && core.includes('4–5'), 'drill agrupado 2–3/4–5 ausente no front');
@@ -55,6 +55,13 @@ assert(js.includes("{label:'Conectadas'") && js.includes("{label:'Taxa de conex�
 assert(js.includes("['callsConversation','Lig. conectadas']") && js.includes("['connRate','Taxa conexão']") && js.includes("['talkTime','Tempo em linha']"), 'gestao deve ter colunas de conexao real');
 assert(core.includes('function hms('), 'helper de tempo em linha (hms) ausente no core');
 assert(!/≥1min|≥ 60 s|duração ≥ 1 min/.test(js + core + info + html), 'definicao antiga por duracao (>=1min) nao pode sobrar em texto de UI');
+// E a definicao NOVA tem de estar escrita: conectada = CARIMBO do BDR. O card de
+// auditoria (60s+ sem carimbo) so faz sentido junto dessa frase -- sozinho, ele
+// vira um sexto desfecho na cabeca de quem le.
+assert(/carimbo do BDR/.test(info), 'a ficha de Conectadas tem de dizer que e carimbo do BDR, nao deteccao de quem atendeu');
+assert(js.includes("{label:'Longas sem conexão'"), 'card de auditoria do carimbo ausente na aba Canais');
+assert(js.includes("context:'outcome:longa_sem_conexao'"), 'o card de auditoria tem de abrir drill (numero sem lista nao audita nada)');
+assert(/Reunião agendada/.test(info) && /Reunião agendada/.test(js), 'o desfecho que nenhuma camada mapeia tem de aparecer na ficha E no aviso da tela');
 assert(js.includes('hs_call_disposition') && info.includes('hs_call_disposition'), 'memoria de calculo deve citar a fonte hs_call_disposition');
 assert(js.includes('fetch(\'/api/bdr-workload-config\'') && js.includes('WorkloadBDRV2.init()') && !js.includes('WorkloadBDR.init()'), 'visão única v2: config só para team, sem fallback v1');
 assert(js.includes('role="dialog"') && js.includes("e.key==='Escape'") && js.includes("e.key==='Tab'"), 'modal acessível com escape/focus trap');

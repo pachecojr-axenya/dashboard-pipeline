@@ -262,8 +262,31 @@ async function withBqStub(rows, fn) {
   const clean = drill.sanitizeRow({ company_id: '1', contact_id: '2', deal_id: '3', email: 'x@y.com', phone: '123', contact_name: 'Pessoa', company_name: 'Empresa', owner_name: 'Marcelli Netto' });
   assert.equal(clean.companyUrl, 'https://app.hubspot.com/contacts/44715285/record/0-2/1');
   assert.equal(clean.dealUrl, 'https://app.hubspot.com/contacts/44715285/record/0-3/3');
-  assert.equal(clean.contactUrl, undefined);
-  assert.equal(clean.contact_id, undefined);
+  // MUDOU EM 14/08/2026: o drill passou a emitir contactUrl. A regra de
+  // privacidade continua sendo "nada nominal" (nome, e-mail, telefone e o
+  // contact_id cru seguem fora), mas 1.395 de 4.656 linhas do drill de atividade
+  // em 01-14/08 NAO tinham empresa associada e ficavam SEM NENHUM link -- drill
+  // que nao abre nada nao audita, e link do objeto Lead (0-136) quebra neste
+  // portal. Contato existe em 99,5% das linhas.
+  assert.equal(clean.contactUrl, 'https://app.hubspot.com/contacts/44715285/record/0-1/2');
+  assert.equal(clean.contact_id, undefined, 'o id cru do contato continua FORA do payload');
+  assert.equal(clean.contact_name, undefined);
+  assert.equal(clean.email, undefined);
+  assert.equal(clean.phone, undefined);
+  // Lead NUNCA vira link: a URL de registro de Lead abre em branco neste portal,
+  // e link quebrado faz quem clica concluir que o DADO esta errado.
+  assert.equal(drill.hubspotUrl('lead', '999'), null, 'lead nao pode virar URL');
+  assert(!/0-136/.test(JSON.stringify(clean) + drill.hubspotUrl('contact', '1') + drill.hubspotUrl('company', '1')), 'nenhuma URL do drill pode apontar para o objeto Lead');
+  // Sem empresa, o contato tem de ser a porta -- e esse era o caso sem link.
+  const semEmpresa = drill.sanitizeRow({ contact_id: '77', metric_date: '2026-08-11', owner_name: 'Marcelli Netto' });
+  assert.equal(semEmpresa.contactUrl, 'https://app.hubspot.com/contacts/44715285/record/0-1/77');
+  assert.equal(semEmpresa.companyUrl, undefined);
+  // O contact_id tem de estar no SELECT de todo kind, senao contactUrl nunca sai.
+  const drillSrc = require('fs').readFileSync(require('path').join(__dirname, '..', 'api', 'bdr-workload-drill.js'), 'utf8');
+  ['activity', 'reactivity', 'crm', 'sql'].forEach((kind) => {
+    const bloco = drillSrc.split(`${kind}: {`)[1] || '';
+    assert(/contact_id/.test(bloco.slice(0, 400)), `kind ${kind} precisa selecionar contact_id`);
+  });
   assert.equal(clean.company_name, 'Empresa');
   assert(!/x@y.com|123|Pessoa/.test(JSON.stringify(clean)));
 
@@ -527,6 +550,29 @@ async function withBqStub(rows, fn) {
   const bdrHtml = require('fs').readFileSync(require('path').join(__dirname, '..', 'public', 'bdr.html'), 'utf8');
   const corteHtml = (bdrHtml.match(/BDR_TEAM_EFFECTIVE_FROM\s*=\s*'([\d-]+)'/) || [])[1];
   assert.equal(corteHtml, '2026-08', 'BDR Performance corta no mesmo mes que o Workload');
+
+  // ── CARIMBO DE DESFECHO (14/08/2026) ────────────────────────────────────────
+  // "Conectadas" e o que o BDR carimbou, nao quem atendeu. Auditado em Allan
+  // Valenca, 10-13/08: 124 ligacoes (bate na virgula com o HubSpot), 2
+  // conectadas, 11 ligacoes de 60s+ NAO carimbadas como conectada e 1 com
+  // desfecho "Reuniao agendada", que nenhuma camada mapeia.
+  assert.doesNotThrow(() => drill.parseContext('outcome:longa_sem_conexao'), 'o balde de auditoria tem de ser um context valido');
+  const drillSrc2 = require('fs').readFileSync(require('path').join(__dirname, '..', 'api', 'bdr-workload-drill.js'), 'utf8');
+  assert(/longa_sem_conexao: \(a\) =>/.test(drillSrc2), 'a clausula do balde longa_sem_conexao tem de existir');
+  assert(/call_duration_s >= 60/.test(drillSrc2), 'o piso de conversa e 60s, o mesmo de bdr-workload-calls');
+  assert(/!= 'connected'/.test(drillSrc2), 'o balde tem de EXCLUIR o que ja foi carimbado como conectado (senao conta duas vezes)');
+  const semSrc = require('fs').readFileSync(require('path').join(__dirname, '..', 'api', 'bdr-workload-semantic.js'), 'utf8');
+  assert(/2e7360c1-6b71-40e9-ab2b-30ae98a4678c/.test(semSrc), 'o GUID de "Reuniao agendada" tem de estar declarado');
+  assert(/carimbo_desfecho/.test(semSrc), 'o check carimbo_desfecho tem de existir');
+  // E o mais importante: nada foi RECLASSIFICADO. "connected" continua sendo so
+  // o GUID f240bbac -- se alguem somar "Reuniao agendada" em conectadas, a serie
+  // historica muda de valor sem ninguem ter ligado mais.
+  assert(!/CALL_DISPOSITION_GUID[^}]*2e7360c1/.test(semSrc.replace(/\n/g, ' ')), '"Reuniao agendada" NAO pode entrar no mapa de desfecho sem decisao de regua');
+  const infoSrc = require('fs').readFileSync(require('path').join(__dirname, '..', 'public', 'bdr-workload-info.js'), 'utf8');
+  assert(/'Conectadas':/.test(infoSrc), 'o icone de informacao precisa de ficha propria para Conectadas');
+  assert(/carimbo do BDR/.test(infoSrc), 'a ficha tem de dizer que conectada e CARIMBO, nao deteccao');
+  assert(/'Longas sem conexão':/.test(infoSrc), 'o card de auditoria precisa de ficha');
+  assert(/Reunião agendada/.test(infoSrc), 'a ficha tem de nomear o desfecho que nenhuma camada mapeia');
 
   console.log('PASS bdr-workload-v2 API contract tests');
 })().catch((error) => { console.error(error); process.exit(1); });

@@ -1,5 +1,64 @@
 # Dashboard Enhancement Loop — Status Log
 
+### Workload | "124 ligações e 2 conectadas" está certo, e mesmo assim engana (2026-08-14)
+
+> Dúvida do dono sobre Allan Valença. Conferido contra o HubSpot ao vivo, não contra a tela.
+
+**O total é fiel na vírgula.** 10–13/08: HubSpot ao vivo devolve **124 ligações** e o armazém
+**124**, com os desfechos idênticos um a um (118 Sem resposta · 2 Conectado · 2 sem desfecho ·
+1 Número errado · 1 Reunião agendada). A diferença que aparece se a janela incluir hoje é o
+ETL, não perda: 147 no HubSpot contra 124 no armazém = as ligações feitas depois do último
+reconcile das 10h.
+
+**O que engana é ler "conectadas" como "quem atendeu".** É o CARIMBO que o BDR escolhe no menu
+do HubSpot; nada detecta atendimento sozinho. Dois furos medidos, os dois para baixo:
+
+1. **11 ligações de 60s ou mais NÃO carimbadas como conectada** — uma de **3min31**, seis acima
+   de 2 min. Telefone tocando não dura 3min31. Distribuição das 118 "Sem resposta": 80 com
+   duração zero (coerente), 27 de 1–14s, 1 de 15–29s, 4 de 60–119s e 6 de 120s+.
+2. **1 ligação com desfecho "Reunião agendada"** (`2e7360c1-…`), que **nenhuma das duas camadas
+   mapeia** e cai em "sem desfecho" — o melhor desfecho possível contado como o pior. Existe em
+   `dim_call_disposition` do armazém e estava documentado desde a migração, sem consumidor.
+
+**E a régua não é uniforme no time** (10–14/08): Giovana (153 lig.) e Felipe (96) carimbaram
+**zero** "Sem resposta" e tudo "Ocupado"; Allan, Priscilla, Marcelli, Gabriele, Bruna e
+Emanuelle fizeram o inverso — zero "Ocupado". Conectadas variam de **0 (Gabriele, 73 lig.)** a
+**30 (Priscilla, 125 lig.)** com volume parecido. Comparar taxa de conexão entre BDRs hoje mede
+o hábito de carimbo tanto quanto o telefone. Achado de fundo: o portal **renomeou os desfechos
+padrão** — o GUID que a HubSpot entrega como "Busy" é rotulado "Conectado" aqui, e o de
+"Connected" virou "Ocupado". O mapa do dashboard segue o rótulo do PORTAL e está correto.
+
+- **`api/bdr-workload-semantic.js`** — `data.callQuality` (ligações, longas sem conexão, reunião
+  agendada, desfecho não mapeado) via `mart_bdr_touch` ⋈ `fact_engagement` (o `disposition_id`
+  cru só sobrevive no `fact_engagement`; os marts dos dois lados já entregam o outcome mapeado).
+  Novo check `carimbo_desfecho`. Falha soft: erro vira `erro`, nunca zero — zero aqui leria como
+  "carimbo perfeito". **Nada foi reclassificado**: `conectadas` continua sendo só o GUID
+  `f240bbac`, e há teste que impede alguém somar "Reunião agendada" ali sem decisão de régua.
+- **`public/bdr-workload-v2.js`** — card **"Longas sem conexão"** (60s+ sem carimbo) na aba
+  Canais, clicável para o drill, e nota na linha "Qualidade da ligação".
+- **`public/bdr-workload-info.js`** — fichas próprias para Ligações, Conectadas, Taxa de
+  conexão, Longas sem conexão, Sem conexão, Tempo em linha e Recado/voicemail, mais os verbetes
+  "Desfecho da ligação", "Conectada" e "Longa sem conexão" no glossário. A ficha de Conectadas
+  diz, com todas as letras, que é carimbo do BDR e não detecção.
+
+**Drill: link que abre, em toda linha.** O drill emitia só `companyUrl`/`dealUrl` e descartava o
+`contact_id` — e **1.395 de 4.656 linhas do drill de atividade em 01–14/08 (30%) não têm empresa
+associada**, ficando sem nenhuma porta para o registro. Contato existe em **99,5%** delas.
+  - `contactUrl` (objectTypeId **0-1**) passa a sair em todos os kinds, e `contact_id` entrou no
+    SELECT de `activity`, `reactivity`, `crm` e `sql` (sem isso o link nunca sairia).
+  - A privacidade não afrouxou: nome, e-mail, telefone e o **id cru** do contato seguem fora.
+  - **Lead (0-136) nunca vira link** — a URL de registro de Lead abre em branco neste portal, e
+    link quebrado faz quem clica concluir que o DADO está errado. Teste trava isso.
+  - Prova: drill `outcome:longa_sem_conexao` do Allan = 11 linhas, **11 com link**, zero
+    apontando para lead, zero vazando PII; `kind=crm` 50/50 com link.
+
+**Fica aberto, e é dado, não código:** `company_name` vem vazio em **79%** das linhas do drill
+(3.686 de 4.656) porque o nome vem da camada CI, congelada em 25/06. A linha abre no HubSpot,
+mas chega sem nome de empresa na tabela. O armazém tem `dim_company` com o nome atual.
+
+`npm run check`: 0 FAIL, com asserções novas do balde de auditoria, do contrato de links e do
+guardrail que impede a definição antiga (conectada por duração) voltar ao texto da UI.
+
 ### Workload | os 4 BDRs que saíram do time continuavam na tela desde 01/08 (2026-08-14)
 
 > Pedido do dono: conferir se o Workload captura tudo do banco, se o botão Atualizar faz o

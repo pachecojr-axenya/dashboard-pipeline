@@ -212,6 +212,50 @@ async function queryWarehouseRows(since, until, requested) {
   const { rows } = await bq.query(sql, params);
   return { sql, rows };
 }
+// ---------------------------------------------------------------------------
+// QUALIDADE DO CARIMBO DE DESFECHO
+//
+// "Conectadas" NÃO é "quem atendeu": é o que o BDR escolheu no menu de desfecho
+// do HubSpot. Duas coisas concretas escapam desse carimbo, e as duas mentem para
+// baixo:
+//
+//   1. LIGAÇÃO LONGA SEM CONEXÃO — ligação de 60s+ que não foi marcada como
+//      Conectado. Aferido em Allan Valença, 10-13/08/2026: a tela dizia 124
+//      ligações e 2 conectadas, e havia 11 ligações de 60s+ marcadas "Sem
+//      resposta", uma delas de 3min31. Telefone tocando não dura 3min31.
+//
+//   2. "REUNIÃO AGENDADA" (`2e7360c1-…`) — desfecho que existe no portal
+//      (`dim_call_disposition`) e que NENHUMA das duas camadas mapeia: cai em
+//      "sem desfecho", ou seja, o MELHOR desfecho possível é contado como o
+//      pior. O `call_outcome` já vem mapeado nos marts dos dois lados, então a
+//      única forma de enxergá-lo sem rebuildar a imagem do ETL é voltar ao
+//      `fact_engagement`, que guarda o `disposition_id` cru — é o que o JOIN
+//      abaixo faz.
+//
+// Isto NÃO reclassifica nada: `conectadas` continua sendo só o carimbo
+// "Conectado". Estes números existem para serem AUDITADOS (o card leva ao drill
+// `outcome:longa_sem_conexao`), não somados — dizer se "Reunião agendada" conta
+// como conectada é decisão de régua, e régua se decide, não se deduz.
+//
+// 60s é o mesmo piso de conversa que `api/bdr-workload-calls.js` já usa
+// (MIN_CONVERSA); não é limiar novo.
+const REUNIAO_AGENDADA_GUID = '2e7360c1-6b71-40e9-ab2b-30ae98a4678c';
+const TOUCH_MART = wh.t('gold', 'mart_bdr_touch');
+const FACT_ENGAGEMENT = wh.t('silver', 'fact_engagement');
+const CONVERSA_MIN_S = 60;
+async function queryQualidadeCarimbo(requested) {
+  const params = [{ name: 'since', type: 'DATE', value: requested.since }, { name: 'until', type: 'DATE', value: requested.until }];
+  try {
+    const sql = `SELECT COUNT(*) ligacoes, COUNTIF(t.call_duration_s >= ${CONVERSA_MIN_S} AND COALESCE(t.call_outcome,'') != 'connected') longa_sem_conexao, COUNTIF(e.disposition_id = '${REUNIAO_AGENDADA_GUID}') reuniao_agendada, COUNTIF(COALESCE(t.call_outcome,'') = '' AND COALESCE(e.disposition_id,'') != '') desfecho_nao_mapeado FROM ${TOUCH_MART} t LEFT JOIN ${FACT_ENGAGEMENT} e USING (engagement_id) WHERE t.channel = 'call' AND ${filterSql('t', requested, params)}`;
+    const { rows } = await bq.query(sql, params);
+    const r = rows[0] || {};
+    return { ligacoes: num(r.ligacoes), longaSemConexao: num(r.longa_sem_conexao), reuniaoAgendada: num(r.reuniao_agendada), desfechoNaoMapeado: num(r.desfecho_nao_mapeado), pisoConversaS: CONVERSA_MIN_S, erro: null };
+  } catch (error) {
+    // Auditoria indisponível não pode derrubar a tela nem virar zero calado:
+    // zero aqui significaria "carimbo perfeito", que é a conclusão errada.
+    return { ligacoes: null, longaSemConexao: null, reuniaoAgendada: null, desfechoNaoMapeado: null, pisoConversaS: CONVERSA_MIN_S, erro: String(error.message || error).slice(0, 200) };
+  }
+}
 // Costura por dia x dono. Por que NÃO um JOIN em SQL entre as duas tabelas:
 // porte, segmento e persona são calculados por réguas DIFERENTES nos dois lados
 // (o armazém tira de `dim_company`/`dim_contact`, o medallion tirava do CI, que
@@ -349,7 +393,7 @@ async function carregarRows(since, until, requested) {
     return { rows: medallion.rows, mescla: null, erro: error.message || String(error) };
   }
 }
-async function build(requested) { if (!bq.isConfigured()) throw Object.assign(new Error('BigQuery não configurado'), { statusCode: 503 }); const prevRange = previousRange(requested); const [currentRows, previousRows, reactivity, filterOptionsBase, live, medallionFrescor] = await Promise.all([carregarRows(requested.since, requested.until, requested), carregarRows(prevRange.since, prevRange.until, requested), queryReactivity(requested), cachedFilterOptions(), liveRowsForToday(requested), frescorMedallion()]);
+async function build(requested) { if (!bq.isConfigured()) throw Object.assign(new Error('BigQuery não configurado'), { statusCode: 503 }); const prevRange = previousRange(requested); const [currentRows, previousRows, reactivity, filterOptionsBase, live, medallionFrescor, qualidadeCarimbo] = await Promise.all([carregarRows(requested.since, requested.until, requested), carregarRows(prevRange.since, prevRange.until, requested), queryReactivity(requested), cachedFilterOptions(), liveRowsForToday(requested), frescorMedallion(), queryQualidadeCarimbo(requested)]);
   // O seletor de BDR é da JANELA, não do cadastro: janela inteiramente depois
   // da saída não oferece quem saiu. O cache de 10 min de `cachedFilterOptions`
   // é de porte/segmento/persona (DISTINCT na tabela inteira) e não pode carregar
@@ -371,7 +415,7 @@ async function build(requested) { if (!bq.isConfigured()) throw Object.assign(ne
     'Inserção, CRM, SQL e Penetração seguem no medallion | não há mart desses blocos no armazém.',
   ] : [],
   mescla: currentRows.mescla ? { linhasComRitmoDoArmazem: currentRows.mescla.substituidas, linhasSoNoArmazem: currentRows.mescla.novas, linhasSoNoMedallion: currentRows.mescla.somenteMedallion } : null,
-  fallbackErro: currentRows.erro || null }, quality: { status: (live.error || currentRows.erro) ? 'warn' : 'pass', checks: [{ key: 'mece_total', status: totals.total === selectedSum ? 'pass' : 'fail', message: 'ritmo real = soma dos canais selecionados' }, { key: 'fonte_ritmo', status: currentRows.erro ? 'warn' : 'pass', message: currentRows.erro ? `Pedido fonte=armazem e o mart não respondeu (${currentRows.erro}) | ritmo caiu de volta no medallion. Se o erro fala em coluna desconhecida, falta rebuildar a imagem do ETL.` : (armazemAtivo ? 'Ritmo e desfecho de ligação vêm do armazém canônico; inserção, CRM, SQL e Penetração seguem no medallion.' : 'Ritmo vem do medallion (default).') },{ key: 'reactivity', status: 'pass', message: 'Reatividade vem de bdr_workload_reactivity_v2.' }, { key: 'roster_saidas', status: 'pass', message: rosterMensagem(requested) }, { key: 'frescor_medallion', status: (medallionFrescor.idadeHoras != null && medallionFrescor.idadeHoras > 28) ? 'warn' : (medallionFrescor.erro ? 'warn' : 'pass'), message: medallionFrescor.erro ? `Não foi possível ler a idade do medallion (${medallionFrescor.erro}).` : (medallionFrescor.carregadoEm ? `Inserção, CRM, SQL e Penetração vêm do medallion, carregado há ${Math.round(medallionFrescor.idadeHoras)}h (1x/dia, ~20:15 BRT). O botão Atualizar NÃO recarrega esses quatro blocos — ele dispara o reconcile do armazém, que é de onde vêm ritmo e desfecho.` : 'Idade do medallion desconhecida.') }, { key: 'call_outcome', status: (live.unknownDispositions && live.unknownDispositions.length) ? 'warn' : 'pass', message: (live.unknownDispositions && live.unknownDispositions.length) ? `Desfecho de ligação não reconhecido no live (cai em sem conexão): ${live.unknownDispositions.join(' | ')}. Atualizar CALL_DISPOSITION_GUID.` : 'Desfecho de ligação resolvido por GUID do HubSpot; conectada = disposition Conectado.' }, { key: 'live_merge', status: live.used ? 'pass' : (includesToday(requested) ? 'warn' : 'pass'), message: live.used ? 'Hoje agregado do HubSpot live no servidor.' : (live.disabledByFilters ? 'Live omitido por filtro ICP.' : (live.error || 'Janela sem hoje.')) }] }, coverage: { reactivity: { status: 'available', eligible: reactivity.eligible, touched: reactivity.touched, coverage: reactivity.coverage } }, data: { rhythm: { totals, series: current.series.sort((a, b) => a.date.localeCompare(b.date) || a.bdr.localeCompare(b.bdr)), byBdr: Object.values(current.byBdr).sort((a, b) => a.bdr.localeCompare(b.bdr)) }, reactivity, management: Object.values(current.byBdr).sort((a, b) => a.bdr.localeCompare(b.bdr)) } };
+  fallbackErro: currentRows.erro || null }, quality: { status: (live.error || currentRows.erro) ? 'warn' : 'pass', checks: [{ key: 'mece_total', status: totals.total === selectedSum ? 'pass' : 'fail', message: 'ritmo real = soma dos canais selecionados' }, { key: 'fonte_ritmo', status: currentRows.erro ? 'warn' : 'pass', message: currentRows.erro ? `Pedido fonte=armazem e o mart não respondeu (${currentRows.erro}) | ritmo caiu de volta no medallion. Se o erro fala em coluna desconhecida, falta rebuildar a imagem do ETL.` : (armazemAtivo ? 'Ritmo e desfecho de ligação vêm do armazém canônico; inserção, CRM, SQL e Penetração seguem no medallion.' : 'Ritmo vem do medallion (default).') },{ key: 'reactivity', status: 'pass', message: 'Reatividade vem de bdr_workload_reactivity_v2.' }, { key: 'roster_saidas', status: 'pass', message: rosterMensagem(requested) }, { key: 'carimbo_desfecho', status: qualidadeCarimbo.erro ? 'warn' : ((qualidadeCarimbo.longaSemConexao || qualidadeCarimbo.reuniaoAgendada) ? 'warn' : 'pass'), message: qualidadeCarimbo.erro ? `Auditoria do carimbo indisponível (${qualidadeCarimbo.erro}) | "conectadas" segue sendo só o carimbo do BDR.` : ((qualidadeCarimbo.longaSemConexao || qualidadeCarimbo.reuniaoAgendada) ? `"Conectadas" é o CARIMBO do BDR, não quem atendeu: ${qualidadeCarimbo.longaSemConexao} ligação(ões) de ${CONVERSA_MIN_S}s+ NÃO marcadas como Conectado e ${qualidadeCarimbo.reuniaoAgendada} com desfecho "Reunião agendada", que nenhuma camada mapeia e cai em "sem desfecho". Nada foi reclassificado | clique em "Longas sem conexão" para auditar.` : 'Nenhuma ligação longa fora do carimbo de conectada no período.')}, { key: 'frescor_medallion', status: (medallionFrescor.idadeHoras != null && medallionFrescor.idadeHoras > 28) ? 'warn' : (medallionFrescor.erro ? 'warn' : 'pass'), message: medallionFrescor.erro ? `Não foi possível ler a idade do medallion (${medallionFrescor.erro}).` : (medallionFrescor.carregadoEm ? `Inserção, CRM, SQL e Penetração vêm do medallion, carregado há ${Math.round(medallionFrescor.idadeHoras)}h (1x/dia, ~20:15 BRT). O botão Atualizar NÃO recarrega esses quatro blocos — ele dispara o reconcile do armazém, que é de onde vêm ritmo e desfecho.` : 'Idade do medallion desconhecida.') }, { key: 'call_outcome', status: (live.unknownDispositions && live.unknownDispositions.length) ? 'warn' : 'pass', message: (live.unknownDispositions && live.unknownDispositions.length) ? `Desfecho de ligação não reconhecido no live (cai em sem conexão): ${live.unknownDispositions.join(' | ')}. Atualizar CALL_DISPOSITION_GUID.` : 'Desfecho de ligação resolvido por GUID do HubSpot; conectada = disposition Conectado.' }, { key: 'live_merge', status: live.used ? 'pass' : (includesToday(requested) ? 'warn' : 'pass'), message: live.used ? 'Hoje agregado do HubSpot live no servidor.' : (live.disabledByFilters ? 'Live omitido por filtro ICP.' : (live.error || 'Janela sem hoje.')) }] }, coverage: { reactivity: { status: 'available', eligible: reactivity.eligible, touched: reactivity.touched, coverage: reactivity.coverage } }, data: { callQuality: qualidadeCarimbo, rhythm: { totals, series: current.series.sort((a, b) => a.date.localeCompare(b.date) || a.bdr.localeCompare(b.bdr)), byBdr: Object.values(current.byBdr).sort((a, b) => a.bdr.localeCompare(b.bdr)) }, reactivity, management: Object.values(current.byBdr).sort((a, b) => a.bdr.localeCompare(b.bdr)) } };
 }
 
 module.exports = async function handler(req, res) { setCORSHeaders(req, res); if (!methodCheck(req, res, ['GET'])) return; const user = requireAuth(req, res); if (!user) return; try { const requested = parse(req); if (requested.refresh) return res.status(200).json(await build(requested)); const key = payloadKey(requested); const hit = payloadCache.get(key); if (hit && Date.now() - hit.at < PAYLOAD_TTL_MS) return res.status(200).json(hit.val); const val = await build(requested); if (payloadCache.size > 200) payloadCache.clear(); payloadCache.set(key, { at: Date.now(), val }); return res.status(200).json(val); } catch (error) { return res.status(error.statusCode || 500).json({ success: false, error: error.message }); } };

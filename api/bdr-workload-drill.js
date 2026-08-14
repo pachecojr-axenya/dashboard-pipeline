@@ -36,7 +36,7 @@ function parseContext(raw) {
     // outcome: desfecho de ligação (activity + channel=call). Chave canônica é
     // a MESMA usada em bdr-workload-semantic.js (GUID/label -> outcome), então
     // o card, o modelo e o drill falam a mesma língua.
-    outcome: ['connected', 'voicemail', 'dial', 'no_answer', 'busy', 'wrong_number', 'no_outcome', 'talk_time'],
+    outcome: ['connected', 'voicemail', 'dial', 'no_answer', 'busy', 'wrong_number', 'no_outcome', 'talk_time', 'longa_sem_conexao'],
     bucket: ['0', '1', '2', '3', '4', '5', '6+', '2–3', '4–5', 'lt_1h', '1_4h', '4_24h', '24_72h', '72h_plus', 'sem_toque'],
     event: ['attempted', 'connected', 'qualified', 'disqualified'],
     domain: ['ritmo', 'insercao', 'crm', 'contato_efetivo', 'sql'],
@@ -80,8 +80,16 @@ function parse(req) {
     page, limit, offset: (page - 1) * limit,
   };
 }
+// Link do drill para o registro no HubSpot. objectTypeId: contato 0-1, empresa
+// 0-2, negócio 0-3.
+//
+// LEAD (0-136) NÃO ENTRA AQUI, de propósito: a URL de registro de Lead abre em
+// branco/erro neste portal, e link que quebra é pior que ausência de link —
+// quem clica conclui que o dado está errado, não que a rota está. Se um dia
+// alguém precisar do Lead, o caminho é pelo CONTATO dele, que abre.
 function hubspotUrl(type, id) {
   if (!id) return null;
+  if (type === 'contact') return `https://app.hubspot.com/contacts/44715285/record/0-1/${encodeURIComponent(id)}`;
   if (type === 'company') return `https://app.hubspot.com/contacts/44715285/record/0-2/${encodeURIComponent(id)}`;
   if (type === 'deal') return `https://app.hubspot.com/contacts/44715285/record/0-3/${encodeURIComponent(id)}`;
   return null;
@@ -128,6 +136,19 @@ const OUTCOME_CLAUSE = {
   wrong_number: (a) => `${a}.channel='call' AND ${a}.call_outcome='wrong_number'`,
   no_outcome: (a) => `${a}.channel='call' AND COALESCE(${a}.call_outcome,'')=''`,
   talk_time: (a) => `${a}.channel='call' AND ${a}.call_outcome='connected' AND ${a}.call_duration_s>0`,
+  // `longa_sem_conexao`: ligação de 60s OU MAIS que o BDR NÃO carimbou como
+  // Conectado. Não é um sexto desfecho — é o conjunto que contradiz o carimbo,
+  // e existe para ser AUDITADO, não somado.
+  //
+  // Motivo concreto (Allan, 10-13/08/2026): a tela dizia 124 ligações e 2
+  // conectadas, e havia 11 ligações de 60s+ marcadas 'Sem resposta' — uma delas
+  // de 3min31. Telefone tocando não dura 3 minutos e meio. O número 124 estava
+  // certo (bate na vírgula com o HubSpot); o que engana é ler 'conectadas' como
+  // 'quem atendeu', quando é 'o que o BDR carimbou'.
+  //
+  // 60s é o mesmo piso que o resto do dashboard já usa como proxy de conversa
+  // (MIN_CONVERSA em api/bdr-workload-calls.js) — não inventei limiar novo.
+  longa_sem_conexao: (a) => `${a}.channel='call' AND COALESCE(${a}.call_outcome,'') != 'connected' AND ${a}.call_duration_s >= 60`,
 };
 // Filtro global multi-canal (kind=activity). Só aplicado quando NÃO há context
 // channel/outcome (esses são mais específicos e prevalecem). Params nomeados
@@ -194,19 +215,19 @@ function standardQuery(requested, countOnly) {
   const specs = {
     activity: {
       date: 'metric_date', order: 'occurred_at DESC',
-      fields: 'interaction_id, metric_date, occurred_at, owner_id, owner_name, company_id, company_name, channel, direction_effective, atividade_tipo, call_outcome, call_natureza_final, call_duration_s, porte, segmento, persona, outcome_real, deal_id',
+      fields: 'interaction_id, metric_date, occurred_at, owner_id, owner_name, company_id, company_name, contact_id, channel, direction_effective, atividade_tipo, call_outcome, call_natureza_final, call_duration_s, porte, segmento, persona, outcome_real, deal_id',
     },
     reactivity: {
       date: 'eligible_date', order: 'eligible_date DESC, owner_name',
-      fields: 'eligible_date, owner_id, owner_name, company_id, company_name, porte, segmento, persona, hours_to_first_touch, has_touch, first_touch_at, entry_source, attribution_quality',
+      fields: 'eligible_date, owner_id, owner_name, company_id, company_name, contact_id, porte, segmento, persona, hours_to_first_touch, has_touch, first_touch_at, entry_source, attribution_quality',
     },
     crm: {
       date: 'event_date', order: 'event_at DESC',
-      fields: 'event_at, event_date, event_type, owner_id, owner_name, company_id, company_name, porte, segmento, persona',
+      fields: 'event_at, event_date, event_type, owner_id, owner_name, company_id, company_name, contact_id, porte, segmento, persona',
     },
     sql: {
       date: 'sql_date', order: 'sql_entered_at DESC',
-      fields: 'deal_id, owner_id, owner_name, sql_date, sql_entered_at, company_id, company_name, porte, segmento, persona',
+      fields: 'deal_id, owner_id, owner_name, sql_date, sql_entered_at, company_id, company_name, contact_id, porte, segmento, persona',
     },
   };
   const spec = specs[requested.kind];
@@ -274,11 +295,19 @@ function queryFor(requested, countOnly) {
 }
 function sanitizeRow(row) {
   const output = {};
+  // O contact_id continua FORA do payload (a regra de privacidade é não expor
+  // dado nominal do contato), mas o link dele passa a sair. Medido em 01-14/08:
+  // 1.395 de 4.656 linhas do drill de atividade (30%) NÃO têm empresa
+  // associada, e sem o link do contato essas linhas ficavam sem NENHUMA porta
+  // para o registro — drill que não abre nada é drill que não audita. Contato
+  // existe em 99,5% das linhas; empresa, em 70%.
+  const contactId = row && row.contact_id;
   Object.keys(row || {}).forEach((key) => {
     if (/email|phone|telefone|mobile|firstname|lastname|name_raw|contact_name/i.test(key)) return;
     if (key === 'contact_id') return;
     output[key] = row[key];
   });
+  if (contactId) output.contactUrl = hubspotUrl('contact', contactId);
   if (output.company_id) output.companyUrl = hubspotUrl('company', output.company_id);
   if (output.deal_id) output.dealUrl = hubspotUrl('deal', output.deal_id);
   if (output.owner_name) output.owner_name = canonicalizeBdrName(output.owner_name);
