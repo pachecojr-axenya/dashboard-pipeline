@@ -393,6 +393,11 @@ module.exports = async function handler(req, res) {
       const mappedA = FC.mapFotoDeals(_rowsToObjs(rowsA)), mappedB = FC.mapFotoDeals(_rowsToObjs(rowsB));
       // etapa bruta de cada deal em B (inclui Perdido/Ganho/fora de escopo) → destino de quem saiu
       const rawBStageById = {}; mappedB.forEach(d => { rawBStageById[FC.dealId(d)] = d.stage; });
+      // rawAStageById (2026-08-14): etapa bruta em A, sem filtro de escopo/etapa — permite
+      // ao drillGeneric mostrar de onde um deal veio quando ele é "novo" na VISÃO filtrada
+      // (etapa destino), mas já existia em A em outra etapa (achado do dono: modal da etapa
+      // destino não mostrava a origem de quem avançou).
+      const rawAStageById = {}; mappedA.forEach(d => { rawAStageById[FC.dealId(d)] = d.stage; });
       // Escopo: presença de `scope` (lista '|'-delimitada de etapas, ou 'tudo') tem
       // precedência; ausente cai no toggle legado includeClosedStages.
       let scopedInputA = deltaScoped ? FC.applyDeltaScope(mappedA, scopeParam) : (includeClosedStages ? mappedA : FC.excludeClosedStages(mappedA));
@@ -419,7 +424,7 @@ module.exports = async function handler(req, res) {
       }
       // Drill genérico (Leva 2): row pode ser <rowKey> (compat waterfall), stage:<Etapa>,
       // quarter:<Q> ou kpi:vidas|arrTotal|arrPond.
-      const drill = FC.drillGeneric(cA, cB, row, measure, rawBStageById, field);
+      const drill = FC.drillGeneric(cA, cB, row, measure, rawBStageById, field, rawAStageById);
       return res.status(200).json({ success: true, a: fA.tab, b: fB.tab, row: drill.rowKey, measure: drill.measure, field: drill.field, sumDelta: drill.sumDelta, deals: drill.deals });
     }
 

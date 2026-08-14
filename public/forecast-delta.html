@@ -349,7 +349,7 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
       <span style="display:inline-flex;align-items:center;gap:.35rem"><span style="width:10px;height:10px;border-radius:2px;background:rgba(248,81,73,.85);display:inline-block"></span>Perda real (churn)</span>
       <span style="display:inline-flex;align-items:center;gap:.35rem"><span style="width:10px;height:10px;border-radius:2px;background:rgba(58,184,183,.85);display:inline-block"></span>Total / Fechado</span>
     </div>
-    <div class="clickhint">Clique numa barra de etapa (ou em Fechado) para ver os deals que causaram o movimento.</div>
+    <div class="clickhint">Clique numa barra de etapa, em Fechado, ou em Total @ A / Total @ B, para ver os deals.</div>
     <div class="caveat" id="caveat"></div>
   </div>
 
@@ -790,8 +790,15 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
           if(!els||!els.length) return; var i=els[0].index;
           if(kinds[i]==='delta'){ var w=j.waterfall[i-1]; if(w) openDrill(w.key, 'Deals | '+w.label, fmtBRL); return; }
           if(kinds[i]==='fechado'){ openDrill('kpi:arrTotal', 'Deals | Fechado (foram para Ganho/Implantação)', fmtBRL, null, 'ganho'); return; }
+          // Total @ A / Total @ B (2026-08-14, pedido do dono): reusa o MESMO drill genérico
+          // dos KPIs "ARR Total em pipe"/"ARR Ponderado" abaixo do gráfico (kpi:arrTotal|arrPond
+          // já olha TODO o conjunto escopado, A e B lado a lado) — escolhe qual dos dois pela
+          // Medida ativa no momento do clique, pra bater com o valor que a própria barra mostra
+          // (Real→arr, Probabilizada→arrPond). Mesma lista nos dois cliques (A e B são só os 2
+          // extremos do mesmo conjunto de deals); só o título do modal muda.
+          if(kinds[i]==='total'){ openDrill(metric==='real'?'kpi:arrTotal':'kpi:arrPond', 'Deals | '+labels[i], fmtBRL); return; }
         },
-        onHover:function(evt, els){ var t=evt&&evt.native&&evt.native.target; if(!t) return; var i=els&&els.length?els[0].index:-1; t.style.cursor=(i>=0&&(kinds[i]==='delta'||kinds[i]==='fechado'))?'pointer':''; },
+        onHover:function(evt, els){ var t=evt&&evt.native&&evt.native.target; if(!t) return; var i=els&&els.length?els[0].index:-1; t.style.cursor=(i>=0&&(kinds[i]==='delta'||kinds[i]==='fechado'||kinds[i]==='total'))?'pointer':''; },
         plugins:{
           legend:{display:false},
           tooltip:{
@@ -1325,6 +1332,7 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
       '<p class="hk"><b>Origem da config |</b> a pill do card indica: sem pill = sidecar capturado ao vivo; "reconstruída (backfill)" = régua da época via git + overrides por data; "⚠ não snapshotada" = avaliada com a config atual (fallback). O drill das barras usa a MESMA avaliação — o Σ fecha com a barra.</p>'+
       '<p class="hk"><b>Medidas |</b> Horizonte <b>ARR</b>: Probabilizada = <code>arr_estimado</code> × prob. final da etapa | Real = ARR estimado bruto. Horizonte <b>Pipeline total</b>: receita da régua no horizonte completo (motor canônico <code>forecast-compute</code> → <code>forecast-engine</code>, Regra primária nº 3), ancorada na data de cada foto.</p>'+
       '<p class="hk"><b>Fórmula |</b> a barra da etapa é Σ(B) − Σ(A). Invariante verificado: Σ Δ das etapas = Δ do total (selo nos KPIs).</p>'+
+      '<p class="hk"><b>Drill (2026-08-14) |</b> clique em qualquer barra de etapa, em Fechado, ou em <b>Total @ A</b> / <b>Total @ B</b> para ver a lista de deals. Total @ A e Total @ B abrem o MESMO drill (o conjunto inteiro do escopo, valor em A e em B lado a lado) — só o título do modal muda. Quando um deal aparece numa etapa por ter avançado de outra (ex.: veio de Cotação e chegou em Consultoria), o modal agora mostra a etapa de origem corretamente (coluna "Etapa (A→B) | destino"); antes, abrir o drill da etapa DESTINO mostrava esse deal como "Novo" sem indicar de onde ele veio — só o drill da etapa de ORIGEM sabia o destino.</p>'+
       '<p class="hk"><b>Decomposição saudável × perda real (2026-08-07) |</b> cada barra de Δ é colorida em 2 segmentos — verde = "saudável" (deal avançou de etapa, foi p/ Ganho/Implantação, entrou novo na etapa, ou permaneceu e GANHOU valor) | vermelho = "perda real" (foi p/ Perdido/regrediu/saiu do pipe sem avançar, ou permaneceu e PERDEU valor). Mesma classificação do drill da barra (clique pra ver os deals de cada tipo). Os 2 segmentos somam exatamente o Δ total da barra.</p>'+
       '<p class="hk"><b>Escopo (multiselect por etapa, 2026-08-13) |</b> escolha livremente quais etapas do funil de Vendas entram no cálculo — <b>Reunião Agendada, Diagnóstico, Cotação, Consultoria, Negociação</b> — para combinações como "Diagnóstico pra frente" (sem Reunião Agendada) sem precisar de um toggle fixo pra cada combinação. Default: Cotação + Consultoria + Negociação (o antigo "Ativos"). A régua de probabilidade de cada etapa é sempre a mesma do forecast (<code>forecast_flat</code>: Reunião Agendada e Diagnóstico 6% fixo, Cotação ~18,6%, Consultoria ~28,5%, Negociação ~49,3%) — o multiselect só decide QUAIS deals entram, nunca muda a fórmula. Bid e Stand by saem sempre, independente da seleção. <b>Ganho/Implantação não são selecionáveis aqui</b> — entram sempre pela barra aditiva "Fechado" abaixo, nunca como barra própria do waterfall (selecioná-los duplicaria com o Fechado).</p>'+
       '<p class="hk"><b>Fechado (2026-08-02; sempre valor Real desde 2026-08-13; deals "nascidos fechados" desde 2026-08-14) |</b> hoje um deal que vira Ganho entre A e B "derruba" o Total @ B como se fosse perda de valor — na verdade é vitória: o valor só migrou de pipe aberto ponderado para fechado/contratado. <b>Implantação conta como Ganho</b> nesta barra (decisão do dono, 2026-08-02). A barra <b>Fechado</b> soma o ARR Real dos deals que foram para Ganho ou Implantação no período (na foto A, quando existiam abertos) <b>+ deals que já nasceram Ganho/Implantação entre as duas fotos</b> — criados e fechados no mesmo intervalo, sem nunca terem sido fotografados abertos (achado real: deal criado e ganho no mesmo dia, ~7min de diferença — a foto diária nunca o viu aberto; sem essa soma, esses deals eram invisíveis no Delta inteiro). Sempre Real, mesmo com "Medida: Probabilizada" selecionada no header (um deal já fechado não é mais uma estimativa). A barra <b>Total B + Fechado</b> comunica o quadro completo (o que já foi executado, sempre Real, + o que ainda está por vir, na medida selecionada). São barras INFORMATIVAS/aditivas — não entram no Σ Δ nem no invariante das etapas.</p>' },

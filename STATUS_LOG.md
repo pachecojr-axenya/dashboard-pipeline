@@ -1,5 +1,48 @@
 # Dashboard Enhancement Loop — Status Log
 
+### Delta | D02: drill em Total @ A/B + fix da etapa de origem no drill de quem avançou (2026-08-14)
+
+> Dois pedidos do dono na mesma rodada. **Não deployado ainda** (`npm run check` limpo,
+> testado ponta a ponta com o handler real via stub, sem BQ).
+
+- **Drill em Total @ A / Total @ B**: essas 2 barras do waterfall não tinham `onClick` (só
+  `delta` e `fechado` tinham). Reusa o MESMO drill genérico dos KPIs clicáveis "ARR Total em
+  pipe"/"ARR Ponderado" (`kpi:arrTotal`/`kpi:arrPond`, já existentes abaixo do gráfico) —
+  escolhido pela Medida ativa no clique (Real→`arrTotal`, Probabilizada→`arrPond`), pra bater
+  com o valor que a própria barra mostra. Sem mudança de backend: só `onClick`/`onHover` do
+  D02 em `public/forecast-delta.html`. Clicar em Total @ A e em Total @ B abre a MESMA lista
+  (é o mesmo conjunto de deals, A e B são só os 2 extremos) — só o título do modal muda.
+  `clickhint` abaixo do gráfico atualizado pra mencionar a opção nova.
+- **Fix: drill da etapa DESTINO não mostrava a etapa de ORIGEM de quem avançou.** Achado do
+  dono: clicando na barra de uma etapa (ex.: Consultoria) pra ver quem chegou avançando de
+  uma etapa anterior (ex.: Cotação), o modal mostrava esse deal como "Novo" com etapa de
+  origem vazia — só o drill da etapa de ORIGEM (Cotação) sabia pra onde o deal foi. Causa:
+  `drillGeneric` (`lib/forecast-compute.js`) filtra `contribA`/`contribB` pelo stage/rowKey
+  sendo visto; um deal "novo" nessa visão filtrada pode na verdade já existir na Foto A, só
+  que em OUTRA etapa — e o código não tinha como enxergar isso, porque só olhava o conjunto
+  já filtrado. Fix: novo parâmetro `rawAStageById` (raw, sem filtro — espelha o
+  `rawBStageById` que já existia e resolvia o problema simétrico do lado do destino) — quando
+  o deal é "novo" na visão filtrada, busca a etapa bruta dele em A; se achar, preenche
+  `stageA` com a etapa real de origem e reclassifica com a MESMA `_classifySaiu` já usada do
+  lado da origem (evita duas fórmulas de classificação divergentes). `api/history.js` monta
+  `rawAStageById` (espelhando como já monta `rawBStageById`) e passa pro `drillGeneric`.
+  Afeta TODOS os targets de drill que passam por essa função (`<rowKey>` do D02,
+  `stage:`/D04/D07, `quarter:`, `kpi:`, `bidstage:`/D08) — mesmo mecanismo compartilhado,
+  correção única resolve em todos os lugares de uma vez. Frontend não precisou de nenhuma
+  mudança: a linha que monta "Etapa (A→B) | destino" já sabia combinar `stageA`/`stageB`
+  corretamente (`if(x.stageA!==x.stageB) st+=' → '+...`) — só faltava `stageA` vir preenchido.
+- **Validação**: `node --check` nos 2 arquivos backend; `_check-inline-js` no
+  `forecast-delta.html` (0 erros); teste isolado com deals sintéticos reproduzindo o bug
+  relatado (deal "avança" de Cotação pra Consultoria) — ANTES do fix: `stageA:null,
+  tipo:"novo"` (bug confirmado); DEPOIS: `stageA:"Cotação", tipo:"avancou"` (correto); lado
+  da ORIGEM confirmado inalterado. **Confirmado também ponta a ponta pelo handler real**
+  (`api/history.js`, via stub do BigQuery — mesmo mecanismo do `test-forecast-delta-e2e.js`,
+  não só a função isolada): requisição real a `action=compare-drill&row=stage:Cotação`
+  devolve `{"stageA":"Diagnóstico","stageB":"Cotação","tipo":"avancou"}` para o deal que
+  avançou — confirma o fix funcionando através de todo o pipeline HTTP, não só a função em
+  isolamento. `npm run check` completo — 0 FAIL, nenhuma assertion pré-existente quebrou
+  (parâmetro novo é opcional/aditivo, comportamento antigo preservado quando omitido).
+
 ### 🚀 DEPLOY DE PRODUÇÃO | Delta: Foto A/B persistem na URL (2026-08-14)
 
 > Autorização explícita do dono ("commita e faz o deploy"), continuação da mesma sessão da
