@@ -1,5 +1,20 @@
 # Dashboard Enhancement Loop — Status Log
 
+### 🚀 DEPLOY DE PRODUÇÃO | Delta: Foto A/B persistem na URL (2026-08-14)
+
+> Autorização explícita do dono ("commita e faz o deploy"), continuação da mesma sessão da
+> entrada "Delta | Foto A/B persistem na URL entre reloads" abaixo.
+>
+> `origin/main` andou 2 commits (Workload | armazém canônico atrás de `?fonte`) durante o
+> trabalho — confirmado zero arquivo comum, rebase (fast-forward + stash pop) limpo, sem
+> conflito. `npm run check` completo antes do commit: 0 FAIL. Commit `9629781` (2 arquivos:
+> `STATUS_LOG.md`, `public/forecast-delta.html`). `npm run deploy` (preflight +
+> `vercel --prod --yes`): deployment `dpl_5YEsScFhwGgS14ravez4GxCHSgc8`, READY.
+>
+> **Pós-deploy confirmado nos dois hosts** (`project-bsmfu.vercel.app` e
+> `axenya-pipeline-dashboard.vercel.app`): `/forecast-delta` = 200; `/api/history` = 401 (auth
+> ativa).
+
 ### Delta | Foto A/B persistem na URL entre reloads (2026-08-14)
 
 > Pedido do dono: dar refresh na página perdia a comparação em andamento (Foto A/B sempre
