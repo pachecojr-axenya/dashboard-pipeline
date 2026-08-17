@@ -1,5 +1,48 @@
 # Auditoria crítica dos gráficos 🟡 | 2026-06-12
 
+## Adendo | Delta D02 ganha 5 fatias (Novo/Avançou/Permaneceu/Perdido/Probabilidade) + zoom + filtro (2026-08-17)
+
+> **Estado: D02 continua 🟢 validado no que já existia (invariante Σ Δ = Δtotal intacto,
+> testado); a fatia NOVA "Probabilidade" fica 🟡 não validada contra o HubSpot** — pill
+> própria no card avisa isso até o dono confirmar os números ao vivo.
+>
+> Pedido do dono: fatiar as barras de Δ do waterfall entre o que permaneceu, avançou e
+> foi perdido — e, discutindo a implementação, surgiu uma 5ª fatia: **Probabilidade**,
+> isolando quanto do ganho ponderado de um deal que avançou de etapa é reclassificação
+> pela régua (o mesmo ARR, só que pesado por uma probabilidade maior) vs. substância real
+> (ARR que de fato mudou). Fórmula e decisões de design documentadas na ficha "i" do D02.
+>
+> **Problema de escala resolvido com 2 recursos, não 1**: as barras de Total A/B são
+> ordens de grandeza maiores que os Δ por etapa, então 5 fatias dentro de um Δ pequeno
+> ficavam ilegíveis. (1) Toggle **Zoom** (oculta as barras de Total, eixo reescala pro
+> range das barras de Δ ± R$500K) — descartei eixo duplo/escala log de propósito (nunca
+> usados neste dashboard, e log quebra com Δ negativo). (2) Legenda **clicável** — liga/
+> desliga fatia, recalcula a altura de verdade (não só esconde a cor).
+>
+> **Bug encontrado e corrigido durante a prototipagem** (achado do dono testando o
+> protótipo): empilhar as fatias por POSIÇÃO real de valor (clampando cada corte contra
+> o range da barra) causava sobreposição — uma fatia isolada maior em módulo que o Δ
+> líquido "engolia" a barra inteira e a próxima repintava por cima. Fix: empilhamento
+> **proporcional** (fração = |fatia| ÷ Σ|fatias ativas|), sempre contíguo, nunca sobrepõe.
+>
+> Também ganhou: animação de morph entre toggles (`chart.update()` em vez de
+> `destroy()+new Chart()`) e tooltip HTML customizado com uma cor por fatia (o tooltip
+> nativo do Chart.js só dá 1 color-box por item de dataset).
+>
+> **Protótipo isolado** testado antes de integrar: `public/_sandbox-d02-slices.html`
+> (dado 100% sintético, fora do menu, não é painel oficial).
+>
+> Backend novo: `FC.movementSlices` (`lib/forecast-compute.js`) — sucessora do
+> `FC.healthByRow` (2 baldes), que continua no payload como cross-check interno até o
+> novo ser validado, ainda sem uso no front. Testes: `scripts/test-delta-invariant.js`
+> (unit, Parte 1f) + checagem de integração estendida; `npm run check` completo — 0 FAIL.
+>
+> Paleta das 5 fatias reaproveita o design system (premium.css) — só tem 5 tons não-teal,
+> e alguns pares ficam abaixo do ΔE ideal pro CVD-check do skill dataviz (verde↔vermelho,
+> amarelo↔laranja). Mitigado com textura hachurada na fatia Probabilidade + ordem de
+> empilhamento que afasta os 2 piores pares + legenda/tooltip sempre visíveis (nunca só
+> cor). Ver nota completa em `STATUS_LOG.md`.
+
 ## Adendo | Cotação: 10 cards construídos, 2 removidos, dado de ticket/empresa estendido (2026-08-11)
 
 > **Estado inalterado: 🟡 não validado contra o HubSpot** (painel segue oculto/🔴 no menu até

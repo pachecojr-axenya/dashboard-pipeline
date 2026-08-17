@@ -1,5 +1,94 @@
 # Dashboard Enhancement Loop — Status Log
 
+### Delta | D02 ganha 5 fatias (Novo/Avançou/Permaneceu/Perdido/Probabilidade) + zoom + filtro de fatia (2026-08-17)
+
+> Pedido do dono: fatiar as barras de Δ do D02 (waterfall, o gráfico mais importante do
+> painel) entre o que permaneceu, avançou e foi perdido — discutindo a implementação,
+> surgiu a 5ª fatia **Probabilidade** (quanto do ganho ponderado de um deal que avançou é
+> reclassificação pela régua vs. substância real). **Não deployado ainda** — protótipo
+> isolado (`public/_sandbox-d02-slices.html`, dado sintético) testado e iterado com o
+> dono ANTES de integrar em `forecast-delta.html`; `npm run check` completo (0 FAIL) +
+> `scripts/test-delta-invariant.js` (unit, Parte 1f, novo) rodados depois da integração.
+
+- **Backend novo — `FC.movementSlices`** (`lib/forecast-compute.js`): sucessora do
+  `FC.healthByRow` (2 baldes: saudável/perda real). Pra cada rowKey do waterfall, separa
+  o Δ em 5 fatias, em 'arr' (Real) e 'arrPond' (Probabilizada) — as únicas 2 medidas que
+  o D02 usa de fato (`horizon` fica fixo em 'arr' desde 2026-08-06). Regras: **novo** =
+  deal não existia em NENHUMA etapa na Foto A (checado via `rawAStageById`, novo
+  parâmetro em `api/history.js`, espelha o `rawAStageById` que o `compare-drill` já
+  calcula desde 2026-08-14); **avançou** = chegou de outra etapa OU saiu daqui pra etapa
+  posterior/Ganho/Implantação (mesma filosofia do healthByRow: sair por avanço/fechamento
+  é resultado bom, não perda); **permaneceu** = mesma etapa nos 2 lados, Δ direto;
+  **perdido** = saiu pra Perdido/regrediu (`_classifySaiu` retorna 'saiu'); **probabilidade**
+  = só quando um deal AVANÇA (chega de outra etapa) em 'arrPond' — decompõe o valor cheio
+  que chega (`arrPond_B`) em `arrPond_A` relocado + `(arr_B−arr_A)×prob_B` (substância,
+  vai pra "avançou") e `arr_A×(prob_B−prob_A)` (reclassificação de régua, vai pra
+  "probabilidade"). Soma das 5 fatias == Δ da linha, por construção (mesma prova do
+  healthByRow, só com a fatia "avançou-entrando" desdobrada em 2). Caveat documentado no
+  código: se o deal existia na Foto A mas fora do escopo/sem rowKey (`rawAStageById` tem
+  a etapa mas `contribA` não tem os valores), não dá pra saber o ARR/probabilidade de
+  origem — conta como "avançou" sem split, em vez de inventar precisão que a fonte não
+  tem (mesma filosofia do caveat já catalogado pro destino de deal Bid no D05).
+  `healthByRow`/`saudavel`/`perdaReal` continuam no payload como cross-check interno —
+  não removidos ainda, sem uso no front a partir desta rodada.
+- **`api/history.js` (`action=compare`)**: computa `rawAStageById` (só faltava aqui —
+  `compare-drill` já tinha desde 2026-08-14) e anexa `w.slices = {arr, arrPond}` por
+  linha do waterfall, ao lado do `saudavel`/`perdaReal` existente.
+- **Frontend (`forecast-delta.html`, D02)**: overlay de 2 cores trocado pelo de 5 fatias.
+  - **Empilhamento PROPORCIONAL, não posicional** (fração = |fatia| ÷ Σ|fatias ativas|) —
+    fix de um bug real encontrado testando o protótipo: empilhar por posição de valor
+    real (clampando cada corte contra o range da barra, técnica herdada do overlay de 2
+    cores) sobrepõe quando uma fatia isolada é maior em módulo que o Δ líquido da barra
+    (comum aqui) — a fatia "engole" a barra inteira e a próxima repinta por cima ao
+    voltar pro range. Proporcional evita por construção: sempre contígua, nunca sobrepõe.
+  - **Zoom** (`.tab-sub`, "Waterfall completo" ↔ "Só movimentação"): oculta as barras de
+    Total @ A/B/Fechado (ordens de grandeza maiores que os Δ, tornavam as fatias
+    ilegíveis) e reescala o eixo pro range das barras de Δ visíveis ± R$500K (ajustado de
+    R$1M — "sobrava" espaço demais, achado do dono). Sem `min`/`max` explícitos o
+    Chart.js incluía a base 0 no cálculo de bounds mesmo pra floating-bar, e a escala
+    ficava idêntica com ou sem as barras de Total — precisou de min/max fixos.
+  - **Legenda clicável** (filtro de fatia): desliga uma fatia → recalcula a altura da
+    barra de verdade (soma só as fatias ligadas), não só esconde a cor. Total @ B vira
+    "(recalc.)" quando o filtro está ativo; Total @ A/B REAIS (fatos) ficam expostos numa
+    faixa de aviso acima do gráfico, pra nunca serem confundidos com o valor filtrado.
+    Tooltip/clique na barra sempre mostram o valor REAL de cada fatia, mesmo desligada.
+  - **Morph entre toggles**: `chart.update()` no lugar de `destroy()+new Chart()` — só
+    assim o Chart.js anima a barra da posição antiga pra nova (é a mesma instância
+    recebendo dado novo). Limpo no toggle Medida (mesmas barras, só valor muda);
+    best-effort no toggle Zoom/filtro (nº de barras pode mudar). O plugin de desenho
+    (`wfSliceOverlay`) usa a geometria ANIMADA da barra (`getProps(...,false)`), não a
+    final, pra as fatias acompanharem o crescimento/encolhimento em vez de vazar.
+  - **Tooltip HTML customizado** (não o canvas-tooltip nativo): 1 cor por fatia — o
+    tooltip nativo do Chart.js só dá 1 color-box por item de dataset (aqui é 1 dataset
+    só, a barra), não dava pra ter 5.
+  - **Valor da barra desenhado dentro do próprio plugin** (não mais pelo
+    `chartjs-plugin-datalabels`): os dois desenham no mesmo hook (`afterDatasetsDraw`) e
+    o plugin de fatias, rodando depois, pintava por cima do número — achado do dono
+    testando o protótipo. `datalabels` segue ativo só nas barras de Total/Fechado.
+- **Paleta**: 5 tons não-teal do `premium.css` (azul/verde/laranja/cinza/vermelho) — sem
+  tom categórico "puro" o suficiente pra passar o CVD-check do skill `dataviz` em todos
+  os pares (`scripts/validate_palette.js`: verde↔vermelho ΔE4.6 deutan; amarelo/laranja
+  sempre <8). Mitigado com (1) ordem de empilhamento que afasta os 2 piores pares o mais
+  longe possível, (2) textura hachurada só na fatia Probabilidade (reforça "categoria à
+  parte", que também é semanticamente diferente — não é sobre qual deal, é sobre por que
+  o valor mudou), (3) legenda/tooltip sempre visíveis, nunca só cor.
+- **Layout da página**: D02 virou o primeiro card (era D01) — pedido do dono ("D02 é o
+  gráfico mais importante do painel"). D01 (Fotografia) foi pra depois do D03. Só
+  reordenação de markup — cada card é referenciado por ID no JS, não por posição na
+  página; `npm run check` confirma 0 regressão.
+- **Validação**: `node scripts/_check-inline-js.js public/forecast-delta.html` — 0
+  erros; `scripts/test-delta-invariant.js` — Parte 1f (novo): invariante Σ(5 fatias) ==
+  Δ(rowKey) em TODAS as linhas (arr e arrPond) + 4 casos pontuais (deal que avança sem
+  mudar ARR cai quase todo em avançou+probabilidade calculados exatos pela fórmula; novo
+  cai em "novo" não "avançou"; perdido cai em "perdido" não "avançou"; permaneceu cai em
+  "permaneceu" com probabilidade=0) — todos PASS; checagem de integração estendida
+  (Σ(5 fatias) == delta em toda barra real, via `/api/history`). **5 falhas
+  pré-existentes** no mesmo arquivo (`closedWonAgg`/Cappta, Implantação/Kikkoman) —
+  confirmadas via `git stash` que já falhavam no HEAD antes desta rodada, não
+  relacionadas a esta mudança (não investigadas/corrigidas aqui, fora do escopo). `npm
+  run check` completo (inclui `test-forecast-delta-e2e.js`/`-leva2`/`-scope`, gate de
+  design tokens) — **0 FAIL**.
+
 ### Workload | a ressalva do carimbo estava na aba errada (2026-08-14)
 
 > Dono voltou: "selecionei do dia 10 ao 13 e ainda aparece 2 ligações conectadas do Allan".

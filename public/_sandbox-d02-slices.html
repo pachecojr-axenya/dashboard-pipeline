@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SANDBOX | D02 — 5 fatias + zoom | Delta</title>
+<link rel="icon" href="/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+<link rel="stylesheet" href="/premium.css?v=5">
+<script src="/premium.js?v=5"></script>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;line-height:1.5}
+.wrap{max-width:1180px;margin:0 auto;padding:1.5rem 2rem 4rem}
+.hdr{margin-bottom:.3rem}
+.hdr h1{font-size:1.1rem;font-weight:700;margin:0 0 .2rem}
+.sandbox-banner{background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.4);color:var(--yellow);border-radius:9px;padding:.6rem .9rem;font-size:.78rem;margin-bottom:1.1rem}
+.novo-card{background:var(--card);border-radius:10px;padding:1.15rem 1.35rem;margin-bottom:1.1rem}
+.sec-hdr{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;margin-bottom:.4rem}
+.ccode{font-size:.62rem;font-weight:800;letter-spacing:.05em;color:var(--teal);background:rgba(45,212,191,.12);border-radius:5px;padding:.1rem .4rem}
+.sec-hdr h3{font-size:.98rem;margin:0}
+.sec-note{color:var(--text2);font-size:.76rem}
+.controls-row{display:flex;gap:1.4rem;flex-wrap:wrap;align-items:flex-end;margin:.9rem 0 1rem}
+.ctl-label{display:block;font-size:.66rem;font-weight:700;letter-spacing:.04em;color:var(--text2);text-transform:uppercase;margin:0 0 .35rem}
+.seg-ctrl{display:inline-flex;align-items:center;background:rgba(255,255,255,.14);border-radius:99px;padding:3px;position:relative}
+.seg-ctrl::before{content:'';position:absolute;top:3px;left:0;width:var(--seg-tw,calc(50% - 3px));height:calc(100% - 6px);background:rgba(255,255,255,.26);border-radius:99px;transform:translateX(var(--seg-tx,3px));transition:transform .22s cubic-bezier(.4,0,.2,1),width .22s cubic-bezier(.4,0,.2,1);will-change:transform,width;pointer-events:none;z-index:0}
+.seg-btn{border:none;background:none;color:var(--text2);border-radius:99px;padding:.32rem .95rem;font-size:.8rem;font-weight:500;font-family:var(--font);cursor:pointer;transition:color .2s ease;white-space:nowrap;flex:1;text-align:center;position:relative;z-index:1}
+.seg-btn.active{color:var(--text)}
+html[data-theme="light"] .seg-ctrl{background:rgba(0,0,0,.06)}
+html[data-theme="light"] .seg-ctrl::before{background:#fff}
+html[data-theme="light"] .seg-btn.active{color:#111}
+.tab-sub{display:inline-flex;background:var(--card2);border-radius:99px;padding:3px;gap:0;position:relative}
+.tab-sub-thumb{position:absolute;top:3px;height:calc(100% - 6px);border-radius:99px;background:rgba(255,255,255,.14);pointer-events:none;z-index:0;transition:left .22s cubic-bezier(.4,0,.2,1),width .22s cubic-bezier(.4,0,.2,1)}
+html[data-theme="light"] .tab-sub-thumb{background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.15)}
+.tab-sub-btn{background:transparent;border:none;border-radius:99px;color:var(--text2);padding:.4rem .8rem;cursor:pointer;font-family:inherit;font-size:.78rem;font-weight:500;transition:color .18s;position:relative;z-index:1}
+.tab-sub-btn.active{color:var(--text);font-weight:600}
+.chart-wrap{position:relative;height:520px}
+.cjs-tooltip{position:absolute;top:0;left:0;pointer-events:none;opacity:0;transition:opacity .1s;background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:.55rem .7rem;font-size:.76rem;color:var(--text);box-shadow:0 8px 24px rgba(0,0,0,.35);white-space:nowrap;z-index:20}
+.cjs-tooltip .tt-title{font-weight:700;margin-bottom:.3rem}
+.cjs-tooltip .tt-row{display:flex;align-items:center;gap:.4rem;padding:.05rem 0}
+.cjs-tooltip .tt-sw{width:9px;height:9px;border-radius:2px;flex-shrink:0}
+.cjs-tooltip .tt-val{margin-left:auto;padding-left:.6rem;font-weight:600}
+.state{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--text2);font-size:.85rem}
+.totals-readout{font-size:.8rem;color:var(--text2);margin:0 0 .5rem;min-height:1.2em}
+.totals-readout b{color:var(--text);font-weight:700}
+.wf-legend{display:flex;gap:.4rem;align-items:center;font-size:.72rem;color:var(--text2);margin:.6rem 0 0;flex-wrap:wrap}
+.wf-legend .sw{width:11px;height:11px;border-radius:3px;display:inline-block;vertical-align:-1px;margin-right:.35rem}
+.leg-toggle{display:inline-flex;align-items:center;background:transparent;border:1px solid transparent;border-radius:99px;padding:.25rem .6rem;font-size:.72rem;font-family:inherit;color:var(--text2);cursor:pointer;transition:opacity .15s,border-color .15s}
+.leg-toggle:hover{border-color:var(--border)}
+.leg-toggle.active{color:var(--text)}
+.leg-toggle:not(.active){opacity:.4;text-decoration:line-through}
+.clickhint{color:var(--muted);font-size:.72rem;margin-top:.5rem}
+.detail{margin-top:1rem;border-top:1px solid var(--border);padding-top:.9rem;display:none}
+.detail table{width:100%;border-collapse:collapse;font-size:.82rem}
+.detail th,.detail td{text-align:right;padding:.32rem .5rem;border-bottom:1px solid var(--border)}
+.detail th:first-child,.detail td:first-child{text-align:left}
+.detail tfoot td{font-weight:700;border-top:2px solid var(--border);border-bottom:none}
+.formula-note{font-size:.74rem;color:var(--text2);margin-top:.6rem;background:var(--card2);border-radius:8px;padding:.6rem .8rem}
+.formula-note code{background:rgba(255,255,255,.08);border-radius:4px;padding:.05rem .3rem}
+.palette-note{font-size:.72rem;color:var(--text2);margin-top:.5rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hdr">
+    <h1>Sandbox — D02 v2 (protótipo, dados congelados)</h1>
+  </div>
+  <div class="sandbox-banner">
+    ⚠ Página de teste visual, fora do painel Delta oficial. Dados 100% sintéticos (não vêm do HubSpot/BigQuery) —
+    servem só pra validar leitura e escala antes de integrar em <code>forecast-delta.html</code>. Não usar pra
+    apresentação nem citar número daqui.
+  </div>
+
+  <div class="novo-card">
+    <div class="sec-hdr">
+      <span class="ccode">D02</span>
+      <h3>Waterfall do forecast por etapa — fatiado em 5 categorias</h3>
+      <span class="sec-note">Δ da medida selecionada entre Total @ A e Total @ B</span>
+    </div>
+
+    <div class="controls-row">
+      <div>
+        <span class="ctl-label">Medida</span>
+        <div class="seg-ctrl" id="metric-toggle" role="group" aria-label="Medida">
+          <button class="seg-btn active" data-v="prob" aria-pressed="true">Probabilizada</button>
+          <button class="seg-btn" data-v="real" aria-pressed="false">Real</button>
+        </div>
+      </div>
+      <div>
+        <span class="ctl-label">Visualização</span>
+        <div class="tab-sub" id="zoom-toggle" role="group" aria-label="Visualização">
+          <button class="tab-sub-btn active" data-v="completo" aria-pressed="true">Waterfall completo</button>
+          <button class="tab-sub-btn" data-v="zoom" aria-pressed="false">Só movimentação (zoom)</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="totals-readout" id="totals-readout"></div>
+
+    <div class="chart-wrap"><canvas id="wf"></canvas><div class="state" id="chart-state" style="display:none"></div><div id="cjs-tooltip" class="cjs-tooltip"></div></div>
+
+    <div class="wf-legend" id="wf-legend"></div>
+    <div class="clickhint">Clique numa barra de etapa pra ver a composição das 5 fatias (dado congelado, sem drill real).</div>
+
+    <div class="detail" id="detail">
+      <h4 id="detail-title" style="margin:0 0 .5rem;font-size:.88rem"></h4>
+      <table>
+        <thead><tr><th>Fatia</th><th>Valor</th><th>% de |Δ|</th></tr></thead>
+        <tbody id="detail-body"></tbody>
+        <tfoot><tr><td>Δ líquido da etapa</td><td id="detail-total" colspan="2"></td></tr></tfoot>
+      </table>
+    </div>
+
+    <div class="formula-note">
+      <b>Fórmula da fatia Probabilidade</b> (só existe na Medida Probabilizada, sempre 0 na Real) — pra cada deal
+      que avançou de etapa entre A e B: <code>prob_A = arrPond_A / arr_A</code>, <code>prob_B = arrPond_B / arr_B</code>.
+      <code>efeito_probabilidade = arr_A × (prob_B − prob_A)</code> (pipe "inflado" pela régua, ARR travado em A) ·
+      <code>efeito_avançou = (arr_B − arr_A) × prob_B</code> (mudança real de substância). Soma dos dois = Δ ponderado
+      exato do deal — a fatia Probabilidade é o que hoje fica escondido dentro de "avançou".
+    </div>
+    <div class="formula-note">
+      <b>Empilhamento é PROPORCIONAL, não posicional</b> — cada fatia ocupa uma fração da altura da barra igual a
+      <code>|valor da fatia| ÷ Σ|todas as fatias ativas|</code>, sempre na mesma ordem do tooltip (Novo → Avançou →
+      Permaneceu → Probabilidade → Perdido). Isso é necessário porque uma fatia isolada (ex.: "Avançou") costuma ser
+      MAIOR em módulo que o Δ líquido da própria barra — empilhar por posição real de valor faz uma fatia "engolir" o
+      espaço todo e a próxima repintar por cima (bug corrigido em 2026-08-17). O corte visual não representa mais um
+      ponto exato no eixo Y — representa proporção de composição. O valor exato de cada fatia está sempre no tooltip e
+      no detalhe (clique na barra), nunca só na altura do desenho.
+    </div>
+    <div class="palette-note" id="palette-note"></div>
+  </div>
+</div>
+
+<script>
+// ── Dados congelados (sintéticos) — DERIVADOS de um roster de 18 deals, não digitados
+// à mão. Cada deal tem 1 arr (não muda por medida) + etapa em A e em B; as 5 fatias e
+// os totais são TODOS calculados a partir daqui pelas mesmas fórmulas que valeriam no
+// backend real — garante que Real e Probabilizada sejam 2 leituras consistentes da
+// MESMA realidade (a v1 deste sandbox tinha os buckets digitados à mão independentes
+// por medida, e por isso "avançou" saltava de forma incoerente entre os toggles —
+// achado do dono, 2026-08-17).
+var PROB = { RA:0.04, DI:0.08, CO:0.15, CS:0.28, NE:0.50 };   // régua ilustrativa, monotônica
+var ROW_LABEL = { DI:'Diagnóstico', CO:'Cotação', CS:'Consultoria', NE:'Negociação' };
+var ROW_ORDER = ['DI','CO','CS','NE'];   // RA fica de fora do escopo (só alimenta avanços p/ DI), igual Bid/Standby na página real
+
+var DEALS = [
+  // novo → DI
+  { arrA:0,      stageA:null, arrB:300000,  stageB:'DI' },
+  // RA → DI avança, ARR igual (mostra probabilidade pequena)
+  { arrA:250000, stageA:'RA', arrB:250000,  stageB:'DI' },
+  { arrA:180000, stageA:'DI', arrB:230000,  stageB:'DI' },   // permanece, sobe
+  { arrA:140000, stageA:'DI', arrB:100000,  stageB:'DI' },   // permanece, desce
+  { arrA:180000, stageA:'DI', arrB:0,       stageB:null },   // perdido
+
+  { arrA:0,      stageA:null, arrB:120000,  stageB:'CO' },   // novo → CO
+  { arrA:310000, stageA:'DI', arrB:310000,  stageB:'CO' },   // DI → CO avança, ARR igual
+  { arrA:200000, stageA:'CO', arrB:240000,  stageB:'CO' },   // permanece, sobe
+  { arrA:140000, stageA:'CO', arrB:0,       stageB:null },   // perdido
+
+  { arrA:0,      stageA:null, arrB:60000,   stageB:'CS' },   // novo → CS
+  { arrA:280000, stageA:'CO', arrB:280000,  stageB:'CS' },   // CO → CS avança, ARR igual
+  { arrA:320000, stageA:'CS', arrB:260000,  stageB:'CS' },   // permanece, desce
+  { arrA:400000, stageA:'CS', arrB:0,       stageB:null },   // perdido
+  { arrA:500000, stageA:'CS', arrB:500000,  stageB:'Ganho' }, // fechado (Ganho) — some do escopo, entra só no Fechado
+
+  { arrA:0,      stageA:null, arrB:90000,   stageB:'NE' },   // novo → NE
+  { arrA:900000, stageA:'CS', arrB:900000,  stageB:'NE' },   // CS → NE avança, ARR igual — deal grande, mostra a fatia Probabilidade de verdade
+  { arrA:150000, stageA:'NE', arrB:190000,  stageB:'NE' },   // permanece, sobe
+  { arrA:110000, stageA:'NE', arrB:0,       stageB:null }    // perdido
+];
+
+function blankBucket(){ return { novo:0, avancou:0, permaneceu:0, perdido:0, probabilidade:0 }; }
+
+function computeFrozen(){
+  var real = {}, prob = {}, fechadoArr = 0;
+  ROW_ORDER.forEach(function(r){ real[r]=blankBucket(); prob[r]=blankBucket(); });
+
+  DEALS.forEach(function(d){
+    if(d.stageB === 'Ganho'){ fechadoArr += d.arrB; }
+
+    if(d.stageA && d.stageB && d.stageA === d.stageB){
+      // permaneceu na mesma etapa — Δ direto, sem decomposição de probabilidade
+      // (régua não muda pro mesmo deal na mesma etapa entre A e B)
+      var r = d.stageA, p = PROB[r];
+      if(ROW_ORDER.indexOf(r) < 0) return;
+      real[r].permaneceu += (d.arrB - d.arrA);
+      prob[r].permaneceu += (d.arrB - d.arrA) * p;
+
+    } else if(!d.stageA && d.stageB){
+      // novo — não existia em NENHUMA etapa na Foto A
+      var r = d.stageB, p = PROB[r];
+      if(ROW_ORDER.indexOf(r) < 0) return;
+      real[r].novo += d.arrB;
+      prob[r].novo += d.arrB * p;
+
+    } else if(d.stageA && !d.stageB){
+      // perdido — saiu do pipe, não foi pra Ganho
+      var r = d.stageA, p = PROB[r];
+      if(ROW_ORDER.indexOf(r) >= 0){ real[r].perdido += -d.arrA; prob[r].perdido += -(d.arrA * p); }
+
+    } else if(d.stageA && d.stageB && d.stageA !== d.stageB){
+      // avançou (inclui ir pra Ganho, mesmo tratamento de "saída saudável" do
+      // healthByRow original) — origem perde o valor cheio, sem split (nada pra
+      // reclassificar numa etapa que o deal está deixando); destino ganha o valor
+      // cheio, ESSE sim decomposto em "relocado + substância" (avançou) vs
+      // "reclassificação pela régua nova" (probabilidade) — fórmula igual à do
+      // formula-note abaixo.
+      var pA = PROB[d.stageA] || 0, pB = PROB[d.stageB] || 0;
+      if(ROW_ORDER.indexOf(d.stageA) >= 0){
+        real[d.stageA].avancou += -d.arrA;
+        prob[d.stageA].avancou += -(d.arrA * pA);
+      }
+      if(ROW_ORDER.indexOf(d.stageB) >= 0){
+        var arrPondA = d.arrA * pA;
+        var substance = (d.arrB - d.arrA) * pB;
+        var probEffect = d.arrA * (pB - pA);
+        real[d.stageB].avancou += d.arrB;
+        prob[d.stageB].avancou += (arrPondA + substance);
+        prob[d.stageB].probabilidade += probEffect;
+      }
+    }
+  });
+
+  function totalsAt(which){
+    var real=0, prob=0;
+    DEALS.forEach(function(d){
+      var stage = which==='A' ? d.stageA : d.stageB;
+      var arr = which==='A' ? d.arrA : d.arrB;
+      if(stage && ROW_ORDER.indexOf(stage)>=0){ real+=arr; prob+=arr*PROB[stage]; }
+    });
+    return { real:real, prob:prob };
+  }
+  var totA = totalsAt('A'), totB = totalsAt('B');
+
+  return {
+    totals: { real:{a:totA.real,b:totB.real}, prob:{a:totA.prob,b:totB.prob} },
+    fechado: { arr: fechadoArr },
+    rows: ROW_ORDER.map(function(r){ return { key:r, label:ROW_LABEL[r], real:real[r], prob:prob[r] }; })
+  };
+}
+
+var FROZEN = computeFrozen();
+
+// ordem de empilhamento: mantém avançou(verde) e perdido(vermelho) o mais longe
+// possível um do outro (posições 2 e 5) — validado com scripts/validate_palette.js
+// do skill dataviz: paleta do premium.css (só 5 tons não-teal) falha "all-pairs" em
+// alguns pares (verde↔vermelho ΔE4.6 deutan; amarelo↔laranja sempre <8; cinza↔azul
+// ΔE10.9 no modo escuro) — mitigado com (1) esta ordem, que separa os 2 piores pares
+// pela distância na pilha, (2) textura hachurada SÓ na fatia Probabilidade (reforça
+// que é uma categoria "à parte", não deal-driven) e (3) legenda sempre visível +
+// tooltip/breakdown com o valor numérico (nunca cor-only, ver clique na barra).
+var BUCKET_ORDER = ['novo','avancou','permaneceu','probabilidade','perdido'];
+var BUCKET_COLOR = {
+  novo:          getVar('--blue'),
+  avancou:       getVar('--green'),
+  permaneceu:    getVar('--text2'),
+  probabilidade: getVar('--orange'),
+  perdido:       getVar('--red')
+};
+var BUCKET_LABEL = { novo:'Novo', avancou:'Avançou', permaneceu:'Permaneceu', probabilidade:'Probabilidade (régua)', perdido:'Perdido' };
+var TOTAL_COLOR = 'rgba(58,184,183,.85)';
+
+function getVar(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#888'; }
+function hexToRgba(hex, a){
+  var h = hex.replace('#','');
+  if(h.length===3) h = h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+  var r=parseInt(h.substr(0,2),16), g=parseInt(h.substr(2,2),16), b=parseInt(h.substr(4,2),16);
+  return 'rgba('+r+','+g+','+b+','+a+')';
+}
+function fmtBRL(v){ if(v==null||isNaN(v)) return '-'; return 'R$ ' + Math.round(v).toLocaleString('pt-BR'); }
+function fmtCompact(v){
+  if(v==null||isNaN(v)) return '—';
+  var sign = v<0 ? '-' : '';
+  var av = Math.abs(v);
+  if(av>=1e6) return sign+(av/1e6).toFixed(1).replace('.',',')+'M';
+  if(av>=1e3){ var k = Math.round(av/1e3); return k>=1000 ? sign+(av/1e6).toFixed(1).replace('.',',')+'M' : sign+k+'K'; }
+  return sign+Math.round(av);
+}
+function fmtCompactc(v){ return (v>=0?'+':'-')+fmtCompact(Math.abs(v)); }
+
+// textura hachurada (canvas pattern) pra fatia Probabilidade — reforça "categoria à
+// parte" além da cor, por causa dos pares fracos no CVD-check (ver nota acima)
+function hatchPattern(baseHex){
+  var c = document.createElement('canvas'); c.width=8; c.height=8;
+  var ctx = c.getContext('2d');
+  ctx.fillStyle = hexToRgba(baseHex, .85); ctx.fillRect(0,0,8,8);
+  ctx.strokeStyle = 'rgba(0,0,0,.35)'; ctx.lineWidth = 1.6;
+  ctx.beginPath(); ctx.moveTo(0,8); ctx.lineTo(8,0); ctx.moveTo(-2,2); ctx.lineTo(2,-2); ctx.moveTo(6,10); ctx.lineTo(10,6); ctx.stroke();
+  return ctx.createPattern(c, 'repeat');
+}
+
+var chart = null, curMetric = 'prob', curZoom = false;
+
+// fatias ativas (pedido do dono, 2026-08-17): legenda vira toggle — desligar uma
+// fatia RECALCULA a altura da barra (soma só as fatias ligadas), não só esconde a
+// cor mantendo a altura antiga. O valor VERDADEIRO de cada fatia continua sempre
+// disponível no tooltip/detalhe (clique na barra) mesmo desligada — só o desenho
+// da barra em si reflete o filtro, nunca o número (princípio do painel: memória de
+// cálculo sempre visível, nunca escondida por um filtro de visualização).
+var activeBuckets = { novo:true, avancou:true, permaneceu:true, probabilidade:true, perdido:true };
+function allBucketsActive(){ return BUCKET_ORDER.every(function(k){ return activeBuckets[k]; }); }
+
+// ── Estado geométrico compartilhado (mutado a cada render(), lido pelo plugin/
+// callbacks abaixo) — precisa viver FORA de render() pra permitir animação: se o
+// plugin/tooltip/onClick fossem recriados a cada chamada (como na v1, junto com
+// chart.destroy()+new Chart()), trocar de toggle não tinha como animar (o Chart.js
+// só interpola quando é o MESMO chart instance recebendo update() de novo, com o
+// MESMO plugin registrado desde a criação). Agora o plugin é criado uma vez só e
+// sempre lê o G.* mais recente.
+var G = { labels:[], data:[], kinds:[], barBuckets:[], runArr:[], toArr:[] };
+
+function buildLegend(){
+  var html = BUCKET_ORDER.map(function(k){
+    var sw = k==='probabilidade' ? 'background-image:repeating-linear-gradient(45deg,'+hexToRgba(BUCKET_COLOR[k],.9)+' 0 3px, rgba(0,0,0,.35) 3px 4px)' : 'background:'+BUCKET_COLOR[k];
+    return '<button type="button" class="leg-toggle active" data-k="'+k+'"><span class="sw" style="'+sw+'"></span>'+BUCKET_LABEL[k]+'</button>';
+  }).join('');
+  html += '<span><span class="sw" style="background:'+TOTAL_COLOR+'"></span>Total / Fechado</span>';
+  document.getElementById('wf-legend').innerHTML = html;
+  document.getElementById('wf-legend').querySelectorAll('.leg-toggle').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var k = btn.getAttribute('data-k');
+      activeBuckets[k] = !activeBuckets[k];
+      btn.classList.toggle('active', activeBuckets[k]);
+      render();
+    });
+  });
+  document.getElementById('palette-note').textContent =
+    'Paleta reaproveitada do design system (premium.css) — sem tom categórico "puro" o suficiente pra 5 fatias plenamente ' +
+    'seguras a daltonismo (validado com scripts/validate_palette.js do skill dataviz); mitigado com textura na fatia ' +
+    'Probabilidade + esta ordem de empilhamento + legenda/tabela sempre visíveis, nunca só cor. Clique numa fatia da ' +
+    'legenda pra ligar/desligar — a barra recalcula a altura só com as fatias ativas; o valor real de cada fatia continua ' +
+    'sempre no detalhe (clique na barra), mesmo desligada.';
+}
+
+// ── Plugin/callbacks criados UMA VEZ SÓ, lendo sempre G.* (mutado por render()) ──
+// permite chamar chart.update() em vez de destroy()+new Chart() nas trocas de
+// toggle, o que é o que dá o morph: o Chart.js só anima a barra quando é a MESMA
+// instância recebendo dado novo, nunca quando o canvas é recriado do zero.
+var ZOOM_MARGIN = 500000;   // ±R$500K acima/abaixo do range das barras visíveis, no modo zoom (ajustado de 1M — R$1M "sobrava" demais)
+
+var wfSliceOverlay = {
+  id: 'wfSliceOverlay',
+  afterDatasetsDraw: function(c){
+    var meta = c.getDatasetMeta(0), yScale = c.scales.y, ctx = c.ctx;
+    for(var i=0;i<G.kinds.length;i++){
+      if(G.kinds[i]!=='delta' || !G.barBuckets[i]) continue;
+      var el = meta.data[i]; if(!el) continue;
+      var props = el.getProps(['x','width'], true);
+      var left = props.x - props.width/2, w = props.width;
+      var live = el.getProps(['y','base'], false);
+      var lo = Math.min(G.runArr[i], G.toArr[i]), hi = Math.max(G.runArr[i], G.toArr[i]);
+      // topo/base em PIXEL — usa a posição REAL/animada da barra quando disponível
+      // (mesmo motivo do morph: durante a transição a barra pode não ter chegado
+      // no tamanho final ainda), com fallback pra escala se getProps falhar.
+      var pxBottom = isFinite(live.y) && isFinite(live.base) ? Math.max(live.y, live.base) : yScale.getPixelForValue(lo);
+      var pxTop    = isFinite(live.y) && isFinite(live.base) ? Math.min(live.y, live.base) : yScale.getPixelForValue(hi);
+
+      // Empilhamento PROPORCIONAL, não por posição — fix do bug de sobreposição
+      // (achado do dono, 2026-08-17): a v1 caminhava um ponteiro por VALOR real e
+      // clampava cada corte contra [lo,hi] independentemente; quando uma fatia
+      // sozinha já é maior em módulo que o Δ líquido da barra (comum aqui — ex.:
+      // "novo" ou "avançou" isolados costumam exceder o Δ da etapa), o ponteiro
+      // saía de [lo,hi], uma fatia clampava preenchendo a barra INTEIRA, e a
+      // fatia seguinte repintava por cima ao voltar pra dentro do range — 2 cores
+      // reivindicando o mesmo pixel. Proporcional evita isso por construção: cada
+      // fatia recebe uma fração da altura = |valor| ÷ Σ|todas as fatias ativas|,
+      // sempre contígua, nunca sobrepõe — mesma ORDEM do tooltip (BUCKET_ORDER).
+      var totalAbs = 0;
+      BUCKET_ORDER.forEach(function(key){ if(activeBuckets[key]) totalAbs += Math.abs(G.barBuckets[i][key] || 0); });
+      if(totalAbs <= 0) continue;
+
+      ctx.save();
+      var frac = 0;
+      BUCKET_ORDER.forEach(function(key){
+        // fatia desligada na legenda não ocupa espaço na barra, mas
+        // G.barBuckets[i][key] em si NUNCA é zerado — tooltip/detalhe sempre
+        // mostram o valor real, só o desenho da barra respeita o filtro.
+        var v = activeBuckets[key] ? (G.barBuckets[i][key] || 0) : 0;
+        if(!v){ return; }
+        var nextFrac = frac + Math.abs(v) / totalAbs;
+        var y0 = pxBottom - frac * (pxBottom - pxTop);
+        var y1 = pxBottom - nextFrac * (pxBottom - pxTop);
+        ctx.fillStyle = key==='probabilidade' ? hatchPattern(BUCKET_COLOR[key]) : hexToRgba(BUCKET_COLOR[key], .85);
+        ctx.fillRect(left, Math.min(y0,y1), w, Math.abs(y1-y0));
+        frac = nextFrac;
+      });
+      // valor da barra desenhado AQUI (não pelo chartjs-plugin-datalabels) — achado
+      // do dono, 2026-08-17: o datalabels roda no mesmo hook (afterDatasetsDraw) e,
+      // dependendo da ordem de registro dos plugins, esse overlay pintava por cima
+      // do texto. Desenhando o número depois das fatias, no MESMO plugin, garante
+      // que fica sempre por cima — datalabelFormatter pula as barras 'delta' de
+      // propósito pra não desenhar duplicado.
+      var d = G.toArr[i] - G.runArr[i];
+      var pxTip = d >= 0 ? pxTop : pxBottom;   // ponta na direção do valor (mesmo lado do 'to'), igual ao anchor:'end'/align:'end' de antes
+      ctx.fillStyle = getVar('--text2');
+      ctx.font = "700 12px 'Inter','Segoe UI',system-ui,sans-serif";
+      ctx.textAlign = 'center';
+      ctx.textBaseline = d >= 0 ? 'bottom' : 'top';
+      ctx.fillText(fmtCompactc(d), left + w/2, pxTip + (d >= 0 ? -6 : 6));
+      ctx.restore();
+    }
+  }
+};
+
+function barColor(ctx){
+  var k = G.kinds[ctx.dataIndex];
+  return k==='fechado' ? 'rgba(63,185,80,.5)' : (k==='composto' ? 'rgba(58,184,183,.5)' : TOTAL_COLOR);
+}
+function onBarClick(evt, els){ if(!els||!els.length) return; var i=els[0].index; if(G.kinds[i]==='delta') showDetail(i); }
+function onBarHover(evt, els){ var t=evt&&evt.native&&evt.native.target; if(!t) return; var i=els&&els.length?els[0].index:-1; t.style.cursor=(i>=0&&G.kinds[i]==='delta')?'pointer':''; }
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function swatchStyle(key){
+  return key==='probabilidade'
+    ? 'background-image:repeating-linear-gradient(45deg,'+hexToRgba(BUCKET_COLOR[key],1)+' 0 2px, rgba(0,0,0,.4) 2px 3px)'
+    : 'background:'+BUCKET_COLOR[key];
+}
+// tooltip HTML custom (não o canvas-tooltip padrão do Chart.js) — pedido do dono,
+// 2026-08-17: precisava de uma cor por LINHA (uma por fatia), e o tooltip nativo só
+// dá 1 color-box por ITEM de dataset (temos 1 dataset só, a barra) — não dá pra ter
+// 5 color-boxes nativos numa barra só. Usa a mesma ORDEM (BUCKET_ORDER) do
+// empilhamento da barra, de propósito (pedido do dono: tooltip e empilhamento
+// precisam bater).
+function externalTooltip(context){
+  var el = document.getElementById('cjs-tooltip');
+  var tt = context.tooltip;
+  if(!tt || tt.opacity===0 || !tt.dataPoints || !tt.dataPoints.length){ el.style.opacity=0; return; }
+  var i = tt.dataPoints[0].dataIndex;
+  var html;
+  if(G.kinds[i]==='delta' && G.barBuckets[i]){
+    var d = G.toArr[i]-G.runArr[i];
+    html = '<div class="tt-title">'+esc(G.labels[i])+'<span class="tt-val">Δ '+fmtCompact(d)+'</span></div>';
+    BUCKET_ORDER.forEach(function(k){
+      var v = G.barBuckets[i][k]||0;
+      if(Math.abs(v) <= 0.5) return;
+      var off = !activeBuckets[k];
+      html += '<div class="tt-row" style="'+(off?'opacity:.45':'')+'"><span class="tt-sw" style="'+swatchStyle(k)+'"></span>'+BUCKET_LABEL[k]+(off?' (desligada)':'')+'<span class="tt-val">'+fmtCompactc(v)+'</span></div>';
+    });
+  } else {
+    var val = Math.max.apply(null, G.data[i]);
+    html = '<div class="tt-title">'+esc(G.labels[i])+'</div><div class="tt-row"><span class="tt-sw" style="background:'+TOTAL_COLOR+'"></span>Valor<span class="tt-val">'+fmtCompact(val)+'</span></div>';
+  }
+  el.innerHTML = html;
+  el.style.opacity = 1;
+  el.style.left = (tt.caretX + 14) + 'px';
+  el.style.top = Math.max(0, tt.caretY - 10) + 'px';
+}
+// barras 'delta' desenham o próprio valor dentro do wfSliceOverlay (ver nota lá) —
+// aqui só sobra o datalabel nativo pras barras de Total/Fechado, que não têm overlay.
+function datalabelFormatter(v,ctx){ var i=ctx.dataIndex; return G.kinds[i]==='delta' ? null : fmtCompact(Math.max.apply(null,G.data[i])); }
+
+function render(){
+  var m = curMetric;
+  var totA = FROZEN.totals[m].a, totB = FROZEN.totals[m].b;
+  var fechadoVal = FROZEN.fechado.arr;
+
+  var labels=[], data=[], kinds=[], barBuckets=[], runArr=[], toArr=[];
+
+  var filtered = !allBucketsActive();
+  var recalcSuffix = filtered ? ' (recalc.)' : '';
+
+  if(!curZoom){
+    labels.push('Total @ A'); data.push([0,totA]); kinds.push('total'); barBuckets.push(null); runArr.push(null); toArr.push(null);
+  }
+  var run = totA;
+  FROZEN.rows.forEach(function(row){
+    var b = row[m];
+    // Δ da barra soma só as fatias LIGADAS na legenda — desligar uma fatia
+    // recalcula a altura de verdade (não só esconde a cor mantendo o Δ antigo).
+    var d = BUCKET_ORDER.reduce(function(s,k){ return s + (activeBuckets[k] ? (b[k]||0) : 0); }, 0);
+    var from = run, to = run + d;
+    labels.push(row.label);
+    data.push([Math.min(from,to), Math.max(from,to)]);
+    kinds.push('delta');
+    barBuckets.push(b);
+    runArr.push(from); toArr.push(to);
+    run = to;
+  });
+  if(!curZoom){
+    labels.push('Total @ B'+recalcSuffix); data.push([0,run]); kinds.push('total'); barBuckets.push(null); runArr.push(null); toArr.push(null);
+    labels.push('Fechado (Ganho/Implantação)'); data.push([0,fechadoVal]); kinds.push('fechado'); barBuckets.push(null); runArr.push(null); toArr.push(null);
+    labels.push('Total B + Fechado'+recalcSuffix); data.push([0,run+fechadoVal]); kinds.push('composto'); barBuckets.push(null); runArr.push(null); toArr.push(null);
+  }
+
+  G.labels=labels; G.data=data; G.kinds=kinds; G.barBuckets=barBuckets; G.runArr=runArr; G.toArr=toArr;
+
+  var filterNote = filtered
+    ? '<div style="color:var(--yellow)">⚠ Filtro ativo — barras recalculadas só com: '+
+      BUCKET_ORDER.filter(function(k){ return activeBuckets[k]; }).map(function(k){ return BUCKET_LABEL[k]; }).join(', ')+
+      '. Total @ A/B REAIS (fatos, não recalculam): '+fmtBRL(totA)+' → '+fmtBRL(totB)+'.</div>'
+    : '';
+  document.getElementById('totals-readout').innerHTML =
+    (curZoom
+      ? 'Total @ A: <b>'+fmtBRL(totA)+'</b> &nbsp;→&nbsp; Total @ B: <b>'+fmtBRL(totB)+'</b> &nbsp;|&nbsp; Fechado: <b>'+fmtBRL(fechadoVal)+'</b> &nbsp;<span style="color:var(--muted)">(barras ocultas neste modo — só os valores)</span>'
+      : '') + filterNote;
+
+  var css = getComputedStyle(document.documentElement);
+  var textc = css.getPropertyValue('--text2').trim(), gridc = css.getPropertyValue('--border').trim();
+
+  // zoom: eixo fixo no range das barras VISÍVEIS ± 500K (pedido do dono) — não dá
+  // pra confiar no auto-scale do Chart.js aqui: o controller de barra usa a base
+  // implícita de cada barra (0) no cálculo de bounds mesmo pra floating-bar
+  // [min,max], então sem min/max explícitos o eixo continuava incluindo 0 e a
+  // escala ficava idêntica com ou sem as barras de Total.
+  var yMinZoom = null, yMaxZoom = null;
+  if(curZoom){
+    var allVals = [];
+    data.forEach(function(pair){ allVals.push(pair[0], pair[1]); });
+    yMinZoom = Math.min.apply(null, allVals) - ZOOM_MARGIN;
+    yMaxZoom = Math.max.apply(null, allVals) + ZOOM_MARGIN;
+  }
+
+  document.getElementById('chart-state').style.display = 'none';
+
+  if(!chart){
+    chart = new Chart(document.getElementById('wf'), {
+      type:'bar',
+      data:{ labels:labels, datasets:[{ data:data, backgroundColor:barColor, borderRadius:4, barPercentage:.72 }] },
+      plugins:[wfSliceOverlay],
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        interaction:{ mode:'index', intersect:false },
+        onClick:onBarClick, onHover:onBarHover,
+        plugins:{
+          legend:{display:false},
+          tooltip:{ enabled:false, external:externalTooltip },
+          datalabels:{ anchor:'end', align:'end', color:textc, font:{size:12,weight:'700'}, formatter:datalabelFormatter }
+        },
+        scales:{
+          x:{ ticks:{ color:textc, maxRotation:35, minRotation:0, font:{size:10} }, grid:{display:false} },
+          y: curZoom
+            ? { min:yMinZoom, max:yMaxZoom, ticks:{ color:textc, callback:function(v){ return fmtCompact(v); } }, grid:{color:gridc} }
+            : { min:0, ticks:{ color:textc, callback:function(v){ return fmtCompact(v); } }, grid:{color:gridc} }
+        }
+      }
+    });
+  } else {
+    // update() em vez de destroy()+new Chart() — é o que permite o Chart.js
+    // interpolar a posição/altura de cada barra da geometria antiga pra nova
+    // (morph), pedido do dono (2026-08-17). Só funciona quando o Nº de barras e a
+    // ordem dos labels ficam razoavelmente estáveis entre uma chamada e outra —
+    // no toggle Medida (mesmas 8 ou 4 barras, só o valor muda) o morph fica limpo;
+    // no toggle Zoom (barras de Total somem/aparecem) o Chart.js ainda anima o
+    // que dá, mas é best-effort, não um morph 1:1 perfeito.
+    chart.data.labels = labels;
+    chart.data.datasets[0].data = data;
+    chart.options.scales.y.min = curZoom ? yMinZoom : 0;
+    chart.options.scales.y.max = curZoom ? yMaxZoom : undefined;
+    chart.update();
+  }
+}
+
+function showDetail(i){
+  var row = FROZEN.rows[i - (curZoom?0:1)]; // offset pela barra "Total @ A" quando visível
+  if(!row) return;
+  var b = row[curMetric];
+  var d = b.novo+b.avancou+b.permaneceu+b.probabilidade+b.perdido;
+  document.getElementById('detail-title').textContent = 'Composição REAL | ' + row.label + ' (' + (curMetric==='prob'?'Probabilizada':'Real') + ') — sempre as 5 fatias, mesmo com filtro ativo na barra';
+  document.getElementById('detail-body').innerHTML = BUCKET_ORDER.map(function(k){
+    var v = b[k]||0;
+    var pct = d ? (Math.abs(v)/Math.abs(d)*100) : 0;
+    var off = !activeBuckets[k];
+    return '<tr style="'+(off?'opacity:.45':'')+'"><td>'+BUCKET_LABEL[k]+(off?' (desligada na barra)':'')+'</td><td>'+fmtCompactc(v)+'</td><td>'+pct.toFixed(0)+'%</td></tr>';
+  }).join('');
+  document.getElementById('detail-total').textContent = fmtCompactc(d);
+  document.getElementById('detail').style.display = 'block';
+}
+
+function initSeg(container, onChange){
+  var buttons = container.querySelectorAll('button');
+  function move(){
+    var active = container.querySelector('.active');
+    if(!active) return;
+    container.style.setProperty('--seg-tw', active.offsetWidth+'px');
+    container.style.setProperty('--seg-tx', active.offsetLeft+'px');
+  }
+  buttons.forEach(function(btn){
+    btn.addEventListener('click', function(){
+      buttons.forEach(function(b){ b.classList.remove('active'); b.setAttribute('aria-pressed','false'); });
+      btn.classList.add('active'); btn.setAttribute('aria-pressed','true');
+      move(); onChange(btn.getAttribute('data-v'));
+    });
+  });
+  move();
+}
+function initTabSub(container, onChange){
+  var th = document.createElement('div'); th.className='tab-sub-thumb'; container.insertBefore(th, container.firstChild);
+  var buttons = container.querySelectorAll('.tab-sub-btn');
+  function move(){ var active=container.querySelector('.active'); if(!active) return; th.style.left=active.offsetLeft+'px'; th.style.width=active.offsetWidth+'px'; }
+  buttons.forEach(function(btn){
+    btn.addEventListener('click', function(){
+      buttons.forEach(function(b){ b.classList.remove('active'); b.setAttribute('aria-pressed','false'); });
+      btn.classList.add('active'); btn.setAttribute('aria-pressed','true');
+      move(); onChange(btn.getAttribute('data-v'));
+    });
+  });
+  move();
+}
+
+buildLegend();
+initSeg(document.getElementById('metric-toggle'), function(v){ curMetric = v; document.getElementById('detail').style.display='none'; render(); });
+initTabSub(document.getElementById('zoom-toggle'), function(v){ curZoom = (v==='zoom'); document.getElementById('detail').style.display='none'; render(); });
+render();
+</script>
+</body>
+</html>

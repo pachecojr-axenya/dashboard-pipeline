@@ -210,6 +210,76 @@ check('Fica (permaneceu, probabilidade subiu): entra em saudável, sem perda rea
 const rkNovo = cHealthB.find(x => x.dealname === 'Novo').rowKey;   // linha de Cotação (deal novo)
 check('Novo (entrou na etapa): entra em saudável', health[rkNovo].saudavel.prob12 > 0.01);
 
+// ── Parte 1f | Decomposição 5 fatias (D02, movementSlices, 2026-08-17) ───────
+// Pedido do dono: fatiar as barras de Δ em novo/avançou/permaneceu/perdido +
+// "probabilidade" (quanto do Δ ponderado é reclassificação pela régua, não
+// substância nova) — sucessora do healthByRow (2 baldes) acima.
+console.log('\n== UNIT Decomposição 5 fatias (movementSlices) ==');
+// Cai usa uma linha (Diagnóstico) exclusiva, que nenhum outro deal deste bloco
+// toca — igual ao cuidado já tomado no bloco healthByRow acima ("cada deal usa
+// uma linha exclusiva sempre que a asserção precisa isolar sua própria
+// contribuição"), senão o avançou-IN de Constante (que chega em Negociação)
+// mistura no mesmo agregado que o perdido de Cai (se ele também saísse de lá).
+const dealsSliceA = [
+  { hs_id: '40', dealname: 'Constante', stage: 'Consultoria', pipeline: 'Vendas', vidas: 300, arr_estimado: 250000, createdate: '2025-10-01', data_prevista_para_receita: '2026-09-01' },
+  { hs_id: '42', dealname: 'Fica', stage: 'Cotação', pipeline: 'Vendas', vidas: 200, arr_estimado: 150000, createdate: '2025-10-01', data_prevista_para_receita: '2026-09-01' },
+  { hs_id: '43', dealname: 'Cai', stage: 'Diagnóstico', pipeline: 'Vendas', vidas: 150, arr_estimado: 300000, createdate: '2025-10-01', data_prevista_para_receita: '2026-09-01' },
+];
+const dealsSliceB = [
+  { hs_id: '40', dealname: 'Constante', stage: 'Negociação', pipeline: 'Vendas', vidas: 300, arr_estimado: 250000, createdate: '2025-10-01', data_prevista_para_receita: '2026-09-01' },
+  { hs_id: '41', dealname: 'Novo', stage: 'Cotação', pipeline: 'Vendas', vidas: 100, arr_estimado: 90000, createdate: '2026-02-01', data_prevista_para_receita: '2026-10-01' },
+  { hs_id: '42', dealname: 'Fica', stage: 'Cotação', pipeline: 'Vendas', vidas: 200, arr_estimado: 180000, createdate: '2025-10-01', data_prevista_para_receita: '2026-09-01' },
+  { hs_id: '43', dealname: 'Cai', stage: 'Perdido', pipeline: 'Vendas', vidas: 150, createdate: '2025-10-01' },
+];
+const cSliceA = FC.dealContributions(dealsSliceA, '2026-05-15', {});
+const cSliceB = FC.dealContributions(dealsSliceB, '2026-06-15', {});
+const rawASlice = {}; dealsSliceA.forEach(d => { rawASlice[d.hs_id] = d.stage; });
+const rawBSlice = {}; dealsSliceB.forEach(d => { rawBSlice[d.hs_id] = d.stage; });
+const slices = FC.movementSlices(cSliceA, cSliceB, rawASlice, rawBSlice);
+const SFIELDS = ['novo', 'avancou', 'permaneceu', 'perdido', 'probabilidade'];
+
+// (a) invariante: Σ(5 fatias) == Δ(rowKey), em TODAS as linhas, arr e arrPond
+const sumByRowSlice = (contrib, field) => { const out = {}; contrib.forEach(x => { if (!x.rowKey) return; out[x.rowKey] = (out[x.rowKey] || 0) + (x[field] || 0); }); return out; };
+['arr', 'arrPond'].forEach(field => {
+  const rA = sumByRowSlice(cSliceA, field), rB = sumByRowSlice(cSliceB, field);
+  const rkeys = {}; Object.keys(rA).forEach(k => rkeys[k] = 1); Object.keys(rB).forEach(k => rkeys[k] = 1); Object.keys(slices).forEach(k => rkeys[k] = 1);
+  let ok = true;
+  Object.keys(rkeys).forEach(key => {
+    const s = (slices[key] || {})[field] || {};
+    const sum = SFIELDS.reduce((acc, f) => acc + (s[f] || 0), 0);
+    if (!near(sum, (rB[key] || 0) - (rA[key] || 0))) ok = false;
+  });
+  check('Σ(5 fatias) == Δ(rowKey) em TODAS as linhas | ' + field, ok);
+});
+
+// (b) Constante (Consultoria→Negociação, ARR igual): o Δ ponderado inteiro se
+// reparte em avançou (valor relocado, arrPond de origem) + probabilidade (efeito
+// da régua) — valores EXATOS pela mesma fórmula do formula-note do sandbox, não
+// só ">0": avançou == arrPond_A(origem) [substância=0, ARR não mudou] e
+// probabilidade == arr_A × (prob_B − prob_A). Em Real, sem probabilidade nenhuma
+// pra separar, "avançou" usa o valor cheio.
+const constA = cSliceA.find(x => x.dealname === 'Constante'), constB = cSliceB.find(x => x.dealname === 'Constante');
+const constProbA = constA.arrPond / constA.arr, constProbB = constB.arrPond / constB.arr;
+const rkConstB = constB.rowKey;
+const constArrPond = slices[rkConstB].arrPond;
+check('Constante (avança sem mudar ARR): "avançou" ponderado == arrPond de origem (substância=0)', near(constArrPond.avancou, constA.arrPond));
+check('Constante: "probabilidade" == arr_A × (prob_B − prob_A)', near(constArrPond.probabilidade, constA.arr * (constProbB - constProbA)));
+check('Constante: probabilidade + avançou == Δ ponderado da chegada (arrPond_B)', near(constArrPond.probabilidade + constArrPond.avancou, constB.arrPond));
+check('Constante: "avançou" em Real usa o valor cheio (sem split)', near(slices[rkConstB].arr.avancou, constB.arr));
+
+// (c) Novo: cai 100% em "novo", não em "avançou"
+const rkNovoB = cSliceB.find(x => x.dealname === 'Novo').rowKey;
+check('Novo (não existia em A): entra em "novo", não em "avançou"', slices[rkNovoB].arrPond.novo > 0.01 && Math.abs(slices[rkNovoB].arrPond.avancou) < 0.01);
+
+// (d) Cai: foi pra Perdido → "perdido", não "avançou"
+const rkCaiA = cSliceA.find(x => x.dealname === 'Cai').rowKey;
+check('Cai (foi pra Perdido): entra em "perdido", não em "avançou"', slices[rkCaiA].arrPond.perdido < -0.01 && Math.abs(slices[rkCaiA].arrPond.avancou) < 0.01);
+
+// (e) Fica: permaneceu na mesma etapa → "permaneceu", sem probabilidade (régua não
+// muda pro mesmo deal na mesma etapa)
+const rkFicaA = cSliceA.find(x => x.dealname === 'Fica').rowKey;
+check('Fica (permaneceu): entra em "permaneceu", probabilidade fica em 0', slices[rkFicaA].arrPond.permaneceu > 0.01 && Math.abs(slices[rkFicaA].arrPond.probabilidade) < 0.01);
+
 // ── Parte 2 | INTEGRAÇÃO (server local) ──────────────────────────────────────
 // Porta: arg1 ou env PORT (default 3004). Ex.: node scripts/test-delta-invariant.js 3002
 const PORT = parseInt(process.argv[2], 10) || parseInt(process.env.PORT, 10) || 3004;
@@ -236,6 +306,12 @@ async function integ() {
         return HMEASURES.every(m => near((w.saudavel[m] || 0) + (w.perdaReal[m] || 0), w.delta[m] || 0));
       });
       check('saudavel+perdaReal == delta em TODA barra/medida | ' + a + ' -> ' + b, healthOk);
+      const SFIELDS2 = ['novo', 'avancou', 'permaneceu', 'perdido', 'probabilidade'];
+      const slicesOk = j.waterfall.every(w => {
+        if (!w.slices || !w.slices.arr || !w.slices.arrPond) return false;
+        return ['arr', 'arrPond'].every(field => near(SFIELDS2.reduce((acc, f) => acc + (w.slices[field][f] || 0), 0), w.delta[field] || 0));
+      });
+      check('Σ(5 fatias) == delta em TODA barra (arr/arrPond) | ' + a + ' -> ' + b, slicesOk);
     }
   }
   // guard-rails

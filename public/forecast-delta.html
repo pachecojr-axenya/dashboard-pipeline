@@ -51,6 +51,16 @@ html[data-theme="light"] .tab-sub-thumb{background:#fff;box-shadow:0 1px 4px rgb
 .badge.ok{color:var(--green);background:rgba(63,185,80,.12)}
 .badge.bad{color:var(--red);background:rgba(248,81,73,.12)}
 .chart-wrap{position:relative;height:440px}
+.leg-toggle{display:inline-flex;align-items:center;background:transparent;border:1px solid transparent;border-radius:99px;padding:.25rem .6rem;font-size:.72rem;font-family:inherit;color:var(--text2);cursor:pointer;transition:opacity .15s,border-color .15s}
+.leg-toggle:hover{border-color:var(--border)}
+.leg-toggle.active{color:var(--text)}
+.leg-toggle:not(.active){opacity:.4;text-decoration:line-through}
+.leg-toggle .sw{width:10px;height:10px;border-radius:2px;display:inline-block;vertical-align:-1px;margin-right:.35rem}
+.cjs-tooltip{position:absolute;top:0;left:0;pointer-events:none;opacity:0;transition:opacity .1s;background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:.55rem .7rem;font-size:.76rem;color:var(--text);box-shadow:0 8px 24px rgba(0,0,0,.35);white-space:nowrap;z-index:20}
+.cjs-tooltip .tt-title{font-weight:700;margin-bottom:.3rem;display:flex;gap:.6rem}
+.cjs-tooltip .tt-row{display:flex;align-items:center;gap:.4rem;padding:.05rem 0}
+.cjs-tooltip .tt-sw{width:9px;height:9px;border-radius:2px;flex-shrink:0}
+.cjs-tooltip .tt-val{margin-left:auto;padding-left:.6rem;font-weight:600}
 .funnel-hdr{display:flex;align-items:baseline;gap:.7rem;margin-bottom:.8rem;flex-wrap:wrap}
 .funnel-hdr h3{font-size:.9rem;font-weight:600;margin:0}
 .funnel-note{font-size:.72rem;color:var(--text2)}
@@ -321,18 +331,8 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
     <div data-semantic-help="comparacao_fotos_delta"></div>
   </div>
 
-  <!-- D01 | Fotografia mais recente / selecionada -->
-  <div class="novo-card" id="today-snapshot-card" style="display:none">
-    <div class="sec-hdr">
-      <span class="ccode">D01</span>
-      <h3 id="today-snapshot-title">Fotografia do forecast</h3>
-      <span class="sec-note" id="today-snapshot-note"></span>
-      <span class="toggle-wrap"><button type="button" class="ibtn" data-help="D01" aria-label="Memória de cálculo | D01">i</button></span>
-    </div>
-    <div class="kpis" id="today-snapshot-kpis"></div>
-  </div>
-
-  <!-- D02 | Waterfall = elemento primário (spec seção 8) -->
+  <!-- D02 | Waterfall = elemento primário (spec seção 8) — primeiro card da página
+       (pedido do dono, 2026-08-17: D02 é o gráfico mais importante do painel) -->
   <div class="novo-card">
     <div class="sec-hdr">
       <span class="ccode">D02</span>
@@ -343,14 +343,21 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
         <button type="button" class="ibtn" data-help="D02" aria-label="Memória de cálculo | D02">i</button>
       </div>
     </div>
-    <div class="chart-wrap" style="height:560px"><canvas id="wf"></canvas><div class="state ax-empty" id="chart-state" aria-live="polite">Selecione duas fotos…</div></div>
-    <div class="wf-legend" style="display:flex;gap:1.1rem;align-items:center;font-size:.72rem;color:var(--text2);margin:.5rem 0 0;flex-wrap:wrap">
-      <span style="display:inline-flex;align-items:center;gap:.35rem"><span style="width:10px;height:10px;border-radius:2px;background:rgba(63,185,80,.85);display:inline-block"></span>Avançou/Ganho (saudável)</span>
-      <span style="display:inline-flex;align-items:center;gap:.35rem"><span style="width:10px;height:10px;border-radius:2px;background:rgba(248,81,73,.85);display:inline-block"></span>Perda real (churn)</span>
-      <span style="display:inline-flex;align-items:center;gap:.35rem"><span style="width:10px;height:10px;border-radius:2px;background:rgba(58,184,183,.85);display:inline-block"></span>Total / Fechado</span>
+    <div class="controls-row" style="display:flex;gap:1.4rem;flex-wrap:wrap;align-items:flex-end;margin:0 0 .8rem">
+      <div>
+        <span class="ctl-label" style="display:block;font-size:.66rem;font-weight:700;letter-spacing:.04em;color:var(--text2);text-transform:uppercase;margin:0 0 .3rem">Visualização</span>
+        <div class="tab-sub" id="wf-zoom-toggle" role="group" aria-label="Visualização do waterfall">
+          <button type="button" class="tab-sub-btn active" data-v="completo" aria-pressed="true">Waterfall completo</button>
+          <button type="button" class="tab-sub-btn" data-v="zoom" aria-pressed="false">Só movimentação (zoom)</button>
+        </div>
+      </div>
     </div>
-    <div class="clickhint">Clique numa barra de etapa, em Fechado, ou em Total @ A / Total @ B, para ver os deals.</div>
+    <div class="reslbl" id="wf-totals-readout" style="min-height:1.2em;margin:0 0 .3rem"></div>
+    <div class="chart-wrap" style="height:560px;position:relative"><canvas id="wf"></canvas><div class="state ax-empty" id="chart-state" aria-live="polite">Selecione duas fotos…</div><div id="wf-tooltip" class="cjs-tooltip"></div></div>
+    <div class="wf-legend" id="wf-legend" style="display:flex;gap:.4rem;align-items:center;font-size:.72rem;color:var(--text2);margin:.5rem 0 0;flex-wrap:wrap"></div>
+    <div class="clickhint">Clique numa barra de etapa, em Fechado, ou em Total @ A / Total @ B, para ver os deals | clique numa fatia da legenda pra ligar/desligar.</div>
     <div class="caveat" id="caveat"></div>
+    <div class="caveat" style="margin-top:.4rem"><span style="color:var(--yellow)">⚠ Fatia "Probabilidade" é nova (2026-08-17) — ainda não validada contra o HubSpot; ver ficha "i".</span></div>
   </div>
 
   <!-- D03 | KPIs de apoio (seção 6.2) -->
@@ -362,6 +369,18 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
       <span class="toggle-wrap"><button type="button" class="ibtn" data-help="D03" aria-label="Memória de cálculo | D03">i</button></span>
     </div>
     <div class="kpis" id="kpis"></div>
+  </div>
+
+  <!-- D01 | Fotografia mais recente / selecionada — movido pra depois do D03
+       (pedido do dono, 2026-08-17) -->
+  <div class="novo-card" id="today-snapshot-card" style="display:none">
+    <div class="sec-hdr">
+      <span class="ccode">D01</span>
+      <h3 id="today-snapshot-title">Fotografia do forecast</h3>
+      <span class="sec-note" id="today-snapshot-note"></span>
+      <span class="toggle-wrap"><button type="button" class="ibtn" data-help="D01" aria-label="Memória de cálculo | D01">i</button></span>
+    </div>
+    <div class="kpis" id="today-snapshot-kpis"></div>
   </div>
 
   <!-- D04 | Funil delta (seção 6.3): contagem de deals por etapa, Foto A × Foto B -->
@@ -462,6 +481,174 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
   Chart.defaults.font.family = "Inter,'Segoe UI',system-ui,sans-serif";
   Chart.defaults.font.size = 12;
   var fotos = [], chart = null, funnelChart = null, drillLastFocus = null;
+
+  // ── D02 | 5 fatias (novo/avançou/permaneceu/perdido/probabilidade) + zoom +
+  // filtro de fatia + morph (pedido do dono, 2026-08-17 — sucessor do overlay de
+  // 2 cores saudável/perda real). Estado + plugin/callbacks do Chart.js vivem no
+  // escopo do módulo (não dentro de render()) de propósito: só assim dá pra
+  // chamar chart.update() em vez de destroy()+new Chart() nas trocas de toggle
+  // (Medida/Zoom/filtro de fatia) — o Chart.js só anima quando é a MESMA
+  // instância recebendo dado novo. Protótipo testado em standalone antes de
+  // integrar aqui: public/_sandbox-d02-slices.html.
+  var curZoom = false;
+  var activeBuckets = { novo:true, avancou:true, permaneceu:true, probabilidade:true, perdido:true };
+  var SLICE_ORDER = ['novo','avancou','permaneceu','probabilidade','perdido'];
+  function allBucketsActive(){ return SLICE_ORDER.every(function(k){ return activeBuckets[k]; }); }
+  function getVar(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#888'; }
+  function hexToRgba(hex, a){
+    var h = String(hex).replace('#','');
+    if(h.length===3) h = h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+    var r=parseInt(h.substr(0,2),16), g=parseInt(h.substr(2,2),16), b=parseInt(h.substr(4,2),16);
+    return 'rgba('+r+','+g+','+b+','+a+')';
+  }
+  var SLICE_LABEL = { novo:'Novo', avancou:'Avançou', permaneceu:'Permaneceu', probabilidade:'Probabilidade (régua)', perdido:'Perdido' };
+  function sliceColor(key){ return { novo:getVar('--blue'), avancou:getVar('--green'), permaneceu:getVar('--text2'), probabilidade:getVar('--orange'), perdido:getVar('--red') }[key]; }
+  // textura hachurada só na fatia Probabilidade — reforça "categoria à parte"
+  // (não é sobre qual deal, é sobre POR QUE o valor mudou) e ajuda a distinguir
+  // de laranja/verde/cinza pra quem tem baixa visão de cor (paleta do
+  // premium.css só tem 5 tons não-teal — ΔE de alguns pares fica abaixo do ideal
+  // pro CVD check do skill dataviz; mitigado com textura + ordem de empilhamento
+  // que afasta verde/vermelho + esta legenda/tooltip sempre visíveis).
+  function hatchPattern(baseHex){
+    var c = document.createElement('canvas'); c.width=8; c.height=8;
+    var ctx = c.getContext('2d');
+    ctx.fillStyle = hexToRgba(baseHex, .85); ctx.fillRect(0,0,8,8);
+    ctx.strokeStyle = 'rgba(0,0,0,.35)'; ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.moveTo(0,8); ctx.lineTo(8,0); ctx.moveTo(-2,2); ctx.lineTo(2,-2); ctx.moveTo(6,10); ctx.lineTo(10,6); ctx.stroke();
+    return ctx.createPattern(c, 'repeat');
+  }
+  function sliceSwatchStyle(key){
+    return key==='probabilidade'
+      ? 'background-image:repeating-linear-gradient(45deg,'+hexToRgba(sliceColor(key),1)+' 0 2px, rgba(0,0,0,.4) 2px 3px)'
+      : 'background:'+sliceColor(key);
+  }
+  // Geometria compartilhada (mutada em cada render(), lida pelo plugin/tooltip/
+  // onClick abaixo) — wRef guarda o objeto `w` do waterfall por índice, pra
+  // onClick não depender de aritmética de índice (que quebraria no modo zoom,
+  // onde as barras de Total somem do array).
+  var WF = { labels:[], data:[], kinds:[], barBuckets:[], runArr:[], toArr:[], wRef:[] };
+
+  function buildWfLegend(){
+    var html = SLICE_ORDER.map(function(k){
+      return '<button type="button" class="leg-toggle active" data-k="'+k+'"><span class="sw" style="'+sliceSwatchStyle(k)+'"></span>'+SLICE_LABEL[k]+'</button>';
+    }).join('');
+    html += '<span style="display:inline-flex;align-items:center;padding:.25rem .6rem"><span class="sw" style="width:10px;height:10px;border-radius:2px;display:inline-block;vertical-align:-1px;margin-right:.35rem;background:rgba(58,184,183,.85)"></span>Total / Fechado</span>';
+    var el = document.getElementById('wf-legend');
+    el.innerHTML = html;
+    el.querySelectorAll('.leg-toggle').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var k = btn.getAttribute('data-k');
+        activeBuckets[k] = !activeBuckets[k];
+        btn.classList.toggle('active', activeBuckets[k]);
+        if(lastJ) render(lastJ);
+      });
+    });
+  }
+
+  // plugin único (criado 1x, não a cada render) — pinta as fatias proporcionais
+  // (fix do bug de sobreposição, 2026-08-17: empilhar por VALOR real e clampar
+  // cada corte contra [lo,hi] independentemente fazia uma fatia isolada maior
+  // que o Δ líquido "engolir" a barra inteira e a próxima repintar por cima ao
+  // voltar pro range — 2 cores reivindicando o mesmo pixel. Proporcional
+  // (fração = |valor|÷Σ|fatias ativas|) evita isso por construção: sempre
+  // contígua, nunca sobrepõe — mesma ORDEM do tooltip, SLICE_ORDER) + o valor da
+  // barra (datalabels nativo é pulado nas barras 'delta' de propósito, ver
+  // wfDatalabelFormatter, pra não ficar por baixo da fatia pintada depois dele
+  // no mesmo hook afterDatasetsDraw).
+  var wfSliceOverlay = {
+    id: 'wfSliceOverlay',
+    afterDatasetsDraw: function(c){
+      var meta = c.getDatasetMeta(0), yScale = c.scales.y, ctx = c.ctx;
+      for(var i=0;i<WF.kinds.length;i++){
+        if(WF.kinds[i]!=='delta' || !WF.barBuckets[i]) continue;
+        var el = meta.data[i]; if(!el) continue;
+        var props = el.getProps(['x','width'], true);
+        var left = props.x - props.width/2, w = props.width;
+        var live = el.getProps(['y','base'], false);
+        var lo = Math.min(WF.runArr[i], WF.toArr[i]), hi = Math.max(WF.runArr[i], WF.toArr[i]);
+        var pxBottom = isFinite(live.y) && isFinite(live.base) ? Math.max(live.y, live.base) : yScale.getPixelForValue(lo);
+        var pxTop    = isFinite(live.y) && isFinite(live.base) ? Math.min(live.y, live.base) : yScale.getPixelForValue(hi);
+        var totalAbs = 0;
+        SLICE_ORDER.forEach(function(key){ if(activeBuckets[key]) totalAbs += Math.abs(WF.barBuckets[i][key] || 0); });
+        if(totalAbs <= 0) continue;
+        ctx.save();
+        var frac = 0;
+        SLICE_ORDER.forEach(function(key){
+          // fatia desligada na legenda não ocupa espaço na barra, mas
+          // WF.barBuckets[i][key] em si NUNCA é zerado — tooltip sempre mostra o
+          // valor real, só o desenho da barra respeita o filtro.
+          var v = activeBuckets[key] ? (WF.barBuckets[i][key] || 0) : 0;
+          if(!v) return;
+          var nextFrac = frac + Math.abs(v) / totalAbs;
+          var y0 = pxBottom - frac * (pxBottom - pxTop);
+          var y1 = pxBottom - nextFrac * (pxBottom - pxTop);
+          ctx.fillStyle = key==='probabilidade' ? hatchPattern(sliceColor(key)) : hexToRgba(sliceColor(key), .85);
+          ctx.fillRect(left, Math.min(y0,y1), w, Math.abs(y1-y0));
+          frac = nextFrac;
+        });
+        var d = WF.toArr[i] - WF.runArr[i];
+        var pxTip = d >= 0 ? pxTop : pxBottom;
+        ctx.fillStyle = getVar('--text2');
+        ctx.font = "700 12px Inter,'Segoe UI',system-ui,sans-serif";
+        ctx.textAlign = 'center';
+        ctx.textBaseline = d >= 0 ? 'bottom' : 'top';
+        ctx.fillText(fmtCompactc(d), left + w/2, pxTip + (d >= 0 ? -6 : 6));
+        ctx.restore();
+      }
+    }
+  };
+  function wfDatalabelFormatter(v, ctx){ var i=ctx.dataIndex; return WF.kinds[i]==='delta' ? null : fmtCompact(Math.max.apply(null, WF.data[i])); }
+  var WF_KIND_COLOR = { total:'rgba(58,184,183,.85)', fechado:'rgba(63,185,80,.5)', composto:'rgba(58,184,183,.5)' };
+  // Degradê na base de cada barra de Total/Fechado (herdado da versão anterior) —
+  // cor plena no topo do GRÁFICO esmaecendo até quase transparente na base,
+  // reforça visualmente que o eixo cresce de baixo pra cima. Barras 'delta' usam
+  // essa cor só como base (o wfSliceOverlay pinta por cima, cobrindo por inteiro).
+  function wfBarColor(context){
+    var raw = WF_KIND_COLOR[WF.kinds[context.dataIndex]] || 'rgba(58,184,183,.85)';
+    var mm = /rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/.exec(raw);
+    if(!mm) return raw;
+    var r=mm[1], g=mm[2], b=mm[3], a = mm[4]!=null ? parseFloat(mm[4]) : 1;
+    var area = context.chart.chartArea;
+    if(!area) return raw;
+    var grad = context.chart.ctx.createLinearGradient(0, area.top, 0, area.bottom);
+    grad.addColorStop(0, 'rgba('+r+','+g+','+b+','+a+')');
+    grad.addColorStop(1, 'rgba('+r+','+g+','+b+','+Math.max(a*0.08, 0.03).toFixed(3)+')');
+    return grad;
+  }
+  function wfBarClick(evt, els){
+    if(!els||!els.length) return; var i=els[0].index, k=WF.kinds[i];
+    if(k==='delta'){ var w=WF.wRef[i]; if(w) openDrill(w.key, 'Deals | '+w.label, fmtBRL); return; }
+    if(k==='fechado'){ openDrill('kpi:arrTotal', 'Deals | Fechado (foram para Ganho/Implantação)', fmtBRL, null, 'ganho'); return; }
+    if(k==='total'){ openDrill(metric==='real'?'kpi:arrTotal':'kpi:arrPond', 'Deals | '+WF.labels[i], fmtBRL); return; }
+  }
+  function wfBarHover(evt, els){ var t=evt&&evt.native&&evt.native.target; if(!t) return; var i=els&&els.length?els[0].index:-1; t.style.cursor=(i>=0&&(WF.kinds[i]==='delta'||WF.kinds[i]==='fechado'||WF.kinds[i]==='total'))?'pointer':''; }
+  // tooltip HTML custom — o tooltip nativo do Chart.js só dá 1 color-box por
+  // ITEM de dataset (aqui é 1 dataset só, a barra); não dá pra ter 5 cores
+  // nativas numa barra só. Mesma ORDEM do empilhamento (SLICE_ORDER), de
+  // propósito (pedido do dono: tooltip e barra precisam bater).
+  function wfExternalTooltip(context){
+    var el = document.getElementById('wf-tooltip');
+    var tt = context.tooltip;
+    if(!tt || tt.opacity===0 || !tt.dataPoints || !tt.dataPoints.length){ el.style.opacity=0; return; }
+    var i = tt.dataPoints[0].dataIndex, html;
+    if(WF.kinds[i]==='delta' && WF.barBuckets[i]){
+      var d = WF.toArr[i]-WF.runArr[i];
+      html = '<div class="tt-title">'+esc(WF.labels[i])+'<span class="tt-val">Δ '+fmtCompact(d)+'</span></div>';
+      SLICE_ORDER.forEach(function(k){
+        var v = WF.barBuckets[i][k]||0;
+        if(Math.abs(v) <= 0.5) return;
+        var off = !activeBuckets[k];
+        html += '<div class="tt-row" style="'+(off?'opacity:.45':'')+'"><span class="tt-sw" style="'+sliceSwatchStyle(k)+'"></span>'+SLICE_LABEL[k]+(off?' (desligada)':'')+'<span class="tt-val">'+fmtCompactc(v)+'</span></div>';
+      });
+    } else {
+      var val = Math.max.apply(null, WF.data[i]);
+      html = '<div class="tt-title">'+esc(WF.labels[i])+'</div><div class="tt-row"><span class="tt-sw" style="background:rgba(58,184,183,.85)"></span>Valor<span class="tt-val">'+fmtCompact(val)+'</span></div>';
+    }
+    el.innerHTML = html;
+    el.style.opacity = 1;
+    el.style.left = (tt.caretX + 14) + 'px';
+    el.style.top = Math.max(0, tt.caretY - 10) + 'px';
+  }
   // estado do drill-down (modal de etapa): dados + coluna/sentido de ordenacao
   var drillRows = [], drillMeta = { sumDelta: 0, measure: '', field: '' }, drillSort = { key: 'delta', dir: -1 };
   var drillFmt = null;   // formatador dos valores da coluna (BRL ou número, conforme o KPI)
@@ -661,47 +848,34 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
       } else flagEl.style.display='none';
     }
     var totA = j.totals.a[m], totB = j.totals.b[m];
-    // barras do waterfall
-    var labels = ['Total @ A'], data = [[0, totA]], colors = ['rgba(58,184,183,.85)'], dataline = [totA], kinds = ['total'];
-    // Decomposição saudável × perda real (pedido do dono 2026-08-07): pra cada
-    // barra de Δ, guarda o ponto de corte (midArr) onde a cor muda dentro da MESMA
-    // barra — runArr/toArr são os extremos [de,pra] já usados pra desenhar o range
-    // da barra (data[]); midArr = runArr + heal(clampado). "saudável" (avançou de
-    // etapa, foi p/ Ganho/Implantação, deal novo, ou permaneceu e ganhou valor) em
-    // verde | "perda real" (Perdido/regrediu/permaneceu e perdeu valor) em
-    // vermelho — mesma classificação do drill (FC.healthByRow no back-end). Pintado
-    // via plugin wfHealthOverlay (afterDatasetsDraw) direto na geometria real da
-    // barra — testamos 2 alternativas antes (gradiente com corte duro; 3 datasets
-    // floating-bar empilhados) e as duas se mostraram frágeis/quebradas no Chart.js
-    // (stacked:true com dados [min,max] em múltiplos datasets NÃO trata os pares
-    // como ranges absolutos — acumula como magnitude, bug conhecido do Chart.js,
-    // ver #10774/#11730 — descartado; plugin de desenho é a técnica correta).
-    var runArr = [null], toArr = [null], midArr = [null], healArr = [null], lossArr = [null];
+    // 5 fatias — novo/avançou/permaneceu/perdido/probabilidade (2026-08-17,
+    // sucessora da decomposição saudável×perda real) + zoom (oculta as barras de
+    // Total, eixo reescala pro range das barras de Δ) + filtro de fatia (legenda
+    // clicável). Protótipo/decisões de design documentadas em
+    // public/_sandbox-d02-slices.html antes de integrar aqui.
+    var filtered = !allBucketsActive();
+    var recalcSuffix = filtered ? ' (recalc.)' : '';
+    var labels = [], data = [], kinds = [], barBuckets = [], runArr = [], toArr = [], wRef = [];
+    if(!curZoom){ labels.push('Total @ A'); data.push([0, totA]); kinds.push('total'); barBuckets.push(null); runArr.push(null); toArr.push(null); wRef.push(null); }
     var run = totA, sumDelta = 0;
+    var BLANK_SLICE = { novo:0, avancou:0, permaneceu:0, perdido:0, probabilidade:0 };
     j.waterfall.forEach(function(w){
-      var d = w.delta[m]; sumDelta += d;
-      var heal = (w.saudavel && w.saudavel[m] != null) ? w.saudavel[m] : d;
-      var loss = d - heal;   // valores VERDADEIROS (podem ter sinal oposto ao delta — ver nota abaixo), usados no tooltip
-      // ponto de corte visual (mid) CLAMPADO em [run, run+d]: quando o saudável de um
-      // deal isolado é maior em módulo que o Δ líquido da barra (ex.: etapa cresceu
-      // 200k no total, mas foram +250k de entrada saudável compensados por -50k de
-      // perda real dentro do mesmo período) — caso LEGÍTIMO, não um erro de cálculo —
-      // a barra (1 retângulo, altura = Δ líquido) não tem como desenhar um segmento
-      // maior que ela mesma. Preferimos truncar o VISUAL (mostra predominantemente a
-      // cor que "venceu") a desenhar fora dos limites da barra; o tooltip continua
-      // mostrando os valores verdadeiros (heal/loss acima, não clampados).
-      var lo = Math.min(0, d), hi = Math.max(0, d);
-      var healClamp = Math.max(lo, Math.min(hi, heal));
-      var from = run, mid = run + healClamp, to = run + d;
+      var b = (w.slices && w.slices[m]) || BLANK_SLICE;
+      // Δ real da barra (Σ das 5 fatias, TODAS — alimenta o badge Σ Δ = Δtotal,
+      // que precisa continuar batendo com Total A/B reais independente do filtro).
+      sumDelta += w.delta[m];
+      // Δ exibido na barra soma só as fatias LIGADAS na legenda — desligar uma
+      // fatia recalcula a altura de verdade, não só esconde a cor.
+      var d = SLICE_ORDER.reduce(function(s,k){ return s + (activeBuckets[k] ? (b[k]||0) : 0); }, 0);
+      var from = run, to = run + d;
       labels.push(w.label);
       data.push([Math.min(from,to), Math.max(from,to)]);
-      colors.push(d >= 0 ? 'rgba(63,185,80,.85)' : 'rgba(248,81,73,.85)');
-      dataline.push(d); runArr.push(from); toArr.push(to); midArr.push(mid); healArr.push(heal); lossArr.push(loss);
       kinds.push('delta');
+      barBuckets.push(b);
+      runArr.push(from); toArr.push(to); wRef.push(w);
       run = to;
     });
-    labels.push('Total @ B'); data.push([0, run]); colors.push('rgba(58,184,183,.85)'); dataline.push(run);
-    runArr.push(null); toArr.push(null); midArr.push(null); healArr.push(null); lossArr.push(null); kinds.push('total');
+    if(!curZoom){ labels.push('Total @ B'+recalcSuffix); data.push([0, run]); kinds.push('total'); barBuckets.push(null); runArr.push(null); toArr.push(null); wRef.push(null); }
     // Fechado (pedido do dono, reunião 2026-07-31; ajuste 2026-08-02: Implantação
     // conta como Ganho): hoje um deal que vira Ganho (ou Implantação) entre A e B
     // "derruba" o Total B como se fosse perda de valor — na verdade é vitória,
@@ -712,122 +886,78 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
     // que já foi para Ganho/Implantação não é mais uma estimativa probabilizada — é receita
     // real. Antes usava j.fechado[m], que virava arrPond (probabilizado) com "Medida:
     // Probabilizada" selecionado, subestimando o que já foi de fato ganho.
+    // Some junto das barras de Total no modo zoom (mesmo motivo: valor grande,
+    // sem relação com a escala das barras de Δ que o zoom quer ampliar).
     var fechadoVal = (j.fechado && j.fechado.arr) || 0;
-    if(j.fechado){
-      labels.push('Fechado (Ganho/Implantação no período)'); data.push([0, fechadoVal]); colors.push('rgba(63,185,80,.5)'); dataline.push(fechadoVal);
-      runArr.push(null); toArr.push(null); midArr.push(null); healArr.push(null); lossArr.push(null); kinds.push('fechado');
-      labels.push('Total B + Fechado'); data.push([0, run + fechadoVal]); colors.push('rgba(58,184,183,.5)'); dataline.push(run + fechadoVal);
-      runArr.push(null); toArr.push(null); midArr.push(null); healArr.push(null); lossArr.push(null); kinds.push('composto');
+    if(j.fechado && !curZoom){
+      labels.push('Fechado (Ganho/Implantação no período)'); data.push([0, fechadoVal]); kinds.push('fechado'); barBuckets.push(null); runArr.push(null); toArr.push(null); wRef.push(null);
+      labels.push('Total B + Fechado'+recalcSuffix); data.push([0, run + fechadoVal]); kinds.push('composto'); barBuckets.push(null); runArr.push(null); toArr.push(null); wRef.push(null);
     }
+    WF.labels=labels; WF.data=data; WF.kinds=kinds; WF.barBuckets=barBuckets; WF.runArr=runArr; WF.toArr=toArr; WF.wRef=wRef;
 
-    // Eixo Y volta a começar em ZERO (2026-08-06, revertendo as duas tentativas de
-    // truncamento do mesmo dia — proporcional e depois fixo em 1,5M). Motivo do dono: os
-    // valores deste gráfico (totais e cumulativos do waterfall) NUNCA são negativos — um piso
-    // abaixo de zero só cria espaço vazio embaixo que nenhuma barra jamais ocupa (ficava mais
-    // óbvio quando os totais da foto eram pequenos, ex. ~R$3-4M: um respiro fixo de R$1,5M
-    // empurrava o eixo pra -1,5M, quase metade do gráfico em branco). `min:0` explícito (em
-    // vez de deixar o Chart.js inferir) pra não depender do auto-scale decidir sozinho.
-    var yMin = 0;
+    var filterNote = filtered
+      ? '<div style="color:var(--yellow)">⚠ Filtro de fatias ativo — barras recalculadas só com: '+
+        SLICE_ORDER.filter(function(k){ return activeBuckets[k]; }).map(function(k){ return SLICE_LABEL[k]; }).join(', ')+
+        '. Total @ A/B REAIS (fatos, não recalculam): '+fmtBRL(totA)+' → '+fmtBRL(totB)+'.</div>'
+      : '';
+    document.getElementById('wf-totals-readout').innerHTML =
+      (curZoom
+        ? 'Total @ A: <b>'+fmtBRL(totA)+'</b> &nbsp;→&nbsp; Total @ B: <b>'+fmtBRL(totB)+'</b>'+(j.fechado ? ' &nbsp;|&nbsp; Fechado: <b>'+fmtBRL(fechadoVal)+'</b>' : '')+' &nbsp;<span style="color:var(--muted)">(barras de Total ocultas neste modo — só os valores)</span>'
+        : '') + filterNote;
+
+    // zoom: eixo fixo no range das barras VISÍVEIS ± 500K — sem min/max explícitos
+    // o controller de barra do Chart.js inclui a base implícita (0) no cálculo de
+    // bounds mesmo pra floating-bar [min,max], e a escala ficava idêntica com ou
+    // sem as barras de Total (achado do dono, 2026-08-17).
+    var WF_ZOOM_MARGIN = 500000;
+    var yMinZoom = null, yMaxZoom = null;
+    if(curZoom){
+      var allVals = []; data.forEach(function(pair){ allVals.push(pair[0], pair[1]); });
+      yMinZoom = Math.min.apply(null, allVals) - WF_ZOOM_MARGIN;
+      yMaxZoom = Math.max.apply(null, allVals) + WF_ZOOM_MARGIN;
+    }
 
     var css = getComputedStyle(document.documentElement);
     var textc = css.getPropertyValue('--text2').trim(), gridc = css.getPropertyValue('--border').trim();
-    var TOOLTIP_PREFIX = { total: 'Total: ', fechado: 'Fechado: ', composto: 'Total B + Fechado: ' };
-    // Degradê na base de cada barra (pedido do dono, mesma leva): sinaliza visualmente que o
-    // eixo é truncado — a cor plena no topo da barra vai esmaecendo até quase transparente na
-    // base do GRÁFICO (não da barra individual), reforçando "só a parte de cima está à mostra".
-    // Nas barras de Δ isso fica só na base (sob o overlay de 2 cores, ver plugin abaixo).
-    function _wfBarColor(context){
-      var raw = colors[context.dataIndex] || 'rgba(58,184,183,.85)';
-      var m = /rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/.exec(raw);
-      if(!m) return raw;
-      var r=m[1], g=m[2], b=m[3], a = m[4]!=null ? parseFloat(m[4]) : 1;
-      var area = context.chart.chartArea;
-      if(!area) return raw; // 1ª passada de layout, antes da área existir — Chart.js chama de novo depois
-      var grad = context.chart.ctx.createLinearGradient(0, area.top, 0, area.bottom);
-      grad.addColorStop(0, 'rgba('+r+','+g+','+b+','+a+')');
-      grad.addColorStop(1, 'rgba('+r+','+g+','+b+','+Math.max(a*0.08, 0.03).toFixed(3)+')');
-      return grad;
-    }
-    // Plugin de desenho (não gradiente, não dataset empilhado — ver nota acima):
-    // pinta 2 retângulos sólidos (verde=saudável, vermelho=perda real) direto na
-    // geometria real de cada barra de Δ, usando a MESMA escala Y do gráfico pra
-    // achar o pixel do ponto de corte (midArr). getProps(...,true) = posição final
-    // (pós-animação), não o quadro intermediário da transição.
-    var wfHealthOverlay = {
-      id: 'wfHealthOverlay',
-      afterDatasetsDraw: function(chart){
-        var meta = chart.getDatasetMeta(0), yScale = chart.scales.y, ctx = chart.ctx;
-        for(var i=0;i<kinds.length;i++){
-          if(kinds[i] !== 'delta' || midArr[i] == null) continue;
-          var el = meta.data[i]; if(!el) continue;
-          var props = el.getProps(['x','width'], true);
-          var left = props.x - props.width/2, w = props.width;
-          var pxRun = yScale.getPixelForValue(runArr[i]), pxMid = yScale.getPixelForValue(midArr[i]), pxTo = yScale.getPixelForValue(toArr[i]);
-          var g0 = Math.min(pxRun,pxMid), g1 = Math.max(pxRun,pxMid);
-          var r0 = Math.min(pxMid,pxTo), r1 = Math.max(pxMid,pxTo);
-          ctx.save();
-          if(g1 > g0){ ctx.fillStyle = 'rgba(63,185,80,.85)'; ctx.fillRect(left, g0, w, g1-g0); }
-          if(r1 > r0){ ctx.fillStyle = 'rgba(248,81,73,.85)'; ctx.fillRect(left, r0, w, r1-r0); }
-          ctx.restore();
-        }
-      }
-    };
     document.getElementById('chart-state').style.display = 'none';
-    if(chart) chart.destroy();
-    chart = new Chart(document.getElementById('wf'), {
-      type:'bar',
-      data:{ labels:labels, datasets:[{ data:data, backgroundColor:_wfBarColor, borderRadius:4, barPercentage:.72 }] },
-      plugins:[wfHealthOverlay],
-      options:{
-        responsive:true, maintainAspectRatio:false,
-        // Pedido do dono (2026-08-06): Δ pequeno = barra de poucos pixels, difícil de acertar
-        // o clique. interaction {mode:'index', intersect:false} faz o hit-test valer pra
-        // QUALQUER clique na faixa vertical inteira da coluna (nome da etapa no eixo X, valor
-        // do datalabel acima da barra, a barra em si) — não só o retângulo pintado da barra.
-        // Sem isso, o default do Chart.js é intersect:true (só o pixel exato da barra).
-        interaction:{ mode:'index', intersect:false },
-        onClick:function(evt, els){
-          if(!els||!els.length) return; var i=els[0].index;
-          if(kinds[i]==='delta'){ var w=j.waterfall[i-1]; if(w) openDrill(w.key, 'Deals | '+w.label, fmtBRL); return; }
-          if(kinds[i]==='fechado'){ openDrill('kpi:arrTotal', 'Deals | Fechado (foram para Ganho/Implantação)', fmtBRL, null, 'ganho'); return; }
-          // Total @ A / Total @ B (2026-08-14, pedido do dono): reusa o MESMO drill genérico
-          // dos KPIs "ARR Total em pipe"/"ARR Ponderado" abaixo do gráfico (kpi:arrTotal|arrPond
-          // já olha TODO o conjunto escopado, A e B lado a lado) — escolhe qual dos dois pela
-          // Medida ativa no momento do clique, pra bater com o valor que a própria barra mostra
-          // (Real→arr, Probabilizada→arrPond). Mesma lista nos dois cliques (A e B são só os 2
-          // extremos do mesmo conjunto de deals); só o título do modal muda.
-          if(kinds[i]==='total'){ openDrill(metric==='real'?'kpi:arrTotal':'kpi:arrPond', 'Deals | '+labels[i], fmtBRL); return; }
-        },
-        onHover:function(evt, els){ var t=evt&&evt.native&&evt.native.target; if(!t) return; var i=els&&els.length?els[0].index:-1; t.style.cursor=(i>=0&&(kinds[i]==='delta'||kinds[i]==='fechado'||kinds[i]==='total'))?'pointer':''; },
-        plugins:{
-          legend:{display:false},
-          tooltip:{
-            callbacks:{
-              label:function(ctx){ var i=ctx.dataIndex; var k=kinds[i]; return (k==='delta'?'Δ ':(TOOLTIP_PREFIX[k]||'')) + fmtCompact(dataline[i]); },
-              // linhas extras só nas barras de Δ, só quando o segmento tem magnitude
-              // (>R$0,50) — evita "Perda real: 0" quando a barra é 100% saudável (e vice-versa).
-              afterLabel:function(ctx){
-                var i=ctx.dataIndex; if(kinds[i]!=='delta') return;
-                var lines = [];
-                if(Math.abs(healArr[i]||0) > 0.5) lines.push('Avançou/Ganho (saudável): '+fmtCompactc(healArr[i]));
-                if(Math.abs(lossArr[i]||0) > 0.5) lines.push('Perda real (churn): '+fmtCompactc(lossArr[i]));
-                return lines;
-              }
-            }
+    if(!chart){
+      chart = new Chart(document.getElementById('wf'), {
+        type:'bar',
+        data:{ labels:labels, datasets:[{ data:data, backgroundColor:wfBarColor, borderRadius:4, barPercentage:.72 }] },
+        plugins:[wfSliceOverlay],
+        options:{
+          responsive:true, maintainAspectRatio:false,
+          // Pedido do dono (2026-08-06): Δ pequeno = barra de poucos pixels, difícil de acertar
+          // o clique. interaction {mode:'index', intersect:false} faz o hit-test valer pra
+          // QUALQUER clique na faixa vertical inteira da coluna (nome da etapa no eixo X, valor
+          // do datalabel acima da barra, a barra em si) — não só o retângulo pintado da barra.
+          // Sem isso, o default do Chart.js é intersect:true (só o pixel exato da barra).
+          interaction:{ mode:'index', intersect:false },
+          onClick:wfBarClick, onHover:wfBarHover,
+          plugins:{
+            legend:{display:false},
+            tooltip:{ enabled:false, external:wfExternalTooltip },
+            datalabels:{ anchor:'end', align:'end', color:textc, font:{size:12,weight:'700'}, formatter:wfDatalabelFormatter }
           },
-          datalabels:{
-            // Sem "R$" na frente + fonte maior (10→12, 2026-08-13): o espaço ganho ao tirar o
-            // prefixo de moeda vai direto pro tamanho do número, que é o que o dono quer mais legível.
-            anchor:'end', align:'end', color:textc, font:{size:12,weight:'700'},
-            formatter:function(v,ctx){ var i=ctx.dataIndex; return kinds[i]==='delta' ? fmtCompactc(dataline[i]) : fmtCompact(dataline[i]); }
+          scales:{
+            x:{ ticks:{ color:textc, maxRotation:35, minRotation:0, font:{size:10} }, grid:{display:false} },
+            y: curZoom
+              ? { min:yMinZoom, max:yMaxZoom, ticks:{ color:textc, callback:function(v){ return fmtCompact(v); } }, grid:{color:gridc} }
+              : { min:0, ticks:{ color:textc, callback:function(v){ return fmtCompact(v); } }, grid:{color:gridc} }
           }
-        },
-        scales:{
-          x:{ ticks:{ color:textc, maxRotation:35, minRotation:0, font:{size:10} }, grid:{display:false} },
-          y:{ min:yMin, ticks:{ color:textc, callback:function(v){ return fmtCompact(v); } }, grid:{color:gridc} }
         }
-      }
-    });
+      });
+    } else {
+      // update() em vez de destroy()+new Chart() — permite o Chart.js interpolar a
+      // posição/altura de cada barra da geometria antiga pra nova (morph), pedido
+      // do dono 2026-08-17. Limpo no toggle Medida (mesmas barras, só o valor
+      // muda); best-effort no toggle Zoom/filtro (nº de barras pode mudar).
+      chart.data.labels = labels;
+      chart.data.datasets[0].data = data;
+      chart.options.scales.y.min = curZoom ? yMinZoom : 0;
+      chart.options.scales.y.max = curZoom ? yMaxZoom : undefined;
+      chart.update();
+    }
 
     // ── KPIs de apoio (spec 6.2) | Vidas, ARR Total e ARR Ponderado são clicáveis ──
     var kA = j.a.kpis, kB = j.b.kpis;
@@ -1308,6 +1438,22 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
     });
   }
   wireToggle('metric-toggle', function(v){ metric=v; refresh(); });
+  // D02 | zoom (oculta barras de Total) — .tab-sub-btn não usa .seg-btn/wireToggle
+  // (o thumb já é posicionado genericamente por _initTabSubs() pra QUALQUER
+  // .tab-sub existente); só falta o clique alternar a classe e re-renderizar.
+  buildWfLegend();
+  (function(){
+    var el = document.getElementById('wf-zoom-toggle');
+    el.querySelectorAll('.tab-sub-btn').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        el.querySelectorAll('.tab-sub-btn').forEach(function(b){ b.classList.remove('active'); b.setAttribute('aria-pressed','false'); });
+        btn.classList.add('active'); btn.setAttribute('aria-pressed','true');
+        _moveTabSubThumb(el, true);
+        curZoom = btn.getAttribute('data-v') === 'zoom';
+        if(lastJ) render(lastJ);
+      });
+    });
+  })();
   // horizon-toggle CONTINUA removido (2026-08-06): a variável `horizon` segue fixa em 'arr' no
   // default declarado acima; sem elemento pra conectar, wireToggle('horizon-toggle') quebraria
   // em runtime. Escopo saiu do padrão .seg-ctrl/wireToggle no mesmo dia em que voltou (virou
@@ -1333,7 +1479,7 @@ html[data-theme="light"] .custom-cb:hover{background:rgba(0,0,0,.05)}
       '<p class="hk"><b>Medidas |</b> Horizonte <b>ARR</b>: Probabilizada = <code>arr_estimado</code> × prob. final da etapa | Real = ARR estimado bruto. Horizonte <b>Pipeline total</b>: receita da régua no horizonte completo (motor canônico <code>forecast-compute</code> → <code>forecast-engine</code>, Regra primária nº 3), ancorada na data de cada foto.</p>'+
       '<p class="hk"><b>Fórmula |</b> a barra da etapa é Σ(B) − Σ(A). Invariante verificado: Σ Δ das etapas = Δ do total (selo nos KPIs).</p>'+
       '<p class="hk"><b>Drill (2026-08-14) |</b> clique em qualquer barra de etapa, em Fechado, ou em <b>Total @ A</b> / <b>Total @ B</b> para ver a lista de deals. Total @ A e Total @ B abrem o MESMO drill (o conjunto inteiro do escopo, valor em A e em B lado a lado) — só o título do modal muda. Quando um deal aparece numa etapa por ter avançado de outra (ex.: veio de Cotação e chegou em Consultoria), o modal agora mostra a etapa de origem corretamente (coluna "Etapa (A→B) | destino"); antes, abrir o drill da etapa DESTINO mostrava esse deal como "Novo" sem indicar de onde ele veio — só o drill da etapa de ORIGEM sabia o destino.</p>'+
-      '<p class="hk"><b>Decomposição saudável × perda real (2026-08-07) |</b> cada barra de Δ é colorida em 2 segmentos — verde = "saudável" (deal avançou de etapa, foi p/ Ganho/Implantação, entrou novo na etapa, ou permaneceu e GANHOU valor) | vermelho = "perda real" (foi p/ Perdido/regrediu/saiu do pipe sem avançar, ou permaneceu e PERDEU valor). Mesma classificação do drill da barra (clique pra ver os deals de cada tipo). Os 2 segmentos somam exatamente o Δ total da barra.</p>'+
+      '<p class="hk"><b>5 fatias — Novo/Avançou/Permaneceu/Perdido/Probabilidade (2026-08-17, sucessora da decomposição saudável×perda real) |</b> cada barra de Δ é colorida em até 5 segmentos: <b>Novo</b> (deal não existia em NENHUMA etapa na Foto A) | <b>Avançou</b> (chegou de outra etapa, ou saiu daqui pra uma etapa posterior/Ganho/Implantação) | <b>Permaneceu</b> (mesma etapa nas duas fotos, Δ de valor) | <b>Perdido</b> (saiu pra Perdido/regrediu/saiu do pipe) | <b>Probabilidade</b> (⚠ nova, ainda não validada contra o HubSpot): só existe na Medida Probabilizada — pra um deal que avançou, decompõe o ganho ponderado em "substância" (mudança real de ARR, já contada em Avançou) vs. "reclassificação pela régua" — <code>efeito_probabilidade = arr_A × (prob_B − prob_A)</code>, onde prob_A/prob_B vêm da etapa de origem/destino. Soma exata = Δ da barra. <b>Empilhamento é PROPORCIONAL</b> (fração = |fatia| ÷ Σ|fatias ativas|), não posicional — necessário porque uma fatia isolada costuma ser maior em módulo que o Δ líquido da barra; o corte visual não marca um ponto no eixo, marca composição. Legenda é clicável (liga/desliga fatia, recalcula a altura de verdade) e o toggle <b>Zoom</b> oculta as barras de Total pra ampliar a escala das barras de Δ (eixo fixo ±R$500K do range visível). Valor exato de cada fatia sempre no tooltip, nunca só na altura do desenho.</p>'+
       '<p class="hk"><b>Escopo (multiselect por etapa, 2026-08-13) |</b> escolha livremente quais etapas do funil de Vendas entram no cálculo — <b>Reunião Agendada, Diagnóstico, Cotação, Consultoria, Negociação</b> — para combinações como "Diagnóstico pra frente" (sem Reunião Agendada) sem precisar de um toggle fixo pra cada combinação. Default: Cotação + Consultoria + Negociação (o antigo "Ativos"). A régua de probabilidade de cada etapa é sempre a mesma do forecast (<code>forecast_flat</code>: Reunião Agendada e Diagnóstico 6% fixo, Cotação ~18,6%, Consultoria ~28,5%, Negociação ~49,3%) — o multiselect só decide QUAIS deals entram, nunca muda a fórmula. Bid e Stand by saem sempre, independente da seleção. <b>Ganho/Implantação não são selecionáveis aqui</b> — entram sempre pela barra aditiva "Fechado" abaixo, nunca como barra própria do waterfall (selecioná-los duplicaria com o Fechado).</p>'+
       '<p class="hk"><b>Fechado (2026-08-02; sempre valor Real desde 2026-08-13; deals "nascidos fechados" desde 2026-08-14) |</b> hoje um deal que vira Ganho entre A e B "derruba" o Total @ B como se fosse perda de valor — na verdade é vitória: o valor só migrou de pipe aberto ponderado para fechado/contratado. <b>Implantação conta como Ganho</b> nesta barra (decisão do dono, 2026-08-02). A barra <b>Fechado</b> soma o ARR Real dos deals que foram para Ganho ou Implantação no período (na foto A, quando existiam abertos) <b>+ deals que já nasceram Ganho/Implantação entre as duas fotos</b> — criados e fechados no mesmo intervalo, sem nunca terem sido fotografados abertos (achado real: deal criado e ganho no mesmo dia, ~7min de diferença — a foto diária nunca o viu aberto; sem essa soma, esses deals eram invisíveis no Delta inteiro). Sempre Real, mesmo com "Medida: Probabilizada" selecionada no header (um deal já fechado não é mais uma estimativa). A barra <b>Total B + Fechado</b> comunica o quadro completo (o que já foi executado, sempre Real, + o que ainda está por vir, na medida selecionada). São barras INFORMATIVAS/aditivas — não entram no Σ Δ nem no invariante das etapas.</p>' },
     D03: { title: 'KPIs comparativos | A → B', sem: ['arr_estimado_fallback','arr_ponderado_forecast'], html:

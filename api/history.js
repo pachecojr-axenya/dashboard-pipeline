@@ -213,6 +213,11 @@ module.exports = async function handler(req, res) {
       
       // rawBStageById: etapa bruta em B (inclui Perdido) para stageUnified.movement e drill
       const rawBStageById = {}; mappedB.forEach(d => { rawBStageById[FC.dealId(d)] = d.stage; });
+      // rawAStageById (2026-08-17, espelha o mesmo campo já usado em compare-drill desde
+      // 2026-08-14): etapa bruta em A, sem filtro de escopo — alimenta FC.movementSlices
+      // pra distinguir "novo de verdade" (não existia em NENHUMA etapa) de "avançou de uma
+      // etapa fora do escopo/sem linha no Overall" no D02 de 5 fatias.
+      const rawAStageById = {}; mappedA.forEach(d => { rawAStageById[FC.dealId(d)] = d.stage; });
 
       // Deals "nascidos fechados" (2026-08-14, achado do dono: "Grupo Recovery - Vitalício",
       // criado E ganho no mesmo dia) — existem em B (raw) já Ganho/Implantação, mas não
@@ -291,6 +296,16 @@ module.exports = async function handler(req, res) {
       waterfall.forEach(w => {
         const h = health[w.key] || { saudavel: _blankHealth(), perdaReal: _blankHealth() };
         w.saudavel = h.saudavel; w.perdaReal = h.perdaReal;
+      });
+      // 5 fatias (2026-08-17, sucessora do 2-baldes acima pro D02): novo / avançou /
+      // permaneceu / perdido / probabilidade, em Real e Ponderada. saudavel/perdaReal
+      // ficam no payload como cross-check interno (Σ das 5 fatias == saudavel+perdaReal
+      // == delta, por construção) até o D02 novo estar validado em produção.
+      const slices = FC.movementSlices(cA, cB, rawAStageById, rawBStageById);
+      const _blankSlices = () => ({ novo: 0, avancou: 0, permaneceu: 0, perdido: 0, probabilidade: 0 });
+      waterfall.forEach(w => {
+        const s = slices[w.key] || { arr: _blankSlices(), arrPond: _blankSlices() };
+        w.slices = s;
       });
       // Totais em ARR = os próprios KPIs (mesmo conjunto escopado; barras Total @ A/B).
       const totalsA = Object.assign({}, snapA.totals, { arr: snapA.kpis.arrTotal, arrPond: snapA.kpis.arrPond });
