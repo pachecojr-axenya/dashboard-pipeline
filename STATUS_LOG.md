@@ -1,5 +1,24 @@
 # Dashboard Enhancement Loop — Status Log
 
+### 🚀 DEPLOY DE PRODUÇÃO | Delta: D02 ganha 5 fatias + zoom + filtro (2026-08-17)
+
+> Autorização explícita do dono ("Quero.. Commit e deploy"), continuação da mesma sessão
+> da entrada "Delta | D02 ganha 5 fatias..." abaixo.
+>
+> `origin/main` andou 3 commits (Workload: ressalva do carimbo, carimbo≠atendimento,
+> BDRs que saíram) durante o trabalho — confirmado zero arquivo comum exceto
+> `STATUS_LOG.md` (conflito de merge textual, resolvido mantendo as 2 entradas na ordem
+> cronológica certa, minha em cima por ser mais recente). `npm run check` completo
+> ANTES e DEPOIS do rebase: 0 FAIL nas duas rodadas. Commit `6ccdc13` (7 arquivos:
+> `AUDITORIA_GRAFICOS.md`, `STATUS_LOG.md`, `api/history.js`, `lib/forecast-compute.js`,
+> `public/_sandbox-d02-slices.html` [novo], `public/forecast-delta.html`,
+> `scripts/test-delta-invariant.js`). `npm run deploy` (preflight + `vercel --prod --yes`):
+> deployment `dpl_5BP4R3kR6eYmFJckPahMMNYw6eLE`, READY.
+>
+> **Pós-deploy confirmado nos dois hosts** (`project-bsmfu.vercel.app` e
+> `axenya-pipeline-dashboard.vercel.app`): `/forecast-delta` = 200; `/api/history` = 401
+> (auth ativa).
+
 ### Delta | D02 ganha 5 fatias (Novo/Avançou/Permaneceu/Perdido/Probabilidade) + zoom + filtro de fatia (2026-08-17)
 
 > Pedido do dono: fatiar as barras de Δ do D02 (waterfall, o gráfico mais importante do
