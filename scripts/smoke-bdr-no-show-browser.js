@@ -63,7 +63,12 @@ async function run() {
     axis: [...document.querySelectorAll('#rate-chart svg>text')].slice(0,2).map(x=>x.textContent),
     executives: [...document.querySelectorAll('#rate-legend .rate-legend-item')].some(x=>/André Pontes|Guilherme Gabiatti|Rafael Leite|Fausto|Juliana Dalberto|Ágatta/.test(x.textContent)),
     outsideRank: [...document.querySelectorAll('[data-rank-mode=outside]')].reduce((s,x)=>s+Number(x.querySelector('.pill').textContent.replace(/\\D/g,'')),0),
-    recoveryOutside: [...document.querySelectorAll('.table-wrap tbody tr .pill.bad')].filter(x=>x.textContent.includes('Fora SLA')).length,
+    // A fila global fora SLA vem do KPI, que é o número REAL. Contar linhas
+    // \`.pill.bad\` da tabela media o DOM depois do \`.slice(0, 100)\` de
+    // renderRecoveryTable, então saturava em 100 e reprovava a invariante assim que
+    // a fila passou de 100 — com o dado correto (ranking 122 <= fila 132).
+    outsideSlaGlobal: Number((document.querySelector('[data-drill=outsideSla] .value')||{textContent:''}).textContent.replace(/\\D/g,'')),
+    recoveryRowsRendered: [...document.querySelectorAll('.table-wrap tbody tr .pill.bad')].filter(x=>x.textContent.includes('Fora SLA')).length,
     has130: document.querySelector('#rate-chart').textContent.includes('130%'),
     reconciliation: document.querySelector('.data-scope-warning').textContent
   })`);
@@ -74,7 +79,9 @@ async function run() {
   assert.deepStrictEqual(result.axis, ['100%', '0%']);
   assert.strictEqual(result.executives, false, 'AE não pode aparecer na visão por BDR');
   assert.strictEqual(result.has130, false, 'eixo não pode ultrapassar 100%');
-  assert.ok(result.outsideRank <= result.recoveryOutside, 'ranking BDR fora SLA não pode exceder a fila operacional global');
+  assert.ok(result.outsideSlaGlobal > 0, 'KPI Fora SLA deve renderizar um número para servir de teto da invariante');
+  assert.ok(result.outsideRank <= result.outsideSlaGlobal, 'ranking BDR fora SLA (' + result.outsideRank + ') não pode exceder a fila global fora SLA (' + result.outsideSlaGlobal + ')');
+  assert.ok(result.recoveryRowsRendered > 0, 'tabela operacional deve renderizar linhas fora SLA');
   assert.ok(result.reconciliation.includes('A taxa global usa todas as reuniões'), 'disclaimer deve explicar o universo global');
 
   await evaluate('document.querySelector("[data-rate-filter=ae]").click()');

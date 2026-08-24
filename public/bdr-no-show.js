@@ -182,14 +182,17 @@
     return 'Campo pendente | reunião futura';
   }
 
-  function classifyRecovery(deal, meetingDate, occurred, explicit, text) {
+  function classifyRecovery(deal, meetingDate, occurred, explicit, text, hasRea) {
     var explicitNoShow = containsAny(text, CONFIG.noShowTerms) || (deal.stage === 'Perdido' && containsAny(text, CONFIG.lostNoShowTerms));
     var pastMeeting = !!(meetingDate && meetingDate < today());
     if (explicit === false && occurred && deal.stage !== 'Perdido') return 'Recuperado';
     if (explicitNoShow && occurred && deal.stage !== 'Perdido') return 'Recuperado';
     if (occurred) return 'Realizada';
     if (deal.stage === 'Perdido') return containsAny(text, CONFIG.lostNoShowTerms) ? 'Perdido por no-show' : 'Perdido sem evidência no-show';
-    if (containsAny(text, CONFIG.rescheduleTerms)) return 'Reagendada';
+    // O campo HubSpot de reagendamento entra ANTES do texto. A ordem importa: as etapas
+    // de Perdido e as reuniões já realizadas são decididas acima, então esta linha só
+    // alcança reunião viva e ainda sem desfecho — na medição de 24/08/2026, 2 deals.
+    if (hasRea || containsAny(text, CONFIG.rescheduleTerms)) return 'Reagendada';
     if (explicit === false) return 'No-show confirmado';
     if (containsAny(text, CONFIG.noShowTerms)) return 'No-show aberto';
     if (pastMeeting && explicit == null) return 'Campo pendente | reunião passou';
@@ -212,13 +215,50 @@
     var text = evidenceText(deal);
     var noShowEvidence = containsAny(text, CONFIG.noShowTerms) || (deal.stage === 'Perdido' && containsAny(text, CONFIG.lostNoShowTerms));
     var pastMeeting = !!(meetingDate && meetingDate < today());
-    var status = classifyRecovery(deal, meetingDate, occurred, explicitOccurred, text);
+
+    // REAGENDAMENTO | fonte é o campo HubSpot `data_do_reagendamento_com_o_executivo`,
+    // que chega no payload como `data_reagendamento_exec` (api/forecast-table.js:73).
+    // NUNCA o texto do deal. Medição de 24/08/2026 sobre 1.467 reuniões: 140 com o campo
+    // preenchido contra 33 detectadas por texto, e só 4 nas duas regras — 136 das 140
+    // eram invisíveis na tela. O texto continua existindo como evidência secundária,
+    // e a origem é exibida para que ninguém confunda as duas réguas.
+    var reaDate = parseDate(deal.data_reagendamento_exec);
+    var hasRea = !!reaDate;
+    var reaTextOnly = !hasRea && containsAny(text, CONFIG.rescheduleTerms);
+    var reaGap = (reaDate && meetingDate) ? Math.round((reaDate.getTime() - meetingDate.getTime()) / 86400000) : null;
+    var reaPast = !!(reaDate && reaDate < today());
+
+    var status = classifyRecovery(deal, meetingDate, occurred, explicitOccurred, text, hasRea);
     var fieldStatus = meetingFieldStatus(explicitOccurred, pastMeeting);
-    var noShow = status === 'Perdido por no-show' || status === 'No-show confirmado' || status === 'No-show aberto' || status === 'Recuperado' || (status === 'Reagendada' && (noShowEvidence || explicitOccurred === false));
+    var baseNoShow = status === 'Perdido por no-show' || status === 'No-show confirmado' || status === 'No-show aberto' || status === 'Recuperado' || (status === 'Reagendada' && (noShowEvidence || explicitOccurred === false));
+
+    // Rótulo honesto para os que saem do numerador: antes eles apareciam como
+    // "Recuperado" mas deixavam de ser contados no card Recuperados (que filtra
+    // no-shows), o que deixava o status contradizendo o KPI. "Reagendada | realizada"
+    // diz exatamente o que aconteceu: a data mudou e a reunião ocorreu.
+    if (hasRea && occurred && baseNoShow) status = 'Reagendada | realizada';
+
+    // DECISÃO DO DONO 24/08/2026 | reunião com data de reagendamento no CRM que
+    // demonstravelmente ocorreu NÃO é falta do BDR: foi agenda movida, não stand-up.
+    // Sai do numerador da incidência e fica visível como "Reagendada | realizada".
+    // Reagendou e a reunião nunca aconteceu continua sendo no-show — mover a data não
+    // absolve a falta, só explica a primeira ausência.
+    var reaResolved = hasRea && occurred;
+    var noShow = baseNoShow && !reaResolved;
+
+    // Contradição campo × funil: o CRM diz que a reunião não ocorreu, mas o deal andou
+    // de etapa depois do reagendamento. Fila de higiene, não de cobrança de reunião.
+    var reaContradiction = hasRea && occurred && explicitOccurred === false;
+    // Reagendamento vencido: a data remarcada passou, o campo não virou Sim e o deal não
+    // avançou. Ou faltou de novo, ou o campo está velho.
+    var reaOverdue = hasRea && reaPast && explicitOccurred !== true && !occurred;
+    var reaOverdueOpen = reaOverdue && deal.stage !== 'Perdido';
+    var reaOverdueDays = (reaOverdue && reaDate) ? businessDaysBetween(reaDate, today()) : null;
+
     var lastActivityDate = parseDate(deal.ultima_atividade || deal.close_date || deal.createdate);
     var bd = meetingDate ? businessDaysBetween(meetingDate, today()) : null;
     var recovered = status === 'Recuperado';
-    var rescheduled = noShow && status === 'Reagendada';
+    var rescheduled = hasRea;
     var openNoShow = status === 'No-show confirmado' || status === 'No-show aberto';
     var outsideSla = openNoShow && bd != null && bd > CONFIG.slaBusinessDays;
     var bdrValue = canonicalBdrName(deal.sdr);
@@ -253,6 +293,18 @@
       knownOutcome: occurred || noShow,
       openNoShow: openNoShow,
       rescheduled: rescheduled,
+      // Dimensão de reagendamento | campo HubSpot, não texto
+      reaIso: iso(reaDate),
+      reaGap: reaGap,
+      reaPast: reaPast,
+      reaSource: hasRea ? 'Campo HubSpot | data_do_reagendamento_com_o_executivo' : (reaTextOnly ? 'Texto do deal | evidência secundária' : null),
+      reaTextOnly: reaTextOnly,
+      reaResolved: reaResolved,
+      reaContradiction: reaContradiction,
+      reaOverdue: reaOverdue,
+      reaOverdueOpen: reaOverdueOpen,
+      reaOverdueDays: reaOverdueDays,
+      isLost: deal.stage === 'Perdido',
       recovered: recovered,
       outsideSla: outsideSla,
       withinSla: openNoShow && bd != null && !outsideSla,
@@ -407,7 +459,15 @@
       noShows: noShows.length,
       noShowRate: rate(noShows.length, known.length),
       openNoShows: openNoShows.length,
-      rescheduled: noShows.filter(function (r) { return r.rescheduled; }).length,
+      // Reagendadas conta o CAMPO em todo o universo filtrado, não só dentro dos
+      // no-shows: uma reunião movida que aconteceu é reagendamento e não é falta.
+      // Restringir a `noShows` era o que escondia 136 dos 140 registros.
+      rescheduled: rows.filter(function (r) { return r.rescheduled; }).length,
+      rescheduledResolved: rows.filter(function (r) { return r.reaResolved; }).length,
+      rescheduledTextOnly: rows.filter(function (r) { return r.reaTextOnly; }).length,
+      reaContradictions: rows.filter(function (r) { return r.reaContradiction; }).length,
+      reaOverdue: rows.filter(function (r) { return r.reaOverdue; }).length,
+      reaOverdueOpen: rows.filter(function (r) { return r.reaOverdueOpen; }).length,
       recovered: recovered.length,
       recoveryRate: rate(recovered.length, noShows.length),
       withinSla: noShows.filter(function (r) { return r.withinSla; }).length,
@@ -417,6 +477,25 @@
     };
     out.rescheduleRate = rate(out.rescheduled, scheduled.length);
     out.fieldCoverage = rate(out.fieldFilledPast, past.length);
+
+    // "Reagendou e morreu": desfecho comparado entre quem teve data de reagendamento e
+    // quem não teve. Medição de 24/08/2026: 86% de perda com reagendamento contra 76%
+    // sem. Contagem, nunca ARR — só 35 dos 140 têm ARR preenchido e a soma é dominada
+    // por dois deals enterprise (Carrefour e Naturgy), o que tornaria a leitura falsa.
+    var withRea = rows.filter(function (r) { return r.rescheduled; });
+    var withoutRea = rows.filter(function (r) { return !r.rescheduled; });
+    out.withRea = withRea.length;
+    out.withoutRea = withoutRea.length;
+    out.reaLost = withRea.filter(function (r) { return r.isLost; }).length;
+    out.noReaLost = withoutRea.filter(function (r) { return r.isLost; }).length;
+    out.reaLostRate = rate(out.reaLost, withRea.length);
+    out.noReaLostRate = rate(out.noReaLost, withoutRea.length);
+    out.reaGapMedian = (function () {
+      var gaps = withRea.map(function (r) { return r.reaGap; })
+        .filter(function (g) { return g != null; })
+        .sort(function (a, b) { return a - b; });
+      return gaps.length ? gaps[Math.floor(gaps.length / 2)] : null;
+    })();
     return out;
   }
 
@@ -429,6 +508,11 @@
     return '<div class="kpi clickable ' + (cls || '') + '" data-drill="' + esc(key || '') + '" data-hover-title="' + esc(label) + '" data-hover-text="Clique para abrir os deals que compõem este card. Passe no i para a fórmula."><div class="label"><span>' + esc(label) + '</span>' + (key ? infoBtn(key) : '') + '</div><div class="value">' + value + '</div><div class="sub">' + esc(sub || '') + '</div></div>';
   }
 
+  // ⚠ CÓDIGO MORTO | render() NÃO chama esta função desde a reorganização em arco
+  // narrativo: quem desenha os cards de topo é renderHeroKpis() + renderHygieneCard().
+  // Mantida porque ainda é a única referência completa da grade de 13 KPIs, mas editar
+  // aqui não muda nada na tela — em 24/08/2026 três KPIs novos de reagendamento foram
+  // adicionados neste bloco e não apareceram. Se for revivê-la, plugue em render().
   function renderKpis(m) {
     return '<div class="kpis">' +
       kpi('Agendadas', fmtInt(m.scheduled), 'Reuniões com data definida no período', 'teal', 'scheduled') +
@@ -439,7 +523,9 @@
       kpi('Campo Não', fmtInt(m.fieldNo), 'BDR marcou que a reunião NÃO ocorreu', m.fieldNo ? 'bad' : 'good', 'fieldNo') +
       kpi('No-show confirmado', fmtInt(m.noShows), 'Campo Não OU evidência textual de ausência', 'bad', 'noShow') +
       kpi('Incidência no-show', fmtPct(m.noShowRate), 'No-shows ÷ reuniões com desfecho conhecido', m.noShowRate > 0.25 ? 'bad' : 'warn', 'noShowRate') +
-      kpi('Reagendadas', fmtInt(m.rescheduled), 'No-show com nova data marcada', 'warn', 'rescheduled') +
+      kpi('Reagendadas', fmtInt(m.rescheduled), 'Campo HubSpot de reagendamento preenchido', 'warn', 'rescheduled') +
+      kpi('Contradição campo × funil', fmtInt(m.reaContradictions), 'Reagendou, avançou de etapa, campo ainda Não', m.reaContradictions ? 'bad' : 'good', 'reaContradiction') +
+      kpi('Reagendamento vencido', fmtInt(m.reaOverdue), fmtInt(m.reaOverdueOpen) + ' ainda vivo | data passou sem desfecho', m.reaOverdueOpen ? 'bad' : 'warn', 'reaOverdue') +
       kpi('Recuperados', fmtInt(m.recovered), 'No-show que virou reunião ou avançou', 'good', 'recovered') +
       kpi('Fora SLA', fmtInt(m.outsideSla), 'No-show há mais de ' + CONFIG.slaBusinessDays + ' dias úteis sem ação', m.outsideSla ? 'bad' : 'good', 'outsideSla') +
       kpi('Pipeline em risco', fmtMoney(m.pipelineRisk), 'ARR potencial em no-shows ainda abertos', 'bad', 'pipelineRisk') +
@@ -681,6 +767,11 @@
       '<div class="hygiene-item"><span class="hygiene-label">Campo pendente</span><span class="hygiene-value ' + (m.fieldMissingPast ? 'bad' : 'good') + '">' + fmtInt(m.fieldMissingPast) + '</span></div>' +
       '<div class="hygiene-item"><span class="hygiene-label">Realizadas</span><span class="hygiene-value good">' + fmtInt(m.occurred) + '</span></div>' +
       '<div class="hygiene-item"><span class="hygiene-label">Marcadas como Não</span><span class="hygiene-value ' + (m.fieldNo ? 'bad' : '') + '">' + fmtInt(m.fieldNo) + '</span></div>' +
+      // REAGENDAMENTO (24/08/2026) | os 3 itens são clicáveis: o binding de render()
+      // liga onclick em todo [data-drill], então cada número abre os deals que o compõem.
+      '<div class="hygiene-item clickable" data-drill="rescheduled" data-hover-title="Reagendadas" data-hover-text="Campo HubSpot de reagendamento preenchido. Clique para abrir os deals."><span class="hygiene-label">Reagendadas</span><span class="hygiene-value ' + (m.rescheduled ? 'warn' : '') + '">' + fmtInt(m.rescheduled) + '</span></div>' +
+      '<div class="hygiene-item clickable" data-drill="reaContradiction" data-hover-title="Contradição campo × funil" data-hover-text="Reagendou, avançou de etapa, e o campo ainda diz Não. Clique para abrir os deals."><span class="hygiene-label">Contradição campo × funil</span><span class="hygiene-value ' + (m.reaContradictions ? 'bad' : 'good') + '">' + fmtInt(m.reaContradictions) + '</span></div>' +
+      '<div class="hygiene-item clickable" data-drill="reaOverdue" data-hover-title="Reagendamento vencido" data-hover-text="Data remarcada passou sem desfecho. ' + fmtInt(m.reaOverdueOpen) + ' ainda fora de Perdido. Clique para abrir os deals."><span class="hygiene-label">Reagendamento vencido</span><span class="hygiene-value ' + (m.reaOverdueOpen ? 'bad' : 'warn') + '">' + fmtInt(m.reaOverdue) + '</span></div>' +
       '</div></div>';
   }
 
@@ -712,7 +803,10 @@
     fieldNo: ['Campo Não', 'Reuniões em que foi marcado explicitamente que a reunião NÃO ocorreu. É a evidência mais confiável de ausência.', 'Vem da marcação oficial no HubSpot, não de interpretação de texto. sdr identifica o BDR quando preenchido; ae identifica o owner do deal.'],
     noShow: ['No-show confirmado', 'Reuniões que foram marcadas mas o cliente não compareceu. Confirmamos quando o campo oficial está como "Não" ou quando há registro claro de ausência no motivo/status.', 'O texto do deal só é usado como último recurso. Campo vazio sozinho não vira no-show e reunião sem sdr não sai da taxa global.'],
     noShowRate: ['Incidência de no-show', 'De cada 100 reuniões globais com desfecho conhecido, quantas tiveram no-show em algum momento. Inclui casos depois recuperados ou perdidos.', 'A taxa global usa todas as reuniões filtradas. Cortes por BDR usam apenas reuniões atribuíveis ao campo sdr no roster atual + Gabriel histórico; Por AE usa exclusivamente ae, owner do deal.'],
-    rescheduled: ['Reagendadas', 'No-shows em que há registro de que uma nova data foi combinada. Sinal de recuperação em andamento.', 'Hoje detectamos a remarcação pelo texto do deal; o histórico exato de datas ainda não vem do sistema.'],
+    rescheduled: ['Reagendadas', 'Reuniões com a propriedade HubSpot "Data do reagendamento da reunião" (data_do_reagendamento_com_o_executivo) preenchida. Conta todo o universo filtrado, não apenas os no-shows.', 'Até 24/08/2026 este card lia o TEXTO do deal e mostrava 33 quando o CRM registrava 140 — 136 registros invisíveis. Agora a fonte é o campo. O texto sobrou como evidência secundária e aparece na coluna Fonte.'],
+    reaContradiction: ['Contradição campo × funil', 'Deals com data de reagendamento que avançaram de etapa depois dela, mas cujo campo "A reunião ocorreu?" segue marcado como Não. O funil prova que a reunião aconteceu; o campo discorda.', 'É fila de HIGIENE, não de cobrança de reunião: o BDR precisa corrigir o campo no HubSpot. Estes deals saíram do numerador da incidência por decisão do dono em 24/08/2026 — reunião movida que ocorreu não é falta.'],
+    reaOverdue: ['Reagendamento vencido', 'A data do reagendamento já passou, o campo "A reunião ocorreu?" não virou Sim e o deal não avançou de etapa. Ou faltou de novo, ou o campo está velho. A tabela ordena pelos mais atrasados em dias úteis.', 'Deals em Perdido aparecem marcados para não inflarem a leitura de fila acionável — o número entre parênteses no subtítulo é a fila VIVA. Em 24/08/2026 eram 53 casos, dos quais 52 já em Perdido: a fila realmente acionável era 1.'],
+    reaImpact: ['Reagendou e morreu', 'Percentual de deals que terminaram em Perdido, comparado entre quem teve data de reagendamento e quem não teve. Denominador = reuniões do recorte em cada grupo.', 'Medido em CONTAGEM, nunca em ARR: só 35 dos 140 reagendados têm ARR preenchido e a soma é dominada por Carrefour e Naturgy, o que inverteria a leitura. Correlação, não causa — remarcar pode ser sintoma de conta fria, não a causa da perda.'],
     recovered: ['Recuperados', 'No-shows que foram revertidos: a reunião acabou acontecendo depois, ou o negócio avançou de etapa mesmo após a falta.', 'Usamos a marcação da reunião e a trilha de etapas como prova de recuperação.'],
     outsideSla: ['Fora do prazo (SLA)', 'No-shows ainda abertos que passaram de ' + CONFIG.slaBusinessDays + ' dias úteis sem recuperação.', 'Exclui perdidos, recuperados e reagendados. Este total reconcilia com as linhas fora do SLA na tabela operacional.'],
     pipelineRisk: ['Pipeline em risco', 'Soma do valor anual estimado (ARR) dos negócios que tiveram no-show e ainda estão abertos, sem recuperação. É a receita que pode escapar.', 'Valor por deal: ARR estimado; se não houver, usamos a 1ª fatura × 12 ou o prêmio mensal × 12.'],
@@ -791,18 +885,27 @@
     var no = rows.filter(function (r) { return r.noShow; }).length;
     var pend = rows.filter(function (r) { return r.fieldPendingPast; }).length;
     var arr = rows.reduce(function (s, r) { return s + (r.arr || 0); }, 0);
-    return '<div class="modal-kpis"><div class="modal-kpi"><span>Deals</span><b>' + fmtInt(rows.length) + '</b></div><div class="modal-kpi"><span>No-show confirmado</span><b>' + fmtInt(no) + '</b></div><div class="modal-kpi"><span>Campo pendente</span><b>' + fmtInt(pend) + '</b></div><div class="modal-kpi"><span>Pipeline</span><b>' + fmtMoney(arr) + '</b></div></div>';
+    var rea = rows.filter(function (r) { return r.rescheduled; }).length;
+    return '<div class="modal-kpis"><div class="modal-kpi"><span>Deals</span><b>' + fmtInt(rows.length) + '</b></div><div class="modal-kpi"><span>No-show confirmado</span><b>' + fmtInt(no) + '</b></div><div class="modal-kpi"><span>Reagendadas</span><b>' + fmtInt(rea) + '</b></div><div class="modal-kpi"><span>Campo pendente</span><b>' + fmtInt(pend) + '</b></div><div class="modal-kpi"><span>Pipeline</span><b>' + fmtMoney(arr) + '</b></div></div>';
+  }
+
+  // Célula de reagendamento reusada pelo modal e pelas tabelas operacionais: data
+  // remarcada + gap em dias contra a reunião original. "—" quando o campo está vazio.
+  function reaCell(r) {
+    if (!r.reaIso) return '<td class="muted">—</td>';
+    var gap = r.reaGap == null ? '' : '<div class="muted">' + (r.reaGap >= 0 ? '+' : '') + fmtInt(r.reaGap) + ' dias</div>';
+    return '<td>' + esc(r.reaIso) + gap + '</td>';
   }
 
   function dealRows(rows) {
     return rows.map(function (r) {
-      return '<tr><td><a class="deal-link" href="' + hubspotUrl(r.id) + '" target="_blank" rel="noopener">' + esc(r.name) + '</a></td><td>' + esc(r.bdrLabel || r.bdr) + '</td><td>' + esc(r.ae) + '</td><td>' + esc(r.meetingIso) + '</td><td>' + esc(r.meetingFieldStatus) + '</td><td>' + esc(r.status) + '</td><td>' + esc(r.stage) + '</td><td>' + esc(r.persona) + '</td><td>' + esc(r.segment) + '</td><td class="right">' + fmtMoney(r.arr) + '</td></tr>';
+      return '<tr><td><a class="deal-link" href="' + hubspotUrl(r.id) + '" target="_blank" rel="noopener">' + esc(r.name) + '</a></td><td>' + esc(r.bdrLabel || r.bdr) + '</td><td>' + esc(r.ae) + '</td><td>' + esc(r.meetingIso) + '</td>' + reaCell(r) + '<td>' + esc(r.meetingFieldStatus) + '</td><td>' + esc(r.status) + '</td><td>' + esc(r.stage) + '</td><td>' + esc(r.persona) + '</td><td>' + esc(r.segment) + '</td><td class="right">' + fmtMoney(r.arr) + '</td></tr>';
     }).join('');
   }
 
   function openDeals(title, rows) {
     var arr = (rows || []).slice(0, 200);
-    var html = modalKpis(rows || []) + '<div class="table-wrap"><table><thead><tr><th>Deal</th><th>BDR</th><th>AE</th><th>Reunião</th><th>Campo</th><th>Status</th><th>Etapa</th><th>Persona</th><th>Indústria</th><th class="right">Pipeline</th></tr></thead><tbody>' + (dealRows(arr) || '<tr><td colspan="10" class="muted">Sem deals para este recorte</td></tr>') + '</tbody></table></div>';
+    var html = modalKpis(rows || []) + '<div class="table-wrap"><table><thead><tr><th>Deal</th><th>BDR</th><th>AE</th><th>Reunião</th><th>Reagendamento</th><th>Campo</th><th>Status</th><th>Etapa</th><th>Persona</th><th>Indústria</th><th class="right">Pipeline</th></tr></thead><tbody>' + (dealRows(arr) || '<tr><td colspan="11" class="muted">Sem deals para este recorte</td></tr>') + '</tbody></table></div>';
     openModal(title + ' (' + fmtInt((rows || []).length) + ')', html);
   }
 
@@ -829,6 +932,9 @@
     if (key === 'noShow') return rows.filter(function (r) { return r.noShow; });
     if (key === 'noShowRate') return rows.filter(function (r) { return r.noShow; });
     if (key === 'rescheduled') return rows.filter(function (r) { return r.rescheduled; });
+    if (key === 'reaContradiction') return rows.filter(function (r) { return r.reaContradiction; });
+    if (key === 'reaOverdue') return rows.filter(function (r) { return r.reaOverdue; });
+    if (key === 'reaImpact') return rows.filter(function (r) { return r.rescheduled; });
     if (key === 'recovered') return rows.filter(function (r) { return r.recovered; });
     if (key === 'outsideSla') return rows.filter(function (r) { return r.outsideSla; });
     if (key === 'pipelineRisk') return rows.filter(function (r) { return r.openNoShow; });
@@ -847,9 +953,9 @@
     var body = arr.map(function (r) {
       var slaLabel = r.businessDays == null ? 'SLA desconhecido' : (r.outsideSla ? 'Fora SLA' : 'Dentro SLA');
       var slaClass = r.businessDays == null ? 'warn' : (r.outsideSla ? 'bad' : 'good');
-      return '<tr><td><a class="deal-link" href="' + hubspotUrl(r.id) + '" target="_blank" rel="noopener">' + esc(r.name) + '</a></td><td>' + esc(r.bdrLabel || r.bdr) + '</td><td>' + esc(r.ae) + '</td><td>' + esc(r.meetingIso) + '</td><td>' + esc(r.meetingFieldStatus) + '</td><td>' + esc(r.status) + '</td><td class="right">' + esc(r.businessDays == null ? '—' : r.businessDays) + '</td><td><span class="pill ' + slaClass + '">' + slaLabel + '</span></td><td class="right">' + fmtMoney(r.arr) + '</td><td class="right">' + fmtInt(r.risk) + '</td></tr>';
+      return '<tr><td><a class="deal-link" href="' + hubspotUrl(r.id) + '" target="_blank" rel="noopener">' + esc(r.name) + '</a></td><td>' + esc(r.bdrLabel || r.bdr) + '</td><td>' + esc(r.ae) + '</td><td>' + esc(r.meetingIso) + '</td>' + reaCell(r) + '<td>' + esc(r.meetingFieldStatus) + '</td><td>' + esc(r.status) + '</td><td class="right">' + esc(r.businessDays == null ? '—' : r.businessDays) + '</td><td><span class="pill ' + slaClass + '">' + slaLabel + '</span></td><td class="right">' + fmtMoney(r.arr) + '</td><td class="right">' + fmtInt(r.risk) + '</td></tr>';
     }).join('');
-    return '<div class="card span-12"><div class="card-title"><div><h2>Tabela operacional de recuperação</h2><div class="desc">No-shows confirmados priorizados por risco | limitado a 100 linhas</div></div>' + infoBtn('recoveryTable') + '</div><div class="table-wrap"><table><thead><tr><th>Deal</th><th>BDR</th><th>AE</th><th>Reunião</th><th>Campo</th><th>Status</th><th class="right">Dias úteis</th><th>SLA</th><th class="right">Pipeline</th><th class="right">Risco</th></tr></thead><tbody>' + (body || '<tr><td colspan="10" class="muted">Nenhum no-show aberto no filtro atual</td></tr>') + '</tbody></table></div></div>';
+    return '<div class="card span-12"><div class="card-title"><div><h2>Tabela operacional de recuperação</h2><div class="desc">No-shows confirmados priorizados por risco | limitado a 100 linhas</div></div>' + infoBtn('recoveryTable') + '</div><div class="table-wrap"><table><thead><tr><th>Deal</th><th>BDR</th><th>AE</th><th>Reunião</th><th>Reagendamento</th><th>Campo</th><th>Status</th><th class="right">Dias úteis</th><th>SLA</th><th class="right">Pipeline</th><th class="right">Risco</th></tr></thead><tbody>' + (body || '<tr><td colspan="11" class="muted">Nenhum no-show aberto no filtro atual</td></tr>') + '</tbody></table></div></div>';
   }
 
   function renderFieldTable(rows) {
@@ -858,6 +964,54 @@
       return '<tr><td><a class="deal-link" href="' + hubspotUrl(r.id) + '" target="_blank" rel="noopener">' + esc(r.name) + '</a></td><td>' + esc(r.bdrLabel || r.bdr) + '</td><td>' + esc(r.ae) + '</td><td>' + esc(r.meetingIso) + '</td><td class="right">' + esc(r.businessDays == null ? '—' : r.businessDays) + '</td><td>' + esc(r.lastActivity) + '</td><td>' + esc(r.stage) + '</td><td>' + esc(r.persona) + '<div class="muted">' + esc(r.personaSource) + '</div></td><td>' + esc(r.segment) + '<div class="muted">' + esc(r.segmentSource) + '</div></td></tr>';
     }).join('');
     return '<div class="card span-12"><div class="card-title"><div><h2>Reunião passou | campo sem preenchimento</h2><div class="desc">Fila de higiene de CRM: a data da reunião passou, mas a_reuniao_ocorreu_ ainda não está Sim ou Não</div></div>' + infoBtn('fieldTable') + '</div><div class="table-wrap"><table><thead><tr><th>Deal</th><th>BDR</th><th>AE</th><th>Reunião</th><th class="right">Dias úteis</th><th>Última atividade</th><th>Etapa</th><th>Persona</th><th>Indústria</th></tr></thead><tbody>' + (body || '<tr><td colspan="9" class="muted">Nenhuma reunião passada com campo pendente no filtro atual</td></tr>') + '</tbody></table></div></div>';
+  }
+
+  // CARD | contradição campo × funil. A pergunta do dono em 24/08/2026: "teve data de
+  // reagendamento, avançou no funil, mas ainda tá como não". São 7 no universo completo,
+  // 3 deles ainda vivos. Fila de higiene de campo, não de cobrança de reunião.
+  function renderReaContradiction(rows) {
+    var arr = rows.filter(function (r) { return r.reaContradiction; })
+      .sort(function (a, b) { return (b.arr || 0) - (a.arr || 0); });
+    var body = arr.map(function (r) {
+      var vivo = r.isLost ? '<span class="pill warn">Perdido</span>' : '<span class="pill bad">Vivo | corrigir</span>';
+      return '<tr><td><a class="deal-link" href="' + hubspotUrl(r.id) + '" target="_blank" rel="noopener">' + esc(r.name) + '</a></td><td>' + esc(r.bdrLabel || r.bdr) + '</td><td>' + esc(r.ae) + '</td><td>' + esc(r.meetingIso) + '</td>' + reaCell(r) + '<td>' + esc(r.stage) + '</td><td>' + vivo + '</td><td class="right">' + fmtMoney(r.arr) + '</td></tr>';
+    }).join('');
+    var vivos = arr.filter(function (r) { return !r.isLost; }).length;
+    return '<div class="card span-12"><div class="card-title"><div><h2>Reagendou, avançou no funil, e o campo ainda diz Não</h2><div class="desc">' + fmtInt(arr.length) + ' deals | ' + fmtInt(vivos) + ' ainda vivos | o funil prova que a reunião aconteceu, o campo HubSpot discorda</div></div>' + infoBtn('reaContradiction') + '</div><div class="table-wrap"><table><thead><tr><th>Deal</th><th>BDR</th><th>AE</th><th>Reunião</th><th>Reagendamento</th><th>Etapa</th><th>Situação</th><th class="right">Pipeline</th></tr></thead><tbody>' + (body || '<tr><td colspan="8" class="muted">Nenhuma contradição campo × funil no filtro atual</td></tr>') + '</tbody></table></div></div>';
+  }
+
+  // CARD | "reagendou e morreu". O achado de maior tamanho da medição de 24/08/2026:
+  // remarcar correlaciona com perder. Em CONTAGEM, nunca em ARR (ver ficha reaImpact).
+  function renderReaImpact(m) {
+    if (!m.withRea && !m.withoutRea) return '';
+    var delta = (m.reaLostRate - m.noReaLostRate) * 100;
+    // Reusa .break-list/.break-row/.break-track/.break-fill de renderBreak (premium local
+    // desta página) em vez de criar componente novo — regra do docs/design-system.md.
+    // A cor vem do token (var(--red)/var(--yellow)), nunca hardcode.
+    var barra = function (label, n, lost, r, token) {
+      var pct = Math.max(0, Math.min(100, Math.round(r * 100)));
+      return '<div class="break-row clickable" data-drill="reaImpact" data-hover-title="' + esc(label) + '" data-hover-text="' + fmtInt(lost) + ' perdidos de ' + fmtInt(n) + ' reuniões. Clique para abrir os deals reagendados."><div class="break-name">' + esc(label) + '</div><div class="break-val">n=' + fmtInt(n) + '</div><div class="break-val">' + fmtPct(r) + '</div><div class="break-track"><div class="break-fill" style="width:' + pct + '%;background:var(--' + token + ')"></div></div></div>';
+    };
+    var veredicto = delta > 0
+      ? 'Reagendar correlaciona com perder: ' + delta.toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + ' p.p. mais perda que quem não remarcou.'
+      : 'Reagendar não piora o desfecho neste recorte.';
+    return '<div class="card span-6"><div class="card-title"><div><h2>Reagendou e morreu</h2><div class="desc">' + esc(veredicto) + '</div></div>' + infoBtn('reaImpact') + '</div><div class="break-list">' +
+      barra('Com reagendamento', m.withRea, m.reaLost, m.reaLostRate, 'red') +
+      barra('Sem reagendamento', m.withoutRea, m.noReaLost, m.noReaLostRate, 'yellow') +
+      '</div><div class="desc">Gap mediano entre a reunião original e a data remarcada: ' + (m.reaGapMedian == null ? '—' : fmtInt(m.reaGapMedian) + ' dias') + ' | ' + fmtInt(m.rescheduledResolved) + ' das ' + fmtInt(m.rescheduled) + ' reagendadas tiveram a reunião confirmada. Correlação, não causa.</div></div>';
+  }
+
+  // CARD | fila de reagendamento vencido. A data remarcada passou e ninguém registrou
+  // desfecho. Deals em Perdido são marcados para não inflarem a fila acionável.
+  function renderReaOverdueTable(rows) {
+    var arr = rows.filter(function (r) { return r.reaOverdue; })
+      .sort(function (a, b) { return (b.reaOverdueDays || 0) - (a.reaOverdueDays || 0); }).slice(0, 100);
+    var body = arr.map(function (r) {
+      var pill = r.isLost ? '<span class="pill warn">Perdido</span>' : '<span class="pill bad">Fila viva</span>';
+      return '<tr><td><a class="deal-link" href="' + hubspotUrl(r.id) + '" target="_blank" rel="noopener">' + esc(r.name) + '</a></td><td>' + esc(r.bdrLabel || r.bdr) + '</td><td>' + esc(r.meetingIso) + '</td>' + reaCell(r) + '<td class="right">' + esc(r.reaOverdueDays == null ? '—' : r.reaOverdueDays) + '</td><td>' + esc(r.meetingFieldStatus) + '</td><td>' + esc(r.stage) + '</td><td>' + pill + '</td></tr>';
+    }).join('');
+    var vivos = rows.filter(function (r) { return r.reaOverdueOpen; }).length;
+    return '<div class="card span-6"><div class="card-title"><div><h2>Reagendamento vencido</h2><div class="desc">' + fmtInt(arr.length) + ' com a data remarcada no passado e sem desfecho | ' + fmtInt(vivos) + ' fora de Perdido</div></div>' + infoBtn('reaOverdue') + '</div><div class="table-wrap"><table><thead><tr><th>Deal</th><th>BDR</th><th>Reunião</th><th>Reagendamento</th><th class="right">Atraso (du)</th><th>Campo</th><th>Etapa</th><th>Situação</th></tr></thead><tbody>' + (body || '<tr><td colspan="8" class="muted">Nenhum reagendamento vencido no filtro atual</td></tr>') + '</tbody></table></div></div>';
   }
 
   function renderLostTable(rows) {
@@ -913,7 +1067,12 @@
     
     // 8. FILA DE RECUPERAÇÃO (ação principal)
     html += '<div class="grid">' + renderRecoveryTable(rows) + '</div>';
-    
+
+    // 8b. REAGENDAMENTO (bloco novo 24/08/2026 | campo data_do_reagendamento_com_o_executivo).
+    // Vem depois da fila de recuperação e antes das tabelas de contexto: é ação, não leitura.
+    html += '<div class="grid">' + renderReaContradiction(rows) + '</div>';
+    html += '<div class="grid">' + renderReaImpact(m) + renderReaOverdueTable(rows) + '</div>';
+
     // 9. DETALHE (campo pendente, perdidos - contexto)
     html += '<div class="grid">' + renderFieldTable(rows) + renderLostTable(rows) + '</div>';
     

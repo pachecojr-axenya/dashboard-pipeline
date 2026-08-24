@@ -130,4 +130,58 @@ assert.ok(chartAe.linesData.some(line => line.name === 'André Pontes'), 'Por AE
 const aeTotal = chartAe.linesData.reduce((sum, line) => sum + line.total, 0);
 assert.strictEqual(aeTotal, globalRows.length, 'Por AE usa o universo global inteiro');
 
-console.log('OK | bdr-no-show: checks de domínio, escopo global/BDR/AE e visual passaram');
+// ---------------------------------------------------------------------------
+// REAGENDAMENTO | campo HubSpot data_do_reagendamento_com_o_executivo (24/08/2026).
+// Contrato: a régua é o CAMPO, nunca o texto do deal. Antes desta data o KPI
+// "Reagendadas" lia texto e exibia 0 contra 140 registros reais no CRM.
+// ---------------------------------------------------------------------------
+const REA = '2026-01-20';
+
+// 1. O campo dirige o KPI, e o texto sozinho não conta como reagendamento estruturado.
+const reaField = T.normalizeDeal(deal({ hs_id: '20', reuniao_ocorreu: 'Não', data_reagendamento_exec: REA }));
+const reaTextOnly = T.normalizeDeal(deal({ hs_id: '21', reuniao_ocorreu: 'Não', dealname: 'Conta reagendada' }));
+assert.strictEqual(reaField.rescheduled, true, 'campo de reagendamento preenchido deve marcar rescheduled');
+assert.strictEqual(reaField.reaIso, REA, 'data do reagendamento deve chegar normalizada ao registro');
+assert.strictEqual(reaField.reaGap, 15, 'gap deve ser a distância em dias contra a reunião original');
+assert.strictEqual(reaTextOnly.rescheduled, false, 'texto do deal NÃO pode ser contado como reagendamento estruturado');
+assert.strictEqual(reaTextOnly.reaTextOnly, true, 'texto do deal deve ficar registrado como evidência secundária');
+assert.ok(reaField.reaSource.includes('Campo HubSpot'), 'fonte do reagendamento deve ser rastreável na UI');
+
+// 2. DECISÃO DO DONO: reagendou + a reunião ocorreu = sai do numerador da incidência.
+const reaResolvido = T.normalizeDeal(deal({ hs_id: '22', reuniao_ocorreu: 'Não', stage: 'Diagnóstico', data_reagendamento_exec: REA }));
+assert.strictEqual(reaResolvido.reaResolved, true);
+assert.strictEqual(reaResolvido.noShow, false, 'reunião movida que ocorreu não é falta do BDR');
+assert.strictEqual(reaResolvido.status, 'Reagendada | realizada', 'status precisa dizer o que aconteceu, não "Recuperado"');
+assert.strictEqual(reaResolvido.recovered, false, 'não pode contar como recuperado quem nunca entrou como no-show');
+
+// 3. Reagendou e a reunião NUNCA aconteceu continua sendo no-show — mover data não absolve.
+const reaFaltou = T.normalizeDeal(deal({ hs_id: '23', reuniao_ocorreu: 'Não', stage: 'Perdido', lost_reason: 'No-show', data_reagendamento_exec: REA }));
+assert.strictEqual(reaFaltou.noShow, true, 'reagendamento sem desfecho positivo permanece no-show');
+assert.strictEqual(reaFaltou.reaResolved, false);
+
+// 4. Contradição campo × funil: avançou de etapa mas o campo segue Não.
+assert.strictEqual(reaResolvido.reaContradiction, true, 'avanço de funil com campo Não é contradição a sinalizar');
+assert.strictEqual(reaField.reaContradiction, false, 'sem avanço de funil não há contradição');
+
+// 5. Reagendamento vencido: data passou, campo não virou Sim, deal não avançou.
+assert.strictEqual(reaField.reaOverdue, true, 'data remarcada no passado sem desfecho deve entrar na fila');
+assert.strictEqual(reaField.reaOverdueOpen, true, 'deal fora de Perdido é fila viva');
+assert.strictEqual(reaFaltou.reaOverdueOpen, false, 'deal em Perdido não infla a fila acionável');
+assert.strictEqual(reaResolvido.reaOverdue, false, 'reunião que ocorreu não é reagendamento vencido');
+const reaFuturo = T.normalizeDeal(deal({ hs_id: '24', reuniao_ocorreu: null, data_reagendamento_exec: '2099-01-01' }));
+assert.strictEqual(reaFuturo.reaOverdue, false, 'reagendamento no futuro não está vencido');
+
+// 6. Métricas: o KPI conta o campo em TODO o universo, não só dentro dos no-shows.
+const reaMetrics = T.metrics([reaField, reaTextOnly, reaResolvido, reaFaltou, reaFuturo]);
+assert.strictEqual(reaMetrics.rescheduled, 4, 'Reagendadas conta os 4 com campo preenchido');
+assert.strictEqual(reaMetrics.rescheduledTextOnly, 1, 'evidência textual é reportada em separado');
+assert.strictEqual(reaMetrics.rescheduledResolved, 1);
+assert.strictEqual(reaMetrics.reaContradictions, 1);
+assert.strictEqual(reaMetrics.reaOverdue, 2);
+assert.strictEqual(reaMetrics.reaOverdueOpen, 1);
+assert.strictEqual(reaMetrics.withRea, 4);
+assert.strictEqual(reaMetrics.withoutRea, 1);
+assert.strictEqual(reaMetrics.reaLost, 1, 'só o deal em Perdido conta como perdido no grupo com reagendamento');
+assert.strictEqual(reaMetrics.reaGapMedian, 15);
+
+console.log('OK | bdr-no-show: checks de domínio, escopo global/BDR/AE, reagendamento e visual passaram');
