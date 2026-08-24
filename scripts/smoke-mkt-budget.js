@@ -151,6 +151,65 @@ try {
   const origins = new Set(lines.items.map(i => i.origin));
   check('origem Compromisso existe nos lançamentos', origins.has('Compromisso'));
 
+  // 6b. Invariantes da base de COMPETÊNCIA (o que segura a leitura "mês X = gasto do mês X")
+  const c2 = v => Math.round(Number(v) * 100);
+  const REALIZADO = new Set(['caixa', 'competência', 'ajuste de transição']);
+  const somaItens = pred => lines.items.filter(pred).reduce((s, i) => s + i.amount, 0);
+
+  // invariante central: os cinco tetos de ago-dez somam o saldo em 31/07
+  const somaTetos = recon.plannedMonthlyCeilings.reduce((s, c) => s + c.ceiling, 0);
+  check('soma dos tetos ago-dez = saldo em 31/jul',
+    c2(somaTetos) === c2(recon.balanceAtJuly31), `${brl(somaTetos)} vs ${brl(recon.balanceAtJuly31)}`);
+
+  // a série mensal fecha no realizado jan-jul
+  const somaMensal = recon.actuals.monthly.reduce((s, m) => s + m.amount, 0);
+  check('actuals.monthly soma throughJuly',
+    c2(somaMensal) === c2(recon.actuals.throughJuly), `${brl(somaMensal)} vs ${brl(recon.actuals.throughJuly)}`);
+
+  // saldos derivam do orçamento, não são digitados
+  check('saldo em 31/jul = anual - realizado jan-jul',
+    c2(recon.balanceAtJuly31) === c2(recon.annualBudget - recon.actuals.throughJuly));
+  check('saldo em 24/08 = anual - realizado jan-ago',
+    c2(recon.balanceAtAug24) === c2(recon.annualBudget - recon.actuals.throughAug24));
+  check('realizado jan-ago = jan-jul + agosto realizado',
+    c2(recon.actuals.throughAug24) === c2(recon.actuals.throughJuly + recon.augustToDate.realized));
+
+  // envelope fecha
+  const se2 = recon.strategicEnvelope;
+  check('envelope livre = envelope - pendentes',
+    c2(se2.availableAfterCommitments) === c2(se2.freeAfterRecurring - se2.committedFromEnvelope));
+  check('distribuição do envelope soma o disponível',
+    c2(se2.distribution.reduce((s, d) => s + d.amount, 0)) === c2(se2.availableAfterCommitments));
+
+  // os JSON não podem divergir entre si
+  ['2026-06', '2026-07'].forEach(m => {
+    const doJson = somaItens(i => i.month === m && REALIZADO.has(i.basis));
+    const naSerie = (recon.actuals.monthly.find(x => x.month === m) || {}).amount;
+    check(`lançamentos de ${m} somam a série mensal`, c2(doJson) === c2(naSerie), `${brl(doJson)} vs ${brl(naSerie)}`);
+  });
+  const agoReal = somaItens(i => i.month === '2026-08' && REALIZADO.has(i.basis));
+  check('lançamentos de agosto somam augustToDate.realized',
+    c2(agoReal) === c2(recon.augustToDate.realized), `${brl(agoReal)} vs ${brl(recon.augustToDate.realized)}`);
+  const agoPend = somaItens(i => i.month === '2026-08' && i.basis === 'compromisso');
+  check('pendentes de agosto = total comprometido',
+    c2(agoPend) === c2(cc.total), `${brl(agoPend)} vs ${brl(cc.total)}`);
+
+  // mídia paga de jul/ago vem da API, não do cartão (nunca voltar ao valor de limiar)
+  const midiaJul = somaItens(i => i.month === '2026-07' && i.meceCategory === 'Mídia Paga');
+  check('mídia paga de julho = entrega medida na API (R$ 9.656,38)',
+    c2(midiaJul) === c2(9656.38), brl(midiaJul));
+  check('nenhuma linha de mídia paga em jul/ago veio de cartão',
+    !lines.items.some(i => i.month >= '2026-07' && i.meceCategory === 'Mídia Paga' && i.origin !== 'API do canal'),
+    lines.items.filter(i => i.month >= '2026-07' && i.meceCategory === 'Mídia Paga' && i.origin !== 'API do canal').map(i => i.origin).join(','));
+
+  // toda linha realizada precisa declarar a base, e jun+ precisa ser competência
+  const semBase = lines.items.filter(i => !i.basis);
+  check('toda linha declara a base', semBase.length === 0, `${semBase.length} sem basis`);
+  const caixaTardia = lines.items.filter(i => i.month >= '2026-06' && i.basis === 'caixa');
+  check('nenhum mês de jun em diante ficou em caixa', caixaTardia.length === 0, `${caixaTardia.length} linhas`);
+  recon.actuals.monthly.forEach(m =>
+    check(`${m.month} declara base`, Boolean(m.basis), String(m.basis)));
+
   // 7. Regra primária nº 1: separador é sempre a barra vertical
   const rendered = IDS.map(id => nodes[id].innerHTML + ' ' + nodes[id].textContent).join('\n');
   const dashSep = [...rendered.matchAll(/\S+\s[—–·]\s\S+/g)].map(m => m[0]);

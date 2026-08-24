@@ -159,12 +159,12 @@
   <nav class="nav-drawer" id="nav-drawer"><div class="nav-drawer-header"><span class="nav-drawer-brand">Dashboard Axenya</span><button class="hdr-btn" onclick="closeDrawer()" aria-label="Fechar menu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div><ul class="nav-menu"><li class="nav-item active" data-href="/growth/mkt-budget">MKT Budget<span class="health-dot g" title="live" aria-label="live"></span></li></ul></nav>
   <div class="nav-backdrop" id="nav-backdrop" onclick="closeDrawer()"></div>
   <div id="page">
-    <header class="topbar" id="topbar"><div style="display:flex;align-items:center;gap:.75rem"><button class="hdr-btn" onclick="toggleDrawer()" data-tooltip="Menu" aria-label="Abrir menu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button><div><h1>MKT Budget <span class="health-dot g title-health" title="live" aria-label="live"></span></h1><div class="subtitle">Reconciliação do orçamento de Marketing 2026 | realizado vs planejado</div></div></div><div class="hdr-actions"><button class="hdr-btn" onclick="toggleTheme()" data-tooltip="Tema" aria-label="Alternar tema"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg></button></div></header>
+    <header class="topbar" id="topbar"><div style="display:flex;align-items:center;gap:.75rem"><button class="hdr-btn" onclick="toggleDrawer()" data-tooltip="Menu" aria-label="Abrir menu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button><div><h1>MKT Budget <span class="health-dot g title-health" title="live" aria-label="live"></span></h1><div class="subtitle">Reconciliação do orçamento de Marketing 2026 | competência de jun em diante</div></div></div><div class="hdr-actions"><button class="hdr-btn" onclick="toggleTheme()" data-tooltip="Tema" aria-label="Alternar tema"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg></button></div></header>
     <main class="wrap">
       <section class="hero">
         <span class="kicker">Reconciliação anual</span>
         <h1>Marketing Budget <span style="color: var(--teal);">2026</span></h1>
-        <p>Visão contábil para separar <strong>passado realizado</strong> de <strong>futuro planejado</strong>. Jan-jun vêm da planilha consolidada; julho é fechamento informado/registrado; ago-dez são recorrência comprometida mais envelope estratégico como teto de alocação.</p>
+        <p>Visão contábil em <strong>competência</strong>: cada mês mostra o que foi gasto <strong>naquele mês</strong>. Transferência entra no mês do pagamento, compra de cartão no mês da transação (não no mês da fatura) e mídia paga no mês da entrega medida na API do canal. Jan-abr seguem em base caixa, por falta de extrato transacional para restatear.</p>
         <div class="grid grid-4" id="heroMetrics"></div>
       </section>
 
@@ -183,8 +183,8 @@
 
       <section class="card" style="margin-top:16px;">
         <p class="section-title">Linha do tempo jan-dez</p>
-        <h2>Realizado até julho; teto planejado de agosto a dezembro</h2>
-        <p>A partir de agosto, a barra e o valor à direita mostram o teto mensal completo: recorrência já comprometida + envelope estratégico. Os cinco tetos somam o saldo anual disponível em 31/jul.</p>
+        <h2>Realizado jan-jul em competência; agosto em curso e teto planejado até dezembro</h2>
+        <p>A partir de agosto a barra mostra o teto mensal completo: realizado do mês + recorrência + compromisso pendente + envelope estratégico. Os cinco tetos somam exatamente o saldo anual disponível em 31/jul. Agosto está medido até 24/08 e é parcial no cartão, porque a fatura seguinte fecha por volta de 02/09.</p>
         <div class="timeline" id="timeline"></div>
         <div class="legend">
           <span><i class="swatch actual" style="background: var(--blue);"></i>Realizado</span>
@@ -196,7 +196,7 @@
 
       <section class="card" style="margin-top:16px;">
         <p class="section-title">Compromissos confirmados</p>
-        <h2>Gastos de ago-dez já assumidos fora da recorrência</h2>
+        <h2>Aprovados e ainda não desembolsados</h2>
         <p id="committedIntro"></p>
         <div class="grid grid-3" id="committedMetrics"></div>
         <div class="table-wrap"><table id="committedTable"></table></div>
@@ -211,7 +211,7 @@
         </article>
         <article class="card">
           <p class="section-title">Envelope estratégico</p>
-          <h2>Concentrado até novembro; dezembro fraco</h2>
+          <h2>Distribuído de setembro a dezembro; agosto já consumiu o próprio</h2>
           <div class="bar-list" id="envelopeBars"></div>
         </article>
       </section>
@@ -230,7 +230,7 @@
       <section class="grid grid-2">
         <article class="card">
           <p class="section-title">Categorias MECE históricas</p>
-          <h2>Realizado jan-jun por natureza</h2>
+          <h2>Realizado jan-ago por natureza</h2>
           <div class="bar-list" id="meceBars"></div>
         </article>
         <article class="card">
@@ -256,7 +256,7 @@
           <div class="table-actions">
             <strong id="lineSummary">Carregando lançamentos...</strong>
             <div class="controls" style="margin-top:0;">
-              <button type="button" id="exportCsv" title="Exporta TODAS as linhas detalhadas em CSV | realizado de jan-jul mais projeções e compromissos de ago-dez">Exportar CSV</button>
+              <button type="button" id="exportCsv" title="Exporta TODAS as linhas detalhadas em CSV | realizado de jan-ago mais pendentes, recorrência a faturar e projeções de set-dez">Exportar CSV</button>
               <button type="button" id="prevPage">Anterior</button>
               <span id="pageInfo" class="footer" style="margin-top:0;"></span>
               <button type="button" id="nextPage">Próxima</button>
@@ -372,6 +372,12 @@
 
     function renderStrategy(data) {
       const base = strategyBase(data);
+      // Meses que ainda têm envelope: agosto entra com 0% depois de consumir o próprio.
+      const envMonths = (data.strategicEnvelope.distribution || []).filter(d => d.amount > 0);
+      const envMonthCount = envMonths.length || 1;
+      const envSpanLabel = envMonths.length
+        ? `${envMonths[0].label.slice(0, 3)}-${envMonths[envMonths.length - 1].label.slice(0, 3)}`
+        : 'ago-dez';
       const envelopeCents = cents(base);
       const shares = adjustedStrategyShares();
       const activeKeys = Object.keys(shares);
@@ -386,7 +392,7 @@
       document.getElementById('strategyToggles').innerHTML = Object.entries(strategyLevers).map(([key, lever]) => `<label class="toggle"><input type="checkbox" data-lever="${escapeHTML(key)}" ${strategyState.active[key] ? 'checked' : ''}>${escapeHTML(lever.label)}</label>`).join('');
       document.getElementById('strategyLevers').innerHTML = allocations.map(item => {
         const lever = strategyLevers[item.key];
-        return `<div class="lever-card"><strong>${escapeHTML(lever.label)}</strong><p>${escapeHTML(lever.description)}</p><div class="value">${fmtPct(item.percent)}</div><p><strong>${fmtBRL(item.amount)}</strong> no envelope anual</p><p>Média mensal ago-dez: <strong>${fmtBRL(item.amount / 5)}</strong></p></div>`;
+        return `<div class="lever-card"><strong>${escapeHTML(lever.label)}</strong><p>${escapeHTML(lever.description)}</p><div class="value">${fmtPct(item.percent)}</div><p><strong>${fmtBRL(item.amount)}</strong> no envelope anual</p><p>Média mensal ${escapeHTML(envSpanLabel)}: <strong>${fmtBRL(item.amount / envMonthCount)}</strong></p></div>`;
       }).join('');
       document.getElementById('strategyMatrix').innerHTML = Object.values(strategyPresets).map(preset => `<tr><th>${escapeHTML(preset.label)}</th><td>${escapeHTML(preset.objective)}</td></tr>`).join('');
       document.getElementById('strategyTotal').textContent = `Total simulado: 100% | ${fmtBRL(base)}. Base = envelope estratégico de ${fmtBRL(data.strategicEnvelope.freeAfterRecurring)} menos ${fmtBRL(data.strategicEnvelope.committedFromEnvelope || 0)} já comprometidos. Simulação local; não altera o orçamento oficial.`;
@@ -405,7 +411,7 @@
       const envelope = data.strategicEnvelope.freeAfterRecurring || 0;
       const share = envelope ? (committed.total / envelope) * 100 : 0;
       document.getElementById('committedIntro').textContent = items.length
-        ? `São gastos de ago-dez já aprovados que consomem o envelope estratégico, não a recorrência. Hoje somam ${fmtBRL(committed.total)}, ou ${fmtPct(share)} do envelope.`
+        ? `Aprovados que consomem o envelope estratégico, não a recorrência, e que ainda não saíram do caixa. Hoje somam ${fmtBRL(committed.total)}, ou ${fmtPct(share)} do envelope. O que já foi pago migrou para o realizado do mês.`
         : 'Nenhum compromisso confirmado fora da recorrência.';
       document.getElementById('committedMetrics').innerHTML = [
         renderMetric('Total comprometido', fmtBRL(committed.total), 'Fora da recorrência mensal'),
@@ -474,14 +480,15 @@
 
     function initLineItems(payload) {
       lineState.items = payload.items || [];
-      const realized = lineState.items.filter(item => item.month < '2026-08');
-      const janJun = realized.filter(item => item.month < '2026-07').length;
-      const july = realized.length - janJun;
+      const BASES_REAL = new Set(['caixa', 'competência', 'ajuste de transição']);
+      const realized = lineState.items.filter(item => BASES_REAL.has(item.basis));
+      const caixa = realized.filter(item => item.basis === 'caixa').length;
+      const compet = realized.length - caixa;
       const future = lineState.items.length - realized.length;
       document.getElementById('lineItemsIntro').textContent =
-        `Abra para filtrar os ${lineState.items.length} lançamentos detalhados: ${janJun} realizados de jan-jun, `
-        + `${july} realizados de julho e ${future} linhas de ago-dez entre projeções de recorrência e compromissos confirmados. `
-        + `Os nomes dos gastos estão disponíveis; identidades em Pessoas/Freelancers continuam protegidas.`;
+        `Abra para filtrar os ${lineState.items.length} lançamentos detalhados: ${caixa} realizados em base caixa (jan-abr), `
+        + `${compet} realizados em competência (mai-ago) e ${future} linhas entre pendentes, recorrência a faturar e projeções de set-dez. `
+        + `A coluna Tipo diz de onde cada linha veio. Identidades em Pessoas/Freelancers continuam protegidas.`;
       fillLineFilter('lineMonth', [...new Set(lineState.items.map(item => item.month))].sort(), 'Todos os meses');
       fillLineFilter('lineCategory', [...new Set(lineState.items.map(item => item.meceCategory))].sort(), 'Todas as categorias');
       fillLineFilter('lineOrigin', [...new Set(lineState.items.map(item => item.origin))].sort(), 'Todas as origens');
@@ -498,21 +505,23 @@
       const maxMonth = Math.max(...data.actuals.monthly.map(m => m.amount), ...data.plannedMonthlyCeilings.map(m => m.ceiling));
       const committed = data.committedCommitments || { total: 0, paid: 0, pending: 0, items: [] };
       const envelopeFree = strategyBase(data);
+      const ago = data.augustToDate || {};
       document.getElementById('heroMetrics').innerHTML = [
         renderMetric('Orçamento anual', fmtBRL(data.annualBudget), 'Teto aprovado para Marketing 2026'),
-        renderMetric('Realizado até julho', fmtBRL(data.actuals.throughJuly), 'Jan-jun planilha consolidada | julho fechado'),
-        renderMetric('Saldo em 31/jul', fmtBRL(data.balanceAtJuly31), 'Disponível antes das recorrências futuras'),
-        renderMetric('Envelope ainda livre', fmtBRL(envelopeFree), `Após recorrências e ${fmtBRL(committed.total)} já comprometidos`)
+        renderMetric('Realizado jan-ago', fmtBRL(data.actuals.throughAug24), `Competência de jun em diante | agosto medido até ${ago.asOf || '24/08'}`),
+        renderMetric('Saldo em 24/08', fmtBRL(data.balanceAtAug24), 'Antes de pendentes e recorrências futuras'),
+        renderMetric('Envelope ainda livre', fmtBRL(envelopeFree), `Após recorrências e ${fmtBRL(committed.total)} pendentes de agosto`)
       ].join('');
 
       document.getElementById('bridgeTable').innerHTML = `
         <tr><th>Orçamento anual</th><td class="num">${fmtBRL(data.annualBudget)}</td></tr>
-        <tr><th>Realizado jan-jun</th><td class="num">-${fmtBRL(data.actuals.janJunTotal)}</td></tr>
-        <tr><th>Realizado julho</th><td class="num">-${fmtBRL(data.actuals.july)}</td></tr>
+        <tr><th>Realizado jan-jul (competência de jun em diante)</th><td class="num">-${fmtBRL(data.actuals.throughJuly)}</td></tr>
         <tr><th>Saldo anual em 31/jul</th><td class="num"><strong>${fmtBRL(data.balanceAtJuly31)}</strong></td></tr>
-        <tr><th>Recorrência comprometida ago-dez</th><td class="num">-${fmtBRL(data.futureRecurring.total)}</td></tr>
+        <tr><th>Realizado de agosto até ${escapeHTML(ago.asOf || '24/08')}</th><td class="num">-${fmtBRL(ago.realized)}</td></tr>
+        <tr><th>Saldo anual em 24/08</th><td class="num"><strong>${fmtBRL(data.balanceAtAug24)}</strong></td></tr>
+        <tr><th>Recorrência ainda não faturada (ago) e comprometida (set-dez)</th><td class="num">-${fmtBRL(data.futureRecurring.total)}</td></tr>
         <tr><th>Envelope estratégico</th><td class="num"><strong>${fmtBRL(data.strategicEnvelope.freeAfterRecurring)}</strong></td></tr>
-        <tr><th>Compromissos já confirmados</th><td class="num">-${fmtBRL(committed.total)}</td></tr>
+        <tr><th>Pendentes aprovados de agosto</th><td class="num">-${fmtBRL(committed.total)}</td></tr>
         <tr><th>Envelope ainda livre para alocar</th><td class="num"><strong>${fmtBRL(envelopeFree)}</strong></td></tr>
       `;
 
@@ -535,17 +544,22 @@
         const total = item.total;
         const pct = value => (Math.max(0, value || 0) / maxMonth) * 100;
         let stack;
+        let badge;
         if (item.kind === 'actual') {
-          stack = `<span class="actual" style="width:${pct(total)}%" title="Realizado"></span>`;
+          stack = `<span class="actual" style="width:${pct(total)}%" title="Realizado ${fmtBRL(total)} | base ${item.basis || 'competência'}"></span>`;
+          badge = item.basis === 'caixa' ? 'Realizado | caixa' : 'Realizado';
         } else {
+          const real = planned.realizedToDate || 0;
           const rec = planned.recurring || 0;
           const com = planned.committed || 0;
           const free = typeof planned.envelopeFree === 'number' ? planned.envelopeFree : (planned.strategicEnvelope || 0) - com;
-          stack = `<span class="recurring" style="width:${pct(rec)}%" title="Recorrência ${fmtBRL(rec)}"></span>`
-            + (com > 0 ? `<span class="committed" style="width:${pct(com)}%" title="Compromisso confirmado ${fmtBRL(com)}"></span>` : '')
+          stack = (real > 0 ? `<span class="actual" style="width:${pct(real)}%" title="Já realizado ${fmtBRL(real)}"></span>` : '')
+            + `<span class="recurring" style="width:${pct(rec)}%" title="Recorrência ${fmtBRL(rec)}"></span>`
+            + (com > 0 ? `<span class="committed" style="width:${pct(com)}%" title="Compromisso pendente ${fmtBRL(com)}"></span>` : '')
             + `<span class="envelope" style="width:${pct(free)}%" title="Envelope livre ${fmtBRL(free)}"></span>`;
+          badge = real > 0 ? 'Em curso' : 'Teto planejado';
         }
-        return `<div class="month"><strong>${escapeHTML(item.label)}</strong><span class="badge ${item.kind === 'planned' ? 'plan' : ''}">${item.kind === 'actual' ? 'Realizado' : 'Teto planejado'}</span><div class="stack">${stack}</div><span class="num">${fmtBRL(total)}</span></div>`;
+        return `<div class="month"><strong>${escapeHTML(item.label)}</strong><span class="badge ${item.kind === 'planned' ? 'plan' : ''}">${escapeHTML(badge)}</span><div class="stack">${stack}</div><span class="num">${fmtBRL(total)}</span></div>`;
       }).join('');
 
       const fx = data.futureRecurring.fxRate || 0;
@@ -568,23 +582,30 @@
       const maxEnvelope = Math.max(...data.strategicEnvelope.distribution.map(item => item.amount));
       document.getElementById('envelopeBars').innerHTML = data.strategicEnvelope.distribution.map(item => {
         const com = committedByMonth[item.month] || 0;
-        const detail = com > 0
-          ? `Teto de alocação. ${fmtBRL(com)} já comprometidos, ${fmtBRL(item.amount - com)} livres.`
-          : 'Teto de alocação, não gasto realizado.';
+        // Mês sem envelope (já consumido) nunca mostra "livres" negativo.
+        const detail = item.amount <= 0
+          ? (item.note || 'Sem envelope restante neste mês.')
+          : (com > 0
+            ? `Teto de alocação. ${fmtBRL(com)} já comprometidos, ${fmtBRL(Math.max(0, item.amount - com))} livres.`
+            : 'Teto de alocação, não gasto realizado.');
         return renderBarRow(`${item.label} | ${fmtPct(item.percent)}`, item.amount, maxEnvelope, detail);
       }).join('');
       renderStrategy(data);
       renderCommitted(data, committed);
 
-      const maxMece = Math.max(...data.historicalMeceJanJun.categories.map(item => item.amount));
-      document.getElementById('meceBars').innerHTML = data.historicalMeceJanJun.categories.map(item => renderBarRow(`${item.name} | ${fmtPct(item.percent)}`, item.amount, maxMece)).join('');
+      const mece = data.historicalMece || data.historicalMeceJanJun;
+      const maxMece = Math.max(...mece.categories.map(item => item.amount));
+      document.getElementById('meceBars').innerHTML = mece.categories.map(item => renderBarRow(`${item.name} | ${fmtPct(item.percent)}`, item.amount, maxMece)).join('');
 
       document.getElementById('assumptions').innerHTML = data.metadata.notes.map(note => `<li>${escapeHTML(note)}</li>`).join('');
       document.getElementById('sourceTable').innerHTML = `
         <tr><th>Fonte da verdade</th><td>${escapeHTML(data.metadata.sourceOfTruth)}</td></tr>
         <tr><th>Arquivo / aba</th><td>${escapeHTML(data.metadata.sourceFile)} | ${escapeHTML(data.metadata.sourceTab)}</td></tr>
         <tr><th>Exportação</th><td>${escapeHTML(data.metadata.sourceExportDate)}</td></tr>
+        <tr><th>Regra de competência</th><td>${escapeHTML(data.metadata.basisRule || "")}</td></tr>
+        <tr><th>Base por período</th><td>${escapeHTML(data.metadata.basis || "")}</td></tr>
         <tr><th>Fonte julho</th><td>${escapeHTML(data.metadata.julySource)}</td></tr>
+        <tr><th>Cobertura de agosto</th><td>${escapeHTML((data.augustToDate || {}).coverage || "")}</td></tr>
         <tr><th>Versão</th><td>${escapeHTML(data.metadata.version)}</td></tr>
         <tr><th>Atualização</th><td>${escapeHTML(data.metadata.updatedAt)}</td></tr>
         <tr><th>Moeda</th><td>${escapeHTML(data.metadata.currency)}</td></tr>`;
