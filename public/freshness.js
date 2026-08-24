@@ -47,6 +47,10 @@
     '.axfr-alerta{display:block;margin:.5rem 0 0;background:var(--card2);border:1px solid var(--border);border-left:3px solid var(--text2);border-radius:8px;padding:.55rem .75rem;font-size:.73rem;color:var(--text);line-height:1.45}',
     '.axfr-alerta b{font-weight:700}',
     '.axfr-alerta code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.92em;background:var(--hover);padding:.05rem .3rem;border-radius:4px}',
+    // Nota de procedência: o selo mede o ARMAZÉM. Numa tela híbrida, dizer só a
+    // idade do armazém mente sobre os blocos que não vêm dele — na /novo-bdr os
+    // gráficos de deal são HubSpot ao vivo e o selo os fazia parecer velhos.
+    '.axfr-nota{font-weight:400;color:var(--muted);cursor:help}',
     '.axfr-msg{font-size:.72rem;color:var(--text2)}',
     '.axfr-div{width:1px;height:20px;background:var(--border);flex:none;margin:0 .5rem}',
   ].join('\n');
@@ -57,7 +61,7 @@
 
   var ICON_REFRESH = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg>';
 
-  var cfg = { escopo: 'tudo', onRefreshed: null, pollMs: 60000 };
+  var cfg = { escopo: 'tudo', onRefreshed: null, pollMs: 60000, nota: '', notaTitle: '' };
   var estado = null;      // último payload de /api/freshness
   var rodando = false;    // há refresh em curso (nosso ou de outro usuário)
   var msgTemp = '';       // mensagem transitória (429, erro)
@@ -80,6 +84,7 @@
     return '<span class="axfr" id="axfr-selo">'
       + '<span class="axfr-dot" id="axfr-dot"></span>'
       + '<span class="axfr-txt" id="axfr-txt">carregando frescor…</span>'
+      + '<span class="axfr-nota" id="axfr-nota"></span>'
       + '</span>'
       + '<button class="axfr-btn" id="axfr-btn" onclick="AxFresh.refresh()" title="Reconcilia os últimos 2 dias na fonte única">'
       + ICON_REFRESH + '<span id="axfr-btn-txt">Atualizar</span></button>'
@@ -102,6 +107,12 @@
       txt.textContent = 'frescor indisponível';
     } else {
       txt.textContent = 'Atualizado ' + idade(e.idade_minutos);
+    }
+
+    var nota = el('axfr-nota');
+    if (nota) {
+      nota.textContent = cfg.nota ? ' · ' + cfg.nota : '';
+      if (cfg.notaTitle) nota.title = cfg.notaTitle; else nota.removeAttribute('title');
     }
 
     if (btn) {
@@ -213,6 +224,8 @@
     if (opts.escopo) cfg.escopo = opts.escopo;
     if (opts.onRefreshed) cfg.onRefreshed = opts.onRefreshed;
     if (opts.pollMs) cfg.pollMs = opts.pollMs;
+    if (opts.nota != null) cfg.nota = opts.nota;
+    if (opts.notaTitle != null) cfg.notaTitle = opts.notaTitle;
     render();
     puxarFrescor();
     // O selo tem de envelhecer à vista: sem este tick ele congelaria em

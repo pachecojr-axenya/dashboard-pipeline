@@ -536,8 +536,12 @@ function bdrSwitchSize(m){ _bdrSizeMode=m; _setActive('bdr-size-tabs',m); buildB
 var _bdrWeeklyDim='bdr', _bdrMonthlyDim='bdr';
 function bdrSwitchWeeklyDim(m){ _bdrWeeklyDim=m; _setActive('bdr-weekly-dim-tabs',m); buildBdrWeekly(); }
 function bdrSwitchMonthlyDim(m){ _bdrMonthlyDim=m; _setActive('bdr-leads-dim-tabs',m); buildBdrLeadsOrigin(); }
-function _dimFnDeal(dim){ return dim==='origem'?_fFonte:dim==='porte'?_fPorte:dim==='lista'?_fLista:function(d){ return _teamBdrName(d); }; }
-function _dimFacetKey(dim){ return dim==='origem'?'fonte':dim==='porte'?'porte':dim==='lista'?'lista':'bdr'; }
+// 'canal' e 'origem' sao O MESMO corte (origem__originacao_) com rotulo diferente:
+// o toggle da Originacao por BDR diz "Por Canal", o do Weekly/Monthly diz "Por Origem".
+// Sem este alias, 'canal' caia no DEFAULT e agrupava por BDR — a tela empilhava nome de
+// BDR dentro da barra do BDR e dizia que aquilo era canal. (24/08/2026)
+function _dimFnDeal(dim){ return (dim==='origem'||dim==='canal')?_fFonte:dim==='porte'?_fPorte:dim==='lista'?_fLista:function(d){ return _teamBdrName(d); }; }
+function _dimFacetKey(dim){ return (dim==='origem'||dim==='canal')?'fonte':dim==='porte'?'porte':dim==='lista'?'lista':'bdr'; }
 var _DIM_TABS=function(id,cur,fn){ return _subTabs(id,cur,[{mode:'bdr',label:'Por BDR',fn:fn},{mode:'origem',label:'Por Origem',fn:fn},{mode:'porte',label:'Por Porte',fn:fn},{mode:'lista',label:'Por Lista ABM',fn:fn}]); };
 
 var NOVO_FONT='Inter,\'Segoe UI\',system-ui,sans-serif';
@@ -939,7 +943,11 @@ function buildBdrOrigin(){
       data:{labels:ranked.map(function(r){return r.bdr;}),datasets:datasets},
       options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,layout:{padding:{right:54}},plugins:{legend:{display:true,position:'top',labels:{color:th.cText2,font:{family:NOVO_FONT,size:10},padding:6,boxWidth:11}},
         datalabels:{display:function(c){return c.datasetIndex===c.chart.data.datasets.length-1;},anchor:'end',align:'right',color:th.cText,font:{family:NOVO_FONT,size:11,weight:'bold'},formatter:function(v,c){ var t=0; c.chart.data.datasets.forEach(function(ds){t+=(ds.data[c.dataIndex]||0);}); return t?_ni(t):''; }},
-        tooltip:{mode:'index',intersect:false,filter:function(item){return item.parsed.x>0;},callbacks:{
+        // axis:'y' e OBRIGATORIO aqui. Em indexAxis:'y', o modo 'index' do Chart.js
+        // resolve pelo eixo X por padrao — numa barra HORIZONTAL isso significa procurar
+        // o ponto pelo VALOR, nao pela linha. Andar com o mouse para a direita dentro da
+        // barra da Priscila trocava a linha e o tooltip mostrava outro BDR. (24/08/2026)
+        tooltip:{mode:'index',axis:'y',intersect:false,filter:function(item){return item.parsed.x>0;},callbacks:{
           title:function(items){ var r=ranked[items[0].dataIndex]; var info=bdrInfo[r.bdr]||{}; return r.bdr+(info.level?' | '+info.level:''); },
           label:function(c){ var r=ranked[c.dataIndex]; var tot=agg[r.bdr]||0; var v=c.parsed.x; var pct=tot?Math.round(v/tot*100):0; return c.dataset.label+': '+_ni(v)+' ('+pct+'%)'; }
         }}},
@@ -1268,7 +1276,15 @@ function buildBdrSizeDist(){
   document.body.classList.toggle('novo-info-on',_novoShowInfo);
   var _ib=document.getElementById('btn-info-toggle'); if(_ib)_ib.classList.toggle('highlighted',_novoShowInfo);
   novoLoadData();
-  if(window.AxFresh) AxFresh.init({escopo:'tudo',onRefreshed:function(){
+  // O selo mede o ARMAZÉM, e esta tela é HÍBRIDA: Originação, Weekly/Monthly,
+  // Handoff e Fluxo saem de /api/forecast-table, que bate na API do HubSpot AO VIVO
+  // a cada carga (sem cache: vercel.json manda no-store em /api/*). Só o Funil de
+  // Lead lê o armazém. Sem esta nota o selo dizia "há 3h" em cima de gráfico que
+  // é de agora — e selo que subestima o frescor faz desconfiar do dado certo.
+  if(window.AxFresh) AxFresh.init({escopo:'tudo',
+    nota:'deals ao vivo do HubSpot; Funil de Lead pelo armazém',
+    notaTitle:'Originação por BDR, Weekly/Monthly, Handoff e Fluxo de Pipeline vêm da API do HubSpot na hora da carga — a idade do selo NÃO se aplica a eles. O selo e o botão Atualizar valem para o Funil de Lead, que lê o armazém canônico.',
+    onRefreshed:function(){
     _novoDeals=null; window._novoDealsRaw=null;
     novoLoadData();
   }});
