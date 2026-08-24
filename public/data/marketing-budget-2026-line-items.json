@@ -1,7 +1,7 @@
 {
  "metadata": {
   "title": "Lançamentos linha a linha do Marketing Budget 2026",
-  "version": "line-items-competencia-v8",
+  "version": "line-items-competencia-v9",
   "currency": "BRL",
   "updatedAt": "2026-08-24",
   "basis": "Transferência bancária no mês do pagamento | compra de cartão no mês da transação | mídia paga no mês da entrega medida na API do canal.",
@@ -19,20 +19,22 @@
    "Prova do desalinhamento anterior | Google Ads entregou R$ 2.891,14 em junho e R$ 0,00 em julho, e o painel exibia R$ 2.891,09 em jul/2026. Mesmo valor, mês deslocado.",
    "Meta e LinkedIn só voltaram a entregar em 14/07 e 15/07 | a primeira quinzena de julho somou R$ 278,77 e R$ 112,79. O intervalo sem cobranças de 02/07 a 15/07 na fatura da Clara é real, não dado faltando.",
    "LinkedIn no cartão da Clara é MÍDIA PAGA e no Conta Simples é licença de Sales Navigator. A soma das linhas da Clara em julho (R$ 4.434,78) é idêntica à entrega medida na API, e em junho (R$ 799,88) também.",
-   "Agosto está medido até 24/08 e é estruturalmente parcial | transferências e mídia paga estão completas, mas compras de cartão só até 05/08, porque a fatura seguinte fecha por volta de 02/09. A recorrência de agosto ainda não faturada aparece separada, em R$ 12.458,80.",
+   "Agosto está medido até 24/08 e é estruturalmente parcial | transferências e mídia paga estão completas, mas compras de cartão só até 05/08, porque a fatura seguinte fecha por volta de 02/09. A recorrência de agosto ainda não faturada aparece separada, em R$ 12.008,80.",
    "Brindes Lux fechou | 60% (R$ 15.828,00) pago em 07/08 e 40% (R$ 10.552,00) pago em 17/08. Os dois saíram de compromissos e entraram no realizado de agosto.",
+   "CONARH parcela 2/2 de R$ 15.750,00 foi paga | confirmado em 24/08. Saiu de compromisso pendente e entrou no realizado de agosto. O canal do financeiro não tem o comprovante no fio, o último registro lá é de 05/08 dizendo que não havia sido paga.",
    "Novos pagamentos de agosto com comprovante no fio, que não estavam no painel | freelancer CONARH R$ 1.500,00 (17/08), vídeos e edição CONARH R$ 1.200,00 (21/08) e captação de conteúdo CONARH R$ 1.000,00 (21/08).",
-   "Treble.ai entrou com R$ 2.446,18 em 23/07 no cartão de marketing e está marcada como a reclassificar | é a ferramenta de WhatsApp dos BDRs, então provavelmente é custo de Vendas e não de Marketing.",
-   "Duas linhas de julho seguem sem fornecedor identificado | DLKNET AC RAFAEL DE B R$ 167,20 (16/07) e uma pessoa física de R$ 180,00 (09/07).",
-   "CONARH parcela 2/2 de R$ 15.750,00 venceu em 22/08 e continua sem confirmação de pagamento no canal do financeiro | o último registro é de 05/08 dizendo que não foi paga.",
-   "Invariante que segura a visão | a soma dos tetos mensais de ago a dez é igual ao saldo em 31/07, R$ 294.570,79.",
+   "Treble.ai de R$ 2.446,18 em 23/07 saiu do orçamento de Marketing | é a ferramenta de WhatsApp dos BDRs, então é custo de Vendas. A linha continua visível nos lançamentos, marcada como fora do escopo, mas não soma no realizado. Julho caiu de R$ 40.482,82 para R$ 38.036,64.",
+   "A pessoa física de R$ 180,00 em 09/07 é freelancer do evento, confirmado em 24/08 | está em Pessoas/Freelancers com identidade protegida.",
+   "Uma linha de julho segue sem fornecedor identificado | DLKNET AC RAFAEL DE B, R$ 167,20 em 16/07 no Conta Simples. DLKNET é subadquirente, então AC RAFAEL DE B é o estabelecimento. Não há rastro no Slack e a despesa nunca foi levantada no canal do financeiro. Segue contando no realizado de julho, como Diversos/Operacional a identificar.",
+   "Agência de PR corrigida de R$ 6.950,00 para R$ 6.500,00/mês em ago-dez | é o valor efetivamente pago em julho, por transferência no Itaú. Mai e jun saíram a R$ 6.630,00 e nenhum mês do ano saiu a R$ 6.950,00.",
+   "Invariante que segura a visão | a soma dos tetos mensais de ago a dez é igual ao saldo em 31/07, R$ 297.016,97.",
    "Câmbio das premissas em USD | 5,10 BRL/USD. Zapier é cobrado em real. Canva e StreamYard seguem zeradas de ago/2026 em diante."
   ]
  },
  "summary": {
   "itemCount": 658,
-  "totalAmount": 1074239.31,
-  "realizedThroughAug24": 991920.37,
+  "totalAmount": 1071989.31,
+  "realizedThroughAug24": 1005224.19,
   "months": [
    "2026-01",
    "2026-02",
@@ -78,23 +80,23 @@
    },
    {
     "month": "2026-08",
-    "amount": 65074.9
+    "amount": 64624.9
    },
    {
     "month": "2026-09",
-    "amount": 14558.8
+    "amount": 14108.8
    },
    {
     "month": "2026-10",
-    "amount": 13058.8
+    "amount": 12608.8
    },
    {
     "month": "2026-11",
-    "amount": 13058.8
+    "amount": 12608.8
    },
    {
     "month": "2026-12",
-    "amount": 13058.8
+    "amount": 12608.8
    }
   ],
   "categories": [
@@ -104,7 +106,7 @@
    },
    {
     "name": "Agência/SEO",
-    "amount": 102417.15
+    "amount": 100167.15
    },
    {
     "name": "Mídia Paga",
@@ -5876,11 +5878,11 @@
    "sourceRow": "JUL-41",
    "month": "2026-07",
    "origin": "Conta Simples",
-   "originalType": "Compra de cartão",
+   "originalType": "Compra de cartão | custo de Vendas/BDR, fora do orçamento de Marketing",
    "meceCategory": "SaaS/Ferramentas",
    "amount": 2446.18,
-   "expenseName": "Treble.ai | a reclassificar (ferramenta de Vendas/BDR)",
-   "basis": "competência",
+   "expenseName": "Treble.ai | ferramenta de WhatsApp dos BDRs, custo de Vendas",
+   "basis": "fora do escopo",
    "transactionDate": "2026-07-23"
   },
   {
@@ -6295,17 +6297,17 @@
    "basis": "competência"
   },
   {
-   "sourceRow": "AGO-P1",
+   "sourceRow": "AGO-CONARH2",
    "month": "2026-08",
-   "origin": "Compromisso",
-   "originalType": "Aprovado, não desembolsado",
+   "origin": "Itaú",
+   "originalType": "Transferência",
    "meceCategory": "Eventos",
    "amount": 15750.0,
-   "expenseName": "CONARH | parcela 2/2 do patrocínio",
-   "basis": "compromisso"
+   "basis": "competência",
+   "expenseName": "CONARH | parcela 2/2 do patrocínio"
   },
   {
-   "sourceRow": "AGO-P2",
+   "sourceRow": "AGO-P1",
    "month": "2026-08",
    "origin": "Compromisso",
    "originalType": "Aprovado, não desembolsado",
@@ -6315,7 +6317,7 @@
    "basis": "compromisso"
   },
   {
-   "sourceRow": "AGO-P3",
+   "sourceRow": "AGO-P2",
    "month": "2026-08",
    "origin": "Compromisso",
    "originalType": "Aprovado, não desembolsado",
@@ -6330,7 +6332,7 @@
    "origin": "A faturar",
    "originalType": "Recorrência de agosto, fatura ainda não fechou",
    "meceCategory": "Agência/SEO",
-   "amount": 6950.0,
+   "amount": 6500.0,
    "expenseName": "Agência de PR",
    "basis": "projeção"
   },
@@ -6420,7 +6422,7 @@
    "origin": "Recorrência",
    "originalType": "Projeção",
    "meceCategory": "Agência/SEO",
-   "amount": 6950.0,
+   "amount": 6500.0,
    "expenseName": "Agência de PR",
    "basis": "projeção"
   },
@@ -6430,7 +6432,7 @@
    "origin": "Recorrência",
    "originalType": "Projeção",
    "meceCategory": "Agência/SEO",
-   "amount": 6950.0,
+   "amount": 6500.0,
    "expenseName": "Agência de PR",
    "basis": "projeção"
   },
@@ -6440,7 +6442,7 @@
    "origin": "Recorrência",
    "originalType": "Projeção",
    "meceCategory": "Agência/SEO",
-   "amount": 6950.0,
+   "amount": 6500.0,
    "expenseName": "Agência de PR",
    "basis": "projeção"
   },
@@ -6450,7 +6452,7 @@
    "origin": "Recorrência",
    "originalType": "Projeção",
    "meceCategory": "Agência/SEO",
-   "amount": 6950.0,
+   "amount": 6500.0,
    "expenseName": "Agência de PR",
    "basis": "projeção"
   },

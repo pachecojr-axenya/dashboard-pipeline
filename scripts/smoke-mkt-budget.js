@@ -202,6 +202,36 @@ try {
     !lines.items.some(i => i.month >= '2026-07' && i.meceCategory === 'Mídia Paga' && i.origin !== 'API do canal'),
     lines.items.filter(i => i.month >= '2026-07' && i.meceCategory === 'Mídia Paga' && i.origin !== 'API do canal').map(i => i.origin).join(','));
 
+  // 6c. Decisões de 24/08: Treble fora do escopo, CONARH pago, agência a 6.500
+  const fora = lines.items.filter(i => i.basis === 'fora do escopo');
+  check('Treble.ai existe como linha fora do escopo', fora.length === 1 && /Treble/.test(fora[0].expenseName),
+    fora.map(i => i.expenseName).join(','));
+  check('linha fora do escopo não entra no realizado do mês',
+    c2(somaItens(i => i.month === '2026-07' && REALIZADO.has(i.basis))) ===
+    c2(somaItens(i => i.month === '2026-07') - fora.reduce((s, i) => s + i.amount, 0)));
+
+  const conarh2 = lines.items.filter(i => /CONARH/.test(i.expenseName) && /2\/2/.test(i.expenseName));
+  check('CONARH parcela 2/2 está no realizado de agosto',
+    conarh2.length === 1 && conarh2[0].month === '2026-08' && REALIZADO.has(conarh2[0].basis),
+    conarh2.map(i => `${i.month}/${i.basis}`).join(','));
+  check('CONARH parcela 2/2 saiu dos compromissos',
+    !cc.items.some(i => /2\/2/.test(i.share || '') || /parcela 2/i.test(i.name)));
+
+  const AGENCIA = 6500;
+  const agRec = fr.baseItems.find(b => b.name === 'Agência de PR');
+  check(`Agência de PR = ${brl(AGENCIA)} na recorrência`, agRec && agRec.monthlyAmount === AGENCIA,
+    agRec ? String(agRec.monthlyAmount) : 'ausente');
+  const agItens = lines.items.filter(i => i.expenseName === 'Agência de PR');
+  check('nenhum lançamento de agência ficou em R$ 6.950,00',
+    agItens.every(i => i.amount === AGENCIA), agItens.map(i => `${i.month}=${i.amount}`).join(' '));
+
+  // os dois JSON precisam concordar mês a mês também no futuro projetado
+  fr.monthly.filter(m => m.month >= '2026-09').forEach(m => {
+    const doJson = somaItens(i => i.month === m.month);
+    check(`projeção de ${m.month} bate entre os dois JSON`, c2(doJson) === c2(m.amount),
+      `${brl(doJson)} vs ${brl(m.amount)}`);
+  });
+
   // toda linha realizada precisa declarar a base, e jun+ precisa ser competência
   const semBase = lines.items.filter(i => !i.basis);
   check('toda linha declara a base', semBase.length === 0, `${semBase.length} sem basis`);
