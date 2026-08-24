@@ -1,5 +1,101 @@
 # Dashboard Enhancement Loop — Status Log
 
+### 🚀 DEPLOY DE PRODUÇÃO | BDR: "Por Canal", tooltip da barra, selo híbrido e o Workload em verde (2026-08-24)
+
+> Pedido do dono, em duas voltas: (1) "me garante que /novo-bdr está atualizado", (2) "coloco
+> deals por canal e não mostra por canal; passo o mouse na barra da Priscila e mostra
+> Gabrielle", (3) "atualiza o workload intra-day; se já está correto deveria ser verde", e
+> depois (4) "esse do workload já falhou algumas vezes — nos probes foram captados os
+> motivos? por que a reconciliação falha, o job deveria ser simples".
+>
+> Dois deploys: `9c30939` (`dashboard-axenya-evtp63l6h`) e `5796f91`
+> (`dashboard-axenya-rks4axrcm`). `npm run check` 0 FAIL antes dos dois; smokes em
+> `axenya-pipeline-dashboard.vercel.app`: as 7 rotas 200, `/api/bdr-workload-semantic` 401.
+
+**Os dois defeitos do card "Originação por BDR" eram independentes e os dois só existiam no
+render — o payload estava certo nas duas vezes.**
+
+- **"Por Canal" agrupava por BDR.** O toggle desse card manda o modo `'canal'`; o do
+  Weekly/Monthly manda `'origem'`. São o MESMO corte (`origem__originacao_`) com dois
+  rótulos, e `_dimFnDeal` só conhecia `'origem'` — `'canal'` caía no *default*, que agrupa
+  por BDR. A tela empilhava o nome do BDR dentro da barra do próprio BDR e chamava aquilo de
+  canal. `_dimFacetKey` tinha o mesmo buraco, então o drill do clique marcava a faceta errada.
+- **O tooltip trocava de pessoa no meio da barra.** `indexAxis:'y'` com tooltip
+  `mode:'index'` e sem `axis`. O modo `index` do Chart.js resolve pelo eixo X por padrão;
+  numa barra HORIZONTAL isso procura o ponto pelo VALOR, não pela linha, então andar para a
+  direita na barra da Priscilla atravessava o centro das barras vizinhas. Varrido o resto do
+  território BDR: era o único gráfico horizontal com esse modo.
+- **Prova nos pixels** (`scripts/smoke-bdr-origin-canal-browser.js`, novo, também em
+  `npm run smoke:origin-canal`): fixture local, sem HubSpot e sem BQ, dirige o Chrome, lê os
+  labels dos datasets e dispara 3 `mousemove` ao longo da MESMA linha. Contra o código antigo
+  reprova 6 verificações e reproduz o relato: legenda `["Priscilla","Gabriele","Marcelli"]` e
+  tooltip "Gabriele Almeida" em cima da barra da Priscilla.
+
+**O selo de frescor mentia na `/novo-bdr`, e para menos.** Ele mede o ARMAZÉM, mas a tela é
+híbrida: Originação, Weekly/Monthly, Handoff e Fluxo saem de `/api/forecast-table`, que bate
+na API do HubSpot AO VIVO a cada carga (`vercel.json` manda `no-store` em `/api/*`); só o
+Funil de Lead lê o armazém. O selo dizia "há 3h" em cima de gráfico que é de agora — e selo
+que SUBESTIMA o frescor faz desconfiar do dado certo. `AxFresh.init` ganhou `nota`/`notaTitle`
+(mesmo padrão do `procedencia()` do Workload, sem duplicar CSS/JS).
+
+**O Workload sai de amarelo, e o amarelo estava certo até hoje de manhã.**
+
+- **A auditoria fechou.** `compare-workload-sources.js --adc` (25/07 a 23/08, dia útil,
+  roster completo): 9 de 9 métricas de ritmo e desfecho com delta ZERO. Os dois deltas que
+  sobram — WhatsApp total e atividades, 110 cada — são exatamente a automação do Treble, que
+  o armazém mede à parte pela régua de 10/08. Restam 3 WARN conhecidos e DECLARADOS em
+  `quality.checks`; WARN declarado não é incerteza sobre o número.
+- **O frescor era o problema de verdade, e ninguém estava olhando.** O `bdr-etl-job` — que
+  carrega inserção, CRM, SQL e penetração — não rodava desde 20/08 20:22. A corrida de sexta
+  21/08 tomou **503 UNAVAILABLE** do Cloud Run e o agendador estava sem `retryCount`: uma
+  tentativa, desistiu. Com o fim de semana, **87h de dado parado**, máximo em 2026-08-20.
+  O job em si NUNCA falhou — 30+ execuções em 25 dias, zero falha de container. Não era o ETL
+  ser complicado; era a CHAMADA que nunca chegou nele.
+- **Não havia probe.** O projeto tem duas políticas no Cloud Monitoring e as duas são do SAC
+  HubSpot. Nada observa esses ETLs, nem "falhou" nem "não rodou". Por isso durou 4 dias.
+- **Fora do repo, aplicado:** `bdr-etl-daily` ganhou retry (4 tentativas, backoff 120s–900s,
+  até 1h); `bdr-etl-intraday-10h` e `-15h` criados (dia útil, mesma SA, mesmo retry). O
+  medallion JÁ rodava 4x/dia até 04/08 e alguém reduziu para 1x sem que a tela soubesse — foi
+  assim que metade do Workload virou D-1 sem ninguém decidir isso. Agora as DUAS camadas são
+  intraday: armazém 6x/dia útil, medallion 3x.
+- **Na tela:** `nav.js`, `premium.js` e os DOIS selos de `bdr-workload.html` (cabeçalho e
+  drawer) em verde, com título que diz o que o verde significa. `bdr-workload-semantic.js`
+  anuncia a cadência nova e o limiar do WARN `frescor_medallion` cai de 28h para 8h — com três
+  cargas por dia útil, 28h só acusaria depois de perder o dia inteiro.
+- **O teste travava o amarelo e reprovou esta mudança, como devia.**
+  `test-bdr-workload-v2-ui.js` agora trava o verde e ganhou duas asserções: as duas listas de
+  menu não podem divergir entre si, e a página tem de contar a mesma história do menu. Foi a
+  segunda que achou um TERCEIRO selo amarelo escondido no drawer de `bdr-workload.html`.
+
+**O BLOCK do armazém em 21/08 não era dado ruim — era o conferidor.** Fora deste repo
+(`GCP_Axenya/scripts/hubspot-platform`, commit `b058c00`): o run `bbe69a02801a4c4b` saiu com
+1 BLOCK, e o motivo gravado era `cannot convert float infinity to integer`.
+`qa_sampling._norm` fazia `int(float(s))` dentro de `except (TypeError, ValueError)`, e
+`int(float('inf'))` levanta **OverflowError**, que não é nenhum dos dois — a exceção subia
+até o `except Exception` de `checks.run_all`, virava `qa_random = BLOCK`, `exit(2)`, e o dia
+inteiro era declarado travado por um campo. O valor nem precisa ser a string "Infinity":
+`float('1e400')` já é `inf`, então um campo numérico do CRM com zeros a mais basta. E como a
+amostra é SORTEADA a cada execução, só falhava quando o objeto ruim caía no sorteio —
+intermitente, e "não aconteceu hoje" não provava nada. `_norm` virou total (`math.isfinite`),
+travado em `tests/test_contracts.py::test_norm_nao_levanta` (62/66 no código antigo, 66/66 no
+novo). Imagem `hubspot-platform:v14` nos dois Jobs; run de prova em produção: 83 checks, **5
+falhas (era 6), 0 BLOCK**, os 10 vereditos `qa_*` passando com 9.360 campos conferidos contra
+a API ao vivo e zero divergência. `parity_workload_v2` saiu da lista de WARN — atualizar o
+medallion resolveu aquele também.
+
+> **Onde o probe olhava e onde não olhava.** O BLOCK do armazém TEM alerta e ele carrega o
+> motivo (`alert._linha` foi consertado em 11/08 exatamente para isso) — disparou em 21/08
+> 19:08. Só que `SLACK_ALERT_CHANNEL` é uma DM, não um canal, então a informação existia e
+> chegou num lugar só. E o outro lado — o job que simplesmente NÃO RODA — não tem probe
+> nenhum. As duas falhas de 21/08 são de classes diferentes e só uma tinha quem avisasse.
+
+> **O valor exato que causou o `inf` não foi identificado, e isso é deliberado.** `_norm`
+> roda nos DOIS lados da comparação (`ours` e `live`) e também sobre o histórico de
+> propriedades, então o veneno pode ter vindo da resposta ao vivo da API, não do bronze — uma
+> varredura no bronze poderia sair vazia sem inocentar nada. É por isso que o conserto é
+> tornar a função total, e não limpar um registro.
+
+
 ### 🚀 DEPLOY DE PRODUÇÃO | Delta: D02 ganha 5 fatias + zoom + filtro (2026-08-17)
 
 > Autorização explícita do dono ("Quero.. Commit e deploy"), continuação da mesma sessão
