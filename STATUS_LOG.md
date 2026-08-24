@@ -1,5 +1,35 @@
 # Dashboard Enhancement Loop — Status Log
 
+### ⏳ PRONTO, AGUARDANDO DEPLOY | Weekly Origination: o dado de janeiro estava lá, o eixo é que não ia (2026-08-24)
+
+> Pedido do dono: "se eu coloco este ano para ver os dados, em weekly origination só mostra
+> desde junho".
+
+**Não faltava deal: faltava semana no eixo.** `_getMonths(n)` (`public/bdr.html:614`) já lia
+o `_filterState()` e enumerava os meses da janela; `_getWeeks(n)` (`:518`) **ignorava o
+filtro** e devolvia sempre as últimas `n` semanas a partir de hoje. Com `n=13` no R13, "Este
+ano" deixava o Monthly abrindo em janeiro e o Weekly começando na semana de ~1º de junho —
+lado a lado, no mesmo painel, contando a mesma originação. `_origDeals()` sempre entregou os
+deals de janeiro; quem os descartava era o `weeks` do render.
+
+**Fix:** `_getWeeks` passou a espelhar o `_getMonths` — com filtro ativo, uma barra por semana
+entre a semana da data inicial e a da final. Duas decisões próprias, ambas informadas na ficha
+`i` do card:
+
+1. **A ponta final para na semana corrente.** O preset "Este ano" termina em 31/12 e semana
+   futura não tem originação: seriam ~18 barras vazias na cauda. (O Monthly ainda mostra os
+   meses futuros vazios — dívida conhecida, não mexida aqui.)
+2. **Teto de 78 semanas** (18 meses) para janela longa não virar mata de pixels. Quando corta,
+   mantém as mais recentes **e diz no rodapé** quantas ficaram fora — gráfico que trunca em
+   silêncio se lê como "é tudo que existe".
+
+**Prova:** `npm run smoke:weekly-window` (novo, `scripts/smoke-bdr-weekly-window-browser.js`) —
+12/12 PASS no Chrome headless com fixture local. Cobre: sem filtro continua 13 semanas | "Este
+ano" rende 35 rótulos abrindo em `29/12` com a semana de janeiro no índice 2 | zero semana
+futura | Weekly e Monthly fecham o **mesmo total** na janela | mês corrente rende 5 semanas |
+range jan/2023→hoje trava em 78 com o rodapé de corte. `npm run check` 82 PASS | 0 FAIL e
+`npm run smoke:origin-canal` (mesma página) sem regressão.
+
 ### 🚀 DEPLOY DE PRODUÇÃO | No Show: o campo de reagendamento existia e a tela lia o texto (2026-08-24)
 
 > Pedido do dono: "o que a gente tem nos deals? tem uma propriedade que acho que não tá

@@ -21,7 +21,8 @@
     "smoke:seo-perf": "node scripts/smoke-seo-performance-browser.js",
     "smoke:mkt-budget": "node scripts/smoke-mkt-budget.js",
     "smoke:lead-funnel": "node scripts/smoke-bdr-lead-funnel-browser.js",
-    "smoke:origin-canal": "node scripts/smoke-bdr-origin-canal-browser.js"
+    "smoke:origin-canal": "node scripts/smoke-bdr-origin-canal-browser.js",
+    "smoke:weekly-window": "node scripts/smoke-bdr-weekly-window-browser.js"
   },
   "dependencies": {},
   "devDependencies": {},
