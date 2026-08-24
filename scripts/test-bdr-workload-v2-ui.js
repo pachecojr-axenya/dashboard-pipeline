@@ -10,6 +10,7 @@ const info = fs.readFileSync(path.join(ROOT, 'public/bdr-workload-info.js'), 'ut
 const bdrHtml = fs.readFileSync(path.join(ROOT, 'public/bdr.html'), 'utf8');
 const nav = fs.readFileSync(path.join(ROOT, 'public/nav.js'), 'utf8');
 const premium = fs.readFileSync(path.join(ROOT, 'public/premium.js'), 'utf8');
+const workloadHtml = fs.readFileSync(path.join(ROOT, 'public/bdr-workload.html'), 'utf8');
 const bdrPages = ['bdr.html', 'bdr-workload.html', 'bdr-no-show.html', 'bdr-list-attack.html', 'bdr-treble.html'].map((file) => fs.readFileSync(path.join(ROOT, 'public', file), 'utf8'));
 const allJs = js + '\n' + core + '\n' + charts + '\n' + info;
 const html = fs.readFileSync(path.join(ROOT, 'public/bdr-workload.html'), 'utf8');
@@ -108,10 +109,30 @@ assert.strictEqual(counts(2000, '2026-08'), true, '2.000 conta em agosto');
 assert.strictEqual(counts(2001, '2026-08'), false, '2.001 não conta em agosto');
 assert.strictEqual(counts(2001, '2026-09'), true, 'fora de julho e agosto, preserva regra vigente sem teto');
 // Semáforo solicitado no menu canônico.
-assert(nav.includes("url:'/novo-bdr/workload',file:'bdr-workload.html',sub:'bdr',health:'y'"), 'Workload deve estar amarelo');
+// 24/08/2026 | Workload sai de amarelo para VERDE. O amarelo dizia "novo | em
+// auditoria" e a auditoria fechou: `compare-workload-sources.js` mediu 9/9
+// métricas de ritmo e desfecho com delta ZERO contra o medallion (ligações 5.707,
+// e-mails 3.602, LinkedIn 617, reuniões 144 e os 5 desfechos), e os dois deltas
+// que sobram — WhatsApp total e atividades, 110 cada — são exatamente a automação
+// do Treble que o armazém mede à parte pela régua de 10/08.
+// A segunda condição era frescor, e ela também caiu: o medallion voltou a rodar
+// intraday (10h/15h/20h em dia útil) depois de a corrida de 21/08 tomar um 503 sem
+// retry e deixar 87h de dado parado. As duas camadas agora são intraday.
+// O que resta são 3 WARN conhecidos e DECLARADOS na tela (atribuição da automação,
+// empresas e contatos tocados) — WARN declarado não é incerteza sobre o número, e
+// é por isso que verde aqui é honesto.
+assert(nav.includes("url:'/novo-bdr/workload',file:'bdr-workload.html',sub:'bdr',health:'g'"), 'Workload deve estar verde');
 assert(nav.includes("url:'/novo-bdr/list-attack',file:'bdr-list-attack.html',sub:'bdr',health:'r'"), 'Ataque à Lista deve estar vermelho');
 assert(nav.includes("url:'/novo-bdr/treble',file:'bdr-treble.html',sub:'bdr',health:'g'"), 'Treble deve estar verde');
-assert(premium.includes("href: '/novo-bdr/workload', label: 'Workload | Intraday', health: 'y'"), 'Workload deve estar amarelo no menu interno');
+assert(premium.includes("href: '/novo-bdr/workload', label: 'Workload | Intraday', health: 'g'"), 'Workload deve estar verde no menu interno');
+// As duas listas de menu ainda coexistem (nav.js e premium.js). Selo divergente
+// entre elas é pior que selo errado: o usuário vê cores diferentes para a mesma
+// página dependendo de onde olha, e passa a não acreditar em nenhuma das duas.
+assert(!/bdr-workload\.html[^\n]*health:'y'/.test(nav) && !/'\/novo-bdr\/workload'[^\n]*health: 'y'/.test(premium),
+  'Workload não pode ficar amarelo em uma lista de menu e verde na outra');
+// E a página tem de contar a mesma história do menu.
+assert(workloadHtml.includes('health-dot g title-health'), 'o selo no cabeçalho do Workload deve acompanhar o menu');
+assert(!workloadHtml.includes('em auditoria'), 'o título "em auditoria" ficou para trás quando a auditoria fechou');
 assert(premium.includes("href: '/novo-bdr/list-attack', label: 'Ataque à Lista', health: 'r'"), 'Ataque à Lista deve estar vermelho no menu interno');
 assert(premium.includes("href: '/novo-bdr/treble', label: 'Treble', health: 'g'"), 'Treble deve estar verde no menu interno');
 // v=12: entrada Growth | Performance adicionada ao NAV_MODEL do premium.js

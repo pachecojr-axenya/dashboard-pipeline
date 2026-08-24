@@ -59,7 +59,12 @@
     {label:'Board View',url:'/novo-board',file:'board.html',health:'g',icon:'<path d="M2 20h20M4 20V10l8-6 8 6v10"/><path d="M10 20v-6h4v6"/>'},
     {label:'AE Performance',url:'/novo-ae',file:'ae.html',health:'g',icon:'<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>'},
     {label:'BDR Performance',url:'/novo-bdr',file:'bdr.html',health:'g',acc:'bdr',icon:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'},
-    {label:'Workload | Intraday',url:'/novo-bdr/workload',file:'bdr-workload.html',sub:'bdr',health:'y',icon:'<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>'},
+    // 24/08/2026: sai de amarelo. O amarelo dizia "novo | em auditoria" e a auditoria
+    // fechou — 9/9 métricas de ritmo e desfecho com delta ZERO contra o medallion
+    // (compare-workload-sources.js), e as duas camadas passaram a rodar intraday
+    // (armazém 6x/dia; medallion 10h/15h/20h). O que resta é WARN declarado na tela,
+    // não incerteza sobre o número.
+    {label:'Workload | Intraday',url:'/novo-bdr/workload',file:'bdr-workload.html',sub:'bdr',health:'g',icon:'<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>'},
     {label:'No-Show',url:'/novo-bdr/no-show',file:'bdr-no-show.html',sub:'bdr',health:'g',icon:'<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>'},
     {label:'Ataque à Lista',url:'/novo-bdr/list-attack',file:'bdr-list-attack.html',sub:'bdr',health:'r',icon:'<line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>'},
     {label:'Treble',url:'/novo-bdr/treble',file:'bdr-treble.html',sub:'bdr',health:'g',icon:'<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>'},
