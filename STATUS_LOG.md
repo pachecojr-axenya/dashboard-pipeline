@@ -1,5 +1,43 @@
 # Dashboard Enhancement Loop — Status Log
 
+### 🚀 DEPLOY DE PRODUÇÃO | No Show: o campo de reagendamento existia e a tela lia o texto (2026-08-24)
+
+> Pedido do dono: "o que a gente tem nos deals? tem uma propriedade que acho que não tá
+> mapeada, que é data de reagendamento. Daquelas que não aconteceram, quantas tiveram data
+> de reagendamento? A grande ideia é: teve data de reagendamento, avançou no funil, mas
+> ainda tá como não."
+>
+> Deploy `7914474` (`dpl_5bVdWom9bGpUyxeJhJhed6Rq1rAC`). `npm run gate:no-show` SUCCESS;
+> produção: página 200, `/api/forecast-table` 401.
+
+**A propriedade já estava mapeada — o front é que a ignorava.**
+`data_do_reagendamento_com_o_executivo` vinha de `api/forecast-table.js:73` e chegava como
+`data_reagendamento_exec`. O `public/bdr-no-show.js` classificava "Reagendada" por TEXTO.
+Sobre 1.467 reuniões: **140** com o campo preenchido, 33 por texto, 4 nas duas — **136
+invisíveis**. E o KPI exibia **0**, porque a interseção entre `noShow` e o status textual
+era vazia. O card estava morto, não só errado.
+
+**Régua nova (decisão do dono):** reunião remarcada que ocorreu não é falta do BDR — sai do
+numerador e vira `Reagendada | realizada`. Remarcou e nunca ocorreu continua no-show.
+Medido com o código real contra o payload real: Reagendadas 0→140 | no-shows 521→516 |
+incidência 40,5%→40,1% | fora SLA 134→132.
+
+**Três cortes novos** (ficha `i` + drilldown): contradição campo × funil (7 deals, 3 vivos);
+"reagendou e morreu" (86% de perda com reagendamento vs 76% sem, sempre em contagem — 
+só 35 dos 140 têm ARR e Carrefour/Naturgy dominariam a soma); reagendamento vencido (53,
+sendo 1 fora de Perdido). A fila que se esperava — "Reunião Agendada + reagendamento +
+campo vazio" — é **0**.
+
+**Dois defeitos pré-existentes, ambos confirmados no HEAD limpo antes de tocar em nada:**
+
+1. `renderKpis()` é **código morto** desde o arco narrativo (quem desenha o topo é
+   `renderHeroKpis()`+`renderHygieneCard()`). Os 3 números novos foram para lá e não
+   apareceram. Função marcada com aviso.
+2. `smoke-bdr-no-show-browser.js` **reprovava sozinho**: media a fila fora SLA contando
+   `.pill.bad` do DOM, depois do `.slice(0, 100)` de `renderRecoveryTable`. Saturava em 100
+   e quebrava a invariante assim que a fila passou de 100 — com o dado certo (121 ≤ 130).
+   Passou a ler o KPI. **Regra: invariante não se mede em DOM truncado por `slice`.**
+
 ### 🚀 DEPLOY DE PRODUÇÃO | BDR: "Por Canal", tooltip da barra, selo híbrido e o Workload em verde (2026-08-24)
 
 > Pedido do dono, em duas voltas: (1) "me garante que /novo-bdr está atualizado", (2) "coloco
