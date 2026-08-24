@@ -1,9 +1,13 @@
 # Dashboard Enhancement Loop — Status Log
 
-### ⏳ PRONTO, AGUARDANDO DEPLOY | Weekly Origination: o dado de janeiro estava lá, o eixo é que não ia (2026-08-24)
+### 🚀 DEPLOY DE PRODUÇÃO | Weekly Origination: o dado de janeiro estava lá, o eixo é que não ia (2026-08-24)
 
 > Pedido do dono: "se eu coloco este ano para ver os dados, em weekly origination só mostra
 > desde junho".
+>
+> Deploy `5bf7418` (`dpl_GPAyfmox4JapJZFt4ebpdWwxxQu6`, READY). `npm run predeploy` PASS;
+> produção: 7 rotas em 200, `/api/forecast-table` 401, e o HTML servido já traz o
+> `_WEEKS_MAX=78` (conferido no ar, não só no build).
 
 **Não faltava deal: faltava semana no eixo.** `_getMonths(n)` (`public/bdr.html:614`) já lia
 o `_filterState()` e enumerava os meses da janela; `_getWeeks(n)` (`:518`) **ignorava o
@@ -29,6 +33,13 @@ ano" rende 35 rótulos abrindo em `29/12` com a semana de janeiro no índice 2 |
 futura | Weekly e Monthly fecham o **mesmo total** na janela | mês corrente rende 5 semanas |
 range jan/2023→hoje trava em 78 com o rodapé de corte. `npm run check` 82 PASS | 0 FAIL e
 `npm run smoke:origin-canal` (mesma página) sem regressão.
+
+**O eixo certo já existia no /novo e ninguém portou.** `_novoWeekAxis()`
+(`public/dashboard.html:2701`) sempre leu o filtro e enumerou as semanas da janela — o
+`_getWeeks` da /novo-bdr era o ponto fora da curva, não o padrão. Achado colateral, **não
+corrigido aqui**: o `_novoWeekAxis` não corta na semana corrente, então o /novo com "Este ano"
+desenha ~18 semanas futuras vazias na cauda (mesma dívida do Monthly R14). Nenhuma outra
+página tem eixo semanal cego ao filtro — varredura em `public/`.
 
 ### 🚀 DEPLOY DE PRODUÇÃO | No Show: o campo de reagendamento existia e a tela lia o texto (2026-08-24)
 
