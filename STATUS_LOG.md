@@ -1,5 +1,30 @@
 # Dashboard Enhancement Loop — Status Log
 
+### Meta vs Ach: time comercial vira Ágatta + Juliana, resto agrupado em "Outros" (2026-09-04)
+
+> Pedido do dono: incluir os ganhos da Ágatta no painel Meta vs Ach do `/forecast`.
+> Esclarecido em conversa: **o time comercial hoje é só Ágatta e Juliana**; os demais
+> executivos que fecharam venda no trimestre (André, Guilherme, Rafael, …) devem ser
+> unidos num bucket "Outros" — contam no total fechado, mas não competem pela meta.
+
+**Régua nova em `public/meta-ach.js`** (só front, único consumidor é `forecast.html`,
+sem tocar `api/`/`lib/`):
+- `DEFAULT_ROSTER` passa a ser só `Ágatta` e `Juliana`, R$ 750k de meta cada (os mesmos
+  R$ 1,5MM do trimestre, agora divididos em 2 em vez de 3).
+- Qualquer `ae` que não bata com o roster ativo cai no bucket **"Outros"** (`Others` em
+  EN) em vez de ser descartado (antes: `if (!idx[fk]) continue`). "Outros" aparece na
+  lista como um AE normal — soma o fechado, ordena sempre por último — mas com meta
+  zerada: mesmo tratamento que o André tinha antes de deixar de ser listado nominalmente.
+- Alias de acento trocado de `andre→andré` para `agatta→ágatta` (tolerância a
+  `hubspot_owner_id` sem acentuação).
+- Testado localmente com `node --check` + payload sintético via `MetaAch.compute()`:
+  Ágatta/Juliana isoladas por pessoa, André+Guilherme+Rafael somados em "Outros" com
+  meta 0, `team.meta` = 1,5MM, `team.fechado` inclui os 3 buckets. Deal sem `ae` (`'-'`
+  ou campo ausente) continua fora de qualquer bucket.
+- **Estado inalterado: 🟡 não validado contra o HubSpot** (nenhuma fórmula de cálculo
+  por conta foi tocada, só roster/bucket). Pendente: validar no HubSpot quem exatamente
+  fechou fora de Ágatta/Juliana no tri corrente antes de expor a diretoria.
+
 ### 🚀 DEPLOY DE PRODUÇÃO | Weekly Origination: o dado de janeiro estava lá, o eixo é que não ia (2026-08-24)
 
 > Pedido do dono: "se eu coloco este ano para ver os dados, em weekly origination só mostra

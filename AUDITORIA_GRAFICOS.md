@@ -1,5 +1,16 @@
 # Auditoria crítica dos gráficos 🟡 | 2026-06-12
 
+## Adendo | Meta vs Ach: roster vira Ágatta + Juliana, resto agrupado em "Outros" (2026-09-04)
+
+> **Estado inalterado: 🟡 não validado contra o HubSpot** — mudança de ROSTER/BUCKET em
+> `public/meta-ach.js`, nenhuma fórmula de cálculo por conta tocada. Pedido do dono: incluir
+> os ganhos da Ágatta; time comercial ativo hoje é só Ágatta e Juliana. Os R$ 1,5MM do
+> trimestre passam a ser 750k/AE (2 pessoas, era 500k/AE em 3). Qualquer executivo fora do
+> roster ativo (André, Guilherme, Rafael, …) que tenha fechado conta no tri entra no bucket
+> **"Outros"** — soma o fechado, meta zerada, não compete pela meta do time (mesmo
+> tratamento que o André tinha isoladamente antes desta mudança). Detalhe em `STATUS_LOG.md`,
+> entrada de 2026-09-04.
+
 ## Adendo | Delta D02 ganha 5 fatias (Novo/Avançou/Permaneceu/Perdido/Probabilidade) + zoom + filtro (2026-08-17)
 
 > **Estado: D02 continua 🟢 validado no que já existia (invariante Σ Δ = Δtotal intacto,
