@@ -1,11 +1,24 @@
 # Dashboard Enhancement Loop — Status Log
 
-### Meta vs Ach: time comercial vira Ágatta + Juliana, resto agrupado em "Outros" (2026-09-04)
+### 🚀 DEPLOY DE PRODUÇÃO | Meta vs Ach: time comercial vira Ágatta + Juliana, resto agrupado em "Outros" (2026-09-04)
 
 > Pedido do dono: incluir os ganhos da Ágatta no painel Meta vs Ach do `/forecast`.
 > Esclarecido em conversa: **o time comercial hoje é só Ágatta e Juliana**; os demais
 > executivos que fecharam venda no trimestre (André, Guilherme, Rafael, …) devem ser
 > unidos num bucket "Outros" — contam no total fechado, mas não competem pela meta.
+>
+> Commit `7fb10e2` pushado em `origin/main` (HEAD sincronizado — local estava 167 commits
+> atrás; fast-forward limpo, zero commit local perdido). Deploy `dpl_2VWBrhEWFmCRTTiUtgEFQYtdPaS7`
+> (READY), alias de produção `project-bsmfu.vercel.app`. Pós-deploy nos dois hosts
+> (`project-bsmfu.vercel.app` e `axenya-pipeline-dashboard.vercel.app`): as 7 rotas em
+> 200, `/api/auth/me` e `/api/forecast-table` em 401 (auth ativa), e `meta-ach.js`
+> servido em produção já com o roster novo (`ágatta`/`Outros` confirmados no bundle ao
+> vivo). Achado à parte do sync: 5 arquivos soltos não commitados de uma sessão anterior
+> (`public/layout-grid.js` + wiring de drag/resize em `public/48h.html`/`premium.css`,
+> mais 3 sandboxes e `ft_q3.json`) — fora do escopo desta mudança, preservados em
+> `git stash` (`wip-sync-2026-09-04-antes-de-ff`) e copiados para fora do repo antes do
+> deploy (o `vercel --prod` sobe o working tree inteiro; não podiam ir para produção sem
+> dono/revisão).
 
 **Régua nova em `public/meta-ach.js`** (só front, único consumidor é `forecast.html`,
 sem tocar `api/`/`lib/`):
