@@ -1,6 +1,6 @@
 # Dashboard Enhancement Loop — Status Log
 
-### Meta vs Ach: pipeline Bid entra no cálculo (2026-09-05)
+### 🚀 DEPLOY DE PRODUÇÃO | Meta vs Ach: pipeline Bid entra no cálculo (2026-09-05)
 
 > Pedido do dono: "Na meta, inclua as implementações do pipe de Bid! Tivemos um ganho
 > significativo ontem!" — o painel Meta vs Ach ignorava silenciosamente qualquer conta
@@ -31,6 +31,13 @@ no fechado do AE; deal Bid fora do trimestre continua excluído; deal legado sem
 
 **Estado inalterado: 🟡 não validado contra o HubSpot** (mudança de fonte de data, nenhuma
 fórmula de ARR/régua tocada). Ressalva do `AUDITORIA_GRAFICOS.md` sobre Bid removida.
+
+> Commit `362823f` pushado em `origin/main` (HEAD já estava sincronizado, sem drift desta
+> vez). Deploy `dpl_P3Frtcnez4moEtmUyggzpfBxfHUT` (READY), alias de produção
+> `project-bsmfu.vercel.app`. Pós-deploy nos dois hosts (`project-bsmfu.vercel.app` e
+> `axenya-pipeline-dashboard.vercel.app`): as 7 rotas em 200, `/api/auth/me` e
+> `/api/forecast-table` em 401 (auth ativa), e `meta-ach.js` servido em produção já com
+> `entradaFechamento()` confirmado no bundle ao vivo.
 
 ### 🚀 DEPLOY DE PRODUÇÃO | Meta vs Ach: time comercial vira Ágatta + Juliana, resto agrupado em "Outros" (2026-09-04)
 
