@@ -1,5 +1,37 @@
 # Dashboard Enhancement Loop — Status Log
 
+### Meta vs Ach: pipeline Bid entra no cálculo (2026-09-05)
+
+> Pedido do dono: "Na meta, inclua as implementações do pipe de Bid! Tivemos um ganho
+> significativo ontem!" — o painel Meta vs Ach ignorava silenciosamente qualquer conta
+> fechada no pipeline Bid.
+
+**Causa raiz:** `data_implantacao`/`data_ganho` em `api/forecast-table.js` são lidos SÓ das
+propriedades de etapa do pipeline **Vendas** (`hs_v2_date_entered_1288611084`/`_1144844314`).
+O Bid tem IDs de etapa diferentes para as mesmas etapas (`Implantação`=`1353457025`,
+`Ganho`=`1353387280`) — esses dois campos ficam sempre `null` num deal Bid, e o
+`meta-ach.js` descartava o deal por falta de data de entrada (`if (!closeDate) continue`).
+Isso já estava documentado como ressalva conhecida no `AUDITORIA_GRAFICOS.md` desde
+22/07 ("contas do pipeline Bid não entram... extensão futura se o dono quiser Bid").
+
+**Fix 100% front-only, sem tocar `api/`/`lib/`.** O próprio `forecast-table.js` JÁ calcula
+`stage_entered` (linha ~616, `computeStageEntered`) — um mapa por RÓTULO de etapa (não por
+ID), preenchido para os DOIS pipelines a partir da varredura de todos os `hs_v2_date_entered_*`
+que já estavam na lista de `PROPERTIES` (a trilha de etapas do modal do `/forecast` já
+buscava esses campos). Bid e Vendas compartilham o rótulo `"Implantação"`/`"Ganho"`, só o
+ID muda — então `stage_entered['Implantação']`/`stage_entered['Ganho']` já tinha a data
+certa para os dois pipelines, só não estava sendo lido pelo Meta vs Ach.
+`public/meta-ach.js` ganhou `entradaFechamento(d)`: usa `stage_entered` primeiro, cai para
+`data_implantacao`/`data_ganho` (só Vendas) por compatibilidade. Régua de probabilidade
+não mudou — já é por rótulo, então "Implantação"/"Ganho" do Bid já pontuavam 80%/100%.
+Testado com payload sintético (`MetaAch.compute()`): deal Bid em Implantação/Ganho com
+`data_implantacao`/`data_ganho` nulos e só `stage_entered` preenchido entra corretamente
+no fechado do AE; deal Bid fora do trimestre continua excluído; deal legado sem
+`stage_entered` (fallback) continua funcionando. `npm run check`: 82 PASS | 0 FAIL.
+
+**Estado inalterado: 🟡 não validado contra o HubSpot** (mudança de fonte de data, nenhuma
+fórmula de ARR/régua tocada). Ressalva do `AUDITORIA_GRAFICOS.md` sobre Bid removida.
+
 ### 🚀 DEPLOY DE PRODUÇÃO | Meta vs Ach: time comercial vira Ágatta + Juliana, resto agrupado em "Outros" (2026-09-04)
 
 > Pedido do dono: incluir os ganhos da Ágatta no painel Meta vs Ach do `/forecast`.

@@ -1,5 +1,19 @@
 # Auditoria crítica dos gráficos 🟡 | 2026-06-12
 
+## Adendo | Meta vs Ach: pipeline Bid entra no cálculo (2026-09-05)
+
+> **Estado inalterado: 🟡 não validado contra o HubSpot** — mudança de FONTE da data de
+> entrada (`stage_entered` por rótulo de etapa, em vez de só `data_implantacao`/
+> `data_ganho` de Vendas), nenhuma fórmula de ARR/régua tocada. Pedido do dono: incluir os
+> ganhos do pipeline Bid. Causa raiz: `data_implantacao`/`data_ganho` só liam as
+> propriedades de etapa do ID de Vendas; o Bid tem ID diferente para as mesmas etapas
+> ("Implantação"/"Ganho" compartilham o RÓTULO, não o ID), então esses dois campos vinham
+> sempre `null` num deal Bid e o cálculo descartava a conta por falta de data. O
+> `forecast-table.js` já calculava `stage_entered` (mapa por rótulo, cobre os dois
+> pipelines) para a trilha de etapas do modal — só não estava sendo lido aqui. Fix 100%
+> front-only em `public/meta-ach.js` (`entradaFechamento(d)`), sem tocar `api/`/`lib/`.
+> Detalhe em `STATUS_LOG.md`, entrada de 2026-09-05.
+
 ## Adendo | Meta vs Ach: roster vira Ágatta + Juliana, resto agrupado em "Outros" (2026-09-04)
 
 > **Estado inalterado: 🟡 não validado contra o HubSpot** — mudança de ROSTER/BUCKET em
@@ -338,9 +352,9 @@
 > Ressalvas conhecidas a validar: (1) é métrica de **bookings ponderados** (arr_estimado × régua), NÃO a receita
 > canônica da Regra primária nº 3 (Real/Probabilizada) — números podem divergir do resto do
 > forecast por construção, é esperado; (2) `arr_estimado` como fonte de origem ainda não foi
-> conferido campo a campo no HubSpot; (3) contas do pipeline **Bid** não entram (o payload só
-> expõe entrada em Implantação/Ganho de Vendas) — extensão futura se o dono quiser Bid; (4)
-> status "no ritmo/atrás" usa % de dias decorridos do tri como ritmo esperado (proxy linear).
+> conferido campo a campo no HubSpot; (3) status "no ritmo/atrás" usa % de dias decorridos
+> do tri como ritmo esperado (proxy linear). ~~(pipeline Bid não entrava)~~ — corrigido em
+> 2026-09-05, ver adendo abaixo.
 
 ## Adendo | BDR No Show (2026-07-20)
 

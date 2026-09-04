@@ -15,9 +15,15 @@
  *    quem mais tiver fechado) é agrupado no bucket **"Outros"**: aparece na lista com o que
  *    fechou no tri, mas com **meta zerada** — não conta para os R$ 1,5MM do time (mesmo
  *    tratamento que o André tinha antes de virar "Outros").
- *  - "Fechado" = Σ arr_estimado das contas cuja ENTRADA em Implantação (data_implantacao)
- *    — ou, na falta dela, em Ganho (data_ganho) — cai dentro do trimestre. É RECEITA
- *    FECHADA (bookings por data de entrada), NÃO receita que "caiu" no tri.
+ *  - "Fechado" = Σ arr_estimado das contas cuja ENTRADA em Implantação — ou, na falta dela,
+ *    em Ganho — cai dentro do trimestre. É RECEITA FECHADA (bookings por data de entrada),
+ *    NÃO receita que "caiu" no tri.
+ *  - **Pipeline Bid incluído (decisão do dono 2026-09-05).** A data de entrada usa
+ *    `stage_entered['Implantação'|'Ganho']` (mapa por RÓTULO de etapa, populado pelo
+ *    `forecast-table.js` para os dois pipelines a partir de `hs_v2_date_entered_<id>`),
+ *    com fallback nos campos antigos `data_implantacao`/`data_ganho` (só Vendas, por
+ *    compatibilidade). Bid e Vendas compartilham o rótulo "Implantação"/"Ganho", então a
+ *    régua de probabilidade (mesma, por rótulo) já vale para os dois sem mudança.
  *  - Sem commit/forecast: a aba mostra só realizado (Fechado) contra a Meta.
  *
  * ⚠ IMPORTANTE (Regra primária nº 3 | fonte única de receita): esta é uma métrica de
@@ -74,8 +80,8 @@
       colProb: 'Régua', colPond: 'Ponderado', colDate: 'Entrada no tri',
       modalTitle: 'contas fechadas no tri', semContas: 'Nenhuma conta fechada no trimestre.',
       empty: 'Sem contas fechadas no trimestre ainda.',
-      memoria: 'Campos: <b>arr_estimado</b> (ARR estimado) × <b>prob. de etapa</b> pela régua global (semantic <code>forecast_flat</code>: Implantação 80% · Ganho 100%) · <b>data_implantacao</b> (entrada em Implantação) com fallback <b>data_ganho</b> · <b>hubspot_owner_id</b> (AE). ' +
-               'Fórmula: Σ (arr_estimado × régua da etapa) das contas cuja entrada em Implantação (ou Ganho) cai no trimestre, por AE do time comercial ATIVO (Ágatta, Juliana — meta 750k/AE cada). Qualquer outro executivo que tenha fechado conta no tri entra no bucket "Outros", com meta zerada (não conta para os R$ 1,5MM do time). ' +
+      memoria: 'Campos: <b>arr_estimado</b> (ARR estimado) × <b>prob. de etapa</b> pela régua global (semantic <code>forecast_flat</code>: Implantação 80% · Ganho 100%) · <b>stage_entered</b> (entrada em Implantação/Ganho, por RÓTULO de etapa — cobre Vendas e Bid) com fallback <b>data_implantacao</b>/<b>data_ganho</b> · <b>hubspot_owner_id</b> (AE). ' +
+               'Fórmula: Σ (arr_estimado × régua da etapa) das contas cuja entrada em Implantação (ou Ganho) cai no trimestre, dos pipelines <b>Vendas + Bid</b>, por AE do time comercial ATIVO (Ágatta, Juliana — meta 750k/AE cada). Qualquer outro executivo que tenha fechado conta no tri entra no bucket "Outros", com meta zerada (não conta para os R$ 1,5MM do time). ' +
                'Status: ritmo esperado = % de dias decorridos do trimestre. ' +
                '⚠ Métrica de <b>bookings ponderados</b> (ARR estimado × régua de etapa), não a receita canônica da Regra primária nº 3 (Real/Probabilizada). Não validado no HubSpot.'
     },
@@ -90,8 +96,8 @@
       colProb: 'Ruler', colPond: 'Weighted', colDate: 'Entered in qtr',
       modalTitle: 'accounts closed in qtr', semContas: 'No accounts closed this quarter.',
       empty: 'No accounts closed this quarter yet.',
-      memoria: 'Fields: <b>arr_estimado</b> (estimated ARR) × <b>stage prob.</b> from the global ruler (semantic <code>forecast_flat</code>: Implementation 80% · Won 100%) · <b>data_implantacao</b> (entered Implementation) fallback <b>data_ganho</b> · <b>hubspot_owner_id</b> (AE). ' +
-               'Formula: Σ (arr_estimado × stage ruler) of accounts whose entry into Implementation (or Won) falls within the quarter, per ACTIVE team AE (Ágatta, Juliana — 750k target each). Any other executive who closed an account in the quarter falls into the "Outros" (Others) bucket, with a zeroed target (does not count toward the team\'s R$ 1.5MM). ' +
+      memoria: 'Fields: <b>arr_estimado</b> (estimated ARR) × <b>stage prob.</b> from the global ruler (semantic <code>forecast_flat</code>: Implementation 80% · Won 100%) · <b>stage_entered</b> (entered Implementation/Won, keyed by stage LABEL — covers Vendas and Bid) fallback <b>data_implantacao</b>/<b>data_ganho</b> · <b>hubspot_owner_id</b> (AE). ' +
+               'Formula: Σ (arr_estimado × stage ruler) of accounts whose entry into Implementation (or Won) falls within the quarter, across the <b>Vendas + Bid</b> pipelines, per ACTIVE team AE (Ágatta, Juliana — 750k target each). Any other executive who closed an account in the quarter falls into the "Outros" (Others) bucket, with a zeroed target (does not count toward the team\'s R$ 1.5MM). ' +
                'Status: expected pace = % of quarter days elapsed. ' +
                '⚠ This is a <b>weighted bookings</b> metric (estimated ARR × stage ruler), not the canonical revenue of primary rule #3. Not validated against HubSpot.'
     }
@@ -143,6 +149,15 @@
 
   function num(v) { var n = parseFloat(v); return isNaN(n) ? 0 : n; }
 
+  // Entrada em Implantação/Ganho, dos dois pipelines (Vendas + Bid). `stage_entered` é o
+  // mapa por RÓTULO de etapa que o forecast-table.js já popula para qualquer pipeline
+  // (Bid e Vendas compartilham os rótulos "Implantação"/"Ganho", ids diferentes); os campos
+  // antigos `data_implantacao`/`data_ganho` só cobrem Vendas e ficam de fallback.
+  function entradaFechamento(d) {
+    var se = d.stage_entered || {};
+    return se['Implantação'] || d.data_implantacao || se['Ganho'] || d.data_ganho || null;
+  }
+
   // ── Cálculo puro ────────────────────────────────────────────────────────────
   // Retorna { quarter, pace, team:{meta,fechado,pct,gap,gapPct,contas}, aes:[{first,display,fechado,meta,pct,status,deals}] }
   function compute(deals, opts) {
@@ -165,7 +180,7 @@
       var d = deals[i];
       var fk = firstNameKey(d.ae);
       if (!fk) continue;                                  // sem AE
-      var closeDate = d.data_implantacao || d.data_ganho; // entrada em Implantação, fallback Ganho
+      var closeDate = entradaFechamento(d);               // entrada em Implantação, fallback Ganho (Vendas + Bid)
       if (!closeDate) continue;
       var cd = String(closeDate).substring(0, 10);
       if (cd < qtr.start || cd > qtr.end) continue;       // fora do trimestre
@@ -419,7 +434,7 @@
     var rows = '';
     ds.forEach(function (d) {
       var url = 'https://app.hubspot.com/contacts/' + esc(hubId) + '/deal/' + esc(d.hs_id);
-      var entrada = d.data_implantacao || d.data_ganho;
+      var entrada = entradaFechamento(d);
       var prob = stageProb(d.stage);
       var pond = num(d.arr_estimado) * prob;
       rows += '<tr>'
