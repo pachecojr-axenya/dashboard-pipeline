@@ -75,6 +75,7 @@ const REWRITES = {
   '/novo-cs': '/cs.html',
   '/novo-cotacao': '/cotacao.html',
   '/forecast': '/forecast.html',
+  '/forecast-new-era': '/forecast-new-era.html',
   '/forecast-delta': '/forecast-delta.html',
   '/forecast-overall': '/forecast-stage.html',
   '/forecast-mql': '/forecast-stage.html',

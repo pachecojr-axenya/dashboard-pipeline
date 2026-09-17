@@ -85,7 +85,8 @@
     {label:'Consultoria',url:'/forecast-consultoria',sub:'fc',file:'forecast-panel.html',health:'g',icon:'<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>'},
     {label:'Negociação',url:'/forecast-negociacao',sub:'fc',file:'forecast-panel.html',health:'g',icon:'<line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>'},
     {label:'BID',url:'/forecast-bid',sub:'fc',file:'forecast-panel.html',health:'g',icon:'<path d="M3 3v18h18"/><path d="M19 9l-5 5-3-3-4 4"/>'},
-    {label:'Ganho',url:'/forecast-ganho',sub:'fc',file:'forecast-panel.html',health:'g',icon:'<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>'}
+    {label:'Ganho',url:'/forecast-ganho',sub:'fc',file:'forecast-panel.html',health:'g',icon:'<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>'},
+    {label:'Forecast New Era',url:'/forecast-new-era',file:'forecast-new-era.html',health:'y',sec:'New Era',icon:'<path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.1-2.8-2.8L7 14"/>'}
   ];
   function findByUrl(u){ for(var i=0;i<PANELS.length;i++){ if(PANELS[i].url===u) return PANELS[i]; } return null; }
   var p2 = location.pathname; if (p2.length > 1 && p2.charAt(p2.length - 1) === '/') p2 = p2.slice(0, -1);
