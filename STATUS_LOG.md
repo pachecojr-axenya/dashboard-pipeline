@@ -1,5 +1,53 @@
 # Dashboard Enhancement Loop — Status Log
 
+### 🚀 DEPLOY DE PRODUÇÃO | Forecast New Era: novo painel para o pipe de corretoras (2026-09-17)
+
+> Pedido do dono: a empresa está pivotando para atender corretoras (não mais só o cliente
+> final) e criou um pipe novo no HubSpot para isso — **New Era (`933315963`)**, ainda em
+> fase de descoberta de mercado, sem regra de receita definida. Pediu uma tela nova e
+> separada do Forecast atual, com o mesmo visual, para acompanhar os deals desse pipe.
+> Fase 1: só listagem (Deal | Etapa | Executivo | Dias no Pipe | Data de Criação); cálculo
+> de previsibilidade de receita vem depois, por iteração.
+>
+> Commit `c83d775` pushado em `origin/main` (fast-forward limpo a partir de `1ae678f`, sem
+> commit local perdido). Deploy `dpl_CubkrVR6KuM4CzGr7NjiLdkRWRVd` (READY), alias de
+> produção `project-bsmfu.vercel.app` (espelhado em `axenya-pipeline-dashboard.vercel.app`).
+
+**Isolado de propósito da fonte única de receita (Regra primária nº 3).** `api/forecast-new-era.js`
+não importa `forecast-table.js`/`lib/semantic.js` — aquela camada é a fonte única de receita do
+Vendas+Bid, e o New Era ainda não tem régua de receita (calcular algo ali agora seria inventar uma
+segunda fonte). Nomes de etapa vêm AO VIVO do HubSpot (`GET /crm/v3/pipelines/deals/933315963`),
+não hardcoded, porque as etapas devem mudar durante o pivot — evita editar código toda vez que o
+dono renomear/criar uma etapa em descoberta. "Dias no pipe" = hoje − `createdate` (idade do deal,
+decisão do dono). "Executivo" = `hubspot_owner_id` resolvido via `/crm/v3/owners` (mesmo padrão do
+`forecast-table.js`).
+
+`public/forecast-new-era.html` é um arquivo novo (não deriva do monólito `forecast.html`, que
+carrega toda a lógica de receita/probabilidade que não se aplica aqui) — chrome idêntico aos
+painéis já migrados (`premium.css`/`premium.js`, `ax-ui.js`, `nav.js`), tabela enxuta com as 5
+colunas pedidas. Rota `/forecast-new-era` cabeada em `vercel.json` e `scripts/local-server.js`
+(os dois precisam ficar em sincronia, convenção do projeto). Item novo em `public/nav.js`, seção
+própria **"New Era"** (separada de "Forecast" — decisão do dono, é uma frente de negócio
+diferente), `health:'y'` (novo/não validado). Cache-buster `nav.js?v=6→v=7` nos 11 HTMLs que
+incluem o menu, para o item aparecer sem cache antigo.
+
+**Fora de escopo, não tocado:** subpáginas BDR (`premium.js`/`NAV_MODEL`, território do Samuel)
+não recebem o item novo — é a mesma divergência de fonte de menu já catalogada em
+`docs/github-source-of-truth.md`, não algo introduzido por esta mudança.
+
+**Validação:** `npm run check` 82 PASS | 0 FAIL (0 erros de design tokens; painel novo ainda fora
+do gate dos 7 já governados). `npm run predeploy` PASS. Local (porta 3002): todas as rotas
+existentes + `/forecast-new-era` em 200, sem regressão; `/api/forecast-new-era` retornando dados
+reais (15 deals do pipeline 933315963, nomes de etapa — "Qualificação", "Ganho" — e executivo
+resolvidos corretamente). Pós-deploy nos dois hosts: 7 rotas + `/forecast-new-era` em 200,
+`/api/forecast-table` e `/api/forecast-new-era` em 401 (auth ativa), `nav.js` e
+`forecast-new-era` servidos em produção já com o item novo e `nav.js?v=7` confirmados no ar.
+
+**Estado: 🟡 painel novo, não validado contra o HubSpot** (é o primeiro deploy — dono ainda vai
+conferir a lista contra o portal). Sem cálculo de receita nesta fase; quando a régua de
+previsibilidade do New Era for definida, será um motor explicitamente separado do
+`forecast-engine.js` atual, para não contaminar a fonte única de receita do Vendas+Bid.
+
 ### 🚀 DEPLOY DE PRODUÇÃO | Meta vs Ach: pipeline Bid entra no cálculo (2026-09-05)
 
 > Pedido do dono: "Na meta, inclua as implementações do pipe de Bid! Tivemos um ganho

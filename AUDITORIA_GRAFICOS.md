@@ -1,5 +1,16 @@
 # Auditoria crítica dos gráficos 🟡 | 2026-06-12
 
+## Adendo | Forecast New Era: novo painel para o pipe de corretoras (2026-09-17)
+
+> **Estado: 🟡 não analisado/não validado** — painel novo, primeiro deploy. Lista deals do
+> pipeline HubSpot New Era (`933315963`), a frente de atendimento a corretoras (pivot da
+> empresa, separado do pipe Vendas/Bid). Fase 1: só listagem (Deal | Etapa | Executivo |
+> Dias no Pipe | Data de Criação), **sem nenhum cálculo de receita/probabilidade** — por
+> isso não entra em conflito com a Regra primária nº 3 (fonte única de receita), que hoje
+> só rege Vendas+Bid. Nomes de etapa vêm ao vivo do HubSpot (não hardcoded), porque o pipe
+> ainda está em descoberta e as etapas devem mudar. Detalhe em `STATUS_LOG.md`, entrada de
+> 2026-09-17.
+
 ## Adendo | Meta vs Ach: pipeline Bid entra no cálculo (2026-09-05)
 
 > **Estado inalterado: 🟡 não validado contra o HubSpot** — mudança de FONTE da data de
