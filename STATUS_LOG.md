@@ -1,5 +1,22 @@
 # Dashboard Enhancement Loop — Status Log
 
+### 🚀 DEPLOY DE PRODUÇÃO | Forecast New Era: modal de detalhe com navegação + colunas ordenáveis (2026-09-17)
+
+> Pedido do dono: "adicionar o modal que abre no Forecast, com a navegação, e as colunas
+> ordenáveis" no painel novo. Port fiel do padrão já usado em `forecast.html`
+> (`openDealModal`/`navDealModal`/`renderDealModal`/`closeDealModal`, classes
+> `.prob-overlay`/`.deal-modal-box`/`.deal-row`/`.dm-nav-btn`), adaptado aos 5 campos que a
+> tela já tem — sem os campos de receita/probabilidade, que não existem nesta fase. Clique
+> no nome do deal abre o modal; navegação por `‹`/`›` ou teclado (`←`/`→`, `Esc` fecha).
+> Colunas ordenáveis por clique no cabeçalho (seta ▲▼), comparador genérico por tipo
+> (texto/número/data) em vez de reimplementar por coluna. Tudo contido em
+> `public/forecast-new-era.html` — não tocou `forecast.html`/`forecast-table.js`.
+>
+> Commit `5cc3675` pushado em `origin/main` (fast-forward a partir de `9053666`). Deploy
+> `dpl_7coU5wU5nPjwxzF5dDQXJb8SHYZ9` (READY). `npm run check` 0 erros. Pós-deploy nos dois
+> hosts: `/forecast-new-era` em 200 com o markup do modal e da ordenação confirmados no
+> bundle ao vivo; `/novo`, `/novo-cs`, `/forecast`, `/novo-bdr` sem regressão.
+
 ### 🚀 DEPLOY DE PRODUÇÃO | Forecast New Era: fix do rodapé do menu (Sair/Tema sem estilo) (2026-09-17)
 
 > Pedido do dono: "o visual dos temas e logout desandou com esse update na tela do Forecast
