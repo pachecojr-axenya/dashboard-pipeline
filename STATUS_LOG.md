@@ -1,5 +1,22 @@
 # Dashboard Enhancement Loop — Status Log
 
+### 🚀 DEPLOY DE PRODUÇÃO | Forecast New Era: fix do rodapé do menu (Sair/Tema sem estilo) (2026-09-17)
+
+> Pedido do dono: "o visual dos temas e logout desandou com esse update na tela do Forecast
+> New Era". Causa raiz: ao enxugar o CSS herdado de `cs.html` para a tela nova, dropei
+> `.nav-drawer-footer`/`.nav-foot-btn` junto com `.nav-item`/`.nav-menu` — mas só estas
+> últimas vêm de `premium.css`; o rodapé do menu (botões Sair/Tema) **não tem regra em
+> nenhum lugar compartilhado** (`premium.css` nem o CSS injetado por `nav.js`), cada painel
+> ainda carrega essas duas classes no próprio `<style>` inline (dívida catalogada em
+> `docs/design-system.md`, não migrada). Os dois botões ficavam sem estilo nenhum.
+>
+> Fix: `.nav-drawer-footer`/`.nav-foot-btn` (+hover +variante light) readicionados,
+> idênticos ao que `cs.html`/`board.html`/`ae.html`/`cotacao.html`/`48h.html` já usam.
+> Commit `2bedfec` pushado em `origin/main` (fast-forward a partir de `593f020`). Deploy
+> `dpl_DpwNY5CeeDGv4TKT42iPgsqNJ85g` (READY). `npm run check` 82 PASS | 0 FAIL. Pós-deploy
+> nos dois hosts: `/forecast-new-era` em 200 com as 2 regras `.nav-foot-btn` confirmadas no
+> bundle ao vivo; `/novo`, `/novo-cs`, `/forecast`, `/novo-bdr` sem regressão.
+
 ### 🚀 DEPLOY DE PRODUÇÃO | Forecast New Era: novo painel para o pipe de corretoras (2026-09-17)
 
 > Pedido do dono: a empresa está pivotando para atender corretoras (não mais só o cliente
